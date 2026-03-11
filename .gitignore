@@ -32,6 +32,7 @@ Module.symvers
 # Directories where too much temp stuff may lay around
 tests/*
 !tests/sandbox/
+!tests/syscall/
 
 # The suggested build folder
 build

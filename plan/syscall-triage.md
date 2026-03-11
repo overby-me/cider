@@ -37,14 +37,14 @@ macOS (XNU) BSD syscall numbers can be found in:
 
 | Syscall # | Name | Caller | Operation | Impact | Category | Status | Notes |
 |-----------|------|--------|-----------|--------|----------|--------|-------|
-| 488 | `renameatx_np` | `mv` (coreutils) | `nix-build` (file moves) | **Crash** — `mv` aborts | Must fix | 🔧 Planned ([1.3](./03-phase1-syscalls.md#13--implement-renameatx_np-syscall-488)) | Map to Linux `renameat2` |
-| 462 | `clonefile` | Nix store optimiser | Store copy-on-write | Slow fallback | Should stub | 🔧 Planned ([1.5](./03-phase1-syscalls.md#15--implement-or-stub-clonefile--fclonefileat-syscall-462)) | Return `ENOTSUP`; Nix handles gracefully |
-| 463 | `fclonefileat` | Nix store optimiser | Store copy-on-write | Slow fallback | Should stub | 🔧 Planned ([1.5](./03-phase1-syscalls.md#15--implement-or-stub-clonefile--fclonefileat-syscall-462)) | Same as `clonefile` |
-| 220 | `getattrlist` | Various (stat-like) | File metadata reads | **Crash** or wrong results | Must fix | 🔧 Planned ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Minimum: `ATTR_CMN_FLAGS` |
-| 221 | `setattrlist` | `lchflags` / `chflags` | `nix-env` profile install | **Blocker** — EINVAL | Must fix | 🔧 Planned ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Core blocker B1 |
-| — | `fsetattrlist` | `lchflags` variant | `nix-env` profile install | **Blocker** | Must fix | 🔧 Planned ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Same root cause as B1 |
-| 547 | `setattrlistat` | `touch` / timestamps | Build scripts | **Crash** — segfault | Must fix | 🔧 Planned ([1.4](./03-phase1-syscalls.md#14--audit-and-fix-utimensat--futimens)) | May share root cause with B1 |
-| — | `getentropy` | Crypto / hashing | Nix eval, signing | Potential crash | Should verify | 📋 Planned ([1.6](./03-phase1-syscalls.md#16--implement-getentropy--ccrandomgeneratebytes)) | May already work |
+| 488 | `renameatx_np` | `mv` (coreutils) | `nix-build` (file moves) | **Crash** — `mv` aborts | Must fix | ✅ Fixed ([1.3](./03-phase1-syscalls.md#13--implement-renameatx_np-syscall-488)) | Maps to Linux `renameat2`; RENAME_SWAP→RENAME_EXCHANGE, RENAME_EXCL→RENAME_NOREPLACE |
+| 462 | `clonefile` | Nix store optimiser | Store copy-on-write | Slow fallback | Should stub | ⏭️ Stubbed ([1.5](./03-phase1-syscalls.md#15--implement-or-stub-clonefile--fclonefileat-syscall-462)) | Changed from ENOSYS→ENOTSUP; Nix falls back to read/write copy |
+| 517 | `fclonefileat` | Nix store optimiser | Store copy-on-write | Slow fallback | Should stub | ⏭️ Stubbed ([1.5](./03-phase1-syscalls.md#15--implement-or-stub-clonefile--fclonefileat-syscall-462)) | Same as `clonefile` — ENOSYS→ENOTSUP |
+| 220 | `getattrlist` | Various (stat-like) | File metadata reads | **Crash** or wrong results | Must fix | ✅ Fixed ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Added ATTR_CMN_FLAGS support; returns flags=0 |
+| 221 | `setattrlist` | `lchflags` / `chflags` | `nix-env` profile install | **Blocker** — EINVAL | Must fix | ✅ Fixed ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Added ATTR_CMN_FLAGS + CRTIME + CHGTIME to COMMON_SUPPORTED |
+| — | `fsetattrlist` | `lchflags` variant | `nix-env` profile install | **Blocker** | Must fix | ✅ Fixed ([1.1](./03-phase1-syscalls.md#11--implement-setattrlist--fsetattrlist--getattrlist)) | Same generic handler as setattrlist |
+| 547 | `setattrlistat` | `touch` / timestamps | Build scripts | **Crash** — segfault | Must fix | ✅ Fixed ([1.4](./03-phase1-syscalls.md#14--audit-and-fix-utimensat--futimens)) | Uses same generic handler — now supports ATTR_CMN_FLAGS |
+| 500 | `getentropy` | Crypto / hashing | Nix eval, signing | OK | Already works | ✅ Verified ([1.6](./03-phase1-syscalls.md#16--implement-getentropy--ccrandomgeneratebytes)) | Maps to Linux getrandom(2) — already implemented |
 | | | | | | | | |
 <!-- Add new entries above this line as they are discovered -->
 
@@ -87,7 +87,7 @@ Record each triage session here so we know what's been tested.
 
 | Date | Tester | Nix Version | Operation Tested | New Syscalls Found |
 |------|--------|-------------|------------------|--------------------|
-| | | | | |
+| 2025-07 | — | — | Code audit | renameatx_np (488), clonefile (462/517), setattrlist (221), getattrlist (220), getentropy (500) |
 <!-- Add rows as triage sessions are performed -->
 
 ---

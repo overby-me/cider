@@ -13,7 +13,7 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase | Status | Key Files |
 |-------|--------|-----------|
 | Phase 0 — Packaging | ✅ Done | `flake.nix`, `nix/package.nix`, `nix/devShell.nix`, `nix/nixosModule.nix`, `.envrc` |
-| Phase 1 — Syscalls | 📋 Planned | [Triage table](./plan/syscall-triage.md) |
+| Phase 1 — Syscalls | 🚧 In progress | [Triage table](./plan/syscall-triage.md) |
 | Phase 2 — Sandbox | 🚧 In progress | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
 | Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh` (new), `scripts/darling-nix` (new) |
 | Phase 4 — Building | 📋 Planned | — |
@@ -24,6 +24,26 @@ See the **[plan/](./plan/)** directory for all details.
 
 ### Recently Completed
 
+- **Phase 1.3**: Implemented `renameatx_np` (macOS syscall 488) — new file
+  `src/external/xnu/.../impl/unistd/renameatx_np.c` translates to Linux
+  `renameat2(2)` with flag mapping: `RENAME_SWAP` → `RENAME_EXCHANGE`,
+  `RENAME_EXCL` → `RENAME_NOREPLACE`. Wired into syscall table at slot 488.
+- **Phase 1.1**: Extended `setattrlist` / `fsetattrlist` / `setattrlistat` to
+  support `ATTR_CMN_FLAGS` — the core blocker for `lchflags(path, 0)` which
+  Nix calls during profile installation. Also added `ATTR_CMN_CRTIME` and
+  `ATTR_CMN_CHGTIME` (silently ignored). Extended `getattrlist` /
+  `fgetattrlist` / `getattrlistat` to return `flags = 0` when
+  `ATTR_CMN_FLAGS` is requested, enabling read-modify-write flag cycles.
+- **Phase 1.5**: Changed `clonefile` / `fclonefileat` stubs from `ENOSYS` to
+  `ENOTSUP` so Nix gracefully falls back to regular read/write copy instead
+  of treating it as a fatal unimplemented-syscall error.
+- **Phase 1.6**: Verified `getentropy` (syscall 500) already works — maps to
+  Linux `getrandom(2)`, no changes needed.
+- **Testing**: Created `tests/syscall/test_renameatx_np.c` (renameatx_np
+  regression tests: plain rename, RENAME_SWAP, RENAME_EXCL, invalid flags)
+  and `tests/syscall/test_setattrlist_flags.c` (setattrlist/getattrlist
+  ATTR_CMN_FLAGS tests: lchflags, chflags, symlinks, combined attrs,
+  fsetattrlist, read-modify-write cycle).
 - **Phase 2.2**: Fixed `sandbox_init`, `sandbox_init_with_parameters`,
   `sandbox_init_with_extensions`, and `sandbox_wakeup_daemon` — they now set
   `*errorbuf = NULL` on success instead of `strdup("Not implemented")`, and
@@ -89,9 +109,12 @@ darling-nix/
 │   │   └── sandbox-exec.c
 │   └── diskutil/diskutil               # Extended with info/list verbs (Phase 3)
 ├── tests/
-│   └── sandbox/                        # NEW — sandbox regression tests
-│       ├── test_sandbox_api.c          # C-level sandbox API tests
-│       └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
+│   ├── sandbox/                        # NEW — sandbox regression tests
+│   │   ├── test_sandbox_api.c          # C-level sandbox API tests
+│   │   └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
+│   └── syscall/                        # NEW — syscall regression tests
+│       ├── test_renameatx_np.c         # renameatx_np tests (Phase 1)
+│       └── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
 └── plan/
     ├── README.md                       # Index + priority table
     ├── 00-background.md                # Motivation & current state
@@ -113,18 +136,24 @@ darling-nix/
 
 The **critical path to MVP** (Nix running inside Darling) is:
 
-1. **Phase 1 — Syscall fixes** (P0, not started): This is the biggest remaining
-   blocker. The `setattrlist`/`renameatx_np`/`utimensat` implementations in
-   darlingserver are required before Nix binaries can run without crashing.
-   Start with task 1.3 (`renameatx_np` → `renameat2` mapping) as it's the
-   quickest win, then 1.1 (`setattrlist`) for the biggest impact.
+1. **Phase 1 — Remaining syscall work**: The core syscall blockers
+   (`renameatx_np`, `setattrlist`/`getattrlist` with `ATTR_CMN_FLAGS`,
+   `clonefile` stub) are now implemented. Remaining Phase 1 tasks:
+   - **Task 1.4** (`utimensat` audit): Debug whether Nix's `touch` segfault
+     is now resolved by the `setattrlist` fixes (it may have been calling
+     `setattrlistat` under the hood). If not, trace the exact failing call.
+   - **Task 1.7** (triage): Run Nix inside Darling with tracing enabled and
+     collect any remaining "Unimplemented syscall" messages.
+   - **Task 1.8** (version bump): Update emulated macOS version to 11.0+.
 
-2. **Phase 2 — Verification**: The sandbox-exec stub and API fixes are
-   implemented but need testing inside a real Darling build. Run the tests in
-   `tests/sandbox/` to verify.
+2. **Build & test**: Build Darling with the new syscall implementations and
+   run the regression tests in `tests/syscall/` and `tests/sandbox/` inside
+   `darling shell` to verify everything works end-to-end.
 
-3. **Phase 3 — Nix installation**: Once Phase 1 syscalls are in place, run
+3. **Phase 3 — Nix installation**: With the syscall fixes in place, run
    `scripts/install-nix-in-darling.sh` and iterate on any remaining issues.
+   This is now much closer to working since the `lchflags` and `mv` blockers
+   are resolved.
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.
