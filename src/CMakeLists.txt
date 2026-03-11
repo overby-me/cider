@@ -293,6 +293,7 @@ if (COMPONENT_cli)
 	add_subdirectory(clt)
 	add_subdirectory(diskutil)
 	add_subdirectory(sandbox-exec)
+	add_subdirectory(dirserv)
 	add_subdirectory(ditto)
 
 	# these aren't used by anything we build (they're just included because they're also present in macOS)

@@ -1,0 +1,617 @@
+#!/bin/sh
+# dscl — Directory Services command-line stub for Darling
+#
+# Translates macOS dscl commands to direct /etc/passwd and /etc/group
+# file lookups.  Only implements the subset needed by the Nix installer
+# and common system-management scripts:
+#
+#   dscl . -read /Groups/<name> [<key>]
+#   dscl . -read /Users/<name> [<key>]
+#   dscl . -list /Users [<key>]
+#   dscl . -list /Groups [<key>]
+#   dscl . -create /Users/<name> <key> <value>
+#   dscl . -create /Groups/<name> <key> <value>
+#   dscl . -delete /Users/<name>
+#   dscl . -delete /Groups/<name>
+#   dscl . -append /Groups/<name> GroupMembership <user>
+#   dscl . -search /Users UniqueID <uid>
+#   dscl . -search /Groups PrimaryGroupID <gid>
+#
+# The datasource argument (first positional arg) is accepted but only
+# "." (local directory) and "/Local/Default" are handled — all others
+# produce an error.
+#
+# This stub operates on the Darling prefix's /etc/passwd and /etc/group
+# files, NOT the host's.
+#
+# See: plan/07-phase5-daemon.md (Task 5.1)
+
+set -eu
+
+PASSWD_FILE="/etc/passwd"
+GROUP_FILE="/etc/group"
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+errcho() {
+    echo "$@" >&2
+}
+
+usage() {
+    errcho "Usage: dscl <datasource> <command> <path> [<key> [<value> ...]]"
+    errcho ""
+    errcho "Datasources:  .  /Local/Default"
+    errcho ""
+    errcho "Commands:"
+    errcho "  -read     Read a record (or a specific key from a record)"
+    errcho "  -list     List records under a path (optionally show a key)"
+    errcho "  -create   Create a record or set a key on a record"
+    errcho "  -delete   Delete a record (or a key from a record)"
+    errcho "  -append   Append a value to a multi-valued key"
+    errcho "  -search   Search records for a matching key=value"
+    exit 64
+}
+
+# user_exists <name>
+user_exists() {
+    grep -q "^${1}:" "$PASSWD_FILE" 2>/dev/null
+}
+
+# group_exists <name>
+group_exists() {
+    grep -q "^${1}:" "$GROUP_FILE" 2>/dev/null
+}
+
+# get_passwd_field <name> <field_num>   (1-indexed: 1=name 2=pw 3=uid 4=gid 5=gecos 6=home 7=shell)
+get_passwd_field() {
+    awk -F: -v name="$1" -v fld="$2" '$1 == name { print $fld; exit }' "$PASSWD_FILE"
+}
+
+# get_group_field <name> <field_num>   (1=name 2=pw 3=gid 4=members)
+get_group_field() {
+    awk -F: -v name="$1" -v fld="$2" '$1 == name { print $fld; exit }' "$GROUP_FILE"
+}
+
+# print_user_record <name> [<key>]
+# Prints all (or a single) key-value pairs for a user, mimicking dscl output.
+print_user_record() {
+    _name="$1"
+    _key="${2:-}"
+
+    if ! user_exists "$_name"; then
+        errcho "dscl: record not found: /Users/$_name"
+        return 1
+    fi
+
+    _uid=$(get_passwd_field "$_name" 3)
+    _gid=$(get_passwd_field "$_name" 4)
+    _gecos=$(get_passwd_field "$_name" 5)
+    _home=$(get_passwd_field "$_name" 6)
+    _shell=$(get_passwd_field "$_name" 7)
+
+    if [ -n "$_key" ]; then
+        case "$_key" in
+            UniqueID)           echo "UniqueID: $_uid" ;;
+            PrimaryGroupID)     echo "PrimaryGroupID: $_gid" ;;
+            RealName)           echo "RealName: $_gecos" ;;
+            NFSHomeDirectory)   echo "NFSHomeDirectory: $_home" ;;
+            UserShell)          echo "UserShell: $_shell" ;;
+            RecordName)         echo "RecordName: $_name" ;;
+            Password)           echo "Password: ********" ;;
+            RecordType)         echo "RecordType: dsRecTypeStandard:Users" ;;
+            AuthenticationAuthority) echo "AuthenticationAuthority: ;ShadowHash;" ;;
+            *)
+                errcho "dscl: no such key '$_key' (or not implemented)"
+                return 1
+                ;;
+        esac
+    else
+        echo "AppleMetaNodeLocation: /Local/Default"
+        echo "RecordName: $_name"
+        echo "RecordType: dsRecTypeStandard:Users"
+        echo "UniqueID: $_uid"
+        echo "PrimaryGroupID: $_gid"
+        echo "RealName: $_gecos"
+        echo "NFSHomeDirectory: $_home"
+        echo "UserShell: $_shell"
+    fi
+}
+
+# print_group_record <name> [<key>]
+print_group_record() {
+    _name="$1"
+    _key="${2:-}"
+
+    if ! group_exists "$_name"; then
+        errcho "dscl: record not found: /Groups/$_name"
+        return 1
+    fi
+
+    _gid=$(get_group_field "$_name" 3)
+    _members=$(get_group_field "$_name" 4)
+
+    if [ -n "$_key" ]; then
+        case "$_key" in
+            PrimaryGroupID)     echo "PrimaryGroupID: $_gid" ;;
+            RecordName)         echo "RecordName: $_name" ;;
+            RecordType)         echo "RecordType: dsRecTypeStandard:Groups" ;;
+            GroupMembership)
+                if [ -n "$_members" ]; then
+                    # Print each member on its own line (like real dscl)
+                    printf "GroupMembership:"
+                    echo "$_members" | tr ',' '\n' | while read -r _m; do
+                        printf " %s" "$_m"
+                    done
+                    printf "\n"
+                else
+                    echo "GroupMembership:"
+                fi
+                ;;
+            GeneratedUID)
+                echo "GeneratedUID: 00000000-0000-0000-0000-$(printf '%012d' "$_gid")"
+                ;;
+            *)
+                errcho "dscl: no such key '$_key' (or not implemented)"
+                return 1
+                ;;
+        esac
+    else
+        echo "AppleMetaNodeLocation: /Local/Default"
+        echo "RecordName: $_name"
+        echo "RecordType: dsRecTypeStandard:Groups"
+        echo "PrimaryGroupID: $_gid"
+        echo "GeneratedUID: 00000000-0000-0000-0000-$(printf '%012d' "$_gid")"
+        if [ -n "$_members" ]; then
+            printf "GroupMembership:"
+            echo "$_members" | tr ',' '\n' | while read -r _m; do
+                printf " %s" "$_m"
+            done
+            printf "\n"
+        fi
+    fi
+}
+
+# next_uid — find the next available UID >= 300
+next_uid() {
+    awk -F: '{ if ($3 >= 300 && $3 > max) max = $3 } END { print (max ? max + 1 : 300) }' "$PASSWD_FILE"
+}
+
+# next_gid — find the next available GID >= 30000
+next_gid() {
+    awk -F: '{ if ($3 >= 30000 && $3 > max) max = $3 } END { print (max ? max + 1 : 30000) }' "$GROUP_FILE"
+}
+
+# ── Argument validation ─────────────────────────────────────────────────────
+
+if [ "$#" -lt 2 ]; then
+    usage
+fi
+
+# Datasource — accept and skip "." or "/Local/Default"
+DATASOURCE="$1"
+shift
+
+case "$DATASOURCE" in
+    .|/Local/Default|localhost)
+        ;;
+    *)
+        errcho "dscl: unsupported datasource '$DATASOURCE' (only . and /Local/Default are supported)"
+        exit 1
+        ;;
+esac
+
+# Command
+COMMAND="$1"
+shift
+
+# ── Dispatch ────────────────────────────────────────────────────────────────
+
+case "$COMMAND" in
+
+# ── -read ───────────────────────────────────────────────────────────────────
+-read|-readall)
+    if [ "$#" -lt 1 ]; then
+        errcho "dscl: -read requires a path"
+        usage
+    fi
+    RECORD_PATH="$1"
+    shift
+    KEY="${1:-}"
+
+    case "$RECORD_PATH" in
+        /Users/*)
+            RECORD_NAME="${RECORD_PATH#/Users/}"
+            print_user_record "$RECORD_NAME" "$KEY"
+            ;;
+        /Groups/*)
+            RECORD_NAME="${RECORD_PATH#/Groups/}"
+            print_group_record "$RECORD_NAME" "$KEY"
+            ;;
+        *)
+            errcho "dscl: unsupported path '$RECORD_PATH' (expected /Users/<name> or /Groups/<name>)"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── -list ───────────────────────────────────────────────────────────────────
+-list|-ls)
+    if [ "$#" -lt 1 ]; then
+        errcho "dscl: -list requires a path"
+        usage
+    fi
+    RECORD_PATH="$1"
+    shift
+    KEY="${1:-}"
+
+    case "$RECORD_PATH" in
+        /Users)
+            if [ -z "$KEY" ]; then
+                awk -F: '{ print $1 }' "$PASSWD_FILE"
+            else
+                case "$KEY" in
+                    UniqueID)
+                        awk -F: '{ printf "%-24s %s\n", $1, $3 }' "$PASSWD_FILE"
+                        ;;
+                    PrimaryGroupID)
+                        awk -F: '{ printf "%-24s %s\n", $1, $4 }' "$PASSWD_FILE"
+                        ;;
+                    NFSHomeDirectory)
+                        awk -F: '{ printf "%-24s %s\n", $1, $6 }' "$PASSWD_FILE"
+                        ;;
+                    UserShell)
+                        awk -F: '{ printf "%-24s %s\n", $1, $7 }' "$PASSWD_FILE"
+                        ;;
+                    RealName)
+                        awk -F: '{ printf "%-24s %s\n", $1, $5 }' "$PASSWD_FILE"
+                        ;;
+                    RecordName)
+                        awk -F: '{ print $1 }' "$PASSWD_FILE"
+                        ;;
+                    *)
+                        errcho "dscl: unsupported key '$KEY' for /Users list"
+                        exit 1
+                        ;;
+                esac
+            fi
+            ;;
+        /Groups)
+            if [ -z "$KEY" ]; then
+                awk -F: '{ print $1 }' "$GROUP_FILE"
+            else
+                case "$KEY" in
+                    PrimaryGroupID)
+                        awk -F: '{ printf "%-24s %s\n", $1, $3 }' "$GROUP_FILE"
+                        ;;
+                    RecordName)
+                        awk -F: '{ print $1 }' "$GROUP_FILE"
+                        ;;
+                    GroupMembership)
+                        awk -F: '{ if ($4 != "") printf "%-24s %s\n", $1, $4 }' "$GROUP_FILE"
+                        ;;
+                    *)
+                        errcho "dscl: unsupported key '$KEY' for /Groups list"
+                        exit 1
+                        ;;
+                esac
+            fi
+            ;;
+        *)
+            errcho "dscl: unsupported path '$RECORD_PATH' (expected /Users or /Groups)"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── -create ─────────────────────────────────────────────────────────────────
+-create)
+    if [ "$#" -lt 1 ]; then
+        errcho "dscl: -create requires a path"
+        usage
+    fi
+    RECORD_PATH="$1"
+    shift
+    KEY="${1:-}"
+    [ -n "$KEY" ] && shift
+    VALUE="${*:-}"
+
+    case "$RECORD_PATH" in
+        /Users/*)
+            RECORD_NAME="${RECORD_PATH#/Users/}"
+            if [ -z "$KEY" ]; then
+                # Create the user record with defaults if it doesn't exist
+                if ! user_exists "$RECORD_NAME"; then
+                    _uid=$(next_uid)
+                    echo "${RECORD_NAME}:x:${_uid}:0:::/usr/bin/false" >> "$PASSWD_FILE"
+                fi
+            else
+                # Set a specific key on an existing user, or create + set
+                if ! user_exists "$RECORD_NAME"; then
+                    _uid=$(next_uid)
+                    echo "${RECORD_NAME}:x:${_uid}:0:::/usr/bin/false" >> "$PASSWD_FILE"
+                fi
+
+                TMPFILE=$(mktemp "${PASSWD_FILE}.XXXXXX")
+                case "$KEY" in
+                    UniqueID)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$3=val} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    PrimaryGroupID)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$4=val} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    RealName)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$5=val} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    NFSHomeDirectory)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$6=val} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    UserShell)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$7=val} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    Password)
+                        # Ignored — always locked
+                        rm -f "$TMPFILE"
+                        exit 0
+                        ;;
+                    IsHidden|AuthenticationAuthority)
+                        # Ignored — macOS-specific keys not meaningful in /etc/passwd
+                        rm -f "$TMPFILE"
+                        exit 0
+                        ;;
+                    *)
+                        rm -f "$TMPFILE"
+                        errcho "dscl: unsupported key '$KEY' for /Users create"
+                        exit 1
+                        ;;
+                esac
+                mv "$TMPFILE" "$PASSWD_FILE"
+            fi
+            ;;
+        /Groups/*)
+            RECORD_NAME="${RECORD_PATH#/Groups/}"
+            if [ -z "$KEY" ]; then
+                # Create the group record with defaults if it doesn't exist
+                if ! group_exists "$RECORD_NAME"; then
+                    _gid=$(next_gid)
+                    echo "${RECORD_NAME}:x:${_gid}:" >> "$GROUP_FILE"
+                fi
+            else
+                if ! group_exists "$RECORD_NAME"; then
+                    _gid=$(next_gid)
+                    echo "${RECORD_NAME}:x:${_gid}:" >> "$GROUP_FILE"
+                fi
+
+                TMPFILE=$(mktemp "${GROUP_FILE}.XXXXXX")
+                case "$KEY" in
+                    PrimaryGroupID)
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$3=val} {print}' \
+                            "$GROUP_FILE" > "$TMPFILE"
+                        ;;
+                    RealName|Password|IsHidden)
+                        # Ignored
+                        rm -f "$TMPFILE"
+                        exit 0
+                        ;;
+                    GroupMembership)
+                        # -create with GroupMembership replaces the entire member list
+                        awk -F: -v name="$RECORD_NAME" -v val="$VALUE" \
+                            'BEGIN{OFS=":"} $1==name{$4=val} {print}' \
+                            "$GROUP_FILE" > "$TMPFILE"
+                        ;;
+                    *)
+                        rm -f "$TMPFILE"
+                        errcho "dscl: unsupported key '$KEY' for /Groups create"
+                        exit 1
+                        ;;
+                esac
+                mv "$TMPFILE" "$GROUP_FILE"
+            fi
+            ;;
+        *)
+            errcho "dscl: unsupported path '$RECORD_PATH'"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── -delete ─────────────────────────────────────────────────────────────────
+-delete)
+    if [ "$#" -lt 1 ]; then
+        errcho "dscl: -delete requires a path"
+        usage
+    fi
+    RECORD_PATH="$1"
+    shift
+    KEY="${1:-}"
+
+    case "$RECORD_PATH" in
+        /Users/*)
+            RECORD_NAME="${RECORD_PATH#/Users/}"
+            if ! user_exists "$RECORD_NAME"; then
+                exit 0  # idempotent
+            fi
+            if [ -z "$KEY" ]; then
+                # Delete the entire user record
+                TMPFILE=$(mktemp "${PASSWD_FILE}.XXXXXX")
+                grep -v "^${RECORD_NAME}:" "$PASSWD_FILE" > "$TMPFILE" || true
+                mv "$TMPFILE" "$PASSWD_FILE"
+            else
+                # Delete a specific key — for /etc/passwd, this means clearing the field
+                TMPFILE=$(mktemp "${PASSWD_FILE}.XXXXXX")
+                case "$KEY" in
+                    RealName)
+                        awk -F: -v name="$RECORD_NAME" \
+                            'BEGIN{OFS=":"} $1==name{$5=""} {print}' \
+                            "$PASSWD_FILE" > "$TMPFILE"
+                        ;;
+                    *)
+                        rm -f "$TMPFILE"
+                        errcho "dscl: cannot delete key '$KEY' from a user record"
+                        exit 1
+                        ;;
+                esac
+                mv "$TMPFILE" "$PASSWD_FILE"
+            fi
+            ;;
+        /Groups/*)
+            RECORD_NAME="${RECORD_PATH#/Groups/}"
+            if ! group_exists "$RECORD_NAME"; then
+                exit 0  # idempotent
+            fi
+            if [ -z "$KEY" ]; then
+                TMPFILE=$(mktemp "${GROUP_FILE}.XXXXXX")
+                grep -v "^${RECORD_NAME}:" "$GROUP_FILE" > "$TMPFILE" || true
+                mv "$TMPFILE" "$GROUP_FILE"
+            else
+                TMPFILE=$(mktemp "${GROUP_FILE}.XXXXXX")
+                case "$KEY" in
+                    GroupMembership)
+                        # Clear the member list
+                        awk -F: -v name="$RECORD_NAME" \
+                            'BEGIN{OFS=":"} $1==name{$4=""} {print}' \
+                            "$GROUP_FILE" > "$TMPFILE"
+                        ;;
+                    *)
+                        rm -f "$TMPFILE"
+                        errcho "dscl: cannot delete key '$KEY' from a group record"
+                        exit 1
+                        ;;
+                esac
+                mv "$TMPFILE" "$GROUP_FILE"
+            fi
+            ;;
+        *)
+            errcho "dscl: unsupported path '$RECORD_PATH'"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── -append ─────────────────────────────────────────────────────────────────
+-append)
+    if [ "$#" -lt 3 ]; then
+        errcho "dscl: -append requires <path> <key> <value>"
+        usage
+    fi
+    RECORD_PATH="$1"
+    KEY="$2"
+    shift 2
+    VALUE="$*"
+
+    case "$RECORD_PATH" in
+        /Groups/*)
+            RECORD_NAME="${RECORD_PATH#/Groups/}"
+            if ! group_exists "$RECORD_NAME"; then
+                errcho "dscl: group '$RECORD_NAME' not found"
+                exit 1
+            fi
+
+            case "$KEY" in
+                GroupMembership)
+                    # Append user(s) to the member list
+                    CURRENT=$(get_group_field "$RECORD_NAME" 4)
+
+                    # Process each value as a potential member to add
+                    for NEW_MEMBER in $VALUE; do
+                        # Check if already a member (idempotent)
+                        case ",$CURRENT," in
+                            *,"$NEW_MEMBER",*)
+                                continue
+                                ;;
+                        esac
+                        if [ -z "$CURRENT" ]; then
+                            CURRENT="$NEW_MEMBER"
+                        else
+                            CURRENT="${CURRENT},${NEW_MEMBER}"
+                        fi
+                    done
+
+                    TMPFILE=$(mktemp "${GROUP_FILE}.XXXXXX")
+                    awk -F: -v name="$RECORD_NAME" -v members="$CURRENT" \
+                        'BEGIN{OFS=":"} $1==name{$4=members} {print}' \
+                        "$GROUP_FILE" > "$TMPFILE"
+                    mv "$TMPFILE" "$GROUP_FILE"
+                    ;;
+                *)
+                    errcho "dscl: unsupported key '$KEY' for -append on /Groups"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        /Users/*)
+            errcho "dscl: -append is not supported for /Users records in this stub"
+            exit 1
+            ;;
+        *)
+            errcho "dscl: unsupported path '$RECORD_PATH'"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── -search ─────────────────────────────────────────────────────────────────
+-search)
+    if [ "$#" -lt 3 ]; then
+        errcho "dscl: -search requires <path> <key> <value>"
+        usage
+    fi
+    SEARCH_PATH="$1"
+    KEY="$2"
+    VALUE="$3"
+
+    case "$SEARCH_PATH" in
+        /Users)
+            case "$KEY" in
+                UniqueID)
+                    awk -F: -v val="$VALUE" '$3 == val { printf "%-24s ( %s )\n", $1, "UniqueID = " val }' "$PASSWD_FILE"
+                    ;;
+                PrimaryGroupID)
+                    awk -F: -v val="$VALUE" '$4 == val { printf "%-24s ( %s )\n", $1, "PrimaryGroupID = " val }' "$PASSWD_FILE"
+                    ;;
+                RecordName)
+                    awk -F: -v val="$VALUE" '$1 == val { printf "%-24s ( %s )\n", $1, "RecordName = " val }' "$PASSWD_FILE"
+                    ;;
+                *)
+                    errcho "dscl: unsupported search key '$KEY' for /Users"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        /Groups)
+            case "$KEY" in
+                PrimaryGroupID)
+                    awk -F: -v val="$VALUE" '$3 == val { printf "%-24s ( %s )\n", $1, "PrimaryGroupID = " val }' "$GROUP_FILE"
+                    ;;
+                RecordName)
+                    awk -F: -v val="$VALUE" '$1 == val { printf "%-24s ( %s )\n", $1, "RecordName = " val }' "$GROUP_FILE"
+                    ;;
+                *)
+                    errcho "dscl: unsupported search key '$KEY' for /Groups"
+                    exit 1
+                    ;;
+            esac
+            ;;
+        *)
+            errcho "dscl: unsupported search path '$SEARCH_PATH'"
+            exit 1
+            ;;
+    esac
+    ;;
+
+# ── Unknown command ─────────────────────────────────────────────────────────
+*)
+    errcho "dscl: unknown command '$COMMAND'"
+    usage
+    ;;
+esac

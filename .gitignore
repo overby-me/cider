@@ -33,6 +33,9 @@ Module.symvers
 tests/*
 !tests/sandbox/
 !tests/syscall/
+!tests/dirserv/
+!tests/darling-smoke.nix
+!tests/nix-in-darling.nix
 
 # The suggested build folder
 build

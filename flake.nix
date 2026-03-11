@@ -28,5 +28,70 @@
       # NixOS module is autoloaded from ./nix/nixosModule.nix
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
+
+      # ── Checks (Phase 6.2) ───────────────────────────────────────────
+      #
+      # NixOS VM integration tests and lightweight validation checks.
+      # Run with:
+      #   nix flake check              # all checks
+      #   nix build .#checks.x86_64-linux.darling-smoke -L
+      #   nix build .#checks.x86_64-linux.nix-in-darling -L
+      #
+      # See: plan/08-phase6-ci.md (Tasks 6.1, 6.2)
+      checks = pkgs:
+        let
+          darling = pkgs.darling;
+        in
+        {
+          # ── Build check ─────────────────────────────────────────────────
+          # Ensure the package builds successfully.  This is redundant with
+          # `packages.default` but makes `nix flake check` self-contained.
+          darling-build = darling;
+
+          # ── Darling smoke test (Phase 6.6) ──────────────────────────────
+          # Lightweight NixOS VM test: boots Darling, verifies shell,
+          # sandbox-exec, diskutil, and Directory Services stubs.
+          # No network access required — completes in a few minutes.
+          darling-smoke = import ./tests/darling-smoke.nix {
+            inherit pkgs darling;
+          };
+
+          # ── Nix-in-Darling integration test (Phase 6.1) ────────────────
+          # Full end-to-end test: installs Nix inside Darling, verifies
+          # core commands, evaluator, currentSystem, and trivial builds.
+          # Requires network access (downloads Nix installer + store paths).
+          nix-in-darling = import ./tests/nix-in-darling.nix {
+            inherit pkgs darling;
+          };
+
+          # ── Directory Services stubs unit test ──────────────────────────
+          # Runs the shell-based test suite for dseditgroup, sysadminctl,
+          # and dscl stubs on the host (no Darling needed — pure shell).
+          dirserv-stubs = pkgs.runCommandLocal "dirserv-stubs-test" {
+            nativeBuildInputs = with pkgs; [
+              coreutils
+              gawk
+              gnugrep
+              gnused
+              findutils
+            ];
+          } ''
+            # The test script uses sed to rewrite /etc/passwd and /etc/group
+            # paths to temp files, so it's safe to run outside Darling.
+            # We create a directory layout that matches what the test expects:
+            #   <workdir>/tests/dirserv/test_dirserv.sh
+            #   <workdir>/src/dirserv/{dseditgroup,sysadminctl,dscl}
+            workdir=$(mktemp -d)
+            mkdir -p "$workdir/tests/dirserv" "$workdir/src/dirserv"
+            cp ${./tests/dirserv/test_dirserv.sh} "$workdir/tests/dirserv/test_dirserv.sh"
+            cp ${./src/dirserv/dseditgroup} "$workdir/src/dirserv/dseditgroup"
+            cp ${./src/dirserv/sysadminctl} "$workdir/src/dirserv/sysadminctl"
+            cp ${./src/dirserv/dscl} "$workdir/src/dirserv/dscl"
+            chmod +x "$workdir/src/dirserv"/*
+            export HOME=$(mktemp -d)
+            sh "$workdir/tests/dirserv/test_dirserv.sh"
+            touch $out
+          '';
+        };
     };
 }

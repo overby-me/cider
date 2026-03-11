@@ -54,12 +54,18 @@
 
 | File | Description |
 |---|---|
-| `scripts/run-tests.sh` | Unified test runner — compiles and runs all regression tests inside Darling |
+| `scripts/run-tests.sh` | Unified test runner — compiles and runs all regression tests inside Darling (6 suites) |
 | `scripts/install-nix-in-darling.sh` | Automated Nix installer for Darling prefixes |
 | `scripts/verify-nix.sh` | Standalone health-check for a Nix installation inside Darling |
 | `scripts/build-trivial.sh` | Progressive derivation build tests (5 levels) for Phase 4 |
 | `scripts/darling-nix` | Host-side wrapper to run Nix commands inside Darling |
 | `scripts/triage-syscalls.sh` | Automated syscall triage — discovers unimplemented syscalls during Nix ops |
+| `src/dirserv/dseditgroup` | Directory Services stub — group create/edit/delete/checkmember/read (Phase 5.1) |
+| `src/dirserv/sysadminctl` | Directory Services stub — addUser/deleteUser with UID/GID/home/shell (Phase 5.1) |
+| `src/dirserv/dscl` | Directory Services stub — read/list/create/delete/append/search (Phase 5.1) |
+| `tests/darling-smoke.nix` | NixOS VM smoke test — Darling boot, stubs, filesystem, no network (Phase 6.6) |
+| `tests/nix-in-darling.nix` | NixOS VM integration test — full Nix install + eval + build (Phase 6.1) |
+| `tests/dirserv/test_dirserv.sh` | Shell-level tests for Directory Services stubs (60+ tests) |
 | `tests/sandbox/test_sandbox_api.c` | C-level regression tests for sandbox API stubs |
 | `tests/sandbox/test_sandbox_exec.sh` | Shell-level tests for the `sandbox-exec` stub binary |
 | `tests/syscall/test_renameatx_np.c` | renameatx_np regression tests (plain rename, SWAP, EXCL, invalid flags) |

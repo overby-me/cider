@@ -12,7 +12,7 @@
 #   --prefix <path>       Darling prefix path (default: ~/.darling or $DPREFIX)
 #   --suite <name>        Run only the named suite (can be repeated)
 #                         Available: renameatx_np, setattrlist_flags, utimensat,
-#                                    sandbox_api, sandbox_exec
+#                                    sandbox_api, sandbox_exec, dirserv
 #   --keep                Keep compiled test binaries in the prefix after running
 #   --verbose             Show full test output even on success
 #   --help                Show this help message
@@ -78,7 +78,7 @@ Options:
   --prefix <path>   Darling prefix (default: ~/.darling or $DPREFIX)
   --suite <name>    Run only the named suite (repeatable)
                     Available: renameatx_np, setattrlist_flags, utimensat,
-                               sandbox_api, sandbox_exec
+                               sandbox_api, sandbox_exec, dirserv
   --keep            Keep compiled binaries in the prefix after running
   --verbose         Show full test output even on success
   --help            Show this help
@@ -89,6 +89,7 @@ Suites:
   utimensat          — utimensat/setattrlistat timestamps (16 tests)
   sandbox_api        — sandbox C API stubs
   sandbox_exec       — sandbox-exec integration (shell tests)
+  dirserv            — Directory Services stubs (dseditgroup, sysadminctl, dscl)
 EOF
     exit 0
 }
@@ -159,7 +160,12 @@ SUITE_SOURCE[sandbox_exec]="tests/sandbox/test_sandbox_exec.sh"
 SUITE_DESC[sandbox_exec]="sandbox-exec stub — flag parsing, exec, exit codes, Nix patterns"
 SUITE_CFLAGS[sandbox_exec]=""
 
-ALL_SUITES=(renameatx_np setattrlist_flags utimensat sandbox_api sandbox_exec)
+SUITE_TYPE[dirserv]="sh"
+SUITE_SOURCE[dirserv]="tests/dirserv/test_dirserv.sh"
+SUITE_DESC[dirserv]="Directory Services stubs — dseditgroup, sysadminctl, dscl (Phase 5.1)"
+SUITE_CFLAGS[dirserv]=""
+
+ALL_SUITES=(renameatx_np setattrlist_flags utimensat sandbox_api sandbox_exec dirserv)
 
 # ── Determine which suites to run ──────────────────────────────────────────
 

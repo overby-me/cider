@@ -35,7 +35,13 @@ Darling has partial `launchd` support but no Directory Services implementation.
 
 ## Tasks
 
-### 5.1 — Implement Directory Services Stubs
+### 5.1 — Implement Directory Services Stubs ✅
+
+> **Status**: Complete. Implemented as shell scripts in `src/dirserv/`
+> (`dseditgroup`, `sysadminctl`, `dscl`). Installed to
+> `libexec/darling/usr/sbin/` via CMake. Comprehensive test suite at
+> `tests/dirserv/test_dirserv.sh` (60+ tests). Pure-shell check available
+> via `nix build .#checks.x86_64-linux.dirserv-stubs`.
 
 The Nix installer uses these commands to create build users and groups:
 
@@ -57,53 +63,84 @@ to Linux user/group management operating on the prefix's `/etc/passwd` and
 
 #### `dseditgroup` stub
 
-Create `src/tools/dseditgroup` (or a shell script installed to
-`libexec/darling/usr/sbin/dseditgroup`) that handles:
+Implemented at `src/dirserv/dseditgroup` — a POSIX shell script that handles:
 
 | Invocation | Translation |
 |---|---|
 | `dseditgroup -o create -q -i <GID> <name>` | `echo "<name>:x:<GID>:" >> /etc/group` (if not exists) |
 | `dseditgroup -o edit -a <user> -t user <group>` | Append `<user>` to the group's member list in `/etc/group` |
+| `dseditgroup -o edit -d <user> -t user <group>` | Remove `<user>` from the group's member list |
 | `dseditgroup -o delete <name>` | Remove the group from `/etc/group` |
 | `dseditgroup -o checkmember -m <user> <group>` | Check if user is in the group; exit 0 if yes, non-zero if no |
+| `dseditgroup -o read <name>` | Print group info in Apple-style key-value format |
 
-Does not need to support the full `dseditgroup` interface — only what the Nix
-installer uses.
+Also supports `-q` (quiet) on all operations and auto-assigns GIDs ≥ 30000 if
+`-i` is omitted on create.
 
 #### `sysadminctl` stub
 
-Create a stub that handles:
+Implemented at `src/dirserv/sysadminctl` — a POSIX shell script that handles:
 
 | Invocation | Translation |
 |---|---|
 | `sysadminctl -addUser <name> -UID <uid> -GID <gid> -home <dir> -shell <shell>` | `echo "<name>:x:<uid>:<gid>::<dir>:<shell>" >> /etc/passwd` |
+| `sysadminctl -addUser <name> -UID <uid> -GID <gid> ... -fullName <gecos>` | Same, with GECOS field populated |
 | `sysadminctl -deleteUser <name>` | Remove the user from `/etc/passwd` |
+
+Also silently ignores `-password`, `-adminUser`, `-adminPassword`, and
+`-roleAccount` flags (macOS-specific, not meaningful in a Darling prefix).
+Auto-assigns UIDs ≥ 300 if `-UID` is omitted.
 
 #### `dscl` stub
 
-The Nix installer may also use `dscl` in some code paths:
+Implemented at `src/dirserv/dscl` — a POSIX shell script that handles:
 
 | Invocation | Translation |
 |---|---|
 | `dscl . -read /Groups/<name> PrimaryGroupID` | Parse `/etc/group` and print the GID |
 | `dscl . -read /Users/<name> UniqueID` | Parse `/etc/passwd` and print the UID |
-| `dscl . -list /Users` | List all usernames from `/etc/passwd` |
-| `dscl . -create /Users/<name> ...` | Append to `/etc/passwd` |
+| `dscl . -read /Users/<name> [key]` | Print all or specific user record keys |
+| `dscl . -read /Groups/<name> [key]` | Print all or specific group record keys |
+| `dscl . -list /Users [key]` | List all usernames (optionally with a key column) |
+| `dscl . -list /Groups [key]` | List all groups (optionally with a key column) |
+| `dscl . -create /Users/<name> [key value]` | Create user or set a key on an existing user |
+| `dscl . -create /Groups/<name> [key value]` | Create group or set a key on an existing group |
+| `dscl . -delete /Users/<name> [key]` | Delete user record (or clear a key) |
+| `dscl . -delete /Groups/<name> [key]` | Delete group record (or clear a key) |
+| `dscl . -append /Groups/<name> GroupMembership <user>` | Add member(s) to a group |
+| `dscl . -search /Users UniqueID <uid>` | Find user by UID |
+| `dscl . -search /Groups PrimaryGroupID <gid>` | Find group by GID |
+
+Supports `.` and `/Local/Default` as datasources. Keys supported for users:
+UniqueID, PrimaryGroupID, RealName, NFSHomeDirectory, UserShell, RecordName,
+Password (always locked), IsHidden (ignored), AuthenticationAuthority (stub).
+Keys supported for groups: PrimaryGroupID, RecordName, GroupMembership,
+GeneratedUID.
 
 **Implementation notes**:
 
 - These stubs modify files within the Darling prefix (`~/.darling/etc/passwd`,
   `~/.darling/etc/group`), not the host's files. This is safe.
-- Do NOT use `useradd`/`groupadd` (those operate on the host). Directly
-  manipulate the prefix's files.
-- Add basic input validation (duplicate detection, numeric ranges).
-- Make them idempotent — running the installer twice should not create duplicate
-  entries.
+- They do NOT use `useradd`/`groupadd` (those operate on the host). They
+  directly manipulate the prefix's files using `awk`/`sed`/`grep`.
+- All operations are idempotent — running the installer twice does not create
+  duplicate entries.
+- Input validation: rejects invalid usernames/group names, non-numeric
+  UID/GID, duplicate UID/GID conflicts.
+- Atomic-ish updates: uses `mktemp` + `mv` pattern for file modifications.
+- Wired into the CMake build via `src/dirserv/CMakeLists.txt`; installed to
+  `libexec/darling/usr/sbin/`.
 
 **Testing**:
 
 ```bash
-# Inside darling shell:
+# Run the pure-shell test suite (no Darling needed):
+nix build .#checks.x86_64-linux.dirserv-stubs -L
+
+# Or run via the test runner inside Darling:
+./scripts/run-tests.sh --suite dirserv --verbose
+
+# Manual testing inside darling shell:
 dseditgroup -o create -q -i 30000 nixbld
 grep nixbld /etc/group
 # Expected: nixbld:x:30000:
@@ -111,6 +148,12 @@ grep nixbld /etc/group
 sysadminctl -addUser _nixbld1 -UID 300 -GID 30000 -home /var/empty -shell /usr/bin/false
 grep _nixbld1 /etc/passwd
 # Expected: _nixbld1:x:300:30000::/var/empty:/usr/bin/false
+
+dscl . -read /Groups/nixbld PrimaryGroupID
+# Expected: PrimaryGroupID: 30000
+
+dscl . -search /Users UniqueID 300
+# Expected: _nixbld1                 ( UniqueID = 300 )
 ```
 
 ---

@@ -17,13 +17,48 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase 2 — Sandbox | ✅ Done | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
 | Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh`, `scripts/darling-nix`, `scripts/verify-nix.sh` |
 | Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
-| Phase 5 — Daemon | 📋 Planned | — |
-| Phase 6 — CI | 🚧 In progress | `.github/workflows/nix.yml` (new) |
+| Phase 5 — Daemon | 🚧 Stubs done | `src/dirserv/` (new), `tests/dirserv/` (new) |
+| Phase 6 — CI | 🚧 In progress | `.github/workflows/nix.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix` (new) |
 | Phase 7 — Remote Builder | 📋 Planned | — |
 | Phase 8 — Stretch | 📋 Planned | — |
 
 ### Recently Completed
 
+- **Phase 5.1 — Directory Services stubs**: Created `src/dirserv/` with three
+  shell-script stubs (`dseditgroup`, `sysadminctl`, `dscl`) that translate
+  macOS Directory Services commands to direct `/etc/passwd` and `/etc/group`
+  file operations within the Darling prefix. These are required by the Nix
+  multi-user installer to create the `nixbld` group and `_nixbldN` build users.
+  - `dseditgroup`: create/delete/edit groups, add/remove members, checkmember,
+    read group info. Idempotent operations, input validation.
+  - `sysadminctl`: addUser/deleteUser with UID, GID, home, shell, fullName.
+    Handles `-password`, `-adminUser`, `-roleAccount` flags (ignored). Idempotent.
+  - `dscl`: read/list/create/delete/append/search on `/Users` and `/Groups`
+    paths. Supports `.` and `/Local/Default` datasources. Full key coverage
+    for Nix installer needs (UniqueID, PrimaryGroupID, NFSHomeDirectory,
+    UserShell, RealName, GroupMembership, etc.).
+  - Wired into CMake build via `src/dirserv/CMakeLists.txt`; installs to
+    `libexec/darling/usr/sbin/`.
+  - Comprehensive test suite: `tests/dirserv/test_dirserv.sh` with 60+ tests
+    covering all three tools individually and a full Nix installer simulation
+    (create group → create 5 build users → add to group → verify → idempotent
+    re-run → cleanup).
+- **Phase 6.1 — NixOS VM test**: Created `tests/nix-in-darling.nix` — full
+  end-to-end NixOS VM integration test that boots Darling, verifies the shell,
+  sandbox-exec, Directory Services stubs, installs Nix, tests core commands
+  (version, eval, store verify), confirms `builtins.currentSystem ==
+  x86_64-darwin`, and builds trivial derivations.
+- **Phase 6.6 — Darling smoke test**: Created `tests/darling-smoke.nix` —
+  lightweight NixOS VM test (no network required) that verifies Darling boots,
+  shell works, macOS identity is correct, filesystem operations work,
+  sandbox-exec/diskutil/Directory Services stubs are functional, and no
+  unimplemented syscall warnings appear during basic operations.
+- **Phase 6.2 — Wired tests into `flake.nix`**: Added `checks` output with
+  three entries: `darling-build` (package builds), `darling-smoke` (VM smoke
+  test), `nix-in-darling` (full integration test), and `dirserv-stubs` (pure
+  shell unit test for Directory Services stubs, runnable without Darling).
+- **Test runner updated**: Added `dirserv` suite to `scripts/run-tests.sh`
+  (now 6 suites total).
 - **Test runner**: Created `scripts/run-tests.sh` — unified test runner that
   copies all regression test sources into a Darling prefix, compiles C suites
   with the macOS toolchain, executes them (and shell-based suites), and
@@ -138,16 +173,25 @@ darling-nix/
 │   ├── build-trivial.sh                # NEW — Progressive derivation build tests (Phase 4)
 │   ├── darling-nix                     # Host-side Nix command wrapper (Phase 3)
 │   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
-│   ├── run-tests.sh                    # NEW — Unified regression test runner
+│   ├── run-tests.sh                    # NEW — Unified regression test runner (6 suites)
 │   ├── triage-syscalls.sh              # Automated syscall triage (Phase 1)
 │   └── verify-nix.sh                   # NEW — Standalone Nix health-check (Phase 3)
 ├── src/
+│   ├── dirserv/                        # NEW — Directory Services stubs (Phase 5)
+│   │   ├── CMakeLists.txt
+│   │   ├── dscl                        # dscl stub (read/list/create/delete/append/search)
+│   │   ├── dseditgroup                 # dseditgroup stub (create/edit/delete/checkmember/read)
+│   │   └── sysadminctl                 # sysadminctl stub (addUser/deleteUser)
 │   ├── sandbox/sandbox.c               # Fixed sandbox API stubs (Phase 2)
 │   ├── sandbox-exec/                   # NEW — sandbox-exec stub (Phase 2)
 │   │   ├── CMakeLists.txt
 │   │   └── sandbox-exec.c
 │   └── diskutil/diskutil               # Extended with info/list verbs (Phase 3)
 ├── tests/
+│   ├── darling-smoke.nix               # NEW — NixOS VM smoke test (Phase 6.6)
+│   ├── nix-in-darling.nix              # NEW — NixOS VM integration test (Phase 6.1)
+│   ├── dirserv/                        # NEW — Directory Services regression tests
+│   │   └── test_dirserv.sh             # 60+ tests for dseditgroup/sysadminctl/dscl
 │   ├── sandbox/                        # NEW — sandbox regression tests
 │   │   ├── test_sandbox_api.c          # C-level sandbox API tests
 │   │   └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
@@ -194,6 +238,7 @@ The **critical path to MVP** (Nix running inside Darling) is:
    - `utimensat` — utimensat/setattrlistat timestamps (16 tests)
    - `sandbox_api` — sandbox C API stubs
    - `sandbox_exec` — sandbox-exec integration (20 tests)
+   - `dirserv` — Directory Services stubs (60+ tests)
 
 2. **Phase 1.7 — Live triage**: Run `scripts/triage-syscalls.sh` inside a
    Darling prefix with Nix installed to discover any remaining unimplemented
@@ -259,22 +304,31 @@ The **critical path to MVP** (Nix running inside Darling) is:
 | 3.1 | ✅ | `install-nix-in-darling.sh` installer script |
 | 3.3 | ✅ | `verify-nix.sh` standalone verification |
 | 3.4 | ✅ | `darling-nix` host-side wrapper |
+| 3.5 | ✅ | Channel/registry setup (integrated into installer step 6) |
 | 4.1 | ✅ | `build-trivial.sh` progressive build tests (tooling ready) |
+| 5.1 | ✅ | Directory Services stubs (`dseditgroup`, `sysadminctl`, `dscl`) |
+| 6.1 | ✅ | NixOS VM test (`tests/nix-in-darling.nix`) |
+| 6.2 | ✅ | Wired tests into `flake.nix` (checks output) |
 | 6.3 | ✅ | `.github/workflows/nix.yml` CI workflow |
-| — | ✅ | `run-tests.sh` unified test runner |
+| 6.6 | ✅ | Darling smoke test (`tests/darling-smoke.nix`) |
+| — | ✅ | `run-tests.sh` unified test runner (6 suites) |
 | — | ✅ | `getattrlist` attribute buffer ordering bug fixed |
 | — | ✅ | `diskutil info`/`list` stubs |
+| — | ✅ | `dirserv-stubs` pure shell check (runnable without Darling) |
 
-### Script Quick Reference
+### Script & Test Quick Reference
 
-| Script | Purpose | When to Use |
-|--------|---------|-------------|
+| Script / Test | Purpose | When to Use |
+|---------------|---------|-------------|
 | `scripts/run-tests.sh` | Compile & run all regression tests inside Darling | After building Darling with changes |
 | `scripts/triage-syscalls.sh` | Discover unimplemented syscalls during Nix operations | After installing Nix inside Darling |
 | `scripts/install-nix-in-darling.sh` | Install Nix package manager inside a Darling prefix | One-time setup |
 | `scripts/verify-nix.sh` | Health-check a Nix installation inside Darling | After install, or to diagnose regressions |
 | `scripts/darling-nix` | Run Nix commands inside Darling from the host | Day-to-day Nix usage |
 | `scripts/build-trivial.sh` | Test derivation building with 5 progressive levels | After Nix is installed and verified |
+| `nix build .#checks.x86_64-linux.dirserv-stubs` | Run Directory Services stub tests (no Darling needed) | After editing `src/dirserv/` |
+| `nix build .#checks.x86_64-linux.darling-smoke -L` | NixOS VM smoke test (no network) | After building Darling |
+| `nix build .#checks.x86_64-linux.nix-in-darling -L` | Full Nix-in-Darling integration test | End-to-end validation |
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.

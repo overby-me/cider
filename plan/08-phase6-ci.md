@@ -30,7 +30,13 @@ real integration tests.
 
 ## Tasks
 
-### 6.1 — NixOS VM Test: Nix-in-Darling
+### 6.1 — NixOS VM Test: Nix-in-Darling ✅
+
+> **Status**: Complete. Implemented at `tests/nix-in-darling.nix`. Full
+> end-to-end NixOS VM test covering 7 stages: Darling boot, sandbox-exec,
+> Directory Services stubs, Nix installation, core commands, currentSystem
+> verification, and trivial derivation builds. Wired into flake checks as
+> `checks.x86_64-linux.nix-in-darling`.
 
 Create a NixOS VM test at `tests/nix-in-darling.nix` that exercises the full
 Nix-inside-Darling pipeline end-to-end.
@@ -107,7 +113,12 @@ Nix-inside-Darling pipeline end-to-end.
 
 ---
 
-### 6.2 — Wire Tests into `flake.nix`
+### 6.2 — Wire Tests into `flake.nix` ✅
+
+> **Status**: Complete. The `flake.nix` now exposes four checks:
+> `darling-build`, `darling-smoke`, `nix-in-darling`, and `dirserv-stubs`.
+> Run with `nix flake check` or target individual checks via
+> `nix build .#checks.x86_64-linux.<name> -L`.
 
 Add the NixOS VM test to the flake's `checks` output:
 
@@ -135,7 +146,7 @@ nix build .#checks.x86_64-linux.nix-in-darling
 
 ---
 
-### 6.3 — GitHub Actions Workflow
+### 6.3 — GitHub Actions Workflow ✅
 
 Replace or supplement the existing `.github/workflows/actions.yaml` with a
 Nix-native workflow.
@@ -518,7 +529,14 @@ passing now fails) or progress (a package that was failing now passes).
 
 ---
 
-### 6.6 — Darling Build Smoke Test
+### 6.6 — Darling Build Smoke Test ✅
+
+> **Status**: Complete. Implemented at `tests/darling-smoke.nix`. Lightweight
+> NixOS VM test (no network required) covering 8 stages: binary existence,
+> shell functionality, macOS identity, filesystem basics, sandbox-exec,
+> diskutil, Directory Services stubs, and unimplemented syscall warnings.
+> Wired into flake checks as `checks.x86_64-linux.darling-smoke`.
+
 
 A lighter-weight test that doesn't need a NixOS VM — just verifies Darling
 builds from source with Nix:
