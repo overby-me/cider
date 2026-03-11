@@ -75,6 +75,8 @@
 | `tests/syscall/test_renameatx_np.c` | renameatx_np regression tests (plain rename, SWAP, EXCL, invalid flags) |
 | `tests/syscall/test_setattrlist_flags.c` | setattrlist/getattrlist ATTR_CMN_FLAGS tests |
 | `tests/syscall/test_utimensat.c` | utimensat/setattrlistat timestamp handling tests |
+| `docs/darwin-builder.md` | User-facing setup guide — NixOS module, manual setup, shared store, troubleshooting, perf tuning (Phase 7.7) |
+| `templates/darling-builder/` | Flake template — `nix flake init -t .#darling-builder` generates a ready-to-use NixOS config (Phase 7.7) |
 
 ## References
 

@@ -29,6 +29,17 @@
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
+      # ── Flake Templates ──────────────────────────────────────────────
+      #
+      # Initialise a new project with:
+      #   nix flake init -t github:nixie-dev/darling-nix#darling-builder
+      #
+      # See: docs/darwin-builder.md, plan/09-phase7-remote-builder.md (Task 7.7)
+      templates.darling-builder = {
+        path = ./templates/darling-builder;
+        description = "NixOS configuration with a Darling-based x86_64-darwin remote builder";
+      };
+
       # ── NixOS Modules ────────────────────────────────────────────────
       #
       # The base module (programs.darling) is autoloaded from

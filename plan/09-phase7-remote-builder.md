@@ -521,35 +521,53 @@ results to a dashboard or markdown file in the repo.
 
 ---
 
-### 7.7 — Documentation and Templates
+### 7.7 — Documentation and Templates ✅
 
 Create user-facing documentation so others can set up their own Darling builders.
 
+**Status**: ✅ Complete — see `docs/darwin-builder.md` and `templates/darling-builder/`.
+
 **Deliverables**:
 
-1. **NixOS wiki page**: Step-by-step guide for setting up a Darling-based Darwin
-   builder on NixOS. Cover both the NixOS module approach and the manual setup.
+1. ✅ **User-facing setup guide** (`docs/darwin-builder.md`): Comprehensive
+   documentation covering NixOS module quick start, manual setup (sshd, SSH
+   keys, builder registration), shared `/nix/store` configuration, verification
+   procedures (automated checks, progressive build tests, NixOS VM tests),
+   custom build hook (no SSH) alternative, performance tuning (binary
+   substitution, job parallelism, store sharing, storage, speed factor),
+   troubleshooting (connection refused, permission denied, unimplemented
+   syscalls, database errors, sandbox issues, slow builds), security
+   considerations, and architecture diagram with component table.
 
-2. **Flake template** (`templates/darling-builder`):
+2. ✅ **Flake template** (`templates/darling-builder/`):
    ```bash
-   nix flake init -t github:user/darling-nix#darling-builder
+   nix flake init -t github:nixie-dev/darling-nix#darling-builder
    ```
-   Generates a minimal `flake.nix` + NixOS configuration that sets up the
-   builder.
+   Generates a `flake.nix` with a ready-to-use NixOS configuration that
+   imports both the base Darling module and the builder module, with all
+   options documented inline. Includes its own `README.md` with getting
+   started steps, options reference table, architecture diagram, and
+   troubleshooting section. Wired into `flake.nix` as
+   `templates.darling-builder`.
 
-3. **Troubleshooting guide**: Common issues and their solutions:
+3. ✅ **Troubleshooting guide** (in `docs/darwin-builder.md`): Covers all
+   planned scenarios:
    - "Connection refused" → sshd not running or wrong port
    - "Permission denied" → SSH key mismatch
    - "Build failed with signal 11" → unimplemented syscall → file an issue
    - "Store path not valid" → shared store database mismatch
    - "builder for '...' failed with exit code 1" → check the build log
+   - "sandbox-exec: not found" → sandbox stub missing
+   - Darling prefix crashes → darlingserver / kernel requirements
+   - Slow builds → substitution, store sharing, storage, oversubscription
 
-4. **Performance tuning guide**: Tips for getting the best performance:
+4. ✅ **Performance tuning guide** (in `docs/darwin-builder.md`): Covers:
    - Use binary substitution aggressively (`substituters` in `nix.conf`)
    - Set `max-jobs` based on available CPU cores
    - Use `--cores N` to limit per-build parallelism
    - Enable store sharing to avoid copy overhead
    - Put the Nix store on fast storage (SSD/NVMe)
+   - Speed factor configuration for multi-builder setups
 
 ---
 

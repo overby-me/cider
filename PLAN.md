@@ -19,11 +19,25 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
 | Phase 5 — Daemon | 🚧 Stubs done | `src/dirserv/` (new), `tests/dirserv/` (new) |
 | Phase 6 — CI | 🚧 In progress | `.tangled/workflows/ci.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix`, `tests/nix/compatibility-matrix.sh` (new) |
-| Phase 7 — Remote Builder | 🚧 Module & hook ready | `nix/darlingBuilderModule.nix` (new), `scripts/darling-build-hook` (new), `tests/darling-builder.nix` (new) |
+| Phase 7 — Remote Builder | 🚧 Module, hook & docs ready | `nix/darlingBuilderModule.nix` (new), `scripts/darling-build-hook` (new), `tests/darling-builder.nix` (new), `docs/darwin-builder.md` (new), `templates/darling-builder/` (new) |
 | Phase 8 — Stretch | 📋 Planned | — |
 
 ### Recently Completed
 
+- **Phase 7.7 — Documentation and flake template**: Created
+  `docs/darwin-builder.md` — comprehensive user-facing guide covering
+  NixOS module quick start, manual setup (sshd, SSH keys, builder
+  registration), shared `/nix/store` configuration, verification
+  procedures, custom build hook (no SSH) alternative, performance
+  tuning (binary substitution, job parallelism, store sharing, storage),
+  troubleshooting (connection refused, permission denied, unimplemented
+  syscalls, database errors, sandbox issues, slow builds), security
+  considerations, and architecture diagram. Created
+  `templates/darling-builder/` — a `nix flake init` template that
+  generates a ready-to-use NixOS configuration with the Darling builder
+  module pre-configured. Wired into `flake.nix` as
+  `templates.darling-builder`. Includes its own README with options
+  reference, architecture diagram, and troubleshooting section.
 - **Phase 7.5 — NixOS module for Darling builder**: Created
   `nix/darlingBuilderModule.nix` — a full NixOS module that sets up a
   Darling instance as a `nix.buildMachines` remote builder for
@@ -187,6 +201,7 @@ See the **[plan/](./plan/)** directory for all details.
 | [plan/10-phase8-stretch.md](./plan/10-phase8-stretch.md) | `aarch64-darwin`, GUI testing, Hydra builder |
 | [plan/11-architecture.md](./plan/11-architecture.md) | System diagram, key technical decisions, glossary |
 | [plan/syscall-triage.md](./plan/syscall-triage.md) | Tracking table for unimplemented syscalls |
+| [docs/darwin-builder.md](./docs/darwin-builder.md) | **User guide** — setup, troubleshooting, performance tuning |
 
 ## New File Map
 
@@ -195,7 +210,9 @@ Files created or modified as part of this plan:
 ```text
 darling-nix/
 ├── .tangled/workflows/ci.yml          # tangled.org CI workflow (Phase 6)
-├── flake.nix                           # Flake with package, devShell, NixOS module, builder (Phase 0, 7)
+├── docs/
+│   └── darwin-builder.md               # NEW — User-facing setup guide, troubleshooting, perf tuning (Phase 7.7)
+├── flake.nix                           # Flake with package, devShell, NixOS module, builder, templates (Phase 0, 7)
 ├── nix/
 │   ├── package.nix                     # Darling Nix derivation (Phase 0)
 │   ├── devShell.nix                    # Developer shell (Phase 0)
@@ -235,6 +252,10 @@ darling-nix/
 │       ├── test_renameatx_np.c         # renameatx_np tests (Phase 1)
 │       ├── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
 │       └── test_utimensat.c            # utimensat/timestamp tests (Phase 1)
+├── templates/
+│   └── darling-builder/                # NEW — Flake template for Darwin builder setup (Phase 7.7)
+│       ├── flake.nix                   # Ready-to-use NixOS config with services.darling-builder
+│       └── README.md                   # Quick start, options reference, troubleshooting
 └── plan/
     ├── README.md                       # Index + priority table
     ├── 00-background.md                # Motivation & current state
@@ -373,12 +394,13 @@ Step 5 (remote builder) extends the MVP into a **usable Darwin builder**.
      ./tests/nix/compatibility-matrix.sh --tier 1
      ./tests/nix/compatibility-matrix.sh --output results.json --compare previous.json
      ```
-   - 7.7: Write user-facing docs and flake template
+   - ~~7.7: Write user-facing docs and flake template~~ ✅ Done — see `docs/darwin-builder.md` and `templates/darling-builder/`
 
 ### Completed Task Summary
 
 | Task | Status | Description |
 |------|--------|-------------|
+| 7.7 | ✅ | User-facing docs (`docs/darwin-builder.md`) and flake template (`templates/darling-builder/`) |
 | 1.1 | ✅ | `setattrlist`/`fsetattrlist`/`getattrlist` — ATTR_CMN_FLAGS, CRTIME, CHGTIME |
 | 1.2 | ✅ | `lchflags` return value — verified via 1.1 |
 | 1.3 | ✅ | `renameatx_np` (syscall 488) — maps to Linux `renameat2` |
@@ -424,6 +446,8 @@ Step 5 (remote builder) extends the MVP into a **usable Darwin builder**.
 | `nix build .#checks.x86_64-linux.darling-smoke -L` | NixOS VM smoke test (no network) | After building Darling |
 | `nix build .#checks.x86_64-linux.nix-in-darling -L` | Full Nix-in-Darling integration test | End-to-end validation |
 | `nix build .#checks.x86_64-linux.darling-builder -L` | Remote builder VM test (sshd, SSH auth, service) | After editing `nix/darlingBuilderModule.nix` |
+| `docs/darwin-builder.md` | User-facing setup guide, troubleshooting, perf tuning | Setting up a Darling builder for the first time |
+| `nix flake init -t .#darling-builder` | Generate a ready-to-use NixOS config with the builder | Bootstrapping a new Darling builder project |
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.
