@@ -21,6 +21,7 @@
 | [Phase 7 — Remote Builder](./09-phase7-remote-builder.md) | Darling as a `nix.buildMachines` target |
 | [Phase 8 — Stretch Goals](./10-phase8-stretch.md) | `aarch64-darwin`, GUI testing, Hydra builder |
 | [Architecture](./11-architecture.md) | System diagram, key technical decisions |
+| [Syscall Triage](./syscall-triage.md) | Tracking table for unimplemented/buggy syscalls |
 
 ## Priority & Effort Estimates
 
@@ -46,8 +47,17 @@
 2. **Check upstream** [Darling issues](https://github.com/darlinghq/darling/issues) for existing work.
 3. **Write a minimal reproducer** — a small C program or shell command that demonstrates the bug inside `darling shell`.
 4. **Fix it** in the appropriate subsystem (`darlingserver` for syscalls, `src/external/libc` for wrappers, `src/sandbox` for sandbox, etc.).
-5. **Add a test** to the regression suite (see [Phase 6](./08-phase6-ci.md)).
+5. **Add a test** to the regression suite (see [Phase 6](./08-phase6-ci.md) and `tests/`).
 6. **Submit a PR** to this repo, and consider upstreaming to `darlinghq/darling`.
+
+### Key Scripts & Tools
+
+| File | Description |
+|---|---|
+| `scripts/install-nix-in-darling.sh` | Automated Nix installer for Darling prefixes |
+| `scripts/darling-nix` | Host-side wrapper to run Nix commands inside Darling |
+| `tests/sandbox/test_sandbox_api.c` | C-level regression tests for sandbox API stubs |
+| `tests/sandbox/test_sandbox_exec.sh` | Shell-level tests for the `sandbox-exec` stub binary |
 
 ## References
 

@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# darling-nix — run Nix commands inside a Darling prefix from the Linux host
+#
+# This is a convenience wrapper that sources the Nix profile inside a
+# Darling shell and then exec's the given command.  It saves users from
+# having to remember the long `darling shell bash -lc '...'` incantation
+# every time.
+#
+# Usage:
+#   darling-nix <command> [arguments ...]
+#
+# Examples:
+#   darling-nix nix --version
+#   darling-nix nix-instantiate --eval -E '1 + 1'
+#   darling-nix nix eval --expr 'builtins.currentSystem'
+#   darling-nix nix-build --expr 'derivation { name = "test"; builder = "/bin/bash"; args = ["-c" "echo ok > $out"]; system = "x86_64-darwin"; }'
+#   darling-nix nix-env -qa hello
+#   darling-nix nix repl
+#
+# Options:
+#   --prefix <path>   Use a non-default Darling prefix
+#   --help            Show this help message
+#
+# Environment:
+#   DPREFIX           Override the default Darling prefix (~/.darling)
+#   DARLING_NIX_VERBOSE  Set to 1 for debug output
+#
+# See: plan/05-phase3-nix-install.md (Task 3.4)
+
+set -euo pipefail
+
+# ── Defaults ────────────────────────────────────────────────────────────────
+
+DARLING_PREFIX="${DPREFIX:-}"
+VERBOSE="${DARLING_NIX_VERBOSE:-0}"
+
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+die() {
+    echo "darling-nix: error: $*" >&2
+    exit 1
+}
+
+debug() {
+    if [ "$VERBOSE" = "1" ]; then
+        echo "darling-nix: debug: $*" >&2
+    fi
+}
+
+usage() {
+    cat <<'EOF'
+Usage: darling-nix [--prefix <path>] <command> [arguments ...]
+
+Run Nix commands inside a Darling (macOS compatibility) prefix.
+
+Options:
+  --prefix <path>   Use a non-default Darling prefix (default: ~/.darling)
+  --help            Show this help message
+
+Environment:
+  DPREFIX                Override the default Darling prefix
+  DARLING_NIX_VERBOSE    Set to 1 for debug output
+
+Examples:
+  darling-nix nix --version
+  darling-nix nix-instantiate --eval -E '1 + 1'
+  darling-nix nix eval --expr 'builtins.currentSystem'
+  darling-nix nix-env -qa hello
+  darling-nix nix repl
+EOF
+    exit 0
+}
+
+# ── Argument Parsing ────────────────────────────────────────────────────────
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --prefix)
+            [ $# -ge 2 ] || die "--prefix requires an argument"
+            DARLING_PREFIX="$2"
+            shift 2
+            ;;
+        --help|-h)
+            usage
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            # Could be a flag for the inner command (e.g. `darling-nix nix --version`)
+            # so stop parsing our flags and treat everything as the command.
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
+
+if [ $# -eq 0 ]; then
+    die "no command specified (try --help)"
+fi
+
+# ── Preflight ───────────────────────────────────────────────────────────────
+
+if ! command -v darling &>/dev/null; then
+    die "darling is not installed or not in PATH"
+fi
+
+# Build the darling command with optional --prefix
+DARLING_CMD=(darling)
+if [ -n "$DARLING_PREFIX" ]; then
+    DARLING_CMD+=(--prefix "$DARLING_PREFIX")
+    debug "using prefix: $DARLING_PREFIX"
+fi
+
+# ── Build the inner command ─────────────────────────────────────────────────
+
+# We need to carefully quote the user's arguments so they survive the
+# bash -lc layer.  We use printf %q to produce shell-escaped versions
+# of each argument.
+ESCAPED_ARGS=""
+for arg in "$@"; do
+    ESCAPED_ARGS+=" $(printf '%q' "$arg")"
+done
+
+debug "inner command:${ESCAPED_ARGS}"
+debug "darling cmd: ${DARLING_CMD[*]}"
+
+# The inner script:
+#   1. Sources the Nix profile so nix/nix-env/etc. are on PATH.
+#   2. exec's the user's command (preserving exit code).
+INNER_SCRIPT="
+# Source Nix profile
+if [ -e '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh' ]; then
+    . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
+elif [ -e \"\\\$HOME/.nix-profile/etc/profile.d/nix.sh\" ]; then
+    . \"\\\$HOME/.nix-profile/etc/profile.d/nix.sh\"
+elif [ -e '/etc/profile.d/nix-darling.sh' ]; then
+    . '/etc/profile.d/nix-darling.sh'
+fi
+
+# Verify nix is available
+if ! command -v nix &>/dev/null && ! command -v nix-env &>/dev/null; then
+    echo 'darling-nix: Nix does not appear to be installed in this prefix.' >&2
+    echo 'darling-nix: Run ./scripts/install-nix-in-darling.sh first.' >&2
+    exit 127
+fi
+
+exec${ESCAPED_ARGS}
+"
+
+# ── Execute ─────────────────────────────────────────────────────────────────
+
+# Run the command inside Darling, forwarding the exit code.
+# We use `bash -lc` to get a login shell (which sources /etc/profile.d/*).
+exec "${DARLING_CMD[@]}" shell bash -lc "$INNER_SCRIPT"

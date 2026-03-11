@@ -9,6 +9,74 @@ errcho() {
 
 # subcommands
 
+info() {
+	# The Nix installer calls `diskutil info /` to determine the root
+	# filesystem type (APFS vs HFS+).  Inside Darling the root is an
+	# overlayfs backed by the Linux host, but we report APFS so that
+	# the installer takes the modern (no-volume) code path.
+
+	PLIST=0
+	if [ "$#" -gt 0 ] && [ "$1" = "-plist" ]; then
+		PLIST=1
+		shift
+	fi
+
+	DISK_PATH="${1:-/}"
+
+	if [ "$PLIST" -eq 1 ]; then
+		cat <<- EOF
+		<?xml version="1.0" encoding="UTF-8"?>
+		<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+		<plist version="1.0">
+		<dict>
+			<key>MountPoint</key>
+			<string>$DISK_PATH</string>
+			<key>FilesystemType</key>
+			<string>apfs</string>
+			<key>FilesystemName</key>
+			<string>APFS</string>
+			<key>DeviceNode</key>
+			<string>disk1s1</string>
+			<key>VolumeName</key>
+			<string>Macintosh HD</string>
+			<key>Writable</key>
+			<true/>
+		</dict>
+		</plist>
+		EOF
+	else
+		cat <<- EOF
+		   Device Identifier:         disk1s1
+		   Device Node:               /dev/disk1s1
+		   Whole:                      No
+		   Part of Whole:              disk1
+		   Volume Name:                Macintosh HD
+		   Mounted:                    Yes
+		   Mount Point:                $DISK_PATH
+		   File System Personality:    APFS
+		   Type (Bundle):              apfs
+		   Writable:                   Yes
+		EOF
+	fi
+}
+
+list() {
+	# Minimal stub — reports a single synthetic disk so that callers
+	# that enumerate disks don't fail outright.
+	cat <<- 'EOF'
+	/dev/disk0 (internal):
+	   #:                       TYPE NAME                    SIZE       IDENTIFIER
+	   0:                       GUID_partition_scheme        *64.0 GB   disk0
+	   1:                       EFI EFI                      209.7 MB   disk0s1
+	   2:                       Apple_APFS Container disk1   63.8 GB    disk0s2
+
+	/dev/disk1 (synthesized):
+	   #:                       TYPE NAME                    SIZE       IDENTIFIER
+	   0:                       APFS Container Scheme -      +63.8 GB   disk1
+	   1:                       APFS Volume Macintosh HD     15.2 GB    disk1s1
+	EOF
+}
+
 eject() {
 	if [ "$#" -lt 1 ]; then
 		errcho "Usage:  diskutil eject MountPoint|DiskIdentifier|DeviceNode"
@@ -36,9 +104,11 @@ if [ "$#" -lt 1 ]; then
 		Disk Utility Tool
 		Utility to manage local disks and volumes
 		Most commands require an administrator or root user
-		
+
 		WARNING: Most destructive operations are not prompted
 
+		     info                 (Get information about a disk or volume)
+		     list                 (List disks)
 		     eject                (Eject a disk)
 	EOF
 	exit 1
@@ -48,6 +118,12 @@ VERB="$1"
 shift;
 
 case "$VERB" in
+	info)
+		info "$@"
+		;;
+	list)
+		list "$@"
+		;;
 	eject)
 		eject "$@"
 		;;
