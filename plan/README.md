@@ -54,10 +54,17 @@
 
 | File | Description |
 |---|---|
+| `scripts/run-tests.sh` | Unified test runner — compiles and runs all regression tests inside Darling |
 | `scripts/install-nix-in-darling.sh` | Automated Nix installer for Darling prefixes |
+| `scripts/verify-nix.sh` | Standalone health-check for a Nix installation inside Darling |
+| `scripts/build-trivial.sh` | Progressive derivation build tests (5 levels) for Phase 4 |
 | `scripts/darling-nix` | Host-side wrapper to run Nix commands inside Darling |
+| `scripts/triage-syscalls.sh` | Automated syscall triage — discovers unimplemented syscalls during Nix ops |
 | `tests/sandbox/test_sandbox_api.c` | C-level regression tests for sandbox API stubs |
 | `tests/sandbox/test_sandbox_exec.sh` | Shell-level tests for the `sandbox-exec` stub binary |
+| `tests/syscall/test_renameatx_np.c` | renameatx_np regression tests (plain rename, SWAP, EXCL, invalid flags) |
+| `tests/syscall/test_setattrlist_flags.c` | setattrlist/getattrlist ATTR_CMN_FLAGS tests |
+| `tests/syscall/test_utimensat.c` | utimensat/setattrlistat timestamp handling tests |
 
 ## References
 

@@ -15,8 +15,8 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase 0 — Packaging | ✅ Done | `flake.nix`, `nix/package.nix`, `nix/devShell.nix`, `nix/nixosModule.nix`, `.envrc` |
 | Phase 1 — Syscalls | ✅ Core done, triage ongoing | [Triage table](./plan/syscall-triage.md) |
 | Phase 2 — Sandbox | ✅ Done | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
-| Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh` (new), `scripts/darling-nix` (new) |
-| Phase 4 — Building | 📋 Planned | — |
+| Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh`, `scripts/darling-nix`, `scripts/verify-nix.sh` |
+| Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
 | Phase 5 — Daemon | 📋 Planned | — |
 | Phase 6 — CI | 🚧 In progress | `.github/workflows/nix.yml` (new) |
 | Phase 7 — Remote Builder | 📋 Planned | — |
@@ -24,6 +24,24 @@ See the **[plan/](./plan/)** directory for all details.
 
 ### Recently Completed
 
+- **Test runner**: Created `scripts/run-tests.sh` — unified test runner that
+  copies all regression test sources into a Darling prefix, compiles C suites
+  with the macOS toolchain, executes them (and shell-based suites), and
+  produces a colour-coded per-suite summary. Supports `--suite` filtering,
+  `--verbose`, and `--keep` for post-mortem debugging.
+- **Nix verification**: Created `scripts/verify-nix.sh` — standalone
+  health-check for a Nix installation inside Darling. Checks infrastructure
+  (prefix, binaries), core commands (`nix --version`, `nix-env`, `nix-store`),
+  evaluator (`nix eval`, `builtins.currentSystem == x86_64-darwin`), store
+  integrity (SQLite PRAGMA, path count), syscall health (no "Unimplemented
+  syscall" or STUB warnings), optional network tests (`--online`), and
+  environment (macOS version, nix.conf settings). Supports `--json` for CI.
+- **Build test tooling**: Created `scripts/build-trivial.sh` — progressive
+  derivation build script for Phase 4.1. Five levels: (1) echo to `$out`,
+  (2) multi-line builder with mkdir/chmod/loops, (3) input transformation
+  via `builtins.toFile`, (4) derivation dependency chain, (5) binary
+  substitution from `cache.nixos.org`. Each level prints targeted debugging
+  hints on failure.
 - **Phase 1.8**: Verified emulated macOS version — `SystemVersion.plist`
   already reports 11.7.4 (Big Sur), `CMakeLists.txt` sets
   `CMAKE_OSX_DEPLOYMENT_TARGET 11.0`. No changes needed — task complete.
@@ -117,9 +135,12 @@ darling-nix/
 │   ├── devShell.nix                    # Developer shell (Phase 0)
 │   └── nixosModule.nix                 # NixOS module (Phase 0)
 ├── scripts/
-│   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
+│   ├── build-trivial.sh                # NEW — Progressive derivation build tests (Phase 4)
 │   ├── darling-nix                     # Host-side Nix command wrapper (Phase 3)
-│   └── triage-syscalls.sh              # NEW — Automated syscall triage (Phase 1)
+│   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
+│   ├── run-tests.sh                    # NEW — Unified regression test runner
+│   ├── triage-syscalls.sh              # Automated syscall triage (Phase 1)
+│   └── verify-nix.sh                   # NEW — Standalone Nix health-check (Phase 3)
 ├── src/
 │   ├── sandbox/sandbox.c               # Fixed sandbox API stubs (Phase 2)
 │   ├── sandbox-exec/                   # NEW — sandbox-exec stub (Phase 2)
@@ -133,7 +154,7 @@ darling-nix/
 │   └── syscall/                        # NEW — syscall regression tests
 │       ├── test_renameatx_np.c         # renameatx_np tests (Phase 1)
 │       ├── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
-│       └── test_utimensat.c            # NEW — utimensat/timestamp tests (Phase 1)
+│       └── test_utimensat.c            # utimensat/timestamp tests (Phase 1)
 └── plan/
     ├── README.md                       # Index + priority table
     ├── 00-background.md                # Motivation & current state
@@ -148,36 +169,78 @@ darling-nix/
     ├── 09-phase7-remote-builder.md     # Phase 7 details
     ├── 10-phase8-stretch.md            # Phase 8 details
     ├── 11-architecture.md              # Architecture & decisions
-    └── syscall-triage.md               # NEW — syscall tracking table
+    └── syscall-triage.md               # Syscall tracking table
 ```
 
 ## What's Next
 
 The **critical path to MVP** (Nix running inside Darling) is:
 
-1. **Build & test**: All core Phase 1 syscall work is complete. The
-   immediate next step is to build Darling with these changes and run
-   the full regression test suite inside `darling shell`:
-   - `tests/syscall/test_renameatx_np.c` — renameatx_np (5 tests)
-   - `tests/syscall/test_setattrlist_flags.c` — setattrlist/getattrlist (10 tests)
-   - `tests/syscall/test_utimensat.c` — utimensat/timestamps (16 tests)
-   - `tests/sandbox/test_sandbox_api.c` — sandbox API stubs
-   - `tests/sandbox/test_sandbox_exec.sh` — sandbox-exec integration
+1. **Build & test**: All core Phase 1 syscall work is complete. Build
+   Darling with these changes and run the full regression test suite:
+
+   ```bash
+   # One command runs everything:
+   ./scripts/run-tests.sh
+
+   # Or target individual suites:
+   ./scripts/run-tests.sh --suite renameatx_np --verbose
+   ./scripts/run-tests.sh --suite sandbox_exec --keep
+   ```
+
+   Suites exercised:
+   - `renameatx_np` — renameatx_np syscall 488 (5 tests)
+   - `setattrlist_flags` — setattrlist/getattrlist ATTR_CMN_FLAGS (10 tests)
+   - `utimensat` — utimensat/setattrlistat timestamps (16 tests)
+   - `sandbox_api` — sandbox C API stubs
+   - `sandbox_exec` — sandbox-exec integration (20 tests)
 
 2. **Phase 1.7 — Live triage**: Run `scripts/triage-syscalls.sh` inside a
    Darling prefix with Nix installed to discover any remaining unimplemented
    syscalls that weren't caught during code audit. This will populate the
    triage table with real-world findings.
 
+   ```bash
+   ./scripts/triage-syscalls.sh --output plan/syscall-triage-live.md
+   ```
+
 3. **Phase 3 — Nix installation**: With all known syscall blockers resolved
    (`lchflags`, `mv`/renameatx_np, `touch`/utimensat, `clonefile` stub,
-   `getattrlist` buffer ordering fix), run
-   `scripts/install-nix-in-darling.sh` and iterate on any remaining issues.
-   This should now be very close to working end-to-end.
+   `getattrlist` buffer ordering fix), install Nix and verify:
+
+   ```bash
+   # Install Nix inside a Darling prefix
+   ./scripts/install-nix-in-darling.sh
+
+   # Verify the installation is healthy
+   ./scripts/verify-nix.sh
+   ./scripts/verify-nix.sh --online  # also test network/cache access
+
+   # Quick ad-hoc commands via the wrapper
+   ./scripts/darling-nix nix --version
+   ./scripts/darling-nix nix eval --expr 'builtins.currentSystem'
+   ```
 
 4. **Phase 4 — Derivation building**: Once Nix installs successfully,
-   attempt a trivial derivation build to exercise `sandbox-exec`, `bash`,
-   and the full Nix build pipeline inside Darling.
+   exercise the full build pipeline with progressively harder derivations:
+
+   ```bash
+   # Run all five levels (stops early if a foundational level fails)
+   ./scripts/build-trivial.sh
+
+   # Target a specific level with debug output
+   ./scripts/build-trivial.sh --level 1 --debug
+
+   # Keep built derivations for inspection
+   ./scripts/build-trivial.sh --keep --verbose
+   ```
+
+   Levels:
+   1. Echo to `$out` — minimal: sandbox-exec → bash → file creation
+   2. Multi-line builder — mkdir, chmod, loops, multiple output files
+   3. Input transformation — `builtins.toFile`, sort, wc
+   4. Derivation dependency — one derivation consumes another's output
+   5. Binary substitution — fetch pre-built `hello` from cache.nixos.org
 
 ### Completed Task Summary
 
@@ -193,8 +256,25 @@ The **critical path to MVP** (Nix running inside Darling) is:
 | 1.8 | ✅ | macOS version — already 11.7.4 (Big Sur), no changes needed |
 | 2.1 | ✅ | `sandbox-exec` stub |
 | 2.2 | ✅ | `sandbox_init` API stubs fixed |
+| 3.1 | ✅ | `install-nix-in-darling.sh` installer script |
+| 3.3 | ✅ | `verify-nix.sh` standalone verification |
+| 3.4 | ✅ | `darling-nix` host-side wrapper |
+| 4.1 | ✅ | `build-trivial.sh` progressive build tests (tooling ready) |
+| 6.3 | ✅ | `.github/workflows/nix.yml` CI workflow |
+| — | ✅ | `run-tests.sh` unified test runner |
 | — | ✅ | `getattrlist` attribute buffer ordering bug fixed |
 | — | ✅ | `diskutil info`/`list` stubs |
+
+### Script Quick Reference
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `scripts/run-tests.sh` | Compile & run all regression tests inside Darling | After building Darling with changes |
+| `scripts/triage-syscalls.sh` | Discover unimplemented syscalls during Nix operations | After installing Nix inside Darling |
+| `scripts/install-nix-in-darling.sh` | Install Nix package manager inside a Darling prefix | One-time setup |
+| `scripts/verify-nix.sh` | Health-check a Nix installation inside Darling | After install, or to diagnose regressions |
+| `scripts/darling-nix` | Run Nix commands inside Darling from the host | Day-to-day Nix usage |
+| `scripts/build-trivial.sh` | Test derivation building with 5 progressive levels | After Nix is installed and verified |
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.
