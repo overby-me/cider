@@ -77,3 +77,8 @@ debian/*.substvars
 
 .idea
 cmake-build-*
+
+# Nix / direnv
+.direnv/
+result
+result-*
