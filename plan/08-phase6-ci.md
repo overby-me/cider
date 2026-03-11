@@ -23,8 +23,10 @@ It does not:
 - Verify Nix compatibility.
 - Test inside a NixOS VM (which is needed for namespace/overlay support).
 
-We need to replace or supplement this with a Nix-native CI pipeline that runs
-real integration tests.
+We use [tangled.org](https://tangled.org) CI instead of GitHub Actions. Tangled
+provides a `nixery` engine that gives us a Nix-enabled container out of the box,
+eliminating the need for `install-nix-action` and simplifying the workflow. The
+workflow is defined in `.tangled/workflows/ci.yml`.
 
 ---
 
@@ -146,103 +148,62 @@ nix build .#checks.x86_64-linux.nix-in-darling
 
 ---
 
-### 6.3 — GitHub Actions Workflow ✅
+### 6.3 — tangled.org CI Workflow ✅
 
-Replace or supplement the existing `.github/workflows/actions.yaml` with a
-Nix-native workflow.
+Replace the GitHub Actions workflow with a tangled.org CI workflow using the
+`nixery` engine, which provides Nix out of the box.
 
-**Workflow file**: `.github/workflows/nix-ci.yaml`
+**Workflow file**: `.tangled/workflows/ci.yml`
 
 ```yaml
-name: Nix CI
+when:
+  - event: ["push", "pull_request"]
+    branch: main
 
-on:
-  push:
-    branches: [main]
-  pull_request:
+engine: nixery
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
+environment:
+  USER: root
+  CACHIX_NAME: darling-nix
 
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+steps:
+  - name: "Setup Cachix"
+    command: |
+      nix-env -iA cachix -f https://cachix.org/api/v1/install
+      mkdir -p /tangled/home/.config/nix
+      echo -e "experimental-features = nix-command flakes\nmax-jobs = auto" > /tangled/home/.config/nix/nix.conf
+      cachix use $CACHIX_NAME
 
-      - uses: cachix/cachix-action@v15
-        with:
-          name: darling-nix  # our Cachix cache
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+  - name: "Nix flake check"
+    command: |
+      rm -rf /homeless-shelter
+      ulimit -n 65536
+      cachix watch-exec $CACHIX_NAME -- nix flake check --max-jobs 1
 
-      - name: Build Darling
-        run: nix build .#darling -L
+  - name: "Build Darling"
+    command: |
+      cachix watch-exec $CACHIX_NAME -- nix build .#darling -L --no-link --print-out-paths
 
-      - name: Build Darling SDK
-        run: nix build .#darling-sdk -L
-
-  test-syscalls:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-
-      - uses: cachix/cachix-action@v15
-        with:
-          name: darling-nix
-
-      - name: Run syscall regression tests
-        run: nix build .#checks.x86_64-linux.syscall-regression -L
-
-  test-nix-integration:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-            system-features = kvm
-
-      - uses: cachix/cachix-action@v15
-        with:
-          name: darling-nix
-
-      - name: Run Nix-in-Darling integration test
-        run: nix build .#checks.x86_64-linux.nix-in-darling -L
-        timeout-minutes: 60  # generous timeout for VM test
+  - name: "Build Darling SDK"
+    command: |
+      cachix watch-exec $CACHIX_NAME -- nix build .#darling-sdk -L --no-link --print-out-paths
 ```
 
 **Notes**:
 
-- The integration test requires KVM for the NixOS VM. GitHub's `ubuntu-latest`
-  runners have KVM available. Verify with `system-features = kvm` in the Nix
-  config.
-- The build job runs first and pushes artifacts to Cachix. Subsequent test jobs
-  pull from the cache, avoiding redundant rebuilds.
-- The `timeout-minutes: 60` is important — Darling operations inside a VM inside
-  CI can be very slow. Adjust as needed based on real-world timings.
-- `submodules: recursive` is required because Darling has 100+ submodules. This
-  checkout step may itself take 5–10 minutes.
-
-**Alternative: use a self-hosted runner** if GitHub's runners are too slow or
-lack KVM. A dedicated NixOS machine with nested virtualisation enabled would
-provide the most reliable CI environment.
+- tangled.org's `nixery` engine provides a Nix-enabled container, so there is
+  no need for `install-nix-action` or checkout actions — the repo is already
+  cloned and Nix is pre-installed.
+- Cachix is installed at runtime and used via `cachix watch-exec` to
+  automatically push all build artifacts. Subsequent runs pull from the cache,
+  avoiding redundant rebuilds.
+- `nix flake check` runs all flake checks (build smoke test, dirserv stubs,
+  etc.) in a single step. The `--max-jobs 1` flag prevents OOM on
+  memory-constrained CI runners.
+- The `CACHIX_NAME` environment variable should match the Cachix cache name.
+  The Cachix auth token must be configured as a tangled.org secret.
+- `rm -rf /homeless-shelter` works around a Nix sandbox issue in containerised
+  environments where `HOME` is set to a nonexistent path.
 
 ---
 
@@ -593,13 +554,9 @@ NixOS VM tests are slow. Strategies to keep CI times reasonable:
 
 3. **Incremental testing**: On PRs that only touch `plan/` or `docs/`, skip the
    expensive VM tests. Use path filters in the workflow:
-   ```yaml
-   on:
-     push:
-       paths-ignore:
-         - 'plan/**'
-         - '*.md'
-   ```
+   In the tangled workflow, this can be handled at the application level by
+   checking changed paths in early steps, or by relying on Cachix cache hits
+   to make unchanged builds near-instant.
 
 4. **Test VM snapshots**: If the NixOS testing framework supports it, take a
    snapshot after Darling initialization and restore from it for each test. This
@@ -623,12 +580,12 @@ NixOS VM tests are slow. Strategies to keep CI times reasonable:
 After completing Phase 6, ALL of the following should be true:
 
 - [ ] `nix flake check` passes (includes build smoke test)
-- [ ] `.github/workflows/nix-ci.yaml` exists and runs on PRs
+- [ ] `.tangled/workflows/ci.yml` exists and runs on pushes/PRs to `main`
 - [ ] Syscall regression tests exist for `lchflags`, `renameatx_np`, `utimensat` (at minimum)
 - [ ] Sandbox stub tests verify `sandbox-exec` passthrough works
 - [ ] NixOS VM test installs Nix inside Darling and evaluates an expression
 - [ ] NixOS VM test builds a trivial derivation inside Darling
-- [ ] CI results are visible on GitHub PR checks
+- [ ] CI results are visible on tangled.org
 - [ ] Cachix cache is populated by CI and speeds up subsequent runs
 - [ ] Compatibility matrix script exists and produces JSON output
 - [ ] Adding a new syscall implementation has a clear path: implement → add test → CI verifies

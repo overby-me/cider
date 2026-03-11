@@ -18,7 +18,7 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh`, `scripts/darling-nix`, `scripts/verify-nix.sh` |
 | Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
 | Phase 5 — Daemon | 🚧 Stubs done | `src/dirserv/` (new), `tests/dirserv/` (new) |
-| Phase 6 — CI | 🚧 In progress | `.github/workflows/nix.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix` (new) |
+| Phase 6 — CI | 🚧 In progress | `.tangled/workflows/ci.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix` (new) |
 | Phase 7 — Remote Builder | 📋 Planned | — |
 | Phase 8 — Stretch | 📋 Planned | — |
 
@@ -130,8 +130,8 @@ See the **[plan/](./plan/)** directory for all details.
   a Darling prefix in single-user mode.
 - **Phase 3.4**: Created `scripts/darling-nix` — host-side wrapper for running
   Nix commands inside Darling without manual `darling shell bash -lc` boilerplate.
-- **Phase 6.3**: Created `.github/workflows/nix.yml` — Nix CI workflow with
-  flake check, package build, devShell evaluation, and smoke tests.
+- **Phase 6.3**: Created `.tangled/workflows/ci.yml` — tangled.org CI workflow
+  with Cachix caching and `nix flake check`.
 - **Phase 1.7**: Created `plan/syscall-triage.md` — tracking table for
   unimplemented syscalls with categories, impact levels, and discovery log.
 - **Testing**: Created `tests/sandbox/test_sandbox_api.c` (C-level sandbox API
@@ -151,7 +151,7 @@ See the **[plan/](./plan/)** directory for all details.
 | [plan/05-phase3-nix-install.md](./plan/05-phase3-nix-install.md) | Automated installer, verification, wrappers |
 | [plan/06-phase4-building.md](./plan/06-phase4-building.md) | Trivial derivations → stdenv → binary substitution |
 | [plan/07-phase5-daemon.md](./plan/07-phase5-daemon.md) | Multi-user mode, Directory Services stubs, launchd |
-| [plan/08-phase6-ci.md](./plan/08-phase6-ci.md) | NixOS VM tests, regression suite, GitHub Actions |
+| [plan/08-phase6-ci.md](./plan/08-phase6-ci.md) | NixOS VM tests, regression suite, tangled.org CI |
 | [plan/09-phase7-remote-builder.md](./plan/09-phase7-remote-builder.md) | Darling as a `nix.buildMachines` target |
 | [plan/10-phase8-stretch.md](./plan/10-phase8-stretch.md) | `aarch64-darwin`, GUI testing, Hydra builder |
 | [plan/11-architecture.md](./plan/11-architecture.md) | System diagram, key technical decisions, glossary |
@@ -163,7 +163,7 @@ Files created or modified as part of this plan:
 
 ```text
 darling-nix/
-├── .github/workflows/nix.yml          # Nix CI workflow (Phase 6)
+├── .tangled/workflows/ci.yml          # tangled.org CI workflow (Phase 6)
 ├── flake.nix                           # Flake with package, devShell, NixOS module (Phase 0)
 ├── nix/
 │   ├── package.nix                     # Darling Nix derivation (Phase 0)
@@ -309,7 +309,7 @@ The **critical path to MVP** (Nix running inside Darling) is:
 | 5.1 | ✅ | Directory Services stubs (`dseditgroup`, `sysadminctl`, `dscl`) |
 | 6.1 | ✅ | NixOS VM test (`tests/nix-in-darling.nix`) |
 | 6.2 | ✅ | Wired tests into `flake.nix` (checks output) |
-| 6.3 | ✅ | `.github/workflows/nix.yml` CI workflow |
+| 6.3 | ✅ | `.tangled/workflows/ci.yml` tangled.org CI workflow |
 | 6.6 | ✅ | Darling smoke test (`tests/darling-smoke.nix`) |
 | — | ✅ | `run-tests.sh` unified test runner (6 suites) |
 | — | ✅ | `getattrlist` attribute buffer ordering bug fixed |

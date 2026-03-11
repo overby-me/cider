@@ -1,0 +1,31 @@
+when:
+  - event: ["push", "pull_request"]
+    branch: main
+
+engine: nixery
+
+environment:
+  USER: root
+  CACHIX_NAME: darling-nix
+
+steps:
+  - name: "Setup Cachix"
+    command: |
+      nix-env -iA cachix -f https://cachix.org/api/v1/install
+      mkdir -p /tangled/home/.config/nix
+      echo -e "experimental-features = nix-command flakes\nmax-jobs = auto" > /tangled/home/.config/nix/nix.conf
+      cachix use $CACHIX_NAME
+
+  - name: "Nix flake check"
+    command: |
+      rm -rf /homeless-shelter
+      ulimit -n 65536
+      cachix watch-exec $CACHIX_NAME -- nix flake check --max-jobs 1
+
+  - name: "Build Darling"
+    command: |
+      cachix watch-exec $CACHIX_NAME -- nix build .#darling -L --no-link --print-out-paths
+
+  - name: "Build Darling SDK"
+    command: |
+      cachix watch-exec $CACHIX_NAME -- nix build .#darling-sdk -L --no-link --print-out-paths
