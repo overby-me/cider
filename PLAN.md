@@ -13,8 +13,8 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase | Status | Key Files |
 |-------|--------|-----------|
 | Phase 0 — Packaging | ✅ Done | `flake.nix`, `nix/package.nix`, `nix/devShell.nix`, `nix/nixosModule.nix`, `.envrc` |
-| Phase 1 — Syscalls | 🚧 In progress | [Triage table](./plan/syscall-triage.md) |
-| Phase 2 — Sandbox | 🚧 In progress | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
+| Phase 1 — Syscalls | ✅ Core done, triage ongoing | [Triage table](./plan/syscall-triage.md) |
+| Phase 2 — Sandbox | ✅ Done | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
 | Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh` (new), `scripts/darling-nix` (new) |
 | Phase 4 — Building | 📋 Planned | — |
 | Phase 5 — Daemon | 📋 Planned | — |
@@ -24,6 +24,23 @@ See the **[plan/](./plan/)** directory for all details.
 
 ### Recently Completed
 
+- **Phase 1.8**: Verified emulated macOS version — `SystemVersion.plist`
+  already reports 11.7.4 (Big Sur), `CMakeLists.txt` sets
+  `CMAKE_OSX_DEPLOYMENT_TARGET 11.0`. No changes needed — task complete.
+- **Bug fix**: Fixed `getattrlist` attribute buffer ordering — common
+  attributes are now written in Apple-defined bit-position order
+  (OBJTAG 0x10 → FNDRINFO 0x4000 → FLAGS 0x40000) instead of the
+  previous incorrect order (FNDRINFO → FLAGS → OBJTAG). This prevents
+  corrupted reads when callers request multiple common attributes.
+- **Task 1.7**: Created `scripts/triage-syscalls.sh` — automated syscall
+  discovery script that runs Nix operations inside Darling, captures
+  "Unimplemented syscall" messages, categorizes them, and produces a
+  Markdown report suitable for pasting into `plan/syscall-triage.md`.
+- **Task 1.4**: Created `tests/syscall/test_utimensat.c` — comprehensive
+  regression tests for utimensat/setattrlistat timestamp handling (16 tests
+  covering MODTIME, ACCTIME, CRTIME, CHGTIME, combined attrs, FSOPT_NOFOLLOW
+  on symlinks, utimes/lutimes libc functions, NULL pointers, kitchen-sink
+  multi-attribute scenarios).
 - **Phase 1.3**: Implemented `renameatx_np` (macOS syscall 488) — new file
   `src/external/xnu/.../impl/unistd/renameatx_np.c` translates to Linux
   `renameat2(2)` with flag mapping: `RENAME_SWAP` → `RENAME_EXCHANGE`,
@@ -101,7 +118,8 @@ darling-nix/
 │   └── nixosModule.nix                 # NixOS module (Phase 0)
 ├── scripts/
 │   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
-│   └── darling-nix                     # Host-side Nix command wrapper (Phase 3)
+│   ├── darling-nix                     # Host-side Nix command wrapper (Phase 3)
+│   └── triage-syscalls.sh              # NEW — Automated syscall triage (Phase 1)
 ├── src/
 │   ├── sandbox/sandbox.c               # Fixed sandbox API stubs (Phase 2)
 │   ├── sandbox-exec/                   # NEW — sandbox-exec stub (Phase 2)
@@ -114,7 +132,8 @@ darling-nix/
 │   │   └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
 │   └── syscall/                        # NEW — syscall regression tests
 │       ├── test_renameatx_np.c         # renameatx_np tests (Phase 1)
-│       └── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
+│       ├── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
+│       └── test_utimensat.c            # NEW — utimensat/timestamp tests (Phase 1)
 └── plan/
     ├── README.md                       # Index + priority table
     ├── 00-background.md                # Motivation & current state
@@ -136,24 +155,46 @@ darling-nix/
 
 The **critical path to MVP** (Nix running inside Darling) is:
 
-1. **Phase 1 — Remaining syscall work**: The core syscall blockers
-   (`renameatx_np`, `setattrlist`/`getattrlist` with `ATTR_CMN_FLAGS`,
-   `clonefile` stub) are now implemented. Remaining Phase 1 tasks:
-   - **Task 1.4** (`utimensat` audit): Debug whether Nix's `touch` segfault
-     is now resolved by the `setattrlist` fixes (it may have been calling
-     `setattrlistat` under the hood). If not, trace the exact failing call.
-   - **Task 1.7** (triage): Run Nix inside Darling with tracing enabled and
-     collect any remaining "Unimplemented syscall" messages.
-   - **Task 1.8** (version bump): Update emulated macOS version to 11.0+.
+1. **Build & test**: All core Phase 1 syscall work is complete. The
+   immediate next step is to build Darling with these changes and run
+   the full regression test suite inside `darling shell`:
+   - `tests/syscall/test_renameatx_np.c` — renameatx_np (5 tests)
+   - `tests/syscall/test_setattrlist_flags.c` — setattrlist/getattrlist (10 tests)
+   - `tests/syscall/test_utimensat.c` — utimensat/timestamps (16 tests)
+   - `tests/sandbox/test_sandbox_api.c` — sandbox API stubs
+   - `tests/sandbox/test_sandbox_exec.sh` — sandbox-exec integration
 
-2. **Build & test**: Build Darling with the new syscall implementations and
-   run the regression tests in `tests/syscall/` and `tests/sandbox/` inside
-   `darling shell` to verify everything works end-to-end.
+2. **Phase 1.7 — Live triage**: Run `scripts/triage-syscalls.sh` inside a
+   Darling prefix with Nix installed to discover any remaining unimplemented
+   syscalls that weren't caught during code audit. This will populate the
+   triage table with real-world findings.
 
-3. **Phase 3 — Nix installation**: With the syscall fixes in place, run
+3. **Phase 3 — Nix installation**: With all known syscall blockers resolved
+   (`lchflags`, `mv`/renameatx_np, `touch`/utimensat, `clonefile` stub,
+   `getattrlist` buffer ordering fix), run
    `scripts/install-nix-in-darling.sh` and iterate on any remaining issues.
-   This is now much closer to working since the `lchflags` and `mv` blockers
-   are resolved.
+   This should now be very close to working end-to-end.
+
+4. **Phase 4 — Derivation building**: Once Nix installs successfully,
+   attempt a trivial derivation build to exercise `sandbox-exec`, `bash`,
+   and the full Nix build pipeline inside Darling.
+
+### Completed Task Summary
+
+| Task | Status | Description |
+|------|--------|-------------|
+| 1.1 | ✅ | `setattrlist`/`fsetattrlist`/`getattrlist` — ATTR_CMN_FLAGS, CRTIME, CHGTIME |
+| 1.2 | ✅ | `lchflags` return value — verified via 1.1 |
+| 1.3 | ✅ | `renameatx_np` (syscall 488) — maps to Linux `renameat2` |
+| 1.4 | ✅ | `utimensat` audit — setattrlistat handler fixed; test written |
+| 1.5 | ✅ | `clonefile`/`fclonefileat` — ENOSYS→ENOTSUP stub |
+| 1.6 | ✅ | `getentropy` — already works (maps to `getrandom`) |
+| 1.7 | 🚧 | Triage — automation script created, needs live run |
+| 1.8 | ✅ | macOS version — already 11.7.4 (Big Sur), no changes needed |
+| 2.1 | ✅ | `sandbox-exec` stub |
+| 2.2 | ✅ | `sandbox_init` API stubs fixed |
+| — | ✅ | `getattrlist` attribute buffer ordering bug fixed |
+| — | ✅ | `diskutil info`/`list` stubs |
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.
