@@ -60,11 +60,15 @@
 | `scripts/build-trivial.sh` | Progressive derivation build tests (5 levels) for Phase 4 |
 | `scripts/darling-nix` | Host-side wrapper to run Nix commands inside Darling |
 | `scripts/triage-syscalls.sh` | Automated syscall triage — discovers unimplemented syscalls during Nix ops |
+| `scripts/darling-build-hook` | Nix build hook — offloads `x86_64-darwin` builds to local Darling without SSH (Phase 7.4) |
+| `nix/darlingBuilderModule.nix` | NixOS module — `services.darling-builder` remote builder setup (Phase 7.5) |
 | `src/dirserv/dseditgroup` | Directory Services stub — group create/edit/delete/checkmember/read (Phase 5.1) |
 | `src/dirserv/sysadminctl` | Directory Services stub — addUser/deleteUser with UID/GID/home/shell (Phase 5.1) |
 | `src/dirserv/dscl` | Directory Services stub — read/list/create/delete/append/search (Phase 5.1) |
 | `tests/darling-smoke.nix` | NixOS VM smoke test — Darling boot, stubs, filesystem, no network (Phase 6.6) |
 | `tests/nix-in-darling.nix` | NixOS VM integration test — full Nix install + eval + build (Phase 6.1) |
+| `tests/darling-builder.nix` | NixOS VM test — remote builder service, sshd, SSH auth, restart resilience (Phase 7) |
+| `tests/nix/compatibility-matrix.sh` | Systematic package build test — 4 tiers, JSON reports, cross-run comparison (Phase 6.5) |
 | `tests/dirserv/test_dirserv.sh` | Shell-level tests for Directory Services stubs (60+ tests) |
 | `tests/sandbox/test_sandbox_api.c` | C-level regression tests for sandbox API stubs |
 | `tests/sandbox/test_sandbox_exec.sh` | Shell-level tests for the `sandbox-exec` stub binary |

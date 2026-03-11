@@ -35,7 +35,9 @@ tests/*
 !tests/syscall/
 !tests/dirserv/
 !tests/darling-smoke.nix
+!tests/darling-builder.nix
 !tests/nix-in-darling.nix
+!tests/nix/
 
 # The suggested build folder
 build

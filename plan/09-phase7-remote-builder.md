@@ -262,7 +262,13 @@ It's slower but simpler and guaranteed correct. Use Nix's `--builders` flag with
 
 ---
 
-### 7.4 — Alternative: Custom Build Hook (No SSH)
+### 7.4 — Alternative: Custom Build Hook (No SSH) ✅
+
+> **Status**: Complete. Implemented at `scripts/darling-build-hook`. Supports
+> the legacy Nix build hook protocol on stdin/stdout and direct `--build <drv>`
+> invocations. Includes `--check` (environment validation), `--query-outputs`,
+> `--machine-spec`, and `--verbose` modes. Configurable via environment
+> variables (`DARLING_BUILD_HOOK_DARLING`, `DARLING_BUILD_HOOK_PREFIX`, etc.).
 
 Instead of SSH, implement a custom Nix build hook that invokes `darling shell`
 directly. This avoids the SSH setup entirely and may have lower overhead.
@@ -315,7 +321,17 @@ nix.settings.build-hook = "/path/to/darling-build-hook";
 
 ---
 
-### 7.5 — NixOS Module for the Darling Builder
+### 7.5 — NixOS Module for the Darling Builder ✅
+
+> **Status**: Complete. Implemented at `nix/darlingBuilderModule.nix`. Full
+> NixOS module with `services.darling-builder` options: `enable`, `package`,
+> `port`, `maxJobs`, `speedFactor`, `shareStore`, `sshKeyPath`, `prefixPath`,
+> `supportedFeatures`, `mandatoryFeatures`, `installNix`, `nixVersion`.
+> Manages SSH key generation, prefix init (sshd, nix.conf, stubs verification),
+> systemd service, optional `/nix/store` sharing, and `nix.buildMachines`
+> registration. Includes `darling-builder-test` connectivity script.
+> Wired into `flake.nix` as `nixosModules.darling-builder`.
+> NixOS VM test at `tests/darling-builder.nix` (12 stages).
 
 Wrap all the setup (sshd, keys, store sharing, `nix.buildMachines`) into a
 reusable NixOS module.

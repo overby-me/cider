@@ -29,6 +29,24 @@
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
+      # ── NixOS Modules ────────────────────────────────────────────────
+      #
+      # The base module (programs.darling) is autoloaded from
+      # ./nix/nixosModule.nix by flakelight.
+      #
+      # The darling-builder module (services.darling-builder) is exported
+      # separately so users can import it alongside the base module.
+      #
+      # Usage in a NixOS configuration:
+      #   {
+      #     imports = [
+      #       darling-nix.nixosModules.nixos        # programs.darling
+      #       darling-nix.nixosModules.darling-builder  # services.darling-builder
+      #     ];
+      #     services.darling-builder.enable = true;
+      #   }
+      nixosModules.darling-builder = import ./nix/darlingBuilderModule.nix;
+
       # ── Checks (Phase 6.2) ───────────────────────────────────────────
       #
       # NixOS VM integration tests and lightweight validation checks.
@@ -36,11 +54,14 @@
       #   nix flake check              # all checks
       #   nix build .#checks.x86_64-linux.darling-smoke -L
       #   nix build .#checks.x86_64-linux.nix-in-darling -L
+      #   nix build .#checks.x86_64-linux.darling-builder -L
       #
       # See: plan/08-phase6-ci.md (Tasks 6.1, 6.2)
+      #      plan/09-phase7-remote-builder.md (Task 7.5)
       checks = pkgs:
         let
           darling = pkgs.darling;
+          darlingBuilderModule = import ./nix/darlingBuilderModule.nix;
         in
         {
           # ── Build check ─────────────────────────────────────────────────
@@ -62,6 +83,14 @@
           # Requires network access (downloads Nix installer + store paths).
           nix-in-darling = import ./tests/nix-in-darling.nix {
             inherit pkgs darling;
+          };
+
+          # ── Darling builder test (Phase 7.5) ────────────────────────────
+          # NixOS VM test for the remote builder module: verifies the
+          # systemd service starts, sshd inside the prefix is reachable,
+          # SSH key auth works, and Darling identity is correct via SSH.
+          darling-builder = import ./tests/darling-builder.nix {
+            inherit pkgs darling darlingBuilderModule;
           };
 
           # ── Directory Services stubs unit test ──────────────────────────

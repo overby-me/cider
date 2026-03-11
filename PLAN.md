@@ -18,12 +18,43 @@ See the **[plan/](./plan/)** directory for all details.
 | Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh`, `scripts/darling-nix`, `scripts/verify-nix.sh` |
 | Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
 | Phase 5 — Daemon | 🚧 Stubs done | `src/dirserv/` (new), `tests/dirserv/` (new) |
-| Phase 6 — CI | 🚧 In progress | `.tangled/workflows/ci.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix` (new) |
-| Phase 7 — Remote Builder | 📋 Planned | — |
+| Phase 6 — CI | 🚧 In progress | `.tangled/workflows/ci.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix`, `tests/nix/compatibility-matrix.sh` (new) |
+| Phase 7 — Remote Builder | 🚧 Module & hook ready | `nix/darlingBuilderModule.nix` (new), `scripts/darling-build-hook` (new), `tests/darling-builder.nix` (new) |
 | Phase 8 — Stretch | 📋 Planned | — |
 
 ### Recently Completed
 
+- **Phase 7.5 — NixOS module for Darling builder**: Created
+  `nix/darlingBuilderModule.nix` — a full NixOS module that sets up a
+  Darling instance as a `nix.buildMachines` remote builder for
+  `x86_64-darwin`. Manages SSH key generation, Darling prefix
+  initialisation (sshd setup, nix.conf, Directory Services stubs
+  verification, optional Nix auto-install), a `darling-builder` systemd
+  service running sshd inside the prefix, optional `/nix/store` sharing
+  via `/Volumes/SystemRoot/nix` symlink, and build machine registration.
+  Includes a `darling-builder-test` connectivity diagnostic script.
+  Wired into `flake.nix` as `nixosModules.darling-builder` and a new
+  `checks.x86_64-linux.darling-builder` NixOS VM test.
+- **Phase 7.4 — Custom build hook**: Created `scripts/darling-build-hook`
+  — a shell script that offloads `x86_64-darwin` builds to a local
+  Darling instance without SSH. Supports the legacy Nix build hook
+  protocol on stdin/stdout and direct `--build <drv>` invocations.
+  Includes `--check` (environment validation), `--query-outputs`,
+  `--machine-spec`, and `--verbose` modes. Configurable via environment
+  variables (`DARLING_BUILD_HOOK_DARLING`, `DARLING_BUILD_HOOK_PREFIX`,
+  etc.).
+- **Phase 7 — NixOS VM test for remote builder**: Created
+  `tests/darling-builder.nix` — 12-stage NixOS VM test covering service
+  startup, SSH key generation, sshd reachability, SSH key auth, macOS
+  identity via SSH, sshd config validation, nix.conf inside prefix,
+  build machine registration, Directory Services stubs via SSH,
+  sandbox-exec via SSH, file operations, and service restart resilience.
+- **Phase 6.5 — Nix compatibility test matrix**: Created
+  `tests/nix/compatibility-matrix.sh` — systematic package build tester
+  with 4 tiers (must-pass / should-pass / stretch / aspirational),
+  JSON reporting, cross-run comparison (`--compare`), per-package
+  timeouts, tier/package filtering, colourised output, and CI-friendly
+  exit codes (exit 2 on tier-1 regressions).
 - **Phase 5.1 — Directory Services stubs**: Created `src/dirserv/` with three
   shell-script stubs (`dseditgroup`, `sysadminctl`, `dscl`) that translate
   macOS Directory Services commands to direct `/etc/passwd` and `/etc/group`
@@ -164,13 +195,15 @@ Files created or modified as part of this plan:
 ```text
 darling-nix/
 ├── .tangled/workflows/ci.yml          # tangled.org CI workflow (Phase 6)
-├── flake.nix                           # Flake with package, devShell, NixOS module (Phase 0)
+├── flake.nix                           # Flake with package, devShell, NixOS module, builder (Phase 0, 7)
 ├── nix/
 │   ├── package.nix                     # Darling Nix derivation (Phase 0)
 │   ├── devShell.nix                    # Developer shell (Phase 0)
-│   └── nixosModule.nix                 # NixOS module (Phase 0)
+│   ├── nixosModule.nix                 # NixOS module — programs.darling (Phase 0)
+│   └── darlingBuilderModule.nix        # NEW — NixOS module — services.darling-builder (Phase 7.5)
 ├── scripts/
 │   ├── build-trivial.sh                # NEW — Progressive derivation build tests (Phase 4)
+│   ├── darling-build-hook              # NEW — Nix build hook for local Darling builds (Phase 7.4)
 │   ├── darling-nix                     # Host-side Nix command wrapper (Phase 3)
 │   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
 │   ├── run-tests.sh                    # NEW — Unified regression test runner (6 suites)
@@ -188,10 +221,13 @@ darling-nix/
 │   │   └── sandbox-exec.c
 │   └── diskutil/diskutil               # Extended with info/list verbs (Phase 3)
 ├── tests/
+│   ├── darling-builder.nix             # NEW — NixOS VM test for remote builder (Phase 7)
 │   ├── darling-smoke.nix               # NEW — NixOS VM smoke test (Phase 6.6)
 │   ├── nix-in-darling.nix              # NEW — NixOS VM integration test (Phase 6.1)
 │   ├── dirserv/                        # NEW — Directory Services regression tests
 │   │   └── test_dirserv.sh             # 60+ tests for dseditgroup/sysadminctl/dscl
+│   ├── nix/                            # NEW — Nix-level compatibility tests
+│   │   └── compatibility-matrix.sh     # Package build matrix with 4 tiers (Phase 6.5)
 │   ├── sandbox/                        # NEW — sandbox regression tests
 │   │   ├── test_sandbox_api.c          # C-level sandbox API tests
 │   │   └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
@@ -218,7 +254,8 @@ darling-nix/
 
 ## What's Next
 
-The **critical path to MVP** (Nix running inside Darling) is:
+The **critical path to MVP** (Nix running inside Darling) is steps 1–4.
+Step 5 (remote builder) extends the MVP into a **usable Darwin builder**.
 
 1. **Build & test**: All core Phase 1 syscall work is complete. Build
    Darling with these changes and run the full regression test suite:
@@ -287,6 +324,57 @@ The **critical path to MVP** (Nix running inside Darling) is:
    4. Derivation dependency — one derivation consumes another's output
    5. Binary substitution — fetch pre-built `hello` from cache.nixos.org
 
+5. **Phase 7 — Remote builder**: With Nix building derivations successfully,
+   enable the host's Nix daemon to offload `x86_64-darwin` builds to Darling.
+   All infrastructure is in place — choose one of two approaches:
+
+   **Option A — NixOS module (SSH-based, recommended)**:
+
+   ```nix
+   # In your NixOS configuration:
+   imports = [
+     darling-nix.nixosModules.nixos            # programs.darling
+     darling-nix.nixosModules.darling-builder   # services.darling-builder
+   ];
+
+   services.darling-builder = {
+     enable = true;
+     maxJobs = 4;
+     shareStore = true;   # share /nix/store via /Volumes/SystemRoot
+   };
+   ```
+
+   After `nixos-rebuild switch`:
+
+   ```bash
+   # Test connectivity
+   darling-builder-test
+
+   # Build a Darwin package from your Linux host
+   nix build nixpkgs#hello --system x86_64-darwin
+   ```
+
+   **Option B — Custom build hook (no SSH)**:
+
+   ```bash
+   # Verify the hook environment
+   ./scripts/darling-build-hook --check
+
+   # Build a derivation directly
+   ./scripts/darling-build-hook --build /nix/store/...-foo.drv
+   ```
+
+   **Remaining Phase 7 tasks** (7.1, 7.2, 7.3, 7.6, 7.7):
+   - 7.1: Verify `sshd` actually works inside Darling (needs live testing)
+   - 7.2: Test `nix store ping` from host to Darling builder
+   - 7.3: Validate shared `/nix/store` via `/Volumes/SystemRoot` symlink
+   - 7.6: Run compatibility matrix against the builder:
+     ```bash
+     ./tests/nix/compatibility-matrix.sh --tier 1
+     ./tests/nix/compatibility-matrix.sh --output results.json --compare previous.json
+     ```
+   - 7.7: Write user-facing docs and flake template
+
 ### Completed Task Summary
 
 | Task | Status | Description |
@@ -310,7 +398,11 @@ The **critical path to MVP** (Nix running inside Darling) is:
 | 6.1 | ✅ | NixOS VM test (`tests/nix-in-darling.nix`) |
 | 6.2 | ✅ | Wired tests into `flake.nix` (checks output) |
 | 6.3 | ✅ | `.tangled/workflows/ci.yml` tangled.org CI workflow |
+| 6.5 | ✅ | Nix compatibility test matrix (`tests/nix/compatibility-matrix.sh`) |
 | 6.6 | ✅ | Darling smoke test (`tests/darling-smoke.nix`) |
+| 7.4 | ✅ | Custom build hook (`scripts/darling-build-hook`) |
+| 7.5 | ✅ | NixOS module for Darling builder (`nix/darlingBuilderModule.nix`) |
+| — | ✅ | NixOS VM test for remote builder (`tests/darling-builder.nix`) |
 | — | ✅ | `run-tests.sh` unified test runner (6 suites) |
 | — | ✅ | `getattrlist` attribute buffer ordering bug fixed |
 | — | ✅ | `diskutil info`/`list` stubs |
@@ -326,9 +418,12 @@ The **critical path to MVP** (Nix running inside Darling) is:
 | `scripts/verify-nix.sh` | Health-check a Nix installation inside Darling | After install, or to diagnose regressions |
 | `scripts/darling-nix` | Run Nix commands inside Darling from the host | Day-to-day Nix usage |
 | `scripts/build-trivial.sh` | Test derivation building with 5 progressive levels | After Nix is installed and verified |
+| `scripts/darling-build-hook` | Nix build hook for local Darling builds (no SSH) | Alternative to SSH-based remote builder |
+| `tests/nix/compatibility-matrix.sh` | Systematic package build test with 4 tiers + JSON | After Nix builds work; in CI nightly |
 | `nix build .#checks.x86_64-linux.dirserv-stubs` | Run Directory Services stub tests (no Darling needed) | After editing `src/dirserv/` |
 | `nix build .#checks.x86_64-linux.darling-smoke -L` | NixOS VM smoke test (no network) | After building Darling |
 | `nix build .#checks.x86_64-linux.nix-in-darling -L` | Full Nix-in-Darling integration test | End-to-end validation |
+| `nix build .#checks.x86_64-linux.darling-builder -L` | Remote builder VM test (sshd, SSH auth, service) | After editing `nix/darlingBuilderModule.nix` |
 
 See [plan/README.md](./plan/README.md) for the full priority table and effort
 estimates.

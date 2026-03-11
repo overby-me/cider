@@ -420,7 +420,14 @@ checks.x86_64-linux.syscall-regression = nixosTest {
 
 ---
 
-### 6.5 — Nix Compatibility Test Matrix
+### 6.5 — Nix Compatibility Test Matrix ✅
+
+> **Status**: Complete. Implemented at `tests/nix/compatibility-matrix.sh`.
+> Systematic package build tester with 4 tiers (must-pass, should-pass,
+> stretch, aspirational), JSON reporting, cross-run comparison (`--compare`),
+> per-package timeouts, tier/package filtering (`--tier`, `--packages`),
+> colourised output, `--dry-run` and `--list` modes, and CI-friendly exit
+> codes (exit 2 on tier-1 regressions, exit 1 on other failures).
 
 Create a test that attempts to build an expanding set of Nixpkgs packages inside
 Darling and tracks pass/fail rates over time.
