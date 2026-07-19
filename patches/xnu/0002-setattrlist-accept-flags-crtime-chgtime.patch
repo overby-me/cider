@@ -1,0 +1,30 @@
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
+index 543b8cf..ebc597b 100644
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
+@@ -17,8 +17,9 @@ extern int do_linux_fchmodat(int fd, const char* path, int mode, int flag);
+ #define ATTR_CMN_CHGTIME 0x800
+ #define ATTR_CMN_ACCTIME 0x1000
+ #define ATTR_CMN_ACCESSMASK 0x20000
++#define ATTR_CMN_FLAGS 0x40000
+ 
+-#define COMMON_SUPPORTED (ATTR_CMN_MODTIME|ATTR_CMN_ACCTIME|ATTR_CMN_ACCESSMASK)
++#define COMMON_SUPPORTED (ATTR_CMN_CRTIME|ATTR_CMN_MODTIME|ATTR_CMN_CHGTIME|ATTR_CMN_ACCTIME|ATTR_CMN_ACCESSMASK|ATTR_CMN_FLAGS)
+ #define VOLUME_SUPPORTED 0
+ #define DIR_SUPPORTED 0
+ #define FILE_SUPPORTED 0
+@@ -138,6 +139,14 @@ struct xnu_attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, uns
+ 			return errno_linux_to_bsd(rv);
+ 		next += 4;
+ 	}
++	if (alist->commonattr & ATTR_CMN_FLAGS)
++	{
++		// BSD file flags have no Linux equivalent. Accept any value and
++		// report success so that read-modify-write flag cycles succeed
++		// (Nix calls lchflags(path, 0) while registering store paths;
++		// libc implements lchflags via setattrlist with ATTR_CMN_FLAGS).
++		next += 4;
++	}
+ 
+ 	return 0;
+ }

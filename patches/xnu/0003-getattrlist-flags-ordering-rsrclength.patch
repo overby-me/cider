@@ -1,0 +1,110 @@
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c
+index 8377a32..1eb8854 100644
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c
+@@ -15,15 +15,16 @@
+ 
+ #define ATTR_BIT_MAP_COUNT 5
+ 
+-#define COMMON_SUPPORTED (ATTR_CMN_FNDRINFO | ATTR_CMN_OBJTAG)
++#define COMMON_SUPPORTED (ATTR_CMN_OBJTAG | ATTR_CMN_FNDRINFO | ATTR_CMN_FLAGS)
+ #define VOLUME_SUPPORTED 0
+ #define DIR_SUPPORTED (ATTR_DIR_ENTRYCOUNT)
+ #define FILE_SUPPORTED (ATTR_FILE_RSRCLENGTH)
+ #define FORK_SUPPORTED 0
+ 
++#define ATTR_CMN_OBJTAG 0x00000010
+ #define ATTR_CMN_FNDRINFO 0x4000
++#define ATTR_CMN_FLAGS 0x00040000
+ #define ATTR_FILE_RSRCLENGTH 0x1000
+-#define ATTR_CMN_OBJTAG 0x00000010
+ #define ATTR_DIR_ENTRYCOUNT 0x00000002
+ 
+ #define XATTR_FINDER_INFO "com.apple.FinderInfo"
+@@ -85,18 +86,30 @@ struct xnu_attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, uns
+ 	if ((alist->forkattr & FORK_SUPPORTED) != alist->forkattr)
+ 		return -EINVAL;
+ 
+-	if (alist->commonattr & ATTR_CMN_FNDRINFO)
+-		spaceNeeded += 32;
+-	if (alist->fileattr & ATTR_FILE_RSRCLENGTH)
+-		spaceNeeded += 8; // off_t
+ 	if (alist->commonattr & ATTR_CMN_OBJTAG)
+ 		spaceNeeded += sizeof(uint32_t); // fsobj_tag_t
++	if (alist->commonattr & ATTR_CMN_FNDRINFO)
++		spaceNeeded += 32;
++	if (alist->commonattr & ATTR_CMN_FLAGS)
++		spaceNeeded += sizeof(uint32_t);
+ 	if (alist->dirattr & ATTR_DIR_ENTRYCOUNT)
+ 		spaceNeeded += sizeof(uint32_t);
++	if (alist->fileattr & ATTR_FILE_RSRCLENGTH)
++		spaceNeeded += 8; // off_t
+ 
+ 	ourBuffer = (char*) __builtin_alloca(spaceNeeded);
+ 	next = ourBuffer + 4;
+ 
++	// Attributes are packed in group order (common, volume, directory,
++	// file) and within each group in bit-position order, as defined by
++	// getattrlist(2). Common order: OBJTAG (0x10), FNDRINFO (0x4000),
++	// FLAGS (0x40000).
++	if (alist->commonattr & ATTR_CMN_OBJTAG) {
++		// pretend we're always on HFS
++		*((uint32_t*)next) = VT_HFS;
++		next += 4;
++	}
++
+ 	if (alist->commonattr & ATTR_CMN_FNDRINFO)
+ 	{
+ #if HAS_PATH
+@@ -108,23 +121,10 @@ struct xnu_attrlist* alist, void *attributeBuffer, __SIZE_TYPE__ bufferSize, uns
+ 			memset(next, 0, 32);
+ 		next += 32;
+ 	}
+-	if (alist->fileattr & ATTR_FILE_RSRCLENGTH)
+-	{
+-#if HAS_PATH
+-		rv = LINUX_SYSCALL(__NR_getxattr, vc.path, XATTR_FINDER_INFO, NULL, 0);
+-#else
+-		rv = LINUX_SYSCALL(__NR_fgetxattr, fd, XATTR_FINDER_INFO, NULL, 0);
+-#endif
+-		if (rv < 0)
+-			*((uint32_t*) next) = 0;
+-		else
+-			*((uint32_t*) next) = rv;
+-		next += 4;
+-	}
+-
+-	if (alist->commonattr & ATTR_CMN_OBJTAG) {
+-		// pretend we're always on HFS
+-		*((uint32_t*)next) = VT_HFS;
++	if (alist->commonattr & ATTR_CMN_FLAGS) {
++		// BSD file flags are not supported on Linux; report none so that
++		// read-modify-write flag cycles (chflags/lchflags) work.
++		*((uint32_t*)next) = 0;
+ 		next += 4;
+ 	}
+ 
+@@ -170,6 +170,23 @@ attr_dir_entrycount_out_no_fd:
+ 		next += 4;
+ 	}
+ 
++	if (alist->fileattr & ATTR_FILE_RSRCLENGTH)
++	{
++		// off_t (8 bytes): the length of the resource fork, i.e. the size
++		// of the com.apple.ResourceFork xattr. Previously this wrote only
++		// 4 bytes and queried the FinderInfo xattr.
++#if HAS_PATH
++		rv = LINUX_SYSCALL(__NR_getxattr, vc.path, XATTR_RESOURCE_FORK, NULL, 0);
++#else
++		rv = LINUX_SYSCALL(__NR_fgetxattr, fd, XATTR_RESOURCE_FORK, NULL, 0);
++#endif
++		if (rv < 0)
++			*((uint64_t*) next) = 0;
++		else
++			*((uint64_t*) next) = (uint64_t) rv;
++		next += 8;
++	}
++
+ 	if (!(options & FSOPT_REPORT_FULLSIZE) && bufferSize < spaceNeeded)
+ 		bufferSize = spaceNeeded;
+ 

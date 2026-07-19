@@ -1,0 +1,24 @@
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c
+index beae6e3..d044245 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c
+@@ -1,13 +1,17 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/misc/clonefile.h>
+ 
+ #include <signal.h>
++#include <sys/errno.h>
+ 
+ #include <darling/emulation/conversion/duct_errno.h>
+ 
++// ENOTSUP rather than ENOSYS: callers (Nix, copyfile, cp) treat ENOTSUP as
++// "cloning not supported on this filesystem" and fall back to a regular
++// read/write copy, whereas ENOSYS looks like a fatal missing syscall.
+ long sys_clonefileat(int src_fd, const char* src_path, int dest_fd, const char* dest_path, uint32_t flags) {
+-	return -ENOSYS;
++	return -ENOTSUP;
+ }
+ 
+ long sys_fclonefileat(int src_fd, int dest_fd, const char* dest_path, uint32_t flags) {
+-	return -ENOSYS;
++	return -ENOTSUP;
+ }

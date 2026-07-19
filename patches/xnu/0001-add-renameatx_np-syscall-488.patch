@@ -1,0 +1,116 @@
+diff --git a/darling/src/libsystem_kernel/emulation/CMakeLists.txt b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
+index 5b2e765..13a8b79 100644
+--- a/darling/src/libsystem_kernel/emulation/CMakeLists.txt
++++ b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
+@@ -285,6 +285,7 @@ set(xnu_syscall_bsd_sources
+ 	src/xnu_syscall/bsd/impl/unistd/readv.c
+ 	src/xnu_syscall/bsd/impl/unistd/rename.c
+ 	src/xnu_syscall/bsd/impl/unistd/renameat.c
++	src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
+ 	src/xnu_syscall/bsd/impl/unistd/setegid.c
+ 	src/xnu_syscall/bsd/impl/unistd/seteuid.c
+ 	src/xnu_syscall/bsd/impl/unistd/setgid.c
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
+new file mode 100644
+index 0000000..d4d5d7c
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
+@@ -0,0 +1,6 @@
++#ifndef LINUX_RENAMEATX_NP_H
++#define LINUX_RENAMEATX_NP_H
++
++long sys_renameatx_np(int oldfd, const char* oldpath, int newfd, const char* newpath, unsigned int flags);
++
++#endif // LINUX_RENAMEATX_NP_H
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+index 7d5ef80..c442f98 100644
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+@@ -176,6 +176,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/readv.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/rename.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameat.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/setegid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/seteuid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/setgid.h>
+@@ -480,6 +481,7 @@ void* __bsd_syscall_table[600] = {
+ 	[476] = sys_getattrlistat,
+ 	[478] = sys_bsdthread_ctl,
+ 	[483] = sys_csrctl,
++	[488] = sys_renameatx_np,
+ 	[500] = sys_getentropy,
+ 	[515] = sys_ulock_wait,
+ 	[516] = sys_ulock_wake,
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
+new file mode 100644
+index 0000000..5c9406b
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
+@@ -0,0 +1,66 @@
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
++
++#include <sys/errno.h>
++
++#include <darling/emulation/other/mach/lkm.h>
++#include <darling/emulation/common/base.h>
++#include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <darling/emulation/conversion/common_at.h>
++#include <darling/emulation/linux_premigration/vchroot_expand.h>
++
++// XNU flag values (bsd/sys/stdio.h)
++#define XNU_RENAME_SWAP 0x00000002
++#define XNU_RENAME_EXCL 0x00000004
++
++// Linux renameat2(2) flag values
++#define LINUX_RENAME_NOREPLACE 1
++#define LINUX_RENAME_EXCHANGE 2
++
++extern char* strcpy(char* dst, const char* src);
++
++// Syscall 488. Translates to Linux renameat2(2):
++//   RENAME_SWAP -> RENAME_EXCHANGE, RENAME_EXCL -> RENAME_NOREPLACE.
++// XNU rejects unknown flags and the SWAP+EXCL combination with EINVAL
++// (bsd/vfs/vfs_syscalls.c, renameat_internal); we mirror that here.
++// RENAME_SECLUDE has no Linux equivalent and is therefore also rejected.
++long sys_renameatx_np(int oldfd, const char* oldpath, int newfd, const char* newpath, unsigned int flags)
++{
++	int ret;
++	unsigned int linux_flags = 0;
++	struct vchroot_expand_args vc, vc2;
++
++	if (flags & ~(XNU_RENAME_SWAP | XNU_RENAME_EXCL))
++		return -EINVAL;
++	if ((flags & XNU_RENAME_SWAP) && (flags & XNU_RENAME_EXCL))
++		return -EINVAL;
++
++	if (flags & XNU_RENAME_SWAP)
++		linux_flags |= LINUX_RENAME_EXCHANGE;
++	if (flags & XNU_RENAME_EXCL)
++		linux_flags |= LINUX_RENAME_NOREPLACE;
++
++	vc.flags = 0;
++	vc.dfd = atfd(oldfd);
++
++	strcpy(vc.path, oldpath);
++
++	vc2.flags = 0;
++	vc2.dfd = atfd(newfd);
++
++	strcpy(vc2.path, newpath);
++
++	ret = vchroot_expand(&vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++	ret = vchroot_expand(&vc2);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	ret = LINUX_SYSCALL(__NR_renameat2, vc.dfd, vc.path, vc2.dfd, vc2.path, linux_flags);
++
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	return 0;
++}
