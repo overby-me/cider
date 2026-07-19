@@ -210,31 +210,41 @@ def collect_official(sdk_root, root_tbd, arch, platform):
 
 
 def collect_darling(root, arch):
-    """nm every dylib under `root`; return set of defined external symbols."""
-    nm = which("llvm-nm") or which("nm")
-    if not nm:
-        sys.exit("error: need llvm-nm or nm on PATH")
-    defined = set()
+    """Return the set of symbols exported by every dylib under `root`.
+
+    Uses the Mach-O exports trie (llvm-objdump --exports-trie), NOT nm: the
+    trie is authoritative and, crucially, includes RE-EXPORT aliases. Darling
+    exports e.g. `_memcpy` as `[re-export] _memcpy (__platform_memmove from
+    libsystem_platform)` in libsystem_c - these never appear in `nm -gU`, so an
+    nm-based scan wildly under-reports the real export surface.
+    """
+    objdump = which("llvm-objdump")
+    if not objdump:
+        sys.exit("error: need llvm-objdump on PATH (nix shell nixpkgs#llvm)")
+    exported = set()
     dylibs = []
     for dp, _, files in os.walk(root):
         for f in files:
-            if f.endswith(".dylib") or f.endswith(".B.dylib") or ".dylib." in f:
+            if ".dylib" in f:
                 dylibs.append(os.path.join(dp, f))
+    reexp = re.compile(r"\[re-export\]\s+(\S+)")
+    direct = re.compile(r"^0x[0-9A-Fa-f]+\s+(\S+)")
     for lib in dylibs:
         try:
             out = subprocess.run(
-                [nm, f"--arch={arch}", "-gU", lib],
+                [objdump, "--macho", "--exports-trie", f"--arch={arch}", lib],
                 capture_output=True, text=True, timeout=120).stdout
         except Exception:
             continue
         for line in out.splitlines():
-            parts = line.split()
-            # "<addr> <type> <name>" for defined; type in T/D/B/S/etc.
-            if len(parts) >= 3 and parts[1] in ("T", "D", "B", "S", "R", "G", "I"):
-                defined.add(parts[2])
-            elif len(parts) == 2 and parts[0] in ("T", "D", "B", "S", "R", "G", "I"):
-                defined.add(parts[1])
-    return defined, len(dylibs)
+            m = reexp.search(line)
+            if m:
+                exported.add(m.group(1))
+                continue
+            m = direct.match(line.strip())
+            if m and m.group(1).startswith("_"):
+                exported.add(m.group(1))
+    return exported, len(dylibs)
 
 
 def which(x):
