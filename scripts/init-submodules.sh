@@ -71,6 +71,26 @@ for path in "${!GITLINK_OVERRIDE[@]}"; do
   git -C "$path" submodule update --init --recursive --jobs "$JOBS" || true
 done
 
+# Repair pass: the parallel update aborts on the first hard failure (the xnu
+# override above), which can leave later submodules registered but with no
+# checked-out content (only a .git file). Re-fetch any that are empty.
+echo "==> Repairing content-empty submodules"
+repaired=0
+while read -r _ path; do
+  [[ -z "$path" ]] && continue
+  n=$(ls -A "$path" 2>/dev/null | grep -v '^\.git$' | wc -l)
+  if [[ "$n" -eq 0 ]]; then
+    echo "    re-fetching $path"
+    git submodule update --init --force "$path" >/dev/null 2>&1 || {
+      # Maybe it's another orphaned gitlink; try latest upstream default branch.
+      url=$(git config "submodule.$path.url" 2>/dev/null)
+      [[ -n "$url" ]] && { rm -rf "$path"/* 2>/dev/null; git clone --depth 1 "$url" "$path" 2>/dev/null; }
+    }
+    repaired=$((repaired+1))
+  fi
+done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.path$')
+echo "    repaired ${repaired} empty submodule(s)"
+
 if [[ $APPLY_PATCHES -eq 1 && -d patches ]]; then
   echo "==> Applying local patches"
   for dir in patches/*/; do
