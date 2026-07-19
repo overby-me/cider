@@ -2,7 +2,7 @@
   description = "Darling - macOS compatibility layer for Linux";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flakelight = {
       url = "github:nix-community/flakelight";
       inputs.nixpkgs.follows = "nixpkgs";

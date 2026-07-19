@@ -1,453 +1,326 @@
-# PLAN: Making Darling Fully Capable of Running Nix
+# PLAN.md — Campaign 2: x86_64-darwin builds on nixpkgs 26.05, structured for the aarch64 port
 
-> **Goal**: Enable Darling (macOS compatibility layer for Linux) to run the Nix
-> package manager reliably, so that Linux machines can build, test, and
-> cross-compile `x86_64-darwin` Nix derivations — analogous to how Wine enables
-> building and testing Windows binaries on Linux.
+> **Audience:** an autonomous agent (Claude) working in this repository (`darling-nix`,
+> a fork of darlinghq/darling with Nix support layered on top).
+> **Read this whole file before touching anything.** Then read `plan/README.md` and skim
+> the `plan/` documents from Campaign 1 — the phase machinery, scripts, and conventions
+> from that campaign are reused here, not reinvented.
 
-The full plan has been split into focused documents to keep context manageable.
-See the **[plan/](./plan/)** directory for all details.
+---
 
-## Progress Summary
+## 1. Mission
 
-| Phase | Status | Key Files |
-|-------|--------|-----------|
-| Phase 0 — Packaging | ✅ Done | `flake.nix`, `nix/package.nix`, `nix/devShell.nix`, `nix/nixosModule.nix`, `.envrc` |
-| Phase 1 — Syscalls | ✅ Core done, triage ongoing | [Triage table](./plan/syscall-triage.md) |
-| Phase 2 — Sandbox | ✅ Done | `src/sandbox/sandbox.c` (fixed), `src/sandbox-exec/` (new), `tests/sandbox/` (new) |
-| Phase 3 — Nix Install | 🚧 In progress | `scripts/install-nix-in-darling.sh`, `scripts/darling-nix`, `scripts/verify-nix.sh` |
-| Phase 4 — Building | 🚧 Tooling ready | `scripts/build-trivial.sh` (new) |
-| Phase 5 — Daemon | 🚧 Stubs done | `src/dirserv/` (new), `tests/dirserv/` (new) |
-| Phase 6 — CI | 🚧 In progress | `.tangled/workflows/ci.yml`, `tests/darling-smoke.nix`, `tests/nix-in-darling.nix`, `tests/nix/compatibility-matrix.sh` (new) |
-| Phase 7 — Remote Builder | 🚧 Module, hook & docs ready | `nix/darlingBuilderModule.nix` (new), `scripts/darling-build-hook` (new), `tests/darling-builder.nix` (new), `docs/darwin-builder.md` (new), `templates/darling-builder/` (new) |
-| Phase 8 — Stretch | 📋 Planned | — |
+**End goal (not this campaign):** build `aarch64-darwin` nixpkgs derivations on
+non-Apple ARM Linux hardware, using Darling as the Darwin compatibility layer.
 
-### Recently Completed
+**This campaign:** make `x86_64-darwin` builds actually work end-to-end against
+**nixpkgs 26.05**, because:
 
-- **Phase 7.7 — Documentation and flake template**: Created
-  `docs/darwin-builder.md` — comprehensive user-facing guide covering
-  NixOS module quick start, manual setup (sshd, SSH keys, builder
-  registration), shared `/nix/store` configuration, verification
-  procedures, custom build hook (no SSH) alternative, performance
-  tuning (binary substitution, job parallelism, store sharing, storage),
-  troubleshooting (connection refused, permission denied, unimplemented
-  syscalls, database errors, sandbox issues, slow builds), security
-  considerations, and architecture diagram. Created
-  `templates/darling-builder/` — a `nix flake init` template that
-  generates a ready-to-use NixOS configuration with the Darling builder
-  module pre-configured. Wired into `flake.nix` as
-  `templates.darling-builder`. Includes its own README with options
-  reference, architecture diagram, and troubleshooting section.
-- **Phase 7.5 — NixOS module for Darling builder**: Created
-  `nix/darlingBuilderModule.nix` — a full NixOS module that sets up a
-  Darling instance as a `nix.buildMachines` remote builder for
-  `x86_64-darwin`. Manages SSH key generation, Darling prefix
-  initialisation (sshd setup, nix.conf, Directory Services stubs
-  verification, optional Nix auto-install), a `darling-builder` systemd
-  service running sshd inside the prefix, optional `/nix/store` sharing
-  via `/Volumes/SystemRoot/nix` symlink, and build machine registration.
-  Includes a `darling-builder-test` connectivity diagnostic script.
-  Wired into `flake.nix` as `nixosModules.darling-builder` and a new
-  `checks.x86_64-linux.darling-builder` NixOS VM test.
-- **Phase 7.4 — Custom build hook**: Created `scripts/darling-build-hook`
-  — a shell script that offloads `x86_64-darwin` builds to a local
-  Darling instance without SSH. Supports the legacy Nix build hook
-  protocol on stdin/stdout and direct `--build <drv>` invocations.
-  Includes `--check` (environment validation), `--query-outputs`,
-  `--machine-spec`, and `--verbose` modes. Configurable via environment
-  variables (`DARLING_BUILD_HOOK_DARLING`, `DARLING_BUILD_HOOK_PREFIX`,
-  etc.).
-- **Phase 7 — NixOS VM test for remote builder**: Created
-  `tests/darling-builder.nix` — 12-stage NixOS VM test covering service
-  startup, SSH key generation, sshd reachability, SSH key auth, macOS
-  identity via SSH, sshd config validation, nix.conf inside prefix,
-  build machine registration, Directory Services stubs via SSH,
-  sandbox-exec via SSH, file operations, and service restart resilience.
-- **Phase 6.5 — Nix compatibility test matrix**: Created
-  `tests/nix/compatibility-matrix.sh` — systematic package build tester
-  with 4 tiers (must-pass / should-pass / stretch / aspirational),
-  JSON reporting, cross-run comparison (`--compare`), per-package
-  timeouts, tier/package filtering, colourised output, and CI-friendly
-  exit codes (exit 2 on tier-1 regressions).
-- **Phase 5.1 — Directory Services stubs**: Created `src/dirserv/` with three
-  shell-script stubs (`dseditgroup`, `sysadminctl`, `dscl`) that translate
-  macOS Directory Services commands to direct `/etc/passwd` and `/etc/group`
-  file operations within the Darling prefix. These are required by the Nix
-  multi-user installer to create the `nixbld` group and `_nixbldN` build users.
-  - `dseditgroup`: create/delete/edit groups, add/remove members, checkmember,
-    read group info. Idempotent operations, input validation.
-  - `sysadminctl`: addUser/deleteUser with UID, GID, home, shell, fullName.
-    Handles `-password`, `-adminUser`, `-roleAccount` flags (ignored). Idempotent.
-  - `dscl`: read/list/create/delete/append/search on `/Users` and `/Groups`
-    paths. Supports `.` and `/Local/Default` datasources. Full key coverage
-    for Nix installer needs (UniqueID, PrimaryGroupID, NFSHomeDirectory,
-    UserShell, RealName, GroupMembership, etc.).
-  - Wired into CMake build via `src/dirserv/CMakeLists.txt`; installs to
-    `libexec/darling/usr/sbin/`.
-  - Comprehensive test suite: `tests/dirserv/test_dirserv.sh` with 60+ tests
-    covering all three tools individually and a full Nix installer simulation
-    (create group → create 5 build users → add to group → verify → idempotent
-    re-run → cleanup).
-- **Phase 6.1 — NixOS VM test**: Created `tests/nix-in-darling.nix` — full
-  end-to-end NixOS VM integration test that boots Darling, verifies the shell,
-  sandbox-exec, Directory Services stubs, installs Nix, tests core commands
-  (version, eval, store verify), confirms `builtins.currentSystem ==
-  x86_64-darwin`, and builds trivial derivations.
-- **Phase 6.6 — Darling smoke test**: Created `tests/darling-smoke.nix` —
-  lightweight NixOS VM test (no network required) that verifies Darling boots,
-  shell works, macOS identity is correct, filesystem operations work,
-  sandbox-exec/diskutil/Directory Services stubs are functional, and no
-  unimplemented syscall warnings appear during basic operations.
-- **Phase 6.2 — Wired tests into `flake.nix`**: Added `checks` output with
-  three entries: `darling-build` (package builds), `darling-smoke` (VM smoke
-  test), `nix-in-darling` (full integration test), and `dirserv-stubs` (pure
-  shell unit test for Directory Services stubs, runnable without Darling).
-- **Test runner updated**: Added `dirserv` suite to `scripts/run-tests.sh`
-  (now 6 suites total).
-- **Test runner**: Created `scripts/run-tests.sh` — unified test runner that
-  copies all regression test sources into a Darling prefix, compiles C suites
-  with the macOS toolchain, executes them (and shell-based suites), and
-  produces a colour-coded per-suite summary. Supports `--suite` filtering,
-  `--verbose`, and `--keep` for post-mortem debugging.
-- **Nix verification**: Created `scripts/verify-nix.sh` — standalone
-  health-check for a Nix installation inside Darling. Checks infrastructure
-  (prefix, binaries), core commands (`nix --version`, `nix-env`, `nix-store`),
-  evaluator (`nix eval`, `builtins.currentSystem == x86_64-darwin`), store
-  integrity (SQLite PRAGMA, path count), syscall health (no "Unimplemented
-  syscall" or STUB warnings), optional network tests (`--online`), and
-  environment (macOS version, nix.conf settings). Supports `--json` for CI.
-- **Build test tooling**: Created `scripts/build-trivial.sh` — progressive
-  derivation build script for Phase 4.1. Five levels: (1) echo to `$out`,
-  (2) multi-line builder with mkdir/chmod/loops, (3) input transformation
-  via `builtins.toFile`, (4) derivation dependency chain, (5) binary
-  substitution from `cache.nixos.org`. Each level prints targeted debugging
-  hints on failure.
-- **Phase 1.8**: Verified emulated macOS version — `SystemVersion.plist`
-  already reports 11.7.4 (Big Sur), `CMakeLists.txt` sets
-  `CMAKE_OSX_DEPLOYMENT_TARGET 11.0`. No changes needed — task complete.
-- **Bug fix**: Fixed `getattrlist` attribute buffer ordering — common
-  attributes are now written in Apple-defined bit-position order
-  (OBJTAG 0x10 → FNDRINFO 0x4000 → FLAGS 0x40000) instead of the
-  previous incorrect order (FNDRINFO → FLAGS → OBJTAG). This prevents
-  corrupted reads when callers request multiple common attributes.
-- **Task 1.7**: Created `scripts/triage-syscalls.sh` — automated syscall
-  discovery script that runs Nix operations inside Darling, captures
-  "Unimplemented syscall" messages, categorizes them, and produces a
-  Markdown report suitable for pasting into `plan/syscall-triage.md`.
-- **Task 1.4**: Created `tests/syscall/test_utimensat.c` — comprehensive
-  regression tests for utimensat/setattrlistat timestamp handling (16 tests
-  covering MODTIME, ACCTIME, CRTIME, CHGTIME, combined attrs, FSOPT_NOFOLLOW
-  on symlinks, utimes/lutimes libc functions, NULL pointers, kitchen-sink
-  multi-attribute scenarios).
-- **Phase 1.3**: Implemented `renameatx_np` (macOS syscall 488) — new file
-  `src/external/xnu/.../impl/unistd/renameatx_np.c` translates to Linux
-  `renameat2(2)` with flag mapping: `RENAME_SWAP` → `RENAME_EXCHANGE`,
-  `RENAME_EXCL` → `RENAME_NOREPLACE`. Wired into syscall table at slot 488.
-- **Phase 1.1**: Extended `setattrlist` / `fsetattrlist` / `setattrlistat` to
-  support `ATTR_CMN_FLAGS` — the core blocker for `lchflags(path, 0)` which
-  Nix calls during profile installation. Also added `ATTR_CMN_CRTIME` and
-  `ATTR_CMN_CHGTIME` (silently ignored). Extended `getattrlist` /
-  `fgetattrlist` / `getattrlistat` to return `flags = 0` when
-  `ATTR_CMN_FLAGS` is requested, enabling read-modify-write flag cycles.
-- **Phase 1.5**: Changed `clonefile` / `fclonefileat` stubs from `ENOSYS` to
-  `ENOTSUP` so Nix gracefully falls back to regular read/write copy instead
-  of treating it as a fatal unimplemented-syscall error.
-- **Phase 1.6**: Verified `getentropy` (syscall 500) already works — maps to
-  Linux `getrandom(2)`, no changes needed.
-- **Testing**: Created `tests/syscall/test_renameatx_np.c` (renameatx_np
-  regression tests: plain rename, RENAME_SWAP, RENAME_EXCL, invalid flags)
-  and `tests/syscall/test_setattrlist_flags.c` (setattrlist/getattrlist
-  ATTR_CMN_FLAGS tests: lchflags, chflags, symlinks, combined attrs,
-  fsetattrlist, read-modify-write cycle).
-- **Phase 2.2**: Fixed `sandbox_init`, `sandbox_init_with_parameters`,
-  `sandbox_init_with_extensions`, and `sandbox_wakeup_daemon` — they now set
-  `*errorbuf = NULL` on success instead of `strdup("Not implemented")`, and
-  guard against NULL `errorbuf` pointers.
-- **Phase 2.1**: Created `sandbox-exec` stub at `src/sandbox-exec/sandbox-exec.c`
-  — a small C program that parses and ignores all sandbox flags (`-f`, `-p`,
-  `-n`, `-D`) then `exec`s the remaining command. Wired into the CMake build
-  via `src/sandbox-exec/CMakeLists.txt`; installs to
-  `libexec/darling/usr/bin/sandbox-exec`.
-- **Blocker mitigation**: Extended `src/diskutil/diskutil` with `info` and
-  `list` verb stubs so the Nix installer's filesystem-type check succeeds.
-- **Phase 3.1**: Created `scripts/install-nix-in-darling.sh` — automated
-  installer that downloads, patches, and runs the Nix Darwin installer inside
-  a Darling prefix in single-user mode.
-- **Phase 3.4**: Created `scripts/darling-nix` — host-side wrapper for running
-  Nix commands inside Darling without manual `darling shell bash -lc` boilerplate.
-- **Phase 6.3**: Created `.tangled/workflows/ci.yml` — tangled.org CI workflow
-  with Cachix caching and `nix flake check`.
-- **Phase 1.7**: Created `plan/syscall-triage.md` — tracking table for
-  unimplemented syscalls with categories, impact levels, and discovery log.
-- **Testing**: Created `tests/sandbox/test_sandbox_api.c` (C-level sandbox API
-  tests) and `tests/sandbox/test_sandbox_exec.sh` (shell-level sandbox-exec
-  integration tests).
+1. Iteration is native-speed on our x86_64 dev machines (no QEMU tax).
+2. nixpkgs 26.05 is the **final** release supporting x86_64-darwin. It is a *frozen
+   target*: the package set, bootstrap tools, and Hydra-built cache paths will never
+   move again. cache.nixos.org historically retains old store paths, so it remains a
+   permanent correctness oracle.
+3. Most of the remaining work (libSystem symbol surface for macOS 14, the build/verify
+   harness, the cache-diff oracle, daemon plumbing) is **architecture-independent** and
+   transfers wholesale to aarch64.
 
-## Quick Navigation
+Every task below is tagged **[ARCH-FREE]** (transfers to aarch64 as-is),
+**[ARCH-PARAM]** (transfers if parameterized now), or **[X86-ONLY]** (throwaway —
+minimize investment).
 
-| Document | Description |
-|---|---|
-| [plan/README.md](./plan/README.md) | **Start here** — index, priority table, effort estimates |
-| [plan/00-background.md](./plan/00-background.md) | Motivation, what works today, what doesn't |
-| [plan/01-blockers.md](./plan/01-blockers.md) | Detailed analysis of each blocking issue |
-| [plan/02-phase0-packaging.md](./plan/02-phase0-packaging.md) | `flake.nix`, devShell, `.envrc`, NixOS module |
-| [plan/03-phase1-syscalls.md](./plan/03-phase1-syscalls.md) | `setattrlist`, `renameatx_np`, `utimensat`, etc. |
-| [plan/04-phase2-sandbox.md](./plan/04-phase2-sandbox.md) | `sandbox-exec` passthrough, sandbox API stubs |
-| [plan/05-phase3-nix-install.md](./plan/05-phase3-nix-install.md) | Automated installer, verification, wrappers |
-| [plan/06-phase4-building.md](./plan/06-phase4-building.md) | Trivial derivations → stdenv → binary substitution |
-| [plan/07-phase5-daemon.md](./plan/07-phase5-daemon.md) | Multi-user mode, Directory Services stubs, launchd |
-| [plan/08-phase6-ci.md](./plan/08-phase6-ci.md) | NixOS VM tests, regression suite, tangled.org CI |
-| [plan/09-phase7-remote-builder.md](./plan/09-phase7-remote-builder.md) | Darling as a `nix.buildMachines` target |
-| [plan/10-phase8-stretch.md](./plan/10-phase8-stretch.md) | `aarch64-darwin`, GUI testing, Hydra builder |
-| [plan/11-architecture.md](./plan/11-architecture.md) | System diagram, key technical decisions, glossary |
-| [plan/syscall-triage.md](./plan/syscall-triage.md) | Tracking table for unimplemented syscalls |
-| [docs/darwin-builder.md](./docs/darwin-builder.md) | **User guide** — setup, troubleshooting, performance tuning |
+---
 
-## New File Map
+## 2. Ground truth (verified July 2026 — re-verify anything load-bearing)
 
-Files created or modified as part of this plan:
+### 2.1 nixpkgs / platform facts
 
-```text
-darling-nix/
-├── .tangled/workflows/ci.yml          # tangled.org CI workflow (Phase 6)
-├── docs/
-│   └── darwin-builder.md               # NEW — User-facing setup guide, troubleshooting, perf tuning (Phase 7.7)
-├── flake.nix                           # Flake with package, devShell, NixOS module, builder, templates (Phase 0, 7)
-├── nix/
-│   ├── package.nix                     # Darling Nix derivation (Phase 0)
-│   ├── devShell.nix                    # Developer shell (Phase 0)
-│   ├── nixosModule.nix                 # NixOS module — programs.darling (Phase 0)
-│   └── darlingBuilderModule.nix        # NEW — NixOS module — services.darling-builder (Phase 7.5)
-├── scripts/
-│   ├── build-trivial.sh                # NEW — Progressive derivation build tests (Phase 4)
-│   ├── darling-build-hook              # NEW — Nix build hook for local Darling builds (Phase 7.4)
-│   ├── darling-nix                     # Host-side Nix command wrapper (Phase 3)
-│   ├── install-nix-in-darling.sh       # Automated Nix installer (Phase 3)
-│   ├── run-tests.sh                    # NEW — Unified regression test runner (6 suites)
-│   ├── triage-syscalls.sh              # Automated syscall triage (Phase 1)
-│   └── verify-nix.sh                   # NEW — Standalone Nix health-check (Phase 3)
-├── src/
-│   ├── dirserv/                        # NEW — Directory Services stubs (Phase 5)
-│   │   ├── CMakeLists.txt
-│   │   ├── dscl                        # dscl stub (read/list/create/delete/append/search)
-│   │   ├── dseditgroup                 # dseditgroup stub (create/edit/delete/checkmember/read)
-│   │   └── sysadminctl                 # sysadminctl stub (addUser/deleteUser)
-│   ├── sandbox/sandbox.c               # Fixed sandbox API stubs (Phase 2)
-│   ├── sandbox-exec/                   # NEW — sandbox-exec stub (Phase 2)
-│   │   ├── CMakeLists.txt
-│   │   └── sandbox-exec.c
-│   └── diskutil/diskutil               # Extended with info/list verbs (Phase 3)
-├── tests/
-│   ├── darling-builder.nix             # NEW — NixOS VM test for remote builder (Phase 7)
-│   ├── darling-smoke.nix               # NEW — NixOS VM smoke test (Phase 6.6)
-│   ├── nix-in-darling.nix              # NEW — NixOS VM integration test (Phase 6.1)
-│   ├── dirserv/                        # NEW — Directory Services regression tests
-│   │   └── test_dirserv.sh             # 60+ tests for dseditgroup/sysadminctl/dscl
-│   ├── nix/                            # NEW — Nix-level compatibility tests
-│   │   └── compatibility-matrix.sh     # Package build matrix with 4 tiers (Phase 6.5)
-│   ├── sandbox/                        # NEW — sandbox regression tests
-│   │   ├── test_sandbox_api.c          # C-level sandbox API tests
-│   │   └── test_sandbox_exec.sh        # Shell-level sandbox-exec tests
-│   └── syscall/                        # NEW — syscall regression tests
-│       ├── test_renameatx_np.c         # renameatx_np tests (Phase 1)
-│       ├── test_setattrlist_flags.c    # setattrlist ATTR_CMN_FLAGS tests (Phase 1)
-│       └── test_utimensat.c            # utimensat/timestamp tests (Phase 1)
-├── templates/
-│   └── darling-builder/                # NEW — Flake template for Darwin builder setup (Phase 7.7)
-│       ├── flake.nix                   # Ready-to-use NixOS config with services.darling-builder
-│       └── README.md                   # Quick start, options reference, troubleshooting
-└── plan/
-    ├── README.md                       # Index + priority table
-    ├── 00-background.md                # Motivation & current state
-    ├── 01-blockers.md                  # Blocking issues analysis
-    ├── 02-phase0-packaging.md          # Phase 0 details
-    ├── 03-phase1-syscalls.md           # Phase 1 details
-    ├── 04-phase2-sandbox.md            # Phase 2 details
-    ├── 05-phase3-nix-install.md        # Phase 3 details
-    ├── 06-phase4-building.md           # Phase 4 details
-    ├── 07-phase5-daemon.md             # Phase 5 details
-    ├── 08-phase6-ci.md                 # Phase 6 details
-    ├── 09-phase7-remote-builder.md     # Phase 7 details
-    ├── 10-phase8-stretch.md            # Phase 8 details
-    ├── 11-architecture.md              # Architecture & decisions
-    └── syscall-triage.md               # Syscall tracking table
-```
+- Nixpkgs **26.05 "Yarara"** (released 2026-05-30) is the **last release supporting
+  x86_64-darwin**. Binaries are built until 26.05 EOL at end of 2026. 26.11 drops the
+  platform entirely, including building from source.
+- Since nixpkgs 25.11, the minimum supported macOS is **Sonoma 14.0** (Darwin kernel
+  **23.x**). Default SDK was 14.4 as of 25.11. `cc-wrapper` enforces availability
+  annotations / deployment targets.
+  **Do not hardcode these — verify against the actual pin** (see Phase A task 1).
+- The modern SDK pattern: a unified `apple-sdk` package provides `$SDKROOT` with
+  `.tbd` text-stub libraries (`usr/lib/libSystem.tbd` re-exporting the
+  `libsystem_*` constellation). Binaries link against stubs; symbols resolve at
+  runtime from the host — i.e. **from Darling's reimplemented libraries**. This is
+  why derivation hashes don't depend on Darling at all.
 
-## What's Next
+### 2.2 Repository state (end of Campaign 1)
 
-The **critical path to MVP** (Nix running inside Darling) is steps 1–4.
-Step 5 (remote builder) extends the MVP into a **usable Darwin builder**.
+Already built and working to some degree — reuse, don't rebuild:
 
-1. **Build & test**: All core Phase 1 syscall work is complete. Build
-   Darling with these changes and run the full regression test suite:
+- **Syscall fixes:** `renameatx_np`→`renameat2`, `setattrlist`/`getattrlist`
+  ATTR_CMN_FLAGS handling (the lchflags blocker), `clonefile`→`ENOTSUP` fallback,
+  `utimensat` fixes + regression tests (`tests/syscall/`).
+- **Sandbox:** `sandbox-exec` parse-and-ignore stub (`src/sandbox-exec/`),
+  sandbox API stubs fixed to report success.
+- **Directory Services stubs:** `dscl`, `dseditgroup`, `sysadminctl`
+  (`src/dirserv/`, 78-test suite).
+- **Nix install automation:** `scripts/install-nix-in-darling.sh`,
+  `scripts/darling-nix` wrapper, `scripts/verify-nix.sh` health check.
+- **Build testing:** `scripts/build-trivial.sh` (5 progressive levels),
+  `tests/nix/compatibility-matrix.sh` (4-tier matrix, JSON reporting).
+- **Triage automation:** `scripts/triage-syscalls.sh` — runs Nix ops inside Darling,
+  captures unimplemented-syscall messages, emits a Markdown report. This is the core
+  grind loop; extend it, keep it working.
+- **Remote builder:** `nix/darlingBuilderModule.nix` (`services.darling-builder`,
+  sshd in prefix, `nix.buildMachines`), `scripts/darling-build-hook` (no-SSH offload),
+  NixOS VM tests (`tests/darling-builder.nix`, `tests/nix-in-darling.nix`,
+  `tests/darling-smoke.nix`), tangled.org CI (`.tangled/workflows/ci.yml`).
+- **Known problem branches:** `fixPythonPipStalling` (runtime stall class — likely
+  kqueue/select/poll fidelity), three `feature/arm-support*` attempts (salvage
+  assessment is Phase F).
 
-   ```bash
-   # One command runs everything:
-   ./scripts/run-tests.sh
+**Campaign 2 addendum (verified 2026-07-19):** Campaign 1 machinery was never
+validated end-to-end on a live prefix. The fork's submodules are fetched from
+upstream darlinghq via `scripts/init-submodules.sh` (relative URLs are unhosted),
+and the Campaign-1 xnu changes are carried as `patches/xnu/*.patch` on top of the
+upstream base rev. See `plan/26.05-facts.md` for verified pin facts.
 
-   # Or target individual suites:
-   ./scripts/run-tests.sh --suite renameatx_np --verbose
-   ./scripts/run-tests.sh --suite sandbox_exec --keep
-   ```
+### 2.3 Current identity masquerade — **now wrong**
 
-   Suites exercised:
-   - `renameatx_np` — renameatx_np syscall 488 (5 tests)
-   - `setattrlist_flags` — setattrlist/getattrlist ATTR_CMN_FLAGS (10 tests)
-   - `utimensat` — utimensat/setattrlistat timestamps (16 tests)
-   - `sandbox_api` — sandbox C API stubs
-   - `sandbox_exec` — sandbox-exec integration (20 tests)
-   - `dirserv` — Directory Services stubs (60+ tests)
+Campaign 1 pinned `SystemVersion.plist` to **11.7.4** (Big Sur) with
+`CMAKE_OSX_DEPLOYMENT_TARGET=11.0`. nixpkgs ≥25.11 refuses / misbehaves below
+macOS 14.0, and official 26.05 binaries **strongly link the macOS 14.0 libSystem
+symbol surface**. Fixing this mismatch is Phases A and B.
 
-2. **Phase 1.7 — Live triage**: Run `scripts/triage-syscalls.sh` inside a
-   Darling prefix with Nix installed to discover any remaining unimplemented
-   syscalls that weren't caught during code audit. This will populate the
-   triage table with real-world findings.
+---
 
-   ```bash
-   ./scripts/triage-syscalls.sh --output plan/syscall-triage-live.md
-   ```
+## 3. Invariants — never violate these
 
-3. **Phase 3 — Nix installation**: With all known syscall blockers resolved
-   (`lchflags`, `mv`/renameatx_np, `touch`/utimensat, `clonefile` stub,
-   `getattrlist` buffer ordering fix), install Nix and verify:
+1. **Official expressions only.** Build with unmodified nixpkgs 26.05 and its official
+   `apple-sdk` derivations. Derivation identity lives in the Nix expressions; our job
+   is to make the *outputs* correct, not to fork the inputs. A patched nixpkgs means
+   incomparable hashes and a worthless oracle. If a nixpkgs-side change seems
+   unavoidable, stop and record it in `plan/blockers.md` instead.
+2. **Never copy Apple-proprietary bits into build outputs or the repo.** SDK stubs and
+   headers flow through Nix's own fetch of `apple-sdk` (the user accepts that posture);
+   we never vendor them. Implementations we write come from Apple's open-source
+   releases (APSL: Libc, libsystem_kernel surface, libdispatch, libpthread, libmalloc,
+   libplatform, objc4, libc++, CF, dyld) or clean-room work from public documentation.
+   Do not consult leaked/proprietary sources. Note provenance in commit messages when
+   porting from Apple open source.
+3. **The ratchet: green never regresses.** Every fix lands with a regression test.
+   `scripts/run-tests.sh` and the flake checks must pass before every commit.
+   The compatibility matrix is append-only progress: a package that built keeps
+   building.
+4. **Arch discipline.** New code that touches registers, syscall numbers, thread
+   state, signal frames, TLS, page size, or Mach-O CPU types goes behind the existing
+   arch abstraction (or a new `arch/` boundary you create). aarch64 is the customer;
+   x86_64 is the test rig.
+5. **Follow house style.** Conventional commits with phase tags
+   (`feat(phaseB.3): ...`), update this file's checkboxes and the relevant `plan/`
+   doc in the same commit, keep `plan/syscall-triage.md` current.
 
-   ```bash
-   # Install Nix inside a Darling prefix
-   ./scripts/install-nix-in-darling.sh
+---
 
-   # Verify the installation is healthy
-   ./scripts/verify-nix.sh
-   ./scripts/verify-nix.sh --online  # also test network/cache access
+## 4. Phase A — Retarget identity to nixpkgs 26.05 / macOS 14 **[ARCH-FREE]**
 
-   # Quick ad-hoc commands via the wrapper
-   ./scripts/darling-nix nix --version
-   ./scripts/darling-nix nix eval --expr 'builtins.currentSystem'
-   ```
+Goal: Darling credibly claims to be a macOS-14-class system to Nix and to nixpkgs
+builds.
 
-4. **Phase 4 — Derivation building**: Once Nix installs successfully,
-   exercise the full build pipeline with progressively harder derivations:
+- [x] **A.1 Pin and interrogate nixpkgs.** Add a flake input pinned to the
+      `nixpkgs-26.05-darwin` branch (fall back to `nixos-26.05` if needed). Record in
+      `plan/26.05-facts.md`: `nix eval` results for
+      `pkgs.stdenv.hostPlatform.darwinMinVersion`, `darwinSdkVersion`, the default
+      `apple-sdk` version, and the exact bootstrap-tools derivation + hash used by
+      `pkgs/stdenv/darwin` for `x86_64-darwin`. All later phases cite this file, not
+      memory.
+- [ ] **A.2 Bump the masquerade.** Update `SystemVersion.plist` (ProductVersion /
+      ProductBuildVersion) to a real macOS release ≥ the verified floor (prefer the
+      version matching the default SDK, e.g. 14.4.x). Update the Darwin kernel
+      version reported by `uname -r` / `kern.osrelease` / `kern.osversion` /
+      `kern.osproductversion` sysctls to the matching **Darwin 23.x** triple, and
+      `CMAKE_OSX_DEPLOYMENT_TARGET` for Darling's own libs. Audit for other places
+      the OS version leaks (`sw_vers`, `NSProcessInfo`/CF version constants,
+      `libSystem` init).
+- [ ] **A.3 Regression-test the identity.** Extend the smoke test: `sw_vers`,
+      `uname -a`, `sysctl kern.osproductversion`, and
+      `nix eval --impure --expr builtins.currentSystem` inside the prefix must all
+      report the 14-class identity. Nix's own Darwin version checks must pass.
 
-   ```bash
-   # Run all five levels (stops early if a foundational level fails)
-   ./scripts/build-trivial.sh
+**Exit criteria:** `verify-nix.sh` green against the 26.05 pin; no version-floor
+refusals anywhere in `nix`'s own operation.
 
-   # Target a specific level with debug output
-   ./scripts/build-trivial.sh --level 1 --debug
+---
 
-   # Keep built derivations for inspection
-   ./scripts/build-trivial.sh --keep --verbose
-   ```
+## 5. Phase B — Close the libSystem symbol gap to the 14.0 surface **[ARCH-FREE]**
 
-   Levels:
-   1. Echo to `$out` — minimal: sandbox-exec → bash → file creation
-   2. Multi-line builder — mkdir, chmod, loops, multiple output files
-   3. Input transformation — `builtins.toFile`, sort, wc
-   4. Derivation dependency — one derivation consumes another's output
-   5. Binary substitution — fetch pre-built `hello` from cache.nixos.org
+Goal: official 26.05 binaries load under Darling without missing-symbol failures.
+This is the highest-value arch-independent work in the whole project.
 
-5. **Phase 7 — Remote builder**: With Nix building derivations successfully,
-   enable the host's Nix daemon to offload `x86_64-darwin` builds to Darling.
-   All infrastructure is in place — choose one of two approaches:
+Strategy: **demand-driven first, exhaustive second.** Implement what real binaries
+actually import before grinding the full theoretical surface.
 
-   **Option A — NixOS module (SSH-based, recommended)**:
+- [ ] **B.1 Build the demand list.** Tooling (`scripts/symbol-demand.sh`): given a set
+      of store paths (start with the 26.05 x86_64-darwin bootstrap-tools closure,
+      substituted from cache.nixos.org), extract undefined symbols per Mach-O
+      (`nm -u` / `llvm-nm --undefined-only`; `dyld_info -imports` equivalent via
+      `llvm-objdump --macho` if needed on Linux) and the libraries they're expected
+      from. Output: ranked table of (symbol, expected install name, #referencing
+      binaries).
+- [ ] **B.2 Build the supply list.** Tooling (`scripts/tbd-diff.py`): parse the pinned
+      SDK's `libSystem.tbd` **and its full re-export closure** (tbd v4 is YAML-ish,
+      v5 is JSON — handle both), producing the official export set. Extract Darling's
+      actual export set from our built `libSystem` + `libsystem_*` dylibs. Emit the
+      diff as a categorized report (functions vs data, by sub-library) committed to
+      `plan/symbol-gap.md`.
+- [ ] **B.3 Grind the demand-side gap.** For each missing symbol that real binaries
+      import, in priority order: (a) port the implementation from the matching Apple
+      open-source release where one exists; (b) otherwise implement clean-room from
+      man pages / headers; (c) only as a last resort, add a loudly-logging stub
+      (`DARLING_STUB` log channel, returns a sane error). Every addition gets a
+      link-and-call regression test. Batch by sub-library
+      (`libsystem_c`, `libsystem_kernel`, `libsystem_pthread`, `libdispatch`, ...).
+- [ ] **B.4 Wire symbol checking into CI.** A flake check that runs B.1's tool over a
+      pinned reference closure and fails on *new* unresolved symbols (ratchet file of
+      known-missing allowed, shrinking over time).
 
-   ```nix
-   # In your NixOS configuration:
-   imports = [
-     darling-nix.nixosModules.nixos            # programs.darling
-     darling-nix.nixosModules.darling-builder   # services.darling-builder
-   ];
+**Exit criteria:** every binary in the bootstrap-tools closure passes a dyld load
+test (no missing strong symbols) under Darling.
 
-   services.darling-builder = {
-     enable = true;
-     maxJobs = 4;
-     shareStore = true;   # share /nix/store via /Volumes/SystemRoot
-   };
-   ```
+---
 
-   After `nixos-rebuild switch`:
+## 6. Phase C — The keystone: official bootstrap tools execute **[ARCH-FREE]**
 
-   ```bash
-   # Test connectivity
-   darling-builder-test
+This is the milestone that converts the project from "OS revival" to "treadmill."
+Aim everything at it.
 
-   # Build a Darwin package from your Linux host
-   nix build nixpkgs#hello --system x86_64-darwin
-   ```
+- [ ] **C.1 Substitute and stage.** Using the A.1 facts, `nix build` the exact
+      bootstrap-tools derivation for x86_64-darwin from the 26.05 pin (it should
+      substitute from cache.nixos.org — record the store path and narHash).
+- [ ] **C.2 Execute.** Inside the prefix, run the unpacked tools directly: `sh`,
+      `coreutils`, `tar`, `sed`, `grep`, then `clang --version`, then compile and run
+      a hello.c against the SDK stubs. Triage failures with
+      `scripts/triage-syscalls.sh` + `DSERVER` logs; every fix follows the Phase B/1
+      pattern (fix + regression test).
+- [ ] **C.3 Trivial derivation with official stdenv path.** `nix build` a
+      one-derivation package (e.g. `pkgs.hello` or smaller) with
+      `--system x86_64-darwin` against the pin, substituting all dependencies,
+      building only the target. Then widen: build with `--max-jobs` local only, no
+      substitutes for the target's direct deps, forcing real stdenv usage.
+- [ ] **C.4 Stall defense.** Wrap all matrix/build invocations in a watchdog
+      (timeout + on-timeout stack capture of the guest process and darlingserver via
+      gdb attach). Stalls are the signature failure mode of a subtly-wrong kernel
+      shim (see `fixPythonPipStalling`); suspects are kqueue/kevent, poll/select
+      edge semantics, and Mach IPC waits. File each stall signature in
+      `plan/stall-triage.md`.
 
-   **Option B — Custom build hook (no SSH)**:
+**Exit criteria:** `pkgs.hello` (26.05, x86_64-darwin) builds from source under
+Darling with only official inputs.
 
-   ```bash
-   # Verify the hook environment
-   ./scripts/darling-build-hook --check
+---
 
-   # Build a derivation directly
-   ./scripts/darling-build-hook --build /nix/store/...-foo.drv
-   ```
+## 7. Phase D — The oracle: bit-compare against cache.nixos.org **[ARCH-FREE]**
 
-   **Remaining Phase 7 tasks** (7.1, 7.2, 7.3, 7.6, 7.7):
-   - 7.1: Verify `sshd` actually works inside Darling (needs live testing)
-   - 7.2: Test `nix store ping` from host to Darling builder
-   - 7.3: Validate shared `/nix/store` via `/Volumes/SystemRoot` symlink
-   - 7.6: Run compatibility matrix against the builder:
-     ```bash
-     ./tests/nix/compatibility-matrix.sh --tier 1
-     ./tests/nix/compatibility-matrix.sh --output results.json --compare previous.json
-     ```
-   - ~~7.7: Write user-facing docs and flake template~~ ✅ Done — see `docs/darwin-builder.md` and `templates/darling-builder/`
+"It built" upgrades to "it built **correctly**."
 
-### Completed Task Summary
+- [ ] **D.1 One-liner oracle.** For any derivation whose output was substituted from
+      the official cache, `nix build --rebuild <installable>` rebuilds locally and
+      fails if the result differs. Wrap this as `scripts/oracle.sh <attr>` with JSON
+      output (match / mismatch / build-failure / known-nondeterministic).
+- [ ] **D.2 Matrix integration.** Extend `tests/nix/compatibility-matrix.sh`: each
+      package row gains an oracle column. Maintain an allowlist of
+      known-nondeterministic packages (timestamps, parallelism artifacts) with links
+      to upstream evidence — an allowlist entry requires justification in the commit.
+- [ ] **D.3 Divergence triage protocol.** On mismatch: `diffoscope` the two outputs,
+      classify (codegen difference vs embedded metadata vs filesystem ordering vs
+      genuine miscompile), and file in `plan/divergence-triage.md`. A codegen-class
+      divergence is a **stop-the-line** event — it means the shim is lying to the
+      compiler somewhere (math, memory layout, or a syscall result), and everything
+      built on top is suspect.
 
-| Task | Status | Description |
-|------|--------|-------------|
-| 7.7 | ✅ | User-facing docs (`docs/darwin-builder.md`) and flake template (`templates/darling-builder/`) |
-| 1.1 | ✅ | `setattrlist`/`fsetattrlist`/`getattrlist` — ATTR_CMN_FLAGS, CRTIME, CHGTIME |
-| 1.2 | ✅ | `lchflags` return value — verified via 1.1 |
-| 1.3 | ✅ | `renameatx_np` (syscall 488) — maps to Linux `renameat2` |
-| 1.4 | ✅ | `utimensat` audit — setattrlistat handler fixed; test written |
-| 1.5 | ✅ | `clonefile`/`fclonefileat` — ENOSYS→ENOTSUP stub |
-| 1.6 | ✅ | `getentropy` — already works (maps to `getrandom`) |
-| 1.7 | 🚧 | Triage — automation script created, needs live run |
-| 1.8 | ✅ | macOS version — already 11.7.4 (Big Sur), no changes needed |
-| 2.1 | ✅ | `sandbox-exec` stub |
-| 2.2 | ✅ | `sandbox_init` API stubs fixed |
-| 3.1 | ✅ | `install-nix-in-darling.sh` installer script |
-| 3.3 | ✅ | `verify-nix.sh` standalone verification |
-| 3.4 | ✅ | `darling-nix` host-side wrapper |
-| 3.5 | ✅ | Channel/registry setup (integrated into installer step 6) |
-| 4.1 | ✅ | `build-trivial.sh` progressive build tests (tooling ready) |
-| 5.1 | ✅ | Directory Services stubs (`dseditgroup`, `sysadminctl`, `dscl`) |
-| 6.1 | ✅ | NixOS VM test (`tests/nix-in-darling.nix`) |
-| 6.2 | ✅ | Wired tests into `flake.nix` (checks output) |
-| 6.3 | ✅ | `.tangled/workflows/ci.yml` tangled.org CI workflow |
-| 6.5 | ✅ | Nix compatibility test matrix (`tests/nix/compatibility-matrix.sh`) |
-| 6.6 | ✅ | Darling smoke test (`tests/darling-smoke.nix`) |
-| 7.4 | ✅ | Custom build hook (`scripts/darling-build-hook`) |
-| 7.5 | ✅ | NixOS module for Darling builder (`nix/darlingBuilderModule.nix`) |
-| — | ✅ | NixOS VM test for remote builder (`tests/darling-builder.nix`) |
-| — | ✅ | `run-tests.sh` unified test runner (6 suites) |
-| — | ✅ | `getattrlist` attribute buffer ordering bug fixed |
-| — | ✅ | `diskutil info`/`list` stubs |
-| — | ✅ | `dirserv-stubs` pure shell check (runnable without Darling) |
+**Exit criteria:** oracle wired into CI; `hello` and the stdenv closure's
+reproducible members bit-match official cache paths.
 
-### Script & Test Quick Reference
+---
 
-| Script / Test | Purpose | When to Use |
-|---------------|---------|-------------|
-| `scripts/run-tests.sh` | Compile & run all regression tests inside Darling | After building Darling with changes |
-| `scripts/triage-syscalls.sh` | Discover unimplemented syscalls during Nix operations | After installing Nix inside Darling |
-| `scripts/install-nix-in-darling.sh` | Install Nix package manager inside a Darling prefix | One-time setup |
-| `scripts/verify-nix.sh` | Health-check a Nix installation inside Darling | After install, or to diagnose regressions |
-| `scripts/darling-nix` | Run Nix commands inside Darling from the host | Day-to-day Nix usage |
-| `scripts/build-trivial.sh` | Test derivation building with 5 progressive levels | After Nix is installed and verified |
-| `scripts/darling-build-hook` | Nix build hook for local Darling builds (no SSH) | Alternative to SSH-based remote builder |
-| `tests/nix/compatibility-matrix.sh` | Systematic package build test with 4 tiers + JSON | After Nix builds work; in CI nightly |
-| `nix build .#checks.x86_64-linux.dirserv-stubs` | Run Directory Services stub tests (no Darling needed) | After editing `src/dirserv/` |
-| `nix build .#checks.x86_64-linux.darling-smoke -L` | NixOS VM smoke test (no network) | After building Darling |
-| `nix build .#checks.x86_64-linux.nix-in-darling -L` | Full Nix-in-Darling integration test | End-to-end validation |
-| `nix build .#checks.x86_64-linux.darling-builder -L` | Remote builder VM test (sshd, SSH auth, service) | After editing `nix/darlingBuilderModule.nix` |
-| `docs/darwin-builder.md` | User-facing setup guide, troubleshooting, perf tuning | Setting up a Darling builder for the first time |
-| `nix flake init -t .#darling-builder` | Generate a ready-to-use NixOS config with the builder | Bootstrapping a new Darling builder project |
+## 8. Phase E — Climb the ladder **[ARCH-FREE]**
 
-See [plan/README.md](./plan/README.md) for the full priority table and effort
-estimates.
+- [ ] **E.1 Target list.** Generate a dependency-weighted ranking of 26.05
+      x86_64-darwin packages (most-depended-upon first). CLI-only; anything touching
+      AppKit/WindowServer at *runtime* is out of scope (building GUI apps is fine —
+      frameworks are link-time stubs).
+- [ ] **E.2 Grind loop.** For each package: build → on failure triage (syscall gap /
+      symbol gap / stall / semantic divergence) → fix with regression test → oracle →
+      append to matrix. Keep per-package notes only for non-obvious fixes.
+- [ ] **E.3 Milestone packages** (each proves a subsystem): `python3` (pip stall
+      class), `git`, `cmake`, `openssl`, `ninja`-built things, one large C++ package
+      (`llvm` eventually). Stretch, and only after everything above:
+      hosting `swiftc` (stresses libdispatch/CF hard — this is the gateway to
+      building modern GUI apps later, still link-time only).
+
+**Exit criteria (campaign):** ≥ the full Tier-1..3 matrix green with oracle, on a
+frozen 26.05 pin, in CI, reproducibly from a clean prefix.
+
+---
+
+## 9. Phase F — ARM readiness (do continuously, finish last) **[ARCH-PARAM]**
+
+Do **not** start the aarch64 port in this campaign — *prepare* it.
+
+- [ ] **F.1 Salvage assessment.** Diff the three `feature/arm-support*` branches
+      against current master; write `plan/arm-salvage.md`: what's reusable (syscall
+      entry, thread state, signal frames, TLS), what's rotten, what was never
+      finished. No code moves yet.
+- [ ] **F.2 Arch-boundary audit.** Inventory every place Campaign-1/2 code assumes
+      x86_64 (syscall numbers, `ucontext` layouts, asm, `PAGE_SIZE` conflation).
+      Introduce/enforce the arch abstraction now, while refactors are cheap.
+      Specifically: audit for host-page-size vs Darwin `vm_page_size` conflation —
+      Darwin/arm64 userland assumes **16K pages**; the plan there is to report 16K
+      from libSystem regardless of host kernel page size (and to prefer
+      `CONFIG_ARM64_16K_PAGES` guest kernels when we get to QEMU).
+- [ ] **F.3 Parameterize the harness.** Flake systems, VM tests, matrix, oracle, and
+      symbol tooling all take an arch parameter (`x86_64-darwin` today,
+      `aarch64-darwin` next). The oracle matters *more* on ARM — that's where
+      cache.nixos.org coverage is best and nixpkgs support continues past 2026. Note:
+      aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via
+      sigtool); the oracle must treat signature bytes correctly, not diff them
+      naively.
+- [ ] **F.4 ARM dev environment recipe.** Document (don't yet automate) the path:
+      `qemu-system-aarch64` with MTCG (`-smp`, `-cpu max`), snapshot after
+      boot+install, share `/nix/store` via virtiofs, build aarch64-linux artifacts on
+      the x86 host via `boot.binfmt.emulatedSystems` — but never run darlingserver
+      itself under qemu-user (signals/TLS fidelity). Real-hardware step-up:
+      GitHub arm64 runners / Hetzner CAX / Oracle Ampere / Asahi.
+
+---
+
+## 10. Working agreements
+
+- **Session start:** read this file, `plan/26.05-facts.md`, and the triage docs;
+  run `scripts/run-tests.sh` and the smoke check to confirm the baseline is green
+  before changing anything.
+- **Verification is execution, not inspection.** A task is done when its test runs
+  green in a clean prefix (`--keep` only for debugging), not when the code looks
+  right.
+- **Small commits, phase-tagged, tests included, plan updated.** Same style as
+  Campaign 1's history.
+- **When blocked** (nixpkgs-side change seems required, licensing question, a
+  divergence-class stop-the-line event, or >1 day stuck on one signature): write it
+  up in `plan/blockers.md` with reproduction steps and stop that thread; pick up the
+  next ranked item. The human reviews blockers.
+- **Time-sensitivity note:** 26.05 is supported until end of 2026 and the cache
+  should persist beyond that, but mirror the bootstrap-tools closure and key
+  reference narinfo/nars into our own Cachix early (cheap insurance for the oracle).
+
+## 11. Risk register (carry-forward from design discussions)
+
+| Risk | Class | Mitigation |
+|---|---|---|
+| Silent output divergence (shim lies subtly) | correctness | Phase D oracle + stop-the-line protocol |
+| Stalls in event-loop-heavy builds (kqueue/poll) | fidelity | C.4 watchdog + stall triage doc |
+| macOS-14 symbol surface larger than expected | scope | B.1 demand-driven ordering; stubs only as last resort |
+| Mach IPC perf through userspace darlingserver | perf | measure during E; acceptable for CI even if slow |
+| Cache retention past 26.05 EOL | infra | mirror reference closures to own Cachix (§10) |
+| Apple open-source drops lag/stop | existential | affects future surfaces, not the frozen 26.05 target |
+| x86-only effort waste | strategy | ARCH tags; Phase F audit keeps the boundary honest |
+
+---
+
+*Campaign 1 history and background: see `plan/00-background.md` through
+`plan/11-architecture.md` and the git log. This document supersedes the old PLAN.md
+task list; the Campaign 1 plan is archived at `plan/PLAN-campaign1.md`.*
