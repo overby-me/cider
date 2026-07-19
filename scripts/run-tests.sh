@@ -12,7 +12,8 @@
 #   --prefix <path>       Darling prefix path (default: ~/.darling or $DPREFIX)
 #   --suite <name>        Run only the named suite (can be repeated)
 #                         Available: renameatx_np, setattrlist_flags, utimensat,
-#                                    sandbox_api, sandbox_exec, dirserv
+#                                    sandbox_api, sandbox_exec, dirserv,
+#                                    identity, sw_vers
 #   --keep                Keep compiled test binaries in the prefix after running
 #   --verbose             Show full test output even on success
 #   --help                Show this help message
@@ -78,7 +79,8 @@ Options:
   --prefix <path>   Darling prefix (default: ~/.darling or $DPREFIX)
   --suite <name>    Run only the named suite (repeatable)
                     Available: renameatx_np, setattrlist_flags, utimensat,
-                               sandbox_api, sandbox_exec, dirserv
+                               sandbox_api, sandbox_exec, dirserv,
+                               identity, sw_vers
   --keep            Keep compiled binaries in the prefix after running
   --verbose         Show full test output even on success
   --help            Show this help
@@ -90,6 +92,8 @@ Suites:
   sandbox_api        — sandbox C API stubs
   sandbox_exec       — sandbox-exec integration (shell tests)
   dirserv            — Directory Services stubs (dseditgroup, sysadminctl, dscl)
+  identity           — macOS 14 identity via uname / kern.* sysctls (Phase A)
+  sw_vers            — sw_vers productVersion / buildVersion (Phase A)
 EOF
     exit 0
 }
@@ -165,7 +169,17 @@ SUITE_SOURCE[dirserv]="tests/dirserv/test_dirserv.sh"
 SUITE_DESC[dirserv]="Directory Services stubs — dseditgroup, sysadminctl, dscl (Phase 5.1)"
 SUITE_CFLAGS[dirserv]=""
 
-ALL_SUITES=(renameatx_np setattrlist_flags utimensat sandbox_api sandbox_exec dirserv)
+SUITE_TYPE[identity]="c"
+SUITE_SOURCE[identity]="tests/identity/test_identity.c"
+SUITE_DESC[identity]="macOS 14 identity — uname, kern.osrelease/osproductversion/osversion (Phase A)"
+SUITE_CFLAGS[identity]=""
+
+SUITE_TYPE[sw_vers]="sh"
+SUITE_SOURCE[sw_vers]="tests/identity/test_sw_vers.sh"
+SUITE_DESC[sw_vers]="sw_vers identity — productVersion/buildVersion report macOS 14 (Phase A)"
+SUITE_CFLAGS[sw_vers]=""
+
+ALL_SUITES=(renameatx_np setattrlist_flags utimensat sandbox_api sandbox_exec dirserv identity sw_vers)
 
 # ── Determine which suites to run ──────────────────────────────────────────
 
