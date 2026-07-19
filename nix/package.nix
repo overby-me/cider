@@ -33,6 +33,10 @@
   openssl,
   xdg-user-dirs,
   addDriverRunpath,
+  systemdLibs,
+  expat,
+  libXau,
+  libXdmcp,
 }:
 let
   stdenv = clangStdenv;
@@ -158,6 +162,15 @@ stdenv.mkDerivation {
     libbsd
     openssl
     stdenv.cc.libc.linuxHeaders
+    # nixpkgs 26.05's dbus-1.pc has `Requires.private: libsystemd`; without
+    # this, pkg-config fails to resolve dbus-1 at CMake configure time.
+    systemdLibs
+    # fontconfig.pc has `Requires.private: expat`, which nixpkgs does not
+    # propagate; pkg-config needs expat.pc to resolve fontconfig.
+    expat
+    # xcb.pc has `Requires.private: xau xdmcp` (also not propagated).
+    libXau
+    libXdmcp
   ];
 
   # Breaks valid paths like
