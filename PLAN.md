@@ -155,32 +155,30 @@ This is the highest-value arch-independent work in the whole project.
 Strategy: **demand-driven first, exhaustive second.** Implement what real binaries
 actually import before grinding the full theoretical surface.
 
-- [ ] **B.1 Build the demand list.** Tooling (`scripts/symbol-demand.sh`): given a set
-      of store paths (start with the 26.05 x86_64-darwin bootstrap-tools closure,
-      substituted from cache.nixos.org), extract undefined symbols per Mach-O
-      (`nm -u` / `llvm-nm --undefined-only`; `dyld_info -imports` equivalent via
-      `llvm-objdump --macho` if needed on Linux) and the libraries they're expected
-      from. Output: ranked table of (symbol, expected install name, #referencing
-      binaries).
-- [ ] **B.2 Build the supply list.** Tooling (`scripts/tbd-diff.py`): parse the pinned
-      SDK's `libSystem.tbd` **and its full re-export closure** (tbd v4 is YAML-ish,
-      v5 is JSON — handle both), producing the official export set. Extract Darling's
-      actual export set from our built `libSystem` + `libsystem_*` dylibs. Emit the
-      diff as a categorized report (functions vs data, by sub-library) committed to
-      `plan/symbol-gap.md`.
-- [ ] **B.3 Grind the demand-side gap.** For each missing symbol that real binaries
-      import, in priority order: (a) port the implementation from the matching Apple
-      open-source release where one exists; (b) otherwise implement clean-room from
-      man pages / headers; (c) only as a last resort, add a loudly-logging stub
-      (`DARLING_STUB` log channel, returns a sane error). Every addition gets a
-      link-and-call regression test. Batch by sub-library
-      (`libsystem_c`, `libsystem_kernel`, `libsystem_pthread`, `libdispatch`, ...).
+- [x] **B.1 Build the demand list.** `scripts/symbol-demand.sh` — extracts
+      system-library imports from Mach-O bind tables (llvm-objdump/otool),
+      excluding intra-closure `@rpath` deps, ranked by referencing-binary count.
+      Against the 26.05 bootstrap-tools closure: 728 system symbols.
+- [x] **B.2 Build the supply list.** `scripts/tbd-diff.py` — parses the 14.4 SDK
+      `libSystem.tbd` re-export closure (7988 symbols) and diffs vs Darling's built
+      dylibs read from the **exports trie** (critical: Darling re-exports the plain
+      str/mem functions; `nm` misses these). Result in `plan/symbol-gap.md`.
+      **Finding: the libSystem surface for bootstrap-tools is already covered.**
+      Real gap = 6 lazy-bound FSEvents functions in CoreServices; 0 libSystem, 0 CF,
+      0 SC. Phase B is nearly a no-op for the `hello` milestone.
+- [ ] **B.3 Grind the demand-side gap.** *Mostly moot for hello* (see B.2). Remaining:
+      6 `FSEventStream*` stubs in CoreServices, added only if a real binary calls
+      them (they are lazy-bound; a hello build should not). For future packages
+      (Phase E) that reopen a real gap: (a) port from Apple open source; (b)
+      clean-room; (c) loudly-logging stub last. Every addition gets a link-and-call
+      test.
 - [ ] **B.4 Wire symbol checking into CI.** A flake check that runs B.1's tool over a
       pinned reference closure and fails on *new* unresolved symbols (ratchet file of
       known-missing allowed, shrinking over time).
 
 **Exit criteria:** every binary in the bootstrap-tools closure passes a dyld load
-test (no missing strong symbols) under Darling.
+test (no missing strong symbols) under Darling. *Static analysis says this already
+holds; confirm empirically in C.2.*
 
 ---
 
