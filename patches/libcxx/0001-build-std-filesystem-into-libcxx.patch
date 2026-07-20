@@ -1,19 +1,23 @@
-Build C++17 <filesystem> into libc++.1.dylib.
+Build C++17 <filesystem> and a minimal std::pmr into libc++.1.dylib.
 
-The filesystem sources ship in src/filesystem but were left out of the
-hand-written cxx_sources list, so the installed libc++ exported zero
-std::filesystem symbols. That blocks modern C++ programs from loading under
-Darling: the nixpkgs `nix` (2.34.8) dies in dyld with
-std::filesystem::directory_iterator::__dereference not found (libnixutil
-imports 26 std::filesystem symbols). Add operations.cpp,
-directory_iterator.cpp and int128_builtins.cpp, compiled as C++17 (the rest
-of libc++ is built as C++11 here).
+Darling's LLVM-13 libcxx omitted the C++17 runtime bits that modern C++
+programs (the nixpkgs `nix`) need at load time:
+  - <filesystem> sources shipped in src/filesystem but were left out of the
+    hand-written cxx_sources list -> 0 std::filesystem symbols exported
+    (libnixutil needs 26).
+  - std::pmr did not exist at all (only std::experimental::pmr), so
+    std::pmr::memory_resource::~memory_resource and get_default_resource were
+    missing (libnixexpr needs them).
+
+Add the filesystem sources and a minimal std::pmr (memory_resource +
+get_default_resource, standard vtable layout, new/delete-backed default),
+all compiled as C++17 (the rest of libc++ builds as C++11 here).
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 55144f764..9ad27aee7 100644
+index 55144f764..f94ecf9fc 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -49,6 +49,21 @@ set(cxx_sources
+@@ -49,6 +49,25 @@ set(cxx_sources
  	src/vector.cpp
  )
  
@@ -23,15 +27,98 @@ index 55144f764..9ad27aee7 100644
 +# `nix`, whose libnixutil imports 26 std::filesystem symbols) from loading.
 +# They require C++17, so build just these with -std=c++17 (the rest of libc++
 +# is compiled as C++11 here).
-+set(cxx_filesystem_sources
++set(cxx_cxx17_sources
 +	src/filesystem/operations.cpp
 +	src/filesystem/directory_iterator.cpp
 +	src/filesystem/int128_builtins.cpp
++	# Minimal C++17 std::pmr (memory_resource + get_default_resource); Darling's
++	# LLVM-13 libcxx shipped only std::experimental::pmr. Needed by the nixpkgs
++	# `nix` (libnixexpr). See src/memory_resource_std.cpp.
++	src/memory_resource_std.cpp
 +)
-+set_source_files_properties(${cxx_filesystem_sources}
++set_source_files_properties(${cxx_cxx17_sources}
 +	PROPERTIES COMPILE_FLAGS "-std=c++17")
-+list(APPEND cxx_sources ${cxx_filesystem_sources})
++list(APPEND cxx_sources ${cxx_cxx17_sources})
 +
  add_darling_object_library(cxx_obj ${cxx_sources})
  make_fat(cxx_obj)
  
+diff --git a/src/memory_resource_std.cpp b/src/memory_resource_std.cpp
+new file mode 100644
+index 000000000..1a05ffa38
+--- /dev/null
++++ b/src/memory_resource_std.cpp
+@@ -0,0 +1,73 @@
++//===------------------ memory_resource_std.cpp ---------------------------===//
++//
++// Minimal C++17 std::pmr for Darling's libc++.
++//
++// Darling's libcxx (LLVM 13) ships only <experimental/memory_resource>
++// (std::experimental::pmr); it has no C++17 <memory_resource> header and builds
++// no std::pmr, so libc++.1.dylib is missing:
++//   std::__1::pmr::memory_resource::~memory_resource()   (__ZNSt3__13pmr15memory_resourceD2Ev)
++//   std::__1::pmr::get_default_resource()                (__ZNSt3__13pmr20get_default_resourceEv)
++// which is the last dyld gap stopping the nixpkgs `nix` (libnixexpr) from
++// loading under Darling. This provides exactly those two symbols with the
++// standard-mandated class layout (virtual dtor, then the three private
++// do_* virtuals, in that order, so the vtable matches code compiled against a
++// real <memory_resource>). get_default_resource() returns a working
++// new/delete-backed resource. Built as C++17 (see CMakeLists.txt).
++//
++// Not a full std::pmr implementation (no pools, no set_default_resource, no
++// polymorphic_allocator out-of-lines) -- only what nix references.
++
++#include <cstddef>
++#include <new>
++
++namespace std {
++inline namespace __1 {
++namespace pmr {
++
++class memory_resource {
++	static const size_t __max_align = alignof(max_align_t);
++
++public:
++	virtual ~memory_resource();
++
++	void* allocate(size_t __bytes, size_t __align = __max_align) {
++		return do_allocate(__bytes, __align);
++	}
++	void deallocate(void* __p, size_t __bytes, size_t __align = __max_align) {
++		do_deallocate(__p, __bytes, __align);
++	}
++	bool is_equal(const memory_resource& __other) const noexcept {
++		return do_is_equal(__other);
++	}
++
++private:
++	virtual void* do_allocate(size_t, size_t) = 0;
++	virtual void do_deallocate(void*, size_t, size_t) = 0;
++	virtual bool do_is_equal(const memory_resource&) const noexcept = 0;
++};
++
++// Out-of-line key function: anchors the vtable and provides the exported dtor.
++memory_resource::~memory_resource() {}
++
++namespace {
++class __new_delete_resource final : public memory_resource {
++	void* do_allocate(size_t __bytes, size_t __align) override {
++		return ::operator new(__bytes, std::align_val_t(__align));
++	}
++	void do_deallocate(void* __p, size_t, size_t __align) override {
++		::operator delete(__p, std::align_val_t(__align));
++	}
++	bool do_is_equal(const memory_resource& __other) const noexcept override {
++		return &__other == this;
++	}
++};
++} // namespace
++
++memory_resource* get_default_resource() noexcept {
++	static __new_delete_resource __res;
++	return &__res;
++}
++
++} // namespace pmr
++} // namespace __1
++} // namespace std
