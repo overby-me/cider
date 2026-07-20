@@ -5,7 +5,7 @@
 # Single source of truth for both the canonical single-derivation build
 # (`nix/package.nix`) and the per-edge nix-ninja build (`nix/lib/darlingNinja.nix`,
 # via the overby.me flake input). Keeping them here means the incremental build
-# uses byte-identical configure inputs to the production build — no drift.
+# uses byte-identical configure inputs to the production build, no drift.
 #
 # A pure function of named packages (call via `callPackage ./darlingBuildInputs.nix {}`).
 {

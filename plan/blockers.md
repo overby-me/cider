@@ -34,7 +34,7 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
   prefix also creates and boots rootlessly (validated: `SINGLEID_BOOT_OK` +
   `sw_vers` 14.4.1 on a new short-path prefix). Its `Cannot chown …` messages
   (~4.5k) are for overlayfs lowerdir base files owned by host root (uid 0), which
-  is unmapped in the namespace and cannot be chown'd — they are non-fatal (boot
+  is unmapped in the namespace and cannot be chown'd; they are non-fatal (boot
   completes) and identical under a single-id or a subordinate-range map, so no
   range map is needed (a `newuidmap`/`newgidmap` range version was tried and
   reverted: darlingserver chowns to uid 0, which the single-id map already

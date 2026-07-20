@@ -80,7 +80,7 @@ upstream darlinghq via `scripts/init-submodules.sh` (relative URLs are unhosted)
 and the Campaign-1 xnu changes are carried as `patches/xnu/*.patch` on top of the
 upstream base rev. See `plan/26.05-facts.md` for verified pin facts.
 
-### 2.3 Identity masquerade — **fixed in A.2**
+### 2.3 Identity masquerade: **fixed in A.2**
 
 Campaign 1 pinned `SystemVersion.plist` to **11.7.4** (Big Sur) with
 `CMAKE_OSX_DEPLOYMENT_TARGET=11.0`. nixpkgs ≥25.11 refuses / misbehaves below
@@ -138,7 +138,7 @@ builds.
       kern.osproductversion 14.4.1, kern.osversion 23E224, banner
       "Darwin Kernel Version 23.4.0") that the guest-side `sysctl_kern.c` handlers
       serve; uname follows osrelease. `CMAKE_OSX_DEPLOYMENT_TARGET` kept at 11.0
-      (identity-independent; raising it risks Big-Sur-era sources — plan/26.05-facts.md).
+      (identity-independent; raising it risks Big-Sur-era sources; see plan/26.05-facts.md).
       Validated: rebuilt Darling reports 14.4.1 / Darwin 23.4.0 / 23E224 across
       sw_vers, uname -r, and the kern.os* sysctls.
 - [x] **A.3 Regression-test the identity.** `tests/identity/test_sw_vers.sh`

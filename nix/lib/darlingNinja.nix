@@ -1,12 +1,12 @@
 # Build a Darling CMake target with nix-ninja: one Nix derivation per Ninja
 # edge, instead of the single monolithic build in nix/package.nix. Each edge is
 # cached independently in the Nix store, so editing one source rebuilds only its
-# object and that object's dependents — the fast incremental loop for iterating
+# object and that object's dependents: the fast incremental loop for iterating
 # on Darling internals (darling.c, libSystem sources, …), and shareable via
 # Cachix.
 #
 # Configure inputs (compiler bypass, tool/lib deps, cmake flags, env) come from
-# ./darlingBuildInputs.nix — the same file nix/package.nix uses — so the
+# ./darlingBuildInputs.nix (the same file nix/package.nix uses), so the
 # per-edge build configures the tree byte-identically to the production build.
 #
 # nix-ninja itself lives in the overby.me monorepo (nix/lib/ninja); it is
