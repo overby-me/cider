@@ -6,15 +6,23 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Open
 
-- **Host privilege for running Darling** (resolved: setuid wrapper). This build
-  requires euid 0 (`src/startup/darling.c` fails on non-root; rootless userns is
-  disabled). Rootless via `unshare --map-root-user` fails (single-uid mapping
-  breaks the prefix chowns and mount-namespace setup). Decision: a setuid-root
-  copy of `darling` via `scripts/darling-host.sh` + a one-time
-  `sudo install -m4755` (re-run after each Darling rebuild). Not a blocker while
-  the setup command is available; noted so a fresh environment knows why.
+(none)
 
 ## Resolved
+
+- **Host privilege for running Darling** → **rootless via unprivileged user
+  namespaces**, no setuid, no sudo. `src/startup/darling.c` now enters a
+  `CLONE_NEWUSER` namespace mapping the caller to root and re-execs into it
+  (`enterUserNamespaceAndReexec`, guarded by `DARLING_USERNS_STAGE2`) when not
+  already euid 0; the container's mount/PID unshares and overlayfs mount then
+  run as namespaced root. Validated end-to-end: a mode-555 (non-setuid,
+  root-owned) store `darling` run as uid 1000 boots and
+  `darling shell echo ROOTLESS_OK` prints `ROOTLESS_OK` (rc 0). Requires
+  `kernel.unprivileged_userns_clone=1` and kernel >= 5.11 for overlayfs-in-userns
+  (host 7.1.2). `scripts/darling-trampoline.c` remains as a setuid fallback for
+  hosts without unprivileged userns. The earlier `unshare --map-root-user`
+  failure was the single-uid map; the in-launcher path writes uid_map/gid_map
+  itself after denying setgroups, which works.
 
 - **Fork submodule URLs unhosted / xnu gitlink orphaned** → `scripts/init-submodules.sh`
   fetches from upstream darlinghq and overrides the xnu gitlink to the reachable

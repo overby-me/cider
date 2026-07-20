@@ -51,6 +51,57 @@ uid_t g_originalUid, g_originalGid;
 bool g_fixPermissions = false;
 char g_workingDirectory[4096];
 
+// ── Rootless support ────────────────────────────────────────────────────────
+//
+// When darling is not setuid-root (and not already inside our own user
+// namespace), create an unprivileged user namespace mapping the current user
+// to root, then re-exec ourselves inside it. The rest of startup then runs as
+// (namespaced) root with CAP_SYS_ADMIN in that namespace — enough to unshare
+// mount/PID namespaces and mount overlayfs (Linux >= 5.11) — with no setuid and
+// no sudo. darlingserver inherits this namespace (it never creates its own user
+// namespace), so it too sees getuid()==0. The traditional setuid path is
+// unaffected: it enters main() already euid 0 and never takes this branch.
+
+static int writeStringToFile(const char* path, const char* data)
+{
+	int fd = open(path, O_WRONLY);
+	if (fd < 0)
+		return -1;
+	size_t len = strlen(data);
+	int ok = (write(fd, data, len) == (ssize_t) len);
+	close(fd);
+	return ok ? 0 : -1;
+}
+
+// Enter an unprivileged user namespace and re-exec. Returns only on failure;
+// on success execv() replaces this image and never returns.
+static void enterUserNamespaceAndReexec(char** argv)
+{
+	uid_t ruid = getuid();
+	gid_t rgid = getgid();
+	char mapping[64];
+
+	if (unshare(CLONE_NEWUSER) != 0)
+		return; // unprivileged user namespaces unavailable on this host
+
+	// setgroups must be denied before an unprivileged gid_map can be written.
+	writeStringToFile("/proc/self/setgroups", "deny");
+
+	// Map container uid/gid 0 to our real uid/gid. A single-id map is enough
+	// for single-user use; a subordinate range (via newuidmap/newgidmap and
+	// /etc/subuid) would be needed for multi-user _nixbld-style build users.
+	snprintf(mapping, sizeof(mapping), "0 %u 1\n", (unsigned) ruid);
+	if (writeStringToFile("/proc/self/uid_map", mapping) != 0)
+		return;
+	snprintf(mapping, sizeof(mapping), "0 %u 1\n", (unsigned) rgid);
+	if (writeStringToFile("/proc/self/gid_map", mapping) != 0)
+		return;
+
+	setenv("DARLING_USERNS_STAGE2", "1", 1); // guard against infinite re-exec
+	execv("/proc/self/exe", argv);
+	// If execv returns, it failed; fall through to the caller's error path.
+}
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -63,9 +114,16 @@ int main(int argc, char ** argv)
 
 	if (geteuid() != 0)
 	{
+		// Not setuid-root: try to enter an unprivileged user namespace where
+		// we are root and re-exec inside it. Only returns here on failure.
+		if (getenv("DARLING_USERNS_STAGE2") == NULL)
+			enterUserNamespaceAndReexec(argv);
+
 		missingSetuidRoot();
 		return 1;
 	}
+	// Don't leak the re-exec guard into the container/child environment.
+	unsetenv("DARLING_USERNS_STAGE2");
 
 	g_originalUid = getuid();
 	g_originalGid = getgid();
@@ -773,8 +831,10 @@ void missingSetuidRoot(void)
 	else
 		path[len] = '\0';
 
-	fprintf(stderr, "Sorry, the `%s' binary is not setuid root, which is mandatory.\n", path);
-	fprintf(stderr, "Darling needs this in order to create mount and PID namespaces and to perform mounts.\n");
+	fprintf(stderr, "Sorry, the `%s' binary could not obtain the privileges it needs\n", path);
+	fprintf(stderr, "to create mount and PID namespaces and to perform mounts.\n");
+	fprintf(stderr, "Either make it setuid root, or enable unprivileged user namespaces\n");
+	fprintf(stderr, "(sysctl kernel.unprivileged_userns_clone=1) so Darling can run rootless.\n");
 }
 
 pid_t spawnInitProcess(void)
