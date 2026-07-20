@@ -1,17 +1,15 @@
 Build C++17 <filesystem> and a minimal std::pmr into libc++.1.dylib.
 
 Darling's LLVM-13 libcxx omitted the C++17 runtime bits that modern C++
-programs (the nixpkgs `nix`) need at load time:
-  - <filesystem> sources shipped in src/filesystem but were left out of the
-    hand-written cxx_sources list -> 0 std::filesystem symbols exported
-    (libnixutil needs 26).
-  - std::pmr did not exist at all (only std::experimental::pmr), so
-    std::pmr::memory_resource::~memory_resource and get_default_resource were
-    missing (libnixexpr needs them).
+programs (the nixpkgs `nix`) need at load time: the <filesystem> sources
+(shipped but unbuilt -> 0 std::filesystem symbols; libnixutil needs 26), and
+std::pmr entirely (only std::experimental::pmr existed, so
+std::pmr::memory_resource::~memory_resource and get_default_resource were
+missing; libnixexpr needs them).
 
 Add the filesystem sources and a minimal std::pmr (memory_resource +
-get_default_resource, standard vtable layout, new/delete-backed default),
-all compiled as C++17 (the rest of libc++ builds as C++11 here).
+get_default_resource, standard vtable layout, new/delete default, forced to
+default visibility since libcxx builds -fvisibility=hidden), all as C++17.
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 55144f764..f94ecf9fc 100644
@@ -45,10 +43,10 @@ index 55144f764..f94ecf9fc 100644
  
 diff --git a/src/memory_resource_std.cpp b/src/memory_resource_std.cpp
 new file mode 100644
-index 000000000..1a05ffa38
+index 000000000..36a8e82c8
 --- /dev/null
 +++ b/src/memory_resource_std.cpp
-@@ -0,0 +1,73 @@
+@@ -0,0 +1,79 @@
 +//===------------------ memory_resource_std.cpp ---------------------------===//
 +//
 +// Minimal C++17 std::pmr for Darling's libc++.
@@ -71,11 +69,17 @@ index 000000000..1a05ffa38
 +#include <cstddef>
 +#include <new>
 +
++// libcxx is compiled here with -fvisibility=hidden; the real libc++ headers
++// mark these with _LIBCPP_FUNC_VIS/_LIBCPP_TYPE_VIS. Force default visibility so
++// the two symbols are actually exported from libc++.1.dylib (otherwise dyld
++// can't find them even though nm shows them present).
++#define PMR_VIS __attribute__((visibility("default")))
++
 +namespace std {
 +inline namespace __1 {
 +namespace pmr {
 +
-+class memory_resource {
++class PMR_VIS memory_resource {
 +	static const size_t __max_align = alignof(max_align_t);
 +
 +public:
@@ -114,7 +118,7 @@ index 000000000..1a05ffa38
 +};
 +} // namespace
 +
-+memory_resource* get_default_resource() noexcept {
++PMR_VIS memory_resource* get_default_resource() noexcept {
 +	static __new_delete_resource __res;
 +	return &__res;
 +}
