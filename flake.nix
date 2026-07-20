@@ -53,6 +53,21 @@
         }).buildTarget
           { target = "src/startup/darling"; };
 
+      # Per-edge build of libsystem_kernel.dylib (the fat libSystem sub-lib that
+      # the emulation + libsyscall objects feed). This is the lib the Phase-B/C
+      # syscall grind edits, so building it edge-by-edge is the fast iteration
+      # loop: change one emulation .c and only its object + the relink rebuild.
+      #   nix build .#darling-kernel-ninja
+      packages.darling-kernel-ninja =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          {
+            target = "src/external/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib";
+          };
+
       # ── Flake Templates ──────────────────────────────────────────────
       #
       # Initialise a new project with:

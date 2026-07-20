@@ -91,6 +91,43 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
   check to the socket-path budget, or shorten the socket path. Not a rootless
   issue (affects the setuid path equally).
 
+- **hello `./configure` aborts (SIGABRT) under Darling — the C.3 blocker after
+  the mkfifoat fix.** With the `mkfifoat`/`mknodat` gap fixed (commit
+  `f9bc5f5b`), the guest `nix build hello --rebuild` clears the dyld wall and
+  runs `./configure` from source. It passes ~14 checks (install, sleep, mkdir,
+  gawk, make, xargs, ustar, gnutar) then, right after `checking for gcc...
+  clang`, several near-simultaneous bash **subshells die with `Abort trap: 6`
+  (core dumped)** — e.g. `( for ac_var in \`(set) 2>&1 | sed ...\`; ... )` and
+  `( eval "$ac_compiler $ac_option >&5" )` — and the build fails
+  (`builder failed due to signal 6`).
+
+  **Ruled out (via `scratchpad/bash-abort-inner{,2,3,4}.sh`, run under Darling
+  with the *exact* stdenv bash `avrhwml7…-bash-5.3p9`):**
+  - Not the symbol gap — that binds now.
+  - Not basic forking: `( … )` subshells, `$(…)` command substitution, fork+exec
+    of externals all return 0.
+  - Not the line-85 op itself: `(set) 2>&1 | sed -n …` in a subshell → 0, even
+    with ~400 exported vars, a 5000-char var, or a malloc-heavy child.
+  - Not fd-5/6 logging (`exec 5>log; ( … >&5 )`) → 0.
+  - Not clang: `clang --version` and a real conftest compile, each followed by a
+    subshell → 0.
+  - Not process/port exhaustion: 400 subshells + 400 `$( … | cat )` + 400
+    fork+exec loops all complete (the ~133 `ds*`/getpwuid cycles in the trace are
+    just per-process `getpwuid`, 132 succeed).
+  - No Darling message, no crash report, no backtrace at the abort (silent
+    `abort()`); `STUB_VERBOSE` shows only DirectoryService stubs (getpwuid path).
+
+  **So it is specific to the *nix-build process context* under Darling** (how the
+  host `nix` — itself running under Darling — spawns the derivation builder with
+  `sandbox = false`), not to any operation reproducible in a `darling shell`.
+  Next diagnostics (need in-sandbox access): (a) a core-dump backtrace of the
+  aborting subshell (enable cores / Darling crash reporting inside the build);
+  (b) run hello's real `./configure` directly in a `darling shell` with the
+  stdenv tools on PATH — if it aborts there, it is configure-specific, else it is
+  the nix-spawn path; (c) bisect configure with `sh -x` to the first aborting
+  command + dump its var state. Repro harness + full `STUB_VERBOSE` trace saved
+  in `scratchpad/hello-trace.log` / `bash-abort*.sh`.
+
 ## Resolved
 
 - **Host privilege for running Darling** → **rootless via unprivileged user

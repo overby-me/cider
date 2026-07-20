@@ -80,10 +80,16 @@ in
 
       # Every edge runs the baked compiler path; give it the bypass clang plus
       # cmake (archive/link rules shell out to `cmake -E`) and coreutils.
-      toolchain = [
-        di.ccWrapperBypass
-        pkgs.cmake
-        pkgs.coreutils
-      ];
+      # Generator edges (bison/flex/gperf/mig, ...) bake the absolute store path
+      # of the tool CMake found at configure time, but the graph JSON's string
+      # context is stripped so Nix does not auto-mount them. Re-provide the
+      # configure toolchain so those exact paths resolve in the edge sandbox.
+      toolchain =
+        [
+          di.ccWrapperBypass
+          pkgs.cmake
+          pkgs.coreutils
+        ]
+        ++ di.nativeBuildInputs;
     };
 }
