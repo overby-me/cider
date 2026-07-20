@@ -6,6 +6,21 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Open
 
+- **Rootless runs one command per fresh container (no re-join).** A running
+  container's init (darlingserver) lives in the user namespace the *first*
+  `darling shell` created. A subsequent `darling shell` creates its own
+  (sibling) user namespace and then tries `joinNamespace(pidInit, mnt)` =
+  `open(/proc/<pidInit>/ns/mnt)`, which fails **EPERM** (no privilege over a
+  sibling userns). So each invocation must start a *fresh* container (kill the
+  stale darlingserver first). Fine for one-shot runs
+  (`scripts/run-darwin-under-darling.sh`, M0), but it breaks the guest-Nix
+  installer, which issues many sequential `darling shell` calls expecting a
+  persistent container (Phase 0.5 full / Phase C). Fixes to evaluate: (a) run
+  the whole install inside one `darling shell` session; (b) teach the launcher
+  to *enter* an existing container's userns+mnt+pid via the persistent
+  darlingserver instead of creating a new userns when a container is already
+  running. Prefer (a) first (simpler, no launcher change).
+
 - **Rootless prefix path must be short (Unix-socket `sun_path` limit).** The
   shellspawn/darlingserver socket lives at `<prefix>/var/run/…sock`; if the
   prefix path is long the socket path overflows `sockaddr_un.sun_path` (~108
