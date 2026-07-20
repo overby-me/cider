@@ -1,0 +1,37 @@
+Build C++17 <filesystem> into libc++.1.dylib.
+
+The filesystem sources ship in src/filesystem but were left out of the
+hand-written cxx_sources list, so the installed libc++ exported zero
+std::filesystem symbols. That blocks modern C++ programs from loading under
+Darling: the nixpkgs `nix` (2.34.8) dies in dyld with
+std::filesystem::directory_iterator::__dereference not found (libnixutil
+imports 26 std::filesystem symbols). Add operations.cpp,
+directory_iterator.cpp and int128_builtins.cpp, compiled as C++17 (the rest
+of libc++ is built as C++11 here).
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 55144f764..9ad27aee7 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -49,6 +49,21 @@ set(cxx_sources
+ 	src/vector.cpp
+ )
+ 
++# C++17 <filesystem> support. These sources are shipped in src/filesystem but
++# were omitted from the build, so the installed libc++.1.dylib exported zero
++# std::filesystem symbols -- which blocks modern C++ programs (e.g. the nixpkgs
++# `nix`, whose libnixutil imports 26 std::filesystem symbols) from loading.
++# They require C++17, so build just these with -std=c++17 (the rest of libc++
++# is compiled as C++11 here).
++set(cxx_filesystem_sources
++	src/filesystem/operations.cpp
++	src/filesystem/directory_iterator.cpp
++	src/filesystem/int128_builtins.cpp
++)
++set_source_files_properties(${cxx_filesystem_sources}
++	PROPERTIES COMPILE_FLAGS "-std=c++17")
++list(APPEND cxx_sources ${cxx_filesystem_sources})
++
+ add_darling_object_library(cxx_obj ${cxx_sources})
+ make_fat(cxx_obj)
+ 
