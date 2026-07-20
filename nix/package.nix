@@ -1,103 +1,22 @@
 {
-  clangStdenv,
   lib,
-  runCommandWith,
-  writeShellScript,
   src,
-  freetype,
-  libjpeg,
-  libpng,
-  libtiff,
-  giflib,
-  libX11,
-  libXext,
-  libXrandr,
-  libXcursor,
-  libxkbfile,
-  cairo,
-  libglvnd,
-  fontconfig,
-  dbus,
-  libGLU,
-  fuse,
-  ffmpeg,
-  pulseaudio,
-  makeWrapper,
-  python3,
-  cmake,
-  ninja,
-  pkg-config,
-  bison,
-  flex,
-  libbsd,
-  openssl,
-  xdg-user-dirs,
+  callPackage,
   addDriverRunpath,
-  systemdLibs,
-  expat,
-  libXau,
-  libXdmcp,
 }:
 let
-  stdenv = clangStdenv;
-
-  # The build system invokes clang to compile Darwin executables.
-  # In this case, our cc-wrapper must not be used -- if we detect a
-  # `-target *darwin*` flag we call the *unwrapped* compiler so that
-  # nixpkgs' cc-wrapper doesn't inject Linux-specific flags.
-  ccWrapperBypass =
-    runCommandWith
-      {
-        inherit stdenv;
-        name = "cc-wrapper-bypass";
-        runLocal = false;
-        derivationArgs = {
-          template = writeShellScript "template" ''
-            for (( i=1; i<=$#; i++)); do
-              j=$((i+1))
-              if [[ "''${!i}" == "-target" && "''${!j}" == *"darwin"* ]]; then
-                # their flags must take precedence
-                exec @unwrapped@ "$@" $NIX_CFLAGS_COMPILE
-              fi
-            done
-            exec @wrapped@ "$@"
-          '';
-        };
-      }
-      ''
-        unwrapped_bin=${stdenv.cc.cc}/bin
-        wrapped_bin=${stdenv.cc}/bin
-
-        mkdir -p $out/bin
-
-        unwrapped=$unwrapped_bin/$CC wrapped=$wrapped_bin/$CC \
-          substituteAll $template $out/bin/$CC
-        unwrapped=$unwrapped_bin/$CXX wrapped=$wrapped_bin/$CXX \
-          substituteAll $template $out/bin/$CXX
-
-        chmod +x $out/bin/$CC $out/bin/$CXX
-      '';
-
-  wrappedLibs = [
-    freetype
-    libjpeg
-    libpng
-    libtiff
-    giflib
-    libX11
-    libXext
-    libXrandr
-    libXcursor
-    libxkbfile
-    cairo
-    libglvnd
-    fontconfig
-    dbus
-    libGLU
-    fuse
-    ffmpeg
-    pulseaudio
-  ];
+  # Configure inputs (compiler bypass, tool/lib deps, cmake flags, env) are
+  # shared with the per-edge nix-ninja build via ./darlingBuildInputs.nix, so
+  # both builds configure the tree identically.
+  inherit
+    (callPackage ./darlingBuildInputs.nix { })
+    stdenv
+    nativeBuildInputs
+    buildInputs
+    cmakeFlags
+    ldLibraryPath
+    nixCflags
+    ;
 in
 stdenv.mkDerivation {
   pname = "darling";
@@ -147,31 +66,7 @@ stdenv.mkDerivation {
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
   '';
 
-  nativeBuildInputs = [
-    bison
-    ccWrapperBypass
-    cmake
-    flex
-    makeWrapper
-    ninja
-    pkg-config
-    python3
-  ];
-
-  buildInputs = wrappedLibs ++ [
-    libbsd
-    openssl
-    stdenv.cc.libc.linuxHeaders
-    # nixpkgs 26.05's dbus-1.pc has `Requires.private: libsystemd`; without
-    # this, pkg-config fails to resolve dbus-1 at CMake configure time.
-    systemdLibs
-    # fontconfig.pc has `Requires.private: expat`, which nixpkgs does not
-    # propagate; pkg-config needs expat.pc to resolve fontconfig.
-    expat
-    # xcb.pc has `Requires.private: xau xdmcp` (also not propagated).
-    libXau
-    libXdmcp
-  ];
+  inherit nativeBuildInputs buildInputs;
 
   # Breaks valid paths like
   # Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include
@@ -180,16 +75,12 @@ stdenv.mkDerivation {
   # src/external/objc4 forces OBJC_IS_DEBUG_BUILD=1, which conflicts with NDEBUG
   cmakeBuildType = " ";
 
-  cmakeFlags = [
-    "-DTARGET_i386=OFF"
-    "-DCOMPILE_PY2_BYTECODE=OFF"
-    "-DDARLINGSERVER_XDG_USER_DIR_CMD=${xdg-user-dirs}/bin/xdg-user-dir"
-  ];
+  inherit cmakeFlags;
 
-  env.NIX_CFLAGS_COMPILE = "-Wno-macro-redefined -Wno-unused-command-line-argument";
+  env.NIX_CFLAGS_COMPILE = nixCflags;
 
   # Linux .so's are dlopen'd by wrapgen during the build
-  env.LD_LIBRARY_PATH = lib.makeLibraryPath wrappedLibs;
+  env.LD_LIBRARY_PATH = ldLibraryPath;
 
   # Breaks shebangs of Darwin scripts
   dontPatchShebangs = true;
@@ -237,7 +128,7 @@ stdenv.mkDerivation {
       exit 1
     fi
 
-    patchelf --add-rpath "${lib.makeLibraryPath wrappedLibs}:${addDriverRunpath.driverLink}/lib" \
+    patchelf --add-rpath "${ldLibraryPath}:${addDriverRunpath.driverLink}/lib" \
       $out/libexec/darling/usr/libexec/darling/mldr
   '';
 

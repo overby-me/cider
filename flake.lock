@@ -36,10 +36,26 @@
         "type": "github"
       }
     },
+    "overby": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784534911,
+        "narHash": "sha256-MXEVTbczFF5fV/0JV2Tk/Jz0obT+cvUrFBe62HIsf88=",
+        "rev": "1f4ecbb2aaa5279b71a499addd739d9394b0ff0c",
+        "revCount": 6759,
+        "type": "git",
+        "url": "file:///home/overby.me/Work/overby.me2"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///home/overby.me/Work/overby.me2"
+      }
+    },
     "root": {
       "inputs": {
         "flakelight": "flakelight",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "overby": "overby"
       }
     }
   },

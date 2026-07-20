@@ -1,0 +1,89 @@
+# Build a Darling CMake target with nix-ninja: one Nix derivation per Ninja
+# edge, instead of the single monolithic build in nix/package.nix. Each edge is
+# cached independently in the Nix store, so editing one source rebuilds only its
+# object and that object's dependents — the fast incremental loop for iterating
+# on Darling internals (darling.c, libSystem sources, …), and shareable via
+# Cachix.
+#
+# Configure inputs (compiler bypass, tool/lib deps, cmake flags, env) come from
+# ./darlingBuildInputs.nix — the same file nix/package.nix uses — so the
+# per-edge build configures the tree byte-identically to the production build.
+#
+# nix-ninja itself lives in the overby.me monorepo (nix/lib/ninja); it is
+# consumed through the `overby` flake input as a plain source tree
+# (`flake = false`), and its one build tool (rust-ninja, a single-crate Ninja
+# parser) is built here with nixpkgs' rustPlatform so none of overby's ~30
+# transitive flake inputs leak into this lock.
+{
+  pkgs,
+  overby,
+  # The Darling source tree with submodules checked out (same source
+  # nix/package.nix builds); defaults to the darling package's own source.
+  src ? pkgs.darling.src,
+}:
+let
+  inherit (pkgs) lib system;
+
+  # package.nix's exact configure inputs (single source of truth).
+  di = pkgs.callPackage ../darlingBuildInputs.nix { };
+
+  # nix-ninja's entry point, imported from the overby source tree and evaluated
+  # against *this* flake's pkgs (nixpkgs 26.05), not overby's nixpkgs.
+  buildNinjaProject =
+    import "${overby}/nix/lib/ninja/build/buildNinjaProject.nix" { inherit pkgs; };
+
+  # The Ninja-graph extraction tool. A standalone single-crate binary (only dep:
+  # libc), built here so we need overby as source, not as an evaluated flake.
+  rustNinja = pkgs.rustPlatform.buildRustPackage {
+    pname = "rust-ninja";
+    version = "0.1.0";
+    src = "${overby}/rust/ninja";
+    cargoLock.lockFile = "${overby}/rust/ninja/Cargo.lock";
+  };
+in
+{
+  inherit rustNinja buildNinjaProject;
+
+  # Build a single Darling Ninja target (e.g. "src/startup/darling") edge by
+  # edge. `target`/`targets` and `perFileIncremental` pass through to
+  # buildNinjaProject; everything else is Darling's shared configure environment.
+  buildTarget =
+    {
+      target ? null,
+      targets ? null,
+      perFileIncremental ? true,
+    }:
+    buildNinjaProject {
+      cmakeSource = src;
+      inherit
+        target
+        targets
+        perFileIncremental
+        rustNinja
+        ;
+
+      cmakeFlags = di.cmakeFlags ++ [
+        # Use the cc-wrapper bypass as the compiler so Darwin-target edges
+        # (`-target *darwin*`) reach the unwrapped clang, exactly as
+        # nix/package.nix does. Linux-target edges (e.g. the launcher) forward
+        # to the wrapped clang.
+        "-DCMAKE_C_COMPILER=${di.ccWrapperBypass}/bin/clang"
+        "-DCMAKE_CXX_COMPILER=${di.ccWrapperBypass}/bin/clang++"
+      ];
+
+      configureNativeBuildInputs = di.nativeBuildInputs;
+      configureBuildInputs = di.buildInputs;
+      configureEnv = {
+        NIX_CFLAGS_COMPILE = di.nixCflags;
+        LD_LIBRARY_PATH = di.ldLibraryPath;
+      };
+
+      # Every edge runs the baked compiler path; give it the bypass clang plus
+      # cmake (archive/link rules shell out to `cmake -E`) and coreutils.
+      toolchain = [
+        di.ccWrapperBypass
+        pkgs.cmake
+        pkgs.coreutils
+      ];
+    };
+}

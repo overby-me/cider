@@ -7,6 +7,15 @@
       url = "github:nix-community/flakelight";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # nix-ninja: per-edge Nix builds of Darling (nix/lib/darlingNinja.nix).
+    # Consumed as a plain source tree so none of the monorepo's ~30 transitive
+    # flake inputs enter this lock; its rust-ninja tool is built with nixpkgs'
+    # rustPlatform. Local git+file for now (the nix-ninja library is not yet on
+    # the monorepo's default branch); switch to the tangled URL once it lands.
+    overby = {
+      url = "git+file:///home/overby.me/Work/overby.me2";
+      flake = false;
+    };
   };
 
   outputs =
@@ -28,6 +37,21 @@
       # NixOS module is autoloaded from ./nix/nixosModule.nix
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
+
+      # ── nix-ninja incremental build (per-edge Nix) ───────────────────
+      #
+      # The Darling launcher (src/startup/darling) built edge-by-edge via
+      # nix-ninja, reusing package.nix's exact configure inputs
+      # (nix/darlingBuildInputs.nix). A demonstration/entry point for the
+      # incremental per-edge build path; see nix/lib/darlingNinja.nix.
+      #   nix build .#darling-launcher-ninja
+      packages.darling-launcher-ninja =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "src/startup/darling"; };
 
       # ── Flake Templates ──────────────────────────────────────────────
       #
