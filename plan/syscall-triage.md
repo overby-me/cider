@@ -96,7 +96,34 @@ Record each triage session here so we know what's been tested.
 | 2025-07 | — | — | Code audit | renameatx_np (488), clonefile (462/517), setattrlist (221), getattrlist (220), getentropy (500) |
 | 2025-07 | — | — | Code audit (getattrlist buffer order) | None new — fixed attribute buffer ordering bug in `getattrlist_generic.c` (OBJTAG was written after FNDRINFO/FLAGS instead of before) |
 | 2025-07 | — | — | Triage automation | Created `scripts/triage-syscalls.sh` and `tests/syscall/test_utimensat.c` for automated discovery |
+| 2026-07 | — | bootstrap clang | GNU hello `./configure` under Darling | `dup2` to a guarded high fd aborted (see below); fixed in `patches/xnu/0006` |
 <!-- Add rows as triage sessions are performed -->
+
+---
+
+## Campaign 2 live findings (running real builds under Darling)
+
+Found by running GNU hello's `./configure` under rootless Darling. The toolchain
+itself works: the bootstrap clang compiles + links + runs under Darling (see
+plan/26.05-facts.md); configure passed ~198 checks before this one.
+
+1. **`dup2` to a guarded high fd aborts the process.** configure's "whether
+   dup2 works" test does `dup2(1, RLIMIT_NOFILE)` (here fd **524287**),
+   expecting `EBADF`. Darling parks internal (darlingserver RPC) descriptors at
+   high fd numbers, so that target collides with a guarded fd and `sys_dup2`
+   (`.../bsd/impl/unistd/dup2.c`) called `__simple_abort()` (`Abort trap: 6`),
+   killing configure. macOS returns `EBADF` for an out-of-range target, so
+   `patches/xnu/0006` returns `EBADF` instead of aborting: the dup2 fails, the
+   guarded fd is preserved, the process survives. (`close.c` already declines
+   to abort on the same guard.)
+
+   Method: a probe compiled with `scripts/cc-under-darling.sh` walked the gnulib
+   dup2 operations, `fflush`ing each to stdout; the last line before the abort
+   (`dup2(1, 524287)`) localized it, then `dup2.c` confirmed the guard/abort.
+
+   This class (Darling internal fds colliding with programs that probe
+   `RLIMIT_NOFILE`-relative fds) may recur in `fcntl(F_DUPFD)` / `dup`; apply the
+   same EBADF-not-abort treatment if a later test trips it.
 
 ---
 
