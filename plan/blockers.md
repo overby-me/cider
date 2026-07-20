@@ -6,22 +6,52 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Open
 
-- **Guest Nix under Darling is blocked on Darling's libc++ (no `std::filesystem`).**
-  Running the nixpkgs x86_64-darwin `nix` (2.34.8) under Darling gets *past* dyld
-  path resolution: a `/nix -> /Volumes/SystemRoot/nix` symlink inside the
-  container makes nix's absolute `/nix/store/…` library references resolve (host
-  `/nix` is only mounted at `/Volumes/SystemRoot`). It then dies in dyld:
-  `Symbol not found: __ZNKSt3__14__fs10filesystem18directory_iterator13__dereferenceEv`
-  (a `std::filesystem::directory_iterator` symbol) expected in
-  `/usr/lib/libc++.1.dylib`. Darling's bundled libc++ has **0** `filesystem`
-  symbols (it predates C++17 `<filesystem>`); `libnixutil` alone imports **26**.
-  So the *official* Phase C.3 (drive the hello build through `nix build …#hello`)
-  and the Phase D bit-compare oracle are blocked until Darling's libcxx is
-  modernized to a macOS-14-era version (`std::filesystem` + the newer libc++ ABI).
-  This does not block the campaign goal itself: `hello` already builds and runs
-  under Darling via the self-contained bootstrap toolchain (M1), which does not
-  need modern libc++. Useful trick recorded: the `/nix` symlink lets any nixpkgs
-  Darwin binary's store-path deps resolve inside the container.
+- **Guest Nix under Darling: RESOLVED — nix loads, runs and evaluates.**
+  After the four fixes below, the x86_64-darwin `nix` 2.34.8 runs under Darling:
+  `nix --version` -> `nix (Nix) 2.34.8`, `nix eval --expr "1+2"` -> `3`,
+  `builtins.currentSystem` -> `"x86_64-darwin"`. Remaining for the *official*
+  `nix build …#hello` (moved to plan/26.05-facts.md M1b): a writable store in
+  the prefix + confirm HTTP substitution works. History of the dyld chain:
+  Toward the *official* Phase C.3 (drive the hello build through `nix build …#hello`)
+  and the Phase D oracle, the nixpkgs x86_64-darwin `nix` (2.34.8) is run under
+  Darling (with a `/nix -> /Volumes/SystemRoot/nix` symlink so its absolute
+  `/nix/store/…` deps resolve; host `/nix` is only at `/Volumes/SystemRoot`).
+  dyld reveals a short chain of gaps, walked to its end this session (each needs
+  a full rebuild):
+  1. `libc++` exported **0** `std::filesystem` symbols (needs 26). Sources
+     shipped but unbuilt -> `patches/libcxx/0001` builds them (now **810**).
+  2. Network.framework had **0** of the **39** `nw_*` symbols `libaws-c-io`
+     (nix's S3) needs -> `src/frameworks/Network/src/nw_stubs.c` logging stubs
+     (now **78**); nix never uses S3 for a local build.
+  3. `libc++` had no C++17 `std::pmr` at all (only `std::experimental::pmr`) ->
+     `patches/libcxx/0001` also adds a minimal `std::pmr` (memory_resource +
+     get_default_resource), exported with `visibility("default")` (libcxx builds
+     `-fvisibility=hidden`, so the first cut compiled them hidden and dyld still
+     failed).
+  4. **The last gap (verified by a full closure scan):** exactly one symbol,
+     `vtable for std::pmr::monotonic_buffer_resource`
+     (`__ZTVNSt3__13pmr25monotonic_buffer_resourceE`). All **547** other pure-std
+     symbols nix's closure imports are now provided by libc++/libc++abi. nix
+     constructs a `monotonic_buffer_resource` via the header's inline ctor, so a
+     stub won't do: it needs the real class with the **ABI-exact layout + working
+     `do_allocate`/`do_deallocate`/`do_is_equal`** so the vtable and member
+     offsets match. The matching source isn't in-tree (Darling's libcxx is a
+     reduced LLVM-13 without `std::pmr`) and `llvmPackages_13` was removed from
+     nixpkgs 26.05, so the next step is to obtain the LLVM-13 (or ABI-equal)
+     `monotonic_buffer_resource` source (git `llvmorg-13.0.0` libcxx
+     `src/memory_resource.cpp` + `<memory_resource>`) and add it to
+     `memory_resource_std.cpp`. Then nix's libc++ needs are met and it should
+     load; a framework/other gap could still appear at first run, but the closure
+     scan suggests libc++ was the last big one.
+
+  This does **not** block the campaign goal: `hello` already builds and runs
+  under Darling via the self-contained bootstrap toolchain (M0 + M1), which needs
+  none of this. Trick recorded: the `/nix` symlink lets any nixpkgs Darwin
+  binary's absolute store-path deps resolve inside the container. Alternative to
+  finishing the port: drop in a modern libc++ (e.g. the bootstrap-tools' LLVM-19
+  `libc++.1.dylib`) in place of Darling's reduced one, if the libc++abi
+  re-export/ABI can be reconciled -- would provide `monotonic_buffer_resource`
+  and everything else in one move.
 
 - **Rootless runs one command per fresh container (no re-join).** A running
   container's init (darlingserver) lives in the user namespace the *first*
