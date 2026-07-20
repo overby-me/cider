@@ -6,6 +6,23 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Open
 
+- **Guest Nix under Darling is blocked on Darling's libc++ (no `std::filesystem`).**
+  Running the nixpkgs x86_64-darwin `nix` (2.34.8) under Darling gets *past* dyld
+  path resolution: a `/nix -> /Volumes/SystemRoot/nix` symlink inside the
+  container makes nix's absolute `/nix/store/…` library references resolve (host
+  `/nix` is only mounted at `/Volumes/SystemRoot`). It then dies in dyld:
+  `Symbol not found: __ZNKSt3__14__fs10filesystem18directory_iterator13__dereferenceEv`
+  (a `std::filesystem::directory_iterator` symbol) expected in
+  `/usr/lib/libc++.1.dylib`. Darling's bundled libc++ has **0** `filesystem`
+  symbols (it predates C++17 `<filesystem>`); `libnixutil` alone imports **26**.
+  So the *official* Phase C.3 (drive the hello build through `nix build …#hello`)
+  and the Phase D bit-compare oracle are blocked until Darling's libcxx is
+  modernized to a macOS-14-era version (`std::filesystem` + the newer libc++ ABI).
+  This does not block the campaign goal itself: `hello` already builds and runs
+  under Darling via the self-contained bootstrap toolchain (M1), which does not
+  need modern libc++. Useful trick recorded: the `/nix` symlink lets any nixpkgs
+  Darwin binary's store-path deps resolve inside the container.
+
 - **Rootless runs one command per fresh container (no re-join).** A running
   container's init (darlingserver) lives in the user namespace the *first*
   `darling shell` created. A subsequent `darling shell` creates its own
