@@ -80,12 +80,16 @@ upstream darlinghq via `scripts/init-submodules.sh` (relative URLs are unhosted)
 and the Campaign-1 xnu changes are carried as `patches/xnu/*.patch` on top of the
 upstream base rev. See `plan/26.05-facts.md` for verified pin facts.
 
-### 2.3 Current identity masquerade — **now wrong**
+### 2.3 Identity masquerade — **fixed in A.2**
 
 Campaign 1 pinned `SystemVersion.plist` to **11.7.4** (Big Sur) with
 `CMAKE_OSX_DEPLOYMENT_TARGET=11.0`. nixpkgs ≥25.11 refuses / misbehaves below
 macOS 14.0, and official 26.05 binaries **strongly link the macOS 14.0 libSystem
-symbol surface**. Fixing this mismatch is Phases A and B.
+symbol surface**. A.2 retargeted the identity to macOS **14.4.1** (Darwin
+**23.4.0** / build **23E224**); validated under a rebuilt prefix (`sw_vers`,
+`uname -r`, and the `kern.os*` sysctls all report it). The deployment target
+stays at 11.0 by choice (identity is independent of it; see plan/26.05-facts.md).
+Phase B closes any remaining symbol-surface gap.
 
 ---
 
@@ -129,18 +133,20 @@ builds.
       `apple-sdk` version, and the exact bootstrap-tools derivation + hash used by
       `pkgs/stdenv/darwin` for `x86_64-darwin`. All later phases cite this file, not
       memory.
-- [ ] **A.2 Bump the masquerade.** Update `SystemVersion.plist` (ProductVersion /
-      ProductBuildVersion) to a real macOS release ≥ the verified floor (prefer the
-      version matching the default SDK, e.g. 14.4.x). Update the Darwin kernel
-      version reported by `uname -r` / `kern.osrelease` / `kern.osversion` /
-      `kern.osproductversion` sysctls to the matching **Darwin 23.x** triple, and
-      `CMAKE_OSX_DEPLOYMENT_TARGET` for Darling's own libs. Audit for other places
-      the OS version leaks (`sw_vers`, `NSProcessInfo`/CF version constants,
-      `libSystem` init).
-- [ ] **A.3 Regression-test the identity.** Extend the smoke test: `sw_vers`,
-      `uname -a`, `sysctl kern.osproductversion`, and
-      `nix eval --impure --expr builtins.currentSystem` inside the prefix must all
-      report the 14-class identity. Nix's own Darwin version checks must pass.
+- [x] **A.2 Bump the masquerade.** `SystemVersion.plist` → 14.4.1 / 23E224;
+      `patches/xnu/0005` sets the `EMULATED_*` defines (kern.osrelease 23.4.0,
+      kern.osproductversion 14.4.1, kern.osversion 23E224, banner
+      "Darwin Kernel Version 23.4.0") that the guest-side `sysctl_kern.c` handlers
+      serve; uname follows osrelease. `CMAKE_OSX_DEPLOYMENT_TARGET` kept at 11.0
+      (identity-independent; raising it risks Big-Sur-era sources — plan/26.05-facts.md).
+      Validated: rebuilt Darling reports 14.4.1 / Darwin 23.4.0 / 23E224 across
+      sw_vers, uname -r, and the kern.os* sysctls.
+- [x] **A.3 Regression-test the identity.** `tests/identity/test_sw_vers.sh`
+      passes 3/3 under the rebuilt prefix (macOS 14.4.1 / 23E224).
+      `tests/identity/test_identity.c` asserts the same uname/kern.os* triple; its
+      raw values are confirmed green, the compiled in-prefix run lands in Phase C
+      once guest `clang` is available. Guest `builtins.currentSystem` check folds
+      into Phase 0.5 / verify-nix.
 
 **Exit criteria:** `verify-nix.sh` green against the 26.05 pin; no version-floor
 refusals anywhere in `nix`'s own operation.
