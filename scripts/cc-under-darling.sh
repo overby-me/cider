@@ -47,7 +47,7 @@ for i in $(seq 1 "$RETRIES"); do
 	pkill -9 -x darlingserver 2>/dev/null || true
 	pkill -9 -x mldr 2>/dev/null || true
 	sleep 1
-	out=$(DPREFIX="$PREFIX" timeout 75 "$DARLING" shell sh -c "$inner" 2>&1) || true
+	out=$(DPREFIX="$PREFIX" timeout 150 "$DARLING" shell sh -c "$inner" 2>&1) || true
 	if printf '%s\n' "$out" | grep -q "$marker"; then
 		printf '%s\n' "$out" | sed "0,/$marker/d" \
 			| grep -avE 'Cannot chown|failed to increase FD rlimit|semaphore_timedwait failed|dserver_rpc|mach_msg_overwrite'

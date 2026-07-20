@@ -56,7 +56,7 @@ for i in $(seq 1 "$RETRIES"); do
 	pkill -9 -x darlingserver 2>/dev/null || true
 	pkill -9 -x mldr 2>/dev/null || true
 	sleep 1
-	out=$(DPREFIX="$PREFIX" timeout 120 "$DARLING" shell \
+	out=$(DPREFIX="$PREFIX" timeout 150 "$DARLING" shell \
 		sh -c "echo $marker; exec \"$guestbin\" \"\$@\"" _ "$@" 2>&1) || true
 	if printf '%s\n' "$out" | grep -q "$marker"; then
 		# Strip the marker and Darling's non-fatal boot noise.
