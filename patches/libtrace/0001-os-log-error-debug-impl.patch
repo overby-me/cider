@@ -1,0 +1,42 @@
+diff --git a/include/os/log.h b/include/os/log.h
+index 7c8d3a4..72250d1 100644
+--- a/include/os/log.h
++++ b/include/os/log.h
+@@ -48,6 +48,12 @@ bool os_log_type_enabled(os_log_t log, os_log_type_t type);
+ OS_EXPORT OS_NOT_TAIL_CALLED
+ void _os_log_impl(void* dso, os_log_t log, os_log_type_t type, const char* format, uint8_t* buffer, uint32_t size);
+ 
++OS_EXPORT OS_NOT_TAIL_CALLED
++void _os_log_error_impl(void* dso, os_log_t log, const char* format, uint8_t* buffer, uint32_t size);
++
++OS_EXPORT OS_NOT_TAIL_CALLED
++void _os_log_debug_impl(void* dso, os_log_t log, const char* format, uint8_t* buffer, uint32_t size);
++
+ OS_EXPORT DEPRECATED_ATTRIBUTE
+ void _os_log_internal(void *dso, os_log_t log, os_log_type_t type, const char *message, ...);
+ 
+diff --git a/libsystem_trace/os_log.c b/libsystem_trace/os_log.c
+index 7239f3c..44ccbb5 100644
+--- a/libsystem_trace/os_log.c
++++ b/libsystem_trace/os_log.c
+@@ -140,6 +140,20 @@ _os_log_impl(void *dso, os_log_t log, os_log_type_t type, const char *format, ui
+ 	free((void *)buffer_hex);
+ }
+ 
++// macOS-14 os_log_error()/os_log_debug() expand to these type-fixed entry
++// points instead of _os_log_impl. Bootstrap-tools' libutil (and other 14.0
++// binaries) import them; Darling shipped only the base _os_log_impl. Thin
++// wrappers keep behaviour identical to a call with the matching type.
++void
++_os_log_error_impl(void *dso, os_log_t log, const char *format, uint8_t *buf, uint32_t size) {
++	_os_log_impl(dso, log, OS_LOG_TYPE_ERROR, format, buf, size);
++}
++
++void
++_os_log_debug_impl(void *dso, os_log_t log, const char *format, uint8_t *buf, uint32_t size) {
++	_os_log_impl(dso, log, OS_LOG_TYPE_DEBUG, format, buf, size);
++}
++
+ #pragma mark Legacy Functions
+ 
+ os_log_t _os_log_create(void *dso __unused, const char *subsystem, const char *category) {

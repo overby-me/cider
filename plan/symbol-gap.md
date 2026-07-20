@@ -87,3 +87,55 @@ scripts/tbd-diff.py --sdk "$sdk" \
   --darling-root "$darling/libexec/darling/usr/lib" \
   --demand demand.json --out plan/symbol-gap.md
 ```
+
+## Addendum 2026-07-20 — runtime-confirmed gap (the `hello` *build* closure)
+
+The headline above analyzed `stdenv.bootstrapTools`. The **actual `nix build
+hello` closure is larger** — it pulls the full `stdenv` toolchain incl.
+`coreutils-9.11` (a macOS-14 build not in bootstrap-tools). Running the
+from-source build under Darling surfaced a real, strong (non-lazy) dyld failure
+that the bootstrap-tools scan could not see:
+
+```
+dyld: Symbol not found: _mkfifoat
+  Referenced from: .../coreutils-9.11/bin/coreutils (built for Mac OS X 14.0)
+  Expected in: /usr/lib/libSystem.B.dylib
+```
+
+**Full-closure demand-vs-supply** (methodology below), over the 323 realized
+build-input paths / 490 Mach-O of `hello-2.12.3.drv`:
+
+- undefined system symbols: 10383; Darling supply (nm-defined ∪ export-trie
+  re-exports over 478 dylibs/frameworks): 140254 → **16 genuinely missing**.
+- Of the 16, **9 are weak/optional sanitizer hooks** (`___lsan_*`,
+  `___sanitizer_symbolize_*`) present only in `libclang_rt.*san*.dylib`, which a
+  plain `hello` build never loads.
+- **7 real libSystem functions.** By referrer:
+  | symbol | referrer(s) | for hello? |
+  |---|---|---|
+  | `_mkfifoat`, `_mknodat` | `coreutils-9.11` (strong) | **yes — the blocker** |
+  | `__os_log_error_impl`, `__os_log_debug_impl` | `libutil-73` + 7 | maybe (libutil) |
+  | `_freadlink`, `_OSAtomicFifoEnqueue/Dequeue` | only ASan/TSan runtimes | no |
+
+**Fix (this repo):**
+- `mkfifoat`/`mknodat` are *not* Darwin syscalls (absent from
+  `syscalls.master`) — on macOS they're libSystem entries. Added emulation
+  handlers `sys_mkfifoat`/`sys_mknodat` (mirror `sys_mkdirat`: `atfd(fd)` +
+  Linux `__NR_mknodat`) at **private BSD slots 546/547** (first free past
+  `SYS_MAXSYSCALL`), with hand-written `bsdsyscalls/_mkfifoat.S`/`_mknodat.S`
+  stubs (`gen/syscall.h` gains `SYS_mkfifoat`/`SYS_mknodat`). The x86_64
+  dispatcher indexes `__bsd_syscall_table[600]` with no bound check, so 546/547
+  are valid.
+- `_os_log_error_impl`/`_os_log_debug_impl`: type-fixed thin wrappers over
+  `_os_log_impl` in `libtrace` (`os_log.c` + `os/log.h`).
+
+Carried as `patches/xnu/*` and `patches/libtrace/*`.
+
+**Methodology note (supersedes the trie-only supply used above).** The
+`_memcpy`/`_strlcpy` "misses" in a first cut were false positives: `libSystem.B`
+re-exports `libsystem_c` wholesale via `LC_REEXPORT_DYLIB`, and `libsystem_c`
+re-exports the str/mem funcs *renamed* (`[re-export] _memcpy (__platform_memmove
+from libsystem_platform)`). Accurate supply must be **`nm --defined-only` ∪ all
+export-trie names (incl. `[re-export]` entries) over every dylib** — trie-only or
+nm-only each undercount. See `scratchpad/` gap scripts.
+

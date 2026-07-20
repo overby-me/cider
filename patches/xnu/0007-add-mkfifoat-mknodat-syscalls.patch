@@ -1,0 +1,225 @@
+--- a/gen/syscall.h
++++ b/gen/syscall.h
+@@ -583,7 +583,11 @@
+ #define	SYS_pwritev_nocancel 543
+ #define	SYS_ulock_wait2    544
+ #define	SYS_proc_info_extended_id 545
+-#define	SYS_MAXSYSCALL	546
++// Darling additions: *at libc functions macOS exports that are not real Darwin
++// BSD syscalls. Handled by private emulation slots (bsd_syscall_table.c).
++#define	SYS_mknodat        546
++#define	SYS_mkfifoat       547
++#define	SYS_MAXSYSCALL	548
+ #define	SYS_invalid	63
+ 
+ #endif /* __APPLE_API_PRIVATE */
+--- a/libsyscall/CMakeLists.txt
++++ b/libsyscall/CMakeLists.txt
+@@ -499,7 +499,9 @@
+ 	bsdsyscalls/_mkdir.S
+ 	bsdsyscalls/___mkfifo_extended.S
+ 	bsdsyscalls/_mkfifo.S
++	bsdsyscalls/_mkfifoat.S
+ 	bsdsyscalls/_mknod.S
++	bsdsyscalls/_mknodat.S
+ 	bsdsyscalls/_mlockall.S
+ 	bsdsyscalls/_mlock.S
+ 	bsdsyscalls/___mmap.S
+--- a/darling/src/libsystem_kernel/emulation/CMakeLists.txt
++++ b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
+@@ -221,6 +221,7 @@
+ 	src/xnu_syscall/bsd/impl/stat/mkdir.c
+ 	src/xnu_syscall/bsd/impl/stat/mkdirat.c
+ 	src/xnu_syscall/bsd/impl/stat/mkfifo.c
++	src/xnu_syscall/bsd/impl/stat/mkfifoat.c
+ 	src/xnu_syscall/bsd/impl/stat/rmdir.c
+ 	src/xnu_syscall/bsd/impl/stat/stat.c
+ 	src/xnu_syscall/bsd/impl/stat/stat64_extended.c
+@@ -276,6 +277,7 @@
+ 	src/xnu_syscall/bsd/impl/unistd/linkat.c
+ 	src/xnu_syscall/bsd/impl/unistd/lseek.c
+ 	src/xnu_syscall/bsd/impl/unistd/mknod.c
++	src/xnu_syscall/bsd/impl/unistd/mknodat.c
+ 	src/xnu_syscall/bsd/impl/unistd/pipe.c
+ 	src/xnu_syscall/bsd/impl/unistd/pread.c
+ 	src/xnu_syscall/bsd/impl/unistd/pwrite.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+@@ -112,6 +112,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkdir.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkdirat.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifo.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/rmdir.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/stat.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/stat/stat64_extended.h>
+@@ -167,6 +168,7 @@
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/linkat.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/lseek.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknod.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pipe.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pread.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pwrite.h>
+@@ -488,4 +490,8 @@
+ 	[517] = sys_fclonefileat,
+ 	[521] = sys_abort_with_payload,
+ 	[524] = sys_setattrlistat,
++	// Darling-private high slots for *at libc functions that macOS exports but
++	// which are not BSD syscalls (see gen/syscall.h SYS_mknodat/SYS_mkfifoat).
++	[546] = sys_mknodat,
++	[547] = sys_mkfifoat,
+ };
+--- /dev/null
++++ b/gen/bsdsyscalls/_mkfifoat.S
+@@ -0,0 +1,17 @@
++#define __SYSCALL_32BIT_ARG_BYTES 12
++#include "SYS.h"
++
++#ifndef SYS_mkfifoat
++#error "SYS_mkfifoat not defined. The header files libsyscall is building against do not match syscalls.master."
++#endif
++
++#if defined(__arm64__)
++MI_ENTRY_POINT(_mkfifoat)
++SYSCALL_NONAME(mkfifoat, 3, cerror_nocancel)
++ret
++#else
++#if defined(__arm64__) || defined(__i386__) || defined(__x86_64__) || defined(__ppc__)
++__SYSCALL2(_mkfifoat, mkfifoat, 3, cerror_nocancel)
++#endif
++
++#endif
+--- /dev/null
++++ b/gen/bsdsyscalls/_mknodat.S
+@@ -0,0 +1,17 @@
++#define __SYSCALL_32BIT_ARG_BYTES 16
++#include "SYS.h"
++
++#ifndef SYS_mknodat
++#error "SYS_mknodat not defined. The header files libsyscall is building against do not match syscalls.master."
++#endif
++
++#if defined(__arm64__)
++MI_ENTRY_POINT(_mknodat)
++SYSCALL_NONAME(mknodat, 4, cerror_nocancel)
++ret
++#else
++#if defined(__arm64__) || defined(__i386__) || defined(__x86_64__) || defined(__ppc__)
++__SYSCALL2(_mknodat, mknodat, 4, cerror_nocancel)
++#endif
++
++#endif
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/stat/mkfifoat.h
+@@ -0,0 +1,6 @@
++#ifndef LINUX_MKFIFOAT_H
++#define LINUX_MKFIFOAT_H
++
++long sys_mkfifoat(int fd, const char* path, unsigned int mode);
++
++#endif // LINUX_MKFIFOAT_H
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/mknodat.h
+@@ -0,0 +1,6 @@
++#ifndef LINUX_MKNODAT_H
++#define LINUX_MKNODAT_H
++
++long sys_mknodat(int fd, const char* path, int mode, int dev);
++
++#endif // LINUX_MKNODAT_H
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c
+@@ -0,0 +1,43 @@
++#include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
++
++#include <sys/errno.h>
++
++#include <darling/emulation/conversion/stat/common.h>
++#include <darling/emulation/common/base.h>
++#include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <darling/emulation/conversion/common_at.h>
++#include <darling/emulation/linux_premigration/vchroot_expand.h>
++#include <darling/emulation/other/mach/lkm.h>
++
++#define LINUX_S_IFIFO 0010000
++
++extern char* strcpy(char* dst, const char* src);
++
++// mkfifoat is the *at form of mkfifo (BSD slot 132). Not a Darwin syscall;
++// macOS provides it in libSystem. Mirrors sys_mkfifo but honours the dirfd via
++// atfd(), issuing __NR_mknodat with S_IFIFO (Linux has no mkfifoat syscall).
++long sys_mkfifoat(int fd, const char* path, unsigned int mode)
++{
++	int ret;
++	struct vchroot_expand_args vc;
++
++	if (!path)
++		return -EFAULT;
++
++	vc.flags = 0;
++	vc.dfd = atfd(fd);
++
++	strcpy(vc.path, path);
++
++	ret = vchroot_expand(&vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	ret = LINUX_SYSCALL(__NR_mknodat, vc.dfd, vc.path, mode | LINUX_S_IFIFO, 0);
++
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	return 0;
++}
+--- /dev/null
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c
+@@ -0,0 +1,46 @@
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
++
++#include <sys/errno.h>
++
++#include <darling/emulation/conversion/stat/common.h>
++#include <darling/emulation/common/base.h>
++#include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <darling/emulation/conversion/common_at.h>
++#include <darling/emulation/linux_premigration/vchroot_expand.h>
++#include <darling/emulation/other/mach/lkm.h>
++
++extern char* strcpy(char* dst, const char* src);
++
++// mknodat is not a Darwin BSD syscall (absent from syscalls.master); macOS
++// provides it as a libSystem entry. Darling exposes it as a private high-slot
++// handler (see gen/syscall.h SYS_mknodat) mirroring sys_mkdirat: translate the
++// Darwin dirfd via atfd() and issue the Linux __NR_mknodat.
++long sys_mknodat(int fd, const char* path, int mode, int dev)
++{
++	int ret;
++	struct vchroot_expand_args vc;
++
++	if (!path)
++		return -EFAULT;
++
++	vc.flags = 0;
++	vc.dfd = atfd(fd);
++
++	strcpy(vc.path, path);
++
++	ret = vchroot_expand(&vc);
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	#if defined(__NR_mknodat)
++		ret = LINUX_SYSCALL(__NR_mknodat, vc.dfd, vc.path, mode, dev);
++	#else
++		ret = LINUX_SYSCALL(__NR_mknod, vc.path, mode, dev);
++	#endif
++
++	if (ret < 0)
++		return errno_linux_to_bsd(ret);
++
++	return 0;
++}
