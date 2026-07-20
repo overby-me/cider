@@ -21,6 +21,20 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
   darlingserver instead of creating a new userns when a container is already
   running. Prefer (a) first (simpler, no launcher change).
 
+- **First-boot shellspawn race + un-cleanable rootless prefixes.** A fresh
+  prefix's first `darling shell` sometimes returns before `shellspawn.sock`
+  appears (`Error connecting to shellspawn … No such file`). The launcher waits
+  only `15 * 1s` for the socket (`src/startup/darling.c`), which a slow rootless
+  first boot (chown-heavy setup) can exceed, so callers must retry. Separately,
+  files the container creates in the prefix are owned by mapped container uids
+  the host user cannot `rm` (EPERM), so a stale prefix cannot be cleaned from
+  the host and reusing one can wedge later boots. Consequences: the one-shot
+  runner/compile scripts (`run-darwin-under-darling.sh`, `cc-under-darling.sh`)
+  are timing-sensitive. Fixes to evaluate: widen the shellspawn wait window
+  (and/or poll faster); a `darling` subcommand that tears down + removes a
+  prefix from inside the container (as container root). The underlying
+  compile/run results are solid; only the harness around them is flaky.
+
 - **Rootless prefix path must be short (Unix-socket `sun_path` limit).** The
   shellspawn/darlingserver socket lives at `<prefix>/var/run/…sock`; if the
   prefix path is long the socket path overflows `sockaddr_un.sun_path` (~108
