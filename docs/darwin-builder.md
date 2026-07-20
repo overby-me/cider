@@ -157,7 +157,7 @@ darling shell echo "Darling is working"
 
 # Verify macOS identity
 darling shell uname -s    # → Darwin
-darling shell sw_vers      # → macOS 11.7.4 (Big Sur)
+darling shell sw_vers      # → macOS 14.4.1 (Sonoma), build 23E224
 ```
 
 ### 3. Install Nix Inside Darling
