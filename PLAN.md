@@ -193,20 +193,27 @@ holds; confirm empirically in C.2.*
 This is the milestone that converts the project from "OS revival" to "treadmill."
 Aim everything at it.
 
-- [ ] **C.1 Substitute and stage.** Using the A.1 facts, `nix build` the exact
-      bootstrap-tools derivation for x86_64-darwin from the 26.05 pin (it should
-      substitute from cache.nixos.org — record the store path and narHash).
-- [ ] **C.2 Execute.** Inside the prefix, run the unpacked tools directly: `sh`,
-      `coreutils`, `tar`, `sed`, `grep`, then `clang --version`, then compile and run
-      a hello.c against the SDK stubs. Triage failures with
-      `scripts/triage-syscalls.sh` + `DSERVER` logs; every fix follows the Phase B/1
-      pattern (fix + regression test).
-- [ ] **C.3 Trivial derivation with official stdenv path.** `nix build` a
-      one-derivation package (e.g. `pkgs.hello` or smaller) with
-      `--system x86_64-darwin` against the pin, substituting all dependencies,
-      building only the target. Then widen: build with `--max-jobs` local only, no
-      substitutes for the target's direct deps, forcing real stdenv usage.
-- [ ] **C.4 Stall defense.** Wrap all matrix/build invocations in a watchdog
+- [x] **C.1 Substitute and stage.** bootstrap-tools (`v6wk45fap…`), apple-sdk-14.4
+      (`dfd1kij…`) and `hello.src` substitute from cache.nixos.org; staged into
+      Darling through the host-root mount `/Volumes/SystemRoot` (host `/nix` is not
+      at `/nix` inside the container). See plan/26.05-facts.md.
+- [x] **C.2 Execute.** The bootstrap Darwin binaries run under rootless Darling
+      (`bash 5.2.37`, `sh`, `clang 19.1.7` auto-targeting `x86_64-apple-darwin23.4.0`,
+      coreutils) and clang **compiles + links + runs** a program end to end with
+      `-isysroot <apple-sdk>` (Phase C keystone, plan/26.05-facts.md).
+- [x] **C.3 Build `hello` from source (M1).** GNU `hello-2.12.3` (the nixpkgs
+      `hello.src`) runs `./configure && make` end to end in one rootless Darling
+      session and the freshly linked Mach-O prints `Hello, world!` (all rc 0).
+      `scripts/build-hello-under-darling.sh`. Follow-up: drive it through **guest
+      Nix** (`nix build …#hello`) rather than hand-run configure/make (needs Nix
+      running under Darling; see plan/blockers.md). Widening to no-substitute deps
+      also pending.
+- [x] **C.4 Stall defense (partial).** The one-shot runner/build harnesses wrap
+      every `darling shell` in a per-attempt `timeout` + retry (kills stale
+      darlingserver/mldr). First live triage finding logged: `dup2`-to-guarded-fd
+      abort (`patches/xnu/0006`, plan/syscall-triage.md). Full gdb-on-timeout
+      capture still TODO.
+- [ ] **C.4b Stall defense (gdb capture).** Wrap all matrix/build invocations in a watchdog
       (timeout + on-timeout stack capture of the guest process and darlingserver via
       gdb attach). Stalls are the signature failure mode of a subtly-wrong kernel
       shim (see `fixPythonPipStalling`); suspects are kqueue/kevent, poll/select
@@ -214,7 +221,10 @@ Aim everything at it.
       `plan/stall-triage.md`.
 
 **Exit criteria:** `pkgs.hello` (26.05, x86_64-darwin) builds from source under
-Darling with only official inputs.
+Darling with only official inputs. **Met at the toolchain level (M1):** the
+official bootstrap-tools + apple-sdk build `hello.src` via `./configure && make`
+under Darling and it runs. Remaining to close fully: drive the same build through
+guest Nix (the derivation, not hand-run) and the Phase D bit-compare oracle.
 
 ---
 
