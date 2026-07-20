@@ -125,6 +125,24 @@ plan/26.05-facts.md); configure passed ~198 checks before this one.
    `RLIMIT_NOFILE`-relative fds) may recur in `fcntl(F_DUPFD)` / `dup`; apply the
    same EBADF-not-abort treatment if a later test trips it.
 
+2. **`nix` won't dyld-load: libc++ has no `std::filesystem`, then Network.framework
+   has no `nw_*` C API.** Toward the *official* Phase C.3 (drive the hello build
+   through `nix build`), the nixpkgs x86_64-darwin `nix` (2.34.8) is run under
+   Darling with a `/nix -> /Volumes/SystemRoot/nix` symlink so its absolute
+   store-path deps resolve. Two dyld gaps, fixed/stubbed in order:
+   - `libc++.1.dylib` exported **0** `std::filesystem` symbols (`libnixutil`
+     needs 26). Darling's libcxx (LLVM 13) *ships* the sources but omitted them
+     from its build. `patches/libcxx/0001` adds them (C++17); libc++ now exports
+     **810** filesystem symbols.
+   - `libaws-c-io` (nix's S3 support) needs **39** `nw_*` symbols from
+     Network.framework, which Darling implements as **0** (only the old ObjC
+     `NW*` classes). nix never uses S3 for a local store/build, so
+     `src/frameworks/Network/src/nw_stubs.c` provides loudly-logging stubs
+     (return NULL) purely so the binary loads. A real `nw_` implementation is out
+     of scope. nix's other frameworks (CoreFoundation, Security, CoreServices,
+     Foundation, IOKit) are already implemented by Darling; Network was the only
+     empty one in the closure.
+
 ---
 
 *[← Phase 1 — Syscall Fixes](./03-phase1-syscalls.md) | [Phase 2 — Sandbox →](./04-phase2-sandbox.md)*

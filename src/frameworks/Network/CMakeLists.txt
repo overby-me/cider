@@ -112,6 +112,9 @@ add_framework(Network
         src/NWTCPListener.m
         src/NWPathEvaluator.m
         src/NWAWDLibnetcoreTCPECNStatsReport.m
+        # Loudly-logging stubs for the modern nw_* C API (see nw_stubs.c), so
+        # macOS-14 binaries that link it (aws-c-io via the nixpkgs `nix`) load.
+        src/nw_stubs.c
 
     DEPENDENCIES
         system
