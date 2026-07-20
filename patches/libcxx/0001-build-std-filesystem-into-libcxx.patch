@@ -1,15 +1,17 @@
 Build C++17 <filesystem> and a minimal std::pmr into libc++.1.dylib.
 
-Darling's LLVM-13 libcxx omitted the C++17 runtime bits that modern C++
-programs (the nixpkgs `nix`) need at load time: the <filesystem> sources
-(shipped but unbuilt -> 0 std::filesystem symbols; libnixutil needs 26), and
-std::pmr entirely (only std::experimental::pmr existed, so
-std::pmr::memory_resource::~memory_resource and get_default_resource were
-missing; libnixexpr needs them).
+Darling's LLVM-13 libcxx predates these C++17 runtime bits that modern C++
+programs (the nixpkgs `nix`) need at load time:
+  - <filesystem> sources shipped but unbuilt (0 std::filesystem symbols;
+    libnixutil needs 26); add them.
+  - std::pmr did not exist at all (only std::experimental::pmr; libc++ gained
+    std::pmr in LLVM 16). Add a self-contained std::pmr: memory_resource +
+    get_default_resource, and monotonic_buffer_resource ported from LLVM-17
+    libcxx (matches the macOS-14 ABI nix was built against; libnixexpr
+    constructs one via the inline ctor and needs its vtable + exact layout).
 
-Add the filesystem sources and a minimal std::pmr (memory_resource +
-get_default_resource, standard vtable layout, new/delete default, forced to
-default visibility since libcxx builds -fvisibility=hidden), all as C++17.
+All the C++17 additions are compiled -std=c++17 and forced to default
+visibility (libcxx builds -fvisibility=hidden). The rest of libc++ is C++11.
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 55144f764..f94ecf9fc 100644
@@ -43,10 +45,10 @@ index 55144f764..f94ecf9fc 100644
  
 diff --git a/src/memory_resource_std.cpp b/src/memory_resource_std.cpp
 new file mode 100644
-index 000000000..36a8e82c8
+index 000000000..73cc9e746
 --- /dev/null
 +++ b/src/memory_resource_std.cpp
-@@ -0,0 +1,79 @@
+@@ -0,0 +1,239 @@
 +//===------------------ memory_resource_std.cpp ---------------------------===//
 +//
 +// Minimal C++17 std::pmr for Darling's libc++.
@@ -67,6 +69,7 @@ index 000000000..36a8e82c8
 +// polymorphic_allocator out-of-lines) -- only what nix references.
 +
 +#include <cstddef>
++#include <cstdint>
 +#include <new>
 +
 +// libcxx is compiled here with -fvisibility=hidden; the real libc++ headers
@@ -121,6 +124,165 @@ index 000000000..36a8e82c8
 +PMR_VIS memory_resource* get_default_resource() noexcept {
 +	static __new_delete_resource __res;
 +	return &__res;
++}
++
++// std::pmr::monotonic_buffer_resource. Ported from LLVM-17 libcxx
++// (__memory_resource/monotonic_buffer_resource.h + src/memory_resource.cpp),
++// which matches the macOS-14 libc++ ABI the nixpkgs `nix` was built against
++// (its libnixexpr constructs one via the header's inline ctor and needs this
++// vtable + exact member layout). Only do_allocate is out-of-line (the vtable
++// key function); the rest is the standard inline definition.
++
++static size_t __roundup(size_t __count, size_t __alignment) {
++	size_t __mask = __alignment - 1;
++	return (__count + __mask) & ~__mask;
++}
++static void* __align_down(size_t __align, size_t __size, void*& __ptr, size_t& __space) {
++	if (__size > __space)
++		return nullptr;
++	char* __p1      = static_cast<char*>(__ptr);
++	char* __new_ptr = reinterpret_cast<char*>(reinterpret_cast<uintptr_t>(__p1 - __size) & ~(__align - 1));
++	if (__new_ptr < (__p1 - __space))
++		return nullptr;
++	__ptr = __new_ptr;
++	__space -= __p1 - __new_ptr;
++	return __ptr;
++}
++
++class PMR_VIS monotonic_buffer_resource : public memory_resource {
++	static const size_t __default_buffer_capacity  = 1024;
++	static const size_t __default_buffer_alignment = 16;
++
++	struct __chunk_footer {
++		__chunk_footer* __next_;
++		char* __start_;
++		char* __cur_;
++		size_t __align_;
++		size_t __allocation_size() {
++			return (reinterpret_cast<char*>(this) - __start_) + sizeof(*this);
++		}
++		void* __try_allocate_from_chunk(size_t, size_t);
++	};
++
++	struct __initial_descriptor {
++		char* __start_;
++		char* __cur_;
++		union {
++			char* __end_;
++			size_t __size_;
++		};
++		void* __try_allocate_from_chunk(size_t, size_t);
++	};
++
++public:
++	monotonic_buffer_resource()
++	    : monotonic_buffer_resource(nullptr, __default_buffer_capacity, get_default_resource()) {}
++	explicit monotonic_buffer_resource(size_t __initial_size)
++	    : monotonic_buffer_resource(nullptr, __initial_size, get_default_resource()) {}
++	monotonic_buffer_resource(void* __buffer, size_t __buffer_size)
++	    : monotonic_buffer_resource(__buffer, __buffer_size, get_default_resource()) {}
++	explicit monotonic_buffer_resource(memory_resource* __upstream)
++	    : monotonic_buffer_resource(nullptr, __default_buffer_capacity, __upstream) {}
++	monotonic_buffer_resource(size_t __initial_size, memory_resource* __upstream)
++	    : monotonic_buffer_resource(nullptr, __initial_size, __upstream) {}
++	monotonic_buffer_resource(void* __buffer, size_t __buffer_size, memory_resource* __upstream)
++	    : __res_(__upstream) {
++		__initial_.__start_ = static_cast<char*>(__buffer);
++		if (__buffer != nullptr) {
++			__initial_.__cur_ = static_cast<char*>(__buffer) + __buffer_size;
++			__initial_.__end_ = static_cast<char*>(__buffer) + __buffer_size;
++		} else {
++			__initial_.__cur_  = nullptr;
++			__initial_.__size_ = __buffer_size;
++		}
++		__chunks_ = nullptr;
++	}
++	monotonic_buffer_resource(const monotonic_buffer_resource&) = delete;
++	~monotonic_buffer_resource() override { release(); }
++	monotonic_buffer_resource& operator=(const monotonic_buffer_resource&) = delete;
++
++	void release() {
++		if (__initial_.__start_ != nullptr)
++			__initial_.__cur_ = __initial_.__end_;
++		while (__chunks_ != nullptr) {
++			__chunk_footer* __next = __chunks_->__next_;
++			__res_->deallocate(__chunks_->__start_, __chunks_->__allocation_size(), __chunks_->__align_);
++			__chunks_ = __next;
++		}
++	}
++	memory_resource* upstream_resource() const { return __res_; }
++
++protected:
++	void* do_allocate(size_t __bytes, size_t __alignment) override; // key function
++	void do_deallocate(void*, size_t, size_t) override {}
++	bool do_is_equal(const memory_resource& __other) const noexcept override {
++		return this == &__other;
++	}
++
++private:
++	__initial_descriptor __initial_;
++	__chunk_footer* __chunks_;
++	memory_resource* __res_;
++};
++
++void* monotonic_buffer_resource::__initial_descriptor::__try_allocate_from_chunk(size_t __bytes, size_t __align) {
++	if (!__cur_)
++		return nullptr;
++	void* __new_ptr       = static_cast<void*>(__cur_);
++	size_t __new_capacity = (__cur_ - __start_);
++	void* __aligned_ptr   = __align_down(__align, __bytes, __new_ptr, __new_capacity);
++	if (__aligned_ptr != nullptr)
++		__cur_ = static_cast<char*>(__new_ptr);
++	return __aligned_ptr;
++}
++void* monotonic_buffer_resource::__chunk_footer::__try_allocate_from_chunk(size_t __bytes, size_t __align) {
++	void* __new_ptr       = static_cast<void*>(__cur_);
++	size_t __new_capacity = (__cur_ - __start_);
++	void* __aligned_ptr   = __align_down(__align, __bytes, __new_ptr, __new_capacity);
++	if (__aligned_ptr != nullptr)
++		__cur_ = static_cast<char*>(__new_ptr);
++	return __aligned_ptr;
++}
++void* monotonic_buffer_resource::do_allocate(size_t __bytes, size_t __align) {
++	const size_t __footer_size  = sizeof(__chunk_footer);
++	const size_t __footer_align = alignof(__chunk_footer);
++
++	auto __previous_allocation_size = [&]() {
++		if (__chunks_ != nullptr)
++			return __chunks_->__allocation_size();
++		size_t __newsize =
++		    (__initial_.__start_ != nullptr) ? (__initial_.__end_ - __initial_.__start_) : __initial_.__size_;
++		return __roundup(__newsize, __footer_align) + __footer_size;
++	};
++
++	if (void* __result = __initial_.__try_allocate_from_chunk(__bytes, __align))
++		return __result;
++	if (__chunks_ != nullptr) {
++		if (void* __result = __chunks_->__try_allocate_from_chunk(__bytes, __align))
++			return __result;
++	}
++
++	if (__align < __footer_align)
++		__align = __footer_align;
++
++	size_t __aligned_capacity  = __roundup(__bytes, __footer_align) + __footer_size;
++	size_t __previous_capacity = __previous_allocation_size();
++
++	if (__aligned_capacity <= __previous_capacity) {
++		size_t __newsize  = 2 * (__previous_capacity - __footer_size);
++		__aligned_capacity = __roundup(__newsize, __footer_align) + __footer_size;
++	}
++
++	char* __start          = (char*)__res_->allocate(__aligned_capacity, __align);
++	auto __end             = __start + __aligned_capacity - __footer_size;
++	__chunk_footer* __footer = (__chunk_footer*)(__end);
++	__footer->__next_      = __chunks_;
++	__footer->__start_     = __start;
++	__footer->__cur_       = __end;
++	__footer->__align_     = __align;
++	__chunks_              = __footer;
++
++	return __chunks_->__try_allocate_from_chunk(__bytes, __align);
 +}
 +
 +} // namespace pmr
