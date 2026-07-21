@@ -53,20 +53,12 @@
         }).buildTarget
           { target = "src/startup/darling"; };
 
-      # Per-edge build of libsystem_kernel.dylib (the fat libSystem sub-lib that
-      # the emulation + libsyscall objects feed). This is the lib the Phase-B/C
-      # syscall grind edits, so building it edge-by-edge is the fast iteration
-      # loop: change one emulation .c and only its object + the relink rebuild.
-      #   nix build .#darling-kernel-ninja
-      packages.darling-kernel-ninja =
-        pkgs:
-        (import ./nix/lib/darlingNinja.nix {
-          inherit pkgs;
-          overby = inputs.overby;
-        }).buildTarget
-          {
-            target = "src/external/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib";
-          };
+      # NOTE: a packages.darling-kernel-ninja (per-edge build of
+      # libsystem_kernel.dylib) was prototyped but is intentionally NOT exposed
+      # yet: evaluating it forces the graph/scan IFD, which currently fails at
+      # the mig `/bin/mkdir` edge (see plan/blockers.md + the
+      # nix-ninja-cmake-hardening branch of overby.me2), so exposing it would
+      # break `nix flake check` in CI. Re-add once that subgraph builds green.
 
       # ── Flake Templates ──────────────────────────────────────────────
       #
