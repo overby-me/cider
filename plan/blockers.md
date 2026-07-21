@@ -128,6 +128,32 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
   command + dump its var state. Repro harness + full `STUB_VERBOSE` trace saved
   in `scratchpad/hello-trace.log` / `bash-abort*.sh`.
 
+- **Darwin default temp dir returns EACCES (programs not setting `TMPDIR` can't
+  make temp files).** `scripts/darling-crash-repro.sh` (a loop of trivial
+  `clang -c` compiles under Darling) with **no `TMPDIR` set** fails *every* compile
+  from #1: `clang: error: unable to make temporary file: Permission denied`. With
+  `TMPDIR=$HOME/ctmp` set, clang works. So the fallback Darwin per-user temp dir
+  (`confstr(_CS_DARWIN_USER_TEMP_DIR)` → `/var/folders/…/T/`, used by
+  `_CS_DARWIN_USER_*` / libc `tmpfile`/`mkstemp` when `TMPDIR` is unset) is either
+  not created or not writable in the container. The bash/hello build scripts dodge
+  it by exporting `TMPDIR=$HOME/tmp`, so it does **not** block them, but many
+  macOS programs rely on the default temp dir. Fix to evaluate: have the container
+  first-boot create `$DARWIN_USER_TEMP_DIR` (writable, mode 0700) and/or make
+  `confstr(_CS_DARWIN_USER_TEMP_DIR)` return a path the container guarantees
+  exists (e.g. under the prefix's `/tmp`). Verify the confstr value inside a
+  `darling shell` (`getconf DARWIN_USER_TEMP_DIR`) and check its perms.
+
+- **Container cold-start is slow (~2 min fresh) and intermittently wedges under
+  repeated runs.** Sustained perf/repro/build harnessing this session repeatedly
+  hung on cold boot (`darling-spawn-bench.sh`, `darling-crash-repro.sh`, the
+  direct bash build all failed to produce the first marker). A fresh short-path
+  prefix boots but takes minutes; reusing a prefix across many killed runs can
+  leave mapped-uid files that wedge later boots (see the un-cleanable-prefix
+  blocker above). This flakiness — not any single fidelity bug — is currently the
+  main obstacle to running bash's large `./configure` to completion. Mitigations:
+  one fresh short-path prefix per attempt, run the whole build in ONE `darling
+  shell` session (the build scripts already do), and pre-warm the prefix once.
+
 ## Resolved
 
 - **Host privilege for running Darling** → **rootless via unprivileged user
