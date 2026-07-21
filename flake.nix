@@ -10,10 +10,10 @@
     # nix-ninja: per-edge Nix builds of Darling (nix/lib/darlingNinja.nix).
     # Consumed as a plain source tree so none of the monorepo's ~30 transitive
     # flake inputs enter this lock; its rust-ninja tool is built with nixpkgs'
-    # rustPlatform. Local git+file for now (the nix-ninja library is not yet on
-    # the monorepo's default branch); switch to the tangled URL once it lands.
+    # rustPlatform. Tracks the monorepo's default branch, where the nix-ninja
+    # library now lives.
     overby = {
-      url = "git+file:///home/overby.me/Work/overby.me2";
+      url = "git+https://tangled.org/overby.me/overby.me?ref=main";
       flake = false;
     };
   };
@@ -53,12 +53,15 @@
         }).buildTarget
           { target = "src/startup/darling"; };
 
-      # NOTE: a packages.darling-kernel-ninja (per-edge build of
-      # libsystem_kernel.dylib) was prototyped but is intentionally NOT exposed
-      # yet: evaluating it forces the graph/scan IFD, which currently fails at
-      # the mig `/bin/mkdir` edge (see plan/blockers.md + the
-      # nix-ninja-cmake-hardening branch of overby.me2), so exposing it would
-      # break `nix flake check` in CI. Re-add once that subgraph builds green.
+      # A per-edge nix-ninja build of a whole libSystem sublibrary,
+      # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
+      # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,
+      # libc, the two-pass dylib link — builds from source per edge). It is not
+      # exposed as a package because its lowering evaluates thousands of
+      # derivations, which `nix flake check` would force. Build it directly with:
+      #   nix build '.?submodules=1' \
+      #     --expr '(import ./nix/lib/darlingNinja.nix { pkgs = <nixpkgs>; overby = <overby>; }).buildTarget
+      #             { target = "src/external/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
 
       # ── Flake Templates ──────────────────────────────────────────────
       #
