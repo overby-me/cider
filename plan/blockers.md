@@ -156,6 +156,34 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Resolved
 
+- **GNU bash builds from source AND runs under Darling (rootless, nixpkgs 26.05
+  toolchain).** `bash-5.3` from nixpkgs 26.05, built with the bootstrap-tools
+  clang + apple-sdk-14.4 inside one `darling shell`: `./configure` passes cleanly
+  (no abort — the earlier configure "Abort trap: 6" was under-load flakiness, not
+  reproducible on an idle machine), `make` compiles all **229** objects (bash +
+  its bundled readline/history/glob/tilde/sh libraries; the **`-fcommon`** CFLAG
+  fixes readline's PC/BC/UP tentative-definition duplicate symbols at link), and
+  links a **1.5M Mach-O x86_64** executable. It runs:
+    - `./bash --version` → `GNU bash, version 5.3.0(1)-release (x86_64-apple-darwin23.4.0)`
+    - `./bash -c 'echo BASH_RUNS_OK; echo $((2+3)); printf abc|tr a-z A-Z'` → `BASH_RUNS_OK` / `5` / `ABC`
+
+  `x86_64-apple-darwin23.4.0` = the macOS-14.4.1 identity masquerade. Scripts:
+  `scripts/build-bash-under-darling.sh` (build in one session),
+  `scripts/resume-bash-build.sh` (resume `make` in place — see the make-hang next).
+
+- **Darling intermittently deadlocks `make` under sustained forking (zombie
+  children not reaped → make's `wait()` hangs).** During a long `make`, after
+  ~100 compiles the container's mldr children go `<defunct>` (ZN) and make blocks
+  in `wait()` with no live compiler — no crash, darlingserver stays alive. A
+  process-reaping / SIGCHLD-delivery race under load (worse on a contended host).
+  Workaround that completes the build: `scripts/resume-bash-build.sh` kills the
+  hung container and re-runs `make`, which resumes from the built objects (make
+  skips up-to-date `.o`); a resume or two carries it to the link. Real fix
+  (future): the darlingserver / libsystem_kernel fork/wait/SIGCHLD path. A
+  `DARLING_CRASH_TRACE` backtrace-on-fatal-signal facility was drafted in
+  `.../signal/sigexc.c` (env-gated) to diagnose crashes; it was not needed for
+  bash (the failure was a hang, not a crash) and is left unbuilt/uncommitted.
+
 - **Host privilege for running Darling** → **rootless via unprivileged user
   namespaces**, no setuid, no sudo. `src/startup/darling.c` now enters a
   `CLONE_NEWUSER` namespace mapping the caller to root and re-execs into it
