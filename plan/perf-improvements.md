@@ -35,6 +35,24 @@ workloads (configure/make fork thousands of short-lived processes).
 
 ## Improvements
 
+### P0.5 — dyld shared cache  ⬅ likely the biggest *wall-clock* lever
+- **Target:** per-spawn process-startup wall-clock (not a daemon syscall count).
+- **Finding:** the built root ships **no** `dyld_shared_cache` (`find result-both
+  -path '*shared*cache*'` is empty), though dyld has the machinery
+  (`dyld3/`, `build-scripts/update_dyld_shared_cache-build.sh`). So every exec maps
+  and re-relocates the full libSystem re-export closure (31 sublibraries) from
+  scratch. This is almost certainly the bulk of the ~tens-of-ms per trivial spawn
+  and the deepest reason Darling is heavier than Wine (which maps a handful of
+  DLLs). configure/make fork thousands of these.
+- **Approach:** generate a shared cache for the prefix's dylib set
+  (`update_dyld_shared_cache` cross-built or run once under Darling at prefix
+  init) and have dyld map it. Cache must match dylib paths/UUIDs exactly or dyld
+  falls back.
+- **Risk:** HIGH complexity (cache generation under emulation is why upstream
+  doesn't ship one), and a stale/mismatched cache can break loading — must be
+  correct-or-absent, never wrong. But the single biggest potential win; measure
+  the load cost first (`scripts/darling-spawn-bench.sh`) to size it.
+
 ### P0 — cache daemon ucred  ✅ DONE (landed on main)
 Per-message getpid/getuid/getgid → cached once. **1,537,526 → 256,371 syscalls
 (83%, 6×).** See `plan/perf-overhead.md`.
@@ -118,3 +136,22 @@ Safety × impact: **P1 → P2 → P6 → P4 → P5 → P3 → P8** (P7 measured 
 Each: implement on a branch, rebuild, run probe + wall-clock + hello smoke, and
 land on main only when the correctness gate is green. Risky scheduler/IPC-core
 changes (P1/P3/P8) stay on a branch if they can't be clearly validated.
+
+## Status (honest)
+
+- **P0 (ucred) landed on main — 83% / 6× fewer daemon syscalls.** This was the one
+  pure, obviously-correct, high-value win (a stateless cache; no core behavior
+  change).
+- **Everything else is core-touching.** P1 replaces the microthread context
+  switch (Darling's most delicate code — intricate ucontext use across interrupts,
+  syscall-resume, uc_link); P2 changes the epoll concurrency model (EPOLLONESHOT is
+  load-bearing for deferred microthread consumption); P3 duplicates server port
+  state in-process; P0.5 generates a dyld shared cache under emulation. A subtle
+  mistake in any regresses the working `hello`. They are **not** safe to land
+  autonomously without review and a reliable IPC/spawn **stress harness** — the
+  current container cold-start is too flaky even for clean wall-clock grounding
+  (`darling-spawn-bench.sh` hung on boot).
+- **Recommended next perf step (needs review):** build a non-flaky spawn/IPC stress
+  harness first, then take P1 behind a `DSERVER_FAST_CONTEXT` flag (measurable via
+  `rt_sigprocmask`), and separately size P0.5 (the biggest wall-clock lever).
+- Designs above are implementation-ready for when that review/harness exists.
