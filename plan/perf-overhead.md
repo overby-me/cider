@@ -85,22 +85,36 @@ constant identity. Root cause: `src/message.cpp` filled `struct ucred`
 
 ## Fix implemented
 
-`patches/darlingserver/0002-cache-darlingserver-own-credentials.patch`: cache the
-daemon's `ucred` once via a thread-safe C++ magic static (`ourCachedCredentials()`)
-and reuse it at both fill sites. Safe because darlingserver never changes uid/gid
-after its startup root check and never forks (workers are threads sharing one pid;
-managed processes are separate mldr-launched processes — verified no
-`fork`/`clone`/`daemon` in its source). Eliminates ~1.28M syscalls per 200 spawns
-(~6,400/spawn), i.e. the 83% bulk of darlingserver's syscall load.
+In `src/external/darlingserver/src/message.cpp` (now vendored directly in-tree),
+cache the daemon's `ucred` once via a thread-safe C++ magic static
+(`ourCachedCredentials()`) and reuse it at both fill sites, instead of calling
+getpid()+getuid()+getgid() while filling SCM_CREDENTIALS on every Message. Safe
+because darlingserver never changes uid/gid after its startup root check and never
+forks (workers are threads sharing one pid; managed processes are separate
+mldr-launched processes — verified no `fork`/`clone`/`daemon` in its source).
 
-## Status
+## Result (validated)
 
-- Fix written + carried as a submodule patch (validated: reverse-applies against
-  the dirty tree ⇒ forward-applies clean). Measurement tooling committed
-  (`scripts/darling-perf-probe.sh`, `scripts/measure-rpc.sh`-style attach probe).
-- NEXT: rebuild darling, re-run the darlingserver-attach probe, record before/after
-  (expect getpid/getuid/getgid → ~0 in the daemon's profile).
-- FOLLOW-UPS ranked: (1) `rt_sigprocmask` ~280/spawn (the per-RPC signal-mask
-  atomic section — investigate necessity); (2) `futex` ~198/spawn is 57% of *time*
-  — darlingserver internal lock contention, the next structural target;
-  (3) reduce raw RPC count/spawn (~195) via startup-handshake batching.
+Rebuilt darling with the vendored+patched darlingserver and re-ran the
+attach probe (200 `uname` spawns, same workload):
+
+| darlingserver syscalls | before | after |
+|---|---|---|
+| getpid + getuid + getgid | 1,277,184 | **0** |
+| total | 1,537,526 | **256,371** |
+
+**83.3% fewer darlingserver syscalls (6.0× reduction), ~7,687 → ~1,282 per
+spawned process.** The identity syscalls are eliminated entirely; real wall-clock
+gain is bounded (these are cheap syscalls) but the CPU/scheduler overhead drop is
+real and the count is now dominated by genuine work.
+
+## Follow-ups (next targets, now the top of the profile)
+
+1. `rt_sigprocmask` ~277/spawn — the per-RPC signal-mask atomic section
+   (`dserver_rpc_hooks_atomic_begin/end`, two rt_sigprocmask per RPC on the mldr
+   side; darlingserver side also high). Investigate whether the block/restore pair
+   is needed on every RPC or can be narrowed.
+2. `futex` ~193/spawn, ~39% of (ptrace-inflated) time — darlingserver internal
+   lock contention (microthread scheduler / thread pool). The next structural win.
+3. Reduce raw RPC count/spawn (~130 recvmmsg batches) via startup-handshake
+   batching (task+thread registration, initial port setup).
