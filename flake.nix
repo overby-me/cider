@@ -38,6 +38,14 @@
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
+      # Just the darlingserver daemon (Linux ELF), built standalone for fast perf
+      # iteration (~5-10 min vs ~40 min for the whole darling). Reuses the darling
+      # package's submodule-aware source and exact configure; see nix/darlingserver.nix.
+      #   nix build '.?submodules=1#darlingserver'
+      packages.darlingserver =
+        pkgs:
+        pkgs.callPackage ./nix/darlingserver.nix { src = pkgs.darling.src; };
+
       # ── nix-ninja incremental build (per-edge Nix) ───────────────────
       #
       # The Darling launcher (src/startup/darling) built edge-by-edge via
@@ -52,6 +60,27 @@
           overby = inputs.overby;
         }).buildTarget
           { target = "src/startup/darling"; };
+
+      # The launcher, baked to exec a spliced runtime's darlingserver (see
+      # scripts/splice-darlingserver.sh). The install prefix comes from the
+      # DARLING_SPLICE_PREFIX env var (needs --impure); unset -> a normal launcher,
+      # so `nix flake check` (pure) still builds it fine.
+      #   DARLING_SPLICE_PREFIX=$HOME/darling-rt nix build --impure \
+      #     '.?submodules=1#darling-launcher-spliced'
+      packages.darling-launcher-spliced =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          {
+            target = "src/startup/darling";
+            installPrefix =
+              let
+                e = builtins.getEnv "DARLING_SPLICE_PREFIX";
+              in
+              if e == "" then null else e;
+          };
 
       # NOTE: a nix-ninja `darlingserver` target for fast daemon iteration is not
       # exposed as a package: its edges pull in the mig/migcom code generators,

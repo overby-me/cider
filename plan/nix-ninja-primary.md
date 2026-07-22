@@ -6,6 +6,21 @@ with cached component/edge outputs, instead of the ~40-min monolithic
 on any source change. This is the fix for the iteration pain that dominated the
 watchdog work (every 3-line launcher change = a full rebuild).
 
+## Fast darlingserver iteration WITHOUT nix-ninja (shipped)
+
+nix-ninja's per-edge build of `darlingserver` is blocked (its mig/migcom header-scan
+derivations fail — see the darlingserver-ninja note in flake.nix). A coarser split
+sidesteps that: **`packages.darlingserver` (nix/darlingserver.nix)** reuses
+package.nix's exact configure but runs `ninja darlingserver` only (regular ninja
+builds mig fine). It builds just the Linux daemon + its duct-tape/RPC deps —
+**~5-6 min idle (9m19s measured under load ~20) vs ~40 min for the monolith**, a
+4-8× cut for the component where all the perf work lives. The daemon is
+byte-size-identical to the full build's. Splice it into a full runtime for testing
+with `scripts/splice-darlingserver.sh` (+ the `darling-launcher-spliced` package,
+which bakes INSTALL_PREFIX to the spliced dir from `$DARLING_SPLICE_PREFIX`). This
+is the practical fast loop for P2/P6/P8; nix-ninja per-edge (seconds, not minutes)
+would still be better but needs the monorepo mig-scan fix.
+
 ## Why not "genuine nixpkgs packages"
 
 The submodules are compiled as **Darwin / Mach-O** (`-target x86_64-apple-darwin`,
