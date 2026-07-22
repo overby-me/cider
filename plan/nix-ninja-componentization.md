@@ -61,14 +61,38 @@ and drop the `overby` flake input entirely for a self-contained build.)
 
 ### More per-edge fixes (each unblocks whole classes of edges)
 
-2. **duct-tape mig user-stub `mach_msg` (RESOLVED).** A mig-generated `X_user.c`
-   calls `mach_msg`, which XNU's `message.h` guards behind `#ifndef KERNEL` while
-   the duct-tape defines `KERNEL`. The monolith tolerates the resulting implicit
-   declaration; the per-edge builds bypass the cc-wrapper and don't inherit the
-   monolith's `NIX_CFLAGS_COMPILE`, so they hit `-Werror=implicit-function-
-   declaration`. Fix: bake `-Wno-error=implicit-function-declaration` into the
-   nix-ninja configure's `CMAKE_C/CXX_FLAGS` (darlingNinja.nix). This cleared
-   **all** compile edges (0 implicit errors) — the whole duct-tape compiles.
+2. **duct-tape mig user-stub `mach_msg` (DIAGNOSED — deeper than first thought).**
+   The mig-generated `notify_user.c` link-fails with `undefined reference to
+   mach_msg` (functions `mach_notify_dead_name`, `mach_notify_no_senders`, …).
+   Investigation (all confirmed):
+   - The **monolith** `result/bin/darlingserver` has `mach_notify_dead_name` (T,
+     defined) and it calls **`mach_msg_send_from_kernel_proper`**, not `mach_msg`
+     (verified by `objdump -d`). There is **no** `mach_msg` symbol in the monolith
+     binary at all. So the correct kernel codegen calls the kernel send, and plain
+     `mach_msg` never appears.
+   - mig chooses between them by `IsKernelUser` (bootstrap_cmds `user.c:585` emits
+     `mach_msg_send_from_kernel` when kernel-user, else `mach_msg` at `:591`).
+     `IsKernelUser` is set by the `KernelUser` subsystem keyword, which `notify.defs`
+     guards behind `#if KERNEL_USER` (`notify.defs:60`). `KERNEL_USER=1` is a
+     duct-tape `add_compile_definitions` (CMakeLists `:118`), surfaced to mig by
+     `cmake/mig.cmake`'s `get_directory_property(... COMPILE_DEFINITIONS)`.
+   - **The nix-ninja mig command is correct**: graph-json inspection shows every
+     `*_user.c` edge — including `notify_user.c` (from `notify.defs`) — carries
+     `-DKERNEL_USER` (and `-DKERNEL …`), before the `.defs` arg, exactly as the
+     monolith. mig preprocesses via `$C -E … "${cppflags[@]}"` (mig.sh:72) where
+     cppflags includes `-DKERNEL_USER=1` and `$C` = `configured/cc`.
+   - So the command is byte-identical to the monolith's, yet the per-edge object
+     referenced plain `mach_msg`. Either the link error was **stale** (pre the
+     mig-collision fix / pre-rebuild) or mig's cpp diverges in the **isolated edge
+     sandbox** (e.g. `configured/cc` resolving differently, so `#if KERNEL_USER`
+     evaluates false). Ground-truth build of just the `notify_user.c` edge was
+     pending (blocked on a store auto-GC) — that file's `mach_msg` vs
+     `mach_msg_send_from_kernel` form decides it.
+
+   NOTE: the earlier `-Wno-error=implicit-function-declaration` in
+   `CMAKE_C/CXX_FLAGS` only **masks** this (turns the implicit-decl into a silent
+   undefined symbol at link). If the codegen is correct there is no implicit decl
+   and the `-Wno` is unnecessary; it should be removed once the edge is confirmed.
 
 3. **archive/link toolchain (in progress).** The `.a`/link edges bake the darling
    stdenv cc-wrapper's absolute `ar`/`ranlib`/`ld` (a gcc-wrapper whose `ar`
