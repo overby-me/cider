@@ -77,6 +77,13 @@ in
         # to the wrapped clang.
         "-DCMAKE_C_COMPILER=${di.ccWrapperBypass}/bin/clang"
         "-DCMAKE_CXX_COMPILER=${di.ccWrapperBypass}/bin/clang++"
+        # The per-edge builds bypass the cc-wrapper and do not inherit the
+        # monolith's NIX_CFLAGS_COMPILE, so some XNU duct-tape mig user-stubs hit
+        # `-Werror=implicit-function-declaration` (e.g. mach_msg, which message.h
+        # guards behind #ifndef KERNEL) that the monolith tolerates. Bake the
+        # tolerance into every compile command so the per-edge build matches.
+        "-DCMAKE_C_FLAGS=-Wno-error=implicit-function-declaration"
+        "-DCMAKE_CXX_FLAGS=-Wno-error=implicit-function-declaration"
       ]
       ++ lib.optional (installPrefix != null) "-DCMAKE_INSTALL_PREFIX=${installPrefix}";
 
@@ -98,6 +105,13 @@ in
           di.ccWrapperBypass
           pkgs.cmake
           pkgs.coreutils
+          # The Linux-side archive/link edges (libsimple.a, duct-tape.a, the
+          # darlingserver link) bake the darling stdenv cc-wrapper's absolute
+          # `ar`/`ranlib`/`ld` paths (a gcc-wrapper whose `ar` symlinks into
+          # binutils-wrapper). Its string context is stripped from the graph JSON,
+          # so re-provide the wrapper + its bintools closure or those paths dangle.
+          di.stdenv.cc
+          di.stdenv.cc.bintools
         ]
         ++ di.nativeBuildInputs
         # The full graph (not just the launcher/kernel) has edges that compile

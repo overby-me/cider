@@ -53,9 +53,33 @@ and drop the `overby` flake input entirely for a self-contained build.)
 
 - [x] Diagnose the mig `.h` collision precisely.
 - [x] Vendor the nix-ninja lib; apply the output-symlink fix.
-- [ ] `darlingserver-ninja` builds green per-edge (validating now).
-- [ ] Iterate remaining per-edge failures (expect a few more, as launcher/kernel
-      each did).
+- [x] **mig fix validated**: with it, the per-edge build goes from failing
+      instantly to ~10 min deep, **past ALL mig edges** (0 Permission-denied). This
+      was THE documented blocker for the whole componentization path.
+- [ ] `darlingserver-ninja` green — blocked on the next issue (below), which is a
+      deep XNU-header grind, not a drive-by.
+
+### More per-edge fixes (each unblocks whole classes of edges)
+
+2. **duct-tape mig user-stub `mach_msg` (RESOLVED).** A mig-generated `X_user.c`
+   calls `mach_msg`, which XNU's `message.h` guards behind `#ifndef KERNEL` while
+   the duct-tape defines `KERNEL`. The monolith tolerates the resulting implicit
+   declaration; the per-edge builds bypass the cc-wrapper and don't inherit the
+   monolith's `NIX_CFLAGS_COMPILE`, so they hit `-Werror=implicit-function-
+   declaration`. Fix: bake `-Wno-error=implicit-function-declaration` into the
+   nix-ninja configure's `CMAKE_C/CXX_FLAGS` (darlingNinja.nix). This cleared
+   **all** compile edges (0 implicit errors) — the whole duct-tape compiles.
+
+3. **archive/link toolchain (in progress).** The `.a`/link edges bake the darling
+   stdenv cc-wrapper's absolute `ar`/`ranlib`/`ld` (a gcc-wrapper whose `ar`
+   symlinks into binutils-wrapper); nix-ninja strips the baked path's context, so
+   the wrapper + its bintools closure aren't mounted → `ar: No such file`. Fix:
+   add `di.stdenv.cc` + `.bintools` to the edge toolchain. Rebuilding to confirm.
+
+- [ ] Confirm `darlingserver-ninja` green per-edge (archive fix building).
 - [ ] Scale to a full-darling-ninja target (`packages.darling-ninja`), kept OUT of
       `nix flake check` (thousands of derivations).
-- [ ] Stage 2: vendor rust-ninja, drop the `overby` input.
+- [ ] Stage 2: vendor rust-ninja, drop the `overby` input (finish self-containing).
+
+Landed durably: the mig-collision fix + nix-ninja vendoring. In flight: the
+compile-tolerance + archive-toolchain fixes that take darlingserver green per-edge.
