@@ -188,6 +188,16 @@ Each: implement on a branch, rebuild, run probe + wall-clock + hello smoke, and
 land on main only when the correctness gate is green. Risky scheduler/IPC-core
 changes (P1/P3/P8) stay on a branch if they can't be clearly validated.
 
+**Progress: P0, P1, P2 landed on main.** P1/P2 were the tractable, safe wins
+(an isolate-testable primitive; a semantically-identical memoization). **P6, P4,
+P8 are confirmed deep / cross-cutting**, not quick wins: P6 changes the per-RPC
+out-of-line-vs-inline wire format (both client + server codegen); P4 needs the
+signal-emulation path to cooperate (not localized); P8 rewrites the scheduler
+futex core. They each need a real design + the (now-working) fast splice loop +
+stress harness, not a drive-by. Recommended next: either invest in one of those
+deliberately, or profile P0.7 (the ~22 ms/spawn round-trip path — the real
+wall-clock lever) to find whether a safe P1/P2-style win hides there first.
+
 ## Status (honest)
 
 - **P0 (ucred) + P1 (fast context switch) landed on main.** These are the two
