@@ -48,6 +48,23 @@
 #include <sys/wait.h>
 #include <vector>
 
+#ifdef DSERVER_FAST_CONTEXT
+// Signal-mask-free ucontext primitives (src/fast_context.c). These microthreads
+// switch cooperatively on one worker thread with an invariant signal mask, so
+// glibc's per-switch rt_sigprocmask (save/restore uc_sigmask) is pure overhead
+// (~21% of the daemon's per-spawn syscalls). Redirect this file's get/set/make
+// context calls to the sigmask-free versions; behaviour is otherwise identical
+// (validated against glibc). x86_64 only — the only supported darlingserver arch.
+extern "C" {
+	int  dserver_fast_getcontext(ucontext_t* ucp);
+	void dserver_fast_setcontext(const ucontext_t* ucp);
+	void dserver_fast_makecontext(ucontext_t* ucp, void (*func)(void), int argc, ...);
+}
+#define getcontext  dserver_fast_getcontext
+#define setcontext  dserver_fast_setcontext
+#define makecontext dserver_fast_makecontext
+#endif
+
 // 64KiB should be enough for us
 #define THREAD_STACK_SIZE (64 * 1024ULL)
 #define USE_THREAD_GUARD_PAGES 1

@@ -53,6 +53,12 @@
         }).buildTarget
           { target = "src/startup/darling"; };
 
+      # NOTE: a nix-ninja `darlingserver` target for fast daemon iteration is not
+      # exposed as a package: its edges pull in the mig/migcom code generators,
+      # whose per-edge scan derivations hit the monorepo scan-toolchain blocker
+      # (see plan/nix-ninja-primary.md). darlingserver perf changes are validated
+      # via a full `nix build` for now.
+
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
       # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,

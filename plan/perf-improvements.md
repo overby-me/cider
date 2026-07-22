@@ -79,7 +79,28 @@ workloads (configure/make fork thousands of short-lived processes).
 Per-message getpid/getuid/getgid → cached once. **1,537,526 → 256,371 syscalls
 (83%, 6×).** See `plan/perf-overhead.md`.
 
-### P1 — signal-mask-free microthread context switch  ⬅ biggest remaining
+### P1 — signal-mask-free microthread context switch  ✅ DONE (landed on main)
+- **Status:** implemented in `src/external/darlingserver/src/fast_context.c` +
+  `thread.cpp` wiring behind the `DSERVER_FAST_CONTEXT` CMake option (default ON,
+  x86_64-guarded). Drop-in `getcontext`/`setcontext`/`makecontext` that swap only
+  callee-saved regs + RSP + RIP + FP control, no signal mask.
+- **Validation:**
+  - *Isolated (no darlingserver build):* behaviour is **byte-identical to glibc**
+    across darlingserver's three usage shapes (setjmp-style resume, makecontext
+    new-stack + uc_link return, cooperative suspend/resume), and **rt_sigprocmask
+    goes 21 → 0** — `scripts/test-fast-context.sh` + `tests/darlingserver/`. Byte
+    offsets into glibc's ucontext_t are `_Static_assert`-checked (layout mismatch =
+    compile error).
+  - *End-to-end:* the full darling build with `DSERVER_FAST_CONTEXT` on **boots the
+    real daemon and runs commands** (twice) and **sustains a 40-spawn loop with
+    zero failures** — the microthread switch (including the syscall-interrupt
+    resume path) works under rapid spawning.
+  - *Daemon syscalls:* the ucontext-switch `rt_sigprocmask` (the P1 target) is
+    eliminated by construction; a rough daemon spawn probe showed the daemon-wide
+    `rt_sigprocmask` dropping (~277→~157/spawn — the residual is other sources like
+    `pthread_sigmask`). A clean per-spawn A/B was hard to pin down because the
+    container cold-start is flaky this session (the `-111` RPC failures hit
+    baseline runs too), so the deterministic isolated 21→0 is the primary number.
 - **Target:** `rt_sigprocmask` 277/spawn (~21% of daemon syscalls).
 - **Cause:** `src/thread.cpp` drives microthreads with glibc `getcontext`/
   `setcontext`/`makecontext`/`swapcontext`. glibc saves/restores `uc_sigmask` via

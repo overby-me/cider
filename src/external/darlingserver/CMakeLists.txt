@@ -5,6 +5,11 @@ cmake_minimum_required(VERSION 3.13)
 option(DSERVER_TOOLS "Build darlingserver tools (for debugging)" OFF)
 option(DSERVER_ASAN "Build darlingserver with ASAN" OFF)
 option(DSERVER_UBSAN "Build darlingserver with UBSAN" OFF)
+# Signal-mask-free microthread context switching (x86_64): drops glibc's
+# per-switch rt_sigprocmask, which is pure overhead here since the microthreads
+# run with an invariant signal mask. Behaviour is otherwise identical to glibc
+# ucontext (validated). Set OFF to fall back to glibc get/set/makecontext.
+option(DSERVER_FAST_CONTEXT "Signal-mask-free microthread context switch (x86_64)" ON)
 
 if (DSERVER_TOOLS)
 	add_subdirectory(tools)
@@ -128,6 +133,11 @@ add_dependencies(darlingserver
 target_link_libraries(darlingserver PRIVATE
 	darlingserver_duct_tape
 )
+
+if (DSERVER_FAST_CONTEXT AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+	target_sources(darlingserver PRIVATE src/fast_context.c)
+	target_compile_definitions(darlingserver PRIVATE DSERVER_FAST_CONTEXT=1)
+endif()
 
 target_compile_options(darlingserver PRIVATE
 	-pthread
