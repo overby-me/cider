@@ -91,11 +91,18 @@
               if e == "" then null else e;
           };
 
-      # NOTE: a nix-ninja `darlingserver` target for fast daemon iteration is not
-      # exposed as a package: its edges pull in the mig/migcom code generators,
-      # whose per-edge scan derivations hit the monorepo scan-toolchain blocker
-      # (see plan/nix-ninja-primary.md). darlingserver perf changes are validated
-      # via a full `nix build` for now.
+      # A per-edge nix-ninja build of the darlingserver daemon. Its edges pull in
+      # the mig/migcom code generators; unblocking their per-edge scan is the path
+      # to a fully per-edge (cacheable, seconds-incremental) Darling build. See
+      # plan/nix-ninja-primary.md.
+      #   nix build '.?submodules=1#darlingserver-ninja'
+      packages.darlingserver-ninja =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "src/external/darlingserver/darlingserver"; };
 
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and

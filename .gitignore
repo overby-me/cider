@@ -42,6 +42,9 @@ tests/*
 
 # The suggested build folder
 build
+# ...but not the vendored nix-ninja lowering, which lives under a build/ subdir.
+!nix/lib/nix-ninja/build/
+!nix/lib/nix-ninja/build/**
 
 rpm/SOURCES
 rpm/RPMS
