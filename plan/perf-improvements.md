@@ -182,19 +182,25 @@ changes (P1/P3/P8) stay on a branch if they can't be clearly validated.
 
 ## Status (honest)
 
-- **P0 (ucred) landed on main — 83% / 6× fewer daemon syscalls.** This was the one
-  pure, obviously-correct, high-value win (a stateless cache; no core behavior
-  change).
-- **Everything else is core-touching.** P1 replaces the microthread context
-  switch (Darling's most delicate code — intricate ucontext use across interrupts,
-  syscall-resume, uc_link); P2 changes the epoll concurrency model (EPOLLONESHOT is
-  load-bearing for deferred microthread consumption); P3 duplicates server port
-  state in-process; P0.5 generates a dyld shared cache under emulation. A subtle
-  mistake in any regresses the working `hello`. They are **not** safe to land
-  autonomously without review and a reliable IPC/spawn **stress harness** — the
-  current container cold-start is too flaky even for clean wall-clock grounding
-  (`darling-spawn-bench.sh` hung on boot).
-- **Recommended next perf step (needs review):** build a non-flaky spawn/IPC stress
-  harness first, then take P1 behind a `DSERVER_FAST_CONTEXT` flag (measurable via
-  `rt_sigprocmask`), and separately size P0.5 (the biggest wall-clock lever).
-- Designs above are implementation-ready for when that review/harness exists.
+- **P0 (ucred) + P1 (fast context switch) landed on main.** These are the two
+  pure, isolate-testable, obviously-correct wins: P0 is a stateless credential
+  cache (83% / 6× fewer daemon syscalls); P1 is a drop-in sigmask-free ucontext,
+  validated **byte-identical to glibc off-machine** (native unit test, no
+  container) with `rt_sigprocmask` 21→0, then confirmed end-to-end (daemon boots,
+  runs commands, 40-spawn loop clean). The key that made both landable
+  autonomously: **their correctness can be proven without the flaky container.**
+- **The rest (P2, P4, P6, P8; also P3, P5) are core-cutting and NOT isolate-testable.**
+  P2 changes the epoll concurrency model (thundering-herd / missed-event hazards);
+  P4 removes the per-RPC signal-block, which needs the signal-emulation path to
+  cooperate (not localized); P6 rewrites RPC arg marshalling (wire format, client
+  + server must agree); P8 is the scheduler futex core. Each can only be validated
+  by running the **flaky container** under spawn/IPC stress — and this session's
+  cold-start `-111` failures (load-dependent; they hit baseline runs too) make a
+  clean before/after hard to ground. Landing any of them autonomously risks a
+  subtle regression to the working spawn path that a flaky harness wouldn't catch.
+- **Blocker for the rest = validation infrastructure, not design.** The designs
+  above are implementation-ready. What's missing is (a) a reliable, non-flaky
+  spawn/IPC stress harness, and/or (b) fast darlingserver iteration (currently a
+  ~40-min full build — nix-ninja is blocked by the mig/migcom scan-toolchain issue,
+  see plan/nix-ninja-primary.md). Build one of those first; then P2→P6→P4→P8 become
+  tractable behind their own default-toggleable knobs (the P1 pattern).
