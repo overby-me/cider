@@ -38,6 +38,7 @@ tests/*
 !tests/darling-builder.nix
 !tests/nix-in-darling.nix
 !tests/nix/
+!tests/darlingserver/
 
 # The suggested build folder
 build
