@@ -10,6 +10,9 @@ option(DSERVER_UBSAN "Build darlingserver with UBSAN" OFF)
 # run with an invariant signal mask. Behaviour is otherwise identical to glibc
 # ucontext (validated). Set OFF to fall back to glibc get/set/makecontext.
 option(DSERVER_FAST_CONTEXT "Signal-mask-free microthread context switch (x86_64)" ON)
+# P2: memoize the event loop's _wakeupFD arming so it skips a redundant
+# EPOLL_CTL_MOD on every iteration (same armed states, fewer syscalls).
+option(DSERVER_FAST_EPOLL "Skip redundant eventfd epoll re-arms in the event loop" ON)
 
 if (DSERVER_TOOLS)
 	add_subdirectory(tools)
@@ -137,6 +140,10 @@ target_link_libraries(darlingserver PRIVATE
 if (DSERVER_FAST_CONTEXT AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
 	target_sources(darlingserver PRIVATE src/fast_context.c)
 	target_compile_definitions(darlingserver PRIVATE DSERVER_FAST_CONTEXT=1)
+endif()
+
+if (DSERVER_FAST_EPOLL)
+	target_compile_definitions(darlingserver PRIVATE DSERVER_FAST_EPOLL=1)
 endif()
 
 target_compile_options(darlingserver PRIVATE

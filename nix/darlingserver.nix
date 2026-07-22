@@ -18,6 +18,11 @@
   lib,
   src,
   callPackage,
+  # Bake CMAKE_INSTALL_PREFIX so the daemon's compiled-in LIBEXEC_PATH (the overlay
+  # lowerdir + mldr path) points at the spliced runtime dir rather than this
+  # derivation's own output (which only holds bin/darlingserver). Set it to the
+  # splice dir ($RT) so `scripts/splice-darlingserver.sh` can boot the daemon.
+  installPrefix ? null,
 }:
 let
   inherit
@@ -66,7 +71,11 @@ stdenv.mkDerivation {
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
   '';
 
-  inherit nativeBuildInputs buildInputs cmakeFlags;
+  inherit nativeBuildInputs buildInputs;
+
+  cmakeFlags =
+    cmakeFlags
+    ++ lib.optionals (installPrefix != null) [ "-DCMAKE_INSTALL_PREFIX=${installPrefix}" ];
 
   dontFixCmake = true;
   cmakeBuildType = " ";

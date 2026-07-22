@@ -47,6 +47,10 @@ namespace DarlingServer {
 		bool _canRead = false;
 		bool _canWrite = true;
 		int _wakeupFD;
+		// P2 (DSERVER_FAST_EPOLL): the events _wakeupFD is currently armed with in
+		// the kernel, so the event loop can skip a redundant EPOLL_CTL_MOD when the
+		// desired arming is unchanged. Matches the initial ADD (EPOLLIN|EPOLLONESHOT).
+		uint32_t _wakeupArmedEvents = EPOLLIN | EPOLLONESHOT;
 		int _timerFD;
 		uint64_t _currentTimerDeadline = 0;
 		std::mutex _timerLock;

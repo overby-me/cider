@@ -1,31 +1,44 @@
 #!/usr/bin/env bash
 # Fast darlingserver perf-iteration loop, avoiding the ~40-min monolith rebuild.
+# Builds ONLY the daemon (nix/darlingserver.nix, ~5-9 min) and splices it into a
+# copy of the full `result` runtime.
 #
-# One-time setup (builds a writable runtime copy + a launcher pointing at it):
-#   nix build '.?submodules=1#darlingserver' --out-link result-ds   # ~5-15 min
+# One-time setup (copies the runtime + builds daemon & launcher baked to $RT):
 #   scripts/splice-darlingserver.sh setup
 #
-# Per iteration (after editing src/external/darlingserver and rebuilding it):
-#   nix build '.?submodules=1#darlingserver' --out-link result-ds
-#   scripts/splice-darlingserver.sh swap        # just drops in the new daemon
-#   DPREFIX=~/.dbash "$RT-launcher"/src/startup/darling shell <cmd>
+# Per iteration (after editing src/external/darlingserver):
+#   scripts/splice-darlingserver.sh swap        # rebuild daemon + re-splice
+#   DPREFIX=~/.dbash result-launcher-spliced/src/startup/darling shell <cmd>
 #
-# The launcher is baked once to exec $RT/bin/darlingserver, so only the daemon
-# binary changes between iterations. Env: RT (runtime dir), DS (built daemon).
+# The daemon AND launcher must both be baked with CMAKE_INSTALL_PREFIX=$RT so the
+# daemon's compiled-in LIBEXEC_PATH (overlay lowerdir + mldr path) and the
+# launcher's exec target resolve inside the spliced runtime; DARLING_SPLICE_PREFIX
+# drives that (see flake.nix). Env: RT (runtime dir).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 RT="${RT:-$HOME/darling-rt}"
-DS="${DS:-result-ds/bin/darlingserver}"
+DS=result-ds/bin/darlingserver
 LAUNCHER_LINK="result-launcher-spliced"
 
-need_ds() { [ -x "$DS" ] || { echo "build the daemon first: nix build '.?submodules=1#darlingserver' --out-link result-ds"; exit 1; }; }
+build_daemon() { # baked to $RT so LIBEXEC_PATH points into the spliced runtime
+  echo "building daemon baked to $RT (~5-9 min) ..."
+  DARLING_SPLICE_PREFIX="$RT" nix build --impure '.?submodules=1#darlingserver' --out-link result-ds
+  [ -x "$DS" ] || { echo "daemon build failed"; exit 1; }
+}
 
 case "${1:-setup}" in
   setup)
-    need_ds
     [ -e result ] || { echo "need a full ./result runtime to splice into"; exit 1; }
-    echo "staging writable runtime copy at $RT (this dereferences result, ~hundreds of MB)"
-    rm -rf "$RT"; cp -rL result "$RT"; chmod -R u+w "$RT"
+    build_daemon
+    # Real copy with cp -a (NOT cp -rL): -a preserves symlinks (--no-dereference),
+    # so the runtime's libexec/darling/Volumes/DarlingEmulatedDrive -> / is copied
+    # as a symlink, never followed (cp -rL would traverse the whole host fs -- a
+    # disaster). A real dir tree is needed: the daemon mounts a container overlay
+    # whose lowerdir (LIBEXEC_PATH=$RT/libexec/darling) must be a real directory.
+    store="$(readlink -f result)"
+    chmod -R u+w "$RT" 2>/dev/null || true; rm -rf "$RT"
+    echo "copying runtime (cp -a; ~hundreds of MB) ..."
+    cp -a "$store" "$RT"; chmod -R u+w "$RT"
     cp "$DS" "$RT/bin/darlingserver"
     echo "building launcher baked to $RT ..."
     DARLING_SPLICE_PREFIX="$RT" nix build --impure '.?submodules=1#darling-launcher-spliced' \
@@ -33,8 +46,8 @@ case "${1:-setup}" in
     echo "READY. run:  DPREFIX=~/.dbash $LAUNCHER_LINK/src/startup/darling shell <cmd>"
     ;;
   swap)
-    need_ds
     [ -d "$RT" ] || { echo "run '$0 setup' first"; exit 1; }
+    build_daemon
     cp "$DS" "$RT/bin/darlingserver"
     echo "swapped in $(sha256sum "$DS" | cut -c1-12); launcher unchanged. rerun your test."
     ;;

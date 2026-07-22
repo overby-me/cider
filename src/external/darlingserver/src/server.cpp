@@ -553,6 +553,24 @@ void DarlingServer::Server::start() {
 			_canWrite = _outbox.sendMany(_listenerSocket);
 		}
 
+#ifdef DSERVER_FAST_EPOLL
+		// P2: only re-arm _wakeupFD when its desired arming actually changed.
+		// EPOLLONESHOT means it disarms only when it fires (tracked in the event
+		// loop below), so re-MODding an already-armed fd every iteration is pure
+		// syscall churn. Same armed states as the original, just fewer epoll_ctl.
+		{
+			uint32_t desiredWakeup = (_canWrite) ? (uint32_t)(EPOLLIN | EPOLLONESHOT) : 0u;
+			if (desiredWakeup != _wakeupArmedEvents) {
+				struct epoll_event settings;
+				settings.data.ptr = &_wakeupFD;
+				settings.events = desiredWakeup;
+				if (epoll_ctl(_epollFD, EPOLL_CTL_MOD, _wakeupFD, &settings) < 0) {
+					throw std::system_error(errno, std::generic_category(), "Failed to modify eventfd in epoll context");
+				}
+				_wakeupArmedEvents = desiredWakeup;
+			}
+		}
+#else
 		struct epoll_event settings;
 		settings.data.ptr = &_wakeupFD;
 		settings.events = (_canWrite) ? (EPOLLIN | EPOLLONESHOT) : 0;
@@ -560,6 +578,7 @@ void DarlingServer::Server::start() {
 		if (epoll_ctl(_epollFD, EPOLL_CTL_MOD, _wakeupFD, &settings) < 0) {
 			throw std::system_error(errno, std::generic_category(), "Failed to modify eventfd in epoll context");
 		}
+#endif
 
 		struct epoll_event events[16];
 		int ret = epoll_wait(_epollFD, events, 16, -1);
@@ -584,6 +603,11 @@ void DarlingServer::Server::start() {
 					_canWrite = true;
 				}
 			} else if (event->data.ptr == &_wakeupFD) {
+#ifdef DSERVER_FAST_EPOLL
+				// EPOLLONESHOT disarmed it when it fired; record that so the next
+				// iteration re-arms it (and doesn't skip the needed MOD).
+				_wakeupArmedEvents = 0;
+#endif
 				// we allow the loop to go back to the top and try to send some messages
 				// (if _canWrite is true, the eventfd will be reset; otherwise, there's no point in resetting it)
 			} else if (event->data.ptr == &_timerFD) {

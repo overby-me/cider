@@ -44,7 +44,16 @@
       #   nix build '.?submodules=1#darlingserver'
       packages.darlingserver =
         pkgs:
-        pkgs.callPackage ./nix/darlingserver.nix { src = pkgs.darling.src; };
+        pkgs.callPackage ./nix/darlingserver.nix {
+          src = pkgs.darling.src;
+          # For the splice loop, bake LIBEXEC_PATH to the splice dir (needs --impure);
+          # unset -> a normal build, so `nix flake check` (pure) stays green.
+          installPrefix =
+            let
+              e = builtins.getEnv "DARLING_SPLICE_PREFIX";
+            in
+            if e == "" then null else e;
+        };
 
       # ── nix-ninja incremental build (per-edge Nix) ───────────────────
       #
