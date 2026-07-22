@@ -127,20 +127,22 @@ nix-ninja gives raw build artifacts. Two ways:
   2. **Then approach A** once the monorepo scan-toolchain fix lands and a
      less-contended host is available for the first full build.
 
-**Approach B IMPLEMENTED (build + wiring proven).** `buildTarget` gained an
+**Approach B FULLY VALIDATED (build + wiring + runtime).** `buildTarget` gained an
 optional `installPrefix` param that appends `-DCMAKE_INSTALL_PREFIX`. Building the
-launcher with `installPrefix = $(readlink -f result)` produced a 65 KB launcher
+launcher with `installPrefix = $(readlink -f result)` produced a 63.5 KB launcher
 with `INSTALL_PREFIX/bin/darlingserver` correctly baked to the monolithic runtime
-(verified via `strings`). At runtime it reaches darlingserver fork/checkin, but a
-clean boot was **blocked by the same environmental wall as everything else this
-session**: a leaked D-state darlingserver (uninterruptible under the other
-session's I/O contention) + a stale `.init.pid` making new starts fail EPERM
-("Cannot open mnt namespace file"). Build + wiring are proven; a clean runtime
-confirmation just needs an idle host. Fast-iteration workflow (seconds, not 40
-min): `FAST_PREFIX=$(readlink -f result) nix build --impure --out-link
+(verified via `strings`). **Runtime confirmed** once the host went idle: the
+fast-built launcher, pointed at a warm prefix, booted the monolithic runtime and
+ran commands end-to-end — `uname` returned `Darwin 23.4.0` and `/bin/echo
+NINJA_OK_boot_marker` came back rc=0. (Two gotchas learned: the AF_UNIX socket
+path caps at ~108 chars, so the prefix must be short — e.g. `~/.dfx`, not a deep
+scratchpad path; and a *fresh* prefix hits the separate first-boot launchd stall,
+so validate against a warm/populated prefix.) Fast-iteration workflow (seconds,
+not 40 min): `FAST_PREFIX=$(readlink -f result) nix build --impure --out-link
 result-launcher-fast --expr '(import ./nix/lib/darlingNinja.nix { pkgs=…;
 overby=…; src=…; }).buildTarget { target = "src/startup/darling"; installPrefix =
-builtins.getEnv "FAST_PREFIX"; }'` then run `result-launcher-fast/src/startup/darling`.
+builtins.getEnv "FAST_PREFIX"; }'` then `DPREFIX=~/.dbash
+result-launcher-fast/src/startup/darling shell <cmd>`.
 
 ## Risks
 
