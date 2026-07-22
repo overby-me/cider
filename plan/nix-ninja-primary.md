@@ -56,6 +56,51 @@ Darwin-compile chunk.
   wall-clock vs the monolithic rebuild (the win).
 - Ensure `nix flake check` still terminates (darling-ninja excluded).
 
+## Findings (investigation) + refined approach
+
+Concrete facts gathered:
+- `buildNinjaProject` (monorepo) copies the requested **target artifact(s)** to
+  `$out/<build-path>` (e.g. `$out/src/startup/darling`); default target = the
+  manifest's `default` outputs. It does **not** produce an install tree.
+- `nix/package.nix` produces the runnable tree via the cmake install hook
+  (`ninja install` → `$out/libexec/darling/…`), then `postInstall` (SDK → the
+  `$sdk` output + cctools `ld64`/`ar`/`ranlib`) and `postFixup` (fail on any
+  `/nix/store` ref under the darling root except `mldr`; `patchelf --add-rpath`
+  on `mldr`).
+- The launcher bakes `INSTALL_PREFIX` = `CMAKE_INSTALL_PREFIX`
+  (`src/startup/CMakeLists.txt:15`) and `execl(INSTALL_PREFIX "/bin/darlingserver")`
+  (`darling.c:962`). So a spliced launcher must be compiled with
+  `INSTALL_PREFIX` pointing at wherever the rest of the runtime lives.
+
+**The crux = reproducing the install layout from per-edge outputs.** The
+build→install path mapping lives in cmake's generated `cmake_install.cmake`;
+nix-ninja gives raw build artifacts. Two ways:
+- **(A) reconstruct-and-install wrapper** — a derivation that stages the
+  configured cmake build dir + all nix-ninja edge outputs into one tree and runs
+  `cmake --install` (+ `postInstall`/`postFixup`). Clean; needs the full edge set
+  as inputs. The `install` ninja edge itself isn't a file-producing edge, so it
+  doesn't fit `buildNinjaProject`'s copy-target model directly — either enhance
+  `buildNinjaProject` (monorepo) with an install mode, or drive the install in
+  this wrapper.
+- **(B) launcher-fast-path (80/20)** — build only `src/startup/darling` via the
+  existing `darling-launcher-ninja` with `-DCMAKE_INSTALL_PREFIX=<runtime>`
+  pointing at a monolithic `result`, and swap the launcher in. Fast wins for the
+  common launcher-iteration case (which was most of this session's rebuild pain);
+  not the full solution.
+
+## Concrete next steps (ordered)
+
+1. **Measure eval feasibility**: time `buildTarget {}` (default = full graph) with
+   `nix build --dry-run`. ~26k derivations vs the kernel target's ~8k that already
+   hangs `flake check`. If eval is impractical (time/memory), coarsen into
+   per-library sub-targets. (Do on a less-contended host — the current concurrent
+   build sweep saturates CPU/IO.)
+2. If eval is OK: build the **(A) reconstruct-and-install wrapper**; diff its
+   `result/libexec/darling` tree against the monolithic build's until identical;
+   confirm it boots + `hello`/bash run.
+3. Ship **(B)** first as an immediate iteration win if (A) proves large.
+4. Wire the winner as `packages.darling-ninja`, kept OUT of `flake check`.
+
 ## Risks
 
 - Eval cost of ~26k derivations (memory/time) — measure; may need to coarsen
