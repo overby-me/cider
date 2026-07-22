@@ -52,6 +52,11 @@ in
       target ? null,
       targets ? null,
       perFileIncremental ? true,
+      # Bake CMAKE_INSTALL_PREFIX so a nix-ninja-built launcher's compiled-in
+      # INSTALL_PREFIX (it execs `INSTALL_PREFIX/bin/darlingserver`) points at an
+      # existing monolithic `result` runtime — enabling seconds-fast launcher
+      # iteration that reuses that runtime instead of a 40-min full rebuild.
+      installPrefix ? null,
     }:
     buildNinjaProject {
       cmakeSource = src;
@@ -69,7 +74,8 @@ in
         # to the wrapped clang.
         "-DCMAKE_C_COMPILER=${di.ccWrapperBypass}/bin/clang"
         "-DCMAKE_CXX_COMPILER=${di.ccWrapperBypass}/bin/clang++"
-      ];
+      ]
+      ++ lib.optional (installPrefix != null) "-DCMAKE_INSTALL_PREFIX=${installPrefix}";
 
       configureNativeBuildInputs = di.nativeBuildInputs;
       configureBuildInputs = di.buildInputs;
