@@ -68,6 +68,37 @@ native -O0 bash spawned at **2.27 ms/proc**, essentially identical to native -O2
 not the interpreter). So **~11–12× is a robust figure for Darling's
 process-creation overhead**, independent of how bash itself was compiled.
 
+## Attribution: where the ~28 ms/spawn goes (dyld vs darlingserver)
+
+`DYLD_PRINT_STATISTICS=1` on one spawn under Darling (it *is* honored):
+
+```
+Total pre-main time:   6.24 ms (100%)
+  dylib loading:       1.35 ms (21.7%)
+  rebase/binding:      0.44 ms (7.1%)
+  ObjC setup:          0.39 ms (6.3%)
+  initializer time:    4.04 ms (64.7%)   <- libSystem constructors
+```
+
+So the split of the ~28 ms marginal spawn is roughly:
+
+| bucket | time | what it is | lever |
+|---|---|---|---|
+| dyld image mapping | ~1.8 ms | dylib loading + rebase/binding | **P0.5** dyld shared cache |
+| libSystem initializers | ~4.0 ms | constructors; many RPC to darlingserver | daemon RPC path |
+| fork/exec + darlingserver registration + RPC + teardown | **~22 ms** | the Mach/BSD emulation round-trips | **P1/P2/P6** |
+
+**This partly refutes the earlier P0.5 hypothesis** (`perf-improvements.md` guessed
+dyld mapping was "the bulk of the tens-of-ms per spawn"). The data says dyld image
+mapping is only ~6% of the spawn; a shared cache saves ~1.8 ms, not ~20 ms. **The
+dominant cost (~78%) is the darlingserver fork/exec/RPC path** — so the highest
+wall-clock lever is cutting spawn-path RPC round-trips and context-switch overhead
+(P1 sigmask-free context switch, P2 epoll re-arm), not the dyld cache. Caveat: one
+dyld sample on a lightly-loaded host; the ~22 ms "other" is inferred (28 − 6.2) and
+includes daemon-side work `DYLD_PRINT_STATISTICS` cannot see. The `-111`
+(semaphore/mach_msg) lines during init/teardown corroborate that initializers and
+teardown are bouncing through darlingserver.
+
 ## Interpretation → where the overhead lives
 
 - **Spawn ~11× (≈25 ms/proc absolute).** This is the build-time tax and it lines

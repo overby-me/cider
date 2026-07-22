@@ -35,20 +35,37 @@ workloads (configure/make fork thousands of short-lived processes).
 
 ## Improvements
 
-### P0.5 — dyld shared cache  ⬅ likely the biggest *wall-clock* lever
+### P0.5 — dyld shared cache  ⚠️ RE-SCOPED: smaller than hypothesized (~1.8 ms/spawn)
 - **Target:** per-spawn process-startup wall-clock (not a daemon syscall count).
-- **Measured:** process spawn under Darling is **~11–12× native** (~27.9 ms vs
-  2.44 ms per `bash -c :`), and the control shows this ratio is
-  optimization-independent — see `plan/darling-overhead-bench.md`. This is the
-  build-time tax P0.5 targets. (Pure compute is only ~7.6× once bash's -O level is
-  matched, so spawn is where the outsized cost lives.)
+- **Measured (attribution changed the picture):** spawn under Darling is **~11–12×
+  native** (~27.9 ms vs 2.44 ms per `bash -c :`; see `darling-overhead-bench.md`).
+  But `DYLD_PRINT_STATISTICS` shows **dyld pre-main is only 6.24 ms of that ~28 ms
+  (22%)**, and dyld *image mapping* (dylib loading 1.35 ms + rebase 0.44 ms) is
+  just **~1.8 ms (6%)**. So a shared cache saves **~1.8 ms**, not the ~20 ms this
+  section originally guessed. **The dyld-cache hypothesis is largely refuted as the
+  "biggest lever."**
 - **Finding:** the built root ships **no** `dyld_shared_cache` (`find result-both
-  -path '*shared*cache*'` is empty), though dyld has the machinery
-  (`dyld3/`, `build-scripts/update_dyld_shared_cache-build.sh`). So every exec maps
-  and re-relocates the full libSystem re-export closure (31 sublibraries) from
-  scratch. This is almost certainly the bulk of the ~tens-of-ms per trivial spawn
-  and the deepest reason Darling is heavier than Wine (which maps a handful of
-  DLLs). configure/make fork thousands of these.
+  -path '*shared*cache*'` is empty). It still costs ~1.8 ms/spawn to re-map+rebase
+  the libSystem re-export closure, so a cache is a *real but minor* win. The bulk
+  of the spawn cost is elsewhere (see the new P0.7 below).
+- **Revised priority:** LOW. Do P0.7 / P1 / P2 (the darlingserver spawn path)
+  first; revisit the cache only after, and only if the ~1.8 ms matters at scale.
+
+### P0.7 — darlingserver spawn-path round-trips  ⬅ NEW: the actual biggest lever (~22 ms/spawn)
+- **Target:** the ~22 ms of each ~28 ms spawn that is **not** dyld pre-main —
+  i.e. fork/exec emulation, mldr load, process registration with darlingserver,
+  the libSystem initializers' RPCs, and teardown. This is ~78% of the spawn tax
+  and the real reason Darling is heavier than Wine here.
+- **Evidence:** `darling-overhead-bench.md` attribution table; the `-111`
+  (semaphore_timedwait / mach_msg) lines fired during init+teardown show those
+  phases bouncing through darlingserver RPC.
+- **Approach:** profile one `bash -c :` spawn on the *daemon* side
+  (`scripts/darling-rpc-attach-probe.sh` counts syscalls; add per-RPC-type timing)
+  to rank the round-trips, then cut them: batch the fork/exec registration RPCs,
+  and land P1 (sigmask-free context switch) + P2 (EPOLLONESHOT re-arm), which
+  directly reduce per-RPC syscall overhead on this path.
+- **Risk:** touches the IPC core (same class as P1). Measure first (probe), change
+  one round-trip at a time, validate with the spawn bench + hello + stress loop.
 - **Approach:** generate a shared cache for the prefix's dylib set
   (`update_dyld_shared_cache` cross-built or run once under Darling at prefix
   init) and have dyld map it. Cache must match dylib paths/UUIDs exactly or dyld
