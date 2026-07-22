@@ -17,9 +17,16 @@ builds mig fine). It builds just the Linux daemon + its duct-tape/RPC deps —
 4-8× cut for the component where all the perf work lives. The daemon is
 byte-size-identical to the full build's. Splice it into a full runtime for testing
 with `scripts/splice-darlingserver.sh` (+ the `darling-launcher-spliced` package,
-which bakes INSTALL_PREFIX to the spliced dir from `$DARLING_SPLICE_PREFIX`). This
-is the practical fast loop for P2/P6/P8; nix-ninja per-edge (seconds, not minutes)
-would still be better but needs the monorepo mig-scan fix.
+which bakes INSTALL_PREFIX to the spliced dir from `$DARLING_SPLICE_PREFIX`).
+**The splice loop is proven end-to-end** (P2 was built this way in ~9 min, spliced,
+booted, and passed a 150-spawn stress run). The key gotcha: the daemon compiles
+`LIBEXEC_PATH` (overlay lowerdir + mldr path) from `CMAKE_INSTALL_PREFIX`, so
+`nix/darlingserver.nix` must bake it to the splice dir too (via
+`DARLING_SPLICE_PREFIX`), else the daemon's overlay lowerdir points at its own
+bin-only output and the container fails to mount. Also: boot against a *warm*
+prefix (a fresh one hits the separate first-boot launchd stall). This is the
+practical fast loop for P2/P6/P8; nix-ninja per-edge (seconds, not minutes) would
+still be better but needs the monorepo mig-scan fix.
 
 ## Why not "genuine nixpkgs packages"
 

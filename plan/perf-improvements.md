@@ -117,15 +117,23 @@ Per-message getpid/getuid/getgid → cached once. **1,537,526 → 256,371 syscal
 - **Expected:** removes ~21% of daemon syscalls; modest wall-clock (sigprocmask is
   cheap) but real CPU/scheduler-jitter reduction under load.
 
-### P2 — reduce epoll re-arm churn
-- **Target:** `epoll_ctl` 162/spawn (~13%).
-- **Cause:** client sockets registered `EPOLLIN | EPOLLONESHOT` (`src/server.cpp`
-  ~760/790), re-armed with `EPOLL_CTL_MOD` after each message so exactly one
-  worker handles a ready socket.
-- **Approach:** evaluate `EPOLLET` (edge-triggered, no re-arm) with full-drain per
-  wakeup, or keep oneshot but batch re-arm. Concurrency-model sensitive.
-- **Risk:** MEDIUM-HIGH (thundering herd / missed-event hazards). Needs the stress
-  test. **Expected:** up to ~13% fewer daemon syscalls.
+### P2 — reduce epoll re-arm churn  ✅ DONE (landed on main)
+- **Shipped (the safe variant):** rather than change the EPOLLONESHOT concurrency
+  model, memoize the **event loop's `_wakeupFD` re-arm** (`src/server.cpp`): it ran
+  an `EPOLL_CTL_MOD` every iteration, but EPOLLONESHOT only disarms the fd when it
+  actually fires, so re-arming an already-armed fd is pure churn. Track the armed
+  state (`_wakeupArmedEvents`), only `MOD` when the desired arming changed, mark it
+  disarmed when it fires. **Same armed states → semantically identical, fewer
+  syscalls.** Behind `DSERVER_FAST_EPOLL` (default ON).
+- **Validated via the fast splice loop:** built in ~9 min (nix/darlingserver.nix),
+  spliced into a runtime, boots and runs commands, and **passed a 150-spawn stress
+  run (150/150, 0 failures)**. **Benchmark: `epoll_ctl` ~67/spawn (13,397 over a
+  full 200-spawn run) vs ~162 baseline ≈ 59% fewer** — the per-iteration eventfd
+  re-arm was a big chunk of the epoll_ctl churn. (Baseline is the doc's earlier
+  measurement; a same-run P2-off A/B would tighten it but the direction is clear.)
+- **Not done (the risky part):** the Monitor re-arms (`server.cpp` ~790/808, one
+  per client-socket message) and an EPOLLET rewrite are left — those are the
+  concurrency-model-sensitive changes (thundering herd / missed events).
 
 ### P3 — mach_msg same-task fast path (client side)
 - **Target:** raw RPC count/spawn (recvmmsg ~200/spawn) — and the biggest lever
