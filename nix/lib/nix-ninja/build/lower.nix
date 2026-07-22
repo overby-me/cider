@@ -735,12 +735,14 @@ in {
           shebangSed ''"$out/${rel}"'')
         outs;
       # A ninja link/archive command whose linker step fails does not abort the
-      # edge (the body has no `set -e`), so it exits 0 having produced no dylib/
-      # archive; the missing artifact then surfaces only far downstream at the
-      # consuming link. Fail such an edge in place when it did not produce its
-      # declared library output, so the real error is visible in *this* edge's
-      # log. Limited to .dylib/.a to avoid tripping edges that legitimately skip
-      # an implicit output.
+      # edge (the body has no `set -e`, and cmake link rules often end `&& :`), so
+      # it exits 0 having produced no artifact; the miss then surfaces only far
+      # downstream. Fail such an edge in place when it did not produce a declared
+      # FINAL artifact (a dylib/archive, or an executable — a basename with no
+      # extension, excluding CMake bookkeeping), so the real linker error is
+      # visible in *this* edge's log. Object files / depfiles / generated sources
+      # (with extensions) are left alone, so edges that skip an implicit output
+      # are not tripped.
       checkOutputs =
         lib.concatMapStringsSep "\n"
         (o: let
@@ -748,10 +750,15 @@ in {
             if underAnyRoot o
             then relUnder o
             else o;
+          base = builtins.baseNameOf o;
+          isFinal =
+            lib.hasSuffix ".dylib" o
+            || lib.hasSuffix ".a" o
+            || (!(lib.hasInfix "." base) && !(lib.hasInfix "CMakeFiles" o));
         in
-          lib.optionalString (lib.hasSuffix ".dylib" o || lib.hasSuffix ".a" o) ''
+          lib.optionalString isFinal ''
             if [ ! -e "$out/${rel}" ]; then
-              echo "nix-ninja: edge produced no library output ${rel}" >&2
+              echo "nix-ninja: edge produced no output ${rel}" >&2
               exit 1
             fi
           '')
