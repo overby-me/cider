@@ -84,6 +84,12 @@ in
         # tolerance into every compile command so the per-edge build matches.
         "-DCMAKE_C_FLAGS=-Wno-error=implicit-function-declaration"
         "-DCMAKE_CXX_FLAGS=-Wno-error=implicit-function-declaration"
+        # Pin the Linux-side archiver to the clang stdenv's bintools (which IS in
+        # the edge toolchain) instead of whatever gcc-wrapper cmake auto-detects on
+        # the configure PATH — that wrapper's baked absolute path isn't mounted in
+        # the per-edge sandbox (its context is stripped), giving `ar: No such file`.
+        "-DCMAKE_AR=${di.stdenv.cc.bintools}/bin/ar"
+        "-DCMAKE_RANLIB=${di.stdenv.cc.bintools}/bin/ranlib"
       ]
       ++ lib.optional (installPrefix != null) "-DCMAKE_INSTALL_PREFIX=${installPrefix}";
 

@@ -42,9 +42,9 @@ tests/*
 
 # The suggested build folder
 build
-# ...but not the vendored nix-ninja lowering, which lives under a build/ subdir.
-!nix/lib/nix-ninja/build/
-!nix/lib/nix-ninja/build/**
+# ...but not the vendored nix-ninja (its lowering + rust-ninja both have build/ subdirs).
+!nix/lib/nix-ninja/
+!nix/lib/nix-ninja/**
 
 rpm/SOURCES
 rpm/RPMS
