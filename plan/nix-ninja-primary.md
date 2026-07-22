@@ -101,6 +101,32 @@ nix-ninja gives raw build artifacts. Two ways:
 3. Ship **(B)** first as an immediate iteration win if (A) proves large.
 4. Wire the winner as `packages.darling-ninja`, kept OUT of `flake check`.
 
+## Status (investigation this session)
+
+- **Eval feasibility: CONFIRMED.** `buildTarget {}` (full default graph) evaluates
+  past the graph-json IFD into per-edge lowering (~100 s before hitting a build
+  error) — it is *not* an evaluation/memory wall. The first full build will be
+  expensive (per-edge header-scan + compile), but incremental rebuilds are cached.
+- **Blocker found: the per-edge header-SCAN derivation lacks the configure
+  `buildInputs`.** The full graph (unlike the launcher/kernel targets) has edges
+  that `#include` third-party headers — first hit: `src/bsdln/ln.c` →
+  `<bsd/string.h>` (libbsd). libbsd *is* in `darlingBuildInputs.buildInputs`, and I
+  added `di.buildInputs` to the nix-ninja **build-edge** `toolchain`
+  (`nix/lib/darlingNinja.nix`), but the failure is in a separate `ninja-scan-*`
+  (header-discovery) derivation whose inputs are set by the **monorepo** lowering
+  (`overby:nix/lib/ninja/build/`), not reachable from this repo. **Fix needs a
+  monorepo change:** the scan phase must run with the configure `buildInputs` /
+  their `-I` paths so it can resolve third-party headers. Then likely a few more
+  such edges (iterate-fix, as the launcher/kernel each needed).
+- So completing approach A spans **two repos** (monorepo scan fix + this repo's
+  install wrapper) + an expensive first build. Recommended sequencing given that:
+  1. **Interim (this repo only): the launcher-fast-path** — `darling-launcher-ninja`
+     with `-DCMAKE_INSTALL_PREFIX=<a monolithic result store path>` so the fast-built
+     launcher execs that runtime's `darlingserver`; swap it in for seconds-fast
+     launcher iteration (covers most of this session's rebuild pain).
+  2. **Then approach A** once the monorepo scan-toolchain fix lands and a
+     less-contended host is available for the first full build.
+
 ## Risks
 
 - Eval cost of ~26k derivations (memory/time) — measure; may need to coarsen

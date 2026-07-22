@@ -90,6 +90,12 @@ in
           pkgs.cmake
           pkgs.coreutils
         ]
-        ++ di.nativeBuildInputs;
+        ++ di.nativeBuildInputs
+        # The full graph (not just the launcher/kernel) has edges that compile
+        # against configure buildInputs — e.g. src/bsdln needs libbsd's
+        # <bsd/string.h>. The graph JSON's string context is stripped so Nix does
+        # not auto-mount them, so re-provide the library deps in every edge's
+        # sandbox (headers + link libs), exactly as nativeBuildInputs are.
+        ++ di.buildInputs;
     };
 }
