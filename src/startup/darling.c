@@ -418,6 +418,43 @@ static void signalHandler(int signo)
 	pushShellspawnCommandData(_shSockfd, SHELLSPAWN_SIGNAL, &signo, sizeof(signo));
 }
 
+// Force-tear-down the container. Used by the startup watchdog so a stalled
+// container's surviving daemons release the caller's stdout pipe; otherwise a
+// capturing caller -- out=$(darling shell ...) -- keeps blocking on that pipe
+// even after this launcher has exited. We read the darlingserver pid DIRECTLY
+// from <prefix>/.init.pid rather than via getInitProcess(), whose liveness/uid
+// validation returns 0 in the rootless user namespace (which left the container
+// leaked). Then kill its children (launchd, the container's pid-namespace init)
+// and darlingserver itself.
+static void killContainer(void)
+{
+	char pidPath[4096];
+	char childrenPath[128];
+	FILE* f;
+	pid_t initp = 0, child;
+
+	snprintf(pidPath, sizeof(pidPath), "%s/.init.pid", prefix);
+	f = fopen(pidPath, "r");
+	if (f)
+	{
+		if (fscanf(f, "%d", &initp) != 1)
+			initp = 0;
+		fclose(f);
+	}
+	if (initp <= 0)
+		return;
+
+	snprintf(childrenPath, sizeof(childrenPath), "/proc/%d/task/%d/children", initp, initp);
+	f = fopen(childrenPath, "r");
+	if (f)
+	{
+		while (fscanf(f, "%d", &child) == 1)
+			kill(child, SIGKILL);
+		fclose(f);
+	}
+	kill(initp, SIGKILL);
+}
+
 static void shellLoop(int sockfd, int master)
 {
 	struct sigaction sa;
@@ -450,17 +487,41 @@ static void shellLoop(int sockfd, int master)
 	//fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 
+	bool started = false;
+	// Startup watchdog: bound the time from SHELLSPAWN_GO until shellspawn confirms
+	// the shell is running (its first byte back is a one-byte "started" marker). A
+	// stalled fork/exec inside the container -- rare, observed only under heavy host
+	// contention -- otherwise hangs the launcher forever waiting for an exit status
+	// that never arrives. Instead we time out and exit(120) so callers can retry a
+	// fresh container. The timeout applies ONLY before the marker; a running shell
+	// is never truncated. Tunable via DARLING_SHELL_STARTUP_TIMEOUT (seconds; <=0
+	// disables the watchdog).
+	int startupTO;
+	{
+		const char* e = getenv("DARLING_SHELL_STARTUP_TIMEOUT");
+		int secs = e ? atoi(e) : 60;
+		startupTO = (secs <= 0) ? -1 : secs * 1000;
+	}
+
 	while (1)
 	{
 		char buf[4096];
 
-		if (poll(pfds, fdcount, -1) < 0)
+		int pr = poll(pfds, fdcount, started ? -1 : startupTO);
+		if (pr == 0 && !started)
+		{
+			fprintf(stderr, "darling: shell did not start within %d s; the container appears stalled under host contention. Aborting so the caller can retry.\n", startupTO / 1000);
+			killContainer(); // release the caller's stdout so out=$(...) unblocks
+			exit(120);
+		}
+		if (pr < 0)
 		{
 			if (errno != EINTR)
 			{
 				perror("poll");
 				break;
 			}
+			continue;
 		}
 
 		if (pfds[2].revents & POLLIN)
@@ -500,8 +561,24 @@ static void shellLoop(int sockfd, int master)
 
 		if (pfds[0].revents & (POLLHUP | POLLIN))
 		{
+			if (!started)
+			{
+				// shellspawn sends a one-byte marker once the shell has exec'd;
+				// after it the shell may run indefinitely, so stop timing out.
+				unsigned char marker;
+				ssize_t r = read(sockfd, &marker, 1);
+				if (r == 1)
+				{
+					started = true;
+					continue;
+				}
+				if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR))
+					continue;
+				exit(1); // EOF/error before the shell started => it failed to spawn
+			}
+
 			int exitStatus;
-			
+
 			if (read(sockfd, &exitStatus, sizeof(int)) == sizeof(int))
 				exit(exitStatus);
 			else

@@ -6,6 +6,48 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
 
 ## Open
 
+- **Container start intermittently hangs under heavy host contention (the shell's
+  fork/exec inside the container stalls); mitigated with a launcher startup
+  watchdog.** Investigation this session: when the host is idle OR under synthetic
+  CPU stress (load 28) OR a fork+IO storm (load 20), `darling shell` starts
+  reliably in ~1s (30+/30+ consecutive). The multi-minute "slow start"/hangs only
+  occurred while a *second* session ran heavy concurrent `nix build`s (extreme
+  process churn + disk IO + memory pressure), which synthetic stress did not
+  reproduce. Mechanism, captured live during a hang: the container boots *fully*
+  (launchd + securityd/iokitd/opendirectoryd/memberd/shellspawn all up,
+  `shellspawn.sock` present) but the workload shell is never spawned — shellspawn's
+  per-connection child stalls forking/exec'ing `/bin/bash` — so the launcher waits
+  forever in `shellLoop`'s `poll(..., -1)` for an exit status that never comes.
+  So it is **not** slow boot (boot is ~1s); it is a rare fork/exec stall under
+  pathological contention (same process-lifecycle family as the `make`
+  wait-deadlock and zombie reaping). Root fix (future): the darlingserver /
+  libsystem_kernel fork/exec/SIGCHLD concurrency. **Mitigation landed:** a startup
+  watchdog — `src/shellspawn/shellspawn.c` sends a one-byte "started" marker right
+  after the shell `execv`s, and `src/startup/darling.c` (`shellLoop`) bounds the
+  GO→marker window with a timeout (default 60s, `DARLING_SHELL_STARTUP_TIMEOUT`
+  seconds, ≤0 disables), exiting 120 on a stall so callers retry a fresh container
+  instead of hanging indefinitely. The timeout stops at the marker, so a
+  legitimately long-running shell is never truncated. On timeout the launcher
+  also **tears down the stalled container** (`killContainer()` reads the
+  darlingserver pid from `<prefix>/.init.pid` — NOT `getInitProcess()`, whose
+  `/proc` uid validation returns 0 in the rootless userns — and SIGKILLs it + its
+  launchd child) so the daemons release the caller's stdout pipe (else
+  `out=$(darling shell …)` keeps blocking on the leaked container even after the
+  launcher exits).
+  **Scope / follow-ups:** the watchdog covers the indefinite `shellLoop` fork/exec
+  hang (the 17-min ones). Two related issues under the *same* extreme contention
+  remain: (a) a slow/stalled BOOT phase (`connectToShellspawn` waiting for
+  `shellspawn.sock`, or the `spawnInitProcess` darlingserver-ready pipe) happens
+  *before* `shellLoop`, so bound those with teardown too; (b) a leaked
+  darlingserver can wedge in **D-state** (uninterruptible under I/O contention),
+  and a stale `.init.pid` then makes new starts try to *join* the dead container
+  and fail EPERM ("Cannot open mnt namespace file") — remove `.init.pid` on
+  teardown / on a failed join. Full stall-recovery validation was blocked by the
+  other session's ongoing builds saturating the host; the marker protocol itself
+  is confirmed non-regressing (clean starts succeed whenever no leaked container
+  is present).
+
+
 - **Guest Nix under Darling: RESOLVED — nix loads, runs and evaluates.**
   After the four fixes below, the x86_64-darwin `nix` 2.34.8 runs under Darling:
   `nix --version` -> `nix (Nix) 2.34.8`, `nix eval --expr "1+2"` -> `3`,

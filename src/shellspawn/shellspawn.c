@@ -311,6 +311,16 @@ void spawnShell(int fd)
 	}
 	close(pipefd[0]);
 
+	// Tell the launcher the shell has started, so it can stop applying its startup
+	// watchdog. Without this, a stalled fork/exec under heavy host contention would
+	// hang the launcher forever (it waits below for the exit status). Sent once,
+	// before we block waiting for the shell to exit.
+	{
+		unsigned char started = 1;
+		if (write(fd, &started, 1) != 1)
+			goto err;
+	}
+
 	// Now we start passing signals
 	// and check for child process exit
 
