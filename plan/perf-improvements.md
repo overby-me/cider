@@ -37,6 +37,11 @@ workloads (configure/make fork thousands of short-lived processes).
 
 ### P0.5 — dyld shared cache  ⬅ likely the biggest *wall-clock* lever
 - **Target:** per-spawn process-startup wall-clock (not a daemon syscall count).
+- **Measured:** process spawn under Darling is **~11–12× native** (~27.9 ms vs
+  2.44 ms per `bash -c :`), and the control shows this ratio is
+  optimization-independent — see `plan/darling-overhead-bench.md`. This is the
+  build-time tax P0.5 targets. (Pure compute is only ~7.6× once bash's -O level is
+  matched, so spawn is where the outsized cost lives.)
 - **Finding:** the built root ships **no** `dyld_shared_cache` (`find result-both
   -path '*shared*cache*'` is empty), though dyld has the machinery
   (`dyld3/`, `build-scripts/update_dyld_shared_cache-build.sh`). So every exec maps
