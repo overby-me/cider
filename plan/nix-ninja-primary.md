@@ -34,6 +34,36 @@ fixes cleared the last blockers past the `ninja-scan` third-party-header work:
   lowering. Verified: 877 objects now emitted, `libSystem.B.dylib` links, and
   `darlingserver-ninja` stays green.
 
+### Full-graph frontier (`buildTarget {}` = the phony `all`)
+
+Building the whole graph revealed two more nix-ninja items:
+
+- **Phony aggregate targets (FIXED).** `target = null` resolves to the manifest
+  `default`, which for Darling is the phony `all`. `buildOne` treated it as a real
+  output and ran `cp <edge>/all` (nonexistent) -- so it silently resolved `all` to
+  a single head producer (bsdln) and never built the closure. Fixed: `lower.nix`
+  gains `isPhonyTarget` + `realOutputsForTarget` (a phony expands to every declared
+  output of every real edge it transitively names), and `buildOne` stages those
+  into one tree. Single real targets keep the identical prior path.
+
+- **`migHeaderIncsFor` is scope-sensitive (OPEN, the current blocker).** With the
+  phony fix, `all` now attempts the true closure and stops at exactly one hard
+  failure: the `asl.c` header scan cannot find generated `<asl_ipc.h>`. Root cause
+  pinned: the passing libSystem-*subgraph* scan drv carries
+  `-I<asl_ipc-producer>/src/external/syslog/aslcommon` (where the generated header
+  is), but the full-graph scan drv does **not** -- that `-I` comes only from
+  `migHeaderIncsFor`, which returns it for the subgraph configure and `[]` for the
+  full one. The producer *is* mounted and *does* contain `asl_ipc.h`; only the `-I`
+  is missing. Next: determine whether `migToolDepAttr` wrongly excludes asl.c's
+  edge in the full graph, or `migHeadersByModule.<mod>` is empty for it (module-key
+  or `dependsOnCompileMemo` differs at full-graph scope). Then re-run the phony
+  staging, which has not yet executed end-to-end (gated by this blocker).
+
+- **Tolerated i386 mig noise.** `all` pulls in 32-bit mig codegen edges
+  (`*-i386-User.c`) whose `build-mig` uses `/bin/rmdir` (91x) and hit a `cp`
+  dir-vs-nondir collision (34x); none is fatal (the mig script forces exit 0), and
+  0 appear as `Cannot build`. Left as-is unless they become load-bearing.
+
 ## Fast darlingserver iteration WITHOUT nix-ninja (shipped)
 
 nix-ninja's per-edge build of `darlingserver` is blocked (its mig/migcom header-scan
