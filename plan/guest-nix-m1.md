@@ -57,6 +57,22 @@ So the guest-Nix M1 is gated on the **same fork/exec concurrency issue** that th
 darlingserver perf work (P-series) and the Rust-rewrite candidate (plan/
 rust-rewrite-eval.md) target -- fixing that unblocks this.
 
+### Isolated (2026-07-24 overnight)
+
+- **Unwrapped clang runs fine standalone** under Darling (`clang 21.1.8 --version`
+  ok). So the toolchain is not broken.
+- The build uses the nix **cc-wrapper** (a bash script that forks to clang), so the
+  clang check is `configure -> sh -> cc-wrapper(bash) -> clang` -- an **extra fork
+  layer** vs the toolchain-M1 path (direct bootstrap clang, which works). That
+  deeper/fork-heavier process tree reliably trips the bug at the clang check.
+- A **retry loop does NOT get past** it -- attempts stall at the same step (the
+  failure is reliable, though it varies between a fork/exec stall and a SIGABRT).
+- Therefore the two ways forward are: (a) fix the darlingserver fork/exec/SIGCHLD
+  concurrency (the real fix; a sub-project), or (b) build hello with a **non-wrapper
+  CC** (fewer forks) -- which is essentially what the toolchain-M1 path already does.
+  So **toolchain M1 is the pragmatic "hello from source" answer today**; the official
+  guest-`nix build` path is 95% there and waits on the concurrency fix.
+
 ## Reproduce
 
 ```sh
