@@ -56,8 +56,9 @@ and drop the `overby` flake input entirely for a self-contained build.)
 - [x] **mig fix validated**: with it, the per-edge build goes from failing
       instantly to ~10 min deep, **past ALL mig edges** (0 Permission-denied). This
       was THE documented blocker for the whole componentization path.
-- [ ] `darlingserver-ninja` green -- blocked on the next issue (below), which is a
-      deep XNU-header grind, not a drive-by.
+- [x] **`darlingserver-ninja` GREEN** -- the per-edge build now produces a valid
+      ELF `darlingserver` (mach_msg_send_from_kernel_proper defined, 0 undefined
+      mach_msg), matching the monolith. Fix in darlingNinja.nix (item 3 below).
 
 ### More per-edge fixes (each unblocks whole classes of edges)
 
