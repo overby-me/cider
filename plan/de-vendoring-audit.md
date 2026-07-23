@@ -82,8 +82,24 @@ specific implementations with macOS-specific flags/behaviour; some (`bootstrap_c
   `cctools`/`cctools-port` for darwin (its stdenv uses them). This is the "host
   tooling" half of task #23: Darling builds an in-tree ld64 for the
   cc-wrapper-bypass; evaluate replacing it with nixpkgs' cctools/ld64. Build-time
-  only, so it dodges the runtime libSystem gate -- likely the highest-leverage,
-  lowest-risk first de-vendor.
+  only, so it dodges the runtime libSystem gate.
+
+  **Prototype result (checked).** nixpkgs `pkgsCross.x86_64-darwin` uses a *classic
+  cctools* linker (`x86_64-apple-darwin-cctools-binutils-darwin`, i.e. `ld64-956.6`
+  + `cctools-1010.6`), not lld -- so it accepts the classic `-Z` / `-dylib_file` /
+  `-sdk_version` flags `use_ld64.cmake` relies on. Architecturally the swap is
+  sound. BUT building that ld64 on **x86_64-linux fails**: `ld64-956.6` needs macOS
+  SDK headers the cross sandbox lacks (`fatal error: libkern/OSByteOrder.h` /
+  `mach/vm_prot.h`), and cross-built darwin tools are **not** on cache.nixos.org.
+  So this is *not* the free/lowest-risk win I first called it. Two real paths:
+  - **A.** Provide SDK headers to the nixpkgs `ld64` build (an overlay adding
+    `apple-sdk` / Darling's own `libkern`+`mach` headers to its `buildInputs`),
+    then use its `x86_64-apple-darwin-ld` in `use_ld64.cmake` via `-fuse-ld=`.
+  - **B (pragmatic).** Keep Darling's `cctools-port` sources (they build on Linux
+    because Darling supplies the darwin headers) but build it as a *standalone nix
+    derivation* instead of an in-tree cmake subtree -- cached + incremental, and
+    `use_ld64.cmake` points `-fuse-ld` at that store path. De-vendors the build
+    without depending on nixpkgs' broken cross-ld64. Likely the better first step.
 - `TextEdit` -- Apple demo app; no substitute, low value.
 
 ## Recommended sequencing
