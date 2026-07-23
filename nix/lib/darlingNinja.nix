@@ -43,6 +43,38 @@ let
     src = "${overby}/rust/ninja";
     cargoLock.lockFile = "${overby}/rust/ninja/Cargo.lock";
   };
+
+  # darlingserver's duct-tape mig user-stubs pick their message send via
+  # `#if __MigKernelSpecificCode` <- `_MIG_KERNEL_SPECIFIC_CODE_`, which
+  # osfmk/mach/mig.h sets to 1 under MACH_KERNEL -- but only if that header is
+  # reached through the include chain. nix-ninja merges the source tree and the
+  # configured build dir into one $out, and the hand-written source
+  # `osfmk/mach/notify.h` (which does not reach mig.h) can shadow mig's generated
+  # same-named user header (which does), so a stub compiles the userspace
+  # `mach_msg` branch and the darlingserver link fails with undefined `mach_msg`.
+  # The duct-tape IS the kernel, so define `_MIG_KERNEL_SPECIFIC_CODE_` explicitly,
+  # scoped to just the duct-tape directory (harmless in the monolith, where mig.h
+  # already sets it to the same value). See plan/nix-ninja-componentization.md.
+  ductapeMigFixSrc = pkgs.runCommand "darling-src-migkernelfix" { } ''
+    # cp -a preserves mode (crucially the +x on scripts the build runs, e.g.
+    # generate-rpc-wrappers.py and mig.sh) and symlinks; drop only ownership
+    # (unset-table as non-root). Then add write for the sed below -- chmod u+w
+    # keeps the execute bits. (A plain --no-preserve=mode copy strips +x and the
+    # rpc.h generator fails "Permission denied".)
+    cp -a --no-preserve=ownership ${src} $out
+    chmod -R u+w $out
+    # Add, to the duct-tape's directory-scoped compile definitions: the
+    # kernel-specific-code selector, plus the three `*_from_kernel` redirects that
+    # osfmk/kern/ipc_mig.h defines (send/rpc/destroy -> the `_proper` symbols,
+    # defined in ipc_mig.c). nix-ninja's merged tree does not always deliver those
+    # kernel mach headers to a mig user-stub's per-edge compile, so a stub calls
+    # the un-redirected `mach_msg_send_from_kernel` and the link fails undefined.
+    # These mirror ipc_mig.h exactly and only apply to the duct-tape, so they are
+    # a no-op in the monolith build. See plan/nix-ninja-componentization.md.
+    ${pkgs.gnused}/bin/sed -i \
+      's/^add_compile_definitions($/&\n\t_MIG_KERNEL_SPECIFIC_CODE_=1\n\tmach_msg_send_from_kernel=mach_msg_send_from_kernel_proper\n\tmach_msg_rpc_from_kernel=mach_msg_rpc_from_kernel_proper\n\tmach_msg_destroy_from_kernel=mach_msg_destroy_from_kernel_proper/' \
+      $out/src/external/darlingserver/duct-tape/CMakeLists.txt
+  '';
 in
 {
   inherit rustNinja buildNinjaProject;
@@ -62,7 +94,7 @@ in
       installPrefix ? null,
     }:
     buildNinjaProject {
-      cmakeSource = src;
+      cmakeSource = ductapeMigFixSrc;
       inherit
         target
         targets
