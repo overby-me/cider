@@ -60,6 +60,31 @@ and drop the `overby` flake input entirely for a self-contained build.)
       ELF `darlingserver` (mach_msg_send_from_kernel_proper defined, 0 undefined
       mach_msg), matching the monolith. Fix in darlingNinja.nix (item 3 below).
 
+### libSystem umbrella scale-up (task #39): 1550 edges deep, next blocker
+
+Building the full `src/external/libsystem/libSystem.B.dylib` per-edge (off the
+off-submodules darling-src, no ?submodules=1) reaches **~1550 edges** -- through
+libsystem_kernel/libsyscall and into libc -- before failing in the **syslog**
+sublibrary: `asl.c:57: fatal error: 'asl_ipc.h' file not found`.
+
+Root cause (a real lower.nix gap, distinct from the notify.h conflation):
+`asl_ipc.h` is purely mig-generated (from `aslcommon/asl_ipc.defs`, no checked-in
+copy) and `asl.c` pulls it in as `#include <asl_ipc.h>` **without** the compile
+edge declaring a dependency on the mig edge. lower.nix's `generatedHeaderIncs`
+(which adds every generated header's dir to compile `-I`s) **deliberately excludes
+mig headers** (comment at :343-351: "a mig header already resolves through its
+declared producer") -- true for headers consumed via a declared dep, false for
+this `<...>` include. Simply adding mig-edge outputs to `generatedHeaderIncs`
+forms an **eval cycle**: mig edge -> migcom (a scanning compile edge) ->
+`generatedHeaderIncs`. So the fix must break that cycle, e.g. a mig-header include
+set computed from the mig edges' *declared* outputs and applied only to non-migcom
+compiles. Deep; needs care. (`/bin/rmdir` warnings in the log are a red herring --
+mig.sh forces `exit 0` after them.)
+
+Takeaway: the per-edge scale-up genuinely works for the large majority of libSystem
+(1550 edges cached and green); the remaining tail is a small number of lower.nix
+generated-header-staging fixes like this one, each unblocking a class of edges.
+
 ### More per-edge fixes (each unblocks whole classes of edges)
 
 2. **duct-tape mig user-stub `mach_msg` (DIAGNOSED -- deeper than first thought).**
