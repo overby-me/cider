@@ -1,6 +1,20 @@
 FUNCTION(use_ld64 target)
+	# ld64 + the misc cctools default to the in-tree cctools-port build, but can be
+	# an external prebuilt (a standalone nix derivation -- see nix/cctools-port.nix)
+	# via -DDARLING_LD64_DIR=<dir with the ${triplet}-ld> [-DDARLING_LD64_MISC=<dir>],
+	# which also skips building and depending on the in-tree ld64.
+	if(DARLING_LD64_DIR)
+		set(_darling_ld64_external TRUE)
+	else()
+		set(DARLING_LD64_DIR "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src")
+		set(_darling_ld64_external FALSE)
+	endif()
+	if(NOT DARLING_LD64_MISC)
+		set(DARLING_LD64_MISC "${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc")
+	endif()
+
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
-		LINK_FLAGS " -fuse-ld=${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
+		LINK_FLAGS " -fuse-ld=${DARLING_LD64_DIR}/${APPLE_TARGET_TRIPLET_PRIMARY}-ld ")
 
 	if (COMPONENT_gui)
 		set(COCOTRON_FW_PATH "${CMAKE_BINARY_DIR}/src/external/cocotron")
@@ -11,8 +25,8 @@ FUNCTION(use_ld64 target)
 	endif()
 
 	set_property(TARGET ${target} APPEND_STRING PROPERTY
-		LINK_FLAGS " -B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/ld64/src/ \
--B ${CMAKE_BINARY_DIR}/src/external/cctools-port/cctools/misc/ \
+		LINK_FLAGS " -B ${DARLING_LD64_DIR} \
+-B ${DARLING_LD64_MISC} \
 -target ${APPLE_TARGET_TRIPLET_PRIMARY} -Wl,-Z \
 -Wl,-sdk_version,${CMAKE_OSX_DEPLOYMENT_TARGET} \
 -Wl,-dylib_file,/usr/lib/system/libsystem_c.dylib:${CMAKE_BINARY_DIR}/src/external/libc/libsystem_c_firstpass.dylib \
@@ -176,7 +190,9 @@ FUNCTION(use_ld64 target)
 -Wl,-dylib_file,/usr/lib/native/libxkbfile.dylib:${CMAKE_BINARY_DIR}/src/native/libxkbfile.dylib \
 -Wl,-dylib_file,/usr/lib/native/libXRandR.dylib:${CMAKE_BINARY_DIR}/src/native/libXRandR.dylib")
 
-	add_dependencies(${target} ${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
+	if(NOT _darling_ld64_external)
+		add_dependencies(${target} ${APPLE_TARGET_TRIPLET_PRIMARY}-ld)
+	endif()
 
 ENDFUNCTION(use_ld64)
 
