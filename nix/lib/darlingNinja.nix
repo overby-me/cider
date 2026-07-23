@@ -17,9 +17,15 @@
 {
   pkgs,
   overby,
-  # The Darling source tree with submodules checked out (same source
-  # nix/package.nix builds); defaults to the darling package's own source.
-  src ? pkgs.darling.src,
+  # The Darling source tree. Defaults to the nix-assembled off-submodules tree
+  # (nix/lib/darling-src.nix overlays the 147 fetchFromGitHub-pinned submodules
+  # onto this repo's tree and applies patches/), so `nix build .#*-ninja` needs no
+  # `?submodules=1` and no git submodule step. Pass `pkgs.darling.src` (built with
+  # `?submodules=1`) to fall back to git submodules.
+  src ? import ./darling-src.nix {
+    inherit pkgs;
+    baseSrc = ../../.;
+  },
 }:
 let
   inherit (pkgs) lib system;
