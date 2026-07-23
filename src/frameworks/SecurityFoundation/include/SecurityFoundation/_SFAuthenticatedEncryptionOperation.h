@@ -35,8 +35,6 @@
 - (SFAuthenticatedCiphertext*)encrypt:(NSData*)data withKey:(SFAESKey*)key error:(NSError**)error;
 - (SFAuthenticatedCiphertext*)encrypt:(NSData*)data withKey:(SFAESKey*)key additionalAuthenticatedData:(NSData*)aad error:(NSError**)error;
 
-// common sense tells me that the input parameter should be `SFAuthenticatedCiphertext*`,
-// but `SecDbKeychainItemV7.m` in Security says otherwise
-- (NSData*)decrypt:(NSData*)data withKey:(SFAESKey*)key error:(NSError**)error;
+- (NSData*)decrypt:(SFAuthenticatedCiphertext*)data withKey:(SFAESKey*)key error:(NSError**)error;
 
 @end

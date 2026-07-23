@@ -66,7 +66,7 @@ kern_return_t aks_create_bag(uint8_t* secret, int secret_size, int bag_type, key
 	return KERN_FAILURE;
 };
 
-kern_return_t aks_save_bag(keybag_handle_t handle, void** bytes, size_t* size) {
+kern_return_t aks_save_bag(keybag_handle_t handle, void** bytes, int* size) {
     printf("STUB %s\n", __PRETTY_FUNCTION__);
 	return KERN_FAILURE;
 };

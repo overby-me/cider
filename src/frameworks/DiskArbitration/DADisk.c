@@ -163,7 +163,7 @@ DADiskRef DADiskCreateFromVolumePath(CFAllocatorRef allocator,
 
 const char* DADiskGetBSDName(DADiskRef disk)
 {
-	return disk->path;
+	return CFStringGetCStringPtr(disk->path,kCFStringEncodingUTF8);
 }
 
 io_service_t DADiskCopyIOMedia(DADiskRef disk)

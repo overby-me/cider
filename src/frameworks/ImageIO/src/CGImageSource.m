@@ -24,7 +24,7 @@ size_t CGImageSourceGetCount(CGImageSourceRef self) {
 }
 
 CGImageRef CGImageSourceCreateImageAtIndex(CGImageSourceRef self,size_t index,CFDictionaryRef options) {
-   return [self createImageAtIndex:index options:options];
+   return (CGImageRef)[self createImageAtIndex:index options:options];
 }
 
 CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t index,CFDictionaryRef options) {
@@ -33,7 +33,7 @@ CFDictionaryRef CGImageSourceCopyPropertiesAtIndex(CGImageSourceRef self, size_t
 
 CFStringRef CGImageSourceGetType(CGImageSourceRef self)
 {
-    return [self type];
+    return [(O2ImageSource*)self type];
 }
 
 CGImageSourceRef CGImageSourceCreateWithDataProvider(CGDataProviderRef provider, CFDictionaryRef options)

@@ -19,6 +19,8 @@
 
 #import <OpenDirectory/ODSession.h>
 
+#import <Foundation/Foundation.h>
+
 @implementation ODSession
 
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
