@@ -98,6 +98,15 @@ in
       # existing monolithic `result` runtime — enabling seconds-fast launcher
       # iteration that reuses that runtime instead of a 40-min full rebuild.
       installPrefix ? null,
+      # Which Darling components to configure into the graph (Darling's own
+      # COMPONENTS mechanism, cmake/darling_parse_components.cmake). The default
+      # `cli` expands to core -> system -> cli: the full CLI userland WITHOUT any
+      # GUI-only projects (drops the `dev_gui_*`, `gui`, `jsc`, `webkit` groups --
+      # AppKit, CoreImage, AVFoundation, WebKit, cocotron, CoreAudio, ...). That is
+      # a much smaller graph than the monolith's `stock` default and is all the
+      # campaign (bootstrap toolchain + hello) needs. Set to "stock"/"all" for a
+      # full GUI build, or "system" for the leanest core runtime.
+      components ? "cli",
     }:
     buildNinjaProject {
       cmakeSource = ductapeMigFixSrc;
@@ -128,6 +137,9 @@ in
         # the per-edge sandbox (its context is stripped), giving `ar: No such file`.
         "-DCMAKE_AR=${di.stdenv.cc.bintools}/bin/ar"
         "-DCMAKE_RANLIB=${di.stdenv.cc.bintools}/bin/ranlib"
+        # Scope the configured graph to the requested components. `cli` (default)
+        # excludes all GUI-only projects; the monolith default is `stock` (GUI on).
+        "-DCOMPONENTS=${components}"
       ]
       ++ lib.optional (installPrefix != null) "-DCMAKE_INSTALL_PREFIX=${installPrefix}";
 
