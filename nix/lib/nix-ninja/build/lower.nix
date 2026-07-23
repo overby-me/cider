@@ -903,8 +903,28 @@ in {
       if ids == []
       then throw "nix-ninja: no edge produces '${p}'"
       else edgeDrvs.${toString (builtins.head ids)};
+
+    # Whether `p` is produced by a phony / no-op edge -- an aggregate alias
+    # like the top-level `all`, which has no file of its own but transitively
+    # names every real target.
+    isPhonyTarget = p: isProduced p && isNoOp (elemAt edges producerOf.${p});
+
+    # The real file outputs to stage for target `p`, as `{ path; drv; }`. For a
+    # real output that is just `p` from its producer; for a phony aggregate it is
+    # every declared output of every real edge the phony resolves to (e.g. `all`
+    # -> each sublibrary/tool's final artifact). Lets a caller materialize a
+    # whole-graph build (`target = null` -> `default` -> `all`) instead of
+    # trying to `cp` a nonexistent file named after the phony.
+    realOutputsForTarget = p:
+      lib.concatMap
+        (i: map (o: {
+          path = o;
+          drv = edgeDrvs.${toString i};
+        }) (edgeOutputs (elemAt edges i)))
+        (realProducers p);
   in {
     inherit producerOf edgeDrvs drvForOutput edges;
+    inherit isPhonyTarget realOutputsForTarget;
     inherit (graph) defaults;
   };
 }

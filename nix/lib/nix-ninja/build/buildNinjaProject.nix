@@ -166,21 +166,39 @@
     "ninja-out-"
     + lib.strings.sanitizeDerivationName (builtins.unsafeDiscardStringContext s);
 
-  # Copy just the requested target out of its producing edge's tree.
-  buildOne = t: let
-    drv = lowered.drvForOutput t;
-  in
-    pkgs.runCommand (sanOut t) {
-      passthru = {
-        producing = drv;
-        inherit graphDrv;
-        ninja = lowered;
-      };
-      meta.mainProgram = baseNameOf t;
-    } ''
-      mkdir -p "$out/$(dirname ${esc t})"
-      cp -r --reflink=auto ${drv}/${esc t} "$out/${t}"
-    '';
+  # Copy just the requested target out of its producing edge's tree. A phony
+  # aggregate (e.g. the top-level `all`, which `target = null` resolves to via
+  # `default`) has no file of its own, so instead stage every real target's
+  # declared outputs into one tree.
+  buildOne = t:
+    if lowered.isPhonyTarget t
+    then
+      pkgs.runCommand (sanOut t) {
+        passthru = {
+          inherit graphDrv;
+          ninja = lowered;
+        };
+      } ''
+        ${lib.concatMapStringsSep "\n" (o: ''
+          mkdir -p "$out/$(dirname ${esc o.path})"
+          cp -r --reflink=auto ${o.drv}/${esc o.path} "$out/${o.path}"
+        '') (lowered.realOutputsForTarget t)}
+      ''
+    else
+      let
+        drv = lowered.drvForOutput t;
+      in
+      pkgs.runCommand (sanOut t) {
+        passthru = {
+          producing = drv;
+          inherit graphDrv;
+          ninja = lowered;
+        };
+        meta.mainProgram = baseNameOf t;
+      } ''
+        mkdir -p "$out/$(dirname ${esc t})"
+        cp -r --reflink=auto ${drv}/${esc t} "$out/${t}"
+      '';
 
   chosen =
     if target != null
