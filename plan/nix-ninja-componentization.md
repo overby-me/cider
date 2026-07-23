@@ -1,6 +1,6 @@
 # Full per-edge Darling build via nix-ninja (componentization / off-submodules)
 
-Goal (task #39): make the **whole** Darling graph build per-edge via nix-ninja —
+Goal (task #39): make the **whole** Darling graph build per-edge via nix-ninja --
 every compile a content-addressed nix derivation, so the ~40-min monolith becomes
 seconds-incremental and fully cacheable, and the build is expressed entirely in
 nix (the real path off git submodules). nix-ninja already builds the launcher and
@@ -30,7 +30,7 @@ Root cause (concrete, not a toolchain gap):
 ## The fix (in the vendored lowering)
 
 `nix/lib/nix-ninja/build/lower.nix`, `mkOutDirs` runs before each edge's command
-and did `realize_writable "$(dirname output)"` — making the output *directory*
+and did `realize_writable "$(dirname output)"` -- making the output *directory*
 real but leaving the output *file* as a staged source symlink. Fix: also drop a
 symlink sitting at a declared output path, so the command writes a fresh real file:
 
@@ -56,12 +56,12 @@ and drop the `overby` flake input entirely for a self-contained build.)
 - [x] **mig fix validated**: with it, the per-edge build goes from failing
       instantly to ~10 min deep, **past ALL mig edges** (0 Permission-denied). This
       was THE documented blocker for the whole componentization path.
-- [ ] `darlingserver-ninja` green — blocked on the next issue (below), which is a
+- [ ] `darlingserver-ninja` green -- blocked on the next issue (below), which is a
       deep XNU-header grind, not a drive-by.
 
 ### More per-edge fixes (each unblocks whole classes of edges)
 
-2. **duct-tape mig user-stub `mach_msg` (DIAGNOSED — deeper than first thought).**
+2. **duct-tape mig user-stub `mach_msg` (DIAGNOSED -- deeper than first thought).**
    The mig-generated `notify_user.c` link-fails with `undefined reference to
    mach_msg` (functions `mach_notify_dead_name`, `mach_notify_no_senders`, …).
    Investigation (all confirmed):
@@ -77,7 +77,7 @@ and drop the `overby` flake input entirely for a self-contained build.)
      duct-tape `add_compile_definitions` (CMakeLists `:118`), surfaced to mig by
      `cmake/mig.cmake`'s `get_directory_property(... COMPILE_DEFINITIONS)`.
    - **The nix-ninja mig command is correct**: graph-json inspection shows every
-     `*_user.c` edge — including `notify_user.c` (from `notify.defs`) — carries
+     `*_user.c` edge -- including `notify_user.c` (from `notify.defs`) -- carries
      `-DKERNEL_USER` (and `-DKERNEL …`), before the `.defs` arg, exactly as the
      monolith. mig preprocesses via `$C -E … "${cppflags[@]}"` (mig.sh:72) where
      cppflags includes `-DKERNEL_USER=1` and `$C` = `configured/cc`.
@@ -94,7 +94,7 @@ and drop the `overby` flake input entirely for a self-contained build.)
    `_MIG_KERNEL_SPECIFIC_CODE_` is set to 1 by `osfmk/mach/mig.h` under
    `#if defined(MACH_KERNEL)`, and the `notify_user.c.o` compile edge **does**
    pass `-DMACH_KERNEL` (verified in graph-json) with `osfmk` on the `-I` path.
-   So the compiled object takes the `mach_msg_send_from_kernel` branch — exactly
+   So the compiled object takes the `mach_msg_send_from_kernel` branch -- exactly
    the monolith's `objdump` result (`mach_msg_send_from_kernel_proper`, no
    `mach_msg` symbol). The undefined-`mach_msg` link error came from a
    `notify_user.c.o` **cached before the mig-collision fix regenerated the
@@ -126,7 +126,7 @@ and drop the `overby` flake input entirely for a self-contained build.)
      `notify` is the one whose divergence is branch-sensitive.
    - Staging order is CONFIRMED correct (lower.nix:798-800): `stageDeps` copies
      each producer output with `cp -rsf` FIRST, then source staging is guarded
-     `if [ ! -e ]` — so the mig edge's generated `notify.h` should win over the
+     `if [ ! -e ]` -- so the mig edge's generated `notify.h` should win over the
      source one. So the bug is NOT staging precedence. It is one of: (a) the mig
      edge's OWN output `notify.h` does not reach the `mig.h` chain (mig's user
      header may not `#include <mach/mach_types.h>`, or the `mach_types.h` it pulls
@@ -139,7 +139,7 @@ and drop the `overby` flake input entirely for a self-contained build.)
      already sets it under `MACH_KERNEL`; make it independent of the fragile header
      chain by adding it to the duct-tape's `add_compile_definitions` via a
      `patches/darlingserver/` patch. That needs patch application wired into
-     darlingNinja's configure (buildNinjaProject does not `postPatch` today) —
+     darlingNinja's configure (buildNinjaProject does not `postPatch` today) --
      a small, contained addition. Do NOT strip the checked-in `notify.h`: it is a
      hand-written XNU types/macros header that other edges include via
      `<mach/notify.h>`; only its collision with mig's same-named generated header

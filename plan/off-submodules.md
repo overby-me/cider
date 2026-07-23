@@ -30,16 +30,26 @@ Three pieces, all in this commit series:
 Proven: `libkqueue`/`zlib`/`bzip2` prefetch cleanly and `darling-src` assembles a
 tree with their real content (110/272/72 files) while preserving the base tree.
 
+## Status
+
+- [x] Manifest generator + prefetcher + `darling-src.nix` assembler (proven on
+      libkqueue/zlib/bzip2).
+- [x] **All 147 hashes pinned** (bulk prefetch: 144 in one run + 3 proof-set, 0
+      failures). Every Darling submodule resolves at github.com/darlinghq.
+- [x] `packages.darling-src` exposed; builds the complete tree from nix fetches.
+- [x] No nested submodule paths, all under `src/external/`, so the overlay needs
+      no ordering.
+
 ## Remaining
 
-- [ ] Bulk-prefetch the other 144 hashes (`prefetch-submodule-hashes.sh` with no
-      args). Network-bound; a few repos may need per-case attention (renamed
-      upstreams, unpublished revs like xnu — already overridden).
 - [ ] Wire `darling-src.nix` as the `src` for the darling package and
       `darlingNinja` (baseSrc = this flake's tree), so `nix build .#darling*`
       needs no `?submodules=1`. Keep `?submodules=1` working during migration.
-- [ ] Expose `packages.darling-src` and add a flake check that the manifest has
-      no unpinned entries (ratchet: the tree is fully nix-fetched).
+      This is the step that actually retires the git submodules for the build.
+- [ ] Flake check that the manifest has no unpinned entries (ratchet: the tree
+      stays fully nix-fetched as submodule gitlinks are bumped).
+- [ ] On a gitlink bump: re-run `gen-submodule-manifest.sh` (it preserves hashes
+      for unchanged revs), then `prefetch-submodule-hashes.sh` for the changed ones.
 - [ ] Nested submodules: this handles the 147 top-level `.gitmodules` entries.
       If any submodule has its own submodules the build needs, extend the manifest
       generator to recurse (none observed blocking darlingserver/launcher so far).
