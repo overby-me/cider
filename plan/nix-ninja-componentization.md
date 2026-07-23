@@ -85,6 +85,38 @@ Takeaway: the per-edge scale-up genuinely works for the large majority of libSys
 (1550 edges cached and green); the remaining tail is a small number of lower.nix
 generated-header-staging fixes like this one, each unblocking a class of edges.
 
+#### Two fix attempts (both reverted; findings for a focused pass)
+
+1. **Graph-wide `migHeaderIncs` (too heavy).** Mirror `generatedHeaderIncs` for the
+   mig headers it excludes, applied to every compile outside the mig-tool build
+   closure (a pure-index `migToolDepAttr` reverse-reachability from the mig
+   producers keeps it cycle-free: compile -> migHeaderIncs -> mig edge -> migcom ->
+   migHeaderIncs would otherwise cycle, and migcom needs no mig header). Evaluates
+   cleanly (no cycle -- the "eval error" I first blamed was actually the configd
+   configure failure, a red herring), but makes **every** compile depend on **all**
+   ~100 libSystem mig edges: a serialization barrier + command bloat.
+2. **Targeted `migHeadersByDir` (safe, but misses asl.c).** Precompute
+   `build-dir-relative dir -> mig producers writing a header there`; for each of a
+   compile's own under-root `-I` dirs, add only the producers feeding that dir.
+   **Verified safe:** darlingserver-ninja stays green (no regression, no cycle) and
+   libSystem advanced 1550 -> **1954 edges** (resolved several undeclared mig
+   headers). BUT `asl.c` still fails: `asl_ipc.h` is generated into
+   `src/external/syslog/aslcommon`, yet `asl.c` lives in `libsystem_asl.tproj` and
+   its compile carries **no literal `-I .../aslcommon`** -- the include is wired via
+   cmake object-library / target-include machinery (`libsystem_asl.tproj` links
+   `$<TARGET_OBJECTS:aslcommon>` / `asl_ipc_user`) that never surfaces as an `-I` in
+   the ninja edge, so the dir-match has nothing to key on.
+
+**Path forward (pick one).** (a) Broaden the targeted match from "the compile's
+literal `-I` dirs" to "mig-header dirs within the compile's own source-dir subtree"
+(still far lighter than graph-wide). (b) Resolve the cmake target's transitive
+`INTERFACE_INCLUDE_DIRECTORIES` for the compile. (c) Cleanest: declare the
+dependency upstream so the ninja graph encodes it, then the existing per-edge
+`genIncs` resolves it with no lower.nix change. Any attempt MUST keep
+darlingserver-ninja green (fast regression gate) and stay cycle-free (the
+`migToolDepAttr` exclusion). Diagnosing asl.c's exact `-I` needs the libSystem
+graph-json, whose eval is slow (minutes) -- budget for that.
+
 ### More per-edge fixes (each unblocks whole classes of edges)
 
 2. **duct-tape mig user-stub `mach_msg` (DIAGNOSED -- deeper than first thought).**
