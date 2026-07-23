@@ -68,7 +68,7 @@ let
   in ''
     rm -rf "$out/${e.path}"
     mkdir -p "$out/$(dirname "${e.path}")"
-    cp -r --no-preserve=mode,ownership ${fetchOne e} "$out/${e.path}"
+    cp -a --no-preserve=ownership ${fetchOne e} "$out/${e.path}"
     chmod -R u+w "$out/${e.path}"
   ''
   + lib.optionalString hasPatches ''
@@ -91,7 +91,12 @@ pkgs.runCommand "darling-src"
     };
   }
   ''
-    cp -r --no-preserve=mode,ownership ${baseSrc} $out
+    # cp -a (not --no-preserve=mode) preserves the +x bit on scripts the build
+    # later runs (generate-rpc-wrappers.py, mig.sh); a mode-stripping copy makes
+    # them non-executable and the rpc.h generator fails "Permission denied". Drop
+    # only ownership (unsettable as non-root); chmod -R u+w then adds write for the
+    # submodule overlays and patches without clearing the execute bits.
+    cp -a --no-preserve=ownership ${baseSrc} $out
     chmod -R u+w $out
     echo "assembling darling-src: ${toString (builtins.length pinned)}/${toString (builtins.length entries)} submodules pinned"
     ${lib.concatMapStringsSep "\n" overlayOne pinned}
