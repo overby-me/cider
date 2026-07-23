@@ -6,6 +6,34 @@ with cached component/edge outputs, instead of the ~40-min monolithic
 on any source change. This is the fix for the iteration pain that dominated the
 watchdog work (every 3-line launcher change = a full rebuild).
 
+## Milestone (2026-07-23): full libSystem umbrella builds per-edge
+
+`libSystem.B.dylib` -- the whole umbrella (mig codegen, libc, the two-pass
+circular link, all 31 sublibraries) -- now builds end-to-end via nix-ninja, one
+derivation per edge, as a valid `Mach-O 64-bit x86_64` dylib. Target
+`src/external/libsystem/libSystem.B.dylib` via `darlingNinja.buildTarget`. Two
+fixes cleared the last blockers past the `ninja-scan` third-party-header work:
+
+- **Undeclared mig-header includes** (`nix/lib/nix-ninja/build/lower.nix`, darling-nix
+  `5da8054e`): a compile can `#include <foo.h>` a mig-generated header from a sibling
+  dir of its own source module without the graph declaring it and without a literal
+  `-I` to the mig output (cmake wires it via object-library includes). Neither
+  `generatedHeaderIncs` (excludes mig headers to avoid an eval cycle) nor per-edge
+  `genIncs` (declared producers only) resolved it -- e.g. syslog `asl.c` ->
+  `<asl_ipc.h>` in `aslcommon`. Fix: a precomputed `migHeadersByModule` map gives each
+  compile the mig-header dirs from mig producers in its own source module, scoped
+  per-module and cycle-safe. Cleared asl.c; advanced 1954 -> 5036 edges.
+
+- **`$in_newline`** (rust-ninja, overby `205668b8`; lock bumped here in `4d5bb8d0`):
+  cmake puts a link's objects only in a response file (`rspfile_content = $in_newline
+  ...`) once the object list is large; rust-ninja expanded `$in`/`$out` but not
+  `$in_newline`, so the one ~900-object link in Darling (libsystem_kernel firstpass +
+  finalpass -- the only two `$in_newline` rsp edges graph-wide) got an empty rsp and
+  failed "ld: no object files specified". Fixed in all three duplicate
+  `expand_in_edge` copies -- the graph-json tool's copy is the one that feeds
+  lowering. Verified: 877 objects now emitted, `libSystem.B.dylib` links, and
+  `darlingserver-ninja` stays green.
+
 ## Fast darlingserver iteration WITHOUT nix-ninja (shipped)
 
 nix-ninja's per-edge build of `darlingserver` is blocked (its mig/migcom header-scan
