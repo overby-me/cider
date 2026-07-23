@@ -55,6 +55,19 @@
             if e == "" then null else e;
         };
 
+      # Darling's in-tree ld64 (cctools Mach-O linker) built standalone and cached
+      # -- "Path B" of the cctools de-vendoring (plan/de-vendoring-audit.md). Uses
+      # the off-submodules darling-src tree, so no ?submodules=1.
+      #   nix build .#darling-ld64
+      packages.darling-ld64 =
+        pkgs:
+        pkgs.callPackage ./nix/cctools-port.nix {
+          src = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+        };
+
       # ── nix-ninja incremental build (per-edge Nix) ───────────────────
       #
       # The Darling launcher (src/startup/darling) built edge-by-edge via
