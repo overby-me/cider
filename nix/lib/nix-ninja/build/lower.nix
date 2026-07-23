@@ -429,34 +429,47 @@ in {
           acc (filter isHeaderPath (edgeOutputs (elemAt edges i)))
       ) {}
       migHeaderProducerIdxs;
-    # Transitive input-producer closure of the mig producers (the mig-tool build,
-    # migcom included). Pure index graph analysis, cycle-free. A compile here must
-    # not get mig-header incs, else compile -> mig edge -> migcom compile ->
-    # incs cycles; migcom never needs a mig header, so excluding it is also correct.
-    migToolDepAttr = let
-      producersOf = i: concatMap realProducers (edgeInputs (elemAt edges i));
-      go = frontier: acc:
-        if frontier == []
-        then acc
-        else let
-          fresh = filter (j: !(acc ? ${toString j})) (lib.unique (concatMap producersOf frontier));
-        in
-          go fresh (acc // listToAttrs (map (j: {name = toString j; value = true;}) fresh));
-    in
-      go migHeaderProducerIdxs {};
-    # Mig-header -I flags for compile edge i: the dirs of mig headers produced in i's
-    # own source module. Empty for mig-tool compiles (cycle safety).
-    migHeaderIncsFor = i:
-      if migToolDepAttr ? ${toString i}
-      then []
-      else let
-        outs = edgeOutputs (elemAt edges i);
-        mod =
-          if outs == []
-          then ""
-          else moduleKey (let o = builtins.head outs; in if underAnyRoot o then relUnder o else o);
+    # Per-mig-producer FULL transitive input closure (data + order-only). nix-ninja
+    # stages order-only inputs as real derivation deps too, so any of them can close
+    # a Nix eval cycle. Memoized per producer index; the BFS is over the acyclic
+    # ninja graph so it terminates.
+    #
+    # Cycle to avoid: giving compile i the flag -I<M> makes edgeDrvs.i depend on
+    # edgeDrvs.M; if M transitively depends on i that is
+    # edgeDrvs.i -> edgeDrvs.M -> ... -> edgeDrvs.i (infinite recursion). So i may
+    # take producer M's mig -I only if i is NOT in M's closure -- exactly the unsafe
+    # set. History: a global "any mig producer reaches i" exclusion was correct for
+    # the migcom cycle but, at full-graph scope, over-excluded compiles a far
+    # producer merely order-only-reached (syslog asl.c lost its aslcommon inc and
+    # could not find generated <asl_ipc.h>); a data-only variant fixed asl.c but let
+    # an order-only cycle back in. Per-pair against the full closure does both.
+    migProducerClosure = let
+      producersOf = j: concatMap realProducers (edgeInputs (elemAt edges j));
+      closureOf = m: let
+        go = frontier: acc:
+          if frontier == []
+          then acc
+          else let
+            fresh = filter (j: !(acc ? ${toString j})) (lib.unique (concatMap producersOf frontier));
+          in
+            go fresh (acc // listToAttrs (map (j: {name = toString j; value = true;}) fresh));
       in
-        lib.unique (map (h: "-I${edgeDrvs.${toString h.p}}/${h.dir}") (migHeadersByModule.${mod} or []));
+        go [m] {};
+    in
+      listToAttrs (map (m: {name = toString m; value = closureOf m;}) migHeaderProducerIdxs);
+    # Mig-header -I flags for compile edge i: the dirs of mig headers produced in i's
+    # own source module, minus any producer whose closure contains i (cycle safety).
+    migHeaderIncsFor = i: let
+      outs = edgeOutputs (elemAt edges i);
+      mod =
+        if outs == []
+        then ""
+        else moduleKey (let o = builtins.head outs; in if underAnyRoot o then relUnder o else o);
+      safe = filter
+        (h: !((migProducerClosure.${toString h.p} or {}) ? ${toString i}))
+        (migHeadersByModule.${mod} or []);
+    in
+      lib.unique (map (h: "-I${edgeDrvs.${toString h.p}}/${h.dir}") safe);
 
     # The exact project files (under a rewrite root) a compile edge reads,
     # discovered by scanning. System headers (toolchain store paths) are already
