@@ -100,6 +100,17 @@ specific implementations with macOS-specific flags/behaviour; some (`bootstrap_c
     derivation* instead of an in-tree cmake subtree -- cached + incremental, and
     `use_ld64.cmake` points `-fuse-ld` at that store path. De-vendors the build
     without depending on nixpkgs' broken cross-ld64. Likely the better first step.
+
+  **Path B IMPLEMENTED.** `nix/cctools-port.nix` + `packages.darling-ld64` build
+  Darling's `x86_64-apple-darwin20-ld` (+ `lipo`) standalone off the off-submodules
+  `darling-src` -- verified a working classic ld64 (`PROJECT:ld64`). `use_ld64.cmake`
+  now reads `-DDARLING_LD64_DIR` (default: in-tree; override: the darling-ld64 store
+  `bin/`), and skips the in-tree ld64 build/dependency when external. Two sandbox
+  fixes were needed for the stdenv build the nix-ninja path hides: mig's `/bin/mkdir`
+  -> absolute coreutils path (a bare `mkdir` binds to Darling's own `mkdir` target
+  and cycles `emulation->mkdir->libSystem`), and `/bin/rmdir` -> PATH. TODO: fold in
+  `install_name_tool`/`nmedit` (their cmake target names differ from the install
+  path), and validate an actual darwin dylib link with `-DDARLING_LD64_DIR` set.
 - `TextEdit` -- Apple demo app; no substitute, low value.
 
 ## Recommended sequencing
