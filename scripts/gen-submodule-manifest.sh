@@ -35,6 +35,23 @@ declare -A GITLINK_OVERRIDE=(
   ["src/external/xnu"]="5f26a4c2365d9774b5a1e66ae7da20b61ab6d2db"
 )
 
+# Submodules that themselves declare submodules (their own .gitmodules). These get
+# "recursive": true so darling-src.nix fetches them with fetchgit
+# fetchSubmodules=true -- a fetchFromGitHub archive tarball omits nested submodule
+# content, and an add_subdirectory into the nested path then fails at configure.
+# Hardcoded because detecting them needs the fetched trees; re-check on a bump
+# (find <darling-src>/src/external -maxdepth 2 -name .gitmodules).
+declare -A RECURSIVE=(
+  ["src/external/corefoundation"]=1
+  ["src/external/libxpc"]=1
+  ["src/external/corecrypto"]=1
+  ["src/external/IOKitUser"]=1
+  ["src/external/openpam"]=1
+  ["src/external/xcbuild"]=1
+  ["src/external/nghttp2"]=1
+  ["src/external/metal"]=1
+)
+
 first=1
 count=0
 while read -r key url; do
@@ -48,15 +65,20 @@ while read -r key url; do
     echo "warn: no gitlink rev for $path (skipped)" >&2
     continue
   fi
+  recursive=false
+  [ -n "${RECURSIVE[$path]:-}" ] && recursive=true
   # Preserve any hash already pinned in the existing manifest (so re-running to
-  # pick up a rev bump does not throw away hashes we have already prefetched).
+  # pick up a rev bump does not throw away hashes we have already prefetched) --
+  # but only if the recursive flag also matches, since a fetchFromGitHub hash is
+  # not valid for a fetchgit (recursive) fetch and vice versa.
   old_hash=""
   if [ -f "$out" ]; then
-    old_hash=$(REV="$rev" PATH_="$path" python3 - "$out" <<'PY' 2>/dev/null || true
+    old_hash=$(REV="$rev" PATH_="$path" REC="$recursive" python3 - "$out" <<'PY' 2>/dev/null || true
 import json,os,sys
 try:
     for e in json.load(open(sys.argv[1])):
-        if e.get("path")==os.environ["PATH_"] and e.get("rev")==os.environ["REV"]:
+        if (e.get("path")==os.environ["PATH_"] and e.get("rev")==os.environ["REV"]
+                and str(e.get("recursive", False)).lower()==os.environ["REC"]):
             print(e.get("hash","")); break
 except Exception:
     pass
@@ -64,8 +86,8 @@ PY
 )
   fi
   [ $first -eq 1 ] && first=0 || printf ',\n' >> "$tmp"
-  printf '  {"path": "%s", "owner": "darlinghq", "repo": "%s", "rev": "%s", "hash": "%s"}' \
-    "$path" "$repo" "$rev" "$old_hash" >> "$tmp"
+  printf '  {"path": "%s", "owner": "darlinghq", "repo": "%s", "rev": "%s", "recursive": %s, "hash": "%s"}' \
+    "$path" "$repo" "$rev" "$recursive" "$old_hash" >> "$tmp"
   count=$((count + 1))
 done < <(git config -f .gitmodules --get-regexp '^submodule\..*\.url$')
 

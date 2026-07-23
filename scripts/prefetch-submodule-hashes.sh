@@ -45,7 +45,7 @@ for i, e in enumerate(d):
         continue
     if filters and not any(f in e["path"] or f in e["repo"] for f in filters):
         continue
-    print(f'{i}\t{e["owner"]}\t{e["repo"]}\t{e["rev"]}')
+    print(f'{i}\t{e["owner"]}\t{e["repo"]}\t{e["rev"]}\t{1 if e.get("recursive") else 0}')
     n += 1
     if limit and n >= limit:
         break
@@ -55,12 +55,22 @@ PY
 echo "prefetching ${#work[@]} submodule hash(es)..."
 ok=0; fail=0
 for line in "${work[@]}"; do
-  IFS=$'\t' read -r idx owner repo rev <<<"$line"
-  url="https://github.com/${owner}/${repo}/archive/${rev}.tar.gz"
-  printf '  [%s] %s/%s @ %s ... ' "$idx" "$owner" "$repo" "${rev:0:10}"
-  if h=$(nix-prefetch-url --unpack --type sha256 "$url" 2>/dev/null) && [ -n "$h" ]; then
-    sri=$(nix hash convert --hash-algo sha256 --to sri "$h" 2>/dev/null \
-          || nix hash to-sri --type sha256 "$h" 2>/dev/null)
+  IFS=$'\t' read -r idx owner repo rev rec <<<"$line"
+  printf '  [%s] %s/%s @ %s%s ... ' "$idx" "$owner" "$repo" "${rev:0:10}" \
+    "$([ "$rec" = "1" ] && echo ' (recursive)')"
+  # Recursive submodules (their own .gitmodules) need fetchgit fetchSubmodules; the
+  # archive-tarball hash from nix-prefetch-url would omit the nested content.
+  if [ "$rec" = "1" ]; then
+    sri=$(nix-prefetch-git --quiet --url "https://github.com/${owner}/${repo}" \
+            --rev "$rev" --fetch-submodules 2>/dev/null \
+          | python3 -c 'import json,sys; print(json.load(sys.stdin).get("hash",""))')
+  else
+    url="https://github.com/${owner}/${repo}/archive/${rev}.tar.gz"
+    h=$(nix-prefetch-url --unpack --type sha256 "$url" 2>/dev/null || true)
+    sri=$([ -n "$h" ] && (nix hash convert --hash-algo sha256 --to sri "$h" 2>/dev/null \
+          || nix hash to-sri --type sha256 "$h" 2>/dev/null) || true)
+  fi
+  if [ -n "$sri" ]; then
     IDX="$idx" SRI="$sri" python3 - "$manifest" <<'PY'
 import json, os, sys
 p = sys.argv[1]

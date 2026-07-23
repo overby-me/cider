@@ -33,13 +33,32 @@ let
   unpinned = builtins.filter (e: e.hash or "" == "") entries;
 
   fetchOne = e:
-    pkgs.fetchFromGitHub {
-      inherit (e) owner repo rev;
-      hash = e.hash;
+    let
       # Deterministic, path-derived name so two submodules that share a repo
       # basename still get distinct store paths.
       name = "darling-sub-${lib.strings.sanitizeDerivationName e.path}";
-    };
+    in
+    # Submodules that themselves declare nested submodules (a `.gitmodules` of
+    # their own -- corefoundation, libxpc, IOKitUser, openpam, ...) can't use
+    # fetchFromGitHub: a GitHub archive tarball omits submodule content, so an
+    # add_subdirectory into the nested path fails at configure. fetchgit with
+    # fetchSubmodules recurses and resolves the nested repos' relative URLs
+    # against the parent (../darling-X.git -> github.com/darlinghq/darling-X).
+    if e.recursive or false
+    then
+      pkgs.fetchgit {
+        url = "https://github.com/${e.owner}/${e.repo}";
+        inherit (e) rev;
+        hash = e.hash;
+        fetchSubmodules = true;
+        inherit name;
+      }
+    else
+      pkgs.fetchFromGitHub {
+        inherit (e) owner repo rev;
+        hash = e.hash;
+        inherit name;
+      };
 
   # Shell to overlay one fetched submodule and apply its patches.
   overlayOne = e: let
