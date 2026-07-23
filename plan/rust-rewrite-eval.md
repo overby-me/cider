@@ -22,16 +22,39 @@ The clean seam between them is the **darlingserver RPC** (a wire protocol genera
 by `scripts/generate-rpc-wrappers.py`), *not* a dylib ABI. So the host side can be
 rewritten in any language without touching the guest side.
 
+## Provenance is the same line
+
+The host/guest split is also the **origin** split, and this is not a coincidence:
+you rewrite what Darling *owns and designed*, never what it *tracks from Apple*.
+Verified by copyright headers + `nix/submodules.json`:
+
+- **Strictly Darling-original** (no upstream to track): **darlingserver** (a dir in
+  the main repo, "Copyright Darling developers"), **mldr** and **`darling.c`**
+  (`src/startup`, "Copyright Lubos Dolezel", Darling's lead), and the **duct-tape
+  glue** (Darling's own shim -- though it wraps forked XNU).
+- **Forks** (carry `Copyright ... Apple Inc.`, track upstream): **libc, objc4,
+  Foundation, dyld, the libSystem sublibs, the XNU duct-tape wraps**, and
+  **mig/migcom** (submodule `darlinghq/darling-bootstrap_cmds`).
+
+So "which components are strictly Darling's, not forks?" has the **same answer** as
+"which are worth a Rust rewrite?": darlingserver, mldr, darling.c (+ the duct-tape
+glue). Rewriting a fork would mean diverging from the source Darling deliberately
+tracks -- losing the upstream and, for the ABI dylibs, the cache.nixos.org oracle.
+
 ## Candidates, measured
 
-| Component | Darling's own code | Lang | Role | Rust verdict |
+| Component | Own code | Lang | Origin | Rust verdict |
 |---|---:|---|---|---|
-| **darlingserver** (daemon) | ~7.4k | C++ | Linux ELF daemon: Mach IPC routing, microthread scheduler, epoll loop | **Top candidate** |
-| **mldr** (loader) | ~2.9k | C + asm | parses & maps Mach-O, sets up the process, jumps to entry | **Strong** |
-| build tooling | (mixed) | C / Python | mig/migcom, `generate-rpc-wrappers.py`, stub generators | **Easy win** |
-| **duct-tape** glue | ~8.8k | C | wraps ~750k LOC of **vendored XNU** (osfmk/bsd) into the daemon | Later / coupled |
-| **launcher** (`darling.c`) | ~1.4k | C | container/namespace setup, execs mldr | Minor |
-| libSystem sublibs, Foundation, dyld, objc4, ... | very large | C/C++/ObjC/asm | the emulated macOS ABI | **No** |
+| **darlingserver** (daemon) | ~7.4k | C++ | **Darling-original** | **Top candidate** |
+| **mldr** (loader) | ~2.9k | C + asm | **Darling-original** | **Strong** |
+| build tooling | (mixed) | C / Python | mixed (`generate-rpc-wrappers.py` Darling; mig = Apple fork) | **Easy win** |
+| **duct-tape** glue | ~8.8k | C | Darling glue over ~750k **forked XNU** | Later / coupled |
+| **launcher** (`darling.c`) | ~1.4k | C | **Darling-original** | Minor |
+| libSystem sublibs, Foundation, dyld, objc4, ... | very large | C/C++/ObjC/asm | **Apple forks** | **No** |
+
+(Roles: darlingserver = Mach IPC routing + microthread scheduler + epoll loop;
+mldr = parse & map Mach-O, set up process, jump to entry; launcher = container/
+namespace setup + exec mldr; libSystem/frameworks = the emulated macOS ABI.)
 
 ## Ranked recommendation
 
