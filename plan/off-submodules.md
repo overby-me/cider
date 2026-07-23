@@ -39,6 +39,10 @@ tree with their real content (110/272/72 files) while preserving the base tree.
 - [x] `packages.darling-src` exposed; builds the complete tree from nix fetches.
 - [x] No nested submodule paths, all under `src/external/`, so the overlay needs
       no ordering.
+- [x] **Full assembly verified**: `nix build .#darling-src` produces a 3.9G tree
+      with 147/147 submodules populated (openssl 2089 files, curl 3030, xnu 6706,
+      ...) and the xnu patch applied (`renameatx_np.h` present). The complete
+      Darling source builds purely from nix fetches, no git submodules.
 
 ## Remaining
 
