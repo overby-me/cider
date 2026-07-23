@@ -81,18 +81,69 @@ and drop the `overby` flake input entirely for a self-contained build.)
      `-DKERNEL_USER` (and `-DKERNEL …`), before the `.defs` arg, exactly as the
      monolith. mig preprocesses via `$C -E … "${cppflags[@]}"` (mig.sh:72) where
      cppflags includes `-DKERNEL_USER=1` and `$C` = `configured/cc`.
-   - So the command is byte-identical to the monolith's, yet the per-edge object
-     referenced plain `mach_msg`. Either the link error was **stale** (pre the
-     mig-collision fix / pre-rebuild) or mig's cpp diverges in the **isolated edge
-     sandbox** (e.g. `configured/cc` resolving differently, so `#if KERNEL_USER`
-     evaluates false). Ground-truth build of just the `notify_user.c` edge was
-     pending (blocked on a store auto-GC) — that file's `mach_msg` vs
-     `mach_msg_send_from_kernel` form decides it.
+   **RESOLUTION: the link error was STALE.** Building just the `notify_user.c`
+   edge fresh proves the codegen is correct: the generated file has both
+   ```c
+   #if __MigKernelSpecificCode
+       msg_result = mach_msg_send_from_kernel(&InP->Head, sizeof(Request));
+   #else
+       msg_result = mach_msg(&InP->Head, MACH_SEND_MSG|..., ...);
+   #endif
+   ```
+   and `#define __MigKernelSpecificCode _MIG_KERNEL_SPECIFIC_CODE_`.
+   `_MIG_KERNEL_SPECIFIC_CODE_` is set to 1 by `osfmk/mach/mig.h` under
+   `#if defined(MACH_KERNEL)`, and the `notify_user.c.o` compile edge **does**
+   pass `-DMACH_KERNEL` (verified in graph-json) with `osfmk` on the `-I` path.
+   So the compiled object takes the `mach_msg_send_from_kernel` branch — exactly
+   the monolith's `objdump` result (`mach_msg_send_from_kernel_proper`, no
+   `mach_msg` symbol). The undefined-`mach_msg` link error came from a
+   `notify_user.c.o` **cached before the mig-collision fix regenerated the
+   source**; a clean rebuild links past it.
 
-   NOTE: the earlier `-Wno-error=implicit-function-declaration` in
-   `CMAKE_C/CXX_FLAGS` only **masks** this (turns the implicit-decl into a silent
-   undefined symbol at link). If the codegen is correct there is no implicit decl
-   and the `-Wno` is unnecessary; it should be removed once the edge is confirmed.
+   Consequence: the `-Wno-error=implicit-function-declaration` tolerance in
+   `CMAKE_C/CXX_FLAGS` is unnecessary for this (there is no implicit `mach_msg`)
+   and only masks real errors; a follow-up should drop it.
+
+3. **The REAL darlingserver-ninja blocker: source-vs-generated `notify.h`
+   conflation.** A clean rebuild links *past* the stale object but the final
+   darlingserver link still fails with `undefined reference to mach_msg` from
+   `notify_user.c.o`. Root cause found:
+   - The branch in the generated `notify_user.c` is `#if __MigKernelSpecificCode`,
+     which is set iff `_MIG_KERNEL_SPECIFIC_CODE_` is defined, which `osfmk/mach/
+     mig.h` sets to 1 under `#if defined(MACH_KERNEL)`. The compile passes
+     `-DMACH_KERNEL`, so the branch is correct **iff `mig.h` is reached**.
+   - `notify_user.c` only `#include "notify.h"`. There are **two** different
+     `notify.h` at the same relative path `osfmk/mach/notify.h`: the hand-written
+     XNU source header (types/macros; includes `port.h`/`message.h`/`ndr.h`, which
+     do NOT reach `mig.h`) and mig's generated user header (includes
+     `mach_types.h`/`message.h`, reaching the `mig.h`/`_MIG_KERNEL_SPECIFIC_CODE_`
+     chain). The monolith's binary-dir generated header wins for `notify_user.c`;
+     nix-ninja's merged `$out` conflates them and the compile gets the source one
+     -> `_MIG_KERNEL_SPECIFIC_CODE_` undefined -> `#else` branch -> plain
+     `mach_msg` -> undefined at link.
+   - This is a whole CLASS: 10 checked-in `osfmk/**/*.h` collide with a same-named
+     `*.defs` (mach_types, memory_object, clock_types, std_types, semaphore, ...);
+     `notify` is the one whose divergence is branch-sensitive.
+   - Staging order is CONFIRMED correct (lower.nix:798-800): `stageDeps` copies
+     each producer output with `cp -rsf` FIRST, then source staging is guarded
+     `if [ ! -e ]` — so the mig edge's generated `notify.h` should win over the
+     source one. So the bug is NOT staging precedence. It is one of: (a) the mig
+     edge's OWN output `notify.h` does not reach the `mig.h` chain (mig's user
+     header may not `#include <mach/mach_types.h>`, or the `mach_types.h` it pulls
+     is itself a shadowed collision), or (b) the mig edge is not in this compile's
+     `realProducers` so its `notify.h` is never staged and the source one is used.
+     NEXT STEP: build the mig edge output as a target and inspect its `notify.h`
+     include list; and dump `depIds` for the `notify_user.c.o` edge.
+   - Robust fix (whole class, correct because the duct-tape IS the kernel): ensure
+     `_MIG_KERNEL_SPECIFIC_CODE_=1` for every duct-tape mig-stub compile. `mig.h`
+     already sets it under `MACH_KERNEL`; make it independent of the fragile header
+     chain by adding it to the duct-tape's `add_compile_definitions` via a
+     `patches/darlingserver/` patch. That needs patch application wired into
+     darlingNinja's configure (buildNinjaProject does not `postPatch` today) —
+     a small, contained addition. Do NOT strip the checked-in `notify.h`: it is a
+     hand-written XNU types/macros header that other edges include via
+     `<mach/notify.h>`; only its collision with mig's same-named generated header
+     is the problem.
 
 3. **archive/link toolchain (in progress).** The `.a`/link edges bake the darling
    stdenv cc-wrapper's absolute `ar`/`ranlib`/`ld` (a gcc-wrapper whose `ar`

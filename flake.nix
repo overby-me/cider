@@ -104,6 +104,22 @@
         }).buildTarget
           { target = "src/external/darlingserver/darlingserver"; };
 
+      # ── Off git submodules: nix-pinned source tree ───────────────────
+      #
+      # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in
+      # nix/submodules.json instead of git submodules (see plan/off-submodules.md
+      # and nix/lib/darling-src.nix). Build WITHOUT ?submodules=1 -- darling-src
+      # overlays every pinned submodule onto this flake's own tree and applies
+      # patches/<name>/. Partial until every hash is filled
+      # (scripts/prefetch-submodule-hashes.sh); passthru.unpinnedPaths lists gaps.
+      #   nix build .#darling-src
+      packages.darling-src =
+        pkgs:
+        import ./nix/lib/darling-src.nix {
+          inherit pkgs;
+          baseSrc = ./.;
+        };
+
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
       # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,
