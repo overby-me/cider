@@ -386,6 +386,78 @@ in {
           && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
         (indices edges)));
 
+    # A generated mig header may be `#include <...>`d by a compile in the same
+    # source module without the ninja graph declaring the dependency, and (unlike
+    # rpc.h) without the compile even carrying a literal `-I` to the mig output dir
+    # (cmake wires it via object-library/target includes, e.g. syslog's asl.c ->
+    # <asl_ipc.h> generated in aslcommon). `generatedHeaderIncs` excludes mig headers
+    # to avoid an eval cycle, and the per-edge `genIncs` only covers *declared*
+    # producers, so neither resolves it. Fix: give each compile the mig-header dirs
+    # from producers *in its own source module* (src/external/<m> or src/<m>). Far
+    # lighter than a graph-wide set (a compile depends only on its module's mig
+    # edges), and it keys on the module rather than a literal -I dir.
+    migHeaderProducerIdxs = filter
+      (i:
+        !(isNoOp (elemAt edges i))
+        && dependsOnCompileMemo.${toString i}
+        && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+      (indices edges);
+    # The source-module key of a build-dir-relative path: src/external/<m>, src/<m>,
+    # or the first component. Used to relate a compile to mig headers near it.
+    moduleKey = p: let
+      cs = filter (x: x != "") (lib.splitString "/" p);
+      n = length cs;
+    in
+      if n >= 3 && elemAt cs 0 == "src" && elemAt cs 1 == "external"
+      then "src/external/" + elemAt cs 2
+      else if n >= 2 && elemAt cs 0 == "src"
+      then "src/" + elemAt cs 1
+      else if n >= 1
+      then elemAt cs 0
+      else "";
+    # Map: source module -> [{ p = mig producer index; dir = header's build-dir-rel
+    # dir }]. Pure string/index analysis over declared outputs (references no drvs).
+    migHeadersByModule = lib.foldl' (
+        acc: i:
+          lib.foldl' (
+            acc2: o: let
+              rel = if underAnyRoot o then relUnder o else o;
+              mod = moduleKey rel;
+            in
+              acc2 // {${mod} = (acc2.${mod} or []) ++ [{p = i; dir = builtins.dirOf rel;}];}
+          )
+          acc (filter isHeaderPath (edgeOutputs (elemAt edges i)))
+      ) {}
+      migHeaderProducerIdxs;
+    # Transitive input-producer closure of the mig producers (the mig-tool build,
+    # migcom included). Pure index graph analysis, cycle-free. A compile here must
+    # not get mig-header incs, else compile -> mig edge -> migcom compile ->
+    # incs cycles; migcom never needs a mig header, so excluding it is also correct.
+    migToolDepAttr = let
+      producersOf = i: concatMap realProducers (edgeInputs (elemAt edges i));
+      go = frontier: acc:
+        if frontier == []
+        then acc
+        else let
+          fresh = filter (j: !(acc ? ${toString j})) (lib.unique (concatMap producersOf frontier));
+        in
+          go fresh (acc // listToAttrs (map (j: {name = toString j; value = true;}) fresh));
+    in
+      go migHeaderProducerIdxs {};
+    # Mig-header -I flags for compile edge i: the dirs of mig headers produced in i's
+    # own source module. Empty for mig-tool compiles (cycle safety).
+    migHeaderIncsFor = i:
+      if migToolDepAttr ? ${toString i}
+      then []
+      else let
+        outs = edgeOutputs (elemAt edges i);
+        mod =
+          if outs == []
+          then ""
+          else moduleKey (let o = builtins.head outs; in if underAnyRoot o then relUnder o else o);
+      in
+        lib.unique (map (h: "-I${edgeDrvs.${toString h.p}}/${h.dir}") (migHeadersByModule.${mod} or []));
+
     # The exact project files (under a rewrite root) a compile edge reads,
     # discovered by scanning. System headers (toolchain store paths) are already
     # mounted and need no staging, so they are filtered out here.
@@ -397,7 +469,8 @@ in {
     # reference to the producing edge's output (which the string then pulls in
     # as a dependency) so the preprocessor can read it. Non-generated inputs are
     # untouched and still resolve through the mounted source/configured trees.
-    scanDepsOf = e: let
+    scanDepsOf = i: let
+      e = elemAt edges i;
       # Each generated input (produced by another edge), normalised to the
       # build-dir-relative path the producer writes plus that producer's drv.
       # An input may be listed absolutely (`<root>/rel`, CMake's usual form and
@@ -460,7 +533,7 @@ in {
           nativeBuildInputs = toolchain ++ scanMounts;
         } ''
           export DEPS_OUT=$out
-          ${scanCmd} ${lib.concatStringsSep " " (genIncs ++ generatedHeaderIncs)}
+          ${scanCmd} ${lib.concatStringsSep " " (genIncs ++ generatedHeaderIncs ++ migHeaderIncsFor i)}
         '';
     in
       filter underAnyRoot (parseDepfile (builtins.readFile scanDrv));
@@ -487,7 +560,7 @@ in {
       # a missing `-I` dir.
       rootSrcs =
         if useScan
-        then filter builtins.pathExists (scanDepsOf e)
+        then filter builtins.pathExists (scanDepsOf i)
         else
           # Declared under-root inputs, plus under-root *files named in the
           # command* that CMake did not declare (custom commands often reference
@@ -541,7 +614,9 @@ in {
         # path in the flag makes Nix mount that output.
         base
         + lib.optionalString (useScan && generatedHeaderIncs != [])
-        (" " + lib.concatStringsSep " " generatedHeaderIncs);
+        (" " + lib.concatStringsSep " " generatedHeaderIncs)
+        + lib.optionalString (useScan && migHeaderIncsFor i != [])
+        (" " + lib.concatStringsSep " " (migHeaderIncsFor i));
 
       # `cp -rs` each producer's whole output tree in. A path one producer
       # provides as a real dir may already be a symlink (or under a symlinked
