@@ -70,6 +70,10 @@ rust-rewrite-eval.md) target -- fixing that unblocks this.
 - Therefore the two ways forward are: (a) fix the darlingserver fork/exec/SIGCHLD
   concurrency (the real fix; a sub-project), or (b) build hello with a **non-wrapper
   CC** (fewer forks) -- which is essentially what the toolchain-M1 path already does.
+- **FD exhaustion ruled out**: host limit is 524288 (darlingserver inherits it), no
+  EMFILE in any log; the "failed to increase FD rlimit" warning is benign (it tries to
+  set nr_open=2e9, fails, stays at 524288). So it is the concurrency race, not a ceiling.
+
   So **toolchain M1 is the pragmatic "hello from source" answer today**; the official
   guest-`nix build` path is 95% there and waits on the concurrency fix.
 
