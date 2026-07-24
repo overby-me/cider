@@ -553,3 +553,40 @@ Recommended next directions (in leverage order):
 2. Identify TID 3's exact libdispatch construct (which dispatch source / mach port
    it polls) from the guest side, then make darlingserver deliver that source's
    event so the semaphore gets signalled.
+
+## Upstream comparison RESULT (2026-07-24): darling-nix ~= mainline; boot blocker is upstream darlingserver-mode immaturity
+
+Compared darling-nix's component revs to mainline darling (github.com/darlinghq/darling
+submodule gitlinks, via GitHub API):
+- libdispatch  380f03c1 == mainline (identical)
+- libpthread   f07f265b == mainline (identical)
+- darlingserver 89751e64 == mainline base (vendored; only 2 local changes: writable-nix
+  overlay + ucred cache -- neither touches event delivery)
+- xnu          5f26a4c2 vs mainline fa29287a: darling-nix is an ANCESTOR by exactly
+  2 commits, both "Fix Building For Fedora 44" (libsyscall/CMakeLists.txt only) -- NOT
+  event-delivery.
+
+=> darling-nix is essentially identical to mainline darling in every event-delivery
+component. The boot hang is NOT a darling-nix regression and there is no mainline fix
+to port.
+
+Web check (darlinghq/darling issues #1173, #1093, #610): **darlingserver (the userspace
+kernel server / rootless mode, which darling-nix uses) has long-standing, still-open
+trouble completing launchd bootstrap.** The traditional LKM (kernel-module) path boots
+launchd reliably but needs root + an out-of-tree kernel module (incompatible with
+darling-nix's rootless design and this host's very recent Zen 7.1.2 kernel). darling-nix
+gets FURTHER than the 2022 reports (launchd + launchctl run, services check in) but hits
+the event-delivery/semaphore-starvation wall (TID 3 never-signalled loop).
+
+**Conclusion:** M1's boot blocker = incomplete launchd-bootstrap event delivery in
+darlingserver (userspace) mode. This is an upstream-darling maturity gap, not a
+darling-nix bug. Fixing it = a deep upstream-caliber darlingserver contribution
+(kqueue/kqchan/mach event delivery so the launchd dispatch semaphore gets signalled).
+
+Possible directions:
+1. Deep fix in darlingserver's event delivery (upstream-caliber; the "real" fix).
+2. Minimal-launchd boot: skip the System-domain service whose event never fires, so
+   `darling shell` reaches shellspawn without the full bootstrap (pragmatic; needs to
+   identify the offending job in the launchd plist set).
+3. Bypass full launchd: run guest nix in a thinner environment if darling allows it.
+4. Track upstream darlingserver; the boot may improve as that mode matures.
