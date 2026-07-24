@@ -617,20 +617,34 @@ void DarlingServer::Call::PthreadKill::processCall() {
 };
 
 void DarlingServer::Call::PthreadCanceled::processCall() {
-	int code = 0;
+	// Implements __pthread_canceled(action) for the calling thread.
+	//   action 0: query. libpthread / CANCELATION_POINT() treat a return of 0
+	//             as "this thread is canceled, act on it"; any other value means
+	//             "not canceled, proceed".
+	//   action 1/2: cancellation enable/disable notifications. The guest tracks
+	//             its own cancel_state locally, so we accept these as no-ops.
+	int code = -ESRCH;
 
-	callLog.warning() << "TODO: " << __PRETTY_FUNCTION__ << callLog.endLog;
-	code = -ENOSYS;
+	if (auto thread = _thread.lock()) {
+		if (_body.action == 0) {
+			// 0 == "canceled"; any other value == "not canceled, proceed".
+			code = thread->isCanceled() ? 0 : -EINVAL;
+		} else {
+			code = 0;
+		}
+	}
 
 	_sendReply(code);
 };
 
 void DarlingServer::Call::PthreadMarkcancel::processCall() {
+	// Implements __pthread_markcancel(thread_port): mark the target thread
+	// canceled and kick it out of any interruptible syscall so it promptly
+	// reaches a cancellation point (instead of blocking until its own timeout).
 	int code = 0;
 
 	if (auto targetThread = Thread::threadForPort(_body.thread_port)) {
-		callLog.warning() << "TODO: " << __PRETTY_FUNCTION__ << callLog.endLog;
-		code = -ENOSYS;
+		targetThread->markCanceled();
 	} else {
 		code = -ESRCH;
 	}

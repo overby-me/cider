@@ -355,3 +355,133 @@ of the same class flagged for kqueue/poll in PLAN.md. A reliable fix needs an
 instrument-rebuild-iterate loop (log the cancel/poll/terminate timeline in the
 guest) or better guest-stack symbolication; both are multi-cycle. It is NOT the
 reply-delivery/FAST_EPOLL path and NOT a missing signal in bsdthread_terminate.
+
+## ROOT CAUSE FOUND + FIX (2026-07-24): thread cancellation is a no-op in darlingserver
+
+The 30s boot stall is `dispatch_semaphore_wait` timing out because a canceled
+guest thread never terminates promptly. Traced to the mechanism:
+
+**darlingserver never implemented POSIX thread cancellation.** Three stubs:
+- `Call::PthreadMarkcancel::processCall` (call.cpp): logged "TODO", returned
+  `-ENOSYS`. So `__pthread_markcancel(kport)` did nothing -- the target thread
+  was never kicked out of its blocking syscall.
+- `Call::PthreadCanceled::processCall` (call.cpp): logged "TODO", returned
+  `-ENOSYS`. So the guest's `CANCELATION_POINT()` macro (`if
+  (sys_pthread_canceled(0) == 0) return -EINTR;`, cancelable.h) and
+  libpthread's `_pthread_exit_if_canceled()` (pthread_cancelable.c:209) could
+  never observe a cancellation.
+- `thread_abort_safely()` (duct-tape/src/thread.c:1184): stub; its own comment
+  says the fix is "another real-time signal with SA_RESTART off".
+
+Consequence: `pthread_cancel(t)` set the guest-local PENDING bit and RPC'd
+markcancel, which no-op'd. Thread `t`, blocked in a cancelable `poll` with a
+~30s timeout (`poll_schedule_timeout`), was never interrupted, so it ran the
+full 30s until the poll timed out. Its joiner's `dispatch_semaphore_wait(30s)`
+therefore also timed out. launchd issues a variable number of these teardown
+cycles at boot -> variable boot time -> intermittent (~130s completes, >360s
+fails). All prior theories (host state/reboot, GC, unix qlen, FAST_EPOLL) were
+wrong; this is the actual cause.
+
+### The fix (this repo's working tree; guest = xnu submodule, server = darlingserver)
+
+The guest already has the entire receive side of darwin cancellation:
+`cerror()` (libsyscall/custom/errno.c:77) calls `_pthread_exit_if_canceled(err)`
+on every failed syscall, which on `EINTR && __pthread_canceled(0)==0` calls
+`pthread_exit(PTHREAD_CANCELED)`. Only the kernel (darlingserver) side + the
+"kick" were missing. Implemented:
+
+1. **darlingserver `Thread`**: added a `_canceled` flag with `markCanceled()`
+   (sets it + sends the kick signal) and `isCanceled()`.
+2. **`PthreadMarkcancel`**: `targetThread->markCanceled()`.
+3. **`PthreadCanceled`**: action 0 returns 0 iff the calling thread `isCanceled()`
+   (so `CANCELATION_POINT()` / `_pthread_exit_if_canceled` fire); action 1/2 are
+   accepted no-ops (guest tracks enable/disable locally).
+4. **Guest kick signal** `SIGNAL_SIGEXC_KICK = LINUX_SIGRTMIN + 2` (sigexc.h):
+   a dedicated bare handler installed **without SA_RESTART** (sigexc.c
+   `sigkick_handler`/`handle_kick_signal`), registered in `sigexc_setup1`,
+   unblocked in `sigexc_setup2` and around `execve`. Being non-restarting, it
+   forces a blocked interruptible syscall to return `EINTR` -> cerror ->
+   pthread_exit(PTHREAD_CANCELED). `markCanceled()` sends it via
+   `sendSignal(LINUX_SIGRTMIN + 2)`.
+5. **RPC EINTR-robustness** (dserver-rpc-defs.h): the per-thread RPC send/recv
+   now retry on `-LINUX_EINTR`. Required because the kick (SA_RESTART off) can
+   land on a thread mid-RPC; the reply is still coming, so retry. The native
+   `poll` the kick targets is a separate syscall, so this does not swallow the
+   cancellation itself. (Previously nothing produced EINTR here since every
+   handler was SA_RESTART.)
+
+Flow: pthread_cancel -> markcancel -> darlingserver sets _canceled + kicks ->
+guest poll returns EINTR -> cerror -> __pthread_canceled(0)==0 ->
+pthread_exit(PTHREAD_CANCELED) -> bsdthread_terminate signals the join sema ->
+joiner wakes immediately (no 30s). Building as mono8; boot-reliability + hello
+e2e test pending.
+
+## CORRECTION (2026-07-24): thread cancellation is NOT the boot-stall cause
+
+Implemented the cancellation feature (mono8/mono9) and instrumented darlingserver
+(/tmp/kickdbg.log logging every markcancel/canceled with TIDs). Instrumented boot
+result is decisive:
+- **pthread_markcancel: 0 calls during the entire pre-shellspawn stall.** No guest
+  thread is ever canceled.
+- pthread_canceled: ~45 calls, ALL returning canceled=0 -- these are just the
+  routine CANCELATION_POINT() checks at the head of every cancelable syscall,
+  correctly reporting "not canceled".
+
+So the cancellation implementation is **inert during boot** (nothing triggers it),
+which is why mono8/mono9 boot exactly like mono7. The earlier "markcancel ->
+join stall" reading was wrong.
+
+### What the stall actually is (via /proc/<tid>/syscall, no ptrace)
+
+During the stall, launchd (mldr) has three threads:
+- main: `recvmsg` (syscall 47) -- blocked awaiting a darlingserver RPC reply (the
+  30s semaphore_timedwait_signal).
+- worker: **`select`(syscall 23) on 4 fds with timeout=NULL -- blocked FOREVER**
+  (`poll_schedule_timeout`) waiting for one of its fds to become readable.
+- another: `recvmsg` (RPC wait).
+A second guest process sits in `epoll_wait`.
+
+So the real stall = a service thread blocked indefinitely in select() for an fd
+event that darling never delivers, while launchd waits on a semaphore tied to it
+(30s timeout, then it proceeds). This is the **kqueue / kevent / mach-notification
+event-delivery class** (PLAN.md's kqueue/poll fidelity suspect), NOT cancellation.
+
+The cancellation work stands as a valid fix of a genuine darling gap (the stubs
+WERE unimplemented and pthread_cancel WAS a no-op), but it does not address M1's
+boot stall. Debug instrumentation (kickdbg) to be removed. Next: identify the 4
+select fds + why their event isn't delivered; and the intermittent early-boot
+-111 (ECONNREFUSED) RPC race that aborts some boots outright.
+
+## PRECISE boot-hang diagnosis (2026-07-24, via /proc, no ptrace)
+
+Boot completion test: mono8 (clean), 3 boots, 300s cap each -> **0/3 completed**
+(each with 2 transient, non-fatal -111s). So the boot does not reliably reach
+shellspawn at all; this is baseline (mono8 == mono7 behaviourally; the
+cancellation change is inert).
+
+State during the hang (fds + per-thread wchan/syscall of `/sbin/launchd` mldr):
+- launchd fd3 = epoll (kqueue emulation) watching: signalfds fd6-9
+  (kqueue EVFILT_SIGNAL emulation), sockets fd4/fd12, and fd10=/proc/1/mounts.
+- launchd threads: main in `recvmsg` (awaiting the 30s semaphore_timedwait_signal
+  RPC reply); an event-loop thread in `select`(nfds=4, timeout=NULL) ->
+  `poll_schedule_timeout`, blocked indefinitely; a third in `recvmsg`.
+- **darlingserver is fully idle**: main loop in `epoll_wait`, WorkQueue worker in
+  `futex`. It has already parked the semaphore microthread with a 30s dtape timer
+  and has nothing else to do.
+
+Interpretation: the hang is guest-side. launchd waits on a libdispatch semaphore
+with a 30s timeout that nothing signals within the window, because its kqueue
+event loop is blocked waiting for an event that darling never delivers -- most
+likely a signal via signalfd (EVFILT_SIGNAL, e.g. SIGCHLD for a spawned service)
+or a socket/mach message. Each unmet wait costs 30s; enough of them and the boot
+exceeds every timeout.
+
+=> The real M1 blocker is **darling kqueue / signal(signalfd) / event-delivery
+fidelity during launchd startup** -- a deep, fundamental darling mechanism, NOT
+cancellation and NOT any of the earlier theories. Next concrete step to fix:
+instrument the full darlingserver call trace (repurpose the /tmp/kickdbg.log
+writer at the call-dispatch point) to capture launchd's RPC sequence + the exact
+semaphore and the event source it waits on, then fix that specific delivery path
+(candidate areas: kqchan EVFILT_SIGNAL / signalfd population on guest signal
+delivery; mach-port notification -> kqchan wakeup). The intermittent early-boot
+-111 (ECONNREFUSED) RPC race is a separate, likely-related reliability bug.

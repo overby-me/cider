@@ -1456,6 +1456,29 @@ void DarlingServer::Thread::sendSignal(int signal) const {
 	}
 };
 
+void DarlingServer::Thread::markCanceled() {
+	{
+		std::unique_lock lock(_rwlock);
+		_canceled = true;
+	}
+	// Kick the thread out of any interruptible syscall (e.g. a blocking poll)
+	// so it promptly reaches a cancellation point and calls
+	// pthread_exit(PTHREAD_CANCELED) instead of waiting for its own timeout.
+	// SIGNAL_SIGEXC_KICK (LINUX_SIGRTMIN + 2) is installed guest-side with
+	// SA_RESTART cleared, so it forces the interrupted syscall to return EINTR.
+	// The thread may already be gone; that is not an error.
+	try {
+		sendSignal(LINUX_SIGRTMIN + 2);
+	} catch (std::system_error&) {
+		// thread already dead / racing termination; nothing to kick
+	}
+};
+
+bool DarlingServer::Thread::isCanceled() const {
+	std::shared_lock lock(_rwlock);
+	return _canceled;
+};
+
 void DarlingServer::Thread::jumpToResume(void* stack, size_t stackSize) {
 #if DSERVER_ASAN
 	__sanitizer_start_switch_fiber(&asanOldFakeStack, stack, stackSize);

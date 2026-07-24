@@ -105,6 +105,7 @@ namespace DarlingServer {
 		dtape_semaphore_t* _s2cInterruptExitSemaphore = nullptr;
 		bool _deferReplyForS2C = false;
 		std::optional<Message> _deferredReply = std::nullopt;
+		bool _canceled = false;
 
 		struct InterruptContext {
 			std::optional<Message> savedReply = std::nullopt;
@@ -259,6 +260,19 @@ namespace DarlingServer {
 
 		void waitWhileUserSuspended(uintptr_t threadStateAddress, uintptr_t floatStateAddress);
 		void sendSignal(int signal) const;
+
+		/**
+		 * Marks this thread as canceled (POSIX thread cancellation) and kicks it
+		 * out of any interruptible syscall so it reaches its next cancellation
+		 * point. Implements the darlingserver side of __pthread_markcancel.
+		 */
+		void markCanceled();
+
+		/**
+		 * Whether this thread has been marked canceled via markCanceled().
+		 * Implements the query side of __pthread_canceled(0).
+		 */
+		bool isCanceled() const;
 
 		/**
 		 * Informs this Thread instance that the thread it was managing has died.
