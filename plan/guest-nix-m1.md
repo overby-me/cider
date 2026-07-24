@@ -1,11 +1,22 @@
 # Official guest-Nix M1: `nix build #hello` from source under Darling
 
-Status (2026-07-24): **the entire guest-Nix build pipeline works end to end;
-hello's build reached configure and failed at the first clang invocation. Root
-cause found and fixed: a single missing libc++ symbol (`__libcpp_verbose_abort`),
-NOT the darlingserver concurrency bug it was first attributed to.** Fix applied
-in `patches/libcxx/0001`; monolith rebuild + re-run in progress to confirm
-`hello_rc=0`.
+Status (2026-07-24): **the compiler blocker is FIXED and verified; the
+end-to-end `hello_rc=0` run is now gated on a separate, pre-existing darlingserver
+early-boot race.** hello's build reached configure and failed at the first clang
+invocation. Root cause found and fixed: a single missing libc++ symbol
+(`__libcpp_verbose_abort`), NOT the darlingserver concurrency bug it was first
+attributed to. Fix committed in `patches/libcxx/0001`; the rebuilt monolith
+(`inx96gmra`) exports the symbol and `clang`, `libLLVM` and `ld64` all show zero
+top-level-`std::` gaps against Darling's 8419-symbol C++ runtime.
+
+**Remaining e2e gate (separate issue):** driving the build to `hello_rc=0`
+requires a clean darling container boot, and darling is currently hitting the
+known early-boot SIGCHLD/RPC race (see the boot-race section at the bottom and
+`plan/blockers.md`). The *same* boot binaries booted fine earlier this session
+(they reached configure -- that is how the `conftest.err` above was captured), so
+the race is timing/host-state dependent, not a regression from the libc++ change
+(the old monolith fails identically now). A bounded, spaced overnight retry is
+running to catch a good boot and finish the build.
 
 The campaign goal (hello builds from source + runs under Darling) was already met
 at the toolchain level (M1, `scripts/build-hello-under-darling.sh`: `hello_rc=0`,
@@ -99,3 +110,42 @@ DPREFIX=<prefix> darling shell sh gnix-hello.sh
 
 `scripts/gnix-hello.sh` carries the full recipe; run with `--keep-failed` (already
 set) to inspect any future build-dir failure via `conftest.err`.
+
+## The e2e gate: darlingserver early-boot SIGCHLD/RPC race (SIGILL)
+
+With the libc++ fix in place, the remaining obstacle is getting darling to boot
+far enough to run the build. The container starts darlingserver (its socket +
+`.init.pid` appear, and darlingserver does **not** crash -- 0 cores), but the
+guest init aborts before `shellspawn` comes up:
+
+```
+Warning: failed to increase FD rlimit: Operation not permitted   (benign)
+Error connecting to shellspawn (<prefix>/var/run/shellspawn.sock): No such file
+mach_msg_overwrite failed (internally): -111
+*** dserver_rpc_interrupt_enter failed with code -111 ***
+```
+
+Traced end to end:
+- `mldr` dumps core with **SIGILL**; the faulting instruction is a `ud2` at the
+  end of `___simple_abort` in `libsystem_kernel.dylib` (`kill(getpid, SIGABRT)`
+  then `ud2`; SIGABRT is not delivered in the container so it falls through to
+  the trap). So the guest is **deliberately aborting**, not hitting a bad opcode.
+- The abort is from `sigexc_handler`
+  (`.../linux_premigration/signal/sigexc.c`): on the first guest signal it calls
+  `dserver_rpc_interrupt_enter()` and, if that RPC returns non-zero, immediately
+  `__simple_abort()`s (no retry).
+- Here it returns **-111 = -ECONNREFUSED**: the thread's RPC channel to
+  darlingserver is not serving at the instant the signal (SIGCHLD from reaping an
+  early boot-service child) is delivered. `call.cpp` has explicit,
+  delicate concurrency handling around `InterruptEnter` -- this is the documented
+  fork/exec/SIGCHLD race.
+
+It is timing/host-state dependent: darling booted and ran configure earlier this
+session with the same binaries, then began failing persistently after a heavy
+monolith rebuild + symbol scans. A clean reset (kill all darling procs, remove
+prefixes + the stale global `~/.darling` socket) did not restore it; resources
+are not exhausted (namespaces 24/125911, nofile 524288, 15G free). The real fix
+is darlingserver-side (make the thread RPC endpoint valid before signals can be
+delivered during spawn, and/or make `sigexc_handler` tolerant of a transient
+ECONNREFUSED). Until then the spaced retry (`scripts`/scratchpad
+`gnix-overnight.sh`) is the pragmatic way to catch a good boot.
