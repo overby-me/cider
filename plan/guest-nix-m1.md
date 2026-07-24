@@ -520,3 +520,36 @@ darling mechanism -- the real M1 blocker. Next step to fix: find which fd/event
 launchd's event loop is waiting on (read its kevent registrations / the select
 readfds) and make darlingserver deliver that event (signalfd population on guest
 signal delivery, or kqchan wakeup on the mach notification).
+
+## Timeout-cap workaround RULED OUT (2026-07-24): boot does not converge
+
+Tried a pragmatic unblock: cap the mach `semaphore_timedwait[_signal]` timeout
+guest-side (30s -> 3s), reasoning that since these waits are never signalled they
+always time out anyway, so a smaller cap would let the boot limp forward faster.
+Built (mono11) + traced: the cap WORKS (replies now land at exactly 3.000s,
+result code 49 = KERN_OPERATION_TIMED_OUT) -- but the boot STILL does not
+complete (0/1, failed at 150s). The trace shows why:
+
+**launchd TID 3 is an infinite loop that never converges:**
+  semaphore_timedwait (times out) -> mach_msg_overwrite (sends a small RPC, gets a
+  52-byte reply, dest pid -1=kernel and pid 1=launchd) -> pthread_canceled -> back
+  to semaphore_timedwait ... forever, every timeout period.
+
+So no timeout value fixes it: the semaphore is NEVER signalled, so TID 3 spins
+forever and the boot hangs regardless. Cap reverted.
+
+Conclusion: M1's boot blocker requires the ROOT fix -- deliver the event/work that
+would signal TID 3's libdispatch semaphore (equivalently: wake launchd's kqueue
+loop with the event it's polling for). This is a deep darling libdispatch /
+kqueue / mach event-delivery issue, the fundamental longstanding boot blocker.
+Tractable approaches tried and ruled out with data: thread cancellation (0
+markcancel), FAST_EPOLL, unix qlen, host state, semaphore timeout cap.
+
+Recommended next directions (in leverage order):
+1. Compare against a known-good upstream darling `darling shell` boot: if upstream
+   boots launchd reliably, darling-nix has a build/component-specific regression --
+   diff the libdispatch/xnu/darlingserver revisions + patches to find the missing
+   piece, rather than re-deriving event delivery.
+2. Identify TID 3's exact libdispatch construct (which dispatch source / mach port
+   it polls) from the guest side, then make darlingserver deliver that source's
+   event so the semaphore gets signalled.
