@@ -327,3 +327,31 @@ early boot -- the mldr worker-thread creation (elfcalls/threads.c darling_thread
 + dserver checkin) vs the guest's semaphore_timedwait_signal, in darlingserver's
 dtape semaphore emulation. That is the remaining darlingserver concurrency bug
 gating a reliable boot (and thus hello_rc=0).
+
+## Deeper trace of the 30s stall (2026-07-24): libdispatch thread-teardown / stuck poll
+
+Chased the `semaphore_timedwait_signal` (call 62, 30s) further:
+- It is NOT the pthread-join custom-stack semaphore (that path uses `__ulock_wait`
+  / `__semwait_signal_nocancel` with no timeout -- libpthread pthread_cancelable.c
+  _pthread_joiner_wait:287, pthread.c:394). It is a **libdispatch
+  `dispatch_semaphore_wait` with a 30s deadline** (libdispatch semaphore.c:116
+  `_dispatch_sema4_timedwait`).
+- All guest threads during a stall (via /proc/<mldr>/task/*/wchan):
+  launchd (mldr) has 3 threads: one in recvmsg (the joiner/waiter on the 30s
+  sema), one in **`poll_schedule_timeout` (a native poll, cpu=0, stuck the whole
+  time)**, one in recvmsg. darlingserver: main in epoll_wait, worker in futex
+  (idle). So a guest thread is parked in `poll` -- a cancellation point that is
+  not being interrupted -- so the canceled thread never reaches
+  `bsdthread_terminate` (which *does* signal the join sema, bsdthread_terminate.c:33),
+  and the 30s dispatch-semaphore wait times out.
+- The boot issues a variable number of these teardown/coordination cycles ->
+  variable boot time -> intermittent (~130s completes, >360s fails).
+
+So the remaining fix is in the **thread cancellation / poll-interrupt / libdispatch
+worker-teardown coordination** -- why a canceled guest thread parked in a native
+poll is not interrupted to terminate promptly. This is a deep, intermittent
+darling concurrency bug (kqueue/poll cancellation fidelity + libdispatch teardown),
+of the same class flagged for kqueue/poll in PLAN.md. A reliable fix needs an
+instrument-rebuild-iterate loop (log the cancel/poll/terminate timeline in the
+guest) or better guest-stack symbolication; both are multi-cycle. It is NOT the
+reply-delivery/FAST_EPOLL path and NOT a missing signal in bsdthread_terminate.
