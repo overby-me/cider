@@ -262,3 +262,37 @@ state from the night's churn, which a darlingserver code change cannot fix. The
 pragmatic fix is a host reboot; the only remaining code angle is to instrument
 darlingserver (log whether a datagram arrives at all / whether callFromMessage
 returns null) to prove which of the two, but that is diagnostics, not a fix.
+
+## ACTUAL ROOT CAUSE (2026-07-24, via strace): DSERVER_FAST_EPOLL 30s reply stall
+
+The boot is NOT deadlocked and NOT host-state -- it is a darlingserver bug that
+makes every early-boot RPC reply take ~30 seconds, so boot exceeds darling.c's
+120s shellspawn budget (src/startup/darling.c:244, 1200 x 100ms) and fails.
+The earlier "needs reboot / host degradation" and "handshake deadlock" theories
+were WRONG (no leak found; the RPC actually works).
+
+strace of a boot shows the RPC round-trip working but with a ~30s gap on the
+reply:
+  08:20:51.489  guest sendmsg(-> .darlingserver.sock)          = 56   (request)
+  08:20:51.489  darlingserver recvmmsg(3, ...)                 = 1    (received!)
+  08:20:51.489  guest recvmsg(...)  <unfinished ...>                  (awaiting reply)
+  08:21:21.491  guest <... recvmsg resumed> ... = 8                   (reply, +30s)
+The reply is a real message (not a timeout error), and gdb shows darlingserver's
+worker idle (WorkQueue empty) with the main thread in epoll_wait -- i.e. the reply
+is already produced and sitting in the outbox, but the main loop is not woken to
+send it until the ~30s dtape timer fires.
+
+Root cause: the reply-wakeup eventfd (`_wakeupFD`) is armed EPOLLIN|EPOLLONESHOT.
+The `DSERVER_FAST_EPOLL` optimization (CMakeLists option, ON by default) memoizes
+the armed state in `_wakeupArmedEvents` to skip "redundant" EPOLL_CTL_MOD re-arms.
+But EPOLLONESHOT auto-disarms in the kernel when it fires, so `_wakeupArmedEvents`
+drifts and FAST_EPOLL then skips a *needed* re-arm. The worker's
+`eventfd_write(_wakeupFD)` ("reply ready") is missed; the reply waits for the
+timer. Intermittent (depends on fire-vs-update timing) -- which is exactly why the
+same binary booted early this session and failed later.
+
+Fix: DSERVER_FAST_EPOLL=OFF (src/external/darlingserver/CMakeLists.txt) -- the
+unconditional-re-arm path re-MODs the eventfd every iteration and self-corrects
+the drift. Rebuilt as monolith result-mono6; verifying a fast, reliable boot ->
+hello_rc=0. (The libc++ __libcpp_verbose_abort fix + the sigexc/mach_msg -111
+retries remain in; the retries are now defensive rather than load-bearing.)
