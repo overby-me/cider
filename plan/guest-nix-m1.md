@@ -657,3 +657,32 @@ waitq => TOPOLOGY (check ipc_mqueue_add/waitq_link, is launchd's recv port added
 to the dispatch portset?). If KQWALK hits it with nthreads=0 => PROPAGATION (the
 assert_wait registration / waitq_select). Then fix and validate darling shell
 reaches shellspawn, then M1 (task #43).
+
+## OVERNIGHT PROGRESS 2 (2026-07-25): boot deadlock = kqueue on empty portset 0x707, ports in portset 0xa03
+
+Trace-first localization (mono13-16 instrumentation, DSERVER_LOG_FILE+warn):
+- launchd's dispatch kqueue does EVFILT_MACHPORT on portset NAME 0x707 -> darling
+  kqchan attaches to pset X (ips_messages mqueue @ ...458c98), spawns a waiter
+  thread (kqchan_waitq_waiter_entry) that blocks on X's waitq. That thread ENTERS
+  once and NEVER wakes.
+- launchd's move_member adds its receive ports (0x1403,0xd03,0xe03) to portset
+  NAME 0xa03 -> pset Y (mqueue @ ...459e98). ZERO ports are added to 0x707.
+- So the kqueue watches an EMPTY portset (0x707); the receive ports are all in a
+  DIFFERENT portset (0xa03) which no kqueue watches. Messages to 0xa03 ports never
+  reach the 0x707 kqueue -> launchd's dispatch never wakes -> bootstrap deadlock.
+- imq_wait_queue/imq_set_queue ARE a union (same base); X!=Y are genuinely
+  different pset objects. Same-name lookup would give same object, so 0x707 and
+  0xa03 are DIFFERENT names/objects (confirmed via MOVEMEMBER after_pset=0xa03 vs
+  KQATTACH kn_id=0x707).
+
+OPEN QUESTION (mono17): does launchd ALLOCATE one portset (=> darling gives it two
+inconsistent names/objects, a naming bug) or two (=> launchd/libdispatch design
+where 0xa03 must be reachable from 0x707, and darling fails to link them)?
+Instrument portset allocation (ipc_pset_alloc / mach_port_allocate PORT_SET) to log
+name+mqueue. Also worth checking: launchd main thread is in recvmsg -- WHICH port/
+portset is it receiving on (maybe it receives on 0xa03 directly and that wake
+fails)? Fix target once known: darling kqueue-on-portset emulation
+(kqchan_waitq_waiter_entry / filt_machportattach / the pset linkage).
+
+NOTE: many rebuild cycles (mono13-16). All instrumentation is temp/uncommitted;
+only docs are on main. Tasks #42-46 track the plan.
