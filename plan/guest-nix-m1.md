@@ -194,6 +194,13 @@ Fixes, cheapest first:
    `scripts/gnix-hello.sh` against `qkr9rqjv`. If the 512-datagram queue is the
    binding limit, this absorbs the boot burst. **Try this first** -- it confirms
    or refutes the queue-overflow hypothesis with zero code.
+   *Evidence (2026-07-24):* running darling in a nested user+net namespace where
+   `max_dgram_qlen` is writable unprivileged and raising it to 16384 **removed
+   both** the `mach_msg_overwrite ... -111` error **and** the mldr SIGILL core
+   that every host boot (qlen=512) produces -- strong support that the queue is
+   the trigger. That nested ns could not finish `shellspawn` for unrelated env
+   reasons (fresh netns / nested userns), so it is not a clean full-boot proof;
+   the host sysctl is. See `scratchpad/gnix-qlen*.sh`.
 2. **darlingserver rebuild:** raise `SO_RCVBUF` on `_listenerSocket` toward
    `rmem_max` right after `socket()` in `server.cpp` (helps the byte limit; cannot
    raise the 512 datagram-count limit, which needs option 1).
