@@ -621,3 +621,39 @@ For launchd's bootstrap port one of these is false, so KNOTE is skipped and the
 mach-port kqchan never notifies. Next: instrument which condition fails, then fix.
 This is a SPECIFIC, likely-fixable dtape gap -- not the vague "upstream immaturity"
 of the prior evaluation.
+
+## OVERNIGHT WORK STATE (2026-07-24, max-effort, user redirected)
+
+USER DIRECTION: rootless (no LKM) is a HARD req (like Wine). launchd boot = LONG
+term. SHORT-term priority = nix building darwin (target: guest nix inside darling
+builds hello, task #43). But user chose "fix the localized boot bug" as the
+enabler (task #42). Tasks #42-46 created (42=boot fix, 43=guest-nix M1, 44=-111
+diag, 45=revert/quarantine cancellation, 46=revert budget bump).
+
+BOOT ROOT (trace-first, verified, corrected from prior eval):
+- `darling shell` deadlocks in `launchctl bootstrap -S System`. Block state:
+  launchd main=recvmsg, launchd dispatch thread=select(4 fds,NULL) forever,
+  launchctl=epoll_wait(kqueue) forever.
+- launchd's dispatch watches a PORTSET via EVFILT_MACHPORT kqchan. darlingserver
+  dtape emulates portset-kqueue with a dedicated waiter thread
+  (kqchan_waitq_waiter_entry, duct-tape/src/kqchan.c) that blocks on the portset
+  waitq via waitq_assert_wait64(wq, IPC_MQUEUE_RECEIVE). Trace: that thread ENTERS
+  once (t+... "waiter thread entering") and NEVER unblocks. Plain-port KNOTE path
+  (knote_post) fires 0x. So launchd's kqueue never wakes for the incoming bootstrap
+  message -> launchd never services it -> launchctl deadlocks.
+- NOT a setup race (waiter enters before launchctl's later messages).
+- The wakeup mechanism: message -> ipc_mqueue_post -> waitq_wakeup64_identify_locked
+  on the member port's waitq -> waitq_select_walk_cb walks linked sets ->
+  do_waitq_select_n_locked finds threads on the set for the event (prepost only if
+  event==NO_EVENT64). Waiter waits for IPC_MQUEUE_RECEIVE, so if the walk reaches
+  its set it should be found+woken. => bug is either TOPOLOGY (msg port not linked
+  to the waiter's portset) or PROPAGATION (walk reaches set, finds 0 threads).
+
+INSTRUMENTATION (mono14, temp, NOT committed): KQWAIT (waiter's waitq) in kqchan.c;
+KQWALK (setwq + nthreads + event per set-walk) in waitq.c after
+do_waitq_select_n_locked; plus KNOTEDBG in ipc_mqueue.c. Test: test-kqwalk.sh
+(DSERVER_LOG_FILE + DSERVER_LOG_LEVEL=warn). If KQWALK never hits the waiter's
+waitq => TOPOLOGY (check ipc_mqueue_add/waitq_link, is launchd's recv port added
+to the dispatch portset?). If KQWALK hits it with nthreads=0 => PROPAGATION (the
+assert_wait registration / waitq_select). Then fix and validate darling shell
+reaches shellspawn, then M1 (task #43).
