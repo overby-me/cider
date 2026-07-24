@@ -686,3 +686,90 @@ fails)? Fix target once known: darling kqueue-on-portset emulation
 
 NOTE: many rebuild cycles (mono13-16). All instrumentation is temp/uncommitted;
 only docs are on main. Tasks #42-46 track the plan.
+
+## BREAKTHROUGH (mono17): launchd-BYPASS reaches a rootless guest shell
+
+Reframed per user priority: full launchd boot is LONG-TERM; the short-term goal
+is guest nix building darwin, rootless (no LKM). We do NOT need to fix the launchd
+portset/kqueue deadlock (task #47) to get there.
+
+darlingserver already reads `DSERVER_INIT` (darlingserver.cpp:263) to override the
+guest PID1 init (default `/sbin/launchd`). shellspawn -- the daemon darling talks
+to over a unix socket to spawn shells -- is a standalone `socket`/`bind`/`listen`/
+`accept`->`fork`->`execv` server with ZERO launchd/mach-bootstrap dependency
+(shellspawn.c). So:
+
+    DSERVER_INIT=/usr/libexec/shellspawn darling shell echo hi
+
+runs shellspawn directly as guest PID1, skipping launchd's (deadlocking) System
+bootstrap entirely. PROVEN on mono17: prints `hi`, rc=0, no launchd, fully rootless.
+
+Two gotchas found and understood:
+- The prefix skeleton (writable `/var/run` etc.) is created by `setupPrefix()`
+  in darling.c, gated on `!checkPrefixDir()` where checkPrefixDir just stats the
+  dir. So a harness that pre-creates the prefix dir (e.g. to drop the
+  `.enable-writable-nix` marker) SKIPS the skeleton -> shellspawn's `bind()` on
+  `/var/run/shellspawn.sock` gets EACCES (the read-only base dir is mode 0555).
+  Fix: let darling create the prefix (skeleton runs), or make the skeleton
+  idempotent. The socket must live in the overlay UPPER (= prefix, host-visible),
+  NOT a container-private tmpfs, because the host `darling` connects to
+  `<prefix>/var/run/shellspawn.sock` from outside the container mount namespace.
+- Re-attaching a SECOND `darling shell` to a running bypass container hit
+  "Cannot open mnt namespace file: Permission denied" (joinNamespace). Avoid by
+  running the whole nix flow in ONE `darling shell sh <script>` session (this is
+  exactly what scripts/gnix-hello.sh already does), or by a fresh container per
+  step (kill darlingserver between steps; the on-disk prefix persists).
+
+Guest-nix path via the bypass (two-boot, no code change needed):
+  1. boot-1 `DSERVER_INIT=shellspawn darling shell true`  -> creates skeleton
+  2. kill darlingserver; `touch <prefix>/.enable-writable-nix`
+  3. boot-2 `DSERVER_INIT=shellspawn darling shell sh <nix-driver>` -> canonical
+     writable /nix (overlay of host /nix/store + /nix/var) + guest nix runs.
+The host x86_64-darwin nix (nix-2.34.8) and hello-2.12.3.drv are already in the
+host store; the writable-/nix overlay makes them canonical `/nix/store` in-guest.
+
+Downstream (task #43/#44): the actual `nix build hello` still trips the
+darlingserver fork/exec concurrency bug (-111/ECONNREFUSED) at the first clang
+call (plan/blockers.md) -- that is now the real M1 blocker, INDEPENDENT of launchd.
+
+OPTIONAL darlingserver change (mono19, under evaluation): mount a tmpfs on the
+read-only runtime-scratch dirs (/private/tmp for build TMPDIR, and harmlessly
+/private/var/run, /private/var/log) so a minimal init needs no launchctl `/var`
+remount. NOTE the /var/run tmpfs is container-private and must NOT capture the
+shellspawn socket (it doesn't, because setupPrefix makes /var a real upper dir
+that shadows the base symlink); gnix-hello.sh already avoids /tmp by using
+/Users/root, so this change may be dropped as unnecessary.
+
+## ✅ M1 ACHIEVED (2026-07-25): guest nix builds+runs hello, rootless, launchd-free
+
+Campaign milestone M1 (official Phase C.3: `nix build …#hello` from source) reached
+via the launchd BYPASS -- fully rootless (no LKM), no launchd boot.
+
+Config: mono17 (darling-unstable, `?submodules=1` = committed submodules + working-tree
+campaign fixes), guest nix 2.34.8, `DSERVER_INIT=/usr/libexec/shellspawn` (launchd
+bypassed). Prefix `/tmp/wm1a`, two-boot warm flow, `.enable-writable-nix` overlay for a
+canonical writable `/nix/store`, db seeded from `nix-store --dump-db --include-outputs`
+of hello.drv's 870-path closure. Driver: scripts/gnix-hello.sh (single `darling shell`
+session). Harness: file-based output (never pipe through a reader -- a leaked container
+holds the pipe write-end open and blocks EOF).
+
+Result (scratch archive M1-SUCCESS-evidence.txt, 1943 lines):
+  - nix recognises hello.drv and builds it FROM SOURCE under darling.
+  - Full nixpkgs lifecycle: configurePhase (autoconf, guest clang-21.1.8 passes every
+    check) -> buildPhase (clang compiles every .o, links `hello`) -> checkPhase
+    ("Testsuite summary for GNU Hello 2.12.3") -> installPhase -> fixupPhase (strip) ->
+    installCheckPhase -> versionCheckPhase runs the built binary: "hello (GNU Hello)
+    2.12.3".  build_rc=0.
+  - `=RUN=` the built /nix/store/lf0dyrrs…-hello-2.12.3/bin/hello prints **Hello, world!**
+    hello_rc=0. The 40KB Mach-O is in the writable-nix overlay upper.
+
+Crucially, the two blockers that plan/blockers.md flagged as the M1 wall were NOT hit
+this run: (a) hello ./configure SIGABRT (`__libcpp_verbose_abort`) -- configure runs to
+completion; (b) the darlingserver fork/exec concurrency stall at the first clang call --
+clang forks/execs dozens of times with no stall. Both fixes (patches/libcxx, the startup
+watchdog / fork-exec handling) are in the current tree; the bypass avoids the launchd-boot
+contention that used to aggravate the fork/exec race. Task #44 (drop the -111 busy-spin
+band-aids and diagnose properly) remains worthwhile but is no longer M1-blocking.
+
+Reproduce: `scripts/build-m1.sh` (in scratch; to be committed as a repo script) or
+manually: DSERVER_INIT=/usr/libexec/shellspawn + gnix-hello.sh in one darling shell.

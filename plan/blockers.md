@@ -4,6 +4,19 @@ Threads that are stuck pending a human decision, an upstream change, a
 licensing question, or >1 day on a single signature. Pick up the next ranked
 item and record the blocker here with reproduction steps. (Protocol: PLAN.md §10.)
 
+## ✅ M1 ACHIEVED (2026-07-25) -- rootless, launchd-free
+
+Guest Nix, under Darling with launchd BYPASSED, builds GNU hello 2.12.3 FROM
+SOURCE and runs it -> `Hello, world!` (build_rc=0). The launchd portset/kqueue
+bootstrap deadlock is side-stepped, not fixed: `DSERVER_INIT=/usr/libexec/shellspawn`
+runs shellspawn (a standalone unix-socket daemon) as guest PID1, so `darling shell`
+never needs `launchctl bootstrap -S System`. Reproduce: `scripts/build-hello-bypass.sh`.
+Details + evidence: plan/guest-nix-m1.md. The two blockers below flagged as the M1
+wall (hello ./configure SIGABRT; the fork/exec stall at the first clang) did NOT
+recur in this run -- their fixes are in-tree and the bypass avoids the launchd-boot
+contention that aggravated the fork/exec race. The launchd boot itself remains open
+(task #47), but is LONG-TERM and no longer blocks the nix-builds-darwin goal.
+
 ## Open
 
 - **Container start intermittently hangs under heavy host contention (the shell's

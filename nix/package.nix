@@ -113,21 +113,6 @@ stdenv.mkDerivation {
     mkdir -p $sdk/bin
     cp src/external/cctools-port/cctools/ld64/src/*-ld $sdk/bin
     cp src/external/cctools-port/cctools/ar/*-{ar,ranlib} $sdk/bin
-
-    # M1 EXPERIMENT (minimal launchd boot): trim /System/Library/LaunchDaemons to a
-    # minimal set so `launchctl bootstrap -S System` cannot reach the daemon whose
-    # registration hangs (darlingserver-mode launchd bootstrap never converges; see
-    # plan/guest-nix-m1.md). Keep only shellspawn (the darling shell mechanism),
-    # opendirectoryd (user/group lookup for nix), and iokitd.
-    ldd=$out/libexec/darling/System/Library/LaunchDaemons
-    if [ -d "$ldd" ]; then
-      for p in "$ldd"/*.plist; do
-        case "$(basename "$p")" in
-          org.darlinghq.shellspawn.plist|org.darlinghq.iokitd.plist|com.apple.opendirectoryd.plist) ;;
-          *) echo "launchd-trim: removing $(basename "$p")"; rm -f "$p" ;;
-        esac
-      done
-    fi
   '';
 
   postFixup = ''
