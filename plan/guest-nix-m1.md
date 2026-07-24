@@ -144,8 +144,31 @@ It is timing/host-state dependent: darling booted and ran configure earlier this
 session with the same binaries, then began failing persistently after a heavy
 monolith rebuild + symbol scans. A clean reset (kill all darling procs, remove
 prefixes + the stale global `~/.darling` socket) did not restore it; resources
-are not exhausted (namespaces 24/125911, nofile 524288, 15G free). The real fix
-is darlingserver-side (make the thread RPC endpoint valid before signals can be
-delivered during spawn, and/or make `sigexc_handler` tolerant of a transient
-ECONNREFUSED). Until then the spaced retry (`scripts`/scratchpad
-`gnix-overnight.sh`) is the pragmatic way to catch a good boot.
+are not exhausted (namespaces 24/125911, nofile 524288, 15G free).
+
+**Attempted fix + what it revealed (2026-07-24).** I added a bounded retry
+(`interrupt_enter_tolerant()` in `sigexc.c`) so the two signal handlers
+(`sigrt_handler`, `sigexc_handler`) re-issue `dserver_rpc_interrupt_enter()` on a
+`-111` instead of aborting on the first failure, and rebuilt the monolith
+(`qkr9rqjv`, which also carries the libc++ fix). Result: the
+`dserver_rpc_interrupt_enter failed with code -111` abort is **gone** from the
+boot output, but the boot still fails one layer deeper at
+`mach_msg_overwrite failed (internally): -111` -- printed by the guest's
+**general** mach RPC path (`.../xnu_syscall/mach/impl/mach_traps.c:94`). So the
+`-111` (ECONNREFUSED) is **not** a transient per-call gap: the guest's *entire*
+mach RPC transport to darlingserver is refused during early boot. A per-call
+retry cannot fix a globally-refused transport (and a third call site,
+`sigaction.c:177`, is unpatched).
+
+**Real root cause / next step (darlingserver-side).** The guest cannot connect to
+(or is refused by) darlingserver's per-process RPC socket during spawn -- the
+documented fork/exec/SIGCHLD concurrency issue, now localized to the RPC
+transport connection, not the `interrupt_enter` call. The fix belongs in
+darlingserver's process-spawn / socket-accept path (ensure the child's RPC
+endpoint is connected-and-serving before the guest issues its first mach_msg;
+check the listen backlog / accept loop for a race under the boot connection
+burst), or in the guest transport (`mach_traps.c`) to establish/retry the
+connection. That is a focused darlingserver task for an attended session. The
+`interrupt_enter_tolerant()` change is a correct robustness improvement but is
+**not** sufficient on its own; it lives in the xnu working tree (built into
+`qkr9rqjv`), not yet extracted as a patch.
