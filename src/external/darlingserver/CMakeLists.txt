@@ -12,15 +12,11 @@ option(DSERVER_UBSAN "Build darlingserver with UBSAN" OFF)
 option(DSERVER_FAST_CONTEXT "Signal-mask-free microthread context switch (x86_64)" ON)
 # P2: memoize the event loop's _wakeupFD arming so it skips a redundant
 # EPOLL_CTL_MOD on every iteration (same armed states, fewer syscalls).
-# DISABLED: the memoized _wakeupArmedEvents drifts out of sync with the kernel's
-# EPOLLONESHOT auto-disarm, so it intermittently skips a *needed* re-arm of the
-# reply-wakeup eventfd. The worker's "reply ready" signal is then missed and the
-# reply is not sent until the ~30s dtape timer fires -- each early-boot RPC stalls
-# ~30s, so the container exceeds darling.c's 120s shellspawn budget and boot fails
-# (intermittently: a boot whose replies happen to fire fast still finishes). See
-# plan/guest-nix-m1.md (strace shows the 30s reply-delivery gap). Unconditional
-# re-arm (OFF) self-corrects the drift every iteration.
-option(DSERVER_FAST_EPOLL "Skip redundant eventfd epoll re-arms in the event loop" OFF)
+# NOTE: NOT the cause of the boot stall -- strace showed the ~30s early-boot delay
+# is a specific RPC (semaphore_timedwait_signal, call 62) timing out, identical
+# with FAST_EPOLL on or off; general reply delivery is prompt. See
+# plan/guest-nix-m1.md.
+option(DSERVER_FAST_EPOLL "Skip redundant eventfd epoll re-arms in the event loop" ON)
 
 if (DSERVER_TOOLS)
 	add_subdirectory(tools)

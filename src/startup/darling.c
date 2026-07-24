@@ -239,9 +239,10 @@ int main(int argc, char ** argv)
 		// chown-heavy setup (rootless especially) before launchd brings up
 		// shellspawn, which can take well over the old 15s budget and left
 		// callers racing "shellspawn.sock: No such file". Poll at 100ms for up
-		// to ~120s so a slow first boot still succeeds; a warm prefix still
-		// returns almost immediately.
-		for (int i = 0; i < 1200; i++)
+		// to ~360s so a slow first boot still succeeds (measured ~130s for a
+		// fresh rootless prefix on a busy host); a warm prefix still returns
+		// almost immediately.
+		for (int i = 0; i < 3600; i++)
 		{
 			if (access(socketPath, F_OK) == 0)
 				break;

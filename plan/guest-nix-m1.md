@@ -296,3 +296,34 @@ unconditional-re-arm path re-MODs the eventfd every iteration and self-corrects
 the drift. Rebuilt as monolith result-mono6; verifying a fast, reliable boot ->
 hello_rc=0. (The libc++ __libcpp_verbose_abort fix + the sigexc/mach_msg -111
 retries remain in; the retries are now defensive rather than load-bearing.)
+
+## CORRECTION (2026-07-24): the 30s stall is `semaphore_timedwait_signal`, not FAST_EPOLL
+
+The DSERVER_FAST_EPOLL theory above was WRONG (reverted). A cleaner strace
+(mono7, FAST_EPOLL off) shows the ~30s delay is NOT a general reply-wakeup issue
+-- most replies are instant. It is one specific RPC: **`semaphore_timedwait_signal`
+(dserver call number 62)** whose body carries a 30s timeout (0x1e) and which the
+guest's main boot thread waits on for the full 30s before the timeout reply
+returns. During the entire 30s window there is zero other socket activity: no
+`semaphore_signal` (call 57), no other guest thread -- so nothing signals the
+semaphore in time. The guest's main thread blocks on a semaphore whose counterpart
+(a worker thread that should signal it) is not there / not scheduled in time. The
+boot issues a variable number of these -> variable boot time -> intermittent
+completion (~130s when few, >360s when many), which is why the same binary boots
+early in a session and stalls later, and why the FAST_EPOLL change made no
+difference (the stall is identical on/off).
+
+This is a darlingserver/mldr thread-coordination issue (semaphore signal/wait vs
+worker-thread creation timing), NOT the reply-delivery path. Verified fixes so far:
+- libc++ `__libcpp_verbose_abort` (patches/libcxx/0001) -- the real clang blocker, done.
+- guest `-111` retries in sigexc.c + mach_traps.c -- defensive; prevent the earlier
+  ECONNREFUSED abort/SIGILL. Kept.
+- darling.c shellspawn wait 120s -> 360s -- lets a slow-but-completing cold boot
+  finish; does not fix the underlying stall.
+FAST_EPOLL reverted to ON (it was not the cause).
+
+Next (real fix, deep): find why the semaphore's signaling thread is late during
+early boot -- the mldr worker-thread creation (elfcalls/threads.c darling_thread_entry
++ dserver checkin) vs the guest's semaphore_timedwait_signal, in darlingserver's
+dtape semaphore emulation. That is the remaining darlingserver concurrency bug
+gating a reliable boot (and thus hello_rc=0).
