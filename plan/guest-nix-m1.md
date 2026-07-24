@@ -210,3 +210,30 @@ Fixes, cheapest first:
    status == -111) so the normal path is untouched.
 4. **Real fix:** stop darlingserver's worker from stalling under the boot burst
    (the fork/exec/SIGCHLD concurrency bug) so the queue never backs up.
+
+### mono5 result: retries clear the crash, exposing a recv-side deadlock
+
+Rebuilt monolith `4ickrj4r` (mono5) adds a bounded `-111` retry to the mach_msg
+path (`mach_traps.c`) alongside the existing interrupt_enter retry. Result on the
+host: the `mach_msg_overwrite ... -111` abort is **gone** and **mldr no longer
+SIGILLs** -- the send-side crash is fixed. But boot still does not reach
+shellspawn, and the live process state during a boot attempt is a **deadlock**,
+not progress:
+- `darlingserver` -> `do_epoll_wait` (idle, ~0 CPU)
+- guest `mldr` thread -> `__skb_wait_for_more_packets` (blocked in `recvmsg`
+  waiting for an RPC reply that never arrives), ~0 CPU
+
+So the guest issues an RPC (checkin / mach_msg), blocks waiting for the reply, and
+darlingserver never processes/answers it -- it sits in epoll. This is the core
+RPC-processing concurrency stall, one layer past the send `-111`. A send-side
+retry cannot fix a reply that never comes.
+
+**Strong signal it is host state, not code:** this *same* darlingserver binary
+processed RPCs fine earlier this session (that is how `conftest.err` was
+captured). A darlingserver that worked, then sits idle-in-epoll while a guest
+blocks on recv, points at a degraded host/kernel state from the night's churn
+(heavy builds, 20+ mldr crashes, dozens of killed containers) rather than a code
+regression. **A host reboot is the highest-probability path back to a working
+boot**, after which the guest-Nix build against mono5 (all three fixes) should
+reach `hello_rc=0`. The alternative is deep darlingserver worker/epoll concurrency
+work (why a guest's request datagram is not processed under the boot burst).
