@@ -172,3 +172,34 @@ connection. That is a focused darlingserver task for an attended session. The
 `interrupt_enter_tolerant()` change is a correct robustness improvement but is
 **not** sufficient on its own; it lives in the xnu working tree (built into
 `qkr9rqjv`), not yet extracted as a patch.
+
+### Transport mechanism (why ECONNREFUSED) + ranked fixes
+
+darlingserver's RPC socket is a single **`AF_UNIX` `SOCK_DGRAM`** socket
+(`server.cpp:452`), bound at `<prefix>/.darlingserver.sock` and drained by one
+epoll worker. Every guest thread/process sends its RPC datagrams to it. Darling
+does **not** create a network namespace (`darling.c` unshares USER/UTS/IPC;
+`darlingserver.cpp` unshares mount -- no `CLONE_NEWNET`), so the socket is in the
+**host** net namespace and inherits the host limits:
+`net.unix.max_dgram_qlen = 512`, `net.core.rmem_max = 4 MiB`. When the early-boot
+RPC burst outruns the worker's draining (the documented worker stall), the DGRAM
+receive queue fills and further sends get **ECONNREFUSED (-111)** -- which the
+guest send path (`dserver-rpc-defs.c`) does not retry, so the guest aborts. This
+matches every observation: load/timing dependent, worked earlier under lighter
+load, darlingserver itself never crashes.
+
+Fixes, cheapest first:
+1. **No rebuild, needs root:** `sudo sysctl -w net.unix.max_dgram_qlen=16384` (and
+   optionally `net.core.rmem_max=16777216`) on the host, then re-run
+   `scripts/gnix-hello.sh` against `qkr9rqjv`. If the 512-datagram queue is the
+   binding limit, this absorbs the boot burst. **Try this first** -- it confirms
+   or refutes the queue-overflow hypothesis with zero code.
+2. **darlingserver rebuild:** raise `SO_RCVBUF` on `_listenerSocket` toward
+   `rmem_max` right after `socket()` in `server.cpp` (helps the byte limit; cannot
+   raise the 512 datagram-count limit, which needs option 1).
+3. **Guest transport rebuild:** bounded retry on `-111` in the send path
+   (`dserver-rpc-defs.c`) -- the general form of `interrupt_enter_tolerant()`;
+   rides out a transient full queue for all RPCs. Guard tightly (only when
+   status == -111) so the normal path is untouched.
+4. **Real fix:** stop darlingserver's worker from stalling under the boot burst
+   (the fork/exec/SIGCHLD concurrency bug) so the queue never backs up.
