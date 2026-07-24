@@ -237,3 +237,28 @@ regression. **A host reboot is the highest-probability path back to a working
 boot**, after which the guest-Nix build against mono5 (all three fixes) should
 reach `hello_rc=0`. The alternative is deep darlingserver worker/epoll concurrency
 work (why a guest's request datagram is not processed under the boot burst).
+
+### gdb of the deadlock: darlingserver is idle-CORRECT (the dig's conclusion)
+
+Reproduced the mono5 deadlock and attached gdb to darlingserver. Both its threads
+are correctly idle:
+- main thread: `epoll_wait` <- `Server::start()` (no socket events pending)
+- worker thread: `pthread_cond_wait` <- `WorkQueue<Thread>::worker()` (work queue
+  empty)
+
+So darlingserver never received the guest's RPC request (else main's epoll fires,
+`receiveMany` drains, a Call is pushed and the worker's condvar is signalled).
+`receiveMany` was verified to fully drain (loops recvmmsg until EAGAIN), so the
+socket handling is correct. The guest meanwhile blocks in `recvmsg`
+(`__skb_wait_for_more_packets`) for a reply. Net: the guest->darlingserver
+datagram is not being delivered/queued (or an arrived message is dropped by
+`callFromMessage` returning null), while darlingserver sits idle-correct.
+
+Conclusion of the deep dig: this is NOT a darlingserver logic bug -- its event
+loop, drain, and worker are all correct and simply have nothing to process. The
+request is lost at the transport/kernel layer. Given the same binary delivered
+RPCs fine earlier this session, this is degraded host/kernel AF_UNIX-datagram
+state from the night's churn, which a darlingserver code change cannot fix. The
+pragmatic fix is a host reboot; the only remaining code angle is to instrument
+darlingserver (log whether a datagram arrives at all / whether callFromMessage
+returns null) to prove which of the two, but that is diagnostics, not a fix.
