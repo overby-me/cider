@@ -485,3 +485,38 @@ semaphore and the event source it waits on, then fix that specific delivery path
 (candidate areas: kqchan EVFILT_SIGNAL / signalfd population on guest signal
 delivery; mach-port notification -> kqchan wakeup). The intermittent early-boot
 -111 (ECONNREFUSED) RPC race is a separate, likely-related reliability bug.
+
+## CONFIRMED root (2026-07-24, full darlingserver call trace via DSERVER_LOG_FILE)
+
+Added an env-gated `DSERVER_LOG_FILE` override (logging.cpp) so the full per-call
+trace lands on a host path. Boot with `DSERVER_LOG_FILE=... DSERVER_LOG_LEVEL=debug`.
+
+Trace of a hung boot (launchd PID 1, ~1200 calls in 80s then quiet):
+- Dominant calls: mach_msg_overwrite (121), pthread_canceled (90, routine), plus
+  mach_reply_port/port_deallocate/checkin/kqchan. 12 `checkin` -> services DO
+  start and check in.
+- **The stall: launchd thread 3 loops on `semaphore_timedwait` (call 62); each
+  reply lands EXACTLY 30.000s later (720.136 -> 750.136 -> 780.157) -> it times
+  out every time.**
+- **Zero `semaphore_signal` (call 57) in the entire boot** -> nothing ever signals
+  any semaphore, so every wait times out.
+- The `proc_get_effective_thread_policy` dtape stub fires just before each wait but
+  is incidental (called while darlingserver processes the wait, not causal).
+- The 220 "lock mutex without an active thread" warnings are benign: darlingserver
+  init + the timeout-timer callback run without a microthread and fall back to a
+  native lock (locks.c:60).
+
+Chain: launchd's kqueue event-loop thread is blocked in `select`(NULL timeout) for
+an fd event (epoll fd3 over signalfds=EVFILT_SIGNAL + sockets) that darling never
+delivers -> the handler that would `dispatch_semaphore_signal` never runs -> every
+downstream `semaphore_timedwait` times out at 30s -> boot limps in 30s steps and
+never completes (0/3 at 300s).
+
+**Root = darling event-delivery fidelity to launchd's kqueue loop** (top suspect:
+a signal such as SIGCHLD not reaching the guest signalfd because guest children are
+parented to darlingserver/mldr rather than the guest launchd; alt: a mach-port
+notification / socket message not waking the kqchan). This is a deep, fundamental
+darling mechanism -- the real M1 blocker. Next step to fix: find which fd/event
+launchd's event loop is waiting on (read its kevent registrations / the select
+readfds) and make darlingserver deliver that event (signalfd population on guest
+signal delivery, or kqchan wakeup on the mach notification).

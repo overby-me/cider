@@ -102,7 +102,12 @@ void DarlingServer::Log::_log(Type type, std::string message) const {
 	// NOTE: we use POSIX file APIs because we want to append each message to the log file atomically,
 	//       and as far as i can tell, C++ fstreams provide no such guarantee (that they won't write in chunks).
 	static int logFile = []() {
-		std::filesystem::path path(Server::sharedInstance().prefix() + "/private/var/log/dserver.log");
+		// TEMP DEBUG: honor DSERVER_LOG_FILE (host path) so the full call trace can
+		// be captured outside the guest overlay. Falls back to the prefix log.
+		const char* override = getenv("DSERVER_LOG_FILE");
+		std::filesystem::path path = override
+			? std::filesystem::path(override)
+			: std::filesystem::path(Server::sharedInstance().prefix() + "/private/var/log/dserver.log");
 		std::filesystem::create_directories(path.parent_path());
 		return open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	}();
