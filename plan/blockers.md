@@ -133,8 +133,24 @@ item and record the blocker here with reproduction steps. (Protocol: PLAN.md §1
   check to the socket-path budget, or shorten the socket path. Not a rootless
   issue (affects the setuid path equally).
 
-- **hello `./configure` aborts (SIGABRT) under Darling — the C.3 blocker after
-  the mkfifoat fix.** With the `mkfifoat`/`mknodat` gap fixed (commit
+- **hello `./configure` aborts (SIGABRT) under Darling — ROOT CAUSE FOUND
+  (2026-07-24): a single missing libc++ symbol, `__libcpp_verbose_abort`. Fix
+  applied in `patches/libcxx/0001`; verifying.** The aborting subshell
+  `( eval "$ac_compiler $ac_option >&5" )` *is* the clang invocation. Re-running
+  with `nix build --keep-failed` and reading clang's own `conftest.err` gave the
+  deterministic cause: `dyld: Symbol not found:
+  __ZNSt3__122__libcpp_verbose_abortEPKcz, Expected in: /usr/lib/libc++.1.dylib`.
+  The nixpkgs stdenv clang is **LLVM 21**; its libLLVM references
+  `std::__1::__libcpp_verbose_abort` (the verbose-termination handler libc++
+  gained in LLVM 14), which Darling's **LLVM-13** libc++ never exported → dyld
+  aborts the clang process (the SIGABRT; the once-seen "stall" was the aborting
+  process wedging the container). `llvm-nm` over the whole clang closure confirms
+  it is the *only* genuine libc++ gap. The earlier "Not clang" ruling below was
+  wrong — its `clang --version` probe used a different (LLVM-13-era) clang that
+  does not reference the symbol, and the abort was silent without `--keep-failed`.
+  See `plan/guest-nix-m1.md`. Original (superseded) notes kept below for history.
+
+  With the `mkfifoat`/`mknodat` gap fixed (commit
   `f9bc5f5b`), the guest `nix build hello --rebuild` clears the dyld wall and
   runs `./configure` from source. It passes ~14 checks (install, sleep, mkdir,
   gawk, make, xargs, ustar, gnutar) then, right after `checking for gcc...

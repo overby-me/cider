@@ -1,7 +1,7 @@
-Build C++17 <filesystem> and a minimal std::pmr into libc++.1.dylib.
+Build C++17 <filesystem>, a minimal std::pmr, and __libcpp_verbose_abort into libc++.1.dylib.
 
-Darling's LLVM-13 libcxx predates these C++17 runtime bits that modern C++
-programs (the nixpkgs `nix`) need at load time:
+Darling's LLVM-13 libcxx predates libc++ runtime bits that the nixpkgs `nix`
+and the nixpkgs LLVM-21 toolchain need at load time:
   - <filesystem> sources shipped but unbuilt (0 std::filesystem symbols;
     libnixutil needs 26); add them.
   - std::pmr did not exist at all (only std::experimental::pmr; libc++ gained
@@ -9,15 +9,23 @@ programs (the nixpkgs `nix`) need at load time:
     get_default_resource, and monotonic_buffer_resource ported from LLVM-17
     libcxx (matches the macOS-14 ABI nix was built against; libnixexpr
     constructs one via the inline ctor and needs its vtable + exact layout).
+  - __libcpp_verbose_abort (the single verbose-termination handler libc++
+    gained in LLVM 14) was absent, so the nixpkgs LLVM-21 clang/libLLVM failed
+    to load under Darling (dyld "Symbol not found:
+    __ZNSt3__122__libcpp_verbose_abortEPKcz") on every compile -- the last gap
+    stopping guest `nix build` from compiling anything. Verified with llvm-nm to
+    be the only genuine libc++ symbol the whole clang closure was missing. Add
+    the standard stderr+abort() implementation (src/verbose_abort_std.cpp).
 
-All the C++17 additions are compiled -std=c++17 and forced to default
-visibility (libcxx builds -fvisibility=hidden). The rest of libc++ is C++11.
+All the additions are forced to default visibility (libcxx builds
+-fvisibility=hidden); the C++17 ones are compiled -std=c++17. The rest of
+libc++ is C++11.
 
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 55144f764..f94ecf9fc 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -49,6 +49,25 @@ set(cxx_sources
+@@ -49,6 +49,30 @@ set(cxx_sources
  	src/vector.cpp
  )
  
@@ -35,6 +43,11 @@ index 55144f764..f94ecf9fc 100644
 +	# LLVM-13 libcxx shipped only std::experimental::pmr. Needed by the nixpkgs
 +	# `nix` (libnixexpr). See src/memory_resource_std.cpp.
 +	src/memory_resource_std.cpp
++	# std::__1::__libcpp_verbose_abort -- the verbose-termination handler libc++
++	# gained in LLVM 14; Darling's LLVM-13 libcxx lacks it, so nixpkgs' LLVM-21
++	# clang/libLLVM fail to load under Darling (dyld "Symbol not found:
++	# __ZNSt3__122__libcpp_verbose_abortEPKcz"). See src/verbose_abort_std.cpp.
++	src/verbose_abort_std.cpp
 +)
 +set_source_files_properties(${cxx_cxx17_sources}
 +	PROPERTIES COMPILE_FLAGS "-std=c++17")
@@ -286,5 +299,53 @@ index 000000000..73cc9e746
 +}
 +
 +} // namespace pmr
++} // namespace __1
++} // namespace std
+diff --git a/src/verbose_abort_std.cpp b/src/verbose_abort_std.cpp
+new file mode 100644
+index 000000000..0b7e1a2c3
+--- /dev/null
++++ b/src/verbose_abort_std.cpp
+@@ -0,0 +1,42 @@
++//===------------------ verbose_abort_std.cpp -----------------------------===//
++//
++// std::__1::__libcpp_verbose_abort for Darling's libc++.
++//
++// libc++ gained __libcpp_verbose_abort in LLVM 14 as the single verbose
++// termination entry point (assertion/hardening failures and, under
++// -fno-exceptions, __throw_* all funnel through it). Darling's libcxx is
++// LLVM 13 and predates it, so libc++.1.dylib does not export
++//   std::__1::__libcpp_verbose_abort(char const*, ...)
++//   (__ZNSt3__122__libcpp_verbose_abortEPKcz)
++// The nixpkgs toolchain (clang / libLLVM 21.1.8, built for macOS 14)
++// references it from /usr/lib/libc++.1.dylib; without it dyld aborts every
++// clang invocation under Darling ("dyld: Symbol not found"), the last gap
++// stopping guest `nix build` from compiling anything. Verified with llvm-nm
++// to be the only genuine libc++ symbol the whole nixpkgs clang closure lacks.
++//
++// Standard behaviour: print the formatted message to stderr, then abort().
++// Built alongside the other C++17 additions (see CMakeLists.txt), though this
++// one only needs C++11.
++
++#include <cstdarg>
++#include <cstdio>
++#include <cstdlib>
++
++// libcxx builds -fvisibility=hidden; the real libc++ header marks this
++// _LIBCPP_EXPORTED_FROM_ABI. Force default visibility so the symbol is
++// actually exported from libc++.1.dylib (noreturn to match its contract).
++#define VA_VIS __attribute__((visibility("default"), noreturn))
++
++namespace std {
++inline namespace __1 {
++
++VA_VIS void __libcpp_verbose_abort(const char* __format, ...) {
++	va_list __args;
++	va_start(__args, __format);
++	::vfprintf(stderr, __format, __args);
++	va_end(__args);
++	::abort();
++}
++
 +} // namespace __1
 +} // namespace std

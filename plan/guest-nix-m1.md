@@ -1,15 +1,18 @@
 # Official guest-Nix M1: `nix build #hello` from source under Darling
 
-Status (2026-07-24, overnight autonomous run): **the entire guest-Nix build
-pipeline works end to end; hello's build reaches configure and fails only at the
-first clang invocation, on the known darlingserver fork/exec concurrency bug.**
+Status (2026-07-24): **the entire guest-Nix build pipeline works end to end;
+hello's build reached configure and failed at the first clang invocation. Root
+cause found and fixed: a single missing libc++ symbol (`__libcpp_verbose_abort`),
+NOT the darlingserver concurrency bug it was first attributed to.** Fix applied
+in `patches/libcxx/0001`; monolith rebuild + re-run in progress to confirm
+`hello_rc=0`.
 
 The campaign goal (hello builds from source + runs under Darling) was already met
-at the toolchain level (M1, `scripts/build-hello-under-darling.sh`, re-confirmed
-this run: `hello_rc=0`, "Hello, world!"). This doc is the *official* path -- driving
-the build through guest `nix build` rather than hand-run configure/make.
+at the toolchain level (M1, `scripts/build-hello-under-darling.sh`: `hello_rc=0`,
+"Hello, world!"). This doc is the *official* path -- driving the build through
+guest `nix build` rather than hand-run configure/make.
 
-## What now works (was "3 sub-projects, not overnight" per 26.05-facts)
+## What works (was "3 sub-projects, not overnight" per 26.05-facts)
 
 The pessimistic 26.05-facts assessment predates a key piece: **darlingserver.cpp
 already implements a writable-`/nix` overlay** (host `/nix/store` + `/nix/var`
@@ -31,51 +34,57 @@ read-only lowers, tmpfs uppers, unprivileged `userxattr`), opt-in via a
    outputs, so the missing stdenv output was silently excluded until realised (see
    below). `sandbox = false`, `require-sigs = false`, `substituters = ""` (offline).
 5. **No stdenv rebuild** -- on real macOS `nix build #hello` substitutes the whole
-   closure (the darwin stdenv output `hqv865az-stdenv-darwin` is cached, HTTP 200)
-   and builds only hello. The bootstrap intermediates (`bootstrap-stage0-stdenv`,
-   HTTP 404) are only needed to *build* the stdenv, which we don't -- we fetch its
-   output. Fix on the host: `nix-store -r` of hello.drv's input drvs (29 paths,
-   7.5 MiB) so the overlay presents the full closure to the guest.
+   closure (the darwin stdenv output is cached, HTTP 200) and builds only hello. The
+   bootstrap intermediates (`bootstrap-stage0-stdenv-darwin`, HTTP 404) are only
+   needed to *build* the stdenv, which we don't -- we fetch its output. Fix on the
+   host: `nix-store -r` of hello.drv's input drvs (29 paths, 7.5 MiB) so the overlay
+   presents the full closure to the guest.
 6. **nix builds ONLY hello** -- unpackPhase, patchPhase, configurePhase run; ~15
    configure checks pass, each running nix-substituted tools (coreutils `install`,
    `mkdir`, gawk, gnutar, make) successfully under Darling.
 
-## The remaining blocker
+## The blocker: one missing libc++ symbol (`__libcpp_verbose_abort`) -- FIXED
 
-configure's compiler check (`checking whether the C compiler works`) fails at the
-first `clang` invocation. Across two runs it failed two different ways:
-- run 1: the container **fork/exec-stalled** (mldr frozen, no clang spawned);
-- run 2: clang **`Abort trap: 6` (SIGABRT, core dumped)**.
+configure's compiler check (`checking whether the C compiler works`) failed at the
+first `clang` invocation, two different ways across runs (a fork/exec **stall**
+once, a **`SIGABRT`** the next). That variance *looked* like the darlingserver
+fork/exec/SIGCHLD concurrency bug, and was first filed as such -- **wrong**.
 
-Every other tool in configure ran fine, so this is not a broken toolchain per se --
-the variance (stall vs abort at the same step, host idle) is the signature of the
-**darlingserver / libsystem_kernel fork/exec/SIGCHLD concurrency bug** documented in
-plan/blockers.md, hit by the fork-heavy nix-stdenv configure (the lighter
-bootstrap-tools configure in the toolchain-M1 path does not trip it as readily).
+Running the build with `--keep-failed` and reading clang's own stderr
+(`conftest.err`) gave the real, deterministic cause:
 
-So the guest-Nix M1 is gated on the **same fork/exec concurrency issue** that the
-darlingserver perf work (P-series) and the Rust-rewrite candidate (plan/
-rust-rewrite-eval.md) target -- fixing that unblocks this.
+```
+dyld: Symbol not found: __ZNSt3__122__libcpp_verbose_abortEPKcz
+  Referenced from: .../llvm-21.1.8-lib/lib/libLLVM.dylib (built for Mac OS X 14.0)
+  Expected in: /usr/lib/libc++.1.dylib
+```
 
-### Isolated (2026-07-24 overnight)
+That is `std::__1::__libcpp_verbose_abort(char const*, ...)`, the single
+verbose-termination entry point libc++ gained in **LLVM 14**. Darling's libcxx is
+**LLVM 13** and never exported it, so the nixpkgs LLVM-21 clang/libLLVM cannot be
+loaded under Darling -- dyld aborts (the SIGABRT), or the aborting process leaves
+the container in the stalled state that masqueraded as the concurrency bug.
 
-- **Unwrapped clang runs fine standalone** under Darling (`clang 21.1.8 --version`
-  ok). So the toolchain is not broken.
-- The build uses the nix **cc-wrapper** (a bash script that forks to clang), so the
-  clang check is `configure -> sh -> cc-wrapper(bash) -> clang` -- an **extra fork
-  layer** vs the toolchain-M1 path (direct bootstrap clang, which works). That
-  deeper/fork-heavier process tree reliably trips the bug at the clang check.
-- A **retry loop does NOT get past** it -- attempts stall at the same step (the
-  failure is reliable, though it varies between a fork/exec stall and a SIGABRT).
-- Therefore the two ways forward are: (a) fix the darlingserver fork/exec/SIGCHLD
-  concurrency (the real fix; a sub-project), or (b) build hello with a **non-wrapper
-  CC** (fewer forks) -- which is essentially what the toolchain-M1 path already does.
-- **FD exhaustion ruled out**: host limit is 524288 (darlingserver inherits it), no
-  EMFILE in any log; the "failed to increase FD rlimit" warning is benign (it tries to
-  set nr_open=2e9, fails, stays at 524288). So it is the concurrency race, not a ceiling.
+**It is the only genuine libc++ gap.** `llvm-nm` over the *entire* nixpkgs clang
+closure (every binary + dylib under `clang-21.1.8/{bin,lib}`), filtered to
+top-level `std::__1` symbols and diffed against Darling's built
+`libc++.1.dylib` + `libc++abi.1.dylib`, yields exactly one missing symbol:
+`__ZNSt3__122__libcpp_verbose_abortEPKcz`. The other ~134 `std::__1` symbols
+libLLVM imports are all already exported.
 
-  So **toolchain M1 is the pragmatic "hello from source" answer today**; the official
-  guest-`nix build` path is 95% there and waits on the concurrency fix.
+### Fix
+
+Add `std::__1::__libcpp_verbose_abort` to Darling's libc++, mirroring the existing
+`std::pmr` addition: a self-contained `src/verbose_abort_std.cpp` (standard
+behaviour -- `vfprintf` the message to stderr, then `abort()`), forced to default
+visibility (libcxx builds `-fvisibility=hidden`) so it is actually exported, and
+listed in the libcxx `CMakeLists.txt`. Carried in
+`patches/libcxx/0001-build-std-filesystem-into-libcxx.patch`. The compiled object
+exports exactly `_ZNSt3__122__libcpp_verbose_abortEPKcz` (verified with `llvm-nm`
+before the rebuild).
+
+This was never the concurrency issue; the toolchain-M1 path avoids it only because
+the in-tree bootstrap clang (LLVM 13-era) does not reference the LLVM-14 symbol.
 
 ## Reproduce
 
@@ -87,4 +96,6 @@ nix-store --dump-db <closure minus hello output> > hello-db.dump
 touch <prefix>/.enable-writable-nix
 DPREFIX=<prefix> darling shell sh gnix-hello.sh
 ```
-`scripts/gnix-hello.sh` carries the full recipe.
+
+`scripts/gnix-hello.sh` carries the full recipe; run with `--keep-failed` (already
+set) to inspect any future build-dir failure via `conftest.err`.
