@@ -590,3 +590,34 @@ Possible directions:
    identify the offending job in the launchd plist set).
 3. Bypass full launchd: run guest nix in a thinner environment if darling allows it.
 4. Track upstream darlingserver; the boot may improve as that mode matures.
+
+## MAJOR CORRECTION (2026-07-24, re-evaluated critically): root = EVFILT_MACHPORT event delivery, NOT the TID3 semaphore
+
+Prior evaluation (opus 4.8) concluded the boot hangs on launchd TID3's
+never-signalled semaphore ("infinite loop / doesn't converge / upstream
+darlingserver immaturity, unfixable"). Re-examined the full trace critically -->
+that was WRONG (TID3 is just launchd's IDLE libdispatch manager, a symptom).
+
+The real, verified root cause is a deterministic launchd<->launchctl bootstrap
+DEADLOCK via broken EVFILT_MACHPORT delivery:
+- launchd forks launchctl (`bootstrap -S System`). launchctl starts, checks in,
+  sends its first bootstrap mach message to launchd, then blocks natively FOREVER
+  (last RPC at t+130ms, silent for the remaining 48s).
+- launchd opens an EVFILT_MACHPORT kqchan (KQ:0) on its bootstrap port. **Across
+  the whole boot it fires `_notify` ZERO times** (verified: "sending notification"
+  count for KQ:0 = 0). By contrast the EVFILT_PROC kqchan (KQ:1) fires correctly.
+- So when launchctl's message lands on launchd's watched port, launchd's kqueue
+  never wakes --> launchd never services the bootstrap --> launchctl deadlocks.
+- Minimal-launchd (trim /System/Library/LaunchDaemons to shellspawn+opendirectoryd
+  +iokitd) does NOT help (0/5): the hang is in the FIRST bootstrap message, before
+  any daemon plist is read. Semaphore-timeout-cap does NOT help (infinite by
+  design). Both ruled out with data.
+
+Fix locus: darlingserver dtape `ipc_mqueue_post()` (ipc_mqueue.c:805-816) fires
+`KNOTE(&mqueue->imq_klist, 0)` only if
+  ip_active(port) && ip_receiver_name!=MACH_PORT_NULL && is_active(ip_receiver)
+  && ipc_mqueue_has_klist(mqueue).
+For launchd's bootstrap port one of these is false, so KNOTE is skipped and the
+mach-port kqchan never notifies. Next: instrument which condition fails, then fix.
+This is a SPECIFIC, likely-fixable dtape gap -- not the vague "upstream immaturity"
+of the prior evaluation.
