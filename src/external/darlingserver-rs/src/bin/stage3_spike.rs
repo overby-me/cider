@@ -1,17 +1,19 @@
 //! Stage 3 make-or-break spike (plan/rust-spike-stage3.md).
 //!
-//! Hypothesis to falsify: a Rust-owned STACKFUL microthread can be entered by the
-//! loop, run C/XNU code that suspends it from inside a C call stack (via the
-//! daemon-supplied `thread_suspend` hook), be resumed later (`thread_resume`), and
-//! continue -- all across the dtape FFI, using the landed P1 fast context switch.
+//! Proves a Rust-owned stackful microthread can suspend from inside a C/XNU call
+//! stack (via the daemon-supplied thread_suspend hook) and resume across the dtape
+//! FFI, using the landed P1 fast context switch. Two phases, two suspend paths:
 //!
-//! Vehicle (zero new C): a `dtape_semaphore` at 0. A kernel microthread calls
-//! `dtape_semaphore_down_simple` (blocks -> thread_suspend); the loop calls
-//! `dtape_semaphore_up` (wakes -> thread_resume). Success = SPIKE_RESUMED_OK.
+//!   Phase 1 -- STACKFUL: a kernel microthread downs a dtape_semaphore (blocks ->
+//!     thread_suspend, continuation == NULL); the loop ups it -> thread_resume ->
+//!     down returns -> SPIKE_RESUMED_OK.
+//!   Phase 2 -- CONTINUATION: a microthread assert_wait + thread_block(continuation)
+//!     (blocks -> thread_suspend WITH a continuation; the old stack is discarded);
+//!     the loop thread_wakeup_prim -> thread_resume -> the daemon runs the
+//!     continuation on a FRESH stack -> SPIKE_CONT_RESUMED_OK.
 //!
-//! Arm A: FFI `dserver_fast_{get,set,make}context` (preserves P1). This is a faithful
-//! port of darlingserver's Thread::doWork / Thread::suspend (the getcontext-returns-
-//! twice idiom). Single-threaded loop; continuations/interrupts are out of scope.
+//! Arm A: FFI dserver_fast_{get,set,make}context (preserves P1). Faithful port of
+//! darlingserver's Thread::doWork / Thread::suspend. Single-threaded loop.
 //!
 //! DUCT_TAPE_LIB=<dir-with-the-.a's> cargo run --bin stage3-spike
 
@@ -26,7 +28,7 @@ use std::mem::MaybeUninit;
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-// ---- FFI: the dtape entry points + P1 context primitives + libsimple ----
+// ---- FFI: dtape entry points + P1 context primitives + a few raw XNU symbols ----
 extern "C" {
     fn dtape_init(hooks: *const dtape_hooks_t);
     fn dtape_task_create(parent: *mut dtape_task_t, nsid: u32, context: *mut c_void, arch: u32) -> *mut dtape_task_t;
@@ -42,33 +44,43 @@ extern "C" {
     fn dserver_fast_makecontext(ucp: *mut libc::ucontext_t, func: extern "C" fn(), argc: c_int, ...);
 
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
+
+    // Raw XNU scheduler primitives (in the duct-tape .a) for the continuation vehicle.
+    fn assert_wait(event: *const c_void, interruptible: c_int) -> c_int;
+    fn thread_block(continuation: Option<unsafe extern "C" fn(param: *mut c_void, wr: c_int)>) -> c_int;
+    fn thread_wakeup_prim(event: *const c_void, one_thread: c_int, result: c_int) -> c_int;
 }
+const THREAD_UNINT: c_int = 0; // wait_interrupt_t
+const THREAD_AWAKENED: c_int = 0; // wait_result_t
 
 const KERNEL_NSID_BASE: u64 = 1 << 22; // DTAPE_KERNEL_THREAD_ID_THRESHOLD
 const STACK_SIZE: usize = 512 * 1024;
 static NEXT_EID: AtomicU64 = AtomicU64::new(1);
 static NEXT_KTID: AtomicU64 = AtomicU64::new(KERNEL_NSID_BASE + 1);
 
-/// A Rust-owned stackful microthread (address-stable: always heap-boxed, handed to
-/// C as `*mut c_void` context; never moved while C holds the pointer).
+/// A Rust-owned stackful microthread (address-stable: heap-boxed, handed to C as
+/// `*mut c_void` context; never moved while C holds the pointer).
 struct Microthread {
-    resume_ctx: MaybeUninit<libc::ucontext_t>, // where the microthread is parked
+    resume_ctx: MaybeUninit<libc::ucontext_t>, // where a stackful microthread parks
     stack: Vec<u8>,
     suspended: bool,
     finished: bool,
     dtape_thread: *mut dtape_thread_t,
     interrupt_disable: u32,
     body: Option<Box<dyn FnOnce()>>,
+    // Set when the current suspend used a continuation: on resume, run this on a
+    // FRESH stack instead of returning to the (discarded) suspend point.
+    pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
 }
 
 thread_local! {
     static CURRENT: Cell<*mut Microthread> = const { Cell::new(std::ptr::null_mut()) };
     static RUN_QUEUE: RefCell<VecDeque<*mut Microthread>> = const { RefCell::new(VecDeque::new()) };
 }
-// Single-threaded spike: the loop's return context + the returns-twice flag are globals.
 static mut BACK_TO_TOP: MaybeUninit<libc::ucontext_t> = MaybeUninit::uninit();
 static mut RETURNING_TO_TOP: bool = false;
 static mut KERNEL_TASK: *mut dtape_task_t = std::ptr::null_mut();
+static EVENT: u8 = 0; // a wait-event address for the continuation vehicle
 
 fn cur() -> *mut Microthread {
     CURRENT.with(|c| c.get())
@@ -95,32 +107,56 @@ unsafe fn do_work(mt: *mut Microthread) {
     RETURNING_TO_TOP = true;
 
     if (*mt).suspended {
-        // resume the parked microthread (stackful)
         (*mt).suspended = false;
-        dserver_fast_setcontext((*mt).resume_ctx.as_ptr());
-        unreachable!("setcontext returned");
+        if (*mt).pending_cont.is_some() {
+            // CONTINUATION resume: run the continuation on a fresh stack.
+            let uc = (*mt).resume_ctx.as_mut_ptr();
+            dserver_fast_getcontext(uc);
+            (*uc).uc_stack.ss_sp = (*mt).stack.as_mut_ptr() as *mut c_void;
+            (*uc).uc_stack.ss_size = (*mt).stack.len();
+            (*uc).uc_link = BACK_TO_TOP.as_mut_ptr();
+            dserver_fast_makecontext(uc, continuation_trampoline, 0);
+            dserver_fast_setcontext(uc);
+            unreachable!("setcontext returned");
+        } else {
+            // STACKFUL resume: jump back into the parked microthread.
+            dserver_fast_setcontext((*mt).resume_ctx.as_ptr());
+            unreachable!("setcontext returned");
+        }
     } else {
-        // first entry: build a fresh stack + trampoline
+        // First entry: build a fresh stack + body trampoline.
         let uc = (*mt).resume_ctx.as_mut_ptr();
         dserver_fast_getcontext(uc);
         (*uc).uc_stack.ss_sp = (*mt).stack.as_mut_ptr() as *mut c_void;
         (*uc).uc_stack.ss_size = (*mt).stack.len();
         (*uc).uc_link = BACK_TO_TOP.as_mut_ptr();
-        dserver_fast_makecontext(uc, trampoline, 0);
+        dserver_fast_makecontext(uc, body_trampoline, 0);
         dserver_fast_setcontext(uc);
         unreachable!("setcontext returned");
     }
 }
 
-/// Entry trampoline: run the microthread body once. When it returns, uc_link
-/// (BACK_TO_TOP) resumes do_work's getcontext (2nd return) -> finished.
-extern "C" fn trampoline() {
+/// First-entry trampoline: run the microthread body once.
+extern "C" fn body_trampoline() {
     unsafe {
         let mt = cur();
         if let Some(body) = (*mt).body.take() {
             body();
         }
-        // returns -> uc_link == BACK_TO_TOP
+        // returns -> uc_link == BACK_TO_TOP -> finished
+    }
+}
+
+/// Continuation-resume trampoline: run the stored continuation on the fresh stack.
+extern "C" fn continuation_trampoline() {
+    unsafe {
+        let mt = cur();
+        if let Some((cb, ctx)) = (*mt).pending_cont.take() {
+            if let Some(cb) = cb {
+                cb(ctx); // == thread_continuation_callback(thread) -> the real continuation
+            }
+        }
+        // returns -> uc_link == BACK_TO_TOP -> finished
     }
 }
 
@@ -142,27 +178,28 @@ unsafe extern "C" fn hook_current_thread() -> *mut dtape_thread_t {
 unsafe extern "C" fn hook_thread_suspend(
     thread_context: *mut c_void,
     continuation_callback: dtape_thread_continuation_callback_f,
-    _continuation_context: *mut c_void,
+    continuation_context: *mut c_void,
     unlock_me: *mut libsimple_lock_t,
 ) {
     let mt = thread_context as *mut Microthread;
-    if continuation_callback.is_some() {
-        // The spike proves the STACKFUL path; the continuation path is a separate
-        // follow-up. Make this loud rather than silently wrong.
-        eprintln!("SPIKE_UNSUPPORTED: thread_suspend with a continuation (stackful-only spike)");
-        std::process::abort();
-    }
     (*mt).suspended = true;
     if !unlock_me.is_null() {
         libsimple_lock_unlock(unlock_me);
     }
-    dserver_fast_getcontext((*mt).resume_ctx.as_mut_ptr()); // returns twice
-    if (*mt).suspended {
-        // first return: yield back to the loop
+    if continuation_callback.is_some() {
+        // CONTINUATION path: discard the current stack (reused on resume via a fresh
+        // makecontext) and yield to the loop WITHOUT saving a resume point.
+        (*mt).pending_cont = Some((continuation_callback, continuation_context));
         dserver_fast_setcontext(BACK_TO_TOP.as_ptr());
         unreachable!("setcontext returned");
     }
-    // second return: resumed -> fall through, the C caller (semaphore_wait) continues
+    // STACKFUL path: save the suspend point (returns twice) and yield.
+    dserver_fast_getcontext((*mt).resume_ctx.as_mut_ptr());
+    if (*mt).suspended {
+        dserver_fast_setcontext(BACK_TO_TOP.as_ptr());
+        unreachable!("setcontext returned");
+    }
+    // resumed -> fall through; the C caller (semaphore_wait) continues
 }
 unsafe extern "C" fn hook_thread_resume(thread_context: *mut c_void) {
     let mt = thread_context as *mut Microthread;
@@ -203,7 +240,6 @@ fn make_hooks() -> dtape_hooks_t {
     h
 }
 
-/// Heap-box a microthread + create its backing dtape_thread (context = the box).
 unsafe fn new_microthread(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
     let mt = Box::into_raw(Box::new(Microthread {
         resume_ctx: MaybeUninit::uninit(),
@@ -213,58 +249,71 @@ unsafe fn new_microthread(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) -> *
         dtape_thread: std::ptr::null_mut(),
         interrupt_disable: 0,
         body: Some(body),
+        pending_cont: None,
     }));
     let nsid = NEXT_KTID.fetch_add(1, Ordering::Relaxed);
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt
 }
 
+/// Drain the run queue (resumes woken microthreads) until empty.
+unsafe fn drain() {
+    loop {
+        let next = RUN_QUEUE.with(|q| q.borrow_mut().pop_front());
+        match next {
+            Some(mt) => do_work(mt),
+            None => break,
+        }
+    }
+}
+
+/// XNU continuation for phase 2: runs on a fresh stack after the wake.
+unsafe extern "C" fn phase2_continuation(_param: *mut c_void, _wr: c_int) {
+    println!("SPIKE_CONT_RESUMED_OK");
+}
+
 fn main() {
     unsafe {
         let hooks = make_hooks();
         dtape_init(&hooks);
-        eprintln!("[spike] dtape_init done");
-
-        // Kernel task handle (dtape_init already created it; this returns the existing one).
         KERNEL_TASK = dtape_task_create(std::ptr::null_mut(), 0, std::ptr::null_mut(), 0);
         assert!(!KERNEL_TASK.is_null(), "no kernel task");
+        eprintln!("[spike] dtape_init done; kernel task ready");
 
+        // ---- Phase 1: STACKFUL suspend/resume via a semaphore ----
         let sem = dtape_semaphore_create(KERNEL_TASK, 0);
         assert!(!sem.is_null(), "semaphore_create failed");
-        eprintln!("[spike] kernel task + semaphore(0) ready");
-
-        // The microthread that blocks on the semaphore.
         let sem_addr = sem as usize;
-        let spike = new_microthread(KERNEL_TASK, Box::new(move || {
-            eprintln!("[spike-mt] downing semaphore (will block -> suspend)...");
+        let p1 = new_microthread(KERNEL_TASK, Box::new(move || {
+            eprintln!("[p1-mt] downing semaphore (blocks -> stackful suspend)...");
             let ok = dtape_semaphore_down_simple(sem_addr as *mut dtape_semaphore_t);
-            if ok {
-                println!("SPIKE_RESUMED_OK");
-            } else {
-                println!("SPIKE_RESUMED_BUT_DOWN_FAILED");
-            }
+            println!("{}", if ok { "SPIKE_RESUMED_OK" } else { "SPIKE_RESUMED_BUT_DOWN_FAILED" });
         }));
-
-        // Enter it: it runs until it suspends inside semaphore_wait.
-        do_work(spike);
-        assert!((*spike).suspended, "microthread did not suspend on down");
-        assert!(!(*spike).finished);
-        eprintln!("[spike] microthread suspended; posting up");
-
-        // Wake it: semaphore_signal -> thread_resume -> re-queued.
+        do_work(p1);
+        assert!((*p1).suspended && !(*p1).finished, "p1 did not suspend");
+        eprintln!("[spike] p1 suspended (stackful); posting up");
         dtape_semaphore_up(sem);
+        drain();
+        assert!((*p1).finished, "p1 did not finish after resume");
+        eprintln!("[spike] Phase 1 (stackful) PROVEN.\n");
 
-        // Drain the run queue: resume the microthread -> down returns -> it finishes.
-        loop {
-            let next = RUN_QUEUE.with(|q| q.borrow_mut().pop_front());
-            match next {
-                Some(mt) => do_work(mt),
-                None => break,
-            }
-        }
+        // ---- Phase 2: CONTINUATION suspend/resume via assert_wait + thread_block ----
+        let p2 = new_microthread(KERNEL_TASK, Box::new(move || {
+            eprintln!("[p2-mt] assert_wait + thread_block(continuation) (blocks -> continuation suspend)...");
+            assert_wait(&EVENT as *const u8 as *const c_void, THREAD_UNINT);
+            thread_block(Some(phase2_continuation));
+            // With a continuation, thread_block does NOT return here on wake.
+            println!("SPIKE_CONT_UNEXPECTED_RETURN");
+        }));
+        do_work(p2);
+        assert!((*p2).suspended && !(*p2).finished, "p2 did not suspend");
+        assert!((*p2).pending_cont.is_some(), "p2 suspend was not a continuation");
+        eprintln!("[spike] p2 suspended (continuation, old stack discarded); waking");
+        thread_wakeup_prim(&EVENT as *const u8 as *const c_void, 0, THREAD_AWAKENED);
+        drain();
+        assert!((*p2).finished, "p2 did not finish after continuation resume");
+        eprintln!("[spike] Phase 2 (continuation) PROVEN.");
 
-        assert!((*spike).finished, "microthread did not finish after resume");
-        eprintln!("[spike] microthread finished. Stage 3 stackful suspend/resume: PROVEN.");
-        // (leak the box; process exits)
+        eprintln!("[spike] Stage 3 spike: BOTH suspend paths PROVEN across the dtape FFI.");
     }
 }
