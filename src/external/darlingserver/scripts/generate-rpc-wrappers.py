@@ -1722,7 +1722,17 @@ if len(sys.argv) > 5:
 		camel = to_camel_case(call[0])
 		rf.write("\tprintln!(\"RpcCall" + camel + " {} {}\", size_of::<RpcCall" + camel + ">(), align_of::<RpcCall" + camel + ">());\n")
 		rf.write("\tprintln!(\"RpcReply" + camel + " {} {}\", size_of::<RpcReply" + camel + ">(), align_of::<RpcReply" + camel + ">());\n")
-	rf.write("}\n")
+	rf.write("}\n\n")
+
+	# Dispatch helper: map a call number (with or without the unmanaged flag) to its name.
+	rf.write("/// The name of an RPC call number (unmanaged flag ignored), for dispatch/logging.\n")
+	rf.write("pub fn callnum_name(n: u32) -> Option<&'static str> {\n")
+	rf.write("\tmatch n & !callnum::UNMANAGED_FLAG {\n")
+	idx = 1
+	for call in calls:
+		rf.write("\t\t" + str(idx) + " => Some(\"" + call[0] + "\"),\n")
+		idx += 1
+	rf.write("\t\t_ => None,\n\t}\n}\n")
 	rf.close()
 
 # Optional 6th arg: a self-contained C size/align probe over the SAME structs, built

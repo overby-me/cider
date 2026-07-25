@@ -22,3 +22,6 @@ pub mod rpc_wire;
 
 /// The microthread scheduler + dtape hook layer.
 pub mod sched;
+
+/// Daemon-side RPC message I/O (receive/decode half of the loop).
+pub mod rpc_io;
