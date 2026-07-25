@@ -242,6 +242,12 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   queue); its continuation resumes, completes the receive (copyout), and delivers the
   result via `current_thread_syscall_return` (now wired). The message id round-trips
   (0xcafebabe) -> BLOCKING_MSG_OK. This is how real Darwin IPC (XPC, libdispatch) blocks.
+- **Persistent-thread doWork loop (bucket B.2, multi-call)** -- one long-lived guest
+  thread serves MANY RPC calls over its lifetime, parking between them and resuming on
+  the same stack, rather than a fresh microthread per call. `thread_call_loop_demo` runs
+  one thread through 3 task_self_trap calls via the generated dispatch, parking between
+  each; a per-thread counter reaches 3 and every reply names the same task self port ->
+  THREAD_LOOP_OK. The real darlingserver Thread model.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -270,11 +276,11 @@ template); the memory-touching ones depend on bucket B.
    Still open: `allocate_pages`/`free_pages`/`map_file`/`change_protection`, which are
    S2C calls (the daemon asks the guest to mmap on its own behalf), so they wait on
    the s2c path (item 5).
-2. **Persistent per-guest Threads** -- park/resume DONE: a blocked call's microthread
-   persists addressable by tid and the daemon resumes the SAME thread on the awaited
-   event, state preserved (`persistent_threads_demo`; registry run_thread/wake_thread).
-   Still open: the multi-call loop (one long-lived thread serving many calls) and the
-   checkin/checkout lifecycle (item 3).
+2. **Persistent per-guest Threads** -- DONE: a blocked call's microthread persists
+   addressable by tid and the daemon resumes the SAME thread on the awaited event, state
+   preserved (`persistent_threads_demo`); and one long-lived thread serves many calls via
+   the doWork loop, parking between them (`thread_call_loop_demo`). Registry
+   run_thread/wake_thread. Still open: the checkin/checkout lifecycle (item 3).
 3. **Process/Thread lifecycle** -- checkin/checkout, fork/exec, death monitoring +
    reaping (pidfd/waitpid), port death notifications.
 4. **The interrupt mechanism** -- signals delivered *during* a blocked call (nested

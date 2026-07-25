@@ -260,10 +260,13 @@
                 # thread's send wakes it, and its continuation completes via the
                 # current_thread_syscall_return hook.
                 run blocking_msg_demo  BLOCKING_MSG_OK
+                # The persistent-thread doWork loop: one long-lived guest thread serves
+                # multiple RPC calls via dispatch, parking between them (state preserved).
+                run thread_call_loop_demo THREAD_LOOP_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop)"
                 touch "$out"
               '';
 
