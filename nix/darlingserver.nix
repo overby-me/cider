@@ -93,6 +93,13 @@ stdenv.mkDerivation {
     runHook preInstall
     mkdir -p $out/bin
     cp src/external/darlingserver/darlingserver $out/bin/darlingserver
+
+    # Export the duct-tape + libsimple static libs for the Rust rewrite
+    # (darlingserver-rs consumes them via DUCT_TAPE_LIB). Built from committed
+    # source here, so a pure `nix build .#darlingserver-rs` works.
+    mkdir -p $out/rust-consume/lib
+    find . -name 'libdarlingserver_duct_tape.a' -exec cp -v {} $out/rust-consume/lib/ \; || true
+    find . -name 'liblibsimple_darlingserver.a'  -exec cp -v {} $out/rust-consume/lib/ \; || true
     runHook postInstall
   '';
 

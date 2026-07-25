@@ -133,6 +133,22 @@
           baseSrc = ./.;
         };
 
+      # ── Rust host-side rewrite of darlingserver ──────────────────────
+      #
+      # The Rust darlingserver (plan/rust-rewrite-eval.md), built reproducibly. It
+      # consumes the duct-tape + libsimple static libs exported by the standalone
+      # `darlingserver` package (built from committed source), bindgens the dtape
+      # hooks, and compiles fast_context.c (the P1 switch). Produces the proof/demo
+      # binaries incl. the capstone `daemon_demo`. See nix/darlingserver-rs.nix.
+      #   nix build .#darlingserver-rs
+      packages.darlingserver-rs =
+        pkgs:
+        import ./nix/darlingserver-rs.nix {
+          inherit pkgs;
+          darlingserver = pkgs.darlingserver;
+          src = ./.;
+        };
+
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
       # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,

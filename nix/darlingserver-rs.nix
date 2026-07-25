@@ -1,0 +1,52 @@
+# The Rust host-side rewrite of darlingserver, built reproducibly. It CONSUMES the
+# duct-tape + libsimple static libs exported by the standalone `darlingserver`
+# package (DUCT_TAPE_LIB), never rebuilds them -- the "consume, don't build" model
+# from prototype/rust-consume-model/. bindgen (via rustPlatform.bindgenHook) and the
+# cc crate (fast_context.c, the P1 switch) run at build time. See
+# plan/rust-rewrite-eval.md.
+#
+#   nix build .#darlingserver-rs
+{
+  pkgs,
+  darlingserver,
+  src,
+}:
+let
+  # Minimal source tree preserving the layout darlingserver-rs/build.rs's relative
+  # paths expect (crate + the source headers it bindgens + fast_context.c).
+  crateSrc = pkgs.runCommand "darlingserver-rs-src" { } ''
+    mkdir -p $out/src/external/darlingserver/duct-tape $out/src/external/darlingserver/src $out/src/libsimple
+    cp -r ${src}/src/external/darlingserver-rs $out/src/external/darlingserver-rs
+    cp -r ${src}/src/external/darlingserver/duct-tape/include $out/src/external/darlingserver/duct-tape/include
+    cp ${src}/src/external/darlingserver/src/fast_context.c $out/src/external/darlingserver/src/fast_context.c
+    cp -r ${src}/src/libsimple/include $out/src/libsimple/include
+  '';
+in
+pkgs.rustPlatform.buildRustPackage {
+  pname = "darlingserver-rs";
+  version = "0.0.0";
+
+  src = crateSrc;
+  sourceRoot = "darlingserver-rs-src/src/external/darlingserver-rs";
+  cargoLock.lockFile = src + "/src/external/darlingserver-rs/Cargo.lock";
+
+  # bindgenHook sets LIBCLANG_PATH + clang args for the dtape-hooks bindgen; clang
+  # also backs the cc crate that compiles fast_context.c.
+  nativeBuildInputs = [
+    pkgs.rustPlatform.bindgenHook
+    pkgs.clang
+  ];
+
+  # Link the prebuilt duct-tape from the standalone daemon build (committed source).
+  DUCT_TAPE_LIB = "${darlingserver}/rust-consume/lib";
+
+  # The proofs are `[[bin]]`s (dtape-link-proof, stage3-spike, rpc_*_*, *_demo, the
+  # daemon), not `#[test]`s, so there is nothing for `cargo test` to run.
+  doCheck = false;
+
+  meta = with pkgs.lib; {
+    description = "Rust host-side rewrite of darlingserver (Stage 4, work in progress)";
+    license = licenses.gpl3Plus;
+    platforms = [ "x86_64-linux" ];
+  };
+}
