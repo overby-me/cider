@@ -182,3 +182,79 @@ mldr -> **the suspend/resume spike (make-or-break, do early)** -> port the core
 preserving P0/P1/P2 -> gated cutover with the C++ daemon as fallback. Expect the
 payoff in the daemon's *own* lifetime/concurrency safety, not in emulation fidelity
 (the XNU stays `unsafe` C, so the fidelity bugs remain a separate track).
+
+## Status: what is implemented (2026-07-25)
+
+The plan above was executed through Stage 4's skeleton. On origin/main, in
+`src/external/darlingserver-rs` (a clean lib + 11 green bins + an automated parity
+gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
+
+- **Stage 0** -- links the real duct-tape `.a`; `dtape_init` runs the full XNU
+  subsystem init through Rust hooks (`dtape-link-proof` -> STAGE0_OK).
+- **Stage 3 (the make-or-break spike)** -- a Rust stackful microthread suspends
+  from inside XNU C and resumes across the FFI, **both** paths (stackful via a
+  semaphore; continuation via `thread_block`), on the FFI'd P1 `fast_context`
+  (`stage3-spike`). Promoted off `static mut` into the reusable `sched` module.
+- **Stage 1** -- the RPC wire codec is generated from the same `calls` list and is
+  **162/162 byte-identical to the C** (`scripts/rpc-wire-parity.sh`); the generator
+  also emits `callnum_name`, an `RpcHandler` trait (one defaulted method per call),
+  and a `dispatch()` that decodes/guards/invokes/encodes.
+- **Stage 4 (skeleton)** -- receive/decode + `SCM_RIGHTS` fds (`rpc_io`), per-guest
+  task routing (`registry`: pid -> dtape task), the epoll accept loop (`server`),
+  and the capstone `daemon_demo`: a real daemon that accepts a socket connection,
+  routes a call to the guest's task, runs the handler on a `sched` microthread
+  through the generated dispatch (real `dtape_task_uidgid`), and replies -- with XNU
+  state persisting across calls.
+
+So every load-bearing **mechanism** is proven in running code. What remains is
+breadth + infrastructure + cutover, none of it research.
+
+## What is missing to fully replace the C++ daemon
+
+### A. The ~78 unimplemented RPC handlers (breadth)
+The `RpcHandler` trait stubs every call to `ENOSYS`; ~3 are implemented (`uidgid`,
+`started_suspended`, `get_tracer`). The rest, by subsystem: **Mach IPC core**
+(`mach_msg` send/receive with port-right transfer + OOL descriptors; `mach_port_*`
+allocate/deallocate/insert/extract/move rights, port sets, dead-name notifications;
+task/thread/host self + bootstrap special ports), **VM** (allocate/deallocate/
+protect/read/write/remap, mmap), **thread** (get/set thread+float state, create/
+terminate/suspend/resume), **signals/exceptions**, **psynch**, **bsd traps**,
+**kqueue** (`EVFILT_MACHPORT`). Many are thin `dtape_*` wrappers (the `uidgid`
+template); the memory-touching ones depend on bucket B.
+
+### B. Daemon infrastructure (the actually-hard part -- not thin wrappers)
+1. **Guest-memory hooks** -- `task_read_memory`/`write_memory`/`allocate_pages`/
+   `map_file` via `/proc/<pid>/mem` + mmap; the hook vtable currently leaves them
+   null. `mach_msg`, vm, and thread-state all need them.
+2. **Persistent per-guest Threads** -- today one microthread per call; a real guest
+   thread must be long-lived (a blocked `mach_msg` receive suspends *that* thread
+   and resumes it on message arrival) with a tid -> Thread registry.
+3. **Process/Thread lifecycle** -- checkin/checkout, fork/exec, death monitoring +
+   reaping (pidfd/waitpid), port death notifications.
+4. **The interrupt mechanism** -- signals delivered *during* a blocked call (nested
+   microthreads, InterruptEnter/Exit, the sigexc path); the spike deferred this.
+5. **s2c (server->guest) calls + push replies** -- the daemon calling *into* the
+   guest (signal/exception delivery, continuations); only guest->daemon exists.
+6. **Multi-worker scheduling + thread-safe tables** -- the scheduler is single-worker
+   with thread-local state; real concurrency needs a shared work queue + locked
+   port/thread tables.
+7. **Timers** -- `timerfd` + `dtape_timer_fired` (`timer_arm` is a no-op today).
+8. **`kqchan`** (mach-port kqueue) -- the `EVFILT_MACHPORT` waiter mechanism; this
+   is exactly the launchd-boot area (task #47).
+9. **The container `main()`** -- mounts/namespaces/vchroot, spawning launchd (or the
+   bypass), the launcher handshake, and binding `<prefix>/.darlingserver.sock` (not
+   a `/tmp` demo path).
+
+### C. Cutover + validation
+A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for
+real: `darling shell` reaches a shell, `scripts/run-tests.sh` green, **M1 (guest Nix
+builds hello) through the Rust daemon**, and the spawn/IPC stress clean.
+
+### Scope + critical path
+The C++ daemon is ~7.4k lines; a full Rust replacement is comparable -- a multi-week
+focused effort, dominated by bucket B far more than the ~78 handlers. Critical path
+to a *usable* daemon: **memory hooks -> `mach_msg` -> persistent threads ->
+checkin/checkout lifecycle -> `kqchan`**, after which most handlers are thin and the
+cutover gate is M1 running on it. None of this is research -- the eval's risky
+questions are answered in running code; what is left is implementing known
+subsystems against a duct-tape API that already works from Rust.

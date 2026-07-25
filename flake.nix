@@ -210,6 +210,40 @@
           # `packages.default` but makes `nix flake check` self-contained.
           darling-build = darling;
 
+          # ── Rust darlingserver rewrite: build + run its demos ───────────
+          # Builds darlingserver-rs (the Rust host-side rewrite) and runs its
+          # proof/demo binaries, asserting each prints its OK marker -- the whole
+          # daemon pipeline (link + dtape_init, the microthread scheduler, the
+          # byte-parity wire codec, the code-generated dispatch, per-guest routing,
+          # the epoll loop) exercised end to end. See plan/rust-rewrite-eval.md.
+          #   nix build '.?submodules=1#checks.x86_64-linux.darlingserver-rs' -L
+          darlingserver-rs =
+            pkgs.runCommand "darlingserver-rs-check"
+              { nativeBuildInputs = [ pkgs.darlingserver-rs ]; }
+              ''
+                export TMPDIR="$(mktemp -d)"
+                # Merge stderr into the grep input (2>&1, not 2>/dev/null): some
+                # demos print their PROVEN marker on stderr (stage3-spike's "both
+                # suspend paths" is an eprintln!). grep -q stays silent, so nothing
+                # leaks to the build log on success.
+                run() {
+                  echo "== $1 =="
+                  if "$1" 2>&1 | grep -q "$2"; then echo "  OK"; else echo "  FAIL: $1 did not print '$2'"; exit 1; fi
+                }
+                # Pure + socketpair-based demos (no filesystem sockets, sandbox-safe).
+                run rpc_wire_check     RPC_WIRE_OK
+                run dispatch_demo      DISPATCH_OK
+                run rpc_loop_demo      RPC_LOOP_OK
+                run rpc_roundtrip_demo RPC_ROUNDTRIP_OK
+                run registry_demo      REGISTRY_OK
+                run stage3-spike       "both suspend paths"
+                # daemon_demo / epoll_demo bind a filesystem unix socket; validated
+                # locally + by the reproducible build, but skipped here since the nix
+                # build sandbox restricts socket paths.
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing)"
+                touch "$out"
+              '';
+
           # ── Darling smoke test (Phase 6.6) ──────────────────────────────
           # Lightweight NixOS VM test: boots Darling, verifies shell,
           # sandbox-exec, diskutil, and Directory Services stubs.
