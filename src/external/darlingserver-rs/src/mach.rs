@@ -17,13 +17,18 @@ extern "C" {
     // out to them via copyout -> the task_write_memory hook.
     fn dtape_mach_port_allocate(target: u32, right: i32, name_out: u64) -> i32;
     fn dtape_mach_port_deallocate(target: u32, name: u32) -> i32;
+    fn dtape_mach_port_type(target: u32, name: u32, ptype_out: u64) -> i32;
+    fn dtape_mach_port_mod_refs(target: u32, name: u32, right: i32, delta: i32) -> i32;
 }
 
 /// Mach port right kinds (MACH_PORT_RIGHT_*).
 pub const MACH_PORT_RIGHT_RECEIVE: i32 = 1;
 pub const MACH_PORT_RIGHT_DEAD_NAME: i32 = 4;
-/// kern_return_t success.
+/// Port type bit for a receive right: MACH_PORT_TYPE(MACH_PORT_RIGHT_RECEIVE) = 1 << 17.
+pub const MACH_PORT_TYPE_RECEIVE: u32 = 0x0002_0000;
+/// kern_return_t values.
 pub const KERN_SUCCESS: i32 = 0;
+pub const KERN_INVALID_NAME: i32 = 15;
 
 /// Port name of the current task's self-port.
 pub unsafe fn task_self_trap() -> u32 {
@@ -56,4 +61,17 @@ pub unsafe fn port_allocate(target: u32, right: i32, name_out: u64) -> i32 {
 /// named by `target`. Returns a kern_return_t.
 pub unsafe fn port_deallocate(target: u32, name: u32) -> i32 {
     dtape_mach_port_deallocate(target, name)
+}
+
+/// Query the type bits of the port name `name` in `target`'s ipc space; the
+/// MACH_PORT_TYPE_* mask is copied OUT to the guest address `ptype_out` (write_memory
+/// hook). Returns a kern_return_t (KERN_INVALID_NAME if the name does not exist).
+pub unsafe fn port_type(target: u32, name: u32, ptype_out: u64) -> i32 {
+    dtape_mach_port_type(target, name, ptype_out)
+}
+
+/// Change the user-reference count of the `right` on `name` by `delta` in `target`'s
+/// ipc space (delta -1 on a receive right destroys it). Returns a kern_return_t.
+pub unsafe fn port_mod_refs(target: u32, name: u32, right: i32, delta: i32) -> i32 {
+    dtape_mach_port_mod_refs(target, name, right, delta)
 }

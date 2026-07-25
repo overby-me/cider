@@ -250,6 +250,9 @@
                 # Real Mach port-right ops on a guest task: mach_port_allocate copies the
                 # name out to guest memory (the write_memory hook) + mach_port_deallocate.
                 run mach_port_demo     MACH_PORT_OK
+                # A full port-name lifecycle: allocate a receive right, query its type
+                # (mach_port_type copyout), destroy via mach_port_mod_refs, verify invalid.
+                run mach_port_lifecycle_demo MACH_PORT_LIFECYCLE_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
