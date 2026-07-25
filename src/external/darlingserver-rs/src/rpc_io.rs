@@ -10,6 +10,7 @@ use std::os::fd::RawFd;
 use std::os::raw::c_void;
 
 /// One received RPC message: the wire bytes + any passed file descriptors.
+#[derive(Clone)]
 pub struct Message {
     pub data: Vec<u8>,
     pub fds: Vec<RawFd>,
