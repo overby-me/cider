@@ -256,10 +256,14 @@
                 # The mach IPC core: a mach_msg send+receive loopback on a self-port
                 # (copyin via read_memory, ipc_mqueue routing, copyout via write_memory).
                 run mach_msg_demo      MACH_MSG_OK
+                # The async IPC pattern: a thread BLOCKS on mach_msg(RCV), a second
+                # thread's send wakes it, and its continuation completes via the
+                # current_thread_syscall_return hook.
+                run blocking_msg_demo  BLOCKING_MSG_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv)"
                 touch "$out"
               '';
 

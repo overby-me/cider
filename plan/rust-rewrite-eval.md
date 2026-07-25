@@ -236,6 +236,12 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   (copyinmsg -> read_memory), routed through the port's ipc_mqueue, and copied OUT to
   the guest buffer (copyoutmsg -> write_memory); the message id round-trips (0x12345678)
   -> MACH_MSG_OK. The crown jewel, composing memory hooks + port allocation + routing.
+- **Blocking mach_msg receive across threads (bucket A + B.2 capstone)** -- the async
+  IPC pattern: a thread does mach_msg(RCV) on an empty port and BLOCKS (thread_block with
+  a continuation, stack discarded); a second thread's send wakes it (thread_resume -> run
+  queue); its continuation resumes, completes the receive (copyout), and delivers the
+  result via `current_thread_syscall_return` (now wired). The message id round-trips
+  (0xcafebabe) -> BLOCKING_MSG_OK. This is how real Darwin IPC (XPC, libdispatch) blocks.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -249,8 +255,8 @@ special-port Mach traps (`task_self_trap`/`host_self_trap`/`thread_self_trap`/
 `mod_refs`, and `mach_msg_overwrite` (a send/receive loopback -- real messaging), all
 through real XNU (results/messages copied via the memory hooks), plus `uidgid`/
 `started_suspended`/`get_tracer`. The rest, by subsystem: **Mach IPC core**
-(`mach_msg` cross-task routing, send-right/OOL-descriptor transfer, and the blocking
-receive path -- the loopback proves the mechanism; `mach_port_*`
+(`mach_msg` cross-task routing and OOL-descriptor transfer -- the loopback plus a
+blocking cross-thread receive prove the send/receive/block/wake mechanism; `mach_port_*`
 allocate/deallocate/insert/extract/move rights, port sets, dead-name notifications;
 task/thread/host self + bootstrap special ports), **VM** (allocate/deallocate/
 protect/read/write/remap, mmap), **thread** (get/set thread+float state, create/

@@ -50,12 +50,19 @@ pub struct Microthread {
     interrupt_disable: u32,
     body: Option<Box<dyn FnOnce()>>,
     pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
+    // Set by the current_thread_syscall_return hook: the result a blocking call (e.g. a
+    // mach_msg receive that waited) delivered via its continuation instead of returning
+    // to the Rust caller. This is what the real daemon would put in the RPC reply.
+    syscall_return: Option<i32>,
 }
 
 impl Microthread {
     pub fn is_finished(&self) -> bool { self.finished }
     pub fn is_suspended(&self) -> bool { self.suspended }
     pub fn dtape_thread(&self) -> *mut dtape_thread_t { self.dtape_thread }
+    /// The result a blocking call delivered via thread_syscall_return (None if the call
+    /// returned normally instead of blocking). Cleared on read.
+    pub fn take_syscall_return(&mut self) -> Option<i32> { self.syscall_return.take() }
 }
 
 // ---- per-worker (per-OS-thread) state ----
@@ -96,6 +103,7 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         interrupt_disable: 0,
         body: Some(body),
         pending_cont: None,
+        syscall_return: None,
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt
@@ -304,6 +312,20 @@ mod hooks {
         let mt = current();
         if !mt.is_null() && (*mt).interrupt_disable > 0 { (*mt).interrupt_disable -= 1; }
     }
+    /// thread_syscall_return: a blocking call finished via its continuation (the stack
+    /// was discarded when it blocked, so it can't return to the Rust caller). Record the
+    /// result -- what the real daemon puts in the RPC reply -- and jump back to the
+    /// daemon (the run() top); the microthread is left suspended, its call complete.
+    /// thread_syscall_return is noreturn in XNU, so this never returns to its caller.
+    pub(super) unsafe extern "C" fn syscall_return(code: c_int) {
+        let mt = current();
+        if !mt.is_null() {
+            (*mt).syscall_return = Some(code);
+            (*mt).suspended = true;
+        }
+        dserver_fast_setcontext(back_to_top_ptr());
+        unreachable!("thread_syscall_return did not transfer control back to the daemon");
+    }
     pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn thread_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn get_load_info(li: *mut dtape_load_info_t) {
@@ -323,6 +345,7 @@ fn make_hooks() -> dtape_hooks_t {
     h.thread_terminate = Some(hooks::thread_terminate);
     h.current_thread_interrupt_disable = Some(hooks::interrupt_disable);
     h.current_thread_interrupt_enable = Some(hooks::interrupt_enable);
+    h.current_thread_syscall_return = Some(hooks::syscall_return);
     h.task_eternal_id = Some(hooks::task_eternal_id);
     h.thread_eternal_id = Some(hooks::thread_eternal_id);
     h.get_load_info = Some(hooks::get_load_info);
