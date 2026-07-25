@@ -1,9 +1,10 @@
-//! The daemon's epoll accept loop: a listening unix socket that accepts guest
-//! connections and multiplexes the receive -> dispatch -> reply cycle across many
-//! guests. The structural top of the daemon; call handlers plug in via the closure
-//! passed to `run`. See plan/rust-rewrite-eval.md (Stage 4).
+//! The daemon's socket loop: a bound AF_UNIX SOCK_DGRAM socket (SO_PASSCRED) over which
+//! every guest sends its RPC datagrams, multiplexed through one epoll into the receive ->
+//! dispatch -> reply cycle. Connectionless: replies go back to each sender's address.
+//! This matches the real guest transport (server.cpp:452); call handlers plug in via the
+//! closure passed to `run`. See plan/rust-rewrite-eval.md.
 
-use crate::rpc_io::{recv_message, send_message, Message};
+use crate::rpc_io::{recv_datagram, send_datagram, Message};
 use std::ffi::CString;
 use std::io;
 use std::mem::{size_of, zeroed};
@@ -28,12 +29,16 @@ pub struct Listener {
 }
 
 impl Listener {
-    /// Bind + listen on `path` (unlinked first) and register it with a fresh epoll.
+    /// Bind a SOCK_DGRAM socket with SO_PASSCRED on `path` (unlinked first) and register
+    /// it with a fresh epoll. Connectionless -- no listen/accept.
     pub fn bind(path: &str) -> io::Result<Listener> {
         let cpath = CString::new(path).unwrap();
         unsafe {
-            let listen_fd = cvt(libc::socket(libc::AF_UNIX, libc::SOCK_SEQPACKET, 0) as i64)? as RawFd;
+            let listen_fd = cvt(libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0) as i64)? as RawFd;
             libc::unlink(cpath.as_ptr());
+            // Receive the sender's credentials (pid/uid/gid) with each datagram.
+            let one: libc::c_int = 1;
+            cvt(libc::setsockopt(listen_fd, libc::SOL_SOCKET, libc::SO_PASSCRED, &one as *const _ as *const libc::c_void, size_of::<libc::c_int>() as libc::socklen_t) as i64)?;
             let mut addr: libc::sockaddr_un = zeroed();
             addr.sun_family = libc::AF_UNIX as _;
             let bytes = cpath.as_bytes_with_nul();
@@ -41,7 +46,6 @@ impl Listener {
             std::ptr::copy_nonoverlapping(bytes.as_ptr() as *const i8, addr.sun_path.as_mut_ptr(), bytes.len());
             let addrlen = (size_of::<libc::sa_family_t>() + bytes.len()) as libc::socklen_t;
             cvt(libc::bind(listen_fd, &addr as *const _ as *const libc::sockaddr, addrlen) as i64)?;
-            cvt(libc::listen(listen_fd, 128) as i64)?;
             set_nonblocking(listen_fd);
 
             let epfd = cvt(libc::epoll_create1(libc::EPOLL_CLOEXEC) as i64)? as RawFd;
@@ -55,53 +59,35 @@ impl Listener {
         self.path.to_str().unwrap()
     }
 
-    unsafe fn epoll_add(&self, fd: RawFd) {
-        let mut ev = libc::epoll_event { events: libc::EPOLLIN as u32, u64: fd as u64 };
-        libc::epoll_ctl(self.epfd, libc::EPOLL_CTL_ADD, fd, &mut ev);
-    }
-    unsafe fn epoll_del(&self, fd: RawFd) {
-        libc::epoll_ctl(self.epfd, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut());
-        libc::close(fd);
-    }
-
-    /// Run the epoll loop until `handle` has served `max_messages` messages. For each
-    /// received message, `handle` returns the reply bytes to send back (or None).
-    /// (`max_messages` bounds the loop for tests; a real daemon loops forever.)
+    /// Serve datagrams until `handle` has served `max_messages` (pass usize::MAX for a
+    /// real daemon that runs forever). For each datagram, `handle` returns the reply bytes
+    /// to send back to that sender (or None). An idle wait is NOT an error -- the loop just
+    /// blocks in epoll until the next datagram.
     pub fn run(&self, max_messages: usize, mut handle: impl FnMut(&Message) -> Option<Vec<u8>>) -> io::Result<()> {
         let mut served = 0usize;
-        let mut events: [libc::epoll_event; 64] = unsafe { zeroed() };
+        let mut events: [libc::epoll_event; 8] = unsafe { zeroed() };
         while served < max_messages {
-            let n = unsafe { libc::epoll_wait(self.epfd, events.as_mut_ptr(), events.len() as i32, 5000) };
+            // Block until the datagram socket is readable (no fatal idle timeout).
+            let n = unsafe { libc::epoll_wait(self.epfd, events.as_mut_ptr(), events.len() as i32, -1) };
             if n < 0 {
                 let e = io::Error::last_os_error();
                 if e.kind() == io::ErrorKind::Interrupted { continue; }
                 return Err(e);
             }
-            if n == 0 {
-                return Err(io::Error::new(io::ErrorKind::TimedOut, "epoll_wait timed out"));
-            }
-            for ev in &events[..n as usize] {
-                let fd = ev.u64 as RawFd;
-                if fd == self.listen_fd {
-                    // Drain the accept backlog (nonblocking).
-                    loop {
-                        let c = unsafe { libc::accept(self.listen_fd, std::ptr::null_mut(), std::ptr::null_mut()) };
-                        if c < 0 { break; }
-                        set_nonblocking(c);
-                        unsafe { self.epoll_add(c) };
-                    }
-                } else {
-                    match recv_message(fd) {
-                        Ok(Some(msg)) => {
-                            if let Some(reply) = handle(&msg) {
-                                let _ = send_message(fd, &reply, &[]);
-                            }
-                            served += 1;
+            // Drain all pending datagrams; reply to each sender's address.
+            loop {
+                match recv_datagram(self.listen_fd) {
+                    Ok(Some((msg, peer))) => {
+                        if let Some(reply) = handle(&msg) {
+                            let _ = send_datagram(self.listen_fd, &reply, &[], &peer);
                         }
-                        Ok(None) => unsafe { self.epoll_del(fd) }, // peer closed
-                        Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
-                        Err(_) => unsafe { self.epoll_del(fd) },
+                        served += 1;
+                        if served >= max_messages {
+                            break;
+                        }
                     }
+                    Ok(None) => break, // drained (WouldBlock)
+                    Err(_) => break,
                 }
             }
         }
@@ -119,11 +105,16 @@ impl Drop for Listener {
     }
 }
 
-/// Helper: connect a client SEQPACKET socket to a bound Listener path (for tests).
+/// Helper: a client DGRAM socket with the bound Listener path as its default peer (for
+/// tests). Autobinds first so the daemon's reply datagram has somewhere to go.
 pub fn connect(path: &str) -> io::Result<RawFd> {
     let cpath = CString::new(path).unwrap();
     unsafe {
-        let fd = cvt(libc::socket(libc::AF_UNIX, libc::SOCK_SEQPACKET, 0) as i64)? as RawFd;
+        let fd = cvt(libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0) as i64)? as RawFd;
+        // Autobind (empty address -> kernel assigns an abstract name) so replies reach us.
+        let mut anon: libc::sockaddr_un = zeroed();
+        anon.sun_family = libc::AF_UNIX as _;
+        let _ = libc::bind(fd, &anon as *const _ as *const libc::sockaddr, size_of::<libc::sa_family_t>() as libc::socklen_t);
         let mut addr: libc::sockaddr_un = zeroed();
         addr.sun_family = libc::AF_UNIX as _;
         let bytes = cpath.as_bytes_with_nul();

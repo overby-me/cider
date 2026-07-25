@@ -292,9 +292,14 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
        The guest's checkin send hit EPROTOTYPE (-91) against my SEQPACKET Listener. The
        socketpair demos passed only because both ends were SEQPACKET; the real protocol is
        connectionless datagrams with the sender's pid via SCM_CREDENTIALS and replies sent to
-       the sender's address. Switching the Listener + rpc_io to that model is the next fix.
+       the sender's address.
     2. **The serve loop must not treat an idle `epoll_wait` timeout as fatal** (it panicked
        after the guest gave up).
+  Both are now FIXED (rpc_io `recv_datagram`/`send_datagram` with SCM_CREDENTIALS + a
+  `SOCK_DGRAM`+`SO_PASSCRED` Listener that blocks in epoll instead of erroring) and
+  re-validated live: **the guest now checks in successfully** and advances into its boot to
+  `set_dyld_info`, the next unimplemented handler. The iteration loop (implement the next
+  call the guest needs -> advance further into boot) is open.
   Deferred vs the C++ (best-effort prefix work): setupUserHome, darlingPreInit,
   fixPermissions, the writable-/nix overlay, rlimits.
 
