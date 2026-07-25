@@ -798,3 +798,20 @@ Two darling changes make the rootless nix path cleaner (validated on mono20
 Note the 7 SDK build-tools (patchutils/cpio/pbzx/make-shell-wrapper-hook) that
 are not on cache.nixos.org for darwin are harmless: they produced the already-
 realised stdenv/SDK outputs and are not needed to build the leaf package.
+
+## Flakiness: intermittent SIGFPE in guest build/test binaries (2026-07-25)
+
+The guest-build path is not 100% deterministic. Running the SAME hello build
+several times, one run crashed with signal 8 (SIGFPE) at autoconf's `checking
+whether mbrtowc handles incomplete characters`, while M1 (x2) + pv + a fresh
+retry all passed that exact probe. So a deterministic C probe intermittently
+takes SIGFPE under darling -- an execution-fidelity flake (signal-delivery /
+FP-state / fork-exec fidelity), same family as the -111 boot band-aid (task #44),
+NOT a real build error. nix builds are atomic, so a fresh attempt re-runs
+configure and almost always passes.
+
+Mitigation (landed): scripts/gnix-build.sh and scripts/gnix-hello.sh retry the
+`nix build` up to 4x. This makes the tooling reliable in practice; the proper fix
+(darling signal/FP/exec fidelity) is task #44 and is deliberately not attempted
+overnight (it would destabilise the working M1). Reproducing the crash: just
+re-run scripts/build-pkg-bypass.sh hello hello a few times.

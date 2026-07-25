@@ -36,16 +36,30 @@ if nix-store --load-db < "/Volumes/SystemRoot$GDB" 2>&1 | tail -1; then :; fi
 
 echo "=NIXVER="; nix --version 2>&1 | head -1 || { echo NIX_RUN_FAIL; exit 1; }
 echo "=BUILD $GDRV="
-nix build --offline --no-link "${GDRV}^out" 2>&1
-echo "build_rc=$?"
+# ^* builds all outputs, so multi-output packages (bin/lib/dev/...) work too.
+# Retry: guest test/build binaries occasionally crash with a transient signal
+# (e.g. SIGFPE in an autoconf mbrtowc/locale probe) -- a darling execution-
+# fidelity flake, not a real build error (see plan/guest-nix-m1.md, task #44).
+# nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
+brc=1
+for attempt in 1 2 3 4; do
+	nix build --offline --no-link "${GDRV}^*" 2>&1
+	brc=$?
+	[ "$brc" -eq 0 ] && break
+	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."
+done
+echo "build_rc=$brc"
 
 if [ -n "${GBIN:-}" ]; then
 	echo "=RUN="
-	out=$(nix-store -q --outputs "$GDRV" 2>/dev/null | head -1)
-	if [ -x "$out/bin/$GBIN" ]; then
-		"$out/bin/$GBIN" --version 2>&1 | head -1; echo "run_rc=$?"
+	found=""
+	for out in $(nix-store -q --outputs "$GDRV" 2>/dev/null); do
+		if [ -x "$out/bin/$GBIN" ]; then found="$out/bin/$GBIN"; break; fi
+	done
+	if [ -n "$found" ]; then
+		"$found" --version 2>&1 | head -1; echo "run_rc=$?"
 	else
-		echo "no_bin $GBIN (out=$out)"
+		echo "no_bin $GBIN (outputs: $(nix-store -q --outputs "$GDRV" 2>/dev/null | tr '\n' ' '))"
 	fi
 fi
 echo "=PKG_DONE $GDRV="

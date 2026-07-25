@@ -285,3 +285,12 @@ contention that aggravated the fork/exec race. The launchd boot itself remains o
   xdmcp) → added the providers to `nix/package.nix` buildInputs.
 - **False 18-symbol libSystem gap** → `tbd-diff.py` now reads the exports trie
   (Darling re-exports str/mem funcs; `nm` missed them). Real gap ~0.
+
+- **Guest `nix build` under Darling is intermittently flaky (transient SIGFPE).**
+  (2026-07-25) A guest build/test binary occasionally crashes with signal 8
+  (SIGFPE) -- observed at hello's autoconf `mbrtowc handles incomplete characters`
+  probe, which passed in 4 other runs (M1 x2, pv, a retry). Execution-fidelity
+  flake (task #44 family), not a build-logic error. Mitigated by a 4x build retry
+  in scripts/gnix-build.sh / scripts/gnix-hello.sh (nix builds are atomic; a fresh
+  attempt re-runs configure and passes). Proper fix = darling signal/FP/fork-exec
+  fidelity (task #44); not overnight (would risk the working M1).

@@ -51,8 +51,18 @@ touch /nix/store/.wtest 2>/dev/null && { echo "nix_store_WRITABLE"; rm -f /nix/s
 
 echo "=BUILD="
 [ -e "$HELLO_DRV" ] || { echo "NO_HELLO_DRV"; exit 1; }
-nix build --offline --no-link -L "${HELLO_DRV}^out" 2>&1
-echo "build_rc=$?"
+# Retry: guest build/test binaries occasionally take a transient signal (e.g.
+# SIGFPE in an autoconf mbrtowc/locale probe) -- a darling execution-fidelity
+# flake, not a real build error (plan/guest-nix-m1.md, task #44). nix builds are
+# atomic, so a fresh attempt re-runs configure and usually passes.
+brc=1
+for attempt in 1 2 3 4; do
+	nix build --offline --no-link -L "${HELLO_DRV}^out" 2>&1
+	brc=$?
+	[ "$brc" -eq 0 ] && break
+	echo "build attempt $attempt failed (rc=$brc); retrying (transient-crash mitigation)..."
+done
+echo "build_rc=$brc"
 
 echo "=RUN="
 BIN=$(nix-store -q --outputs "$HELLO_DRV" 2>/dev/null | head -1)
