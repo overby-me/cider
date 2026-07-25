@@ -56,7 +56,8 @@ echo "== dumping hello.drv closure db -> $DUMP =="
 closure=$(nix-store -qR --include-outputs "$HELLO_DRV" 2>/dev/null | sort -u)
 nix-store --dump-db $closure > "$DUMP" || { echo "dump-db failed" >&2; exit 1; }
 export HELLO_DB_DUMP="$DUMP" HELLO_DRV NIXBIN
-export DSERVER_INIT=/usr/libexec/shellspawn   # <-- the launchd bypass
+export DARLING_NO_LAUNCHD=1   # <-- the launchd bypass (first-class env; runs
+                              #     shellspawn as guest PID1 instead of launchd)
 export DARLING_SHELL_STARTUP_TIMEOUT=90
 
 # 3. Warm-up boot: create the prefix skeleton (writable host-visible /var/run via

@@ -1134,6 +1134,7 @@ void setupPrefix()
 		"/usr/local",
 		"/usr/local/share",
 		"/private",
+		"/private/tmp",
 		"/private/var",
 		"/private/var/log",
 		"/private/var/db",

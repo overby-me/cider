@@ -263,6 +263,19 @@ void spawnLaunchd(const char* prefix)
 	const char* initPath = getenv("DSERVER_INIT");
 
 	if (!initPath) {
+		// Convenience: DARLING_NO_LAUNCHD=1 runs shellspawn directly as guest PID1,
+		// bypassing launchd's (currently deadlocking) `launchctl bootstrap -S System`,
+		// so `darling shell` reaches a rootless guest shell -- and guest Nix -- without
+		// launchd. shellspawn is a standalone unix-socket daemon with no launchd/mach
+		// dependency. Equivalent to DSERVER_INIT=/usr/libexec/shellspawn. See
+		// plan/guest-nix-m1.md. A full launchd boot stays the default (long-term goal).
+		const char* noLaunchd = getenv("DARLING_NO_LAUNCHD");
+		if (noLaunchd && (noLaunchd[0] == '1' || noLaunchd[0] == 't' || noLaunchd[0] == 'T')) {
+			initPath = "/usr/libexec/shellspawn";
+		}
+	}
+
+	if (!initPath) {
 		initPath = DARLINGSERVER_INIT_PROCESS;
 	}
 

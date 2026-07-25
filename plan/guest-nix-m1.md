@@ -773,3 +773,28 @@ band-aids and diagnose properly) remains worthwhile but is no longer M1-blocking
 
 Reproduce: `scripts/build-m1.sh` (in scratch; to be committed as a repo script) or
 manually: DSERVER_INIT=/usr/libexec/shellspawn + gnix-hello.sh in one darling shell.
+
+## Post-M1 hardening + generality (2026-07-25)
+
+Generality (NOT hello-specific): guest nix also builds **pv 1.10.5** (pipe viewer)
+from source via the bypass -> `build_rc=0`, `pv --version` -> `pv 1.10.5`. Same
+flow, different autotools C package. scripts/build-pkg-bypass.sh + scripts/gnix-build.sh
+generalise the M1 flow to any nixpkgs x86_64-darwin attr:
+`scripts/build-pkg-bypass.sh <attr> [binname]`.
+
+Two darling changes make the rootless nix path cleaner (validated on mono20
+`brcrshkik...`):
+- **DARLING_NO_LAUNCHD=1** (darlingserver.cpp spawnLaunchd): first-class,
+  documented launchd bypass -- runs /usr/libexec/shellspawn as guest PID1 when
+  DSERVER_INIT is unset. `NOLAUNCHD_SHELL_OK` confirmed. The full launchd boot
+  stays the default (long-term). Scripts now use this instead of the internal
+  DSERVER_INIT path.
+- **Writable /tmp** (darling.c setupPrefix): added /private/tmp to the prefix
+  skeleton so /tmp is a writable overlay-upper dir (like /var/run), not the
+  read-only 0555 base. `TMP_WRITABLE` + `PRIVTMP_WRITABLE` confirmed. A naive
+  guest `nix build` (default TMPDIR=/tmp) no longer needs the /Users/root
+  workaround.
+
+Note the 7 SDK build-tools (patchutils/cpio/pbzx/make-shell-wrapper-hook) that
+are not on cache.nixos.org for darwin are harmless: they produced the already-
+realised stdenv/SDK outputs and are not needed to build the leaf package.
