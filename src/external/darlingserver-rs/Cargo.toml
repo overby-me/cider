@@ -14,6 +14,15 @@ publish = false
 name = "dtape-link-proof"
 path = "src/main.rs"
 
+# Stage 3 make-or-break spike (plan/rust-spike-stage3.md): a stackful Rust
+# microthread suspends/resumes across the dtape FFI via a semaphore.
+[[bin]]
+name = "stage3-spike"
+path = "src/bin/stage3_spike.rs"
+
+[dependencies]
+libc = "0.2"
+
 [build-dependencies]
 bindgen = "0.69"
 cc = "1"
