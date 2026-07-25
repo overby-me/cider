@@ -253,10 +253,13 @@
                 # A full port-name lifecycle: allocate a receive right, query its type
                 # (mach_port_type copyout), destroy via mach_port_mod_refs, verify invalid.
                 run mach_port_lifecycle_demo MACH_PORT_LIFECYCLE_OK
+                # The mach IPC core: a mach_msg send+receive loopback on a self-port
+                # (copyin via read_memory, ipc_mqueue routing, copyout via write_memory).
+                run mach_msg_demo      MACH_MSG_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv)"
                 touch "$out"
               '';
 

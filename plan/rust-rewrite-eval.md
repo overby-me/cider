@@ -229,6 +229,13 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   receive right + a dead name and deallocate the dead name (MACH_PORT_OK); and a full
   name lifecycle -- allocate a receive right, query its type (0x20000, RECEIVE), destroy
   it with mod_refs(-1), then confirm the name is KERN_INVALID_NAME (MACH_PORT_LIFECYCLE_OK).
+- **mach_msg send/receive (bucket A, the mach IPC core)** -- a full mach_msg_overwrite
+  round trip through XNU on a guest task: allocate a receive-right port, then in one
+  MACH_SEND_MSG|MACH_RCV_MSG call send a header-only message to it (MAKE_SEND
+  destination) and receive it back. The message is copied IN from the guest buffer
+  (copyinmsg -> read_memory), routed through the port's ipc_mqueue, and copied OUT to
+  the guest buffer (copyoutmsg -> write_memory); the message id round-trips (0x12345678)
+  -> MACH_MSG_OK. The crown jewel, composing memory hooks + port allocation + routing.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -238,11 +245,12 @@ breadth + infrastructure + cutover, none of it research.
 ### A. The ~78 unimplemented RPC handlers (breadth)
 The `RpcHandler` trait defaults every call to `ENOSYS`; implemented so far: the
 special-port Mach traps (`task_self_trap`/`host_self_trap`/`thread_self_trap`/
-`mach_reply_port`) and the port-name ops `mach_port_allocate`/`deallocate`/`type`/
-`mod_refs` (real port rights, results copied out via the write_memory hook), all
-through real XNU, plus `uidgid`/`started_suspended`/`get_tracer`. The rest, by
-subsystem: **Mach IPC core**
-(`mach_msg` send/receive with port-right transfer + OOL descriptors; `mach_port_*`
+`mach_reply_port`), the port-name ops `mach_port_allocate`/`deallocate`/`type`/
+`mod_refs`, and `mach_msg_overwrite` (a send/receive loopback -- real messaging), all
+through real XNU (results/messages copied via the memory hooks), plus `uidgid`/
+`started_suspended`/`get_tracer`. The rest, by subsystem: **Mach IPC core**
+(`mach_msg` cross-task routing, send-right/OOL-descriptor transfer, and the blocking
+receive path -- the loopback proves the mechanism; `mach_port_*`
 allocate/deallocate/insert/extract/move rights, port sets, dead-name notifications;
 task/thread/host self + bootstrap special ports), **VM** (allocate/deallocate/
 protect/read/write/remap, mmap), **thread** (get/set thread+float state, create/

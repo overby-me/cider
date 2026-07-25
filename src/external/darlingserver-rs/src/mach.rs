@@ -19,6 +19,20 @@ extern "C" {
     fn dtape_mach_port_deallocate(target: u32, name: u32) -> i32;
     fn dtape_mach_port_type(target: u32, name: u32, ptype_out: u64) -> i32;
     fn dtape_mach_port_mod_refs(target: u32, name: u32, right: i32, delta: i32) -> i32;
+    // The mach_msg trap. `msg`/`rcv_msg` are GUEST addresses; the trap copies the
+    // message IN from `msg` (copyinmsg -> read_memory) and, on receive, copies it OUT
+    // to `rcv_msg` (copyoutmsg -> write_memory). Blocks via thread_suspend if a receive
+    // has to wait.
+    fn dtape_mach_msg_overwrite(
+        msg: u64,
+        option: i32,
+        send_size: u32,
+        rcv_size: u32,
+        rcv_name: u32,
+        timeout: u32,
+        priority: u32,
+        rcv_msg: u64,
+    ) -> i32;
 }
 
 /// Mach port right kinds (MACH_PORT_RIGHT_*).
@@ -74,4 +88,32 @@ pub unsafe fn port_type(target: u32, name: u32, ptype_out: u64) -> i32 {
 /// ipc space (delta -1 on a receive right destroys it). Returns a kern_return_t.
 pub unsafe fn port_mod_refs(target: u32, name: u32, right: i32, delta: i32) -> i32 {
     dtape_mach_port_mod_refs(target, name, right, delta)
+}
+
+/// The mach_msg trap on the current task. `msg` points to the message to send (guest
+/// address); on receive the dequeued message is copied to `rcv_msg`. Returns a
+/// mach_msg_return_t (MACH_MSG_SUCCESS == 0).
+#[allow(clippy::too_many_arguments)]
+pub unsafe fn msg_overwrite(
+    msg: u64,
+    option: i32,
+    send_size: u32,
+    rcv_size: u32,
+    rcv_name: u32,
+    timeout: u32,
+    priority: u32,
+    rcv_msg: u64,
+) -> i32 {
+    dtape_mach_msg_overwrite(msg, option, send_size, rcv_size, rcv_name, timeout, priority, rcv_msg)
+}
+
+/// mach_msg option bits.
+pub const MACH_SEND_MSG: i32 = 0x0000_0001;
+pub const MACH_RCV_MSG: i32 = 0x0000_0002;
+/// Remote-port disposition: make a send right from a named receive right (lets a task
+/// send to a port it holds the receive right for, no separate insert_right needed).
+pub const MACH_MSG_TYPE_MAKE_SEND: u32 = 20;
+/// MACH_MSGH_BITS(remote, local): assemble the header bits field.
+pub const fn msgh_bits(remote: u32, local: u32) -> u32 {
+    remote | (local << 8)
 }
