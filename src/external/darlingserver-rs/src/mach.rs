@@ -12,7 +12,18 @@ extern "C" {
     fn dtape_host_self_trap() -> u32;
     fn dtape_thread_self_trap() -> u32;
     fn dtape_mach_reply_port() -> u32;
+    // Generated dtape trap wrappers (they call the XNU _kernelrpc_*_trap on the current
+    // task's ipc space). `name`/`name_out` are GUEST addresses; the trap copies results
+    // out to them via copyout -> the task_write_memory hook.
+    fn dtape_mach_port_allocate(target: u32, right: i32, name_out: u64) -> i32;
+    fn dtape_mach_port_deallocate(target: u32, name: u32) -> i32;
 }
+
+/// Mach port right kinds (MACH_PORT_RIGHT_*).
+pub const MACH_PORT_RIGHT_RECEIVE: i32 = 1;
+pub const MACH_PORT_RIGHT_DEAD_NAME: i32 = 4;
+/// kern_return_t success.
+pub const KERN_SUCCESS: i32 = 0;
 
 /// Port name of the current task's self-port.
 pub unsafe fn task_self_trap() -> u32 {
@@ -32,4 +43,17 @@ pub unsafe fn thread_self_trap() -> u32 {
 /// Allocate a fresh reply port in the current task's IPC space; returns its name.
 pub unsafe fn mach_reply_port() -> u32 {
     dtape_mach_reply_port()
+}
+
+/// Allocate a port right (`right`: RECEIVE=1, PORT_SET=3, DEAD_NAME=4) in the task
+/// named by `target` in the current ipc space. The allocated name is copied OUT to the
+/// guest address `name_out` (via the write_memory hook). Returns a kern_return_t.
+pub unsafe fn port_allocate(target: u32, right: i32, name_out: u64) -> i32 {
+    dtape_mach_port_allocate(target, right, name_out)
+}
+
+/// Release a user reference for the send/send-once/dead-name right `name` in the task
+/// named by `target`. Returns a kern_return_t.
+pub unsafe fn port_deallocate(target: u32, name: u32) -> i32 {
+    dtape_mach_port_deallocate(target, name)
 }

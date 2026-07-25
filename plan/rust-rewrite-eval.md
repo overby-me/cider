@@ -223,6 +223,11 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   arrives, state preserved and threads isolated. `persistent_threads_demo` blocks two
   threads, wakes each independently, and each reply combines a pre-block stack-local
   with the delivered payload -> PERSISTENT_THREADS_OK.
+- **Mach port-right ops (bucket A)** -- `mach_port_allocate` / `mach_port_deallocate`
+  served through the XNU trap on a guest task: allocate a receive right and a dead name
+  (canonical names 0x203/0x303), the allocated name copied OUT to guest memory via the
+  write_memory hook (copyoutmap -> task_write_memory), then deallocate the dead name.
+  All KERN_SUCCESS -> MACH_PORT_OK -- the port machinery composed with the memory hooks.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -232,7 +237,8 @@ breadth + infrastructure + cutover, none of it research.
 ### A. The ~78 unimplemented RPC handlers (breadth)
 The `RpcHandler` trait defaults every call to `ENOSYS`; implemented so far: the
 special-port Mach traps (`task_self_trap`/`host_self_trap`/`thread_self_trap`/
-`mach_reply_port`, returning canonical port names through real XNU), plus `uidgid`/
+`mach_reply_port`) and `mach_port_allocate`/`mach_port_deallocate` (real port rights,
+the name copied out via the write_memory hook), all through real XNU, plus `uidgid`/
 `started_suspended`/`get_tracer`. The rest, by subsystem: **Mach IPC core**
 (`mach_msg` send/receive with port-right transfer + OOL descriptors; `mach_port_*`
 allocate/deallocate/insert/extract/move rights, port sets, dead-name notifications;

@@ -247,10 +247,13 @@
                 # A guest thread blocks mid-call, persists addressable by tid, and is
                 # resumed by the daemon on the same stack (the mach_msg receive shape).
                 run persistent_threads_demo PERSISTENT_THREADS_OK
+                # Real Mach port-right ops on a guest task: mach_port_allocate copies the
+                # name out to guest memory (the write_memory hook) + mach_port_deallocate.
+                run mach_port_demo     MACH_PORT_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops)"
                 touch "$out"
               '';
 
