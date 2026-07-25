@@ -1969,3 +1969,560 @@ pub fn callnum_name(n: u32) -> Option<&'static str> {
 		_ => None,
 	}
 }
+
+use crate::rpc_io::Message;
+use std::os::fd::RawFd;
+use std::mem::size_of;
+
+/// Error code returned by an unimplemented handler (-ENOSYS).
+pub const ENOSYS: i32 = -38;
+/// Error code for a malformed (too-short) request body (-EINVAL).
+pub const EINVAL: i32 = -22;
+
+/// Implement one method per RPC call to handle it. Every method defaults to
+/// returning ENOSYS, so a handler can be built up incrementally. `fds` are the
+/// SCM_RIGHTS descriptors passed with the call.
+#[allow(unused_variables)]
+pub trait RpcHandler {
+	fn checkin(&mut self, call: &CallCheckin, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn checkout(&mut self, call: &CallCheckout, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn vchroot_path(&mut self, call: &CallVchrootPath, fds: &[RawFd]) -> Result<ReplyVchrootPath, i32> { Err(ENOSYS) }
+	fn kprintf(&mut self, call: &CallKprintf, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn started_suspended(&mut self, fds: &[RawFd]) -> Result<ReplyStartedSuspended, i32> { Err(ENOSYS) }
+	fn get_tracer(&mut self, fds: &[RawFd]) -> Result<ReplyGetTracer, i32> { Err(ENOSYS) }
+	fn uidgid(&mut self, call: &CallUidgid, fds: &[RawFd]) -> Result<ReplyUidgid, i32> { Err(ENOSYS) }
+	fn set_thread_handles(&mut self, call: &CallSetThreadHandles, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn vchroot(&mut self, call: &CallVchroot, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mldr_path(&mut self, call: &CallMldrPath, fds: &[RawFd]) -> Result<ReplyMldrPath, i32> { Err(ENOSYS) }
+	fn fork_wait_for_child(&mut self, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn sigprocess(&mut self, call: &CallSigprocess, fds: &[RawFd]) -> Result<ReplySigprocess, i32> { Err(ENOSYS) }
+	fn task_is_64_bit(&mut self, call: &CallTaskIs64Bit, fds: &[RawFd]) -> Result<ReplyTaskIs64Bit, i32> { Err(ENOSYS) }
+	fn interrupt_enter(&mut self, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn interrupt_exit(&mut self, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn console_open(&mut self, fds: &[RawFd]) -> Result<ReplyConsoleOpen, i32> { Err(ENOSYS) }
+	fn set_dyld_info(&mut self, call: &CallSetDyldInfo, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn stop_after_exec(&mut self, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn set_tracer(&mut self, call: &CallSetTracer, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn tid_for_thread(&mut self, call: &CallTidForThread, fds: &[RawFd]) -> Result<ReplyTidForThread, i32> { Err(ENOSYS) }
+	fn ptrace_sigexc(&mut self, call: &CallPtraceSigexc, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn ptrace_thupdate(&mut self, call: &CallPtraceThupdate, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn thread_suspended(&mut self, call: &CallThreadSuspended, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn s2c_perform(&mut self, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn set_executable_path(&mut self, call: &CallSetExecutablePath, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn get_executable_path(&mut self, call: &CallGetExecutablePath, fds: &[RawFd]) -> Result<ReplyGetExecutablePath, i32> { Err(ENOSYS) }
+	fn groups(&mut self, call: &CallGroups, fds: &[RawFd]) -> Result<ReplyGroups, i32> { Err(ENOSYS) }
+	fn kqchan_mach_port_open(&mut self, call: &CallKqchanMachPortOpen, fds: &[RawFd]) -> Result<ReplyKqchanMachPortOpen, i32> { Err(ENOSYS) }
+	fn kqchan_proc_open(&mut self, call: &CallKqchanProcOpen, fds: &[RawFd]) -> Result<ReplyKqchanProcOpen, i32> { Err(ENOSYS) }
+	fn pthread_kill(&mut self, call: &CallPthreadKill, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn pthread_canceled(&mut self, call: &CallPthreadCanceled, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn pthread_markcancel(&mut self, call: &CallPthreadMarkcancel, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn task_self_trap(&mut self, fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> { Err(ENOSYS) }
+	fn host_self_trap(&mut self, fds: &[RawFd]) -> Result<ReplyHostSelfTrap, i32> { Err(ENOSYS) }
+	fn thread_self_trap(&mut self, fds: &[RawFd]) -> Result<ReplyThreadSelfTrap, i32> { Err(ENOSYS) }
+	fn mach_reply_port(&mut self, fds: &[RawFd]) -> Result<ReplyMachReplyPort, i32> { Err(ENOSYS) }
+	fn thread_get_special_reply_port(&mut self, fds: &[RawFd]) -> Result<ReplyThreadGetSpecialReplyPort, i32> { Err(ENOSYS) }
+	fn mach_msg_overwrite(&mut self, call: &CallMachMsgOverwrite, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_deallocate(&mut self, call: &CallMachPortDeallocate, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_allocate(&mut self, call: &CallMachPortAllocate, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_mod_refs(&mut self, call: &CallMachPortModRefs, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_move_member(&mut self, call: &CallMachPortMoveMember, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_insert_right(&mut self, call: &CallMachPortInsertRight, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_insert_member(&mut self, call: &CallMachPortInsertMember, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_extract_member(&mut self, call: &CallMachPortExtractMember, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_construct(&mut self, call: &CallMachPortConstruct, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_destruct(&mut self, call: &CallMachPortDestruct, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_guard(&mut self, call: &CallMachPortGuard, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_unguard(&mut self, call: &CallMachPortUnguard, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_request_notification(&mut self, call: &CallMachPortRequestNotification, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_get_attributes(&mut self, call: &CallMachPortGetAttributes, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_port_type(&mut self, call: &CallMachPortType, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn task_for_pid(&mut self, call: &CallTaskForPid, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn task_name_for_pid(&mut self, call: &CallTaskNameForPid, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn pid_for_task(&mut self, call: &CallPidForTask, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_vm_allocate(&mut self, call: &CallMachVmAllocate, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mach_vm_deallocate(&mut self, call: &CallMachVmDeallocate, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_signal(&mut self, call: &CallSemaphoreSignal, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_signal_all(&mut self, call: &CallSemaphoreSignalAll, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_wait(&mut self, call: &CallSemaphoreWait, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_wait_signal(&mut self, call: &CallSemaphoreWaitSignal, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_timedwait(&mut self, call: &CallSemaphoreTimedwait, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn semaphore_timedwait_signal(&mut self, call: &CallSemaphoreTimedwaitSignal, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mk_timer_create(&mut self, fds: &[RawFd]) -> Result<ReplyMkTimerCreate, i32> { Err(ENOSYS) }
+	fn mk_timer_destroy(&mut self, call: &CallMkTimerDestroy, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mk_timer_arm(&mut self, call: &CallMkTimerArm, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn mk_timer_cancel(&mut self, call: &CallMkTimerCancel, fds: &[RawFd]) -> Result<(), i32> { Err(ENOSYS) }
+	fn psynch_cvbroad(&mut self, call: &CallPsynchCvbroad, fds: &[RawFd]) -> Result<ReplyPsynchCvbroad, i32> { Err(ENOSYS) }
+	fn psynch_cvclrprepost(&mut self, call: &CallPsynchCvclrprepost, fds: &[RawFd]) -> Result<ReplyPsynchCvclrprepost, i32> { Err(ENOSYS) }
+	fn psynch_cvsignal(&mut self, call: &CallPsynchCvsignal, fds: &[RawFd]) -> Result<ReplyPsynchCvsignal, i32> { Err(ENOSYS) }
+	fn psynch_cvwait(&mut self, call: &CallPsynchCvwait, fds: &[RawFd]) -> Result<ReplyPsynchCvwait, i32> { Err(ENOSYS) }
+	fn psynch_mutexdrop(&mut self, call: &CallPsynchMutexdrop, fds: &[RawFd]) -> Result<ReplyPsynchMutexdrop, i32> { Err(ENOSYS) }
+	fn psynch_mutexwait(&mut self, call: &CallPsynchMutexwait, fds: &[RawFd]) -> Result<ReplyPsynchMutexwait, i32> { Err(ENOSYS) }
+	fn psynch_rw_rdlock(&mut self, call: &CallPsynchRwRdlock, fds: &[RawFd]) -> Result<ReplyPsynchRwRdlock, i32> { Err(ENOSYS) }
+	fn psynch_rw_unlock(&mut self, call: &CallPsynchRwUnlock, fds: &[RawFd]) -> Result<ReplyPsynchRwUnlock, i32> { Err(ENOSYS) }
+	fn psynch_rw_wrlock(&mut self, call: &CallPsynchRwWrlock, fds: &[RawFd]) -> Result<ReplyPsynchRwWrlock, i32> { Err(ENOSYS) }
+	fn debug_list_processes(&mut self, fds: &[RawFd]) -> Result<ReplyDebugListProcesses, i32> { Err(ENOSYS) }
+	fn debug_list_ports(&mut self, call: &CallDebugListPorts, fds: &[RawFd]) -> Result<ReplyDebugListPorts, i32> { Err(ENOSYS) }
+	fn debug_list_members(&mut self, call: &CallDebugListMembers, fds: &[RawFd]) -> Result<ReplyDebugListMembers, i32> { Err(ENOSYS) }
+	fn debug_list_messages(&mut self, call: &CallDebugListMessages, fds: &[RawFd]) -> Result<ReplyDebugListMessages, i32> { Err(ENOSYS) }
+}
+
+/// Decode `msg`, invoke the matching RpcHandler method, and encode the reply
+/// bytes to send back (None if the call number is unknown).
+pub fn dispatch<H: RpcHandler>(h: &mut H, msg: &Message) -> Option<Vec<u8>> {
+	let hdr = msg.header()?;
+	let n = hdr.number;
+	fn enc<T>(v: &T) -> Vec<u8> { unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }.to_vec() }
+	match n & !callnum::UNMANAGED_FLAG {
+		1 => {
+			if msg.body().len() < size_of::<CallCheckin>() { return Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallCheckin = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.checkin(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyCheckin { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		2 => {
+			if msg.body().len() < size_of::<CallCheckout>() { return Some(enc(&RpcReplyCheckout { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallCheckout = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.checkout(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyCheckout { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		3 => {
+			if msg.body().len() < size_of::<CallVchrootPath>() { return Some(enc(&RpcReplyVchrootPath { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallVchrootPath = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.vchroot_path(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyVchrootPath { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		4 => {
+			if msg.body().len() < size_of::<CallKprintf>() { return Some(enc(&RpcReplyKprintf { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallKprintf = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.kprintf(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyKprintf { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		5 => {
+			let (code, body) = match h.started_suspended(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyStartedSuspended { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		6 => {
+			let (code, body) = match h.get_tracer(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyGetTracer { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		7 => {
+			if msg.body().len() < size_of::<CallUidgid>() { return Some(enc(&RpcReplyUidgid { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallUidgid = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.uidgid(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyUidgid { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		8 => {
+			if msg.body().len() < size_of::<CallSetThreadHandles>() { return Some(enc(&RpcReplySetThreadHandles { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSetThreadHandles = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.set_thread_handles(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySetThreadHandles { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		9 => {
+			if msg.body().len() < size_of::<CallVchroot>() { return Some(enc(&RpcReplyVchroot { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallVchroot = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.vchroot(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyVchroot { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		10 => {
+			if msg.body().len() < size_of::<CallMldrPath>() { return Some(enc(&RpcReplyMldrPath { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallMldrPath = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.mldr_path(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyMldrPath { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		11 => {
+			let code = match h.fork_wait_for_child(&msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyForkWaitForChild { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		12 => {
+			if msg.body().len() < size_of::<CallSigprocess>() { return Some(enc(&RpcReplySigprocess { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallSigprocess = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.sigprocess(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplySigprocess { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		13 => {
+			if msg.body().len() < size_of::<CallTaskIs64Bit>() { return Some(enc(&RpcReplyTaskIs64Bit { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallTaskIs64Bit = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.task_is_64_bit(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyTaskIs64Bit { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		14 => {
+			let code = match h.interrupt_enter(&msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyInterruptEnter { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		15 => {
+			let code = match h.interrupt_exit(&msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyInterruptExit { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		16 => {
+			let (code, body) = match h.console_open(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyConsoleOpen { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		17 => {
+			if msg.body().len() < size_of::<CallSetDyldInfo>() { return Some(enc(&RpcReplySetDyldInfo { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSetDyldInfo = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.set_dyld_info(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySetDyldInfo { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		18 => {
+			let code = match h.stop_after_exec(&msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyStopAfterExec { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		19 => {
+			if msg.body().len() < size_of::<CallSetTracer>() { return Some(enc(&RpcReplySetTracer { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSetTracer = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.set_tracer(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySetTracer { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		20 => {
+			if msg.body().len() < size_of::<CallTidForThread>() { return Some(enc(&RpcReplyTidForThread { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallTidForThread = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.tid_for_thread(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyTidForThread { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		21 => {
+			if msg.body().len() < size_of::<CallPtraceSigexc>() { return Some(enc(&RpcReplyPtraceSigexc { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPtraceSigexc = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.ptrace_sigexc(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPtraceSigexc { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		22 => {
+			if msg.body().len() < size_of::<CallPtraceThupdate>() { return Some(enc(&RpcReplyPtraceThupdate { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPtraceThupdate = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.ptrace_thupdate(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPtraceThupdate { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		23 => {
+			if msg.body().len() < size_of::<CallThreadSuspended>() { return Some(enc(&RpcReplyThreadSuspended { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallThreadSuspended = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.thread_suspended(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyThreadSuspended { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		24 => {
+			let code = match h.s2c_perform(&msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyS2CPerform { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		25 => {
+			if msg.body().len() < size_of::<CallSetExecutablePath>() { return Some(enc(&RpcReplySetExecutablePath { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSetExecutablePath = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.set_executable_path(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySetExecutablePath { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		26 => {
+			if msg.body().len() < size_of::<CallGetExecutablePath>() { return Some(enc(&RpcReplyGetExecutablePath { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallGetExecutablePath = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.get_executable_path(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyGetExecutablePath { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		27 => {
+			if msg.body().len() < size_of::<CallGroups>() { return Some(enc(&RpcReplyGroups { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallGroups = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.groups(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyGroups { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		28 => {
+			if msg.body().len() < size_of::<CallKqchanMachPortOpen>() { return Some(enc(&RpcReplyKqchanMachPortOpen { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallKqchanMachPortOpen = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.kqchan_mach_port_open(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyKqchanMachPortOpen { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		29 => {
+			if msg.body().len() < size_of::<CallKqchanProcOpen>() { return Some(enc(&RpcReplyKqchanProcOpen { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallKqchanProcOpen = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.kqchan_proc_open(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyKqchanProcOpen { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		30 => {
+			if msg.body().len() < size_of::<CallPthreadKill>() { return Some(enc(&RpcReplyPthreadKill { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPthreadKill = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.pthread_kill(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPthreadKill { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		31 => {
+			if msg.body().len() < size_of::<CallPthreadCanceled>() { return Some(enc(&RpcReplyPthreadCanceled { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPthreadCanceled = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.pthread_canceled(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPthreadCanceled { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		32 => {
+			if msg.body().len() < size_of::<CallPthreadMarkcancel>() { return Some(enc(&RpcReplyPthreadMarkcancel { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPthreadMarkcancel = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.pthread_markcancel(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPthreadMarkcancel { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		33 => {
+			let (code, body) = match h.task_self_trap(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyTaskSelfTrap { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		34 => {
+			let (code, body) = match h.host_self_trap(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyHostSelfTrap { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		35 => {
+			let (code, body) = match h.thread_self_trap(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyThreadSelfTrap { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		36 => {
+			let (code, body) = match h.mach_reply_port(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyMachReplyPort { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		37 => {
+			let (code, body) = match h.thread_get_special_reply_port(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyThreadGetSpecialReplyPort { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		38 => {
+			if msg.body().len() < size_of::<CallMachMsgOverwrite>() { return Some(enc(&RpcReplyMachMsgOverwrite { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachMsgOverwrite = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_msg_overwrite(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachMsgOverwrite { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		39 => {
+			if msg.body().len() < size_of::<CallMachPortDeallocate>() { return Some(enc(&RpcReplyMachPortDeallocate { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortDeallocate = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_deallocate(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortDeallocate { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		40 => {
+			if msg.body().len() < size_of::<CallMachPortAllocate>() { return Some(enc(&RpcReplyMachPortAllocate { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortAllocate = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_allocate(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortAllocate { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		41 => {
+			if msg.body().len() < size_of::<CallMachPortModRefs>() { return Some(enc(&RpcReplyMachPortModRefs { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortModRefs = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_mod_refs(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortModRefs { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		42 => {
+			if msg.body().len() < size_of::<CallMachPortMoveMember>() { return Some(enc(&RpcReplyMachPortMoveMember { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortMoveMember = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_move_member(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortMoveMember { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		43 => {
+			if msg.body().len() < size_of::<CallMachPortInsertRight>() { return Some(enc(&RpcReplyMachPortInsertRight { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortInsertRight = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_insert_right(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortInsertRight { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		44 => {
+			if msg.body().len() < size_of::<CallMachPortInsertMember>() { return Some(enc(&RpcReplyMachPortInsertMember { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortInsertMember = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_insert_member(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortInsertMember { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		45 => {
+			if msg.body().len() < size_of::<CallMachPortExtractMember>() { return Some(enc(&RpcReplyMachPortExtractMember { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortExtractMember = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_extract_member(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortExtractMember { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		46 => {
+			if msg.body().len() < size_of::<CallMachPortConstruct>() { return Some(enc(&RpcReplyMachPortConstruct { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortConstruct = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_construct(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortConstruct { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		47 => {
+			if msg.body().len() < size_of::<CallMachPortDestruct>() { return Some(enc(&RpcReplyMachPortDestruct { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortDestruct = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_destruct(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortDestruct { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		48 => {
+			if msg.body().len() < size_of::<CallMachPortGuard>() { return Some(enc(&RpcReplyMachPortGuard { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortGuard = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_guard(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortGuard { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		49 => {
+			if msg.body().len() < size_of::<CallMachPortUnguard>() { return Some(enc(&RpcReplyMachPortUnguard { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortUnguard = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_unguard(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortUnguard { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		50 => {
+			if msg.body().len() < size_of::<CallMachPortRequestNotification>() { return Some(enc(&RpcReplyMachPortRequestNotification { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortRequestNotification = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_request_notification(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortRequestNotification { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		51 => {
+			if msg.body().len() < size_of::<CallMachPortGetAttributes>() { return Some(enc(&RpcReplyMachPortGetAttributes { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortGetAttributes = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_get_attributes(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortGetAttributes { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		52 => {
+			if msg.body().len() < size_of::<CallMachPortType>() { return Some(enc(&RpcReplyMachPortType { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachPortType = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_port_type(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachPortType { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		53 => {
+			if msg.body().len() < size_of::<CallTaskForPid>() { return Some(enc(&RpcReplyTaskForPid { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallTaskForPid = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.task_for_pid(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyTaskForPid { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		54 => {
+			if msg.body().len() < size_of::<CallTaskNameForPid>() { return Some(enc(&RpcReplyTaskNameForPid { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallTaskNameForPid = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.task_name_for_pid(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyTaskNameForPid { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		55 => {
+			if msg.body().len() < size_of::<CallPidForTask>() { return Some(enc(&RpcReplyPidForTask { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallPidForTask = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.pid_for_task(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyPidForTask { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		56 => {
+			if msg.body().len() < size_of::<CallMachVmAllocate>() { return Some(enc(&RpcReplyMachVmAllocate { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachVmAllocate = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_vm_allocate(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachVmAllocate { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		57 => {
+			if msg.body().len() < size_of::<CallMachVmDeallocate>() { return Some(enc(&RpcReplyMachVmDeallocate { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMachVmDeallocate = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mach_vm_deallocate(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMachVmDeallocate { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		58 => {
+			if msg.body().len() < size_of::<CallSemaphoreSignal>() { return Some(enc(&RpcReplySemaphoreSignal { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreSignal = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_signal(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreSignal { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		59 => {
+			if msg.body().len() < size_of::<CallSemaphoreSignalAll>() { return Some(enc(&RpcReplySemaphoreSignalAll { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreSignalAll = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_signal_all(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreSignalAll { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		60 => {
+			if msg.body().len() < size_of::<CallSemaphoreWait>() { return Some(enc(&RpcReplySemaphoreWait { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreWait = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_wait(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreWait { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		61 => {
+			if msg.body().len() < size_of::<CallSemaphoreWaitSignal>() { return Some(enc(&RpcReplySemaphoreWaitSignal { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreWaitSignal = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_wait_signal(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreWaitSignal { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		62 => {
+			if msg.body().len() < size_of::<CallSemaphoreTimedwait>() { return Some(enc(&RpcReplySemaphoreTimedwait { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreTimedwait = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_timedwait(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreTimedwait { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		63 => {
+			if msg.body().len() < size_of::<CallSemaphoreTimedwaitSignal>() { return Some(enc(&RpcReplySemaphoreTimedwaitSignal { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallSemaphoreTimedwaitSignal = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.semaphore_timedwait_signal(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplySemaphoreTimedwaitSignal { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		64 => {
+			let (code, body) = match h.mk_timer_create(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyMkTimerCreate { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		65 => {
+			if msg.body().len() < size_of::<CallMkTimerDestroy>() { return Some(enc(&RpcReplyMkTimerDestroy { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMkTimerDestroy = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mk_timer_destroy(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMkTimerDestroy { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		66 => {
+			if msg.body().len() < size_of::<CallMkTimerArm>() { return Some(enc(&RpcReplyMkTimerArm { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMkTimerArm = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mk_timer_arm(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMkTimerArm { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		67 => {
+			if msg.body().len() < size_of::<CallMkTimerCancel>() { return Some(enc(&RpcReplyMkTimerCancel { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }
+			let call: CallMkTimerCancel = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let code = match h.mk_timer_cancel(&call, &msg.fds) { Ok(()) => 0, Err(c) => c };
+			Some(enc(&RpcReplyMkTimerCancel { header: DserverRpcReplyhdr { number: n, code } }))
+		}
+		68 => {
+			if msg.body().len() < size_of::<CallPsynchCvbroad>() { return Some(enc(&RpcReplyPsynchCvbroad { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchCvbroad = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_cvbroad(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchCvbroad { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		69 => {
+			if msg.body().len() < size_of::<CallPsynchCvclrprepost>() { return Some(enc(&RpcReplyPsynchCvclrprepost { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchCvclrprepost = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_cvclrprepost(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchCvclrprepost { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		70 => {
+			if msg.body().len() < size_of::<CallPsynchCvsignal>() { return Some(enc(&RpcReplyPsynchCvsignal { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchCvsignal = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_cvsignal(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchCvsignal { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		71 => {
+			if msg.body().len() < size_of::<CallPsynchCvwait>() { return Some(enc(&RpcReplyPsynchCvwait { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchCvwait = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_cvwait(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchCvwait { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		72 => {
+			if msg.body().len() < size_of::<CallPsynchMutexdrop>() { return Some(enc(&RpcReplyPsynchMutexdrop { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchMutexdrop = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_mutexdrop(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchMutexdrop { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		73 => {
+			if msg.body().len() < size_of::<CallPsynchMutexwait>() { return Some(enc(&RpcReplyPsynchMutexwait { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchMutexwait = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_mutexwait(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchMutexwait { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		74 => {
+			if msg.body().len() < size_of::<CallPsynchRwRdlock>() { return Some(enc(&RpcReplyPsynchRwRdlock { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchRwRdlock = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_rw_rdlock(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchRwRdlock { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		75 => {
+			if msg.body().len() < size_of::<CallPsynchRwUnlock>() { return Some(enc(&RpcReplyPsynchRwUnlock { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchRwUnlock = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_rw_unlock(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchRwUnlock { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		76 => {
+			if msg.body().len() < size_of::<CallPsynchRwWrlock>() { return Some(enc(&RpcReplyPsynchRwWrlock { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallPsynchRwWrlock = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.psynch_rw_wrlock(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyPsynchRwWrlock { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		77 => {
+			let (code, body) = match h.debug_list_processes(&msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyDebugListProcesses { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		78 => {
+			if msg.body().len() < size_of::<CallDebugListPorts>() { return Some(enc(&RpcReplyDebugListPorts { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallDebugListPorts = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.debug_list_ports(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyDebugListPorts { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		79 => {
+			if msg.body().len() < size_of::<CallDebugListMembers>() { return Some(enc(&RpcReplyDebugListMembers { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallDebugListMembers = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.debug_list_members(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyDebugListMembers { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		80 => {
+			if msg.body().len() < size_of::<CallDebugListMessages>() { return Some(enc(&RpcReplyDebugListMessages { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }
+			let call: CallDebugListMessages = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };
+			let (code, body) = match h.debug_list_messages(&call, &msg.fds) { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };
+			Some(enc(&RpcReplyDebugListMessages { header: DserverRpcReplyhdr { number: n, code }, body }))
+		}
+		_ => None,
+	}
+}

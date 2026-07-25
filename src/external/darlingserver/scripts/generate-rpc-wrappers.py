@@ -1732,6 +1732,61 @@ if len(sys.argv) > 5:
 	for call in calls:
 		rf.write("\t\t" + str(idx) + " => Some(\"" + call[0] + "\"),\n")
 		idx += 1
+	rf.write("\t\t_ => None,\n\t}\n}\n\n")
+
+	# The RpcHandler trait (one defaulted method per call) + a dispatch() that decodes
+	# the message, invokes the handler, and encodes the reply. Turns "wire 161 handlers"
+	# into "implement the trait, filling bodies incrementally".
+	rf.write("use crate::rpc_io::Message;\n")
+	rf.write("use std::os::fd::RawFd;\n")
+	rf.write("use std::mem::size_of;\n\n")
+	rf.write("/// Error code returned by an unimplemented handler (-ENOSYS).\n")
+	rf.write("pub const ENOSYS: i32 = -38;\n")
+	rf.write("/// Error code for a malformed (too-short) request body (-EINVAL).\n")
+	rf.write("pub const EINVAL: i32 = -22;\n\n")
+	rf.write("/// Implement one method per RPC call to handle it. Every method defaults to\n")
+	rf.write("/// returning ENOSYS, so a handler can be built up incrementally. `fds` are the\n")
+	rf.write("/// SCM_RIGHTS descriptors passed with the call.\n")
+	rf.write("#[allow(unused_variables)]\n")
+	rf.write("pub trait RpcHandler {\n")
+	for call in calls:
+		name = call[0]; camel = to_camel_case(name)
+		call_arg = ("call: &Call" + camel + ", ") if len(call[1]) > 0 else ""
+		ret = ("Reply" + camel) if len(call[2]) > 0 else "()"
+		rf.write("\tfn " + name + "(&mut self, " + call_arg + "fds: &[RawFd]) -> Result<" + ret + ", i32> { Err(ENOSYS) }\n")
+	rf.write("}\n\n")
+
+	rf.write("/// Decode `msg`, invoke the matching RpcHandler method, and encode the reply\n")
+	rf.write("/// bytes to send back (None if the call number is unknown).\n")
+	rf.write("pub fn dispatch<H: RpcHandler>(h: &mut H, msg: &Message) -> Option<Vec<u8>> {\n")
+	rf.write("\tlet hdr = msg.header()?;\n")
+	rf.write("\tlet n = hdr.number;\n")
+	rf.write("\tfn enc<T>(v: &T) -> Vec<u8> { unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }.to_vec() }\n")
+	rf.write("\tmatch n & !callnum::UNMANAGED_FLAG {\n")
+	idx = 1
+	for call in calls:
+		name = call[0]; camel = to_camel_case(name)
+		has_call = len(call[1]) > 0
+		has_reply = len(call[2]) > 0
+		rf.write("\t\t" + str(idx) + " => {\n")
+		# short-body guard for calls that carry a body
+		if has_call:
+			if has_reply:
+				rf.write("\t\t\tif msg.body().len() < size_of::<Call" + camel + ">() { return Some(enc(&RpcReply" + camel + " { header: DserverRpcReplyhdr { number: n, code: EINVAL }, body: unsafe { std::mem::zeroed() } })); }\n")
+			else:
+				rf.write("\t\t\tif msg.body().len() < size_of::<Call" + camel + ">() { return Some(enc(&RpcReply" + camel + " { header: DserverRpcReplyhdr { number: n, code: EINVAL } })); }\n")
+			rf.write("\t\t\tlet call: Call" + camel + " = unsafe { std::ptr::read_unaligned(msg.body().as_ptr() as *const _) };\n")
+			handler = "h." + name + "(&call, &msg.fds)"
+		else:
+			handler = "h." + name + "(&msg.fds)"
+		if has_reply:
+			rf.write("\t\t\tlet (code, body) = match " + handler + " { Ok(b) => (0, b), Err(c) => (c, unsafe { std::mem::zeroed() }) };\n")
+			rf.write("\t\t\tSome(enc(&RpcReply" + camel + " { header: DserverRpcReplyhdr { number: n, code }, body }))\n")
+		else:
+			rf.write("\t\t\tlet code = match " + handler + " { Ok(()) => 0, Err(c) => c };\n")
+			rf.write("\t\t\tSome(enc(&RpcReply" + camel + " { header: DserverRpcReplyhdr { number: n, code } }))\n")
+		rf.write("\t\t}\n")
+		idx += 1
 	rf.write("\t\t_ => None,\n\t}\n}\n")
 	rf.close()
 
