@@ -46,6 +46,7 @@ pub struct Microthread {
     suspended: bool,
     finished: bool,
     dtape_thread: *mut dtape_thread_t,
+    owning_task: *mut dtape_task_t,
     interrupt_disable: u32,
     body: Option<Box<dyn FnOnce()>>,
     pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
@@ -74,21 +75,35 @@ pub fn current() -> *mut Microthread {
     CURRENT.with(|c| c.get())
 }
 
-/// Create a kernel microthread with the given body, backed by a fresh dtape_thread.
-pub unsafe fn spawn(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
+/// The task the currently-running microthread is bound to -- the routing key. A
+/// handler calls this to operate on its guest's task without capturing it.
+pub fn current_task() -> *mut dtape_task_t {
+    let mt = current();
+    if mt.is_null() { std::ptr::null_mut() } else { unsafe { (*mt).owning_task } }
+}
+
+/// Create a microthread on `task` with an explicit thread namespace id, backed by a
+/// fresh dtape_thread. Use a guest tid for guest threads, or a kernel id (>= 1<<22)
+/// for daemon-internal work.
+pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
     let mt = Box::into_raw(Box::new(Microthread {
         resume_ctx: MaybeUninit::uninit(),
         stack: vec![0u8; STACK_SIZE],
         suspended: false,
         finished: false,
         dtape_thread: std::ptr::null_mut(),
+        owning_task: task,
         interrupt_disable: 0,
         body: Some(body),
         pending_cont: None,
     }));
-    let nsid = NEXT_KTID.fetch_add(1, Ordering::Relaxed);
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt
+}
+
+/// Create a kernel microthread (auto kernel-range nsid) with the given body.
+pub unsafe fn spawn(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
+    spawn_with_nsid(task, NEXT_KTID.fetch_add(1, Ordering::Relaxed), body)
 }
 
 /// Queue a microthread to be (re)entered by the run loop. Called by thread_resume.
@@ -206,7 +221,10 @@ mod hooks {
             eprintln!("[dtape] {}", std::ffi::CStr::from_ptr(m).to_string_lossy());
         }
     }
-    pub(super) unsafe extern "C" fn current_task() -> *mut dtape_task_t { KERNEL_TASK }
+    pub(super) unsafe extern "C" fn current_task() -> *mut dtape_task_t {
+        let mt = current();
+        if mt.is_null() { KERNEL_TASK } else { (*mt).owning_task }
+    }
     pub(super) unsafe extern "C" fn current_thread() -> *mut dtape_thread_t {
         let mt = current();
         if mt.is_null() { std::ptr::null_mut() } else { (*mt).dtape_thread }

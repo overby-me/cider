@@ -25,3 +25,6 @@ pub mod sched;
 
 /// Daemon-side RPC message I/O (receive/decode half of the loop).
 pub mod rpc_io;
+
+/// Process/thread tables: guest pid/tid -> dtape task/thread.
+pub mod registry;
