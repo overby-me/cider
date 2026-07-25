@@ -263,10 +263,14 @@
                 # The persistent-thread doWork loop: one long-lived guest thread serves
                 # multiple RPC calls via dispatch, parking between them (state preserved).
                 run thread_call_loop_demo THREAD_LOOP_OK
+                # The minimal working daemon: a real client PROCESS makes Mach calls over
+                # a SEQPACKET socketpair; the daemon routes each to the client's task and
+                # serves it via the shared Handler + dispatch, replying over the socket.
+                run daemon_mach_demo   DAEMON_MACH_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving)"
                 touch "$out"
               '';
 

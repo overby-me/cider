@@ -248,6 +248,13 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   one thread through 3 task_self_trap calls via the generated dispatch, parking between
   each; a per-thread counter reaches 3 and every reply names the same task self port ->
   THREAD_LOOP_OK. The real darlingserver Thread model.
+- **Real-socket serving / minimal daemon (integration)** -- a real client PROCESS makes
+  Mach calls (task_self/host_self/mach_reply_port) over a genuine unix socket (SEQPACKET
+  socketpair); the daemon recvs each, routes it to the client's task (registry), runs the
+  shared `Handler` (lib) on a microthread via the generated dispatch, and replies over
+  the socket. The client validates every reply -> DAEMON_MACH_OK. The minimal working
+  darlingserver for the special-port traps -- every proven piece assembled into a daemon
+  a separate process actually talks to.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.

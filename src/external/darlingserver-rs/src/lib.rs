@@ -34,3 +34,6 @@ pub mod server;
 
 /// Mach special-port traps (task_self/host_self/thread_self/mach_reply_port).
 pub mod mach;
+
+/// The daemon's reusable RPC handler (the real handler bodies).
+pub mod handler;
