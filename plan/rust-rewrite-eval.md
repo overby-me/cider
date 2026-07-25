@@ -205,6 +205,13 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   routes a call to the guest's task, runs the handler on a `sched` microthread
   through the generated dispatch (real `dtape_task_uidgid`), and replies -- with XNU
   state persisting across calls.
+- **Guest memory (bucket B.1, head of the critical path)** -- `task_read_memory` /
+  `task_write_memory` implemented via process_vm_readv/writev (the exact primitive
+  Process::readMemory uses, process.cpp) and wired into the hooks vtable; each task
+  now carries an address-stable `TaskCtx` with its host pid. `mem_hooks_demo` forks a
+  child, reads its buffer through the read hook, overwrites it through the write hook,
+  and the child confirms with a volatile load that it observes the change ->
+  MEM_HOOKS_OK (green in-sandbox under `nix flake check`).
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -223,9 +230,11 @@ terminate/suspend/resume), **signals/exceptions**, **psynch**, **bsd traps**,
 template); the memory-touching ones depend on bucket B.
 
 ### B. Daemon infrastructure (the actually-hard part -- not thin wrappers)
-1. **Guest-memory hooks** -- `task_read_memory`/`write_memory`/`allocate_pages`/
-   `map_file` via `/proc/<pid>/mem` + mmap; the hook vtable currently leaves them
-   null. `mach_msg`, vm, and thread-state all need them.
+1. **Guest-memory hooks** -- read/write DONE: `task_read_memory`/`task_write_memory`
+   via process_vm_readv/writev, wired into the vtable + proven (`mem_hooks_demo`).
+   Still open: `allocate_pages`/`free_pages`/`map_file`/`change_protection`, which are
+   S2C calls (the daemon asks the guest to mmap on its own behalf), so they wait on
+   the s2c path (item 5).
 2. **Persistent per-guest Threads** -- today one microthread per call; a real guest
    thread must be long-lived (a blocked `mach_msg` receive suspends *that* thread
    and resumes it on message arrival) with a tid -> Thread registry.
@@ -253,8 +262,8 @@ builds hello) through the Rust daemon**, and the spawn/IPC stress clean.
 ### Scope + critical path
 The C++ daemon is ~7.4k lines; a full Rust replacement is comparable -- a multi-week
 focused effort, dominated by bucket B far more than the ~78 handlers. Critical path
-to a *usable* daemon: **memory hooks -> `mach_msg` -> persistent threads ->
-checkin/checkout lifecycle -> `kqchan`**, after which most handlers are thin and the
+to a *usable* daemon: **read/write memory (done) -> `mach_msg` -> persistent threads
+-> checkin/checkout lifecycle -> `kqchan`**, after which most handlers are thin and the
 cutover gate is M1 running on it. None of this is research -- the eval's risky
 questions are answered in running code; what is left is implementing known
 subsystems against a duct-tape API that already works from Rust.

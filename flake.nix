@@ -237,10 +237,14 @@
                 run rpc_roundtrip_demo RPC_ROUNDTRIP_OK
                 run registry_demo      REGISTRY_OK
                 run stage3-spike       "both suspend paths"
+                # Forks a child and reads/writes its memory via process_vm_readv/writev
+                # (the task_read_memory/task_write_memory hooks). Parent-child, same uid,
+                # so it works under the sandbox's user+pid namespace.
+                run mem_hooks_demo     MEM_HOOKS_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory)"
                 touch "$out"
               '';
 

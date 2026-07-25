@@ -209,6 +209,66 @@ extern "C" fn continuation_trampoline() {
     }
 }
 
+// ---- guest memory access (the foundation mach_msg copyin/copyout depends on) ----
+
+/// Per-guest-task context handed to the duct-tape as the task's `void*` context (the
+/// 3rd arg of dtape_task_create) and handed back to the memory hooks. Carries the
+/// guest's host-visible Linux pid -- what process_vm_readv/writev key on. The Registry
+/// heap-boxes it so the pointer stays address-stable while C holds it.
+#[repr(C)]
+pub struct TaskCtx {
+    pub pid: libc::pid_t,
+}
+
+/// Read `local.len()` bytes from process `pid`'s address space at `remote_address`,
+/// via process_vm_readv -- the exact primitive DarlingServer::Process uses
+/// (process.cpp). Pure host-side, no guest cooperation. Returns false unless the whole
+/// range transfers.
+pub unsafe fn read_process_memory(pid: libc::pid_t, remote_address: usize, local: &mut [u8]) -> bool {
+    if local.is_empty() {
+        return true;
+    }
+    let liov = libc::iovec { iov_base: local.as_mut_ptr() as *mut c_void, iov_len: local.len() };
+    let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
+    let n = libc::process_vm_readv(pid, &liov, 1, &riov, 1, 0);
+    n >= 0 && n as usize == local.len()
+}
+
+/// Write `local` into process `pid`'s address space at `remote_address`, via
+/// process_vm_writev. Mirror of read_process_memory.
+pub unsafe fn write_process_memory(pid: libc::pid_t, remote_address: usize, local: &[u8]) -> bool {
+    if local.is_empty() {
+        return true;
+    }
+    let liov = libc::iovec { iov_base: local.as_ptr() as *mut c_void, iov_len: local.len() };
+    let riov = libc::iovec { iov_base: remote_address as *mut c_void, iov_len: local.len() };
+    let n = libc::process_vm_writev(pid, &liov, 1, &riov, 1, 0);
+    n >= 0 && n as usize == local.len()
+}
+
+/// dtape hook: read `length` bytes from the task's guest process at `remote_address`
+/// into `local_buffer`. Recovers the guest pid from the TaskCtx the task was created
+/// with. Mirrors DarlingServer::Process::readMemory (server.cpp dtape_hook_task_read_memory).
+pub unsafe extern "C" fn task_read_memory(task_context: *mut c_void, remote_address: usize, local_buffer: *mut c_void, length: usize) -> bool {
+    if task_context.is_null() || local_buffer.is_null() {
+        return false;
+    }
+    let pid = (*(task_context as *const TaskCtx)).pid;
+    let local = std::slice::from_raw_parts_mut(local_buffer as *mut u8, length);
+    read_process_memory(pid, remote_address, local)
+}
+
+/// dtape hook: write `length` bytes from `local_buffer` into the task's guest process
+/// at `remote_address`. Mirror of task_read_memory.
+pub unsafe extern "C" fn task_write_memory(task_context: *mut c_void, remote_address: usize, local_buffer: *const c_void, length: usize) -> bool {
+    if task_context.is_null() || local_buffer.is_null() {
+        return false;
+    }
+    let pid = (*(task_context as *const TaskCtx)).pid;
+    let local = std::slice::from_raw_parts(local_buffer as *const u8, length);
+    write_process_memory(pid, remote_address, local)
+}
+
 // ---- dtape hooks (the 36-field vtable the duct-tape calls back through) ----
 mod hooks {
     use super::*;
@@ -267,6 +327,8 @@ fn make_hooks() -> dtape_hooks_t {
     h.thread_eternal_id = Some(hooks::thread_eternal_id);
     h.get_load_info = Some(hooks::get_load_info);
     h.timer_arm = Some(hooks::timer_arm);
+    h.task_read_memory = Some(task_read_memory);
+    h.task_write_memory = Some(task_write_memory);
     h
 }
 

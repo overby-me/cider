@@ -5,7 +5,7 @@
 //! plan/rust-rewrite-eval.md (Stage 4).
 
 use crate::bindings::*;
-use crate::sched::{self, Microthread};
+use crate::sched::{self, Microthread, TaskCtx};
 use std::collections::HashMap;
 use std::os::raw::c_void;
 
@@ -16,11 +16,12 @@ extern "C" {
 pub struct Registry {
     kernel_task: *mut dtape_task_t,
     tasks: HashMap<u32, *mut dtape_task_t>, // guest pid -> dtape task
+    ctxs: HashMap<u32, Box<TaskCtx>>,       // keep task contexts alive + address-stable
 }
 
 impl Registry {
     pub fn new(kernel_task: *mut dtape_task_t) -> Self {
-        Registry { kernel_task, tasks: HashMap::new() }
+        Registry { kernel_task, tasks: HashMap::new(), ctxs: HashMap::new() }
     }
 
     /// Get or create the dtape task for a guest pid (nsid = pid). Parent is NULL for
@@ -29,9 +30,16 @@ impl Registry {
         if let Some(&t) = self.tasks.get(&pid) {
             return t;
         }
-        let t = dtape_task_create(std::ptr::null_mut(), pid, std::ptr::null_mut(), arch);
+        // Address-stable per-task context carrying the guest's host pid, handed to the
+        // duct-tape as the task's void* context and back to the memory hooks. Boxed so
+        // it never moves while C holds the pointer. (nsid doubles as the host pid here;
+        // a real checkin passes the connecting process's actual host pid.)
+        let mut ctx = Box::new(TaskCtx { pid: pid as libc::pid_t });
+        let ctx_ptr = ctx.as_mut() as *mut TaskCtx as *mut c_void;
+        let t = dtape_task_create(std::ptr::null_mut(), pid, ctx_ptr, arch);
         assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
         self.tasks.insert(pid, t);
+        self.ctxs.insert(pid, ctx);
         t
     }
 
