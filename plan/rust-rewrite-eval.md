@@ -212,6 +212,11 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   child, reads its buffer through the read hook, overwrites it through the write hook,
   and the child confirms with a volatile load that it observes the change ->
   MEM_HOOKS_OK (green in-sandbox under `nix flake check`).
+- **First Mach calls (bucket A)** -- the special-port traps (`task_self_trap`,
+  `host_self_trap`, `thread_self_trap`, `mach_reply_port`) served through the real XNU
+  duct-tape on a microthread bound to a guest task, returning the canonical port names
+  (task_self 0x103, host_self 0x203, thread_self 0x303, a fresh reply_port 0x403);
+  `task_self_trap` is also driven through the generated dispatch() -> MACH_TRAPS_OK.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -219,8 +224,10 @@ breadth + infrastructure + cutover, none of it research.
 ## What is missing to fully replace the C++ daemon
 
 ### A. The ~78 unimplemented RPC handlers (breadth)
-The `RpcHandler` trait stubs every call to `ENOSYS`; ~3 are implemented (`uidgid`,
-`started_suspended`, `get_tracer`). The rest, by subsystem: **Mach IPC core**
+The `RpcHandler` trait defaults every call to `ENOSYS`; implemented so far: the
+special-port Mach traps (`task_self_trap`/`host_self_trap`/`thread_self_trap`/
+`mach_reply_port`, returning canonical port names through real XNU), plus `uidgid`/
+`started_suspended`/`get_tracer`. The rest, by subsystem: **Mach IPC core**
 (`mach_msg` send/receive with port-right transfer + OOL descriptors; `mach_port_*`
 allocate/deallocate/insert/extract/move rights, port sets, dead-name notifications;
 task/thread/host self + bootstrap special ports), **VM** (allocate/deallocate/
