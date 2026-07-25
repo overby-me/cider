@@ -267,10 +267,14 @@
                 # a SEQPACKET socketpair; the daemon routes each to the client's task and
                 # serves it via the shared Handler + dispatch, replying over the socket.
                 run daemon_mach_demo   DAEMON_MACH_OK
+                # Cross-process copyout over the socket: a client process calls
+                # mach_port_allocate; the daemon writes the allocated name into the
+                # CLIENT's memory (process_vm_writev to the client's pid).
+                run daemon_alloc_demo  DAEMON_ALLOC_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout)"
                 touch "$out"
               '';
 

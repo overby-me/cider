@@ -255,6 +255,12 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   the socket. The client validates every reply -> DAEMON_MACH_OK. The minimal working
   darlingserver for the special-port traps -- every proven piece assembled into a daemon
   a separate process actually talks to.
+- **Cross-process copyout over the socket (handler breadth)** -- a client PROCESS calls
+  mach_port_allocate over the socket; the daemon allocates the right and copies the name
+  into the CLIENT's own memory via the write_memory hook (process_vm_writev to the
+  client's pid), replying with just the code. Unlike the in-process demos (guest = the
+  daemon), the guest here is a separate process, so this is the genuine cross-process
+  write the real daemon performs -> DAEMON_ALLOC_OK.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
