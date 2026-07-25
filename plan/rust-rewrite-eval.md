@@ -317,9 +317,11 @@ builds hello) through the Rust daemon**, and the spawn/IPC stress clean.
 
 ### Scope + critical path
 The C++ daemon is ~7.4k lines; a full Rust replacement is comparable -- a multi-week
-focused effort, dominated by bucket B far more than the ~78 handlers. Critical path
-to a *usable* daemon: **read/write memory (done) -> `mach_msg` -> persistent threads
--> checkin/checkout lifecycle -> `kqchan`**, after which most handlers are thin and the
-cutover gate is M1 running on it. None of this is research -- the eval's risky
-questions are answered in running code; what is left is implementing known
-subsystems against a duct-tape API that already works from Rust.
+focused effort, dominated by bucket B far more than the ~78 handlers. Critical path to
+a *usable* daemon: **read/write memory, `mach_msg` (send/recv + blocking), persistent
+threads + the doWork loop, and real-socket serving of a live client (incl. cross-process
+copyout) are all DONE** -> remaining: **checkin/checkout lifecycle -> the container
+`main()` bring-up -> `kqchan`** (for launchd), then handler breadth and the cutover gate
+(M1 running on it). The mechanisms are all proven in running code; what remains is
+mechanical breadth plus the container bring-up -- known subsystems against a duct-tape
+API that already works from Rust, not research.
