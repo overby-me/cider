@@ -37,3 +37,7 @@ pub mod mach;
 
 /// The daemon's reusable RPC handler (the real handler bodies).
 pub mod handler;
+
+/// Container bring-up: the Linux mount/PID-namespace + overlay + guest-init plumbing
+/// darlingserver's main() does before the RPC loop (needs root; not sandbox-runnable).
+pub mod container;

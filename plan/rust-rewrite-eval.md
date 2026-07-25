@@ -278,6 +278,17 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   acknowledged; registration is implicit via routing) -> DAEMON_SESSION_OK. The real
   darlingserver architecture end to end: one long-lived thread per guest thread serving a
   whole session.
+- **Container bring-up ported (`darlingserverd`, compiles; runtime validation pending)**
+  -- a faithful Rust port of darlingserver.cpp main()'s bring-up: the privilege dance
+  (setres*id), a private mount namespace + the prefix overlay, a new PID namespace for the
+  guest init via clone(CLONE_NEWPID) + proc mount, and the mldr/vchroot exec of the init
+  (launchd or the shellspawn bypass), then the RPC server (bind + accept + route +
+  dispatch through the shared Handler). The `darlingserverd` binary compiles and links;
+  its startup path is exercised (parses argv/env, warns on non-root, reaches the
+  privileged mount step and fails there with EPERM, as expected). NOT sandbox-runnable and
+  NOT yet end-to-end validated -- that needs splicing into a real darling runtime and
+  launching via darling.c (plus enough handlers for a guest to make progress). Deferred vs
+  the C++: setupUserHome, darlingPreInit, fixPermissions, the writable-/nix overlay, rlimits.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -324,9 +335,12 @@ template); the memory-touching ones depend on bucket B.
 7. **Timers** -- `timerfd` + `dtape_timer_fired` (`timer_arm` is a no-op today).
 8. **`kqchan`** (mach-port kqueue) -- the `EVFILT_MACHPORT` waiter mechanism; this
    is exactly the launchd-boot area (task #47).
-9. **The container `main()`** -- mounts/namespaces/vchroot, spawning launchd (or the
-   bypass), the launcher handshake, and binding `<prefix>/.darlingserver.sock` (not
-   a `/tmp` demo path).
+9. **The container `main()`** -- PORTED and compiling (`container` module +
+   `darlingserverd`): the privilege dance, mount namespace + prefix overlay, PID-namespace
+   clone + proc mount + mldr/vchroot exec of the init, the launcher handshake, and binding
+   `<prefix>/.darlingserver.sock`. Still open: runtime validation (splice into a real
+   darling runtime + launch via darling.c), plus the deferred prefix work (setupUserHome,
+   darlingPreInit, fixPermissions, writable-/nix overlay, rlimits).
 
 ### C. Cutover + validation
 A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for
