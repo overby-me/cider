@@ -235,3 +235,23 @@ fn main() {
   (`run-tests.sh`, M1 via `build-pkg-bypass.sh`, the spawn/IPC stress).
 - **Red** costs only the spike, and tells us to keep darlingserver in C++ and invest the
   Rust budget in the host-side tooling + mldr instead.
+
+## RESULT (2026-07-25): GREEN -- GO
+
+Implemented as `src/external/darlingserver-rs/src/bin/stage3_spike.rs` (Arm A: FFI
+`fast_context.c`). Passes, stable 3/3, rc=0:
+
+  [spike-mt] downing semaphore (will block -> suspend)...
+  [spike] microthread suspended; posting up
+  SPIKE_RESUMED_OK
+  [spike] Stage 3 stackful suspend/resume: PROVEN.
+
+A Rust-owned, heap-pinned stackful microthread suspended from inside XNU's C
+semaphore_wait (via the `thread_suspend` hook + the getcontext-returns-twice idiom
+over the P1 `dserver_fast_*context`) and resumed across the FFI on
+`dtape_semaphore_up` -> `thread_resume`. Notes: (1) semaphore_wait used the STACKFUL
+path -- no continuation (the guarded continuation branch never fired); (2)
+`dtape_init_in_thread` was NOT required for the vehicle; (3) ~12 of the 34 hooks were
+enough. The load-bearing rewrite decision (stackful, not async) holds on the real
+code. Follow-ups: Arm B (corosensei) + a P1 switch microbench; the continuation-path
+micro-spike; then Stage 4 (port the scheduler + tables) behind the correctness gates.
