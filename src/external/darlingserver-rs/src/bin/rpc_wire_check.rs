@@ -3,10 +3,7 @@
 //! compare sizeof/offsetof for every call) is the next increment; this proves the
 //! emitter output is well-formed and the header/nesting layout is right on x86_64.
 
-#[path = "../rpc_wire.rs"]
-mod rpc_wire;
-
-use rpc_wire::*;
+use darlingserver_rs::rpc_wire::*;
 use std::mem::{align_of, size_of};
 
 fn main() {
