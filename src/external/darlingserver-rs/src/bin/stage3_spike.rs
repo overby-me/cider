@@ -312,7 +312,29 @@ fn main() {
         thread_wakeup_prim(&EVENT as *const u8 as *const c_void, 0, THREAD_AWAKENED);
         drain();
         assert!((*p2).finished, "p2 did not finish after continuation resume");
-        eprintln!("[spike] Phase 2 (continuation) PROVEN.");
+        eprintln!("[spike] Phase 2 (continuation) PROVEN.\n");
+
+        // ---- Phase 3: microbench the suspend/resume round-trip (P1 fast switch) ----
+        // A microthread downs a semaphore N times; the loop ups it N times. Each
+        // cycle is one full stackful suspend+resume over the FFI'd fast_context.
+        const N: u64 = 500_000;
+        let bsem = dtape_semaphore_create(KERNEL_TASK, 0);
+        let baddr = bsem as usize;
+        let bench = new_microthread(KERNEL_TASK, Box::new(move || {
+            for _ in 0..N { dtape_semaphore_down_simple(baddr as *mut dtape_semaphore_t); }
+        }));
+        do_work(bench); // runs to the first down -> suspended
+        let t0 = std::time::Instant::now();
+        for _ in 0..N {
+            dtape_semaphore_up(bsem);
+            drain(); // resume -> down returns -> next down -> suspend (or finish)
+        }
+        let el = t0.elapsed();
+        assert!((*bench).finished, "bench did not finish");
+        eprintln!(
+            "[bench] {} suspend+resume round-trips in {:?} = {:.0} ns/round-trip (P1 fast_context)",
+            N, el, el.as_nanos() as f64 / N as f64
+        );
 
         eprintln!("[spike] Stage 3 spike: BOTH suspend paths PROVEN across the dtape FFI.");
     }
