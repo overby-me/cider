@@ -278,17 +278,25 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   acknowledged; registration is implicit via routing) -> DAEMON_SESSION_OK. The real
   darlingserver architecture end to end: one long-lived thread per guest thread serving a
   whole session.
-- **Container bring-up ported (`darlingserverd`, compiles; runtime validation pending)**
-  -- a faithful Rust port of darlingserver.cpp main()'s bring-up: the privilege dance
-  (setres*id), a private mount namespace + the prefix overlay, a new PID namespace for the
-  guest init via clone(CLONE_NEWPID) + proc mount, and the mldr/vchroot exec of the init
-  (launchd or the shellspawn bypass), then the RPC server (bind + accept + route +
-  dispatch through the shared Handler). The `darlingserverd` binary compiles and links;
-  its startup path is exercised (parses argv/env, warns on non-root, reaches the
-  privileged mount step and fails there with EPERM, as expected). NOT sandbox-runnable and
-  NOT yet end-to-end validated -- that needs splicing into a real darling runtime and
-  launching via darling.c (plus enough handlers for a guest to make progress). Deferred vs
-  the C++: setupUserHome, darlingPreInit, fixPermissions, the writable-/nix overlay, rlimits.
+- **Container bring-up ported AND runtime-validated (`darlingserverd`)** -- a faithful
+  Rust port of darlingserver.cpp main()'s bring-up: the privilege dance (setres*id), a
+  private mount namespace + the prefix overlay, a new PID namespace for the guest init via
+  clone(CLONE_NEWPID) + proc mount, and the mldr/vchroot exec of the init, then the RPC
+  server. Spliced into a real darling runtime (~/darling-rt, DSERVER_*_PATH env for the
+  relocatable paths) and launched via darling.c: **the container came up for real** ("container
+  up (init pid N); serving <prefix>/.darlingserver.sock"), XNU initialized, and **a real guest
+  process spawned and connected** -- the biggest structural piece, validated end to end.
+  The guest's first RPC then surfaced the next two concrete fixes (exactly what splice-and-run
+  is for; the isolated demos structurally could not catch these):
+    1. **The RPC socket is `SOCK_DGRAM` + `SO_PASSCRED`, not `SOCK_SEQPACKET`** (server.cpp:452).
+       The guest's checkin send hit EPROTOTYPE (-91) against my SEQPACKET Listener. The
+       socketpair demos passed only because both ends were SEQPACKET; the real protocol is
+       connectionless datagrams with the sender's pid via SCM_CREDENTIALS and replies sent to
+       the sender's address. Switching the Listener + rpc_io to that model is the next fix.
+    2. **The serve loop must not treat an idle `epoll_wait` timeout as fatal** (it panicked
+       after the guest gave up).
+  Deferred vs the C++ (best-effort prefix work): setupUserHome, darlingPreInit,
+  fixPermissions, the writable-/nix overlay, rlimits.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
