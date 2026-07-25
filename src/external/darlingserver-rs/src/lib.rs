@@ -28,3 +28,6 @@ pub mod rpc_io;
 
 /// Process/thread tables: guest pid/tid -> dtape task/thread.
 pub mod registry;
+
+/// The epoll accept loop (listening socket + connection multiplexing).
+pub mod server;
