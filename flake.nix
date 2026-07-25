@@ -244,10 +244,13 @@
                 # Serves the special-port Mach traps (task_self/host_self/thread_self/
                 # mach_reply_port) through real XNU on a guest task. Fully in-process.
                 run mach_traps_demo    MACH_TRAPS_OK
+                # A guest thread blocks mid-call, persists addressable by tid, and is
+                # resumed by the daemon on the same stack (the mach_msg receive shape).
+                run persistent_threads_demo PERSISTENT_THREADS_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads)"
                 touch "$out"
               '';
 

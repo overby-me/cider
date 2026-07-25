@@ -217,6 +217,12 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   duct-tape on a microthread bound to a guest task, returning the canonical port names
   (task_self 0x103, host_self 0x203, thread_self 0x303, a fresh reply_port 0x403);
   `task_self_trap` is also driven through the generated dispatch() -> MACH_TRAPS_OK.
+- **Persistent per-guest threads (bucket B.2, head of the mach_msg path)** -- a guest
+  thread's call can BLOCK mid-flight; its microthread persists (parked, addressable by
+  tid), and the daemon resumes the SAME thread on the same stack when the awaited event
+  arrives, state preserved and threads isolated. `persistent_threads_demo` blocks two
+  threads, wakes each independently, and each reply combines a pre-block stack-local
+  with the delivered payload -> PERSISTENT_THREADS_OK.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -242,9 +248,11 @@ template); the memory-touching ones depend on bucket B.
    Still open: `allocate_pages`/`free_pages`/`map_file`/`change_protection`, which are
    S2C calls (the daemon asks the guest to mmap on its own behalf), so they wait on
    the s2c path (item 5).
-2. **Persistent per-guest Threads** -- today one microthread per call; a real guest
-   thread must be long-lived (a blocked `mach_msg` receive suspends *that* thread
-   and resumes it on message arrival) with a tid -> Thread registry.
+2. **Persistent per-guest Threads** -- park/resume DONE: a blocked call's microthread
+   persists addressable by tid and the daemon resumes the SAME thread on the awaited
+   event, state preserved (`persistent_threads_demo`; registry run_thread/wake_thread).
+   Still open: the multi-call loop (one long-lived thread serving many calls) and the
+   checkin/checkout lifecycle (item 3).
 3. **Process/Thread lifecycle** -- checkin/checkout, fork/exec, death monitoring +
    reaping (pidfd/waitpid), port death notifications.
 4. **The interrupt mechanism** -- signals delivered *during* a blocked call (nested

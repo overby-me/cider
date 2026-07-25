@@ -17,11 +17,17 @@ pub struct Registry {
     kernel_task: *mut dtape_task_t,
     tasks: HashMap<u32, *mut dtape_task_t>, // guest pid -> dtape task
     ctxs: HashMap<u32, Box<TaskCtx>>,       // keep task contexts alive + address-stable
+    parked: HashMap<(u32, u64), *mut Microthread>, // (pid,tid) -> guest thread blocked mid-call
 }
 
 impl Registry {
     pub fn new(kernel_task: *mut dtape_task_t) -> Self {
-        Registry { kernel_task, tasks: HashMap::new(), ctxs: HashMap::new() }
+        Registry {
+            kernel_task,
+            tasks: HashMap::new(),
+            ctxs: HashMap::new(),
+            parked: HashMap::new(),
+        }
     }
 
     /// Get or create the dtape task for a guest pid (nsid = pid). Parent is NULL for
@@ -55,5 +61,49 @@ impl Registry {
     pub unsafe fn spawn_on(&mut self, pid: u32, tid: u64, arch: u32, body: Box<dyn FnOnce()>) -> *mut Microthread {
         let task = self.ensure_task(pid, arch);
         sched::spawn_with_nsid(task, tid, body)
+    }
+
+    /// Run a call on guest thread (pid,tid): spawn its microthread on the guest's task,
+    /// run it, and if the call BLOCKS (suspends, e.g. a mach_msg receive) park the
+    /// microthread addressable by tid so a later `wake_thread` resumes the SAME thread
+    /// (stack + per-thread state preserved). Returns true if it parked, false if the
+    /// call ran to completion. A finished thread's microthread box is reclaimed.
+    pub unsafe fn run_thread(&mut self, pid: u32, tid: u64, arch: u32, body: Box<dyn FnOnce()>) -> bool {
+        let mt = self.spawn_on(pid, tid, arch, body);
+        sched::run(mt);
+        if (*mt).is_suspended() {
+            self.parked.insert((pid, tid), mt);
+            true
+        } else {
+            drop(Box::from_raw(mt));
+            false
+        }
+    }
+
+    /// Resume the parked (blocked) guest thread (pid,tid) -- the daemon calls this when
+    /// the event it was waiting on arrives. Returns true if it blocked again (still
+    /// parked), false if it finished (removed + box reclaimed). No-op returning false
+    /// if no such thread is parked.
+    pub unsafe fn wake_thread(&mut self, pid: u32, tid: u64) -> bool {
+        let mt = match self.parked.get(&(pid, tid)) {
+            Some(&m) => m,
+            None => return false,
+        };
+        sched::run(mt);
+        if (*mt).is_suspended() {
+            true
+        } else {
+            self.parked.remove(&(pid, tid));
+            drop(Box::from_raw(mt));
+            false
+        }
+    }
+
+    /// Number of guest threads currently parked (blocked mid-call).
+    pub fn parked_count(&self) -> usize {
+        self.parked.len()
+    }
+    pub fn is_parked(&self, pid: u32, tid: u64) -> bool {
+        self.parked.contains_key(&(pid, tid))
     }
 }
