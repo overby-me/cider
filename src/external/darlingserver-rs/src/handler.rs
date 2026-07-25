@@ -5,8 +5,9 @@
 
 use crate::mach;
 use crate::rpc_wire::{
-    self, CallMachMsgOverwrite, CallMachPortAllocate, CallMachPortDeallocate, CallMachPortModRefs,
-    CallMachPortType, ReplyHostSelfTrap, ReplyMachReplyPort, ReplyTaskSelfTrap, ReplyThreadSelfTrap,
+    self, CallCheckin, CallCheckout, CallMachMsgOverwrite, CallMachPortAllocate,
+    CallMachPortDeallocate, CallMachPortModRefs, CallMachPortType, ReplyHostSelfTrap,
+    ReplyMachReplyPort, ReplyTaskSelfTrap, ReplyThreadSelfTrap,
 };
 use std::os::fd::RawFd;
 
@@ -15,6 +16,18 @@ use std::os::fd::RawFd;
 pub struct Handler;
 
 impl rpc_wire::RpcHandler for Handler {
+    /// A guest thread checks in when it connects. Registration is implicit here (the
+    /// task is ensured when the first call routes to it), so checkin just acknowledges;
+    /// fork/exec-replacement notification (notifyCheckin) is a later refinement.
+    fn checkin(&mut self, _call: &CallCheckin, _fds: &[RawFd]) -> Result<(), i32> {
+        Ok(())
+    }
+    /// A guest thread checks out on exit/exec. Acknowledged; the death/exec lifecycle
+    /// (reaping, exec listener) is a later refinement.
+    fn checkout(&mut self, _call: &CallCheckout, _fds: &[RawFd]) -> Result<(), i32> {
+        Ok(())
+    }
+
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
         Ok(ReplyTaskSelfTrap { port_name: unsafe { mach::task_self_trap() } })
     }

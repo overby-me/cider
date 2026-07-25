@@ -270,6 +270,14 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   boundary; the message id round-trips -> DAEMON_MSG_OK. Real Mach messaging for a
   separate process, the whole stack composed. (The shared `Handler` now covers the
   traps, mach_port_allocate/deallocate/type/mod_refs, and mach_msg.)
+- **Full guest session over the socket (the real architecture)** -- a client PROCESS
+  checks in, runs a sequence of Mach calls (task_self_trap -> mach_port_allocate -> a
+  mach_msg loopback), and checks out, ALL served on ONE persistent doWork thread bound to
+  the client's task: the daemon creates the thread once and the socket loop feeds it each
+  call via park/wake, dispatching through the shared Handler (checkin/checkout are
+  acknowledged; registration is implicit via routing) -> DAEMON_SESSION_OK. The real
+  darlingserver architecture end to end: one long-lived thread per guest thread serving a
+  whole session.
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.
@@ -303,8 +311,9 @@ template); the memory-touching ones depend on bucket B.
    preserved (`persistent_threads_demo`); and one long-lived thread serves many calls via
    the doWork loop, parking between them (`thread_call_loop_demo`). Registry
    run_thread/wake_thread. Still open: the checkin/checkout lifecycle (item 3).
-3. **Process/Thread lifecycle** -- checkin/checkout, fork/exec, death monitoring +
-   reaping (pidfd/waitpid), port death notifications.
+3. **Process/Thread lifecycle** -- checkin/checkout now served (acknowledged; a full
+   session works end to end, `daemon_session_demo`). Still open: fork/exec replacement,
+   death monitoring + reaping (pidfd/waitpid), and port death notifications.
 4. **The interrupt mechanism** -- signals delivered *during* a blocked call (nested
    microthreads, InterruptEnter/Exit, the sigexc path); the spike deferred this.
 5. **s2c (server->guest) calls + push replies** -- the daemon calling *into* the

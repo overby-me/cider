@@ -275,10 +275,13 @@
                 # OVER THE SOCKET; the daemon copies the message in from and out to the
                 # CLIENT's memory (cross-process) and routes it through XNU.
                 run daemon_msg_demo    DAEMON_MSG_OK
+                # A full guest SESSION over the socket on ONE persistent doWork thread:
+                # checkin -> task_self_trap -> mach_port_allocate -> mach_msg -> checkout.
+                run daemon_session_demo DAEMON_SESSION_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket, full session)"
                 touch "$out"
               '';
 
