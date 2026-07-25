@@ -261,6 +261,15 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
   client's pid), replying with just the code. Unlike the in-process demos (guest = the
   daemon), the guest here is a separate process, so this is the genuine cross-process
   write the real daemon performs -> DAEMON_ALLOC_OK.
+- **mach_msg over the socket to a real client (culmination)** -- a client PROCESS runs a
+  full mach_msg send/receive loopback THROUGH the daemon: it allocates a port, builds a
+  message in its own memory, and issues mach_msg_overwrite over the socket; the daemon
+  copies the message IN from the client (copyinmsg -> read_memory -> process_vm_readv),
+  routes it through XNU's ipc_mqueue, and copies the received message OUT to the client
+  (copyoutmsg -> write_memory -> process_vm_writev). Both copies cross the process
+  boundary; the message id round-trips -> DAEMON_MSG_OK. Real Mach messaging for a
+  separate process, the whole stack composed. (The shared `Handler` now covers the
+  traps, mach_port_allocate/deallocate/type/mod_refs, and mach_msg.)
 
 So every load-bearing **mechanism** is proven in running code. What remains is
 breadth + infrastructure + cutover, none of it research.

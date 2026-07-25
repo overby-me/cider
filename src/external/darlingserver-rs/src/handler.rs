@@ -5,8 +5,8 @@
 
 use crate::mach;
 use crate::rpc_wire::{
-    self, CallMachPortAllocate, ReplyHostSelfTrap, ReplyMachReplyPort, ReplyTaskSelfTrap,
-    ReplyThreadSelfTrap,
+    self, CallMachMsgOverwrite, CallMachPortAllocate, CallMachPortDeallocate, CallMachPortModRefs,
+    CallMachPortType, ReplyHostSelfTrap, ReplyMachReplyPort, ReplyTaskSelfTrap, ReplyThreadSelfTrap,
 };
 use std::os::fd::RawFd;
 
@@ -33,6 +33,48 @@ impl rpc_wire::RpcHandler for Handler {
     /// client's pid). The reply carries only the kern_return_t.
     fn mach_port_allocate(&mut self, call: &CallMachPortAllocate, _fds: &[RawFd]) -> Result<(), i32> {
         match unsafe { mach::port_allocate(call.target, call.right, call.name) } {
+            mach::KERN_SUCCESS => Ok(()),
+            code => Err(code),
+        }
+    }
+
+    /// mach_msg: copy the message IN from the caller's `msg` buffer, route it, and (on
+    /// receive) copy it OUT to the caller's `rcv_msg` buffer -- both in the caller's own
+    /// address space via the memory hooks. The reply carries only the mach_msg_return_t.
+    fn mach_msg_overwrite(&mut self, call: &CallMachMsgOverwrite, _fds: &[RawFd]) -> Result<(), i32> {
+        match unsafe {
+            mach::msg_overwrite(
+                call.msg,
+                call.option,
+                call.send_size,
+                call.rcv_size,
+                call.rcv_name,
+                call.timeout,
+                call.priority,
+                call.rcv_msg,
+            )
+        } {
+            0 => Ok(()),
+            code => Err(code),
+        }
+    }
+
+    fn mach_port_deallocate(&mut self, call: &CallMachPortDeallocate, _fds: &[RawFd]) -> Result<(), i32> {
+        match unsafe { mach::port_deallocate(call.target, call.name) } {
+            mach::KERN_SUCCESS => Ok(()),
+            code => Err(code),
+        }
+    }
+
+    fn mach_port_mod_refs(&mut self, call: &CallMachPortModRefs, _fds: &[RawFd]) -> Result<(), i32> {
+        match unsafe { mach::port_mod_refs(call.target, call.name, call.right, call.delta) } {
+            mach::KERN_SUCCESS => Ok(()),
+            code => Err(code),
+        }
+    }
+
+    fn mach_port_type(&mut self, call: &CallMachPortType, _fds: &[RawFd]) -> Result<(), i32> {
+        match unsafe { mach::port_type(call.target, call.name, call.ptype) } {
             mach::KERN_SUCCESS => Ok(()),
             code => Err(code),
         }

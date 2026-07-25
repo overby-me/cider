@@ -271,10 +271,14 @@
                 # mach_port_allocate; the daemon writes the allocated name into the
                 # CLIENT's memory (process_vm_writev to the client's pid).
                 run daemon_alloc_demo  DAEMON_ALLOC_OK
+                # The culmination: a client process runs a mach_msg send/receive loopback
+                # OVER THE SOCKET; the daemon copies the message in from and out to the
+                # CLIENT's memory (cross-process) and routes it through XNU.
+                run daemon_msg_demo    DAEMON_MSG_OK
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout)"
+                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket)"
                 touch "$out"
               '';
 
