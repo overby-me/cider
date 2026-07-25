@@ -1,120 +1,184 @@
-# Evaluation: which parts of Darling could meaningfully be rewritten in Rust
+# Rewriting Darling's host side in Rust: a de-risked plan
 
-Grounding: LOC/language measured on this tree (2026-07); architecture from the
-darlingserver + libSystem + nix-ninja work this session.
+Decision taken: **we want the Rust rewrite.** This doc is therefore about *how to
+do it right*, not whether. It is grounded in the real architecture (LOC, the
+`dtape` boundary, the scheduler model, the RPC seam) measured on this tree
+(2026-07), because those facts dictate the only design that actually works.
 
-## The dividing line
+The target with real leverage is **darlingserver** (the daemon). **mldr** and the
+**build tooling** are the low-risk on-ramp that builds the Rust-in-tree toolchain
+and team muscle before the daemon. The macOS ABI layer (libSystem, frameworks,
+dyld, objc4) is **never** rewritten -- it must stay Mach-O tracking Apple, validated
+against cache.nixos.org. The vendored XNU under duct-tape (738k lines) stays C
+forever.
 
-Darling has two kinds of code, and Rust fits exactly one of them:
+## The one boundary that governs everything: `dtape`
 
-- **The Linux "host" side** -- code Darling is *free to implement however it wants*,
-  as long as it speaks the right protocol to the emulated processes. This is the
-  daemon, the loader, the launcher, and the build tooling. **Rust fits here.**
-- **The macOS "guest" ABI side** -- code that must *match Apple's binary interface
-  exactly*: Mach-O dylibs targeting `x86_64-apple-darwin`, exporting the precise
-  macOS symbol set, linked with classic ld64, mostly derived from Apple open source
-  (libc, xnu, objc4) and validated against cache.nixos.org. **Rust does NOT fit
-  here** -- rewriting means diverging from upstream (losing the correctness oracle
-  and the ability to track Apple releases) plus ABI risk, for no safety win that a
-  C ABI surface can even express.
+The daemon is not cleanly separable from the emulation. Measured:
 
-The clean seam between them is the **darlingserver RPC** (a wire protocol generated
-by `scripts/generate-rpc-wrappers.py`), *not* a dylib ABI. So the host side can be
-rewritten in any language without touching the guest side.
+- darlingserver calls **271 distinct `dtape_*` functions** *into* the C duct-tape.
+- The duct-tape calls *back* into the daemon through a **`dtape_hooks` vtable**
+  (`server.cpp:388` registers it; `dtape_init(&dtape_hooks)`), e.g.
+  `dtape_hooks->thread_suspend` / `->thread_resume` (`duct-tape/src/locks.c`,
+  `condvar.c`), `->current_thread`, `->current_task`, `->thread_syscall_return`,
+  `->log`, `->interrupt_enable/disable`.
+- The duct-tape runs **XNU code on the daemon's microthreads** and suspends/resumes
+  them *synchronously from deep inside C call stacks* (a mach receive blocks, a
+  kernel lock waits).
 
-## Provenance is the same line
+**So the Rust/C boundary is the `dtape_*` API + the `dtape_hooks` contract, not the
+RPC.** Rust owns everything *above* it (event loop, RPC codec, process/thread/port
+tables, the microthread scheduler); C keeps everything *below* it (duct-tape glue +
+XNU). Step 1 of the project is to **freeze that contract** as the FFI interface and
+never widen it.
 
-The host/guest split is also the **origin** split, and this is not a coincidence:
-you rewrite what Darling *owns and designed*, never what it *tracks from Apple*.
-Verified by copyright headers + `nix/submodules.json`:
+Consequence to internalize up front: because the daemon holds Rust-owned `Thread`/
+`Task`/`Port` objects that the C hooks are handed as raw context pointers, those
+objects must be **address-stable** (heap-boxed / `Pin`, never moved) and their
+lifetimes managed on the Rust side. The hooks are `extern "C"` shims that recover
+`&Thread` from the context pointer. This is `unsafe`, but it is *contained* to the
+hook layer -- everything the daemon builds on top is safe Rust.
 
-- **Strictly Darling-original** (no upstream to track): **darlingserver** (a dir in
-  the main repo, "Copyright Darling developers"), **mldr** and **`darling.c`**
-  (`src/startup`, "Copyright Lubos Dolezel", Darling's lead), and the **duct-tape
-  glue** (Darling's own shim -- though it wraps forked XNU).
-- **Forks** (carry `Copyright ... Apple Inc.`, track upstream): **libc, objc4,
-  Foundation, dyld, the libSystem sublibs, the XNU duct-tape wraps**, and
-  **mig/migcom** (submodule `darlinghq/darling-bootstrap_cmds`).
+## The design constraint that kills the naive plan: no async
 
-So "which components are strictly Darling's, not forks?" has the **same answer** as
-"which are worth a Rust rewrite?": darlingserver, mldr, darling.c (+ the duct-tape
-glue). Rewriting a fork would mean diverging from the source Darling deliberately
-tracks -- losing the upstream and, for the ABI dylibs, the cache.nixos.org oracle.
+The obvious "rewrite it in modern Rust" instinct is `async`/`await` + Tokio. **It
+does not work here**, and knowing why saves a wasted quarter:
 
-## Candidates, measured
+`dtape_hooks->thread_suspend` is called **synchronously, from inside a C/XNU call
+stack**, to block the current microthread. You cannot `.await` across a C stack
+frame. The only ways to suspend a computation that is mid-C-call are (a) a full OS
+thread per microthread (defeats the point; thousands of guest threads) or (b)
+**stackful coroutines** -- which is exactly what the current ucontext design is.
 
-| Component | Own code | Lang | Origin | Rust verdict |
-|---|---:|---|---|---|
-| **darlingserver** (daemon) | ~7.4k | C++ | **Darling-original** | **Top candidate** |
-| **mldr** (loader) | ~2.9k | C + asm | **Darling-original** | **Strong** |
-| build tooling | (mixed) | C / Python | mixed (`generate-rpc-wrappers.py` Darling; mig = Apple fork) | **Easy win** |
-| **duct-tape** glue | ~8.8k | C | Darling glue over ~750k **forked XNU** | Later / coupled |
-| **launcher** (`darling.c`) | ~1.4k | C | **Darling-original** | Minor |
-| libSystem sublibs, Foundation, dyld, objc4, ... | very large | C/C++/ObjC/asm | **Apple forks** | **No** |
+**Therefore the Rust scheduler stays stackful.** Use a stackful-coroutine crate
+(`corosensei` -- fast, portable switch; or `generator`) instead of raw `ucontext`,
+OR keep the tuned assembly switch behind a tiny shim. Either way, `thread_suspend`/
+`thread_resume` map to coroutine yield/resume, and the C duct-tape is none the
+wiser. `async` is fine for nothing in the microthread path; the single epoll loop
+can be a hand-rolled `epoll_wait` (or `mio`) -- do **not** pull in Tokio, whose
+model fights the stackful requirement.
 
-(Roles: darlingserver = Mach IPC routing + microthread scheduler + epoll loop;
-mldr = parse & map Mach-O, set up process, jump to entry; launcher = container/
-namespace setup + exec mldr; libSystem/frameworks = the emulated macOS ABI.)
+This also means the landed perf work is a **constraint, not a target**: P1
+(signal-mask-free microthread context switch) and P2 (epoll re-arm) are already ✅
+done in the C++ daemon (`plan/perf-improvements.md`). The Rust port must *preserve*
+their semantics (fast switch with no per-swap sigmask syscall; EPOLLONESHOT re-arm
+discipline) or it is a straight regression. Port them; do not "rediscover" them.
 
-## Ranked recommendation
+## What the rewrite does and does not buy (set expectations honestly)
 
-### 1. darlingserver -- the daemon. Highest payoff.
-Only ~7.4k lines of Darling's own C++, and it is the single best fit:
-- **Linux-native**, no macOS ABI constraint; the client boundary is the RPC wire
-  protocol, so a Rust daemon is a drop-in as long as it speaks it.
-- **The perf hot path.** Server-side levers dominate the profiling backlog (P1
-  microthread context switch, P2 epoll re-arm, P8 scheduler futex, P0.7 spawn-path,
-  P7 cold-start). This is concurrency- and scheduler-heavy code -- Rust's fearless
-  concurrency and ownership model directly attack the data-race and lifetime
-  hazards that make these hard/risky in C++ today (78 raw new/delete/malloc + 23
-  thread/mutex/atomic sites in the daemon core).
-- **Self-contained process** = a clean rewrite boundary.
-- *Path:* stand up a Rust daemon shell that FFIs into the existing C **duct-tape**
-  for XNU emulation, keep the RPC protocol byte-identical, migrate internals
-  (scheduler, epoll loop, port tables) incrementally. Not a big-bang rewrite.
+- **Buys:** memory-/lifetime-safety on the daemon's *own* state -- the port tables,
+  the thread/process registries, the RPC buffers, the epoll/scheduler bookkeeping
+  (measured: ~112 alloc sites, ~32 mutex/atomic sites across src+headers). These
+  are where the daemon's *own* concurrency and use-after-free hazards live, and
+  Rust's ownership model genuinely removes that class.
+- **Does NOT buy:** correctness of the emulation. The FFI'd XNU semantics stay
+  `unsafe` C. This session's live blockers -- the launchd portset/kqueue deadlock
+  (#47), the intermittent SIGFPE (#44), the fork/exec race -- live *below* the
+  boundary, in duct-tape/XNU/signal-emulation. **A Rust daemon would not have
+  prevented any of them.** Rewrite for the daemon's own robustness and
+  maintainability, not to fix emulation fidelity.
 
-### 2. mldr -- the Mach-O loader. Strong, and small.
-~2.9k lines. It **parses an untrusted binary format** (Mach-O) and does the
-mmap/thread setup -- the classic memory-safety hazard, and Rust has mature Mach-O
-crates (`goblin`, `object`). Small and self-contained (process bootstrap). Caveat:
-the register/stack setup and the jump-to-entry are inline **assembly** and stay
-`unsafe`/`asm!` in Rust too -- but the parsing and load-command handling, which is
-where the bugs live, become safe. Good second target precisely because it is small.
+## Boundary map
 
-### 3. Build tooling (mig, `generate-rpc-wrappers.py`, stub generators). Easy, safe.
-Build-time only -- no ABI, no runtime, no correctness oracle. Same spirit as the
-already-done **rust-ninja**. `generate-rpc-wrappers.py` (Python) -> Rust is a clean,
-low-risk win and keeps the toolchain in one language family. Opportunistic, not
-blocking anything.
+| Layer | Language after rewrite | Why |
+|---|---|---|
+| RPC clients (guest libSystem) | unchanged Mach-O | wire-compatible; never touched |
+| RPC codec | **Rust**, byte-identical wire | generated from one source of truth |
+| Event loop, scheduler, port/thread/process tables | **Rust** (stackful coroutines) | the daemon's own logic + hot path |
+| `dtape_*` API + `dtape_hooks` | **FFI boundary** (frozen) | the one seam; 271 fns + hook vtable |
+| duct-tape glue (8.5k) | **C** | wraps XNU; enormous, not a win |
+| vendored XNU (738k) | **C** | tracks Apple; never |
+| mldr (2.85k) | **Rust** (on-ramp) | small, self-contained Mach-O parse |
+| launcher `darling.c` (1.36k) | Rust (optional, later) | folds into startup path |
+| build tooling (rpc-wrappers, stubs) | **Rust** (on-ramp) | build-time only, zero risk |
 
-### 4. duct-tape glue. Only alongside a Rust daemon; keep the XNU it wraps in C.
-The ~8.8k of glue is Darling's own, but it wraps ~750k lines of **vendored XNU**
-(osfmk/bsd Mach + kernel structs). Rewriting the glue standalone means an enormous
-C-FFI surface into XNU internals and re-implementing kernel semantics -- high effort,
-high correctness risk. Right move: leave it C, call it via FFI from a Rust
-darlingserver, and migrate leaf pieces later if ever. The vendored XNU itself is
-**never** a candidate (it tracks Apple).
+## Staged, gated migration (each stage independently shippable)
 
-### 5. launcher (`darling.c`). Minor.
-~1.4k lines of namespace/mount setup + exec. Could be Rust (the `nix` crate covers
-the syscalls), and the spawn path *is* perf-sensitive (P0.7), but the payoff is
-small on its own. Best folded into a startup-path rewrite if #1 happens.
+The daemon is a single process, so you cannot run half-C++/half-Rust *within* one
+daemon. The plan is therefore: build the Rust toolchain and de-risk the hard part
+on the side, stand up a **parallel Rust daemon**, and cut over behind a gate --
+keeping the C++ daemon buildable as a fallback until the Rust one passes.
 
-### 6. libSystem sublibraries + the macOS frameworks. Do not rewrite.
-libsystem_kernel/libc/libpthread/dyld, Foundation, CoreFoundation, objc4, Security,
-... These *are* the emulated macOS. They must be Mach-O with the exact Apple symbol
-set, are largely ports of Apple open source (so C keeps them trackable against
-upstream and against the cache.nixos.org oracle), and their syscall stubs are
-mig/asm-generated. Rust buys nothing here and costs the upstream-tracking + ABI
-guarantees. Note the *client-side* perf levers (P3 mach_msg, P4 signal-mask, P5
-psynch, P6 RPC copies) live in this ABI-constrained layer -- so they are **not** a
-Rust opportunity; the Rust perf story is server-side only.
+**Stage 0 -- toolchain + link proof.** Cargo workspace (`src/external/darlingserver-rs`
+or similar) wired into `nix/package.nix` (the Rust-in-nix toolchain already exists
+from rust-ninja). Link the existing C duct-tape as a static lib via the `cc`/`cmake`
+crate. Prove a Rust binary can call *one* `dtape_*` function and link the whole
+duct-tape `.a`. Deliverable: it links and runs `dtape_init`.
 
-## Bottom line
+**Stage 1 -- RPC codec generator (build tooling, on-ramp).** Extend
+`src/external/darlingserver/scripts/generate-rpc-wrappers.py` (1.6k lines; the RPC
+surface is its in-file `calls = [...]` list -- a real single source of truth that
+already emits the public header, internal header, and library source) to emit
+**Rust** decoders/encoders alongside the current C. This keeps the wire format
+byte-identical (clients unchanged) and lands the RPC types in Rust with zero daemon
+risk. Gate: generated C is unchanged; a Rust round-trip test matches the C wire bytes.
 
-**Yes, meaningfully -- but only on the Linux host side, and darlingserver is the
-one with real leverage.** Rank: darlingserver (do this, incrementally, FFI'ing
-duct-tape) > mldr (small, safety win on Mach-O parsing) > build tooling (easy) >
-duct-tape/launcher (later, coupled) >> the macOS ABI layer (never). The guest ABI
-(libSystem + frameworks) stays C by necessity, which also means the client-side
-perf work can't be a Rust play.
+**Stage 2 -- mldr in Rust (foothold).** Rewrite the Mach-O parse + load-command
+handling with `goblin`/`object`; keep the register/stack setup and jump-to-entry as
+`asm!`. Independent process, low blast radius, real Rust practice on the exact FFI/
+exec/vchroot patterns the daemon needs. Gate: guest processes start; `hello` builds
+(`scripts/build-hello-bypass.sh`); the spawn stress is clean.
+
+**Stage 3 -- THE SPIKE (make-or-break; do before committing to the full port).**
+Minimal Rust daemon that: opens the RPC socket, decodes a couple of calls, holds a
+toy thread/port table, calls `dtape_init` with **Rust-implemented `dtape_hooks`**,
+and drives **one microthread** (stackful coroutine) through an XNU call that
+*suspends and resumes* via `thread_suspend`/`thread_resume` -- e.g. a blocking mach
+receive that another call wakes. If a stackful coroutine can suspend from inside the
+C/XNU stack and resume correctly and fast across the FFI, the rewrite is viable. If
+this is ugly or slow, stop here -- you have spent days, not quarters. **This spike
+is the single highest-information step; schedule it first after Stage 0.**
+
+**Stage 4 -- port the core.** With the spike proven: port the epoll loop, the
+microthread dispatch/workqueue, the timer path, and the port/thread/process tables
+to safe Rust over the frozen `dtape` FFI. Preserve P0 (ucred cache), P1, P2. Bring
+the *full* RPC surface online. The C++ daemon still exists in parallel.
+
+**Stage 5 -- cutover.** Flip `darlingserver` to the Rust binary (a build switch /
+`DSERVER_IMPL=rust`), gated by the whole correctness suite (below). Keep the C++
+daemon buildable for one release as a fallback; delete once the Rust daemon has
+carried real workloads (guest Nix building packages) without regression.
+
+## Correctness gates (run at every stage, non-negotiable)
+
+1. Guest userland smoke tests (`scripts/run-tests.sh`) green in a fresh prefix.
+2. **M1 still holds:** guest Nix builds hello/pv/jq from source and they run
+   (`scripts/build-pkg-bypass.sh`), rootless, via the launchd bypass.
+3. The **spawn/IPC stress** (the P-series loop in `plan/perf-improvements.md`)
+   passes with no context-switch/epoll regression, and no new leaks/races (run the
+   Rust daemon under ASan/TSan-equivalent + `MIRIFLAGS` on unit-testable pieces).
+4. The cache.nixos.org oracle where a built artifact is comparable.
+Never merge a stage that regresses any of these.
+
+## Crate / tooling choices
+
+- **Stackful coroutines:** `corosensei` (fast, no sigmask games -- preserves P1) or
+  keep the tuned asm switch behind a shim. **Not** async/Tokio for the scheduler.
+- **epoll:** hand-rolled `epoll_wait` or `mio` (raw), single loop -- match the model.
+- **FFI:** `bindgen` for the `dtape_*` headers; hand-write the **28** `dtape_hooks`
+  vtable entries (`dtape_hooks_t` in `duct-tape/include/darlingserver/duct-tape.h`).
+- **Mach-O (mldr):** `goblin` / `object`. **Syscalls (mldr/launcher):** `nix` + `libc`.
+- **Build:** `cc`/`cmake` crate to compile+link the C duct-tape as a static lib;
+  the whole thing produced by `nix/package.nix` like the rest of the tree.
+
+## Provenance / dividing line (why this is even allowed)
+
+You may rewrite only what Darling *owns and designed*; never what it *tracks from
+Apple* (that would lose upstream tracking and, for the ABI dylibs, the cache oracle).
+Verified by copyright headers + `nix/submodules.json`: darlingserver ("Copyright
+Darling developers"), mldr + `darling.c` ("Copyright Lubos Dolezel"), and the
+duct-tape glue are Darling-original; libc/objc4/Foundation/dyld/the libSystem
+sublibs/the wrapped XNU/mig are Apple-tracking forks. The rewrite targets the former
+and stops exactly at the `dtape` boundary into the latter.
+
+## One-paragraph bottom line
+
+Rewrite the host side, drawing the Rust/C line at the **`dtape_*` API +
+`dtape_hooks` vtable**; keep the duct-tape + XNU + the whole macOS ABI in C. The
+scheduler **must** stay stackful (coroutines, not async) because the duct-tape
+suspends microthreads synchronously from inside C call stacks -- this is the design's
+load-bearing decision. De-risk in order: toolchain/link proof -> Rust RPC codec ->
+mldr -> **the suspend/resume spike (make-or-break, do early)** -> port the core
+preserving P0/P1/P2 -> gated cutover with the C++ daemon as fallback. Expect the
+payoff in the daemon's *own* lifetime/concurrency safety, not in emulation fidelity
+(the XNU stays `unsafe` C, so the fidelity bugs remain a separate track).
