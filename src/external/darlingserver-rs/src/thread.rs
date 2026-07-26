@@ -11,6 +11,35 @@ extern "C" {
     fn dtape_thread_sigexc_enter(thread: *mut dtape_thread_t);
     fn dtape_thread_sigexc_enter2(thread: *mut dtape_thread_t);
     fn dtape_thread_sigexc_exit(thread: *mut dtape_thread_t);
+
+    // Signal processing (sigprocess): load the guest's thread+float state (from guest
+    // addresses, via the memory hooks), run the signal through XNU (which sets up the
+    // guest's handler entry in the state + calls the pending-signal hook), optionally wait
+    // while user-suspended (lldb), and save the modified state back. duct-tape/src/thread.c.
+    fn dtape_thread_load_state_from_user(thread: *mut dtape_thread_t, thread_state: u64, float_state: u64) -> i32;
+    fn dtape_thread_save_state_to_user(thread: *mut dtape_thread_t, thread_state: u64, float_state: u64) -> i32;
+    fn dtape_thread_process_signal(thread: *mut dtape_thread_t, bsd_signal: i32, linux_signal: i32, code: i32, signal_address: u64);
+    fn dtape_thread_wait_while_user_suspended(thread: *mut dtape_thread_t);
+}
+
+/// Load the guest thread's saved register/float state (at guest addresses) into the dtape
+/// thread. Returns a negative errno on failure.
+pub unsafe fn load_state_from_user(thread: *mut dtape_thread_t, thread_state: u64, float_state: u64) -> i32 {
+    dtape_thread_load_state_from_user(thread, thread_state, float_state)
+}
+/// Save the (possibly signal-modified) dtape thread state back to the guest's addresses.
+pub unsafe fn save_state_to_user(thread: *mut dtape_thread_t, thread_state: u64, float_state: u64) -> i32 {
+    dtape_thread_save_state_to_user(thread, thread_state, float_state)
+}
+/// Run a signal through XNU: sets up the guest's handler entry in the loaded state and
+/// records the pending signal via the thread_set_pending_signal hook.
+pub unsafe fn process_signal(thread: *mut dtape_thread_t, bsd_signal: i32, linux_signal: i32, code: i32, signal_address: u64) {
+    dtape_thread_process_signal(thread, bsd_signal, linux_signal, code, signal_address);
+}
+/// Block while the thread is user-suspended (a debugger stopped it); returns immediately
+/// if it is not suspended.
+pub unsafe fn wait_while_user_suspended(thread: *mut dtape_thread_t) {
+    dtape_thread_wait_while_user_suspended(thread);
 }
 
 /// Tell XNU the thread is entering signal (sigexc) processing: clears its XNU wait

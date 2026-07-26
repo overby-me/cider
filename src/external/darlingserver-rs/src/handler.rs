@@ -272,6 +272,61 @@ impl rpc_wire::RpcHandler for Handler {
         Ok(())
     }
 
+    /// Process a signal delivered to the calling thread (sigprocess #12): load its saved
+    /// register/float state (from the guest addresses), run the signal through XNU -- which
+    /// rewrites the state to enter the guest's handler and records the signal to actually
+    /// deliver -- optionally wait while user-suspended, then save the modified state back.
+    /// The reply carries the BSD signal number the guest should deliver. Mirrors call.cpp's
+    /// Sigprocess + Thread::processSignal.
+    fn sigprocess(&mut self, call: &CallSigprocess, _fds: &[RawFd]) -> Result<ReplySigprocess, i32> {
+        let mt = sched::current();
+        if mt.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let dthread = unsafe { (*mt).dtape_thread() };
+        if dthread.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        unsafe {
+            let r = thread::load_state_from_user(dthread, call.thread_state, call.float_state);
+            if r != 0 {
+                return Err(r);
+            }
+            thread::process_signal(dthread, call.bsd_signal_number, call.linux_signal_number, call.code, call.signal_address);
+            thread::wait_while_user_suspended(dthread);
+            let r = thread::save_state_to_user(dthread, call.thread_state, call.float_state);
+            if r != 0 {
+                return Err(r);
+            }
+        }
+        let new_bsd_signal_number = unsafe { (*mt).pending_signal() };
+        Ok(ReplySigprocess { new_bsd_signal_number })
+    }
+
+    /// Block the calling thread while it is user-suspended (a debugger stopped it), then
+    /// restore its state. Returns immediately if not suspended. Mirrors call.cpp's
+    /// ThreadSuspended + Thread::waitWhileUserSuspended.
+    fn thread_suspended(&mut self, call: &CallThreadSuspended, _fds: &[RawFd]) -> Result<(), i32> {
+        let mt = sched::current();
+        if mt.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let dthread = unsafe { (*mt).dtape_thread() };
+        if dthread.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        unsafe {
+            let r = thread::load_state_from_user(dthread, call.thread_state, call.float_state);
+            if r != 0 {
+                return Err(r);
+            }
+            thread::wait_while_user_suspended(dthread);
+            // saving state back is best-effort (the process may have died while suspended).
+            thread::save_state_to_user(dthread, call.thread_state, call.float_state);
+        }
+        Ok(())
+    }
+
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
         Ok(ReplyTaskSelfTrap { port_name: unsafe { mach::task_self_trap() } })
     }

@@ -107,12 +107,17 @@ pub struct Microthread {
     // mach_msg receive that waited) delivered via its continuation instead of returning
     // to the Rust caller. This is what the real daemon would put in the RPC reply.
     syscall_return: Option<i32>,
+    // Set by the thread_set_pending_signal hook during dtape_thread_process_signal: the
+    // BSD signal the guest should actually deliver (sigprocess returns it).
+    pending_signal: i32,
 }
 
 impl Microthread {
     pub fn is_finished(&self) -> bool { self.finished }
     pub fn is_suspended(&self) -> bool { self.suspended }
     pub fn dtape_thread(&self) -> *mut dtape_thread_t { self.dtape_thread }
+    /// The pending BSD signal set during signal processing (sigprocess reads this).
+    pub fn pending_signal(&self) -> i32 { self.pending_signal }
     /// The result a blocking call delivered via thread_syscall_return (None if the call
     /// returned normally instead of blocking). Cleared on read.
     pub fn take_syscall_return(&mut self) -> Option<i32> { self.syscall_return.take() }
@@ -186,6 +191,7 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         body: Some(body),
         pending_cont: None,
         syscall_return: None,
+        pending_signal: 0,
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt
@@ -387,6 +393,11 @@ mod hooks {
         suspend_current(cont, cont_ctx, unlock_me);
     }
     pub(super) unsafe extern "C" fn thread_resume(ctx: *mut c_void) { schedule(ctx as *mut Microthread); }
+    /// dtape_thread_process_signal calls this with the BSD signal the guest should deliver;
+    /// record it on the microthread (sigprocess returns it).
+    pub(super) unsafe extern "C" fn thread_set_pending_signal(ctx: *mut c_void, sig: c_int) {
+        if !ctx.is_null() { (*(ctx as *mut Microthread)).pending_signal = sig; }
+    }
     pub(super) unsafe extern "C" fn thread_context_dispose(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn thread_terminate(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn interrupt_disable() {
@@ -460,6 +471,7 @@ fn make_hooks() -> dtape_hooks_t {
     h.current_thread = Some(hooks::current_thread);
     h.thread_suspend = Some(hooks::thread_suspend);
     h.thread_resume = Some(hooks::thread_resume);
+    h.thread_set_pending_signal = Some(hooks::thread_set_pending_signal);
     h.thread_context_dispose = Some(hooks::thread_context_dispose);
     h.thread_terminate = Some(hooks::thread_terminate);
     h.current_thread_interrupt_disable = Some(hooks::interrupt_disable);
