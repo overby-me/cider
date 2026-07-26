@@ -364,11 +364,40 @@ binaries -- `id -un`->root, `$((7*8))`->56, `rev`->OLLEH, `date +%Y`->2026, `sor
 
 So every load-bearing **mechanism** is proven in running code, and the daemon runs real
 multi-process Darwin workloads end to end -- shell, pipelines, filesystem, timers, and
-signals. The remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest;
-not hit by any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full
-launchd boot path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), multi-worker
-scheduling (throughput), and the `DSERVER_IMPL=rust` cutover + M1 (guest nix builds hello,
-which needs a nix-provisioned prefix).
+signals.
+
+**Then psynch (pthread mutex/condvar/rwlock) landed, and diagnosing why multithreaded
+programs still fail uncovered THE blocker for parity: the single-worker daemon.** All nine
+psynch handlers are implemented (thin wrappers over duct-tape's `dtape_psynch_*`, with the
+BSD-retval reply-body infrastructure they need); the non-blocking path is correct and a
+contended wait is reached at runtime. But a multithreaded guest (e.g. `python -c` with a
+`threading.Lock`/`Condition`) fails, and the root cause is now fully traced:
+
+- The C++ daemon runs the exact same multithreaded python fine (COUNTER=100000, rc=0), so
+  this is a Rust-daemon gap, not a darling limitation.
+- The Rust daemon fails at the **first contended psynch wait**: the guest's later
+  `interrupt_enter`/`semaphore_timedwait` RPCs return `-111` (ECONNREFUSED). The band-aid
+  `interrupt_enter_tolerant` (sigexc.c) retries 4000x and still loses.
+- Instrumentation (RECV/heartbeat/init-death traces) shows the daemon does **not** exit and
+  its replies do **not** fail -- instead its epoll heartbeat **stops** the instant a psynch
+  wait blocks. The daemon's single OS thread **freezes** inside duct-tape's psynch
+  turnstile/waitq setup (`psynch_wait_prepare`), BEFORE it ever reaches `thread_block` /
+  `suspend_current`. The `-111` the guest sees is downstream of that freeze.
+- The turnstile path (`turnstile.c`) guards its state with `lck_spin` **spinlocks**. On a
+  single OS thread, a spinlock taken on behalf of one microthread can never be released
+  while another microthread needs it -- there is no second CPU to make progress. The C++
+  daemon survives precisely because it is **multi-worker** (a `_workQueue` of OS threads).
+
+**Conclusion: multi-worker scheduling is a PREREQUISITE for multithreaded guest programs,
+not a throughput nicety.** Since most real Darwin software is multithreaded (anything on
+GCD/libdispatch or pthreads under contention), this is the top remaining parity item. It is
+a substantial change (a thread-safe scheduler: per-worker current-thread + BACK_TO_TOP, a
+shared run queue behind a mutex/condvar, and locking around the registry/slots/handler).
+
+The other remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not
+hit by any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full launchd
+boot path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), and the `DSERVER_IMPL=rust`
+cutover + M1 (guest nix builds hello, which needs a nix-provisioned prefix).
 
 ## What is missing to fully replace the C++ daemon
 

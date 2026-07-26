@@ -61,6 +61,23 @@ fn code_reply(number: u32, code: c_int) -> Vec<u8> {
     .to_vec()
 }
 
+/// Whether `DSERVER_TRACE_CALLS` is set (cached). Diagnostic tracing for the RPC receive/
+/// reply path (the -111 interrupt race, task #44): logs each received call's (nsid,tid,
+/// number) and any reply-send error.
+fn trace_calls() -> bool {
+    use std::sync::atomic::{AtomicU8, Ordering};
+    static STATE: AtomicU8 = AtomicU8::new(2);
+    match STATE.load(Ordering::Relaxed) {
+        0 => false,
+        1 => true,
+        _ => {
+            let on = std::env::var_os("DSERVER_TRACE_CALLS").is_some();
+            STATE.store(on as u8, Ordering::Relaxed);
+            on
+        }
+    }
+}
+
 /// Build the wire reply for a call that blocked via a continuation and finished with `code`.
 /// The psynch ops (callnums 68..=76) each carry a u32 `retval` body -- their continuation
 /// (psynch_mtxcontinue &c.) filled the retval slot captured here -- so append it after the
@@ -213,10 +230,14 @@ unsafe fn run(cfg: Config) -> ! {
             }
             break;
         }
+        if trace_calls() {
+            eprintln!("darlingserver-rs: epoll wakeup ({n} events)");
+        }
         for ev in &events[..n as usize] {
             let fd = ev.u64 as RawFd;
             if init_pidfd >= 0 && fd == init_pidfd {
                 // Container init died: the session is over.
+                eprintln!("darlingserver-rs: container init (pid {init_pid}) died -> daemon exit");
                 libc::_exit(0);
             } else if timer_fd >= 0 && fd == timer_fd {
                 // A timer expired: wake the XNU threads whose deadline passed, then flush
@@ -281,6 +302,16 @@ unsafe fn handle_call(
     let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
     reg.set_host_pid(nsid, host_pid);
 
+    if trace_calls() {
+        let known = slots.contains_key(&(nsid, tid));
+        let queued = slots.get(&(nsid, tid)).map(|s| s.mailbox.borrow().pending.is_some()).unwrap_or(false);
+        // number & !UNMANAGED_FLAG for readability; interrupt_enter is #14.
+        eprintln!(
+            "darlingserver-rs: RECV #{} nsid={} tid={} known_thread={} prev_call_still_queued={}",
+            hdr.number & !rpc_wire::callnum::UNMANAGED_FLAG, nsid, tid, known, queued
+        );
+    }
+
     if !slots.contains_key(&(nsid, tid)) {
         let mailbox = Rc::new(RefCell::new(Mailbox::default()));
         let mb = mailbox.clone();
@@ -338,7 +369,11 @@ unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slo
             (reply, std::mem::take(&mut m.reply_fds))
         };
         if let Some(reply) = reply {
-            listener.send(&reply, &rfds, &slot.peer).ok();
+            if let Err(e) = listener.send(&reply, &rfds, &slot.peer) {
+                if trace_calls() {
+                    eprintln!("darlingserver-rs: SEND reply failed: {} (raw={:?})", e, e.raw_os_error());
+                }
+            }
             for fd in rfds {
                 libc::close(fd);
             }
