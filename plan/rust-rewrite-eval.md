@@ -424,18 +424,22 @@ loop builds the reply bytes (a Vec across the non-local re-entry is unsound). Ke
 getcontext must be in a frame that persists (run_dowork_loop) -- an earlier helper that
 returned had its frame reused and setcontext landed on corrupted stack.
 
-**Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal (sigexc) delivery,
-bucket B.4. The continuation-survival fix did NOT unblock these (confirmed: sigexc_enter here
-still returns -111 and regresses echo). `dtape_thread_sigexc_enter` clears the thread's XNU
-wait (`clear_wait_internal(THREAD_INTERRUPTED)`) mid-dispatch, through a reschedule path the
-doWork loop_top does not cover -- this is the DISTINCT nested-interrupt getcontext dance:
-interrupt_enter `getcontext`s a per-interrupt resume point and (if the signal interrupted a
-BLOCKED call) runs that call's saved continuation on a fresh stack while saving the old one;
-a `thread_syscall_return` that happens *during* the interrupt `setcontext`s back to that
-resume point; interrupt_exit restores the interrupted call and sends any reply it produced
-meanwhile. So #14/#15 stay ENOSYS (tolerated by non-signal programs -- echo/uname/pipelines/
-sleep all run) until that lands. The sigexc
-primitives are ready in `thread.rs`; sigprocess (#12) + s2c signal delivery follow.
+**B.4 (signals): DONE.** Signal delivery works end to end -- a program that traps SIGUSR1
+and sends itself one runs its handler and continues, INCLUDING when the signal interrupts a
+blocked `sleep` (`... trap USR1; (sleep 1; kill -USR1 $$) & sleep 5; echo DONE` prints
+GOT_USR1 then DONE, rc=0). Pieces: interrupt_enter/exit (the sigexc bracket -- the fix was
+calling `dtape_thread_sigexc_enter2` too, which pushes the user_state sigexc_exit pops;
+omitting it corrupted the thread -> -111); sigprocess (#12, `dtape_thread_load/process/
+save` + the `thread_set_pending_signal` hook on the microthread); thread_suspended (#23, the
+self-ptrace SIGEXC_SUSPEND wait). The nested case (signal during a blocked call) is handled
+by the interrupt bracket + the continuation-surviving loop -- no separate deferred-reply
+machinery was needed. Broad workloads confirm capability: awk (`seq 1 100 | awk` -> 5050),
+file I/O, loops, pipelines all run.
+
+**Current gap:** the remaining pieces are s2c (server->client calls, e.g. mmap on the
+guest's behalf -- not yet hit by tested workloads), mach-port kqchan (EVFILT_MACHPORT, the
+launchd-boot path, bypassed by DARLING_NO_LAUNCHD), exec-replacement (checkin's exec case),
+multi-worker scheduling, and the DSERVER_IMPL=rust cutover + M1 (guest nix builds hello).
 
 ### C. Cutover + validation
 A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for
