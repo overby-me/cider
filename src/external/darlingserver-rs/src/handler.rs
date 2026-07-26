@@ -3,6 +3,7 @@
 //! traps act on that guest). Starts with the special-port Mach traps; this is where the
 //! remaining ~70 calls get implemented as the daemon grows. See plan/rust-rewrite-eval.md.
 
+use crate::bindings::dtape_semaphore_t;
 use crate::rpc_wire::{self, *};
 use crate::{mach, sched, task, traps};
 use std::collections::HashMap;
@@ -43,10 +44,19 @@ pub struct ProcState {
     pub executable_path: String,
     /// The vchroot (container root) path, resolved from the vchroot directory fd.
     pub vchroot_path: String,
+    /// The received vchroot directory fd, kept open so /proc/self/fd stays valid (owned;
+    /// closed when replaced or on drop). Mirrors Process::_vchrootDescriptor.
+    pub vchroot_fd: Option<RawFd>,
     /// The supplementary group list (Groups).
     pub groups: Vec<u32>,
     /// Per-thread (pthread_handle, dispatch_qaddr), keyed by guest tid (SetThreadHandles).
     pub thread_handles: HashMap<u64, (u64, u64)>,
+    /// The nsid of the process that forked this one (None for the container init or a
+    /// process whose parent the daemon never saw). Its fork semaphore is upped on checkin.
+    pub parent_nsid: Option<u32>,
+    /// This process's fork-wait semaphore (owned by its task): fork_wait_for_child blocks
+    /// on it; a forked child ups it on checkin. Mirrors Process::_dtapeForkWaitSemaphore.
+    pub fork_sem: Option<*mut dtape_semaphore_t>,
 }
 
 impl ProcState {
@@ -59,8 +69,11 @@ impl ProcState {
             tracer_nsid: 0,
             executable_path: String::new(),
             vchroot_path: String::new(),
+            vchroot_fd: None,
             groups: Vec::new(),
             thread_handles: HashMap::new(),
+            parent_nsid: None,
+            fork_sem: None,
         }
     }
     fn is_64_bit(&self) -> bool {
@@ -102,17 +115,40 @@ impl Handler {
     pub fn set_current(&mut self, nsid: u32, tid: u64, host_pid: libc::pid_t, arch: u32) {
         self.current_pid = nsid;
         self.current_tid = tid;
-        self.procs
-            .entry(nsid)
-            .and_modify(|p| {
-                if host_pid > 0 {
-                    p.host_pid = host_pid;
-                }
-                if arch != 0 {
-                    p.architecture = arch;
-                }
-            })
-            .or_insert_with(|| ProcState::new(nsid, host_pid, arch));
+        if let Some(p) = self.procs.get_mut(&nsid) {
+            if host_pid > 0 {
+                p.host_pid = host_pid;
+            }
+            if arch != 0 {
+                p.architecture = arch;
+            }
+            return;
+        }
+        // First sighting of this process. Link it to its parent (the ProcState whose host
+        // pid == our /proc PPid) and inherit the parent's vchroot + groups, so a forked
+        // child sees the same container root (without which its mldr cannot find dyld).
+        // Mirrors Process's constructor. Then create its fork-wait semaphore on its task
+        // (already ensured before dispatch, so current_task() is valid here).
+        let parent_info = task::read_ppid(host_pid).and_then(|ppid| {
+            self.procs
+                .iter()
+                .find(|(_, p)| p.host_pid == ppid)
+                .map(|(&pn, p)| (pn, p.vchroot_path.clone(), p.groups.clone(), p.architecture))
+        });
+        let mut ps = ProcState::new(nsid, host_pid, arch);
+        if let Some((parent_nsid, vchroot_path, groups, parch)) = parent_info {
+            ps.parent_nsid = Some(parent_nsid);
+            ps.vchroot_path = vchroot_path;
+            ps.groups = groups;
+            if ps.architecture == 0 {
+                ps.architecture = parch;
+            }
+        }
+        let task = sched::current_task();
+        if !task.is_null() {
+            ps.fork_sem = Some(unsafe { task::semaphore_create(task, 0) });
+        }
+        self.procs.insert(nsid, ps);
     }
 
     fn cur(&self) -> Option<&ProcState> {
@@ -146,16 +182,36 @@ impl Handler {
 }
 
 impl rpc_wire::RpcHandler for Handler {
-    /// A guest thread checks in when it connects. Registration is implicit here (the
-    /// task is ensured when the first call routes to it), so checkin just acknowledges;
-    /// fork/exec-replacement notification (notifyCheckin) is a later refinement.
+    /// A guest thread checks in when it connects. The process is registered implicitly
+    /// (set_current, which also links it to its parent). Here we notify the parent that
+    /// its forked child has arrived, upping the parent's fork-wait semaphore so its
+    /// fork_wait_for_child unblocks. Mirrors Process::notifyCheckin's fork case. (Exec-
+    /// replacement's task/thread swap is a later refinement.)
     fn checkin(&mut self, _call: &CallCheckin, _fds: &[RawFd]) -> Result<(), i32> {
+        if let Some(parent_nsid) = self.cur().and_then(|p| p.parent_nsid) {
+            if let Some(sem) = self.procs.get(&parent_nsid).and_then(|p| p.fork_sem) {
+                unsafe { task::semaphore_up(sem) };
+            }
+        }
         Ok(())
     }
     /// A guest thread checks out on exit/exec. Acknowledged; the death/exec lifecycle
     /// (reaping, exec listener) is a later refinement.
     fn checkout(&mut self, _call: &CallCheckout, _fds: &[RawFd]) -> Result<(), i32> {
         Ok(())
+    }
+
+    /// Block until this process's forked child has checked in. Downs this process's
+    /// fork-wait semaphore (the child ups it on checkin) -- the doWork microthread parks
+    /// here and is resumed when the child arrives. Mirrors Process::waitForChildAfterFork.
+    fn fork_wait_for_child(&mut self, _fds: &[RawFd]) -> Result<(), i32> {
+        match self.cur().and_then(|p| p.fork_sem) {
+            Some(sem) => {
+                unsafe { task::semaphore_down_simple(sem) };
+                Ok(())
+            }
+            None => Err(-libc::ESRCH),
+        }
     }
 
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
@@ -437,6 +493,31 @@ impl rpc_wire::RpcHandler for Handler {
             self.write_mem(call.old_groups, &bytes)?;
         }
         Ok(ReplyGroups { old_group_count: old_groups.len() as u64 })
+    }
+
+    /// Set the calling process's vchroot (container root) directory. The directory fd
+    /// arrives via SCM_RIGHTS (@fd), not the wire body; resolve it to a path with
+    /// readlink(/proc/self/fd/<fd>) and cache that, keeping the fd open. Mirrors call.cpp's
+    /// Vchroot + Process::setVchrootDirectory.
+    fn vchroot(&mut self, _call: &CallVchroot, fds: &[RawFd]) -> Result<(), i32> {
+        let dfd = *fds.first().ok_or(-libc::EBADF)?;
+        // Resolve the fd to its path in our (shared) mount namespace.
+        let link = std::ffi::CString::new(format!("/proc/self/fd/{dfd}")).unwrap();
+        let mut buf = vec![0u8; 4096];
+        let len = unsafe { libc::readlink(link.as_ptr(), buf.as_mut_ptr() as *mut libc::c_char, 4095) };
+        if len < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EIO));
+        }
+        buf.truncate(len as usize);
+        let path = String::from_utf8_lossy(&buf).into_owned();
+        let p = self.cur_mut().ok_or(-libc::ESRCH)?;
+        if let Some(old) = p.vchroot_fd.replace(dfd) {
+            if old != dfd {
+                unsafe { libc::close(old) };
+            }
+        }
+        p.vchroot_path = path;
+        Ok(())
     }
 
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply

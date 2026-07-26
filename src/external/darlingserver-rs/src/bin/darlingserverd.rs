@@ -37,6 +37,27 @@ struct Slot {
     peer: PeerAddr,
 }
 
+/// The guest init pid (namespace PID 1). When it dies the session is over and the daemon
+/// exits -- the DGRAM socket has no EOF to signal this, so we watch SIGCHLD. A static is
+/// the async-signal-safe way to reach it from the handler.
+static mut INIT_PID: libc::pid_t = 0;
+
+/// Reap dead guest children; when the container init exits, so do we.
+extern "C" fn on_sigchld(_sig: c_int) {
+    unsafe {
+        let mut status: c_int = 0;
+        loop {
+            let r = libc::waitpid(-1, &mut status, libc::WNOHANG);
+            if r <= 0 {
+                break;
+            }
+            if r == INIT_PID {
+                libc::_exit(0);
+            }
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let cfg = match Config::from_args_and_env(&args) {
@@ -74,6 +95,14 @@ unsafe fn run(cfg: Config) -> ! {
     let init_pid = container::spawn_init_in_pid_namespace(&cfg, child_wait[0])
         .expect("darlingserver-rs: clone guest init");
     libc::close(child_wait[0]); // parent closes the read end
+
+    // Exit the daemon when the guest init dies (the DGRAM socket gives no EOF).
+    INIT_PID = init_pid;
+    let mut sa: libc::sigaction = std::mem::zeroed();
+    sa.sa_sigaction = on_sigchld as usize;
+    sa.sa_flags = libc::SA_RESTART | libc::SA_NOCLDSTOP;
+    libc::sigemptyset(&mut sa.sa_mask);
+    libc::sigaction(libc::SIGCHLD, &sa, std::ptr::null_mut());
 
     // Parent: permanently drop privileges, then bring up XNU + the RPC server.
     container::perma_drop_privileges(cfg.original_uid, cfg.original_gid).ok();
@@ -149,6 +178,12 @@ unsafe fn run(cfg: Config) -> ! {
                     // Bind this call's identity (the generated handlers get no header).
                     (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
                     let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
+                    // Diagnostic: surface any call the guest needs that is still ENOSYS.
+                    if let Some(ref r) = reply {
+                        if r.len() >= 8 && i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == rpc_wire::ENOSYS {
+                            eprintln!("darlingserver-rs: UNIMPLEMENTED call {} (#{})", call.call_name().unwrap_or("?"), ch.number);
+                        }
+                    }
                     mb.borrow_mut().reply = reply;
                 }),
             );
