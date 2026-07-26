@@ -68,7 +68,7 @@ fn task_self_trap_request(pid: u32, tid: u64) -> Message {
     let data = unsafe {
         std::slice::from_raw_parts(&hdr as *const _ as *const u8, std::mem::size_of::<DserverRpcCallhdr>()).to_vec()
     };
-    Message { data, fds: vec![] }
+    Message { data, fds: vec![], host_pid: None }
 }
 
 fn main() {

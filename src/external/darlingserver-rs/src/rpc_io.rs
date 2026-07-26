@@ -9,11 +9,14 @@ use std::mem::{size_of, zeroed};
 use std::os::fd::RawFd;
 use std::os::raw::c_void;
 
-/// One received RPC message: the wire bytes + any passed file descriptors.
+/// One received RPC message: the wire bytes + any passed file descriptors + (for
+/// datagrams with SO_PASSCRED) the sender's pid in the DAEMON's namespace, which
+/// process_vm_readv/writev needs to reach a guest running in its own PID namespace.
 #[derive(Clone)]
 pub struct Message {
     pub data: Vec<u8>,
     pub fds: Vec<RawFd>,
+    pub host_pid: Option<libc::pid_t>,
 }
 
 impl Message {
@@ -82,7 +85,7 @@ pub fn recv_message(fd: RawFd) -> io::Result<Option<Message>> {
             cmsg = libc::CMSG_NXTHDR(&msg, cmsg);
         }
     }
-    Ok(Some(Message { data: buf, fds }))
+    Ok(Some(Message { data: buf, fds, host_pid: None }))
 }
 
 /// Send a message (bytes + optional fds via SCM_RIGHTS). Mirror of recv_message,
@@ -171,6 +174,7 @@ pub fn recv_datagram(fd: RawFd) -> io::Result<Option<(Message, PeerAddr)>> {
     buf.truncate(n as usize);
 
     let mut fds = Vec::new();
+    let mut host_pid: Option<libc::pid_t> = None;
     unsafe {
         let mut c = libc::CMSG_FIRSTHDR(&msg);
         while !c.is_null() {
@@ -187,11 +191,17 @@ pub fn recv_datagram(fd: RawFd) -> io::Result<Option<(Message, PeerAddr)>> {
                     );
                     fds.push(f);
                 }
+            } else if (*c).cmsg_level == libc::SOL_SOCKET && (*c).cmsg_type == libc::SCM_CREDENTIALS {
+                // SO_PASSCRED: the kernel translated the sender's pid into OUR namespace --
+                // exactly the pid process_vm_readv needs for a guest in its own PID ns.
+                let mut cred: libc::ucred = std::mem::zeroed();
+                std::ptr::copy_nonoverlapping(libc::CMSG_DATA(c), &mut cred as *mut _ as *mut u8, size_of::<libc::ucred>());
+                host_pid = Some(cred.pid);
             }
             c = libc::CMSG_NXTHDR(&msg, c);
         }
     }
-    Ok(Some((Message { data: buf, fds }, PeerAddr { addr: peer, len: msg.msg_namelen })))
+    Ok(Some((Message { data: buf, fds, host_pid }, PeerAddr { addr: peer, len: msg.msg_namelen })))
 }
 
 /// Send `data` (+ any fds) as a datagram to `to`, attaching the daemon's SCM_CREDENTIALS.

@@ -76,7 +76,7 @@ unsafe fn run() {
                 tid: tid as i32,
                 architecture: arch,
             };
-            let msg = Message { data: as_bytes(&hdr), fds: vec![] };
+            let msg = Message { data: as_bytes(&hdr), fds: vec![], host_pid: None };
             let reply = rpc_wire::dispatch(&mut h, &msg).expect("task_self_trap produced no reply");
             // reply layout: replyhdr { number:u32, code:i32 } then body { port_name:u32 }.
             let code = i32::from_ne_bytes(reply[4..8].try_into().unwrap());

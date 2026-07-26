@@ -26,13 +26,13 @@ fn as_bytes<T>(v: &T) -> &[u8] {
 }
 fn msg_for(number: u32) -> Message {
     let hdr = DserverRpcCallhdr { number, pid: 1, tid: 1, architecture: 2 };
-    Message { data: as_bytes(&hdr).to_vec(), fds: vec![] }
+    Message { data: as_bytes(&hdr).to_vec(), fds: vec![], host_pid: None }
 }
 fn msg_with_body<T>(number: u32, body: &T) -> Message {
     let hdr = DserverRpcCallhdr { number, pid: 1, tid: 1, architecture: 2 };
     let mut data = as_bytes(&hdr).to_vec();
     data.extend_from_slice(as_bytes(body));
-    Message { data, fds: vec![] }
+    Message { data, fds: vec![], host_pid: None }
 }
 fn read<T: Copy>(b: &[u8]) -> T {
     unsafe { std::ptr::read_unaligned(b.as_ptr() as *const T) }

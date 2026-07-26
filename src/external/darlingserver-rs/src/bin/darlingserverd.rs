@@ -64,7 +64,7 @@ unsafe fn run(cfg: Config) -> ! {
 
     let kt = sched::init();
     let mut reg = Registry::new(kt);
-    let mut handler = Handler;
+    let mut handler = Handler::new();
     let handler_ptr = &mut handler as *mut Handler;
 
     let sock_path = format!("{}/.darlingserver.sock", cfg.prefix);
@@ -84,14 +84,24 @@ unsafe fn run(cfg: Config) -> ! {
     listener
         .run(usize::MAX, |msg| {
             let hdr = msg.header()?;
+            let nsid = hdr.pid as u32;
+            let tid = hdr.tid as u64;
+            let arch = hdr.architecture;
+            // The guest's daemon-namespace pid (from SO_PASSCRED) is what process_vm_readv
+            // needs; fall back to the header pid for the in-namespace case.
+            let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
+            reg.set_host_pid(nsid, host_pid);
             let slot: Rc<RefCell<Option<Vec<u8>>>> = Rc::new(RefCell::new(None));
             let out = slot.clone();
             let msg_c = msg.clone();
             let mt = reg.spawn_on(
-                hdr.pid as u32,
-                hdr.tid as u64,
-                hdr.architecture,
+                nsid,
+                tid,
+                arch,
                 Box::new(move || {
+                    // Bind the call's identity so the handler's per-process state + memory
+                    // ops resolve to this guest (the generated methods get no call header).
+                    (*handler_ptr).set_current(nsid, tid, host_pid, arch);
                     *out.borrow_mut() = rpc_wire::dispatch(&mut *handler_ptr, &msg_c);
                 }),
             );

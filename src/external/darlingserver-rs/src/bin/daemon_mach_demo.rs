@@ -78,7 +78,7 @@ unsafe fn run() {
     libc::close(client_fd);
     let kt = sched::init();
     let mut reg = Registry::new(kt);
-    let mut handler = Handler;
+    let mut handler = Handler::new();
     let handler_ptr = &mut handler as *mut Handler;
 
     for _ in 0..calls.len() {

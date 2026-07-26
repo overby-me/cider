@@ -18,6 +18,7 @@ pub struct Registry {
     tasks: HashMap<u32, *mut dtape_task_t>, // guest pid -> dtape task
     ctxs: HashMap<u32, Box<TaskCtx>>,       // keep task contexts alive + address-stable
     parked: HashMap<(u32, u64), *mut Microthread>, // (pid,tid) -> guest thread blocked mid-call
+    host_pids: HashMap<u32, libc::pid_t>,   // nsid -> daemon-namespace pid (for memory ops)
 }
 
 impl Registry {
@@ -27,7 +28,16 @@ impl Registry {
             tasks: HashMap::new(),
             ctxs: HashMap::new(),
             parked: HashMap::new(),
+            host_pids: HashMap::new(),
         }
+    }
+
+    /// Record the daemon-namespace (host) pid for a guest nsid, so the task's memory hooks
+    /// (process_vm_readv/writev) target the right process. Needed when the guest runs in
+    /// its own PID namespace (nsid != host pid); for in-process work nsid IS the host pid,
+    /// so this need not be called. Must be set before the task is first ensured.
+    pub fn set_host_pid(&mut self, nsid: u32, host_pid: libc::pid_t) {
+        self.host_pids.insert(nsid, host_pid);
     }
 
     /// Get or create the dtape task for a guest pid (nsid = pid). Parent is NULL for
@@ -40,7 +50,8 @@ impl Registry {
         // duct-tape as the task's void* context and back to the memory hooks. Boxed so
         // it never moves while C holds the pointer. (nsid doubles as the host pid here;
         // a real checkin passes the connecting process's actual host pid.)
-        let mut ctx = Box::new(TaskCtx { pid: pid as libc::pid_t });
+        let host_pid = self.host_pids.get(&pid).copied().unwrap_or(pid as libc::pid_t);
+        let mut ctx = Box::new(TaskCtx { pid: host_pid });
         let ctx_ptr = ctx.as_mut() as *mut TaskCtx as *mut c_void;
         let t = dtape_task_create(std::ptr::null_mut(), pid, ctx_ptr, arch);
         assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
