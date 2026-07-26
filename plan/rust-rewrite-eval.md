@@ -330,8 +330,23 @@ loop (bucket B.8). Implemented and validated this pass:
 Iteration is now cargo-direct against a cached DUCT_TAPE_LIB (nix would rebuild the whole
 darling tree on any crate edit, since darlingserver.nix `inherit src`s the flake).
 
-So every load-bearing **mechanism** is proven in running code, and the daemon boots a real
-guest through fork/exec. What remains is the async-event-loop subsystems + breadth + cutover.
+**Then kqchan + the epoll event loop landed, and the Rust daemon now RUNS REAL COMMANDS.**
+`darling shell echo ...` prints its output and exits rc=0; `uname -a` returns
+`Darwin gravitas 23.4.0 ... x86_64`; `sh -c 'echo darling-rust | tr a-z A-Z; ls /'` runs a
+multi-process pipeline (DARLING-RUST) and lists the whole vchroot root -- all through the
+pure-Rust daemon, verified via its exclusive "container up" marker, with a clean exit when
+the container init dies. Added for this:
+- **kqchan** (`kqchan.rs`): the proc kqueue channel (EVFILT_PROC). socketpair(SEQPACKET),
+  proc_modify/proc_read + a `notification` push; the watched target's death is detected via
+  a **pidfd** (SIGCHLD only fires for the daemon's own child, not a guest grandchild).
+- **The epoll event loop** in darlingserverd, multiplexing the main RPC socket, the init
+  pidfd (death -> daemon exit), and each channel's socket + target pidfd. The per-thread
+  doWork model is unchanged; **reply-fd plumbing** (@fd replies via SCM_RIGHTS) was added.
+
+So every load-bearing **mechanism** is proven in running code, and the daemon runs real
+multi-process Darwin workloads end to end. Remaining known gap surfaced by these runs:
+`interrupt_enter`/`interrupt_exit` (#14/#15, signal delivery during a syscall -- the sigexc
+continuation machinery), tolerated by simple commands. Then broader breadth + the cutover.
 
 ## What is missing to fully replace the C++ daemon
 
@@ -380,11 +395,16 @@ template); the memory-touching ones depend on bucket B.
    deferred prefix work (setupUserHome, darlingPreInit, fixPermissions, writable-/nix
    overlay, rlimits).
 
-**Current blocker (B.8, the async event loop):** the guest stops at `kqchan_proc_open`.
-kqchan needs an epoll event loop multiplexing the main RPC socket + all kqchan sockets +
-a SIGCHLD self-pipe, plus the `dserver_kqchan_*` channel protocol and process-death event
-delivery. This same event loop is the foundation for timers (B.7) and s2c (B.5). It is the
-next major phase; the blocking-recv doWork loop is a strict subset of it.
+**B.8 (kqchan / the async event loop): DONE for proc channels.** The epoll event loop
+(main RPC socket + init pidfd + per-channel socket + target pidfd) and the proc kqueue
+channel (`dserver_kqchan_*` protocol, pidfd death delivery) are implemented and validated
+live -- the guest runs real commands through it. Still open: mach-port channels
+(EVFILT_MACHPORT, the launchd-boot area, task #47), and the event loop is now the ready
+foundation for timers (B.7) and s2c (B.5).
+
+**Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal delivery during a
+blocked syscall (the sigexc + nested-continuation machinery, bucket B.4). Simple commands
+tolerate the ENOSYS; signal-heavy programs will need it.
 
 ### C. Cutover + validation
 A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for
