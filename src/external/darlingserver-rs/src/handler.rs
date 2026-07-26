@@ -5,7 +5,7 @@
 
 use crate::bindings::dtape_semaphore_t;
 use crate::rpc_wire::{self, *};
-use crate::{mach, sched, task, traps};
+use crate::{mach, sched, task, thread, traps};
 use std::collections::HashMap;
 use std::os::fd::RawFd;
 
@@ -233,15 +233,44 @@ impl rpc_wire::RpcHandler for Handler {
         }
     }
 
-    // interrupt_enter / interrupt_exit (#14/#15): signal (sigexc) delivery, still deferred.
-    // The continuation-survival fix (run_dowork_loop) did NOT unblock these: calling
-    // dtape_thread_sigexc_enter here still breaks the reply path (-111) and regresses echo,
-    // because its clear_wait_internal reschedules mid-dispatch through a path the doWork
-    // loop_top does not cover -- this is the distinct nested-interrupt getcontext dance
-    // (interrupt_enter getcontexts a per-interrupt resume point; a syscall return DURING the
-    // interrupt setcontexts back to it; interrupt_exit restores the interrupted call). Stays
-    // ENOSYS, which non-signal programs tolerate (echo/uname/pipelines/sleep all run).
-    // Primitives ready in thread.rs. See plan/rust-rewrite-eval.md (bucket B.4).
+    // interrupt_enter / interrupt_exit (#14/#15): signal (sigexc) delivery. A guest thread
+    // brackets its signal handler with these. interrupt_enter tells XNU the thread entered
+    // sigexc state (sigexc_enter) and pushes the saved user_state (sigexc_enter2) that
+    // interrupt_exit's sigexc_exit pops -- both are required or the pop corrupts the thread.
+    // (The getcontext dance for a signal that interrupts a BLOCKED daemon call -- running
+    // that call's continuation nested + deferring its reply -- is a later refinement; this
+    // covers the common non-nested case.)
+    fn interrupt_enter(&mut self, _fds: &[RawFd]) -> Result<(), i32> {
+        let dthread = unsafe {
+            let mt = sched::current();
+            if mt.is_null() {
+                return Err(-libc::ESRCH);
+            }
+            (*mt).dtape_thread()
+        };
+        if dthread.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        unsafe {
+            thread::sigexc_enter(dthread);
+            thread::sigexc_enter2(dthread);
+        }
+        Ok(())
+    }
+    fn interrupt_exit(&mut self, _fds: &[RawFd]) -> Result<(), i32> {
+        let dthread = unsafe {
+            let mt = sched::current();
+            if mt.is_null() {
+                return Err(-libc::ESRCH);
+            }
+            (*mt).dtape_thread()
+        };
+        if dthread.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        unsafe { thread::sigexc_exit(dthread) };
+        Ok(())
+    }
 
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
         Ok(ReplyTaskSelfTrap { port_name: unsafe { mach::task_self_trap() } })
