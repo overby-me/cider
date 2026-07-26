@@ -122,6 +122,11 @@ unsafe fn run(cfg: Config) -> ! {
     if init_pidfd >= 0 {
         epoll_add(epfd, init_pidfd);
     }
+    // The XNU timer subsystem's timerfd: its expiry wakes sleeping guest threads.
+    let timer_fd = sched::init_timer();
+    if timer_fd >= 0 {
+        epoll_add(epfd, timer_fd);
+    }
 
     let mut events: [libc::epoll_event; 16] = std::mem::zeroed();
     loop {
@@ -137,6 +142,11 @@ unsafe fn run(cfg: Config) -> ! {
             if init_pidfd >= 0 && fd == init_pidfd {
                 // Container init died: the session is over.
                 libc::_exit(0);
+            } else if timer_fd >= 0 && fd == timer_fd {
+                // A timer expired: wake the XNU threads whose deadline passed, then flush
+                // any replies (e.g. a completed nanosleep) their wake produced.
+                sched::timer_fired(reg.kernel_task());
+                flush_replies(&listener, &mut slots);
             } else if fd == main_fd {
                 // Drain all pending RPC datagrams; dispatch each on its guest thread's
                 // doWork microthread, flush replies, and register any kqchans it opened.

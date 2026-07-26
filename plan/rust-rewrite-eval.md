@@ -406,8 +406,21 @@ template); the memory-touching ones depend on bucket B.
 (main RPC socket + init pidfd + per-channel socket + target pidfd) and the proc kqueue
 channel (`dserver_kqchan_*` protocol, pidfd death delivery) are implemented and validated
 live -- the guest runs real commands through it. Still open: mach-port channels
-(EVFILT_MACHPORT, the launchd-boot area, task #47), and the event loop is now the ready
-foundation for timers (B.7) and s2c (B.5).
+(EVFILT_MACHPORT, the launchd-boot area, task #47).
+
+**B.7 (timers): the timerfd is DONE, but sleep exposed the core scheduler gap.** The
+timer_arm hook now drives a real CLOCK_MONOTONIC timerfd (server.cpp parity), the epoll
+loop wakes on it and runs dtape_timer_fired on a kernel microthread, and this correctly
+ARMS -> FIRES -> WAKES the sleeping thread (verified: run_queue=1 after the fire). But
+`sleep` still hangs, because it blocks in `semaphore_timedwait`, which uses a CONTINUATION
+(not the stackful path mach_msg took): on wake the result is delivered via
+`thread_syscall_return` on a FRESH stack, so the doWork microthread's dispatch (and the
+loop around it) is discarded and never posts the reply. THIS is the core remaining
+scheduler limitation, and it is the SAME one blocking interrupt_enter (B.4): the persistent
+doWork loop must survive a continuation -- the loop's "top" needs its own resume context
+that thread_syscall_return returns to (C++'s backToThreadTopContext) so the reply is posted
+and the thread goes on to its next call. The timerfd infra is correct and in place; this
+scheduler fix unblocks both sleep and signals.
 
 **Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal (sigexc) delivery,
 bucket B.4. Investigated in depth: `dtape_thread_sigexc_enter` clears the thread's XNU wait

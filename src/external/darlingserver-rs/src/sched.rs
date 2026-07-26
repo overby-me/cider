@@ -31,12 +31,53 @@ extern "C" {
     fn dserver_fast_makecontext(ucp: *mut libc::ucontext_t, func: extern "C" fn(), argc: c_int, ...);
 
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
+
+    // Invoked when a timer armed via the timer_arm hook expires; wakes any XNU threads
+    // whose deadline has passed. May itself briefly wait, so it runs on a kernel microthread.
+    fn dtape_timer_fired();
 }
 
 const KERNEL_NSID_BASE: u64 = 1 << 22; // DTAPE_KERNEL_THREAD_ID_THRESHOLD
 const STACK_SIZE: usize = 512 * 1024;
 static NEXT_EID: AtomicU64 = AtomicU64::new(1);
 static NEXT_KTID: AtomicU64 = AtomicU64::new(KERNEL_NSID_BASE + 1);
+
+// The daemon's single timerfd (CLOCK_MONOTONIC) + the deadline currently set on it, in
+// XNU absolute (monotonic) nanoseconds. The timer_arm hook arms this; the serve loop's
+// epoll wakes on it and calls timer_fired(). Single-worker, so plain atomics suffice.
+static TIMER_FD: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(-1);
+static TIMER_DEADLINE: AtomicU64 = AtomicU64::new(0);
+
+/// Create the daemon's timerfd (CLOCK_MONOTONIC, nonblocking) and store it for the
+/// timer_arm hook. Returns the fd so the serve loop can add it to its epoll. Mirrors
+/// server.cpp's `_timerFD = timerfd_create(...)`.
+pub fn init_timer() -> c_int {
+    let fd = unsafe { libc::timerfd_create(libc::CLOCK_MONOTONIC, libc::TFD_CLOEXEC | libc::TFD_NONBLOCK) };
+    TIMER_FD.store(fd, Ordering::Relaxed);
+    fd
+}
+
+/// Drain the fired timerfd and deliver the expiry to XNU: run dtape_timer_fired on a fresh
+/// kernel microthread (it may briefly wait, so it cannot run on the serve loop directly),
+/// then drain any guest threads it woke. Mirrors server.cpp's timerfd handler +
+/// `Thread::kernelAsync(dtape_timer_fired)`.
+pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
+    let fd = TIMER_FD.load(Ordering::Relaxed);
+    if fd >= 0 {
+        let mut buf = [0u8; 8];
+        libc::read(fd, buf.as_mut_ptr() as *mut c_void, 8);
+    }
+    TIMER_DEADLINE.store(0, Ordering::Relaxed);
+    let mt = spawn(kernel_task, Box::new(|| dtape_timer_fired()));
+    run(mt);
+    if (*mt).is_suspended() {
+        // dtape_timer_fired parked (rare); leave it for a later drain to finish.
+        schedule(mt);
+    } else {
+        drop(Box::from_raw(mt));
+    }
+    drain();
+}
 
 /// A Rust-owned stackful microthread. Address-stable: always heap-boxed and handed
 /// to the C duct-tape as `*mut c_void` context; never moved while C holds it.
@@ -331,7 +372,34 @@ mod hooks {
     pub(super) unsafe extern "C" fn get_load_info(li: *mut dtape_load_info_t) {
         if !li.is_null() { (*li).task_count = 0; (*li).thread_count = 0; }
     }
-    pub(super) unsafe extern "C" fn timer_arm(_ns: u64, _o: bool) {}
+    /// Arm (or, with a 0/UINT64_MAX deadline, disarm) the daemon timerfd for the XNU timer
+    /// subsystem. `override_` forces the deadline even if it is later than the current one;
+    /// otherwise a later deadline than the one already set is ignored (we keep the nearest).
+    /// Mirrors server.cpp's dtape_hook_timer_arm.
+    pub(super) unsafe extern "C" fn timer_arm(deadline_ns: u64, override_: bool) {
+        let mut deadline = deadline_ns;
+        if deadline == u64::MAX {
+            deadline = 0;
+        }
+        let fd = super::TIMER_FD.load(super::Ordering::Relaxed);
+        if fd < 0 {
+            return;
+        }
+        let current = super::TIMER_DEADLINE.load(super::Ordering::Relaxed);
+        if !override_ && current != 0 && deadline >= current {
+            return;
+        }
+        super::TIMER_DEADLINE.store(deadline, super::Ordering::Relaxed);
+        // it_value = 0 disarms; a nonzero absolute deadline arms (TFD_TIMER_ABSTIME).
+        let spec = libc::itimerspec {
+            it_interval: libc::timespec { tv_sec: 0, tv_nsec: 0 },
+            it_value: libc::timespec {
+                tv_sec: (deadline / 1_000_000_000) as libc::time_t,
+                tv_nsec: (deadline % 1_000_000_000) as i64,
+            },
+        };
+        libc::timerfd_settime(fd, libc::TFD_TIMER_ABSTIME, &spec, std::ptr::null_mut());
+    }
 }
 
 fn make_hooks() -> dtape_hooks_t {
