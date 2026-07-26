@@ -143,12 +143,38 @@ extern "C" {
     fn backtrace_symbols_fd(buffer: *const *mut c_void, size: c_int, fd: c_int);
 }
 
-extern "C" fn crash_handler(sig: c_int) {
+/// Async-signal-safe: write "<label>0x<hex>\n" to stderr.
+unsafe fn write_labeled_hex(label: &[u8], val: u64) {
+    libc::write(2, label.as_ptr() as *const c_void, label.len());
+    let mut buf = [0u8; 19];
+    buf[0] = b'0';
+    buf[1] = b'x';
+    for i in 0..16 {
+        let nib = ((val >> ((15 - i) * 4)) & 0xf) as u8;
+        buf[2 + i] = if nib < 10 { b'0' + nib } else { b'a' + nib - 10 };
+    }
+    buf[18] = b'\n';
+    libc::write(2, buf.as_ptr() as *const c_void, buf.len());
+}
+
+extern "C" fn crash_handler(sig: c_int, info: *mut libc::siginfo_t, ctx: *mut c_void) {
     let msg = b"darlingserver-rs: FATAL host signal ";
     let d = [b'0' + ((sig / 10) % 10) as u8, b'0' + (sig % 10) as u8, b'\n'];
     unsafe {
         libc::write(2, msg.as_ptr() as *const c_void, msg.len());
         libc::write(2, d.as_ptr() as *const c_void, d.len());
+        // Fault address (si_addr, the second word of siginfo's _sifields on Linux x86_64)
+        // and the crash PC (rip from the ucontext) -- these survive when the microthread
+        // stack can't be unwound, and addr2line'ing rip names the exact faulting function.
+        if !info.is_null() {
+            let fault = *((info as *const u8).add(16) as *const u64);
+            write_labeled_hex(b"  fault addr ", fault);
+        }
+        if !ctx.is_null() {
+            let uc = ctx as *mut libc::ucontext_t;
+            let rip = (*uc).uc_mcontext.gregs[libc::REG_RIP as usize] as u64;
+            write_labeled_hex(b"  rip ", rip);
+        }
         let mut bt: [*mut c_void; 40] = [std::ptr::null_mut(); 40];
         let n = backtrace(bt.as_mut_ptr(), 40);
         backtrace_symbols_fd(bt.as_ptr(), n, 2);
@@ -158,8 +184,12 @@ extern "C" fn crash_handler(sig: c_int) {
 }
 
 unsafe fn install_crash_handler() {
+    let mut sa: libc::sigaction = std::mem::zeroed();
+    sa.sa_sigaction = crash_handler as usize;
+    sa.sa_flags = libc::SA_SIGINFO;
+    libc::sigemptyset(&mut sa.sa_mask);
     for &sig in &[libc::SIGSEGV, libc::SIGBUS, libc::SIGABRT, libc::SIGILL, libc::SIGFPE] {
-        libc::signal(sig, crash_handler as usize);
+        libc::sigaction(sig, &sa, std::ptr::null_mut());
     }
 }
 

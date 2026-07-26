@@ -461,6 +461,63 @@ mod hooks {
     }
     pub(super) unsafe extern "C" fn thread_context_dispose(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn thread_terminate(_ctx: *mut c_void) {}
+
+    // ---- Lookups, thread introspection, and the S2C VM hooks. These were all left NULL,
+    // and a NULL dtape hook is an indirect-call-to-0 -> SIGSEGV the moment any guest
+    // exercises it (e.g. `hostinfo` -> host statistics). Wire safe defaults so no hook is
+    // ever NULL: lookups report "not found" (null), the S2C VM ops (allocate/free/map/
+    // protect/sync -- the daemon-delegates-to-guest path, not yet implemented) report
+    // failure, and memory introspection returns empty. Real impls arrive with a global
+    // thread/task registry (lookups) and s2c (VM). Mirrors the C++ DTapeHooks set. ----
+    pub(super) unsafe extern "C" fn thread_set_pending_call_override(_ctx: *mut c_void, _o: bool) {}
+    pub(super) unsafe extern "C" fn thread_lookup(_id: c_int, _is_nsid: bool, _retain: bool) -> *mut dtape_thread_t {
+        std::ptr::null_mut()
+    }
+    pub(super) unsafe extern "C" fn thread_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_thread_t {
+        std::ptr::null_mut()
+    }
+    pub(super) unsafe extern "C" fn thread_get_state(_ctx: *mut c_void) -> dtape_thread_state_t {
+        dtape_thread_state::dtape_thread_state_running
+    }
+    pub(super) unsafe extern "C" fn thread_send_signal(_ctx: *mut c_void, _sig: c_int) -> c_int {
+        0
+    }
+    pub(super) unsafe extern "C" fn task_lookup(_id: c_int, _is_nsid: bool, _retain: bool) -> *mut dtape_task_t {
+        std::ptr::null_mut()
+    }
+    pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_task_t {
+        std::ptr::null_mut()
+    }
+    pub(super) unsafe extern "C" fn task_get_memory_info(_ctx: *mut c_void, info: *mut dtape_memory_info_t) {
+        if !info.is_null() {
+            (*info).virtual_size = 0;
+            (*info).resident_size = 0;
+            (*info).page_size = 4096;
+            (*info).region_count = 0;
+        }
+    }
+    pub(super) unsafe extern "C" fn task_get_memory_region_info(_ctx: *mut c_void, _addr: usize, _info: *mut dtape_memory_region_info_t) -> bool {
+        false
+    }
+    pub(super) unsafe extern "C" fn task_allocate_pages(_ctx: *mut c_void, _pages: usize, _prot: c_int, _hint: usize, _flags: dtape_memory_flags_t) -> usize {
+        0
+    }
+    pub(super) unsafe extern "C" fn task_free_pages(_ctx: *mut c_void, _addr: usize, _pages: usize) -> c_int {
+        -1
+    }
+    pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, _fd: c_int, _pages: usize, _prot: c_int, _hint: usize, _off: usize, _flags: dtape_memory_flags_t) -> usize {
+        0
+    }
+    pub(super) unsafe extern "C" fn task_get_next_region(_ctx: *mut c_void, _addr: usize) -> usize {
+        0
+    }
+    pub(super) unsafe extern "C" fn task_change_protection(_ctx: *mut c_void, _addr: usize, _pages: usize, _prot: c_int) -> bool {
+        false
+    }
+    pub(super) unsafe extern "C" fn task_sync_memory(_ctx: *mut c_void, _addr: usize, _size: usize, _flags: c_int) -> bool {
+        false
+    }
+    pub(super) unsafe extern "C" fn task_context_dispose(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn interrupt_disable() {
         let mt = current();
         if !mt.is_null() { (*mt).interrupt_disable += 1; }
@@ -534,6 +591,24 @@ fn make_hooks() -> dtape_hooks_t {
     h.thread_resume = Some(hooks::thread_resume);
     h.thread_create_kernel = Some(hooks::thread_create_kernel);
     h.thread_setup = Some(hooks::thread_setup);
+    // Lookups + introspection + S2C VM hooks (safe defaults; see the hooks module) -- wired
+    // so no dtape hook is ever NULL (a NULL hook is an indirect-call-to-0 crash).
+    h.thread_set_pending_call_override = Some(hooks::thread_set_pending_call_override);
+    h.thread_lookup = Some(hooks::thread_lookup);
+    h.thread_lookup_eternal = Some(hooks::thread_lookup_eternal);
+    h.thread_get_state = Some(hooks::thread_get_state);
+    h.thread_send_signal = Some(hooks::thread_send_signal);
+    h.task_lookup = Some(hooks::task_lookup);
+    h.task_lookup_eternal = Some(hooks::task_lookup_eternal);
+    h.task_get_memory_info = Some(hooks::task_get_memory_info);
+    h.task_get_memory_region_info = Some(hooks::task_get_memory_region_info);
+    h.task_allocate_pages = Some(hooks::task_allocate_pages);
+    h.task_free_pages = Some(hooks::task_free_pages);
+    h.task_map_file = Some(hooks::task_map_file);
+    h.task_get_next_region = Some(hooks::task_get_next_region);
+    h.task_change_protection = Some(hooks::task_change_protection);
+    h.task_sync_memory = Some(hooks::task_sync_memory);
+    h.task_context_dispose = Some(hooks::task_context_dispose);
     h.thread_set_pending_signal = Some(hooks::thread_set_pending_signal);
     h.current_thread_set_bsd_retval = Some(hooks::current_thread_set_bsd_retval);
     h.thread_context_dispose = Some(hooks::thread_context_dispose);
