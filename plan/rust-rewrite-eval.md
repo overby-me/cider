@@ -394,6 +394,25 @@ hooks phase 2 needs to spawn kernel daemon threads -- `thread_create_kernel` (bo
 kernel microthread) and `thread_setup` (install its startup body) -- are now implemented
 (both had been left NULL; C++ sets them at server.cpp:400-401).
 
+**A second NULL-hook class then surfaced and was closed.** `hostinfo`/`vm_stat` crashed
+with `rip=0x0` -- an indirect call to a NULL dtape hook. `make_hooks` had left 16 hooks
+unset: the thread/task lookups, `thread_get_state`/`send_signal`/`set_pending_call_override`,
+memory introspection (`get_memory_info`/`region_info`/`get_next_region`), and the S2C VM ops
+(`allocate_pages`/`free_pages`/`map_file`/`change_protection`/`sync_memory`). All are now
+wired with safe defaults (lookups -> null, VM ops -> failure, introspection -> empty) so no
+hook is ever NULL; real impls arrive with a thread/task registry and s2c. A host crash
+handler (SA_SIGINFO -> fault addr + rip) was added and is what pinpointed both NULL calls.
+
+**Broadly validated on real workloads** (all rc=0, no crash): multithreaded python
+(`threading.Lock`/`Condition`/`Queue` producer-consumer), subprocess fork/exec from threads
+(incl. a thread-per-child pool), TCP sockets (threaded server + client on localhost), and
+CoreFoundation/host system tools (`sw_vers`->macOS 14.4.1, `hostinfo`, `vm_stat`, `sysctl
+hw.ncpu`->22). The daemon even drives the `clang`->`xcrun`->exec toolchain wrapper correctly
+(it fails only because the `.dbash` prefix has no Command Line Tools installed, not a daemon
+gap). The one call still returning ENOSYS in these runs is `pthread_canceled` (a cancellation
+-point query), which guests tolerate gracefully; left unimplemented per the task #45 caution
+around thread cancellation.
+
 The remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not hit by
 any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full launchd boot
 path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), multi-worker scheduling (now purely
