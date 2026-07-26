@@ -233,16 +233,15 @@ impl rpc_wire::RpcHandler for Handler {
         }
     }
 
-    // interrupt_enter / interrupt_exit (#14/#15): signal (sigexc) delivery, deferred.
-    // Isolated the failure: calling dtape_thread_sigexc_enter here breaks the reply path
-    // (guest sees -111) because its clear_wait_internal(THREAD_INTERRUPTED) reschedules the
-    // current microthread with no valid getcontext resume point in place. The correct fix
-    // is the nested-interrupt scheduler extension (interrupt_enter getcontexts a resume
-    // point and runs the interrupt on the thread's persisted stack; a syscall return during
-    // the interrupt setcontexts back to it, not the doWork top). Until that lands these stay
-    // ENOSYS -- non-signal programs tolerate it (echo/uname/pipelines/scripts all run). A
-    // bare no-op ack is non-regressing too but hides the gap, so ENOSYS is the honest
-    // default. Primitives ready in thread.rs. See plan/rust-rewrite-eval.md (bucket B.4).
+    // interrupt_enter / interrupt_exit (#14/#15): signal (sigexc) delivery, still deferred.
+    // The continuation-survival fix (run_dowork_loop) did NOT unblock these: calling
+    // dtape_thread_sigexc_enter here still breaks the reply path (-111) and regresses echo,
+    // because its clear_wait_internal reschedules mid-dispatch through a path the doWork
+    // loop_top does not cover -- this is the distinct nested-interrupt getcontext dance
+    // (interrupt_enter getcontexts a per-interrupt resume point; a syscall return DURING the
+    // interrupt setcontexts back to it; interrupt_exit restores the interrupted call). Stays
+    // ENOSYS, which non-signal programs tolerate (echo/uname/pipelines/sleep all run).
+    // Primitives ready in thread.rs. See plan/rust-rewrite-eval.md (bucket B.4).
 
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
         Ok(ReplyTaskSelfTrap { port_name: unsafe { mach::task_self_trap() } })

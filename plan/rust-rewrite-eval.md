@@ -408,32 +408,33 @@ channel (`dserver_kqchan_*` protocol, pidfd death delivery) are implemented and 
 live -- the guest runs real commands through it. Still open: mach-port channels
 (EVFILT_MACHPORT, the launchd-boot area, task #47).
 
-**B.7 (timers): the timerfd is DONE, but sleep exposed the core scheduler gap.** The
-timer_arm hook now drives a real CLOCK_MONOTONIC timerfd (server.cpp parity), the epoll
-loop wakes on it and runs dtape_timer_fired on a kernel microthread, and this correctly
-ARMS -> FIRES -> WAKES the sleeping thread (verified: run_queue=1 after the fire). But
-`sleep` still hangs, because it blocks in `semaphore_timedwait`, which uses a CONTINUATION
-(not the stackful path mach_msg took): on wake the result is delivered via
-`thread_syscall_return` on a FRESH stack, so the doWork microthread's dispatch (and the
-loop around it) is discarded and never posts the reply. THIS is the core remaining
-scheduler limitation, and it is the SAME one blocking interrupt_enter (B.4): the persistent
-doWork loop must survive a continuation -- the loop's "top" needs its own resume context
-that thread_syscall_return returns to (C++'s backToThreadTopContext) so the reply is posted
-and the thread goes on to its next call. The timerfd infra is correct and in place; this
-scheduler fix unblocks both sleep and signals.
+**B.7 (timers): DONE -- `sleep` works.** The timer_arm hook drives a real CLOCK_MONOTONIC
+timerfd (server.cpp parity), the epoll loop wakes on it and runs dtape_timer_fired on a
+kernel microthread, and -- with the continuation-survival scheduler fix below --
+`sh -c 'echo START; sleep 1; echo END'` prints START, waits, prints END, exits rc=0
+(validated live, reproducible). The fix: a call like semaphore_timedwait unblocks via an XNU
+CONTINUATION (its result comes back through thread_syscall_return on a fresh stack), which
+used to discard the persistent doWork microthread's loop. Now (a) continuations run on a
+separate per-microthread cont_stack (never clobbering the loop's main stack); (b) the doWork
+loop lives in `sched::run_dowork_loop`, whose frame PERSISTS for the microthread's life and
+whose inline getcontext is the loop-top re-entry point that thread_syscall_return setcontexts
+back to (C++'s backToThreadTopContext -- gated by has_loop_top so the demos' one-shot blocking
+threads keep the exit path); (c) the re-entry stashes only the SCALAR result and the serve
+loop builds the reply bytes (a Vec across the non-local re-entry is unsound). Key lesson: the
+getcontext must be in a frame that persists (run_dowork_loop) -- an earlier helper that
+returned had its frame reused and setcontext landed on corrupted stack.
 
 **Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal (sigexc) delivery,
-bucket B.4. Investigated in depth: `dtape_thread_sigexc_enter` clears the thread's XNU wait
-(`clear_wait_internal(THREAD_INTERRUPTED)`), so it must run with a valid getcontext resume
-point in place. The correct mechanism runs the interrupt NESTED on the guest thread's
-persisted microthread stack: interrupt_enter `getcontext`s a resume point and (if the
-signal interrupted a BLOCKED call) runs that call's saved continuation on a fresh stack
-while saving the old one; a `thread_syscall_return` that happens *during* the interrupt
-`setcontext`s back to that resume point instead of the doWork top; interrupt_exit restores
-the interrupted call and sends any reply it produced meanwhile. A minimal handler that only
-calls sigexc_enter breaks the reply path (guest sees -111) and regresses working commands,
-so #14/#15 stay ENOSYS (tolerated by non-signal programs) until the nested-interrupt
-scheduler extension + the doWork loop's interrupt-frame handling land. The sigexc
+bucket B.4. The continuation-survival fix did NOT unblock these (confirmed: sigexc_enter here
+still returns -111 and regresses echo). `dtape_thread_sigexc_enter` clears the thread's XNU
+wait (`clear_wait_internal(THREAD_INTERRUPTED)`) mid-dispatch, through a reschedule path the
+doWork loop_top does not cover -- this is the DISTINCT nested-interrupt getcontext dance:
+interrupt_enter `getcontext`s a per-interrupt resume point and (if the signal interrupted a
+BLOCKED call) runs that call's saved continuation on a fresh stack while saving the old one;
+a `thread_syscall_return` that happens *during* the interrupt `setcontext`s back to that
+resume point; interrupt_exit restores the interrupted call and sends any reply it produced
+meanwhile. So #14/#15 stay ENOSYS (tolerated by non-signal programs -- echo/uname/pipelines/
+sleep all run) until that lands. The sigexc
 primitives are ready in `thread.rs`; sigprocess (#12) + s2c signal delivery follow.
 
 ### C. Cutover + validation
