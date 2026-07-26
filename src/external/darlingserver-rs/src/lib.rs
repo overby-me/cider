@@ -47,6 +47,9 @@ pub mod traps;
 /// Process kqueue channels (EVFILT_PROC): the daemon side of the guest's process waiters.
 pub mod kqchan;
 
+/// psynch: kernel-assisted pthread mutex/condvar/rwlock (the `__psynch_*` BSD syscalls).
+pub mod psynch;
+
 /// The daemon's reusable RPC handler (the real handler bodies).
 pub mod handler;
 

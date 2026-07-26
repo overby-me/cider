@@ -110,6 +110,12 @@ pub struct Microthread {
     // Set by the thread_set_pending_signal hook during dtape_thread_process_signal: the
     // BSD signal the guest should actually deliver (sigprocess returns it).
     pending_signal: i32,
+    // The u32 return value of an in-flight BSD trap (psynch retval). A stable per-thread
+    // slot -- the handler passes &bsd_retval as the retvalPointer for the fast path, and a
+    // blocking psynch op's continuation writes it via the current_thread_set_bsd_retval
+    // hook before unix_syscall_return. C++'s Thread::_bsdReturnValue; sendBSDReply pairs it
+    // with the syscall's errno code.
+    bsd_retval: u32,
 }
 
 impl Microthread {
@@ -118,6 +124,15 @@ impl Microthread {
     pub fn dtape_thread(&self) -> *mut dtape_thread_t { self.dtape_thread }
     /// The pending BSD signal set during signal processing (sigprocess reads this).
     pub fn pending_signal(&self) -> i32 { self.pending_signal }
+    /// The in-flight BSD-trap return value (psynch retval). Read after a psynch op to build
+    /// its reply body; on a blocking op it is filled by the continuation before the reply.
+    pub fn bsd_retval(&self) -> u32 { self.bsd_retval }
+    /// A stable pointer to the BSD-trap return slot, for the fast-path `retvalPointer` a
+    /// psynch op writes directly. Reset it (via `set_bsd_retval(0)`) before the op so a
+    /// stale value never leaks into a reply.
+    pub fn bsd_retval_ptr(&mut self) -> *mut u32 { &mut self.bsd_retval }
+    /// Set the BSD-trap return value (also used to zero it before a call).
+    pub fn set_bsd_retval(&mut self, v: u32) { self.bsd_retval = v; }
     /// The result a blocking call delivered via thread_syscall_return (None if the call
     /// returned normally instead of blocking). Cleared on read.
     pub fn take_syscall_return(&mut self) -> Option<i32> { self.syscall_return.take() }
@@ -145,6 +160,14 @@ pub fn current() -> *mut Microthread {
 pub fn current_task() -> *mut dtape_task_t {
     let mt = current();
     if mt.is_null() { std::ptr::null_mut() } else { unsafe { (*mt).owning_task } }
+}
+
+/// The running microthread's BSD-trap return value (psynch retval), or 0 if none. The
+/// doWork loop reads this when a continuation-based psynch op re-enters, to pair with the
+/// deferred reply's errno code.
+pub fn current_bsd_retval() -> u32 {
+    let mt = current();
+    if mt.is_null() { 0 } else { unsafe { (*mt).bsd_retval() } }
 }
 
 /// Run a persistent doWork loop for the current microthread: the C++ `Thread::doWork`.
@@ -192,6 +215,7 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         pending_cont: None,
         syscall_return: None,
         pending_signal: 0,
+        bsd_retval: 0,
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt
@@ -398,6 +422,14 @@ mod hooks {
     pub(super) unsafe extern "C" fn thread_set_pending_signal(ctx: *mut c_void, sig: c_int) {
         if !ctx.is_null() { (*(ctx as *mut Microthread)).pending_signal = sig; }
     }
+    /// current_thread_set_bsd_retval (libpthread's uthread_set_returnval): the u32 return
+    /// value the guest's BSD syscall should see. A blocking psynch op's continuation
+    /// (psynch_mtxcontinue &c.) calls this before unix_syscall_return, so the deferred reply
+    /// carries the retval; store it on the current microthread.
+    pub(super) unsafe extern "C" fn current_thread_set_bsd_retval(retval: u32) {
+        let mt = current();
+        if !mt.is_null() { (*mt).bsd_retval = retval; }
+    }
     pub(super) unsafe extern "C" fn thread_context_dispose(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn thread_terminate(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn interrupt_disable() {
@@ -472,6 +504,7 @@ fn make_hooks() -> dtape_hooks_t {
     h.thread_suspend = Some(hooks::thread_suspend);
     h.thread_resume = Some(hooks::thread_resume);
     h.thread_set_pending_signal = Some(hooks::thread_set_pending_signal);
+    h.current_thread_set_bsd_retval = Some(hooks::current_thread_set_bsd_retval);
     h.thread_context_dispose = Some(hooks::thread_context_dispose);
     h.thread_terminate = Some(hooks::thread_terminate);
     h.current_thread_interrupt_disable = Some(hooks::interrupt_disable);

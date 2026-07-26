@@ -39,6 +39,9 @@ struct Mailbox {
     /// doWork loop stores only this SCALAR across the getcontext re-entry; the serve loop
     /// turns it into the reply bytes (allocating a Vec across the re-entry would be unsound).
     reply_code: Option<i32>,
+    /// The BSD-trap retval (psynch) captured alongside reply_code when a psynch op unblocked
+    /// via its continuation; folded into the deferred reply body. None for code-only calls.
+    reply_retval: Option<u32>,
     stop: bool,
 }
 
@@ -56,6 +59,23 @@ fn code_reply(number: u32, code: c_int) -> Vec<u8> {
         std::slice::from_raw_parts(&hdr as *const _ as *const u8, std::mem::size_of::<rpc_wire::DserverRpcReplyhdr>())
     }
     .to_vec()
+}
+
+/// Build the wire reply for a call that blocked via a continuation and finished with `code`.
+/// The psynch ops (callnums 68..=76) each carry a u32 `retval` body -- their continuation
+/// (psynch_mtxcontinue &c.) filled the retval slot captured here -- so append it after the
+/// header; every other blocking call (semaphore/mach_msg/nanosleep) is code-only. Mirrors
+/// C++'s sendBSDReply(code, retval) vs sendBasicReply(code). All nine psynch replies share
+/// the layout {DserverRpcReplyhdr{number,code}, u32 retval}.
+fn deferred_reply(number: u32, code: c_int, retval: Option<u32>) -> Vec<u8> {
+    use rpc_wire::callnum;
+    let base = number & !callnum::UNMANAGED_FLAG;
+    if (callnum::PSYNCH_CVBROAD..=callnum::PSYNCH_RW_WRLOCK).contains(&base) {
+        let mut v = code_reply(number, code);
+        v.extend_from_slice(&retval.unwrap_or(0).to_ne_bytes());
+        return v;
+    }
+    code_reply(number, code)
 }
 
 /// Process exactly ONE call for a guest thread's doWork loop: wait for a call, dispatch it,
@@ -275,7 +295,12 @@ unsafe fn handle_call(
             Box::new(move || {
                 sched::run_dowork_loop(|sr| {
                     if let Some(code) = sr {
-                        mb.borrow_mut().reply_code = Some(code);
+                        // A psynch op's continuation set the retval slot before returning
+                        // here; capture it now (still on this microthread) so the deferred
+                        // reply carries {code, retval}. Harmless (ignored) for code-only calls.
+                        let mut m = mb.borrow_mut();
+                        m.reply_code = Some(code);
+                        m.reply_retval = Some(sched::current_bsd_retval());
                         true
                     } else {
                         process_one_call(&mb, handler_ptr, host_pid)
@@ -306,7 +331,7 @@ unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slo
             // dispatch never assigned `reply`, so build the code-only reply from the stashed
             // number + result. Otherwise use the dispatch reply.
             let reply = if let Some(code) = m.reply_code.take() {
-                Some(code_reply(m.call_number, code))
+                Some(deferred_reply(m.call_number, code, m.reply_retval.take()))
             } else {
                 m.reply.take()
             };

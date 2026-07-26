@@ -5,7 +5,7 @@
 
 use crate::bindings::dtape_semaphore_t;
 use crate::rpc_wire::{self, *};
-use crate::{mach, sched, task, thread, traps};
+use crate::{mach, psynch, sched, task, thread, traps};
 use std::collections::HashMap;
 use std::os::fd::RawFd;
 
@@ -22,6 +22,54 @@ fn trap(r: i32) -> Result<(), i32> {
         Ok(())
     } else {
         Err(r)
+    }
+}
+
+/// Run a psynch BSD-trap op. Zeroes the current microthread's BSD-retval slot, calls `f`
+/// with a stable pointer to it (the `retvalPointer` the op fills; or, if the op blocks on a
+/// contended lock, that its continuation fills before the deferred reply), then pairs the
+/// returned errno with the retval `mk` turns into the per-op reply body. Ok(body) encodes
+/// reply code 0 with the retval; Err(code) passes the errno through -- exactly C++'s
+/// `Thread::syscallReturn(dtape_psynch_<op>(..., bsdReturnValuePointer()))` +
+/// `sendBSDReply(code, _bsdReturnValue)`. For a blocking op this never returns (the
+/// continuation re-enters the doWork loop, which posts the reply); see darlingserverd.
+fn psynch_op<R>(mk: impl FnOnce(u32) -> R, f: impl FnOnce(*mut u32) -> i32) -> Result<R, i32> {
+    unsafe {
+        let mt = sched::current();
+        (*mt).set_bsd_retval(0);
+        let trace = psynch_trace();
+        // ENTER fires for every psynch op; FASTRET only when f() returns without blocking.
+        // ENTER without a matching FASTRET == the op blocked on a contended lock (its reply
+        // is deferred: the continuation re-enters the doWork loop, which posts {code,retval}).
+        if trace {
+            eprintln!("darlingserver-rs: psynch ENTER");
+        }
+        let code = f((*mt).bsd_retval_ptr());
+        let retval = (*mt).bsd_retval();
+        if trace {
+            eprintln!("darlingserver-rs: psynch FASTRET code={code} retval={retval}");
+        }
+        if code == 0 {
+            Ok(mk(retval))
+        } else {
+            Err(code)
+        }
+    }
+}
+
+/// Whether the `DSERVER_TRACE_PSYNCH` env var is set (cached after the first read, so the
+/// psynch hot path does no per-call env lookup). 0 = off, 1 = on, 2 = not-yet-read.
+fn psynch_trace() -> bool {
+    use std::sync::atomic::{AtomicU8, Ordering};
+    static STATE: AtomicU8 = AtomicU8::new(2);
+    match STATE.load(Ordering::Relaxed) {
+        0 => false,
+        1 => true,
+        _ => {
+            let on = std::env::var_os("DSERVER_TRACE_PSYNCH").is_some();
+            STATE.store(on as u8, Ordering::Relaxed);
+            on
+        }
     }
 }
 
@@ -507,6 +555,57 @@ impl rpc_wire::RpcHandler for Handler {
     }
     fn mk_timer_cancel(&mut self, call: &CallMkTimerCancel, _fds: &[RawFd]) -> Result<(), i32> {
         trap(unsafe { traps::mk_timer_cancel(call.name, call.result_time) })
+    }
+
+    // ---- psynch: pthread mutex/condvar/rwlock (BSD traps with a u32 retval body).
+    // The wait ops (mutexwait/cvwait/rw_rdlock/rw_wrlock) block on contention via a
+    // continuation: this handler then never returns, and the doWork loop posts the deferred
+    // reply from the stashed errno + the retval slot the continuation filled (see
+    // psynch_op + darlingserverd's deferred_reply). The wake ops return immediately. ----
+    fn psynch_cvbroad(&mut self, call: &CallPsynchCvbroad, _fds: &[RawFd]) -> Result<ReplyPsynchCvbroad, i32> {
+        psynch_op(|retval| ReplyPsynchCvbroad { retval }, |rv| unsafe {
+            psynch::cvbroad(call.cv, call.cvlsgen, call.cvudgen, call.flags, call.mutex, call.mugen, call.tid, rv)
+        })
+    }
+    fn psynch_cvclrprepost(&mut self, call: &CallPsynchCvclrprepost, _fds: &[RawFd]) -> Result<ReplyPsynchCvclrprepost, i32> {
+        psynch_op(|retval| ReplyPsynchCvclrprepost { retval }, |rv| unsafe {
+            psynch::cvclrprepost(call.cv, call.cvgen, call.cvugen, call.cvsgen, call.prepocnt, call.preposeq, call.flags, rv)
+        })
+    }
+    fn psynch_cvsignal(&mut self, call: &CallPsynchCvsignal, _fds: &[RawFd]) -> Result<ReplyPsynchCvsignal, i32> {
+        psynch_op(|retval| ReplyPsynchCvsignal { retval }, |rv| unsafe {
+            psynch::cvsignal(call.cv, call.cvlsgen, call.cvugen, call.threadport, call.mutex, call.mugen, call.tid, call.flags, rv)
+        })
+    }
+    fn psynch_cvwait(&mut self, call: &CallPsynchCvwait, _fds: &[RawFd]) -> Result<ReplyPsynchCvwait, i32> {
+        psynch_op(|retval| ReplyPsynchCvwait { retval }, |rv| unsafe {
+            psynch::cvwait(call.cv, call.cvlsgen, call.cvugen, call.mutex, call.mugen, call.flags, call.sec, call.nsec, rv)
+        })
+    }
+    fn psynch_mutexdrop(&mut self, call: &CallPsynchMutexdrop, _fds: &[RawFd]) -> Result<ReplyPsynchMutexdrop, i32> {
+        psynch_op(|retval| ReplyPsynchMutexdrop { retval }, |rv| unsafe {
+            psynch::mutexdrop(call.mutex, call.mgen, call.ugen, call.tid, call.flags, rv)
+        })
+    }
+    fn psynch_mutexwait(&mut self, call: &CallPsynchMutexwait, _fds: &[RawFd]) -> Result<ReplyPsynchMutexwait, i32> {
+        psynch_op(|retval| ReplyPsynchMutexwait { retval }, |rv| unsafe {
+            psynch::mutexwait(call.mutex, call.mgen, call.ugen, call.tid, call.flags, rv)
+        })
+    }
+    fn psynch_rw_rdlock(&mut self, call: &CallPsynchRwRdlock, _fds: &[RawFd]) -> Result<ReplyPsynchRwRdlock, i32> {
+        psynch_op(|retval| ReplyPsynchRwRdlock { retval }, |rv| unsafe {
+            psynch::rw_rdlock(call.rwlock, call.lgenval, call.ugenval, call.rw_wc, call.flags, rv)
+        })
+    }
+    fn psynch_rw_unlock(&mut self, call: &CallPsynchRwUnlock, _fds: &[RawFd]) -> Result<ReplyPsynchRwUnlock, i32> {
+        psynch_op(|retval| ReplyPsynchRwUnlock { retval }, |rv| unsafe {
+            psynch::rw_unlock(call.rwlock, call.lgenval, call.ugenval, call.rw_wc, call.flags, rv)
+        })
+    }
+    fn psynch_rw_wrlock(&mut self, call: &CallPsynchRwWrlock, _fds: &[RawFd]) -> Result<ReplyPsynchRwWrlock, i32> {
+        psynch_op(|retval| ReplyPsynchRwWrlock { retval }, |rv| unsafe {
+            psynch::rw_wrlock(call.rwlock, call.lgenval, call.ugenval, call.rw_wc, call.flags, rv)
+        })
     }
 
     // ================= per-process state handlers =================
