@@ -295,16 +295,43 @@ gate), built reproducibly via `nix build '.?submodules=1#darlingserver-rs'`:
        the sender's address.
     2. **The serve loop must not treat an idle `epoll_wait` timeout as fatal** (it panicked
        after the guest gave up).
-  Both are now FIXED (rpc_io `recv_datagram`/`send_datagram` with SCM_CREDENTIALS + a
-  `SOCK_DGRAM`+`SO_PASSCRED` Listener that blocks in epoll instead of erroring) and
-  re-validated live: **the guest now checks in successfully** and advances into its boot to
-  `set_dyld_info`, the next unimplemented handler. The iteration loop (implement the next
-  call the guest needs -> advance further into boot) is open.
+  Both were FIXED (rpc_io `recv_datagram`/`send_datagram` with SCM_CREDENTIALS + a
+  `SOCK_DGRAM`+`SO_PASSCRED` Listener) and re-validated live.
   Deferred vs the C++ (best-effort prefix work): setupUserHome, darlingPreInit,
   fixPermissions, the writable-/nix overlay, rlimits.
 
-So every load-bearing **mechanism** is proven in running code. What remains is
-breadth + infrastructure + cutover, none of it research.
+### Update 2026-07-26: the live guest now boots through fork/exec/dyld
+
+Driving the splice-and-run loop (implement the next call the guest needs -> advance
+further), the real spliced guest now gets **all the way through**: container up ->
+`vchroot` (paths remap into /Volumes/SystemRoot) -> `shellspawn` -> **fork -> exec
+/bin/bash -> bash loads dyld successfully**. It stops at `kqchan_proc_open` (shellspawn
+watching the bash child via an EVFILT_PROC kqueue channel), which needs the async event
+loop (bucket B.8). Implemented and validated this pass:
+- **`set_dyld_info`** + **~26 XNU-trap handlers** (the rest of `mach_port_*`,
+  `task_for_pid`/`pid_for_task`, `mach_vm_allocate`/`deallocate`, the six semaphore traps,
+  `mk_timer_*`, `thread_get_special_reply_port`) -- thin `dtape_*` wrappers, link-checked.
+- **The per-process state model** (`Handler::procs`, a `ProcState` per nsid) + the state
+  handlers: `uidgid`, `started_suspended`, `stop_after_exec`, `set_thread_handles`,
+  `task_is_64_bit`, `get_tracer`/`set_tracer`, `set`/`get_executable_path`, `groups`,
+  `vchroot_path`, `mldr_path`, `kprintf` (memory ones via the read/write hooks).
+- **Host-pid routing**: the guest runs in its own PID namespace, so the header pid (nsid)
+  is not what process_vm_readv needs; the SO_PASSCRED credential pid is captured off each
+  datagram and used for all memory ops.
+- **The persistent per-thread doWork serve loop**: one long-lived microthread + mailbox
+  per guest thread, with async reply routing (a blocked call's reply is flushed when
+  another thread's action unblocks it) -- the real darlingserver architecture.
+- **`vchroot`** (#9): the container-root fd (SCM_RIGHTS) resolved via readlink.
+- **The fork lifecycle**: parent linkage via /proc PPid, vchroot+groups inheritance (what
+  lets a forked child's mldr find dyld), and `fork_wait_for_child` (#11) on a per-process
+  fork semaphore upped by the child's checkin.
+- **Daemon exit** on container-init death (SIGCHLD; DGRAM has no EOF).
+
+Iteration is now cargo-direct against a cached DUCT_TAPE_LIB (nix would rebuild the whole
+darling tree on any crate edit, since darlingserver.nix `inherit src`s the flake).
+
+So every load-bearing **mechanism** is proven in running code, and the daemon boots a real
+guest through fork/exec. What remains is the async-event-loop subsystems + breadth + cutover.
 
 ## What is missing to fully replace the C++ daemon
 
@@ -348,12 +375,16 @@ template); the memory-touching ones depend on bucket B.
 7. **Timers** -- `timerfd` + `dtape_timer_fired` (`timer_arm` is a no-op today).
 8. **`kqchan`** (mach-port kqueue) -- the `EVFILT_MACHPORT` waiter mechanism; this
    is exactly the launchd-boot area (task #47).
-9. **The container `main()`** -- PORTED and compiling (`container` module +
-   `darlingserverd`): the privilege dance, mount namespace + prefix overlay, PID-namespace
-   clone + proc mount + mldr/vchroot exec of the init, the launcher handshake, and binding
-   `<prefix>/.darlingserver.sock`. Still open: runtime validation (splice into a real
-   darling runtime + launch via darling.c), plus the deferred prefix work (setupUserHome,
-   darlingPreInit, fixPermissions, writable-/nix overlay, rlimits).
+9. **The container `main()`** -- DONE and runtime-validated: brings up the container and
+   boots a real guest through fork/exec/dyld (see the 2026-07-26 update). Still open: the
+   deferred prefix work (setupUserHome, darlingPreInit, fixPermissions, writable-/nix
+   overlay, rlimits).
+
+**Current blocker (B.8, the async event loop):** the guest stops at `kqchan_proc_open`.
+kqchan needs an epoll event loop multiplexing the main RPC socket + all kqchan sockets +
+a SIGCHLD self-pipe, plus the `dserver_kqchan_*` channel protocol and process-death event
+delivery. This same event loop is the foundation for timers (B.7) and s2c (B.5). It is the
+next major phase; the blocking-recv doWork loop is a strict subset of it.
 
 ### C. Cutover + validation
 A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for
