@@ -91,6 +91,13 @@ pub struct Handler {
     current_tid: u64,
     /// The mldr binary path reported to the guest (MldrPath), from DSERVER_MLDR_PATH.
     mldr_path: String,
+    /// Descriptors to attach (SCM_RIGHTS) to the current reply -- set by handlers that
+    /// return an @fd, drained by the serve loop after dispatch. Single-threaded, so this
+    /// out-of-band channel is safe (the generated reply structs carry only fd indices).
+    reply_fds: Vec<RawFd>,
+    /// New process kqueue channels opened this dispatch, handed to the serve loop to
+    /// register with the event loop (it owns the daemon-side sockets + death routing).
+    pending_kqchans: Vec<crate::kqchan::ProcKqchan>,
 }
 
 impl Default for Handler {
@@ -106,7 +113,19 @@ impl Handler {
             current_pid: 0,
             current_tid: 0,
             mldr_path: std::env::var("DSERVER_MLDR_PATH").unwrap_or_default(),
+            reply_fds: Vec::new(),
+            pending_kqchans: Vec::new(),
         }
+    }
+
+    /// Take the fds to attach to the reply just produced (the serve loop sends them via
+    /// SCM_RIGHTS with the reply datagram).
+    pub fn take_reply_fds(&mut self) -> Vec<RawFd> {
+        std::mem::take(&mut self.reply_fds)
+    }
+    /// Take the kqueue channels opened this dispatch, for the serve loop to register.
+    pub fn take_pending_kqchans(&mut self) -> Vec<crate::kqchan::ProcKqchan> {
+        std::mem::take(&mut self.pending_kqchans)
     }
 
     /// Bind the identity of the call about to be dispatched, ensuring the process's state
@@ -518,6 +537,25 @@ impl rpc_wire::RpcHandler for Handler {
         }
         p.vchroot_path = path;
         Ok(())
+    }
+
+    /// Open a process kqueue channel (EVFILT_PROC) watching process `pid`. Returns one
+    /// end of a SEQPACKET socketpair (via SCM_RIGHTS; the reply `socket` field is its
+    /// descriptor index). The daemon keeps the other end -- the serve loop's event loop
+    /// registers it and delivers the target's death (NOTE_EXIT) as a notification.
+    /// Mirrors call.cpp's KqchanProcOpen + Kqchan::Process::setup.
+    fn kqchan_proc_open(&mut self, call: &CallKqchanProcOpen, _fds: &[RawFd]) -> Result<ReplyKqchanProcOpen, i32> {
+        let target_nsid = call.pid as u32;
+        let target_host_pid = match self.procs.get(&target_nsid) {
+            Some(p) => p.host_pid,
+            None => return Err(-libc::ESRCH),
+        };
+        let (kq, guest_fd) = crate::kqchan::ProcKqchan::open(target_nsid, target_host_pid, call.flags)
+            .map_err(|e| -e.raw_os_error().unwrap_or(libc::EIO))?;
+        self.reply_fds.push(guest_fd);
+        self.pending_kqchans.push(kq);
+        // socket = 0: the fd is the first (only) SCM_RIGHTS descriptor on this reply.
+        Ok(ReplyKqchanProcOpen { socket: 0 })
     }
 
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply

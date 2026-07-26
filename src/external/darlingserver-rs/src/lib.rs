@@ -41,6 +41,9 @@ pub mod task;
 /// XNU-trap duct-tape wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
 pub mod traps;
 
+/// Process kqueue channels (EVFILT_PROC): the daemon side of the guest's process waiters.
+pub mod kqchan;
+
 /// The daemon's reusable RPC handler (the real handler bodies).
 pub mod handler;
 

@@ -12,6 +12,7 @@
 
 use darlingserver_rs::container::{self, Config};
 use darlingserver_rs::handler::Handler;
+use darlingserver_rs::kqchan::ProcKqchan;
 use darlingserver_rs::registry::Registry;
 use darlingserver_rs::rpc_io::{Message, PeerAddr};
 use darlingserver_rs::rpc_wire;
@@ -19,15 +20,18 @@ use darlingserver_rs::sched;
 use darlingserver_rs::server::Listener;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::os::fd::RawFd;
 use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
 
 /// A guest thread's inbox: the call waiting to be dispatched, the reply the doWork
-/// microthread produced (possibly later, if the call blocked), and a stop flag.
+/// microthread produced (possibly later, if the call blocked), any fds to attach to that
+/// reply (SCM_RIGHTS, e.g. a kqchan socket), and a stop flag.
 #[derive(Default)]
 struct Mailbox {
     pending: Option<Message>,
     reply: Option<Vec<u8>>,
+    reply_fds: Vec<RawFd>,
     stop: bool,
 }
 
@@ -37,25 +41,12 @@ struct Slot {
     peer: PeerAddr,
 }
 
-/// The guest init pid (namespace PID 1). When it dies the session is over and the daemon
-/// exits -- the DGRAM socket has no EOF to signal this, so we watch SIGCHLD. A static is
-/// the async-signal-safe way to reach it from the handler.
-static mut INIT_PID: libc::pid_t = 0;
-
-/// Reap dead guest children; when the container init exits, so do we.
-extern "C" fn on_sigchld(_sig: c_int) {
-    unsafe {
-        let mut status: c_int = 0;
-        loop {
-            let r = libc::waitpid(-1, &mut status, libc::WNOHANG);
-            if r <= 0 {
-                break;
-            }
-            if r == INIT_PID {
-                libc::_exit(0);
-            }
-        }
-    }
+unsafe fn epoll_add(epfd: RawFd, fd: RawFd) {
+    let mut ev = libc::epoll_event { events: libc::EPOLLIN as u32, u64: fd as u64 };
+    libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev);
+}
+unsafe fn epoll_del(epfd: RawFd, fd: RawFd) {
+    libc::epoll_ctl(epfd, libc::EPOLL_CTL_DEL, fd, std::ptr::null_mut());
 }
 
 fn main() {
@@ -96,14 +87,6 @@ unsafe fn run(cfg: Config) -> ! {
         .expect("darlingserver-rs: clone guest init");
     libc::close(child_wait[0]); // parent closes the read end
 
-    // Exit the daemon when the guest init dies (the DGRAM socket gives no EOF).
-    INIT_PID = init_pid;
-    let mut sa: libc::sigaction = std::mem::zeroed();
-    sa.sa_sigaction = on_sigchld as usize;
-    sa.sa_flags = libc::SA_RESTART | libc::SA_NOCLDSTOP;
-    libc::sigemptyset(&mut sa.sa_mask);
-    libc::sigaction(libc::SIGCHLD, &sa, std::ptr::null_mut());
-
     // Parent: permanently drop privileges, then bring up XNU + the RPC server.
     container::perma_drop_privileges(cfg.original_uid, cfg.original_gid).ok();
     libc::prctl(libc::PR_SET_DUMPABLE, 1, 0, 0, 0);
@@ -123,87 +106,156 @@ unsafe fn run(cfg: Config) -> ! {
 
     eprintln!("darlingserver-rs: container up (init pid {init_pid}); serving {sock_path}");
 
-    // Serve forever. Each guest THREAD (nsid,tid) gets ONE persistent doWork microthread
-    // bound to its task plus a mailbox -- the real darlingserver architecture. A thread's
-    // calls run sequentially on that microthread (so its per-thread XNU state persists),
-    // and a call that BLOCKS (e.g. a mach_msg receive) parks the microthread deep in its
-    // stack, to be resumed later when another thread's send delivers the message. Because
-    // such a reply is produced asynchronously, after every wake we scan all mailboxes and
-    // flush any that are ready to their peers.
-    listener.set_blocking();
+    // Serve forever via an epoll event loop multiplexing: the main RPC socket, the init
+    // pidfd (its death -> the daemon exits, since the DGRAM socket has no EOF), and each
+    // process kqueue channel's socket (guest modify/read) + target pidfd (target death ->
+    // NOTE_EXIT). Each guest THREAD (nsid,tid) still gets ONE persistent doWork microthread
+    // + mailbox; a call that BLOCKS parks its microthread and its reply is flushed when a
+    // later event unblocks it.
     let mut slots: HashMap<(u32, u64), Slot> = HashMap::new();
+    let mut kqchans: Vec<ProcKqchan> = Vec::new();
 
+    let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
+    let main_fd = listener.fd();
+    epoll_add(epfd, main_fd);
+    let init_pidfd = libc::syscall(libc::SYS_pidfd_open, init_pid, 0) as RawFd;
+    if init_pidfd >= 0 {
+        epoll_add(epfd, init_pidfd);
+    }
+
+    let mut events: [libc::epoll_event; 16] = std::mem::zeroed();
     loop {
-        let (msg, peer) = match listener.recv() {
-            Ok(Some(x)) => x,
-            _ => continue,
-        };
-        let hdr = match msg.header() {
-            Some(h) => h,
-            None => continue,
-        };
-        let nsid = hdr.pid as u32;
-        let tid = hdr.tid as u64;
-        let arch = hdr.architecture;
-        // The guest's daemon-namespace pid (from SO_PASSCRED) is what process_vm_readv
-        // needs; fall back to the header pid for the in-namespace case.
-        let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
-        reg.set_host_pid(nsid, host_pid);
-
-        // Create this guest thread's doWork microthread + mailbox on first sighting.
-        if !slots.contains_key(&(nsid, tid)) {
-            let mailbox = Rc::new(RefCell::new(Mailbox::default()));
-            let mb = mailbox.clone();
-            reg.run_thread(
-                nsid,
-                tid,
-                arch,
-                Box::new(move || loop {
-                    // Park until a call is queued (or we are told to stop).
-                    loop {
-                        let ready = {
-                            let m = mb.borrow();
-                            m.pending.is_some() || m.stop
-                        };
-                        if ready {
-                            break;
+        let n = libc::epoll_wait(epfd, events.as_mut_ptr(), events.len() as c_int, -1);
+        if n < 0 {
+            if std::io::Error::last_os_error().kind() == std::io::ErrorKind::Interrupted {
+                continue;
+            }
+            break;
+        }
+        for ev in &events[..n as usize] {
+            let fd = ev.u64 as RawFd;
+            if init_pidfd >= 0 && fd == init_pidfd {
+                // Container init died: the session is over.
+                libc::_exit(0);
+            } else if fd == main_fd {
+                // Drain all pending RPC datagrams; dispatch each on its guest thread's
+                // doWork microthread, flush replies, and register any kqchans it opened.
+                while let Ok(Some((msg, peer))) = listener.recv() {
+                    handle_call(&listener, &mut reg, handler_ptr, &mut slots, msg, peer);
+                    flush_replies(&listener, &mut slots);
+                    for kq in (*handler_ptr).take_pending_kqchans() {
+                        epoll_add(epfd, kq.daemon_fd);
+                        if kq.pidfd >= 0 {
+                            epoll_add(epfd, kq.pidfd);
                         }
-                        sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+                        kqchans.push(kq);
                     }
-                    if mb.borrow().stop {
+                }
+            } else if let Some(idx) = kqchans.iter().position(|k| k.daemon_fd == fd) {
+                // Guest sent a message on a kqchan socket (proc_modify/proc_read) or hung up.
+                if !kqchans[idx].on_readable() {
+                    let kq = kqchans.remove(idx);
+                    epoll_del(epfd, kq.daemon_fd);
+                    if kq.pidfd >= 0 {
+                        epoll_del(epfd, kq.pidfd);
+                    }
+                    // dropping kq closes its fds
+                }
+            } else if let Some(idx) = kqchans.iter().position(|k| k.pidfd == fd) {
+                // A watched process died -> deliver NOTE_EXIT; stop watching the pidfd.
+                epoll_del(epfd, fd);
+                libc::close(fd);
+                kqchans[idx].pidfd = -1;
+                kqchans[idx].on_target_died();
+            }
+        }
+    }
+    libc::close(epfd);
+    std::process::exit(0);
+}
+
+/// Dispatch one RPC datagram on the calling guest thread's persistent doWork microthread
+/// (created on first sighting), waking it and draining any threads it unblocks.
+unsafe fn handle_call(
+    _listener: &Listener,
+    reg: &mut Registry,
+    handler_ptr: *mut Handler,
+    slots: &mut HashMap<(u32, u64), Slot>,
+    msg: Message,
+    peer: PeerAddr,
+) {
+    let hdr = match msg.header() {
+        Some(h) => h,
+        None => return,
+    };
+    let nsid = hdr.pid as u32;
+    let tid = hdr.tid as u64;
+    let arch = hdr.architecture;
+    // The guest's daemon-namespace pid (SO_PASSCRED) is what process_vm_readv needs.
+    let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
+    reg.set_host_pid(nsid, host_pid);
+
+    if !slots.contains_key(&(nsid, tid)) {
+        let mailbox = Rc::new(RefCell::new(Mailbox::default()));
+        let mb = mailbox.clone();
+        reg.run_thread(
+            nsid,
+            tid,
+            arch,
+            Box::new(move || loop {
+                loop {
+                    let ready = {
+                        let m = mb.borrow();
+                        m.pending.is_some() || m.stop
+                    };
+                    if ready {
                         break;
                     }
-                    let call = mb.borrow_mut().pending.take().unwrap();
-                    let ch = call.header().unwrap();
-                    // Bind this call's identity (the generated handlers get no header).
-                    (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
-                    let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
-                    // Diagnostic: surface any call the guest needs that is still ENOSYS.
-                    if let Some(ref r) = reply {
-                        if r.len() >= 8 && i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == rpc_wire::ENOSYS {
-                            eprintln!("darlingserver-rs: UNIMPLEMENTED call {} (#{})", call.call_name().unwrap_or("?"), ch.number);
-                        }
+                    sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+                }
+                if mb.borrow().stop {
+                    break;
+                }
+                let call = mb.borrow_mut().pending.take().unwrap();
+                let ch = call.header().unwrap();
+                (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
+                let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
+                let rfds = (*handler_ptr).take_reply_fds();
+                if let Some(ref r) = reply {
+                    if r.len() >= 8 && i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == rpc_wire::ENOSYS {
+                        eprintln!("darlingserver-rs: UNIMPLEMENTED call {} (#{})", call.call_name().unwrap_or("?"), ch.number);
                     }
-                    mb.borrow_mut().reply = reply;
-                }),
-            );
-            slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone() });
-        }
+                }
+                let mut m = mb.borrow_mut();
+                m.reply = reply;
+                m.reply_fds = rfds;
+            }),
+        );
+        slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone() });
+    }
 
-        // Deliver the call to its thread and wake it (it may block mid-dispatch).
-        {
-            let slot = slots.get_mut(&(nsid, tid)).unwrap();
-            slot.peer = peer;
-            slot.mailbox.borrow_mut().pending = Some(msg);
-        }
-        reg.wake_thread(nsid, tid);
-        sched::drain(); // run any OTHER threads unblocked as a side effect of this call
+    {
+        let slot = slots.get_mut(&(nsid, tid)).unwrap();
+        slot.peer = peer;
+        slot.mailbox.borrow_mut().pending = Some(msg);
+    }
+    reg.wake_thread(nsid, tid);
+    sched::drain();
+}
 
-        // Flush every ready reply (this call's, plus any blocked call just unblocked).
-        for slot in slots.values_mut() {
-            let reply = slot.mailbox.borrow_mut().reply.take();
-            if let Some(reply) = reply {
-                listener.send(&reply, &[], &slot.peer).ok();
+/// Flush every mailbox that has a ready reply to its peer (attaching any reply fds via
+/// SCM_RIGHTS, then closing the daemon's copies). Covers both the just-dispatched call and
+/// any blocked call unblocked as a side effect.
+unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slot>) {
+    for slot in slots.values_mut() {
+        let (reply, rfds) = {
+            let mut m = slot.mailbox.borrow_mut();
+            (m.reply.take(), std::mem::take(&mut m.reply_fds))
+        };
+        if let Some(reply) = reply {
+            listener.send(&reply, &rfds, &slot.peer).ok();
+            for fd in rfds {
+                libc::close(fd);
             }
         }
     }
