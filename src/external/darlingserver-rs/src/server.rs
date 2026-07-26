@@ -59,6 +59,32 @@ impl Listener {
         self.path.to_str().unwrap()
     }
 
+    /// The bound socket fd (for a daemon that drives its own recv/send loop instead of
+    /// `run`, e.g. to route replies across multiple guest threads).
+    pub fn fd(&self) -> RawFd {
+        self.listen_fd
+    }
+
+    /// Switch the socket to blocking mode, so `recv` blocks for the next datagram rather
+    /// than returning Ok(None). Used by the daemon's own serve loop (single socket, no
+    /// need for the nonblocking + epoll dance).
+    pub fn set_blocking(&self) {
+        unsafe {
+            let f = libc::fcntl(self.listen_fd, libc::F_GETFL, 0);
+            libc::fcntl(self.listen_fd, libc::F_SETFL, f & !libc::O_NONBLOCK);
+        }
+    }
+
+    /// Receive one datagram (message + sender address). Blocks if the socket is blocking.
+    pub fn recv(&self) -> io::Result<Option<(crate::rpc_io::Message, crate::rpc_io::PeerAddr)>> {
+        recv_datagram(self.listen_fd)
+    }
+
+    /// Send a reply datagram back to `to`.
+    pub fn send(&self, data: &[u8], fds: &[RawFd], to: &crate::rpc_io::PeerAddr) -> io::Result<()> {
+        send_datagram(self.listen_fd, data, fds, to)
+    }
+
     /// Serve datagrams until `handle` has served `max_messages` (pass usize::MAX for a
     /// real daemon that runs forever). For each datagram, `handle` returns the reply bytes
     /// to send back to that sender (or None). An idle wait is NOT an error -- the loop just

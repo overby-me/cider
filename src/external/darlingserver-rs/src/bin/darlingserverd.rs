@@ -13,12 +13,29 @@
 use darlingserver_rs::container::{self, Config};
 use darlingserver_rs::handler::Handler;
 use darlingserver_rs::registry::Registry;
+use darlingserver_rs::rpc_io::{Message, PeerAddr};
 use darlingserver_rs::rpc_wire;
 use darlingserver_rs::sched;
 use darlingserver_rs::server::Listener;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
+
+/// A guest thread's inbox: the call waiting to be dispatched, the reply the doWork
+/// microthread produced (possibly later, if the call blocked), and a stop flag.
+#[derive(Default)]
+struct Mailbox {
+    pending: Option<Message>,
+    reply: Option<Vec<u8>>,
+    stop: bool,
+}
+
+/// Per guest thread: its mailbox + the address to send its replies back to.
+struct Slot {
+    mailbox: Rc<RefCell<Mailbox>>,
+    peer: PeerAddr,
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -77,41 +94,82 @@ unsafe fn run(cfg: Config) -> ! {
 
     eprintln!("darlingserver-rs: container up (init pid {init_pid}); serving {sock_path}");
 
-    // Serve forever: route each call to the guest's task, dispatch on a microthread bound
-    // to it through the shared Handler, and reply. (Per-connection persistent doWork
-    // threads -- daemon_session_demo -- are the refinement; this uses a microthread per
-    // call, which is correct but less efficient.)
-    listener
-        .run(usize::MAX, |msg| {
-            let hdr = msg.header()?;
-            let nsid = hdr.pid as u32;
-            let tid = hdr.tid as u64;
-            let arch = hdr.architecture;
-            // The guest's daemon-namespace pid (from SO_PASSCRED) is what process_vm_readv
-            // needs; fall back to the header pid for the in-namespace case.
-            let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
-            reg.set_host_pid(nsid, host_pid);
-            let slot: Rc<RefCell<Option<Vec<u8>>>> = Rc::new(RefCell::new(None));
-            let out = slot.clone();
-            let msg_c = msg.clone();
-            let mt = reg.spawn_on(
+    // Serve forever. Each guest THREAD (nsid,tid) gets ONE persistent doWork microthread
+    // bound to its task plus a mailbox -- the real darlingserver architecture. A thread's
+    // calls run sequentially on that microthread (so its per-thread XNU state persists),
+    // and a call that BLOCKS (e.g. a mach_msg receive) parks the microthread deep in its
+    // stack, to be resumed later when another thread's send delivers the message. Because
+    // such a reply is produced asynchronously, after every wake we scan all mailboxes and
+    // flush any that are ready to their peers.
+    listener.set_blocking();
+    let mut slots: HashMap<(u32, u64), Slot> = HashMap::new();
+
+    loop {
+        let (msg, peer) = match listener.recv() {
+            Ok(Some(x)) => x,
+            _ => continue,
+        };
+        let hdr = match msg.header() {
+            Some(h) => h,
+            None => continue,
+        };
+        let nsid = hdr.pid as u32;
+        let tid = hdr.tid as u64;
+        let arch = hdr.architecture;
+        // The guest's daemon-namespace pid (from SO_PASSCRED) is what process_vm_readv
+        // needs; fall back to the header pid for the in-namespace case.
+        let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
+        reg.set_host_pid(nsid, host_pid);
+
+        // Create this guest thread's doWork microthread + mailbox on first sighting.
+        if !slots.contains_key(&(nsid, tid)) {
+            let mailbox = Rc::new(RefCell::new(Mailbox::default()));
+            let mb = mailbox.clone();
+            reg.run_thread(
                 nsid,
                 tid,
                 arch,
-                Box::new(move || {
-                    // Bind the call's identity so the handler's per-process state + memory
-                    // ops resolve to this guest (the generated methods get no call header).
-                    (*handler_ptr).set_current(nsid, tid, host_pid, arch);
-                    *out.borrow_mut() = rpc_wire::dispatch(&mut *handler_ptr, &msg_c);
+                Box::new(move || loop {
+                    // Park until a call is queued (or we are told to stop).
+                    loop {
+                        let ready = {
+                            let m = mb.borrow();
+                            m.pending.is_some() || m.stop
+                        };
+                        if ready {
+                            break;
+                        }
+                        sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+                    }
+                    if mb.borrow().stop {
+                        break;
+                    }
+                    let call = mb.borrow_mut().pending.take().unwrap();
+                    let ch = call.header().unwrap();
+                    // Bind this call's identity (the generated handlers get no header).
+                    (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
+                    let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
+                    mb.borrow_mut().reply = reply;
                 }),
             );
-            sched::run(mt);
-            sched::drain();
-            let r = slot.borrow_mut().take();
-            r
-        })
-        .expect("darlingserver-rs: serve loop");
+            slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone() });
+        }
 
-    // Listener::run only returns on error; keep the never-type contract.
-    std::process::exit(0);
+        // Deliver the call to its thread and wake it (it may block mid-dispatch).
+        {
+            let slot = slots.get_mut(&(nsid, tid)).unwrap();
+            slot.peer = peer;
+            slot.mailbox.borrow_mut().pending = Some(msg);
+        }
+        reg.wake_thread(nsid, tid);
+        sched::drain(); // run any OTHER threads unblocked as a side effect of this call
+
+        // Flush every ready reply (this call's, plus any blocked call just unblocked).
+        for slot in slots.values_mut() {
+            let reply = slot.mailbox.borrow_mut().reply.take();
+            if let Some(reply) = reply {
+                listener.send(&reply, &[], &slot.peer).ok();
+            }
+        }
+    }
 }
