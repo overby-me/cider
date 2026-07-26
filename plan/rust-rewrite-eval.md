@@ -343,10 +343,17 @@ the container init dies. Added for this:
   pidfd (death -> daemon exit), and each channel's socket + target pidfd. The per-thread
   doWork model is unchanged; **reply-fd plumbing** (@fd replies via SCM_RIGHTS) was added.
 
+Broader workloads confirm this is not a one-command fluke:
+`sh -c 'whoami; echo HOME=$HOME; for i in 1 2 3; do echo loop$i; done; date +YEAR=%Y'`
+returns `root`, `HOME=/Users/root`, `loop1/2/3`, `YEAR=2026` -- shell control flow, env
+vars, external commands (whoami/date), and time syscalls all correct, clean exit. So the
+Rust daemon has **broad functional parity for non-signal Darwin workloads**.
+
 So every load-bearing **mechanism** is proven in running code, and the daemon runs real
-multi-process Darwin workloads end to end. Remaining known gap surfaced by these runs:
-`interrupt_enter`/`interrupt_exit` (#14/#15, signal delivery during a syscall -- the sigexc
-continuation machinery), tolerated by simple commands. Then broader breadth + the cutover.
+multi-process Darwin workloads end to end. The remaining gaps are the hard async/continuation
+infrastructure: `interrupt_enter`/`interrupt_exit` (signal delivery -- the sigexc nested
+continuation, detailed under "Current gap" below), then s2c, mach-port kqchan (launchd), and
+the cutover. Non-signal programs tolerate the interrupt ENOSYS and run correctly today.
 
 ## What is missing to fully replace the C++ daemon
 
