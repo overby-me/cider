@@ -35,6 +35,12 @@ pub mod server;
 /// Mach special-port traps (task_self/host_self/thread_self/mach_reply_port).
 pub mod mach;
 
+/// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
+pub mod task;
+
+/// XNU-trap duct-tape wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
+pub mod traps;
+
 /// The daemon's reusable RPC handler (the real handler bodies).
 pub mod handler;
 
