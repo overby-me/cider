@@ -346,14 +346,29 @@ the container init dies. Added for this:
 Broader workloads confirm this is not a one-command fluke:
 `sh -c 'whoami; echo HOME=$HOME; for i in 1 2 3; do echo loop$i; done; date +YEAR=%Y'`
 returns `root`, `HOME=/Users/root`, `loop1/2/3`, `YEAR=2026` -- shell control flow, env
-vars, external commands (whoami/date), and time syscalls all correct, clean exit. So the
-Rust daemon has **broad functional parity for non-signal Darwin workloads**.
+vars, external commands (whoami/date), and time syscalls all correct, clean exit.
+
+**Then timers and signals landed, and the Rust daemon now has broad functional parity
+INCLUDING the async/continuation paths.** `sleep`/timers run robustly (timerfd + the
+timer_arm hook driving a kernel microthread; a loop that sleeps repeatedly works), and
+**signal delivery works, including the nested case** (a SIGUSR1 trap fires, even when the
+signal arrives during a blocked `sleep`) -- via the `interrupt_enter`/`interrupt_exit`
+sigexc bracket (both `dtape_thread_sigexc_enter` AND `_enter2`) plus `sigprocess`
+(load-state -> process_signal -> wait_while_user_suspended -> save-state) and
+`thread_suspended`, all riding the continuation-surviving doWork loop (a persistent frame
+holds the getcontext re-entry point, so a continuation-based blocking call's fresh-stack
+reply does not discard the serve loop). Exec-replacement (`exec echo ...`) and background
+job control (`(...) & wait`) also run clean. A comprehensive sweep of diverse real Darwin
+binaries -- `id -un`->root, `$((7*8))`->56, `rev`->OLLEH, `date +%Y`->2026, `sort`,
+`grep -o`, `awk` (`seq|awk`->5050), `tr`, `wc`, `cat` -- all return correct output, rc=0.
 
 So every load-bearing **mechanism** is proven in running code, and the daemon runs real
-multi-process Darwin workloads end to end. The remaining gaps are the hard async/continuation
-infrastructure: `interrupt_enter`/`interrupt_exit` (signal delivery -- the sigexc nested
-continuation, detailed under "Current gap" below), then s2c, mach-port kqchan (launchd), and
-the cutover. Non-signal programs tolerate the interrupt ENOSYS and run correctly today.
+multi-process Darwin workloads end to end -- shell, pipelines, filesystem, timers, and
+signals. The remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest;
+not hit by any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full
+launchd boot path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), multi-worker
+scheduling (throughput), and the `DSERVER_IMPL=rust` cutover + M1 (guest nix builds hello,
+which needs a nix-provisioned prefix).
 
 ## What is missing to fully replace the C++ daemon
 
