@@ -228,6 +228,9 @@ unsafe fn run(cfg: Config) -> ! {
     container::enter_mount_namespace().expect("darlingserver-rs: enter mount namespace");
     container::mount_prefix_overlay(&cfg.prefix, &cfg.libexec_path)
         .expect("darlingserver-rs: mount prefix overlay");
+    // Optional writable native /nix for guest Nix (M1); best-effort, opt-in via the
+    // .enable-writable-nix marker. Must happen while root, after the prefix overlay.
+    container::mount_nix_overlay(&cfg.prefix);
 
     // Tell the launching darling.c the container is set up.
     container::signal_launcher_ready(&cfg);

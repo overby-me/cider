@@ -10,8 +10,9 @@
 //! validated by splicing the daemon into a real darling runtime (see
 //! scripts/splice-darlingserver.sh) and launching it via darling.c. Deferred vs the C++
 //! for now (all best-effort prefix work, orthogonal to the namespace/mount/clone core):
-//! setupUserHome, darlingPreInit, fixPermissions, the writable-/nix overlay, and rlimit
-//! bumps. See plan/rust-rewrite-eval.md (bucket B, the container main).
+//! setupUserHome, darlingPreInit, fixPermissions, and rlimit bumps. The writable-/nix
+//! overlay (for guest Nix / M1) IS ported (`mount_nix_overlay`). See
+//! plan/rust-rewrite-eval.md (bucket B, the container main).
 
 use std::ffi::CString;
 use std::io;
@@ -160,6 +161,48 @@ pub unsafe fn mount_prefix_overlay(prefix: &str, libexec_path: &str) -> io::Resu
         return Err(errno());
     }
     Err(e)
+}
+
+/// Optional writable native /nix for guest Nix (darlingserver.cpp:670). Opt-in via a
+/// `<prefix>/.enable-writable-nix` marker plus a host `/nix/store`. nix refuses to build in
+/// a diverted (non-`/nix/store`) store, and the host /nix the container sees is read-only to
+/// the mapped root; so overlay the host `/nix/store` and `/nix/var` (read-only lowers -- the
+/// guest inherits the host's valid-paths DB and trusts pre-populated deps) with writable
+/// uppers, at the container's `/nix/store` and `/nix/var`. The uppers live in a
+/// `<prefix>.nixrw` sibling: overlayfs forbids an upperdir that is itself on an overlay, and
+/// the prefix is one. Two SEPARATE overlays (a socket in /nix/var defeats one whole-/nix
+/// overlay), each needing `userxattr` for unprivileged/mapped-root overlayfs. Entirely
+/// best-effort: any failure leaves /nix as-is and the container still boots. Must run as
+/// root, after the prefix overlay and before dropping privileges.
+pub unsafe fn mount_nix_overlay(prefix: &str) {
+    let marker = CString::new(format!("{prefix}/.enable-writable-nix")).unwrap();
+    let store = CString::new("/nix/store").unwrap();
+    if libc::access(marker.as_ptr(), libc::F_OK) != 0 || libc::access(store.as_ptr(), libc::F_OK) != 0 {
+        return;
+    }
+    let back = format!("{prefix}.nixrw");
+    let mkdir = |p: &str| {
+        if let Ok(c) = CString::new(p) {
+            libc::mkdir(c.as_ptr(), 0o755);
+        }
+    };
+    mkdir(&format!("{prefix}/nix"));
+    mkdir(&back);
+    let overlay = CString::new("overlay").unwrap();
+    for sub in ["store", "var"] {
+        let mnt = format!("{prefix}/nix/{sub}");
+        let up = format!("{back}/{sub}.up");
+        let wk = format!("{back}/{sub}.work");
+        mkdir(&mnt);
+        mkdir(&up);
+        mkdir(&wk);
+        let opts = format!("lowerdir=/nix/{sub},upperdir={up},workdir={wk},userxattr,index=off");
+        let c_mnt = CString::new(mnt).unwrap();
+        let c_opts = CString::new(opts).unwrap();
+        if libc::mount(overlay.as_ptr(), c_mnt.as_ptr(), overlay.as_ptr(), 0, c_opts.as_ptr() as *const libc::c_void) != 0 {
+            eprintln!("container: writable /nix/{sub} overlay failed: {}", errno());
+        }
+    }
 }
 
 // ---- PID namespace + guest init (darlingserver.cpp:751-789) ----
