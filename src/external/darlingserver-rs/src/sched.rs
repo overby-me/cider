@@ -84,6 +84,18 @@ pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
 pub struct Microthread {
     resume_ctx: MaybeUninit<libc::ucontext_t>,
     stack: Vec<u8>,
+    /// A SEPARATE stack for running continuations, so a continuation never clobbers the
+    /// main stack that a persistent doWork loop lives on -- what lets the loop survive a
+    /// continuation-based blocking call (semaphore_timedwait). C++ runs continuations on
+    /// stack-pool stacks for the same reason.
+    cont_stack: Vec<u8>,
+    /// The doWork loop's re-entry point (captured by `capture_loop_top`). When a call blocks
+    /// via a continuation, `thread_syscall_return` setcontexts here (instead of exiting the
+    /// microthread) so the loop posts the reply and takes the next call -- C++'s
+    /// backToThreadTopContext. `has_loop_top` gates it: one-shot blocking threads (the demos)
+    /// keep the exit-to-daemon path.
+    loop_top: MaybeUninit<libc::ucontext_t>,
+    has_loop_top: bool,
     suspended: bool,
     finished: bool,
     dtape_thread: *mut dtape_thread_t,
@@ -130,6 +142,32 @@ pub fn current_task() -> *mut dtape_task_t {
     if mt.is_null() { std::ptr::null_mut() } else { unsafe { (*mt).owning_task } }
 }
 
+/// Run a persistent doWork loop for the current microthread: the C++ `Thread::doWork`.
+/// `step` does one unit of work and returns false to stop; it is passed the result of a
+/// continuation-based blocking call that just re-entered (Some(code)), or None on a normal
+/// pass. The loop's getcontext (the re-entry target, C++'s backToThreadTopContext) lives in
+/// THIS function's frame, which persists for the microthread's whole life -- so a
+/// thread_syscall_return that setcontexts back to it lands on a valid stack (unlike a
+/// getcontext in a helper that returns, whose frame gets reused). `step` must itself keep
+/// no drop-requiring locals across a block; delegating per-call work to a separate function
+/// ensures that. Never returns until `step` says stop (the microthread then exits).
+pub unsafe fn run_dowork_loop(mut step: impl FnMut(Option<i32>) -> bool) {
+    let mt = current();
+    if mt.is_null() {
+        return;
+    }
+    (*mt).has_loop_top = true;
+    loop {
+        // Inline getcontext in this persistent frame: returns on the first pass AND each
+        // time a continuation-based block re-enters here via setcontext(loop_top).
+        dserver_fast_getcontext((*mt).loop_top.as_mut_ptr());
+        let sr = (*mt).take_syscall_return();
+        if !step(sr) {
+            break;
+        }
+    }
+}
+
 /// Create a microthread on `task` with an explicit thread namespace id, backed by a
 /// fresh dtape_thread. Use a guest tid for guest threads, or a kernel id (>= 1<<22)
 /// for daemon-internal work.
@@ -137,6 +175,9 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
     let mt = Box::into_raw(Box::new(Microthread {
         resume_ctx: MaybeUninit::uninit(),
         stack: vec![0u8; STACK_SIZE],
+        cont_stack: vec![0u8; STACK_SIZE],
+        loop_top: MaybeUninit::uninit(),
+        has_loop_top: false,
         suspended: false,
         finished: false,
         dtape_thread: std::ptr::null_mut(),
@@ -171,11 +212,14 @@ pub unsafe fn drain() {
     }
 }
 
-unsafe fn setup_fresh_stack(mt: *mut Microthread, trampoline: extern "C" fn()) {
+unsafe fn setup_fresh_stack(mt: *mut Microthread, trampoline: extern "C" fn(), on_cont_stack: bool) {
     let uc = (*mt).resume_ctx.as_mut_ptr();
     dserver_fast_getcontext(uc);
-    (*uc).uc_stack.ss_sp = (*mt).stack.as_mut_ptr() as *mut c_void;
-    (*uc).uc_stack.ss_size = (*mt).stack.len();
+    // Continuations run on cont_stack so they never clobber the main stack a doWork loop
+    // lives on; the first entry (body) runs on the main stack.
+    let stack = if on_cont_stack { &mut (*mt).cont_stack } else { &mut (*mt).stack };
+    (*uc).uc_stack.ss_sp = stack.as_mut_ptr() as *mut c_void;
+    (*uc).uc_stack.ss_size = stack.len();
     (*uc).uc_link = back_to_top_ptr();
     dserver_fast_makecontext(uc, trampoline, 0);
 }
@@ -203,7 +247,7 @@ pub unsafe fn run(mt: *mut Microthread) {
     if (*mt).suspended {
         (*mt).suspended = false;
         if (*mt).pending_cont.is_some() {
-            setup_fresh_stack(mt, continuation_trampoline); // continuation on a fresh stack
+            setup_fresh_stack(mt, continuation_trampoline, true); // continuation on the cont stack
         } else {
             dserver_fast_setcontext((*mt).resume_ctx.as_ptr()); // stackful resume
             unreachable!("setcontext returned");
@@ -211,7 +255,7 @@ pub unsafe fn run(mt: *mut Microthread) {
         dserver_fast_setcontext((*mt).resume_ctx.as_ptr());
         unreachable!("setcontext returned");
     } else {
-        setup_fresh_stack(mt, body_trampoline); // first entry
+        setup_fresh_stack(mt, body_trampoline, false); // first entry on the main stack
         dserver_fast_setcontext((*mt).resume_ctx.as_ptr());
         unreachable!("setcontext returned");
     }
@@ -362,6 +406,13 @@ mod hooks {
         let mt = current();
         if !mt.is_null() {
             (*mt).syscall_return = Some(code);
+            if (*mt).has_loop_top {
+                // A persistent doWork loop is running: return to its top (on the preserved
+                // main stack -- the continuation ran on cont_stack) so it posts this call's
+                // reply and takes the next call, instead of exiting the microthread.
+                dserver_fast_setcontext((*mt).loop_top.as_ptr());
+                unreachable!("setcontext to loop_top returned");
+            }
             (*mt).suspended = true;
         }
         dserver_fast_setcontext(back_to_top_ptr());

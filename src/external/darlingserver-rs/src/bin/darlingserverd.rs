@@ -32,6 +32,13 @@ struct Mailbox {
     pending: Option<Message>,
     reply: Option<Vec<u8>>,
     reply_fds: Vec<RawFd>,
+    /// The wire `number` of the in-flight call, stashed so a call that blocks via a
+    /// continuation can have its code-only reply rebuilt from it.
+    call_number: u32,
+    /// The result a continuation-based blocking call delivered (thread_syscall_return). The
+    /// doWork loop stores only this SCALAR across the getcontext re-entry; the serve loop
+    /// turns it into the reply bytes (allocating a Vec across the re-entry would be unsound).
+    reply_code: Option<i32>,
     stop: bool,
 }
 
@@ -39,6 +46,55 @@ struct Mailbox {
 struct Slot {
     mailbox: Rc<RefCell<Mailbox>>,
     peer: PeerAddr,
+}
+
+/// A code-only RPC reply (just the reply header) for a call that blocked via a continuation
+/// and finished with `code`. XNU traps (semaphore/mach_msg/...) carry no reply body.
+fn code_reply(number: u32, code: c_int) -> Vec<u8> {
+    let hdr = rpc_wire::DserverRpcReplyhdr { number, code };
+    unsafe {
+        std::slice::from_raw_parts(&hdr as *const _ as *const u8, std::mem::size_of::<rpc_wire::DserverRpcReplyhdr>())
+    }
+    .to_vec()
+}
+
+/// Process exactly ONE call for a guest thread's doWork loop: wait for a call, dispatch it,
+/// and post the reply. Returns false when the thread should stop. This is a SEPARATE function
+/// so the doWork loop's own frame stays free of drop-requiring locals (the Message lives
+/// here): when a call blocks via a continuation, thread_syscall_return setcontexts to the
+/// loop top and THIS frame is abandoned (its Message leaks -- rare, acceptable) without
+/// corrupting the loop frame it returns into.
+unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler, host_pid: c_int) -> bool {
+    loop {
+        let ready = {
+            let m = mb.borrow();
+            m.pending.is_some() || m.stop
+        };
+        if ready {
+            break;
+        }
+        sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+    }
+    if mb.borrow().stop {
+        return false;
+    }
+    let call = mb.borrow_mut().pending.take().unwrap();
+    let ch = call.header().unwrap();
+    (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
+    mb.borrow_mut().call_number = ch.number;
+    let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
+    // (reached only when dispatch RETURNED -- a non-blocking or stackful call; a
+    // continuation-based block never returns here, it re-enters the loop via loop_top)
+    let rfds = (*handler_ptr).take_reply_fds();
+    if let Some(ref r) = reply {
+        if r.len() >= 8 && i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == rpc_wire::ENOSYS {
+            eprintln!("darlingserver-rs: UNIMPLEMENTED call {} (#{})", call.call_name().unwrap_or("?"), ch.number);
+        }
+    }
+    let mut m = mb.borrow_mut();
+    m.reply = reply;
+    m.reply_fds = rfds;
+    true
 }
 
 unsafe fn epoll_add(epfd: RawFd, fd: RawFd) {
@@ -212,33 +268,19 @@ unsafe fn handle_call(
             nsid,
             tid,
             arch,
-            Box::new(move || loop {
-                loop {
-                    let ready = {
-                        let m = mb.borrow();
-                        m.pending.is_some() || m.stop
-                    };
-                    if ready {
-                        break;
+            // The persistent doWork loop (its getcontext re-entry point lives in
+            // sched::run_dowork_loop's frame, so a continuation-based block can setcontext
+            // back to it). `sr` is Some(code) when re-entering after such a block -- stash the
+            // SCALAR (the serve loop builds the reply bytes); else do one normal call.
+            Box::new(move || {
+                sched::run_dowork_loop(|sr| {
+                    if let Some(code) = sr {
+                        mb.borrow_mut().reply_code = Some(code);
+                        true
+                    } else {
+                        process_one_call(&mb, handler_ptr, host_pid)
                     }
-                    sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
-                }
-                if mb.borrow().stop {
-                    break;
-                }
-                let call = mb.borrow_mut().pending.take().unwrap();
-                let ch = call.header().unwrap();
-                (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
-                let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
-                let rfds = (*handler_ptr).take_reply_fds();
-                if let Some(ref r) = reply {
-                    if r.len() >= 8 && i32::from_ne_bytes([r[4], r[5], r[6], r[7]]) == rpc_wire::ENOSYS {
-                        eprintln!("darlingserver-rs: UNIMPLEMENTED call {} (#{})", call.call_name().unwrap_or("?"), ch.number);
-                    }
-                }
-                let mut m = mb.borrow_mut();
-                m.reply = reply;
-                m.reply_fds = rfds;
+                });
             }),
         );
         slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone() });
@@ -260,7 +302,15 @@ unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slo
     for slot in slots.values_mut() {
         let (reply, rfds) = {
             let mut m = slot.mailbox.borrow_mut();
-            (m.reply.take(), std::mem::take(&mut m.reply_fds))
+            // A continuation-based blocking call's result (reply_code) takes precedence: its
+            // dispatch never assigned `reply`, so build the code-only reply from the stashed
+            // number + result. Otherwise use the dispatch reply.
+            let reply = if let Some(code) = m.reply_code.take() {
+                Some(code_reply(m.call_number, code))
+            } else {
+                m.reply.take()
+            };
+            (reply, std::mem::take(&mut m.reply_fds))
         };
         if let Some(reply) = reply {
             listener.send(&reply, &rfds, &slot.peer).ok();
