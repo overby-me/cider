@@ -608,6 +608,21 @@ impl rpc_wire::RpcHandler for Handler {
         })
     }
 
+    /// `__pthread_canceled(action)` -- the cancellation-point query libpthread makes at every
+    /// interruptible syscall. `action == 0` is the query: reply 0 means "this thread is
+    /// canceled, act on it", anything else means "not canceled, proceed". We never mark a
+    /// thread canceled (pthread_markcancel stays unimplemented -- the risky delivery half,
+    /// task #45), so a query is always "not canceled" (`-EINVAL`); actions 1/2 (enable/
+    /// disable cancel notifications) are guest-local, so ack them. Mirrors C++
+    /// Call::PthreadCanceled (call.cpp:619) for the not-canceled case, which is always ours.
+    fn pthread_canceled(&mut self, call: &CallPthreadCanceled, _fds: &[RawFd]) -> Result<(), i32> {
+        if call.action == 0 {
+            Err(-libc::EINVAL)
+        } else {
+            Ok(())
+        }
+    }
+
     // ================= per-process state handlers =================
 
     /// Report and clear the start-suspended flag (a debugger/exec sets it via
