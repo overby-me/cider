@@ -402,9 +402,19 @@ live -- the guest runs real commands through it. Still open: mach-port channels
 (EVFILT_MACHPORT, the launchd-boot area, task #47), and the event loop is now the ready
 foundation for timers (B.7) and s2c (B.5).
 
-**Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal delivery during a
-blocked syscall (the sigexc + nested-continuation machinery, bucket B.4). Simple commands
-tolerate the ENOSYS; signal-heavy programs will need it.
+**Current gap:** `interrupt_enter`/`interrupt_exit` (#14/#15) -- signal (sigexc) delivery,
+bucket B.4. Investigated in depth: `dtape_thread_sigexc_enter` clears the thread's XNU wait
+(`clear_wait_internal(THREAD_INTERRUPTED)`), so it must run with a valid getcontext resume
+point in place. The correct mechanism runs the interrupt NESTED on the guest thread's
+persisted microthread stack: interrupt_enter `getcontext`s a resume point and (if the
+signal interrupted a BLOCKED call) runs that call's saved continuation on a fresh stack
+while saving the old one; a `thread_syscall_return` that happens *during* the interrupt
+`setcontext`s back to that resume point instead of the doWork top; interrupt_exit restores
+the interrupted call and sends any reply it produced meanwhile. A minimal handler that only
+calls sigexc_enter breaks the reply path (guest sees -111) and regresses working commands,
+so #14/#15 stay ENOSYS (tolerated by non-signal programs) until the nested-interrupt
+scheduler extension + the doWork loop's interrupt-frame handling land. The sigexc
+primitives are ready in `thread.rs`; sigprocess (#12) + s2c signal delivery follow.
 
 ### C. Cutover + validation
 A `DSERVER_IMPL=rust` switch with the C++ daemon as fallback, then it must pass for

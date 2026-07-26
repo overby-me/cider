@@ -38,6 +38,9 @@ pub mod mach;
 /// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
 pub mod task;
 
+/// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
+pub mod thread;
+
 /// XNU-trap duct-tape wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
 pub mod traps;
 

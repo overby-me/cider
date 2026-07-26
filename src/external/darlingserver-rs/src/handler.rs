@@ -233,6 +233,17 @@ impl rpc_wire::RpcHandler for Handler {
         }
     }
 
+    // interrupt_enter / interrupt_exit (#14/#15): signal (sigexc) delivery. These need the
+    // interrupt to run NESTED on the guest thread's persisted microthread stack -- a signal
+    // that interrupts a blocked daemon call must run its handler "on top", with the syscall
+    // return during the interrupt jumping back to the interrupt's getcontext point (not the
+    // doWork top), and interrupt_exit restoring the interrupted call. A minimal version that
+    // just calls dtape_thread_sigexc_enter breaks the reply path (the guest sees -111) and
+    // regresses working commands, so these stay ENOSYS (which the guest tolerates for
+    // commands that do not rely on signal delivery) until the nested-interrupt scheduler
+    // extension lands. The primitives are ready in thread.rs. See plan/rust-rewrite-eval.md
+    // (bucket B.4).
+
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {
         Ok(ReplyTaskSelfTrap { port_name: unsafe { mach::task_self_trap() } })
     }
