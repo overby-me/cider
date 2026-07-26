@@ -413,11 +413,25 @@ gap). The one call still returning ENOSYS in these runs is `pthread_canceled` (a
 -point query), which guests tolerate gracefully; left unimplemented per the task #45 caution
 around thread cancellation.
 
-The remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not hit by
-any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full launchd boot
-path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), multi-worker scheduling (now purely
-a throughput item, not a correctness prerequisite), and the `DSERVER_IMPL=rust` cutover + M1
-(guest nix builds hello, which needs a nix-provisioned prefix).
+**M1 (guest Nix) now runs on the Rust daemon.** The writable-`/nix` overlay is ported
+(`container::mount_nix_overlay`), so in the `.wnix` prefix the guest x86_64-darwin nix finds
+itself, reports `nix 2.34.8`, sees a `nix_store_WRITABLE` store, and seeds the closure DB.
+Driving `nix build hello` from source, the daemon runs the full build machinery -- unpack,
+patch, and configure through dozens of autoconf checks (BSD install, mkdir -p, gawk, make,
+ustar, `checking for gcc... clang`, and ~27 more) up to configure's compiler probe --
+**without the daemon ever crashing** (0 host SIGSEGV/SIGABRT). The build does not yet
+complete: at the probe, configure's forked subshells (`( for ac_var in \`(set)\` ...)` and
+`( eval "$ac_compiler ..." )`, its lines 85-86) die with a *guest* `Abort trap: 6` -- the
+darling execution-fidelity flake (forked build/probe binaries taking a signal under load)
+the M1 notes already call out as what trips the C++ daemon around the first clang call. So
+this is a shared darling-fidelity ceiling, not a Rust-daemon parity gap: the daemon side of
+M1 (hosting nix + driving the compile up to that ceiling) is done.
+
+The other remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not
+hit by any workload tested so far, hooks stubbed to fail safely), mach-port kqchan
+(`EVFILT_MACHPORT` -- the full launchd boot path, which the `DARLING_NO_LAUNCHD` bypass
+sidesteps), multi-worker scheduling (now purely a throughput item, not a correctness
+prerequisite), and the `DSERVER_IMPL=rust` cutover (making the Rust daemon the default).
 
 ## What is missing to fully replace the C++ daemon
 
