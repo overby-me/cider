@@ -21,6 +21,14 @@ use std::sync::atomic::{AtomicU64, Ordering};
 // ---- FFI ----
 extern "C" {
     fn dtape_init(hooks: *const dtape_hooks_t);
+    // The SECOND init phase (init.c:117). dtape_init (phase 1) only sets up processor/
+    // memory/timer/task; the rest -- thread_call_initialize, ipc_thread_call_init,
+    // clock_service_create, thread_deallocate_daemon_init, ux_handler_setup, AND
+    // dtape_psynch_init -- lives here and MUST run on a kernel microthread (it needs a
+    // current-thread context and spawns kernel daemon threads). The C++ daemon does exactly
+    // `Thread::kernelSync(dtape_init_in_thread)` after dtape_init (server.cpp:533). Omitting
+    // it left psynch's pthread_list_mlock NULL, so the first contended pthread wait crashed.
+    fn dtape_init_in_thread();
     fn dtape_task_create(parent: *mut dtape_task_t, nsid: u32, context: *mut c_void, arch: u32) -> *mut dtape_task_t;
     fn dtape_thread_create(task: *mut dtape_task_t, nsid: u64, context: *mut c_void) -> *mut dtape_thread_t;
     fn dtape_thread_entering(thread: *mut dtape_thread_t);
@@ -417,6 +425,27 @@ mod hooks {
         suspend_current(cont, cont_ctx, unlock_me);
     }
     pub(super) unsafe extern "C" fn thread_resume(ctx: *mut c_void) { schedule(ctx as *mut Microthread); }
+    /// Create a kernel microthread (no body yet -- thread_setup installs it, thread_resume
+    /// schedules it). Used by dtape_init_in_thread + the kernel daemons (thread_call, etc.).
+    /// The microthread is leaked; the dtape side owns its lifecycle via thread_terminate.
+    /// Mirrors C++ dtape_hook_thread_create_kernel.
+    pub(super) unsafe extern "C" fn thread_create_kernel() -> *mut dtape_thread_t {
+        let mt = spawn(KERNEL_TASK, Box::new(|| {}));
+        (*mt).dtape_thread
+    }
+    /// Install a kernel thread's startup body: when scheduled, it runs `cb(cb_ctx)`. Mirrors
+    /// C++ dtape_hook_thread_setup (setupKernelThread). `ctx` is the microthread pointer.
+    pub(super) unsafe extern "C" fn thread_setup(ctx: *mut c_void, cb: dtape_thread_continuation_callback_f, cb_ctx: *mut c_void) {
+        if ctx.is_null() {
+            return;
+        }
+        let mt = ctx as *mut Microthread;
+        (*mt).body = Some(Box::new(move || {
+            if let Some(f) = cb {
+                f(cb_ctx);
+            }
+        }));
+    }
     /// dtape_thread_process_signal calls this with the BSD signal the guest should deliver;
     /// record it on the microthread (sigprocess returns it).
     pub(super) unsafe extern "C" fn thread_set_pending_signal(ctx: *mut c_void, sig: c_int) {
@@ -503,6 +532,8 @@ fn make_hooks() -> dtape_hooks_t {
     h.current_thread = Some(hooks::current_thread);
     h.thread_suspend = Some(hooks::thread_suspend);
     h.thread_resume = Some(hooks::thread_resume);
+    h.thread_create_kernel = Some(hooks::thread_create_kernel);
+    h.thread_setup = Some(hooks::thread_setup);
     h.thread_set_pending_signal = Some(hooks::thread_set_pending_signal);
     h.current_thread_set_bsd_retval = Some(hooks::current_thread_set_bsd_retval);
     h.thread_context_dispose = Some(hooks::thread_context_dispose);
@@ -527,5 +558,16 @@ pub unsafe fn init() -> *mut dtape_task_t {
     dtape_init(hooks);
     let kt = dtape_task_create(std::ptr::null_mut(), 0, std::ptr::null_mut(), 0);
     hooks::KERNEL_TASK = kt;
+    // Phase 2 (init.c:117) on a kernel microthread -- C++'s Thread::kernelSync(
+    // dtape_init_in_thread). Sets up thread_call/ipc/clock/psynch; spawns kernel daemon
+    // threads (which park waiting for work, so drain() after to settle them).
+    let mt = spawn(kt, Box::new(|| dtape_init_in_thread()));
+    run(mt);
+    if (*mt).is_suspended() {
+        schedule(mt);
+    } else {
+        drop(Box::from_raw(mt));
+    }
+    drain();
     kt
 }

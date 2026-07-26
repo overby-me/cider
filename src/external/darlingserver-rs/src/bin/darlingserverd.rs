@@ -134,6 +134,35 @@ unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler,
     true
 }
 
+/// Async-signal-safe host-crash reporter: a segfault/abort in a daemon microthread would
+/// otherwise die silently (no Rust panic, no init-death message), looking exactly like a
+/// hang or the guest's -111. Print the signal number, then re-raise with the default handler
+/// so the crash still propagates. Diagnostic for the multithread/psynch investigation.
+extern "C" {
+    fn backtrace(buffer: *mut *mut c_void, size: c_int) -> c_int;
+    fn backtrace_symbols_fd(buffer: *const *mut c_void, size: c_int, fd: c_int);
+}
+
+extern "C" fn crash_handler(sig: c_int) {
+    let msg = b"darlingserver-rs: FATAL host signal ";
+    let d = [b'0' + ((sig / 10) % 10) as u8, b'0' + (sig % 10) as u8, b'\n'];
+    unsafe {
+        libc::write(2, msg.as_ptr() as *const c_void, msg.len());
+        libc::write(2, d.as_ptr() as *const c_void, d.len());
+        let mut bt: [*mut c_void; 40] = [std::ptr::null_mut(); 40];
+        let n = backtrace(bt.as_mut_ptr(), 40);
+        backtrace_symbols_fd(bt.as_ptr(), n, 2);
+        libc::signal(sig, libc::SIG_DFL);
+        libc::raise(sig);
+    }
+}
+
+unsafe fn install_crash_handler() {
+    for &sig in &[libc::SIGSEGV, libc::SIGBUS, libc::SIGABRT, libc::SIGILL, libc::SIGFPE] {
+        libc::signal(sig, crash_handler as usize);
+    }
+}
+
 unsafe fn epoll_add(epfd: RawFd, fd: RawFd) {
     let mut ev = libc::epoll_event { events: libc::EPOLLIN as u32, u64: fd as u64 };
     libc::epoll_ctl(epfd, libc::EPOLL_CTL_ADD, fd, &mut ev);
@@ -155,6 +184,7 @@ fn main() {
 }
 
 unsafe fn run(cfg: Config) -> ! {
+    install_crash_handler();
     if libc::getuid() != 0 {
         // darling.c launches us as mapped-root; without it the privileged steps below
         // will fail with EPERM. Warn rather than hard-exit so the failure is legible.
