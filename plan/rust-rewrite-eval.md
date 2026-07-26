@@ -366,38 +366,39 @@ So every load-bearing **mechanism** is proven in running code, and the daemon ru
 multi-process Darwin workloads end to end -- shell, pipelines, filesystem, timers, and
 signals.
 
-**Then psynch (pthread mutex/condvar/rwlock) landed, and diagnosing why multithreaded
-programs still fail uncovered THE blocker for parity: the single-worker daemon.** All nine
-psynch handlers are implemented (thin wrappers over duct-tape's `dtape_psynch_*`, with the
-BSD-retval reply-body infrastructure they need); the non-blocking path is correct and a
-contended wait is reached at runtime. But a multithreaded guest (e.g. `python -c` with a
-`threading.Lock`/`Condition`) fails, and the root cause is now fully traced:
+**Then psynch (pthread mutex/condvar/rwlock) landed, and MULTITHREADED GUESTS NOW RUN.**
+All nine psynch handlers are implemented (thin wrappers over duct-tape's `dtape_psynch_*`,
+with the BSD-retval reply-body infrastructure a contended wait's deferred reply needs).
+Multithreaded `python -c` works: a `threading.Lock` contended across 2 threads x 50k
+increments returns `COUNTER=100000` (63968 psynch ops, ~half blocking on a continuation and
+resuming with the correct retval), and a `threading.Condition` across 4 threads returns
+`COUNTER=80000`, `WAITER_WOKE`, `CV_DONE` -- all rc=0, matching the C++ daemon exactly. This
+validates the psynch BSD-retval deferred-reply path end to end.
 
-- The C++ daemon runs the exact same multithreaded python fine (COUNTER=100000, rc=0), so
-  this is a Rust-daemon gap, not a darling limitation.
-- The Rust daemon fails at the **first contended psynch wait**: the guest's later
-  `interrupt_enter`/`semaphore_timedwait` RPCs return `-111` (ECONNREFUSED). The band-aid
-  `interrupt_enter_tolerant` (sigexc.c) retries 4000x and still loses.
-- Instrumentation (RECV/heartbeat/init-death traces) shows the daemon does **not** exit and
-  its replies do **not** fail -- instead its epoll heartbeat **stops** the instant a psynch
-  wait blocks. The daemon's single OS thread **freezes** inside duct-tape's psynch
-  turnstile/waitq setup (`psynch_wait_prepare`), BEFORE it ever reaches `thread_block` /
-  `suspend_current`. The `-111` the guest sees is downstream of that freeze.
-- The turnstile path (`turnstile.c`) guards its state with `lck_spin` **spinlocks**. On a
-  single OS thread, a spinlock taken on behalf of one microthread can never be released
-  while another microthread needs it -- there is no second CPU to make progress. The C++
-  daemon survives precisely because it is **multi-worker** (a `_workQueue` of OS threads).
+The blocker turned out to be a **missing init phase**, not (as first mis-diagnosed) the
+single-worker model. duct-tape init is two-phase: `dtape_init` sets up processor/memory/
+timer/task, then **`dtape_init_in_thread`** (init.c:117) sets up thread_call, ipc_thread_call,
+clock_service, thread_deallocate_daemon, ux_handler, AND `dtape_psynch_init` -- and it MUST
+run on a kernel microthread. The C++ daemon does `Thread::kernelSync(dtape_init_in_thread)`
+right after `dtape_init` (server.cpp:533); the Rust `sched::init` never ran phase 2. So
+psynch's global `pthread_list_mlock` stayed NULL, and the first contended pthread wait
+dereferenced it -> **SIGSEGV**. The crash was silent (no Rust panic, no init-death log), so
+the stopped epoll heartbeat first read as a "single-worker spinlock freeze" -- wrong: a
+host SIGSEGV/backtrace handler (now installed in darlingserverd) showed the real fault, and
+duct-tape's `lck_mtx`/`lck_spin` are cooperative (they call `thread_suspend`, they don't
+spin), so a single worker is fine. The guest's `-111`/ECONNREFUSED was purely downstream of
+the dead daemon socket -- so "task #44" is resolved: it was this crash, not an RPC race.
 
-**Conclusion: multi-worker scheduling is a PREREQUISITE for multithreaded guest programs,
-not a throughput nicety.** Since most real Darwin software is multithreaded (anything on
-GCD/libdispatch or pthreads under contention), this is the top remaining parity item. It is
-a substantial change (a thread-safe scheduler: per-worker current-thread + BACK_TO_TOP, a
-shared run queue behind a mutex/condvar, and locking around the registry/slots/handler).
+Fix: `sched::init` spawns a kernel microthread running `dtape_init_in_thread`, and the two
+hooks phase 2 needs to spawn kernel daemon threads -- `thread_create_kernel` (bodyless
+kernel microthread) and `thread_setup` (install its startup body) -- are now implemented
+(both had been left NULL; C++ sets them at server.cpp:400-401).
 
-The other remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not
-hit by any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full launchd
-boot path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), and the `DSERVER_IMPL=rust`
-cutover + M1 (guest nix builds hello, which needs a nix-provisioned prefix).
+The remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not hit by
+any workload tested so far), mach-port kqchan (`EVFILT_MACHPORT` -- the full launchd boot
+path, which the `DARLING_NO_LAUNCHD` bypass sidesteps), multi-worker scheduling (now purely
+a throughput item, not a correctness prerequisite), and the `DSERVER_IMPL=rust` cutover + M1
+(guest nix builds hello, which needs a nix-provisioned prefix).
 
 ## What is missing to fully replace the C++ daemon
 
