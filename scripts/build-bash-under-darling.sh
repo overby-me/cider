@@ -15,7 +15,17 @@ BASH_SRC="${BASH_SRC:-}"
 if [ -z "$BASH_SRC" ]; then
 	BASH_SRC="$(nix eval --raw "github:NixOS/nixpkgs/${NIXPKGS_REV}#legacyPackages.x86_64-darwin.bash.src")"
 fi
-for p in "$BT" "$SDK_ROOT" "$BASH_SRC"; do
+# System curses. bash -- like real macOS and nixpkgs -- links its readline against
+# ncurses/libtinfo, which provides the termcap functions AND the globals BC/UP/PC/ospeed as
+# strong symbols. Without it bash falls back to its bundled lib/termcap, whose globals are
+# __private_extern__ (hidden/local) and so do not satisfy readline's cross-object references
+# -> "Undefined symbols: _BC, _UP" at link. Providing ncurses is the correct build, not a
+# source patch of the bundled fallback.
+NCURSES="${NCURSES:-}"
+if [ -z "$NCURSES" ]; then
+	NCURSES="$(nix eval --raw "github:NixOS/nixpkgs/${NIXPKGS_REV}#legacyPackages.x86_64-darwin.ncurses.outPath")"
+fi
+for p in "$BT" "$SDK_ROOT" "$BASH_SRC" "$NCURSES"; do
 	[ -e "$p" ] || nix copy --from "$CACHE" "$p" --no-check-sigs
 done
 SDK="$SDK_ROOT/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.4.sdk"
@@ -26,13 +36,15 @@ cat > "$work/build.sh" <<INNER
 BT=$(g "$BT")
 SDK=$(g "$SDK")
 BSRC=$(g "$BASH_SRC")
+NC=$(g "$NCURSES")
 export PATH="\$BT/bin:/usr/bin:/bin"
 export SDKROOT="\$SDK" CC=clang
-# -fcommon: bash's bundled termcap and readline both give tentative defs of the
-# termcap globals (PC, BC, UP, ospeed); modern clang defaults to -fno-common,
-# which makes them hard duplicate symbols at link. -fcommon merges them.
-export CFLAGS="-isysroot \$SDK -Wno-implicit-function-declaration -Wno-error -fcommon"
-export LDFLAGS="-isysroot \$SDK"
+# -fcommon: some readline globals are tentative defs; modern clang defaults to -fno-common,
+# which turns them into hard duplicate symbols at link. -fcommon keeps them mergeable.
+# -I/-L point at the system curses (ncurses) so bash's configure finds tgetent there and uses
+# ncurses/libtinfo for termcap (which exports BC/UP/PC/ospeed), instead of its bundled fallback.
+export CFLAGS="-isysroot \$SDK -Wno-implicit-function-declaration -Wno-error -fcommon -I\$NC/include"
+export LDFLAGS="-isysroot \$SDK -L\$NC/lib"
 export CONFIG_SHELL="\$BT/bin/bash" SHELL="\$BT/bin/bash"
 unset CONFIG_SITE
 cd "\$HOME" || exit 9
@@ -40,10 +52,6 @@ rm -rf bbuild; mkdir -p bbuild tmp; export TMPDIR="\$HOME/tmp"
 cd bbuild || exit 9
 echo "=UNTAR="; tar xzf "\$BSRC" && echo untar_ok || { echo TAR_FAIL; exit 1; }
 cd bash-5.3 || { echo NO_SRCDIR; exit 1; }
-# darling's linker makes __private_extern__ termcap globals (BC/UP/PC/ospeed) fully LOCAL, so
-# readline's references to them are undefined at the final link (works with Apple's ld). Make
-# them global so bash links. (Proper fix belongs in darling-ld64's private_extern handling.)
-sed -i "s/__private_extern__//g" lib/termcap/tparam.c lib/termcap/termcap.c
 echo "=CONFIGURE="; "\$CONFIG_SHELL" ./configure --without-bash-malloc >conf.log 2>&1; echo "configure_rc=\$?"; tail -3 conf.log
 echo "=MAKE="; make >make.log 2>&1; echo "make_rc=\$?"; tail -4 make.log
 echo "=VER="; ./bash --version 2>&1 | head -1; echo "ver_rc=\$?"
