@@ -793,6 +793,21 @@ impl rpc_wire::RpcHandler for Handler {
         Ok(())
     }
 
+    /// Modify the signal a target (traced) thread will deliver from its in-flight signal-interrupt
+    /// -- a debugger suppressing (0) or changing it via ptrace PT_THUPDATE. Sets the target's
+    /// pending_signal, which its sigprocess RPC returns as new_bsd_signal_number. Mirrors
+    /// Call::PtraceThupdate -> Thread::setPendingSignal (thread.cpp:952). (task #61)
+    fn ptrace_thupdate(&mut self, call: &CallPtraceThupdate, _fds: &[RawFd]) -> Result<(), i32> {
+        let mt = crate::sched::microthread_for_tid(call.target as u64);
+        if mt.is_null() {
+            return Err(libc::ESRCH); // not negated: this is a bad target, not an internal error
+        }
+        unsafe {
+            (*mt).set_pending_signal(call.signum);
+        }
+        Ok(())
+    }
+
     // ================= per-process state handlers =================
 
     /// Report and clear the start-suspended flag (a debugger/exec sets it via

@@ -199,6 +199,9 @@ impl Microthread {
     pub fn dtape_thread(&self) -> *mut dtape_thread_t { self.dtape_thread }
     /// The pending BSD signal set during signal processing (sigprocess reads this).
     pub fn pending_signal(&self) -> i32 { self.pending_signal }
+    /// Override the signal this thread will deliver from its in-flight signal-interrupt (ptrace
+    /// PT_THUPDATE: a debugger suppressing/changing it). Its sigprocess returns this. (task #61)
+    pub fn set_pending_signal(&mut self, sig: i32) { self.pending_signal = sig; }
     /// The in-flight BSD-trap return value (psynch retval). Read after a psynch op to build
     /// its reply body; on a blocking op it is filled by the continuation before the reply.
     pub fn bsd_retval(&self) -> u32 { self.bsd_retval }
@@ -399,6 +402,19 @@ pub fn register_thread_lookup(tid: u64, thread: *mut dtape_thread_t) {
 /// later lookup of the dead thread returns null). Called from thread::dying.
 pub fn unregister_thread_lookup(thread: *mut dtape_thread_t) {
     THREAD_BY_TID.with(|m| m.borrow_mut().retain(|_, &mut t| t != thread));
+}
+
+/// Resolve a guest thread's Microthread by its nsid tid: thread_lookup table -> dtape_thread ->
+/// the context handed to dtape_thread_create. null if unknown. Lets ptrace_thupdate (task #61)
+/// reach a target (traced) thread that is not the current dispatcher.
+pub fn microthread_for_tid(tid: u64) -> *mut Microthread {
+    let dt = THREAD_BY_TID
+        .with(|m| m.borrow().get(&tid).copied())
+        .unwrap_or(std::ptr::null_mut());
+    if dt.is_null() {
+        return std::ptr::null_mut();
+    }
+    unsafe { dtape_thread_context(dt) as *mut Microthread }
 }
 
 fn back_to_top_ptr() -> *mut libc::ucontext_t {
