@@ -50,6 +50,9 @@ pub mod kqchan;
 /// psynch: kernel-assisted pthread mutex/condvar/rwlock (the `__psynch_*` BSD syscalls).
 pub mod psynch;
 
+/// S2C (server-to-client): the daemon asks the guest to mmap/munmap on its own behalf.
+pub mod s2c;
+
 /// The daemon's reusable RPC handler (the real handler bodies).
 pub mod handler;
 

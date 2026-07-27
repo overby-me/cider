@@ -499,8 +499,21 @@ mod hooks {
     pub(super) unsafe extern "C" fn task_get_memory_region_info(_ctx: *mut c_void, _addr: usize, _info: *mut dtape_memory_region_info_t) -> bool {
         false
     }
-    pub(super) unsafe extern "C" fn task_allocate_pages(_ctx: *mut c_void, _pages: usize, _prot: c_int, _hint: usize, _flags: dtape_memory_flags_t) -> usize {
-        0
+    /// Allocate `pages` in the guest's address space via an S2C mmap (the guest does the
+    /// mmap on our behalf). dtape memory protections (read=1/write=2/exec=4) match PROT_*,
+    /// and the memory flags carry fixed/overwrite. Returns the guest address, or 0 on
+    /// failure (MAP_FAILED). Mirrors C++ Process/Thread::allocatePages.
+    pub(super) unsafe extern "C" fn task_allocate_pages(_ctx: *mut c_void, pages: usize, prot: c_int, hint: usize, flags: dtape_memory_flags_t) -> usize {
+        let flags_u = flags as u32; // dtape_memory_flags is repr(u32); may be a fixed|overwrite bitfield
+        let fixed = (flags_u & 1) != 0; // dtape_memory_flag_fixed
+        let overwrite = (flags_u & 2) != 0; // dtape_memory_flag_overwrite
+        let length = pages.saturating_mul(4096);
+        let (addr, err) = crate::s2c::perform_mmap(hint, length, prot, crate::s2c::mmap_flags(fixed, overwrite), -1, 0);
+        if err != 0 || addr == usize::MAX {
+            0
+        } else {
+            addr
+        }
     }
     pub(super) unsafe extern "C" fn task_free_pages(_ctx: *mut c_void, _addr: usize, _pages: usize) -> c_int {
         -1

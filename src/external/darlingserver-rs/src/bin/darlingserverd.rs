@@ -16,6 +16,7 @@ use darlingserver_rs::kqchan::ProcKqchan;
 use darlingserver_rs::registry::Registry;
 use darlingserver_rs::rpc_io::{Message, PeerAddr};
 use darlingserver_rs::rpc_wire;
+use darlingserver_rs::s2c;
 use darlingserver_rs::sched;
 use darlingserver_rs::server::Listener;
 use std::cell::RefCell;
@@ -42,6 +43,9 @@ struct Mailbox {
     /// The BSD-trap retval (psynch) captured alongside reply_code when a psynch op unblocked
     /// via its continuation; folded into the deferred reply body. None for code-only calls.
     reply_retval: Option<u32>,
+    /// This thread's guest socket address, so an S2C op it triggers mid-dispatch can send the
+    /// S2C call to the right guest (set alongside the Slot peer on each incoming call).
+    peer: Option<PeerAddr>,
     stop: bool,
 }
 
@@ -118,6 +122,11 @@ unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler,
     let call = mb.borrow_mut().pending.take().unwrap();
     let ch = call.header().unwrap();
     (*handler_ptr).set_current(ch.pid as u32, ch.tid as u64, host_pid, ch.architecture);
+    // Tell the S2C layer which guest this dispatch is for, so a VM op it triggers (e.g.
+    // task_allocate_pages) can send its S2C mmap to the right guest socket.
+    if let Some(peer) = mb.borrow().peer.clone() {
+        s2c::set_current(ch.pid as u32, ch.tid as u64, peer);
+    }
     mb.borrow_mut().call_number = ch.number;
     let reply = rpc_wire::dispatch(&mut *handler_ptr, &call);
     // (reached only when dispatch RETURNED -- a non-blocking or stackful call; a
@@ -273,6 +282,8 @@ unsafe fn run(cfg: Config) -> ! {
 
     let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
     let main_fd = listener.fd();
+    // The socket S2C calls are sent from (and the guest replies to).
+    s2c::set_listener_fd(main_fd);
     epoll_add(epfd, main_fd);
     let init_pidfd = libc::syscall(libc::SYS_pidfd_open, init_pid, 0) as RawFd;
     if init_pidfd >= 0 {
@@ -361,6 +372,17 @@ unsafe fn handle_call(
     let nsid = hdr.pid as u32;
     let tid = hdr.tid as u64;
     let arch = hdr.architecture;
+    // An S2C reply (call_number 0x52cca11) from the guest: not a new call, but the answer to
+    // an S2C mmap the daemon sent. Hand it to the microthread suspended in s2c::perform_mmap
+    // (mid-RPC) and resume it; its real RPC reply flushes after handle_call returns.
+    if s2c::is_s2c(hdr.number) {
+        if let Some((rn, rt)) = s2c::deliver_reply(msg.data) {
+            reg.wake_thread(rn, rt);
+            sched::drain();
+        }
+        return;
+    }
+
     // The guest's daemon-namespace pid (SO_PASSCRED) is what process_vm_readv needs.
     let host_pid = msg.host_pid.unwrap_or(hdr.pid as c_int);
     reg.set_host_pid(nsid, host_pid);
@@ -407,8 +429,10 @@ unsafe fn handle_call(
 
     {
         let slot = slots.get_mut(&(nsid, tid)).unwrap();
-        slot.peer = peer;
-        slot.mailbox.borrow_mut().pending = Some(msg);
+        slot.peer = peer.clone();
+        let mut m = slot.mailbox.borrow_mut();
+        m.peer = Some(peer);
+        m.pending = Some(msg);
     }
     reg.wake_thread(nsid, tid);
     sched::drain();
