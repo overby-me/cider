@@ -297,6 +297,7 @@ unsafe fn run(cfg: Config) -> ! {
     let mut slots: HashMap<(u32, u64), Slot> = HashMap::new();
     let mut kqchans: Vec<ProcKqchan> = Vec::new();
     let mut mach_kqchans: Vec<Box<MachPortKqchan>> = Vec::new();
+    let mut consoles: Vec<RawFd> = Vec::new();
 
     let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
     let main_fd = listener.fd();
@@ -375,6 +376,11 @@ unsafe fn run(cfg: Config) -> ! {
                         epoll_add(epfd, kq.daemon_fd);
                         mach_kqchans.push(kq);
                     }
+                    // Guest console channels (console_open, task #60): monitor the daemon end.
+                    for cfd in (*handler_ptr).take_pending_consoles() {
+                        epoll_add(epfd, cfd);
+                        consoles.push(cfd);
+                    }
                 }
             } else if let Some(idx) = kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent a message on a kqchan socket (proc_modify/proc_read) or hung up.
@@ -398,6 +404,23 @@ unsafe fn run(cfg: Config) -> ! {
                     let kq = mach_kqchans.remove(idx);
                     epoll_del(epfd, kq.daemon_fd);
                     // dropping kq disables the dtape notifications + closes the fd
+                }
+            } else if let Some(idx) = consoles.iter().position(|&c| c == fd) {
+                // Guest console output (console_open, task #60): drain + log to the daemon stderr.
+                let mut buf = [0u8; 512];
+                loop {
+                    let n = libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len());
+                    if n > 0 {
+                        eprint!("[guest console] {}", String::from_utf8_lossy(&buf[..n as usize]));
+                    } else {
+                        if n == 0 {
+                            // guest closed the console: stop monitoring it.
+                            epoll_del(epfd, fd);
+                            libc::close(fd);
+                            consoles.remove(idx);
+                        }
+                        break;
+                    }
                 }
             }
         }

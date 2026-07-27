@@ -184,6 +184,9 @@ pub struct Handler {
     /// New mach-port kqueue channels opened this dispatch (task #54), handed to the serve loop
     /// (boxed: their address is the duct-tape notification callback's context, so it must be stable).
     pending_kqchans_mach: Vec<Box<crate::kqchan::MachPortKqchan>>,
+    /// New guest-console daemon-side fds opened this dispatch (console_open, task #60): the daemon
+    /// monitors each and logs the guest's console/os_log output. Handed to the serve loop.
+    pending_consoles: Vec<RawFd>,
 }
 
 impl Default for Handler {
@@ -202,6 +205,7 @@ impl Handler {
             reply_fds: Vec::new(),
             pending_kqchans: Vec::new(),
             pending_kqchans_mach: Vec::new(),
+            pending_consoles: Vec::new(),
         }
     }
 
@@ -217,6 +221,10 @@ impl Handler {
     /// Take the mach-port kqchans opened this dispatch (task #54), for the serve loop to register.
     pub fn take_pending_kqchans_mach(&mut self) -> Vec<Box<crate::kqchan::MachPortKqchan>> {
         std::mem::take(&mut self.pending_kqchans_mach)
+    }
+    /// Take the guest-console daemon fds opened this dispatch (console_open, task #60).
+    pub fn take_pending_consoles(&mut self) -> Vec<RawFd> {
+        std::mem::take(&mut self.pending_consoles)
     }
 
     /// Bind the identity of the call about to be dispatched, ensuring the process's state
@@ -948,6 +956,28 @@ impl rpc_wire::RpcHandler for Handler {
         self.reply_fds.push(guest_fd);
         self.pending_kqchans_mach.push(kq);
         Ok(ReplyKqchanMachPortOpen { socket: 0 })
+    }
+
+    /// Open a guest console channel (task #60): a SOCK_STREAM socketpair whose guest end (@fd) the
+    /// guest writes its console / os_log output to, and whose daemon end the serve loop monitors +
+    /// logs. Mirrors Call::ConsoleOpen (call.cpp:787) -- real utility for guest system-console output.
+    fn console_open(&mut self, _fds: &[RawFd]) -> Result<ReplyConsoleOpen, i32> {
+        let mut fds = [0 as RawFd; 2];
+        let rc = unsafe {
+            libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr())
+        };
+        if rc < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EMFILE));
+        }
+        let (daemon_fd, guest_fd) = (fds[0], fds[1]);
+        unsafe {
+            let f = libc::fcntl(daemon_fd, libc::F_GETFL, 0);
+            libc::fcntl(daemon_fd, libc::F_SETFL, f | libc::O_NONBLOCK);
+        }
+        self.reply_fds.push(guest_fd);
+        self.pending_consoles.push(daemon_fd);
+        // console = 0: the fd is the first (only) SCM_RIGHTS descriptor on this reply.
+        Ok(ReplyConsoleOpen { console: 0 })
     }
 
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply
