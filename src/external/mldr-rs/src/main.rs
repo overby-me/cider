@@ -11,6 +11,7 @@ use std::ffi::CString;
 use std::os::raw::c_int;
 
 mod commpage;
+mod elfcalls;
 mod loader;
 mod rpc;
 mod stack;
@@ -140,12 +141,14 @@ fn main() {
 
             // M3c: build the start stack (kernfd/elfcalls placeholders until M4/M5).
             let envp: Vec<String> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+            let elfcalls_addr = elfcalls::make();
+            eprintln!("[mldr-rs] elf_calls vtable @ {elfcalls_addr:#x}");
             let sp = unsafe {
                 stack::setup_stack(
                     0x7fff_ffe0_0000,
                     r.mh,
                     3,
-                    0,
+                    elfcalls_addr,
                     &guest_path,
                     std::slice::from_ref(&guest_path),
                     &envp,

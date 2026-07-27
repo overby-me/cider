@@ -116,3 +116,11 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   -> reply.code. The live code=0 test needs mldr running as a real guest (daemon uses
   SCM_CREDENTIALS + container ctx) -> deferred to M5 integration. Next M5: elfcalls vtable +
   register setup + jmp-to-entry (then wire mldr-rs into a container boot to validate end-to-end).
+- 2026-07-28 overnight (cont'd): **mldr M5a DONE** -- elfcalls.rs: the 31-function elf_calls
+  vtable (#[repr(C)], exact elfcalls.h ABI order). Real dl*/malloc/free/realloc/exit/sysconf/
+  errno via libc; thread/sem/shm/dserver-socket stubbed (refined at integration). elfcalls::make()
+  leaks a vtable and its address feeds apple[2]=elf_calls. Added rpc::main_socket getter (the
+  dserver_per_thread_socket stub returns it). Validated on launchctl: elf_calls @ 0x56b1583d8980,
+  threaded into the stack; sp/mh/argc still correct. Next M5b: the jump (mov rsp; xor rbp; jmp
+  entry, gated on being a real guest); reorder socket+checkin before the stack for a real kernfd;
+  then INTEGRATION -- exec mldr-rs as the guest loader and boot `uname` (the boot-green gate).

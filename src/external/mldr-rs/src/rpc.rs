@@ -4,6 +4,16 @@
 // starts with checkin (the essential one). The lifetime pipe is -1 on kernels >= 5.3 (the
 // daemon uses pidfd), so no SCM_RIGHTS fd is needed for the common path.
 use std::os::raw::{c_char, c_int, c_void};
+use std::sync::atomic::{AtomicI32, Ordering};
+
+/// The main-thread RPC socket, exposed to the guest via the elfcalls vtable.
+static MAIN_SOCKET: AtomicI32 = AtomicI32::new(-1);
+pub fn set_main_socket(fd: c_int) {
+    MAIN_SOCKET.store(fd, Ordering::SeqCst);
+}
+pub fn main_socket() -> c_int {
+    MAIN_SOCKET.load(Ordering::SeqCst)
+}
 
 const CHECKIN: u32 = 1;
 const ARCH_X86_64: u32 = 2; // dserver_rpc_architecture_x86_64
@@ -68,6 +78,7 @@ pub unsafe fn create_socket() -> c_int {
         &addr as *const _ as *const libc::sockaddr,
         std::mem::size_of::<libc::sa_family_t>() as libc::socklen_t,
     );
+    set_main_socket(fd);
     fd
 }
 
