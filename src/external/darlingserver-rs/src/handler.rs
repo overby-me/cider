@@ -164,6 +164,59 @@ impl ProcState {
     }
 }
 
+// ---- dserverdbg port/message enumeration (task #60) ----
+// Daemon-facing debug records; same layout as the duct-tape's dtape_debug_port_t / _message_t and
+// dserver_debug_port_t / _message_t that dserverdbg reads (generate-rpc-wrappers.py:819,826).
+#[repr(C)]
+struct DserverDebugPort {
+    port_name: u32,
+    rights: u32,
+    refs: u64,
+    messages: u64,
+}
+#[repr(C)]
+struct DserverDebugMessage {
+    sender: u32,
+    size: u64,
+}
+extern "C" {
+    fn dtape_debug_task_list_ports(
+        task: *mut crate::bindings::dtape_task_t,
+        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_port_t) -> bool>,
+        context: *mut libc::c_void,
+    ) -> u64;
+    fn dtape_debug_portset_list_members(
+        task: *mut crate::bindings::dtape_task_t,
+        portset: u32,
+        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_port_t) -> bool>,
+        context: *mut libc::c_void,
+    ) -> u64;
+    fn dtape_debug_port_list_messages(
+        task: *mut crate::bindings::dtape_task_t,
+        port: u32,
+        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_message_t) -> bool>,
+        context: *mut libc::c_void,
+    ) -> u64;
+}
+/// dtape port iterator: write each port as a dserver_debug_port_t to the pipe fd in `context`
+/// (a *RawFd). Mirrors the C++ lambda in DebugListPorts/Members (call.cpp:1122).
+unsafe extern "C" fn debug_port_writer(context: *mut libc::c_void, port: *const crate::bindings::dtape_debug_port_t) -> bool {
+    let fd = *(context as *const RawFd);
+    let p = &*port;
+    let out = DserverDebugPort { port_name: p.name, rights: p.rights, refs: p.refs, messages: p.messages };
+    libc::write(fd, &out as *const _ as *const libc::c_void, std::mem::size_of::<DserverDebugPort>());
+    true
+}
+/// dtape message iterator: write each message as a dserver_debug_message_t to the pipe fd in
+/// `context`. Mirrors the C++ lambda in DebugListMessages (call.cpp:1184).
+unsafe extern "C" fn debug_message_writer(context: *mut libc::c_void, message: *const crate::bindings::dtape_debug_message_t) -> bool {
+    let fd = *(context as *const RawFd);
+    let m = &*message;
+    let out = DserverDebugMessage { sender: m.sender, size: m.size };
+    libc::write(fd, &out as *const _ as *const libc::c_void, std::mem::size_of::<DserverDebugMessage>());
+    true
+}
+
 /// The daemon's RPC handler. Holds the per-process state table plus the identity of the
 /// call currently being dispatched (set by the serve loop before each dispatch, since
 /// the generated handler methods do not receive the call header). Single-threaded serve
@@ -1033,6 +1086,66 @@ impl rpc_wire::RpcHandler for Handler {
         unsafe { libc::close(wr) };
         self.reply_fds.push(rd);
         Ok(ReplyDebugListProcesses { process_count: count, fd: 0 })
+    }
+
+    /// dserverdbg lsport: enumerate a process's mach ports into a pipe (task #60). Mirrors
+    /// Call::DebugListPorts (call.cpp:1112).
+    fn debug_list_ports(&mut self, call: &CallDebugListPorts, _fds: &[RawFd]) -> Result<ReplyDebugListPorts, i32> {
+        let task = crate::sched::task_for_nsid(call.process);
+        if task.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let mut pipes = [0 as RawFd; 2];
+        if unsafe { libc::pipe(pipes.as_mut_ptr()) } < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EMFILE));
+        }
+        let (rd, wr) = (pipes[0], pipes[1]);
+        let count = unsafe {
+            dtape_debug_task_list_ports(task, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
+        };
+        unsafe { libc::close(wr) };
+        self.reply_fds.push(rd);
+        Ok(ReplyDebugListPorts { port_count: count, fd: 0 })
+    }
+
+    /// dserverdbg lsmember: enumerate a portset's member ports into a pipe (task #60). Mirrors
+    /// Call::DebugListMembers (call.cpp:1143).
+    fn debug_list_members(&mut self, call: &CallDebugListMembers, _fds: &[RawFd]) -> Result<ReplyDebugListMembers, i32> {
+        let task = crate::sched::task_for_nsid(call.process);
+        if task.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let mut pipes = [0 as RawFd; 2];
+        if unsafe { libc::pipe(pipes.as_mut_ptr()) } < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EMFILE));
+        }
+        let (rd, wr) = (pipes[0], pipes[1]);
+        let count = unsafe {
+            dtape_debug_portset_list_members(task, call.portset, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
+        };
+        unsafe { libc::close(wr) };
+        self.reply_fds.push(rd);
+        Ok(ReplyDebugListMembers { port_count: count, fd: 0 })
+    }
+
+    /// dserverdbg lsmsg: enumerate a port's queued messages into a pipe (task #60). Mirrors
+    /// Call::DebugListMessages (call.cpp:1174).
+    fn debug_list_messages(&mut self, call: &CallDebugListMessages, _fds: &[RawFd]) -> Result<ReplyDebugListMessages, i32> {
+        let task = crate::sched::task_for_nsid(call.process);
+        if task.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let mut pipes = [0 as RawFd; 2];
+        if unsafe { libc::pipe(pipes.as_mut_ptr()) } < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EMFILE));
+        }
+        let (rd, wr) = (pipes[0], pipes[1]);
+        let count = unsafe {
+            dtape_debug_port_list_messages(task, call.port, Some(debug_message_writer), &wr as *const RawFd as *mut libc::c_void)
+        };
+        unsafe { libc::close(wr) };
+        self.reply_fds.push(rd);
+        Ok(ReplyDebugListMessages { message_count: count, fd: 0 })
     }
 
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply
