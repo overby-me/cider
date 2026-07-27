@@ -77,3 +77,10 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   Once green: commit+push the flip -> darling.c (#64) DONE. Then Part 2 (mldr, #65): note the
   crate needs Mach-O parsing; goblin is not in the offline cargo cache, so mldr will either
   hand-roll the Mach-O header/load-command parse (no dep) or rely on nix cargoLock vendoring.
+- 2026-07-28 overnight (cont'd): flip committed locally (validating via full nix build, bg).
+  goblin 0.9.3 IS cached after all + network is up. **mldr (#65) M0+M1 STARTED**: new
+  src/external/mldr-rs crate (libc + goblin). Scaffold + argv-shape detection (! vs binfmt)
+  + __mldr_* special-env parse + goblin Mach-O parse. Compiles (~9s); parses real guest
+  binaries (libstdc++.6.dylib 16 lcmds; dyld entry=0x1000, 16 lcmds). Next M2: PIE slide +
+  map segments at vmaddr+slide (raw libc mmap, MAP_FIXED_NOREPLACE, the protection quirk +
+  __PAGEZERO tolerance), commpage (with the CPU-count-never-zero SIGFPE fix), start stack.
