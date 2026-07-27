@@ -12,6 +12,7 @@ use std::os::raw::c_int;
 
 mod commpage;
 mod loader;
+mod stack;
 
 fn cstr(s: &str) -> CString {
     CString::new(s).unwrap_or_else(|_| CString::new("").unwrap())
@@ -135,9 +136,25 @@ fn main() {
                 }
             }
             eprintln!("[mldr-rs] FINAL entry={final_entry:#x}");
-            // TODO M3c: build the start stack (argc/argv/envp/apple[]) below the commpage.
+
+            // M3c: build the start stack (kernfd/elfcalls placeholders until M4/M5).
+            let envp: Vec<String> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+            let sp = unsafe {
+                stack::setup_stack(
+                    0x7fff_ffe0_0000,
+                    r.mh,
+                    3,
+                    0,
+                    &guest_path,
+                    std::slice::from_ref(&guest_path),
+                    &envp,
+                )
+            };
+            let sp0 = unsafe { *(sp as *const u64) };
+            let argc = unsafe { *((sp + 8) as *const u64) };
+            eprintln!("[mldr-rs] stack sp={sp:#x} sp[0](mh)={sp0:#x} argc={argc}");
             // TODO M4: darlingserver checkin over the __mldr_sockpath datagram socket.
-            // TODO M5: CPU register setup + jmp to final_entry.
+            // TODO M5: CPU register setup + jmp to final_entry with sp in %rsp.
         }
         Ok(goblin::mach::Mach::Fat(_fat)) => {
             // TODO: honor bprefs, else prefer CPU_TYPE_X86_64 (mldr.c:340-448).

@@ -101,3 +101,10 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   AND dyld (slide 0x73fb910c5000, entry ...910c6000) in one address space, FINAL entry =
   dyld's entry. MLDR_ROOT_PATH stands in for vchroot (real root_path arrives with M4).
   Next M3c: start stack (mach_header ptr + argc/argv/envp/apple[]) just below the commpage.
+- 2026-07-28 overnight (cont'd): **mldr M3c DONE** -- stack.rs builds the macOS start stack:
+  allocates the guest stack just below the commpage (MAP_GROWSDOWN), lays out sp[0]=mach_header
+  ptr, argc, argv/envp, apple[]=executable_path/kernfd/elf_calls. Validated on launchctl:
+  sp=0x7fffffdebf20 (below the 0x7fffffe00000 commpage), sp[0]=0x100000000 (== mapped mh),
+  argc=1. mldr now M0-M3c. Remaining: M4 darlingserver checkin RPC (reuse rpc_wire/rpc_io);
+  M5 elfcalls vtable + register setup + jmp-to-entry. Plus TODOs: CPU cap bits, argv/envp
+  in-place compaction + __mldr_* env stripping, the fd socket-bitmap + lifetime pipe.
