@@ -73,7 +73,9 @@ impl Registry {
     /// persistent per-guest-thread microthreads are a later refinement.)
     pub unsafe fn spawn_on(&mut self, pid: u32, tid: u64, arch: u32, body: Box<dyn FnOnce()>) -> *mut Microthread {
         let task = self.ensure_task(pid, arch);
+        let host_pid = self.host_pids.get(&pid).copied().unwrap_or(pid as libc::pid_t);
         let mt = sched::spawn_with_nsid(task, tid, body);
+        (*mt).set_host_pid(host_pid);
         // Publish to the thread_lookup table so the static dtape hook can resolve this thread.
         sched::register_thread_lookup(tid, (*mt).dtape_thread());
         mt
@@ -121,5 +123,17 @@ impl Registry {
     }
     pub fn is_parked(&self, pid: u32, tid: u64) -> bool {
         self.parked.contains_key(&(pid, tid))
+    }
+
+    /// The parked (suspended) microthread for a guest thread, if any -- so the serve loop can
+    /// read its at_dowork_top / dtape_thread for the nested signal-interrupt path (task #58).
+    pub fn parked_mt(&self, pid: u32, tid: u64) -> Option<*mut Microthread> {
+        self.parked.get(&(pid, tid)).copied()
+    }
+
+    /// The task a guest thread's microthread is bound to (for spawning a nested interrupt on
+    /// the same task). None if the thread is not parked.
+    pub unsafe fn thread_task(&self, pid: u32, tid: u64) -> Option<*mut dtape_task_t> {
+        self.parked.get(&(pid, tid)).map(|&mt| (*mt).owning_task_ptr())
     }
 }

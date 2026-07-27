@@ -141,6 +141,39 @@ pub struct Microthread {
     nsid_tid: u64,
     // Set by pthread_markcancel, observed by pthread_canceled. C++ Thread::_canceled.
     canceled: bool,
+    // True while this microthread is parked at the top of its doWork loop waiting for the
+    // NEXT call (process_one_call's idle wait), false while it is actively dispatching or
+    // suspended DEEP inside a handler (a blocked call). The serve loop reads this to tell
+    // "ready for a new call" from "blocked mid-call": a signal-interrupt RPC arriving for a
+    // mid-call thread must NOT resume the blocked call (that reads a bogus wait_result and
+    // panics the duct-tape) -- it runs nested instead. See task #58.
+    at_dowork_top: bool,
+    // The guest's host-namespace pid (tgkill tgid), -1 until set by spawn_on. For pthread_kill.
+    host_pid: libc::pid_t,
+    // The guest thread's host tid (tgkill tid), derived lazily via the /proc NSpid scan; -1 =
+    // not derived. C++ Thread::_tid.
+    host_tid: libc::pid_t,
+    // Saved activations for nested signal interrupts (task #58). When a signal interrupts this
+    // thread while it is blocked mid-call, push_activation saves the blocked call's live state
+    // (stack, resume_ctx, loop_top, ...) here and installs a fresh activation to run the guest's
+    // sigexc handler ON THIS SAME microthread (so the blocked call resumes + re-blocks after
+    // interrupt_exit, re-setting TH_WAIT, exactly like C++). pop_activation restores it.
+    activations: Vec<SavedActivation>,
+}
+
+/// One saved microthread activation (the live-field snapshot push_activation stores). The
+/// current activation lives in the Microthread's own fields; this is a suspended one beneath it.
+struct SavedActivation {
+    stack: Vec<u8>,
+    cont_stack: Vec<u8>,
+    resume_ctx: MaybeUninit<libc::ucontext_t>,
+    loop_top: MaybeUninit<libc::ucontext_t>,
+    has_loop_top: bool,
+    suspended: bool,
+    finished: bool,
+    pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
+    at_dowork_top: bool,
+    body: Option<Box<dyn FnOnce()>>,
 }
 
 impl Microthread {
@@ -168,6 +201,130 @@ impl Microthread {
     pub fn is_canceled(&self) -> bool { self.canceled }
     /// Mark this thread canceled (pthread_markcancel); pthread_canceled later observes it.
     pub fn set_canceled(&mut self) { self.canceled = true; }
+    /// True while parked at the doWork top waiting for the next call (vs blocked mid-call).
+    pub fn is_at_dowork_top(&self) -> bool { self.at_dowork_top }
+    /// Set by the doWork loop around its idle wait so the serve loop can tell a ready thread
+    /// from one blocked mid-call.
+    pub fn set_at_dowork_top(&mut self, v: bool) { self.at_dowork_top = v; }
+    /// Save the current activation (the blocked call) and install a FRESH one running `body` --
+    /// for a nested signal interrupt on THIS microthread. A later run() enters the fresh
+    /// activation; pop_activation restores the blocked call so it resumes + re-blocks. Task #58.
+    pub fn push_activation(&mut self, body: Box<dyn FnOnce()>) {
+        let saved = SavedActivation {
+            stack: std::mem::replace(&mut self.stack, vec![0u8; STACK_SIZE]),
+            cont_stack: std::mem::replace(&mut self.cont_stack, vec![0u8; STACK_SIZE]),
+            resume_ctx: std::mem::replace(&mut self.resume_ctx, MaybeUninit::uninit()),
+            loop_top: std::mem::replace(&mut self.loop_top, MaybeUninit::uninit()),
+            has_loop_top: self.has_loop_top,
+            suspended: self.suspended,
+            finished: self.finished,
+            pending_cont: self.pending_cont.take(),
+            at_dowork_top: self.at_dowork_top,
+            body: self.body.take(),
+        };
+        self.activations.push(saved);
+        self.has_loop_top = false;
+        self.suspended = false;
+        self.finished = false;
+        self.at_dowork_top = false;
+        self.body = Some(body);
+    }
+    /// Restore the activation saved by the matching push_activation. Task #58.
+    pub fn pop_activation(&mut self) {
+        let saved = self.activations.pop().expect("pop_activation with empty activation stack");
+        self.stack = saved.stack;
+        self.cont_stack = saved.cont_stack;
+        self.resume_ctx = saved.resume_ctx;
+        self.loop_top = saved.loop_top;
+        self.has_loop_top = saved.has_loop_top;
+        self.suspended = saved.suspended;
+        self.finished = saved.finished;
+        self.pending_cont = saved.pending_cont;
+        self.at_dowork_top = saved.at_dowork_top;
+        self.body = saved.body;
+    }
+    /// Whether a nested-interrupt activation is currently pushed on this microthread.
+    pub fn has_saved_activation(&self) -> bool { !self.activations.is_empty() }
+    /// The dtape_thread this microthread runs on (for a nested interrupt sharing it).
+    pub fn dtape_thread_ptr(&self) -> *mut dtape_thread_t { self.dtape_thread }
+    /// The task this microthread is bound to (for spawning a nested interrupt on the same task).
+    pub fn owning_task_ptr(&self) -> *mut dtape_task_t { self.owning_task }
+    /// The guest's host-namespace pid (tgkill target group), or -1 if unknown.
+    pub fn host_pid(&self) -> libc::pid_t { self.host_pid }
+    /// Bind the host pid discovered when this guest thread first checked in (set by spawn_on).
+    pub fn set_host_pid(&mut self, host_pid: libc::pid_t) { self.host_pid = host_pid; }
+    /// The guest thread's host tid (tgkill target), derived + cached lazily via the /proc NSpid
+    /// scan the first time it is needed. -1 if it cannot be resolved.
+    pub fn host_tid(&mut self) -> libc::pid_t {
+        if self.host_tid <= 0 {
+            self.host_tid = derive_host_tid(self.host_pid, self.nsid_tid);
+        }
+        self.host_tid
+    }
+}
+
+/// Find the host tid of the guest thread whose innermost-namespace tid is `nsid_tid`, by
+/// scanning /proc/<host_pid>/task/*/status for the matching NSpid (last field). The task dir
+/// name is the host tid. Mirrors the C++ Thread ctor (thread.cpp:104-131). -1 if not found.
+fn derive_host_tid(host_pid: libc::pid_t, nsid_tid: u64) -> libc::pid_t {
+    if host_pid <= 0 {
+        return -1;
+    }
+    let entries = match std::fs::read_dir(format!("/proc/{host_pid}/task")) {
+        Ok(e) => e,
+        Err(_) => return -1,
+    };
+    for entry in entries.flatten() {
+        let host_tid: libc::pid_t = match entry.file_name().to_str().and_then(|s| s.parse().ok()) {
+            Some(n) => n,
+            None => continue,
+        };
+        let status = match std::fs::read_to_string(entry.path().join("status")) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        for line in status.lines() {
+            if let Some(rest) = line.strip_prefix("NSpid:") {
+                if rest.split_whitespace().last().and_then(|s| s.parse::<u64>().ok()) == Some(nsid_tid) {
+                    return host_tid;
+                }
+            }
+        }
+    }
+    -1
+}
+
+/// Create a microthread that SHARES an existing `dtape_thread` (rather than creating a fresh
+/// one), for running a signal interrupt nested on the blocked thread's own XNU thread while
+/// that thread's doWork microthread stays suspended mid-call. Because it shares the
+/// dtape_thread, reaping it must NOT tear the thread down (no dtape_thread_dying). Mirrors the
+/// nesting in C++ Thread::doWork, where the interrupt runs on the same _dtapeThread. See #58.
+pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dtape_thread_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
+    let mt = Box::into_raw(Box::new(Microthread {
+        resume_ctx: MaybeUninit::uninit(),
+        stack: vec![0u8; STACK_SIZE],
+        cont_stack: vec![0u8; STACK_SIZE],
+        loop_top: MaybeUninit::uninit(),
+        has_loop_top: false,
+        suspended: false,
+        finished: false,
+        dtape_thread,
+        owning_task: task,
+        interrupt_disable: 0,
+        body: Some(body),
+        pending_cont: None,
+        syscall_return: None,
+        pending_signal: 0,
+        bsd_retval: 0,
+        nsid_tid: nsid,
+        canceled: false,
+        at_dowork_top: false,
+        host_pid: -1,
+        host_tid: -1,
+        activations: Vec::new(),
+    }));
+    // NOTE: no dtape_thread_create -- we deliberately reuse the caller's dtape_thread.
+    mt
 }
 
 /// Resolve a guest Mach thread port to its Microthread, via the duct-tape port registry
@@ -298,6 +455,10 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         bsd_retval: 0,
         nsid_tid: nsid,
         canceled: false,
+        at_dowork_top: false,
+        host_pid: -1,
+        host_tid: -1,
+        activations: Vec::new(),
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt

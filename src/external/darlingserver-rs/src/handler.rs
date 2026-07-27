@@ -73,6 +73,28 @@ fn psynch_trace() -> bool {
     }
 }
 
+/// Send `signal` to a resolved guest thread via tgkill(host_pid, host_tid, signal) -- the
+/// primitive C++ Thread::sendSignal uses (thread.cpp:1445). Returns -errno on a failed
+/// tgkill, or -ESRCH if the thread's host ids are not (yet) resolvable.
+unsafe fn send_thread_signal(mt: *mut crate::sched::Microthread, signal: i32) -> Result<(), i32> {
+    let host_pid = (*mt).host_pid();
+    let host_tid = (*mt).host_tid();
+    if host_pid <= 0 || host_tid <= 0 {
+        return Err(-libc::ESRCH);
+    }
+    let rc = libc::syscall(
+        libc::SYS_tgkill,
+        host_pid as libc::c_long,
+        host_tid as libc::c_long,
+        signal as libc::c_long,
+    );
+    if rc < 0 {
+        Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EPERM))
+    } else {
+        Ok(())
+    }
+}
+
 /// Per-guest-process state the daemon tracks in userspace (the parts of C++
 /// DarlingServer::Process that the RPC handlers touch, beyond the dtape task). Keyed by
 /// nsid in `Handler::procs`.
@@ -714,23 +736,27 @@ impl rpc_wire::RpcHandler for Handler {
         }
     }
 
-    // NOTE: `pthread_kill(thread_port, signal)` is intentionally left ENOSYS for now. Resolving
-    // the target (thread_for_port) and sending the signal (tgkill) is straightforward, but
-    // delivering a signal to a guest thread that is blocked mid-daemon-call trips the
-    // still-unimplemented nested signal-interrupt path (interrupt_enter's "later refinement"
-    // above) and panics the shared duct-tape in semaphore_convert_wait_result. A graceful
-    // ENOSYS is strictly better than crashing the daemon until that path lands.
+    /// `pthread_kill(thread_port, signal)`: deliver `signal` to the target guest thread via
+    /// tgkill(host_pid, host_tid, signal). With the nested signal-interrupt path (task #58) in
+    /// place, delivering a signal to a thread blocked mid-call no longer crashes the daemon.
+    /// A dead/unknown target is -ESRCH, a failed tgkill is -errno. Mirrors Call::PthreadKill +
+    /// Thread::sendSignal (thread.cpp:1445).
+    fn pthread_kill(&mut self, call: &CallPthreadKill, _fds: &[RawFd]) -> Result<(), i32> {
+        let mt = unsafe { crate::sched::thread_for_port(call.thread_port) }.ok_or(-libc::ESRCH)?;
+        unsafe { send_thread_signal(mt, call.signal) }
+    }
 
-    /// `pthread_markcancel(thread_port)`: mark the target thread canceled so its next
-    /// cancellation point (queried via pthread_canceled) cancels it. C++ additionally sends
-    /// SIGNAL_SIGEXC_KICK to interrupt a blocking syscall for *prompt* cancellation; that kick
-    /// is deferred with pthread_kill until the nested signal-interrupt path lands. A thread
-    /// blocked mid-call still cancels, just not until it next reaches a cancellation point on
-    /// its own. Mirrors Call::PthreadMarkcancel + Thread::markCanceled (thread.cpp:1459), minus
-    /// the kick.
+    /// `pthread_markcancel(thread_port)`: mark the target thread canceled and kick it out of
+    /// any interruptible syscall with SIGNAL_SIGEXC_KICK (SIGRTMIN+2, installed guest-side
+    /// without SA_RESTART) so it promptly reaches a cancellation point. The kick may fail if the
+    /// thread is already gone; that is not an error. Mirrors Call::PthreadMarkcancel +
+    /// Thread::markCanceled (thread.cpp:1459).
     fn pthread_markcancel(&mut self, call: &CallPthreadMarkcancel, _fds: &[RawFd]) -> Result<(), i32> {
         let mt = unsafe { crate::sched::thread_for_port(call.thread_port) }.ok_or(-libc::ESRCH)?;
-        unsafe { (*mt).set_canceled() };
+        unsafe {
+            (*mt).set_canceled();
+            let _ = send_thread_signal(mt, libc::SIGRTMIN() + 2);
+        }
         Ok(())
     }
 

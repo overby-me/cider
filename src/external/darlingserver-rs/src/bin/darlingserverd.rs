@@ -53,6 +53,12 @@ struct Mailbox {
 struct Slot {
     mailbox: Rc<RefCell<Mailbox>>,
     peer: PeerAddr,
+    /// An in-flight nested signal interrupt's mailbox. Present only between interrupt_enter and
+    /// interrupt_exit for a thread interrupted while blocked mid-call. The interrupt runs on the
+    /// thread's OWN microthread via a pushed activation (sched::push_activation), so the blocked
+    /// call resumes + re-blocks after interrupt_exit. While set, the thread's RPCs route to this
+    /// mailbox instead of resuming the blocked call directly. Task #58.
+    interrupt: Option<Rc<RefCell<Mailbox>>>,
 }
 
 /// A code-only RPC reply (just the reply header) for a call that blocked via a continuation
@@ -114,7 +120,18 @@ unsafe fn process_one_call(mb: &Rc<RefCell<Mailbox>>, handler_ptr: *mut Handler,
         if ready {
             break;
         }
+        // Parked at the doWork top waiting for the next call -- flag it so the serve loop knows
+        // this microthread is ready for a new call, not blocked deep in a handler (task #58).
+        let mt = sched::current();
+        if !mt.is_null() {
+            (*mt).set_at_dowork_top(true);
+        }
         sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+    }
+    // Dispatching (or stopping): no longer idle at the top.
+    let mt = sched::current();
+    if !mt.is_null() {
+        (*mt).set_at_dowork_top(false);
     }
     if mb.borrow().stop {
         return false;
@@ -378,7 +395,7 @@ unsafe fn run(cfg: Config) -> ! {
 /// Dispatch one RPC datagram on the calling guest thread's persistent doWork microthread
 /// (created on first sighting), waking it and draining any threads it unblocks.
 unsafe fn handle_call(
-    _listener: &Listener,
+    listener: &Listener,
     reg: &mut Registry,
     handler_ptr: *mut Handler,
     slots: &mut HashMap<(u32, u64), Slot>,
@@ -417,6 +434,28 @@ unsafe fn handle_call(
         );
     }
 
+    let base_number = hdr.number & !rpc_wire::callnum::UNMANAGED_FLAG;
+
+    // ---- Nested signal-interrupt routing (task #58) ----
+    // (a) An interrupt is already in progress on this thread: route the RPC to its nested
+    //     microthread rather than the still-suspended blocked call.
+    if slots.get(&(nsid, tid)).map(|s| s.interrupt.is_some()).unwrap_or(false) {
+        run_interrupt_call(listener, reg, slots, nsid, tid, msg, peer, base_number);
+        return;
+    }
+    // (b) interrupt_enter arriving for a thread blocked DEEP in a handler (not idle at the
+    //     doWork top): run its sigexc sequence NESTED so it never resumes the blocked call
+    //     (which reads a bogus wait_result and panics the duct-tape). A thread idle at the top
+    //     just takes the normal path below.
+    if base_number == 14 {
+        if let Some(mt) = reg.parked_mt(nsid, tid) {
+            if !(*mt).is_at_dowork_top() {
+                start_interrupt(listener, reg, handler_ptr, slots, nsid, tid, host_pid, msg, peer);
+                return;
+            }
+        }
+    }
+
     if !slots.contains_key(&(nsid, tid)) {
         let mailbox = Rc::new(RefCell::new(Mailbox::default()));
         let mb = mailbox.clone();
@@ -444,7 +483,7 @@ unsafe fn handle_call(
                 });
             }),
         );
-        slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone() });
+        slots.insert((nsid, tid), Slot { mailbox, peer: peer.clone(), interrupt: None });
     }
 
     {
@@ -456,6 +495,105 @@ unsafe fn handle_call(
     }
     reg.wake_thread(nsid, tid);
     sched::drain();
+}
+
+/// Start a nested signal interrupt on guest thread (nsid,tid), blocked mid-call. PUSH a fresh
+/// activation onto ITS OWN microthread (saving the blocked call), install an interrupt doWork
+/// loop reading a fresh mailbox, dispatch interrupt_enter on it, stash the mailbox on the Slot,
+/// and flush the reply. The blocked call resumes + re-blocks on this same microthread after
+/// interrupt_exit (re-setting TH_WAIT), exactly like C++ Thread::doWork. Task #58 (approach 1).
+unsafe fn start_interrupt(
+    listener: &Listener,
+    reg: &mut Registry,
+    handler_ptr: *mut Handler,
+    slots: &mut HashMap<(u32, u64), Slot>,
+    nsid: u32,
+    tid: u64,
+    host_pid: c_int,
+    msg: Message,
+    peer: PeerAddr,
+) {
+    let mt = match reg.parked_mt(nsid, tid) {
+        Some(m) => m,
+        None => return,
+    };
+    let imb = Rc::new(RefCell::new(Mailbox::default()));
+    {
+        let mut m = imb.borrow_mut();
+        m.peer = Some(peer.clone());
+        m.pending = Some(msg);
+    }
+    let mb = imb.clone();
+    (*mt).push_activation(Box::new(move || {
+        sched::run_dowork_loop(|sr| {
+            if let Some(code) = sr {
+                let mut m = mb.borrow_mut();
+                m.reply_code = Some(code);
+                m.reply_retval = Some(sched::current_bsd_retval());
+                true
+            } else {
+                process_one_call(&mb, handler_ptr, host_pid)
+            }
+        });
+    }));
+    if let Some(slot) = slots.get_mut(&(nsid, tid)) {
+        slot.peer = peer.clone();
+        slot.interrupt = Some(imb.clone());
+    }
+    sched::run(mt);
+    sched::drain();
+    flush_mailbox(listener, &imb, &peer);
+}
+
+/// Route an RPC to the in-progress nested interrupt on (nsid,tid), run it on the thread's OWN
+/// microthread, and flush its reply. On interrupt_exit, stop the interrupt activation, pop it to
+/// restore the blocked call, and run the microthread so the blocked call RESUMES and re-blocks
+/// (re-setting TH_WAIT so the timer can wake it). Task #58 (approach 1).
+unsafe fn run_interrupt_call(
+    listener: &Listener,
+    reg: &mut Registry,
+    slots: &mut HashMap<(u32, u64), Slot>,
+    nsid: u32,
+    tid: u64,
+    msg: Message,
+    peer: PeerAddr,
+    base_number: u32,
+) {
+    let mt = match reg.parked_mt(nsid, tid) {
+        Some(m) => m,
+        None => return,
+    };
+    let imb = {
+        let slot = match slots.get_mut(&(nsid, tid)) {
+            Some(s) => s,
+            None => return,
+        };
+        slot.peer = peer.clone();
+        let imb = slot.interrupt.as_ref().unwrap().clone();
+        {
+            let mut m = imb.borrow_mut();
+            m.peer = Some(peer.clone());
+            m.pending = Some(msg);
+        }
+        imb
+    };
+    sched::run(mt);
+    sched::drain();
+    flush_mailbox(listener, &imb, &peer);
+    if base_number == 15 {
+        // interrupt_exit: stop the interrupt activation so its doWork loop breaks and it
+        // finishes; pop it to restore the blocked call; then run the microthread so the blocked
+        // call RESUMES and re-blocks (re-sets TH_WAIT). The timer then wakes it normally.
+        imb.borrow_mut().stop = true;
+        sched::run(mt);
+        sched::drain();
+        (*mt).pop_activation();
+        sched::run(mt);
+        sched::drain();
+        if let Some(slot) = slots.get_mut(&(nsid, tid)) {
+            slot.interrupt = None;
+        }
+    }
 }
 
 /// Reap an exited guest thread after its `checkout` reply has been flushed: stop its doWork
@@ -476,29 +614,40 @@ unsafe fn reap_thread(reg: &mut Registry, slots: &mut HashMap<(u32, u64), Slot>,
 /// Flush every mailbox that has a ready reply to its peer (attaching any reply fds via
 /// SCM_RIGHTS, then closing the daemon's copies). Covers both the just-dispatched call and
 /// any blocked call unblocked as a side effect.
+/// Send a mailbox's pending reply (or a continuation-deferred code-reply) to `peer`,
+/// attaching + closing any reply fds. Shared by the normal per-thread flush and the
+/// nested-interrupt flush.
+unsafe fn flush_mailbox(listener: &Listener, mb: &Rc<RefCell<Mailbox>>, peer: &PeerAddr) {
+    let (reply, rfds) = {
+        let mut m = mb.borrow_mut();
+        // A continuation-based blocking call's result (reply_code) takes precedence: its
+        // dispatch never assigned `reply`, so build the code-only reply from the stashed
+        // number + result. Otherwise use the dispatch reply.
+        let reply = if let Some(code) = m.reply_code.take() {
+            Some(deferred_reply(m.call_number, code, m.reply_retval.take()))
+        } else {
+            m.reply.take()
+        };
+        (reply, std::mem::take(&mut m.reply_fds))
+    };
+    if let Some(reply) = reply {
+        if let Err(e) = listener.send(&reply, &rfds, peer) {
+            if trace_calls() {
+                eprintln!("darlingserver-rs: SEND reply failed: {} (raw={:?})", e, e.raw_os_error());
+            }
+        }
+        for fd in rfds {
+            libc::close(fd);
+        }
+    }
+}
+
 unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slot>) {
     for slot in slots.values_mut() {
-        let (reply, rfds) = {
-            let mut m = slot.mailbox.borrow_mut();
-            // A continuation-based blocking call's result (reply_code) takes precedence: its
-            // dispatch never assigned `reply`, so build the code-only reply from the stashed
-            // number + result. Otherwise use the dispatch reply.
-            let reply = if let Some(code) = m.reply_code.take() {
-                Some(deferred_reply(m.call_number, code, m.reply_retval.take()))
-            } else {
-                m.reply.take()
-            };
-            (reply, std::mem::take(&mut m.reply_fds))
-        };
-        if let Some(reply) = reply {
-            if let Err(e) = listener.send(&reply, &rfds, &slot.peer) {
-                if trace_calls() {
-                    eprintln!("darlingserver-rs: SEND reply failed: {} (raw={:?})", e, e.raw_os_error());
-                }
-            }
-            for fd in rfds {
-                libc::close(fd);
-            }
+        flush_mailbox(listener, &slot.mailbox, &slot.peer);
+        // A nested signal interrupt in progress on this thread has its own mailbox.
+        if let Some(ref imb) = slot.interrupt {
+            flush_mailbox(listener, imb, &slot.peer);
         }
     }
 }
