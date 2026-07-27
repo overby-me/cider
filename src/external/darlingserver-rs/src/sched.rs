@@ -13,7 +13,7 @@
 
 use crate::bindings::*;
 use std::cell::{Cell, RefCell, UnsafeCell};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::mem::MaybeUninit;
 use std::os::raw::{c_int, c_void};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,6 +30,9 @@ extern "C" {
     // it left psynch's pthread_list_mlock NULL, so the first contended pthread wait crashed.
     fn dtape_init_in_thread();
     fn dtape_task_create(parent: *mut dtape_task_t, nsid: u32, context: *mut c_void, arch: u32) -> *mut dtape_task_t;
+    // Bump a task's refcount, so a task_lookup(retain=true) result stays alive for its caller
+    // (paired with a dtape_task_release by the caller). duct-tape.h:85.
+    fn dtape_task_retain(task: *mut dtape_task_t);
     fn dtape_thread_create(task: *mut dtape_task_t, nsid: u64, context: *mut c_void) -> *mut dtape_thread_t;
     fn dtape_thread_entering(thread: *mut dtape_thread_t);
     fn dtape_thread_exiting(thread: *mut dtape_thread_t);
@@ -186,6 +189,17 @@ thread_local! {
     static CURRENT: Cell<*mut Microthread> = const { Cell::new(std::ptr::null_mut()) };
     // Shared work queue -> Mutex+condvar when this goes multi-worker.
     static RUN_QUEUE: RefCell<VecDeque<*mut Microthread>> = const { RefCell::new(VecDeque::new()) };
+    // nsid -> (dtape_task, host_pid), so the static task_lookup dtape hook can resolve a task
+    // by id without reaching the serve-loop-local Registry. Populated by registry::ensure_task
+    // (single worker, so same thread as the hook). Tasks are currently leak-lived (task #52),
+    // so an entry stays valid for the daemon's life: a lookup after the process exits returns a
+    // leaked-but-valid pointer, never a dangling one. Mirrors C++ processRegistry() lookups.
+    static TASK_BY_NSID: RefCell<HashMap<u32, (*mut dtape_task_t, libc::pid_t)>> = RefCell::new(HashMap::new());
+}
+
+/// Record a guest task in the task_lookup table (called once per task from ensure_task).
+pub fn register_task_lookup(nsid: u32, task: *mut dtape_task_t, host_pid: libc::pid_t) {
+    TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
 }
 
 fn back_to_top_ptr() -> *mut libc::ucontext_t {
@@ -535,8 +549,27 @@ mod hooks {
     pub(super) unsafe extern "C" fn thread_send_signal(_ctx: *mut c_void, _sig: c_int) -> c_int {
         0
     }
-    pub(super) unsafe extern "C" fn task_lookup(_id: c_int, _is_nsid: bool, _retain: bool) -> *mut dtape_task_t {
-        std::ptr::null_mut()
+    /// Resolve a task by its guest nsid (`is_nsid`) or its host pid, returning the dtape_task
+    /// (retained if asked, so it outlives the lookup for its caller). null if unknown. Mirrors
+    /// C++ dtape_hook_task_lookup -> processRegistry().lookupEntryByNSID/ByID (server.cpp:247).
+    pub(super) unsafe extern "C" fn task_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut dtape_task_t {
+        let task = TASK_BY_NSID.with(|m| {
+            let m = m.borrow();
+            if is_nsid {
+                m.get(&(id as u32)).map(|&(t, _)| t)
+            } else {
+                m.values().find(|&&(_, hp)| hp == id as libc::pid_t).map(|&(t, _)| t)
+            }
+        });
+        match task {
+            Some(t) if !t.is_null() => {
+                if retain {
+                    dtape_task_retain(t);
+                }
+                t
+            }
+            _ => std::ptr::null_mut(),
+        }
     }
     pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_task_t {
         std::ptr::null_mut()

@@ -57,6 +57,8 @@ impl Registry {
         assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
         self.tasks.insert(pid, t);
         self.ctxs.insert(pid, ctx);
+        // Publish to the task_lookup table so the static dtape hook can resolve this task.
+        sched::register_task_lookup(pid, t, host_pid);
         t
     }
 
