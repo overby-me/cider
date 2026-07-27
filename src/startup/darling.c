@@ -992,9 +992,19 @@ pid_t spawnInitProcess(void)
 
 		close(pipefd[0]);
 
-		execl(INSTALL_PREFIX "/bin/darlingserver", "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
+		// Cutover gate (task #55): DSERVER_IMPL=rust selects the Rust darlingserver, staged
+		// at bin/rust/darlingserver (a subdir, so its basename -- hence /proc/<pid>/comm --
+		// stays "darlingserver" and getInitProcess() still recognizes the container init).
+		// Anything else (including unset) keeps the C++ default, so the gate is strictly
+		// opt-in and cannot disturb existing setups.
+		const char* dsImpl = getenv("DSERVER_IMPL");
+		const char* dsBin = (dsImpl && strcmp(dsImpl, "rust") == 0)
+			? INSTALL_PREFIX "/bin/rust/darlingserver"
+			: INSTALL_PREFIX "/bin/darlingserver";
 
-		fprintf(stderr, "Failed to start darlingserver\n");
+		execl(dsBin, "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
+
+		fprintf(stderr, "Failed to start darlingserver (%s)\n", dsBin);
 		exit(1);
 	}
 
