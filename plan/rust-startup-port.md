@@ -53,3 +53,12 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
 ## Progress log
 - 2026-07-27 night: plan created. Dispatched deep-map agents for darling.c and mldr.
   C++ removal (task #50) validating via full `nix build`. Awaiting maps to begin L0/L1.
+- 2026-07-28 overnight: C++ removal + #44 + plan PUSHED to origin main (cefa9342); full
+  `nix build .#default` exit 0, bin/darlingserver = Rust daemon (14 sigs). Maps landed.
+  **darling.c Phase A DONE**: standalone `darling-launcher-rs` crate (libc-only, builds
+  offline in ~7s). Full boot path implemented + validated: userns re-exec, prefix
+  bootstrap, daemon spawn + readiness pipe, mnt-ns join, shellspawn non-interactive proxy.
+  Boots the guest first try: BOOT=Darwin; 8/8 stress clean, avg 421ms, zero -111. Covers
+  L0-L5 for the NON-interactive path. NOT yet flipped (C still default; main bootable).
+  Next -- Phase B: PTY/interactive path, signal forwarding (self-pipe), startup watchdog
+  killContainer; then L6 flip (`darling` -> Rust via nix/package.nix + splice) + push.
