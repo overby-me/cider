@@ -97,6 +97,23 @@ pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
     drain();
 }
 
+/// Run a one-shot operation on a fresh microthread bound to `task`, so the duct-tape sees a
+/// current-thread + the task's guest-memory context, then drain anything it wakes. This is the
+/// cooperative-yield stand-in for C++'s `impersonate` + `kernelAsync` -- used by the mach-port
+/// kqchan modify/read (task #54), which call dtape_kqchan_mach_port_* that need that context.
+pub unsafe fn run_on_task(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) {
+    let mt = spawn(task, body);
+    run(mt);
+    if (*mt).is_suspended() {
+        // Rare for a kqchan fill/modify (the message is already available); leave it for a later
+        // drain to finish rather than dropping a live microthread.
+        schedule(mt);
+    } else {
+        drop(Box::from_raw(mt));
+    }
+    drain();
+}
+
 /// A Rust-owned stackful microthread. Address-stable: always heap-boxed and handed
 /// to the C duct-tape as `*mut c_void` context; never moved while C holds it.
 pub struct Microthread {

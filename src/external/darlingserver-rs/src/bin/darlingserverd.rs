@@ -12,7 +12,7 @@
 
 use darlingserver_rs::container::{self, Config};
 use darlingserver_rs::handler::Handler;
-use darlingserver_rs::kqchan::ProcKqchan;
+use darlingserver_rs::kqchan::{MachPortKqchan, ProcKqchan};
 use darlingserver_rs::registry::Registry;
 use darlingserver_rs::rpc_io::{Message, PeerAddr};
 use darlingserver_rs::rpc_wire;
@@ -296,6 +296,7 @@ unsafe fn run(cfg: Config) -> ! {
     // later event unblocks it.
     let mut slots: HashMap<(u32, u64), Slot> = HashMap::new();
     let mut kqchans: Vec<ProcKqchan> = Vec::new();
+    let mut mach_kqchans: Vec<Box<MachPortKqchan>> = Vec::new();
 
     let epfd = libc::epoll_create1(libc::EPOLL_CLOEXEC);
     let main_fd = listener.fd();
@@ -368,6 +369,12 @@ unsafe fn run(cfg: Config) -> ! {
                         }
                         kqchans.push(kq);
                     }
+                    // Mach-port kqchans (task #54): only a daemon_fd to watch -- events arrive via
+                    // the duct-tape notification callback (fired inline on a sender's RPC), not epoll.
+                    for kq in (*handler_ptr).take_pending_kqchans_mach() {
+                        epoll_add(epfd, kq.daemon_fd);
+                        mach_kqchans.push(kq);
+                    }
                 }
             } else if let Some(idx) = kqchans.iter().position(|k| k.daemon_fd == fd) {
                 // Guest sent a message on a kqchan socket (proc_modify/proc_read) or hung up.
@@ -385,6 +392,13 @@ unsafe fn run(cfg: Config) -> ! {
                 libc::close(fd);
                 kqchans[idx].pidfd = -1;
                 kqchans[idx].on_target_died();
+            } else if let Some(idx) = mach_kqchans.iter().position(|k| k.daemon_fd == fd) {
+                // Guest sent modify/read on a mach-port kqchan socket, or hung up (task #54).
+                if !mach_kqchans[idx].on_readable() {
+                    let kq = mach_kqchans.remove(idx);
+                    epoll_del(epfd, kq.daemon_fd);
+                    // dropping kq disables the dtape notifications + closes the fd
+                }
             }
         }
     }

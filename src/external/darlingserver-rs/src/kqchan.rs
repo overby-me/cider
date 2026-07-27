@@ -7,10 +7,13 @@
 //! message, no length prefix), matching darlingserver's MessageQueue. Mirrors
 //! DarlingServer::Kqchan::Process (kqchan.cpp). See plan/rust-rewrite-eval.md (bucket B.8).
 
+use crate::bindings::dtape_task_t;
+use crate::sched;
 use std::collections::VecDeque;
 use std::io;
 use std::mem::size_of;
 use std::os::fd::RawFd;
+use std::os::raw::c_void;
 
 // kqchan message numbers (rpc-supplement.h dserver_kqchan_msgnum).
 const MSGNUM_NOTIFICATION: u32 = 1;
@@ -207,6 +210,286 @@ impl Drop for ProcKqchan {
             if self.pidfd >= 0 {
                 libc::close(self.pidfd);
             }
+        }
+    }
+}
+
+// ============================================================================
+// Mach-port kqueue channel (EVFILT_MACHPORT) -- task #54, approach (b): event-driven.
+// ============================================================================
+// A guest kevent()s on a Mach port; the daemon watches it via the duct-tape's XNU knote. When a
+// message lands on the port, the duct-tape fires our notification_callback (from inside the
+// sender's mach_msg RPC, on the serve loop) -- no thread ever blocks waiting, so this fits the
+// single-worker model. `modify` (register/change the filter) and `read` (drain pending messages
+// via dtape_kqchan_mach_port_fill) call dtape functions that need a current-thread + the guest
+// task's memory context, so they run on a microthread bound to the owning task (sched::run_on_task)
+// -- the cooperative-yield replacement for C++'s impersonate + kernelAsync. Mirrors
+// DarlingServer::Kqchan::MachPort (kqchan.cpp).
+
+const MSGNUM_MACH_PORT_MODIFY: u32 = 2;
+const MSGNUM_MACH_PORT_READ: u32 = 3;
+
+#[repr(C)]
+struct CallMachPortModify {
+    header: Callhdr,
+    receive_buffer: u64,
+    receive_buffer_size: u64,
+    saved_filter_flags: u64,
+}
+#[repr(C)]
+struct ReplyMachPortModify {
+    header: Replyhdr,
+}
+#[repr(C)]
+struct CallMachPortRead {
+    header: Callhdr,
+    default_buffer: u64,
+    default_buffer_size: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct Kev {
+    ident: u64,
+    filter: i16,
+    flags: u16,
+    qos: i32,
+    udata: u64,
+    fflags: u32,
+    xflags: u32,
+    data: i64,
+    ext: [u64; 4],
+}
+#[repr(C)]
+struct ReplyMachPortRead {
+    header: Replyhdr,
+    kev: Kev,
+}
+
+/// Opaque duct-tape mach-port kqchan handle.
+#[repr(C)]
+pub struct DtapeKqchanMachPort {
+    _private: [u8; 0],
+}
+
+extern "C" {
+    fn dtape_kqchan_mach_port_create(
+        owning_task: *mut dtape_task_t,
+        port: u32,
+        receive_buffer: u64,
+        receive_buffer_size: u64,
+        saved_filter_flags: u64,
+        notification_callback: extern "C" fn(*mut c_void),
+        context: *mut c_void,
+    ) -> *mut DtapeKqchanMachPort;
+    fn dtape_kqchan_mach_port_destroy(kqchan: *mut DtapeKqchanMachPort);
+    fn dtape_kqchan_mach_port_modify(
+        kqchan: *mut DtapeKqchanMachPort,
+        receive_buffer: u64,
+        receive_buffer_size: u64,
+        saved_filter_flags: u64,
+    );
+    fn dtape_kqchan_mach_port_disable_notifications(kqchan: *mut DtapeKqchanMachPort);
+    fn dtape_kqchan_mach_port_fill(
+        kqchan: *mut DtapeKqchanMachPort,
+        reply: *mut ReplyMachPortRead,
+        default_buffer: u64,
+        default_buffer_size: u64,
+    ) -> bool;
+    fn dtape_kqchan_mach_port_has_events(kqchan: *mut DtapeKqchanMachPort) -> bool;
+}
+
+/// Duct-tape notification callback: a message landed on the watched port. `context` is the
+/// heap-stable MachPortKqchan address passed to create(). Fires on the serve loop (inside the
+/// sender's RPC), with NO live borrow of the channel (modify/read never hold `&mut self` across
+/// the microthread run), so poking it through the raw pointer here does not alias.
+extern "C" fn mach_port_notify_cb(context: *mut c_void) {
+    let kq = context as *mut MachPortKqchan;
+    unsafe { (*kq).send_notification() };
+}
+
+/// One Mach-port-watching kqueue channel. Heap-boxed: its address is the duct-tape callback's
+/// context, so it must never move while the dtape kqchan is alive (Drop disables notifications
+/// first, so the callback can never fire into a freed box).
+pub struct MachPortKqchan {
+    /// Our end of the socketpair (nonblocking SEQPACKET); the guest sends modify/read here.
+    pub daemon_fd: RawFd,
+    /// The duct-tape kqchan (XNU knote on the port); null only transiently during open().
+    dtape: *mut DtapeKqchanMachPort,
+    /// The owning guest task -- modify/read run on a microthread bound to it.
+    owning_task: *mut dtape_task_t,
+    /// Throttle: at most one unacknowledged notification outstanding (the guest acks by reading).
+    can_send_notification: bool,
+}
+
+impl MachPortKqchan {
+    /// Open a channel watching `port` on `owning_task`. Returns the boxed daemon-side channel and
+    /// the guest end to hand back over SCM_RIGHTS. Mirrors Kqchan::MachPort::MachPort + setup().
+    pub fn open(
+        owning_task: *mut dtape_task_t,
+        port: u32,
+        receive_buffer: u64,
+        receive_buffer_size: u64,
+        saved_filter_flags: u64,
+    ) -> io::Result<(Box<MachPortKqchan>, RawFd)> {
+        let mut fds = [0 as RawFd; 2];
+        let rc = unsafe {
+            libc::socketpair(libc::AF_UNIX, libc::SOCK_SEQPACKET | libc::SOCK_CLOEXEC, 0, fds.as_mut_ptr())
+        };
+        if rc < 0 {
+            return Err(io::Error::last_os_error());
+        }
+        let (daemon_fd, guest_fd) = (fds[0], fds[1]);
+        unsafe {
+            let f = libc::fcntl(daemon_fd, libc::F_GETFL, 0);
+            libc::fcntl(daemon_fd, libc::F_SETFL, f | libc::O_NONBLOCK);
+        }
+        let mut b = Box::new(MachPortKqchan {
+            daemon_fd,
+            dtape: std::ptr::null_mut(),
+            owning_task,
+            can_send_notification: true,
+        });
+        // The callback context is the box's stable heap address (it never moves while dtape lives).
+        let ctx = b.as_mut() as *mut MachPortKqchan as *mut c_void;
+        let dtape = unsafe {
+            dtape_kqchan_mach_port_create(
+                owning_task,
+                port,
+                receive_buffer,
+                receive_buffer_size,
+                saved_filter_flags,
+                mach_port_notify_cb,
+                ctx,
+            )
+        };
+        if dtape.is_null() {
+            unsafe {
+                libc::close(daemon_fd);
+                libc::close(guest_fd);
+            }
+            return Err(io::Error::from_raw_os_error(libc::ESRCH));
+        }
+        b.dtape = dtape;
+        // If a message is already queued, notify now (the client's filter is level-triggered).
+        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+            b.send_notification();
+        }
+        Ok((b, guest_fd))
+    }
+
+    fn send(&self, bytes: &[u8]) {
+        unsafe {
+            libc::send(self.daemon_fd, bytes.as_ptr() as *const c_void, bytes.len(), libc::MSG_DONTWAIT);
+        }
+    }
+
+    /// Enqueue a notification datagram to the guest (throttled to one outstanding). Called from the
+    /// duct-tape callback (message arrived) and after open/modify/read when events are pending.
+    fn send_notification(&mut self) {
+        if !self.can_send_notification {
+            return;
+        }
+        let note = Notification { header: Callhdr { number: MSGNUM_NOTIFICATION, pid: 0, tid: 0 } };
+        self.send(as_bytes(&note));
+        self.can_send_notification = false;
+    }
+
+    /// Drain + handle all pending guest messages (modify/read). Returns false if the guest closed
+    /// its end (remove the channel). Mirrors Kqchan::MachPort::_processMessages.
+    pub fn on_readable(&mut self) -> bool {
+        let mut buf = [0u8; 256];
+        loop {
+            let n = unsafe { libc::recv(self.daemon_fd, buf.as_mut_ptr() as *mut c_void, buf.len(), 0) };
+            if n == 0 {
+                return false;
+            }
+            if n < 0 {
+                let e = io::Error::last_os_error();
+                return e.kind() == io::ErrorKind::WouldBlock;
+            }
+            let n = n as usize;
+            if n < size_of::<Callhdr>() {
+                continue;
+            }
+            let number = u32::from_ne_bytes([buf[0], buf[1], buf[2], buf[3]]);
+            match number {
+                MSGNUM_MACH_PORT_MODIFY if n >= size_of::<CallMachPortModify>() => {
+                    let call: CallMachPortModify = unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const _) };
+                    self.modify(call.receive_buffer, call.receive_buffer_size, call.saved_filter_flags);
+                }
+                MSGNUM_MACH_PORT_READ if n >= size_of::<CallMachPortRead>() => {
+                    let call: CallMachPortRead = unsafe { std::ptr::read_unaligned(buf.as_ptr() as *const _) };
+                    self.read(call.default_buffer, call.default_buffer_size);
+                }
+                _ => { /* unknown msgnum for a mach-port channel: ignore */ }
+            }
+        }
+    }
+
+    /// Register/modify the port filter, then ack. The dtape modify runs on a microthread bound to
+    /// the owning task (thread context) -- the cooperative stand-in for C++'s impersonate. No
+    /// `&mut self` is held across run_on_task, so the notify callback can safely fire during it.
+    fn modify(&mut self, receive_buffer: u64, receive_buffer_size: u64, saved_filter_flags: u64) {
+        let (dtape, task) = (self.dtape, self.owning_task);
+        unsafe {
+            sched::run_on_task(
+                task,
+                Box::new(move || {
+                    dtape_kqchan_mach_port_modify(dtape, receive_buffer, receive_buffer_size, saved_filter_flags);
+                }),
+            );
+        }
+        let reply = ReplyMachPortModify { header: Replyhdr { number: MSGNUM_MACH_PORT_MODIFY, code: 0 } };
+        self.send(as_bytes(&reply));
+        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+            self.send_notification();
+        }
+    }
+
+    /// Fetch pending messages: the guest acked our notification (implicitly by reading), so
+    /// re-enable notifications, then fill the reply via the duct-tape on the owning task's
+    /// microthread (which also copies the message body into the guest's buffer). Mirrors _read.
+    fn read(&mut self, default_buffer: u64, default_buffer_size: u64) {
+        self.can_send_notification = true; // ack: may notify again
+        let (dtape, task, daemon_fd) = (self.dtape, self.owning_task, self.daemon_fd);
+        // No `&mut self` is held across this run, so a notify callback that fires mid-fill only
+        // touches self through the raw pointer (no aliasing). The reply is sent from the body so it
+        // precedes any such notification, keeping the channel in order (cf. _read's deferral note).
+        unsafe {
+            sched::run_on_task(
+                task,
+                Box::new(move || {
+                    let mut reply: ReplyMachPortRead = std::mem::zeroed();
+                    reply.header.number = MSGNUM_MACH_PORT_READ;
+                    reply.header.code = 0;
+                    if !dtape_kqchan_mach_port_fill(dtape, &mut reply, default_buffer, default_buffer_size) {
+                        // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
+                        reply.header.code = 0xdead;
+                    }
+                    libc::send(
+                        daemon_fd,
+                        &reply as *const _ as *const c_void,
+                        size_of::<ReplyMachPortRead>(),
+                        libc::MSG_DONTWAIT,
+                    );
+                }),
+            );
+        }
+        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+            self.send_notification();
+        }
+    }
+}
+
+impl Drop for MachPortKqchan {
+    fn drop(&mut self) {
+        unsafe {
+            if !self.dtape.is_null() {
+                // Disable notifications BEFORE destroy so the callback can never fire into a freed box.
+                dtape_kqchan_mach_port_disable_notifications(self.dtape);
+                dtape_kqchan_mach_port_destroy(self.dtape);
+            }
+            libc::close(self.daemon_fd);
         }
     }
 }

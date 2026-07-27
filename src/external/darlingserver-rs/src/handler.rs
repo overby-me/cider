@@ -181,6 +181,9 @@ pub struct Handler {
     /// New process kqueue channels opened this dispatch, handed to the serve loop to
     /// register with the event loop (it owns the daemon-side sockets + death routing).
     pending_kqchans: Vec<crate::kqchan::ProcKqchan>,
+    /// New mach-port kqueue channels opened this dispatch (task #54), handed to the serve loop
+    /// (boxed: their address is the duct-tape notification callback's context, so it must be stable).
+    pending_kqchans_mach: Vec<Box<crate::kqchan::MachPortKqchan>>,
 }
 
 impl Default for Handler {
@@ -198,6 +201,7 @@ impl Handler {
             mldr_path: std::env::var("DSERVER_MLDR_PATH").unwrap_or_default(),
             reply_fds: Vec::new(),
             pending_kqchans: Vec::new(),
+            pending_kqchans_mach: Vec::new(),
         }
     }
 
@@ -209,6 +213,10 @@ impl Handler {
     /// Take the kqueue channels opened this dispatch, for the serve loop to register.
     pub fn take_pending_kqchans(&mut self) -> Vec<crate::kqchan::ProcKqchan> {
         std::mem::take(&mut self.pending_kqchans)
+    }
+    /// Take the mach-port kqchans opened this dispatch (task #54), for the serve loop to register.
+    pub fn take_pending_kqchans_mach(&mut self) -> Vec<Box<crate::kqchan::MachPortKqchan>> {
+        std::mem::take(&mut self.pending_kqchans_mach)
     }
 
     /// Bind the identity of the call about to be dispatched, ensuring the process's state
@@ -918,6 +926,28 @@ impl rpc_wire::RpcHandler for Handler {
         self.pending_kqchans.push(kq);
         // socket = 0: the fd is the first (only) SCM_RIGHTS descriptor on this reply.
         Ok(ReplyKqchanProcOpen { socket: 0 })
+    }
+
+    /// Open a mach-port kqueue channel (EVFILT_MACHPORT) on the CALLER's task -- task #54, approach
+    /// b (event-driven, single-worker; see kqchan::MachPortKqchan). The guest end comes back via
+    /// SCM_RIGHTS (socket=0). Unblocks libdispatch mach sources + launchd boot. Mirrors
+    /// Call::KqchanMachPortOpen.
+    fn kqchan_mach_port_open(&mut self, call: &CallKqchanMachPortOpen, _fds: &[RawFd]) -> Result<ReplyKqchanMachPortOpen, i32> {
+        let task = crate::sched::task_for_nsid(self.current_pid);
+        if task.is_null() {
+            return Err(-libc::ESRCH);
+        }
+        let (kq, guest_fd) = crate::kqchan::MachPortKqchan::open(
+            task,
+            call.port_name,
+            call.receive_buffer,
+            call.receive_buffer_size,
+            call.saved_filter_flags,
+        )
+        .map_err(|e| -e.raw_os_error().unwrap_or(libc::EIO))?;
+        self.reply_fds.push(guest_fd);
+        self.pending_kqchans_mach.push(kq);
+        Ok(ReplyKqchanMachPortOpen { socket: 0 })
     }
 
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply
