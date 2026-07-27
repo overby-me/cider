@@ -148,6 +148,14 @@
           src = ./.;
         };
 
+      # The Rust launcher (src/startup/darling.c rewrite), task #64.
+      #   nix build .#darling-launcher-rs
+      packages.darling-launcher-rs =
+        pkgs:
+        pkgs.callPackage ./nix/darling-launcher-rs.nix {
+          src = ./.;
+        };
+
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
       # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,

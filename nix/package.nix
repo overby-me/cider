@@ -25,6 +25,8 @@ let
     inherit src;
     darlingserver = darlingserverStandalone;
   };
+  # task #64: the Rust launcher, installed as bin/darling (the flip).
+  darlingLauncherRust = callPackage ./darling-launcher-rs.nix { inherit src; };
 in
 stdenv.mkDerivation {
   pname = "darling";
@@ -136,6 +138,10 @@ stdenv.mkDerivation {
     # so getInitProcess() recognizes the container init).
     mkdir -p $out/bin
     cp ${darlingserverRust}/bin/darlingserverd $out/bin/darlingserver
+
+    # task #64: override the cmake-installed C launcher with the Rust one. It resolves
+    # bin/darlingserver next to itself, so no prefix baking is needed.
+    install -m 0755 ${darlingLauncherRust}/bin/darling $out/bin/darling
   '';
 
   postFixup = ''

@@ -70,3 +70,10 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   output both correct, via an openpty harness). Launcher is a FULL replacement now.
   Next: L6 flip (nix/darling-launcher-rs.nix + package.nix, validate via full build) + push,
   then Part 2 (mldr).
+- 2026-07-28 overnight (cont'd): **darling.c L6 FLIP WIRED** -- nix/darling-launcher-rs.nix
+  (libc-only buildRustPackage, cargoLock vendoring), package.nix postInstall installs it as
+  bin/darling (overriding the cmake C launcher), flake.nix exposes .#darling-launcher-rs.
+  Validating via nix build (bg task). Flip wiring NOT yet committed (pending the build green).
+  Once green: commit+push the flip -> darling.c (#64) DONE. Then Part 2 (mldr, #65): note the
+  crate needs Mach-O parsing; goblin is not in the offline cargo cache, so mldr will either
+  hand-roll the Mach-O header/load-command parse (no dep) or rely on nix cargoLock vendoring.
