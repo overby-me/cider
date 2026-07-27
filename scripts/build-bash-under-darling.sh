@@ -40,6 +40,10 @@ rm -rf bbuild; mkdir -p bbuild tmp; export TMPDIR="\$HOME/tmp"
 cd bbuild || exit 9
 echo "=UNTAR="; tar xzf "\$BSRC" && echo untar_ok || { echo TAR_FAIL; exit 1; }
 cd bash-5.3 || { echo NO_SRCDIR; exit 1; }
+# darling's linker makes __private_extern__ termcap globals (BC/UP/PC/ospeed) fully LOCAL, so
+# readline's references to them are undefined at the final link (works with Apple's ld). Make
+# them global so bash links. (Proper fix belongs in darling-ld64's private_extern handling.)
+sed -i "s/__private_extern__//g" lib/termcap/tparam.c lib/termcap/termcap.c
 echo "=CONFIGURE="; "\$CONFIG_SHELL" ./configure --without-bash-malloc >conf.log 2>&1; echo "configure_rc=\$?"; tail -3 conf.log
 echo "=MAKE="; make >make.log 2>&1; echo "make_rc=\$?"; tail -4 make.log
 echo "=VER="; ./bash --version 2>&1 | head -1; echo "ver_rc=\$?"
