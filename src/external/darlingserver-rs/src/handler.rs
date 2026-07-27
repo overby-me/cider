@@ -710,6 +710,23 @@ impl rpc_wire::RpcHandler for Handler {
         Ok(())
     }
 
+    /// `ptrace_sigexc(target, enabled)`: enable/disable Mach-exception signal delivery on the
+    /// target process (a debugger's PT_SIGEXC, so signals arrive as interceptable Mach
+    /// exceptions) and try to resume it. Resolves the target task by nsid via the task_lookup
+    /// table. A missing target is a non-negated ESRCH (not an internal error). Mirrors
+    /// Call::PtraceSigexc (call.cpp:950).
+    fn ptrace_sigexc(&mut self, call: &CallPtraceSigexc, _fds: &[RawFd]) -> Result<(), i32> {
+        let task = crate::sched::task_for_nsid(call.target as u32);
+        if task.is_null() {
+            return Err(libc::ESRCH);
+        }
+        unsafe {
+            task::set_sigexc_enabled(task, call.enabled);
+            task::try_resume(task);
+        }
+        Ok(())
+    }
+
     // ================= per-process state handlers =================
 
     /// Report and clear the start-suspended flag (a debugger/exec sets it via

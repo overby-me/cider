@@ -19,6 +19,21 @@ extern "C" {
     fn dtape_semaphore_up(semaphore: *mut dtape_semaphore_t);
     fn dtape_semaphore_down_simple(semaphore: *mut dtape_semaphore_t) -> bool;
     fn dtape_semaphore_destroy(semaphore: *mut dtape_semaphore_t);
+
+    // ptrace sigexc: enable/disable Mach-exception-based signal delivery on a task (a debugger
+    // uses PT_SIGEXC so signals arrive as Mach exceptions it can intercept), then try to resume
+    // the task if it was stopped waiting for the debugger. duct-tape.h:89-90.
+    fn dtape_task_set_sigexc_enabled(task: *mut dtape_task_t, enabled: bool);
+    fn dtape_task_try_resume(task: *mut dtape_task_t) -> bool;
+}
+
+/// Enable or disable sigexc (Mach-exception signal delivery) on `task` -- PT_SIGEXC.
+pub unsafe fn set_sigexc_enabled(task: *mut dtape_task_t, enabled: bool) {
+    dtape_task_set_sigexc_enabled(task, enabled);
+}
+/// Try to resume `task` if it was suspended awaiting a debugger. Returns whether it resumed.
+pub unsafe fn try_resume(task: *mut dtape_task_t) -> bool {
+    dtape_task_try_resume(task)
 }
 
 /// Store the guest's dyld all-image-info location (`address`, `length`) on `task`.

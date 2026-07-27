@@ -210,6 +210,12 @@ pub fn register_task_lookup(nsid: u32, task: *mut dtape_task_t, host_pid: libc::
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
 }
 
+/// Resolve a task by guest nsid for the RPC handlers (ptrace targets another process), null if
+/// unknown. The handler-facing counterpart of the task_lookup dtape hook.
+pub fn task_for_nsid(nsid: u32) -> *mut dtape_task_t {
+    TASK_BY_NSID.with(|m| m.borrow().get(&nsid).map(|&(t, _)| t).unwrap_or(std::ptr::null_mut()))
+}
+
 /// Record a guest thread in the thread_lookup table (called once per guest thread by spawn_on).
 pub fn register_thread_lookup(tid: u64, thread: *mut dtape_thread_t) {
     THREAD_BY_TID.with(|m| m.borrow_mut().insert(tid, thread));
