@@ -73,7 +73,10 @@ impl Registry {
     /// persistent per-guest-thread microthreads are a later refinement.)
     pub unsafe fn spawn_on(&mut self, pid: u32, tid: u64, arch: u32, body: Box<dyn FnOnce()>) -> *mut Microthread {
         let task = self.ensure_task(pid, arch);
-        sched::spawn_with_nsid(task, tid, body)
+        let mt = sched::spawn_with_nsid(task, tid, body);
+        // Publish to the thread_lookup table so the static dtape hook can resolve this thread.
+        sched::register_thread_lookup(tid, (*mt).dtape_thread());
+        mt
     }
 
     /// Run a call on guest thread (pid,tid): spawn its microthread on the guest's task,

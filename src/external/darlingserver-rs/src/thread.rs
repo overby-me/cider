@@ -32,6 +32,8 @@ extern "C" {
 /// (thread exit) before reaping the microthread, so the thread's ports/rights are cleaned
 /// up and no stale message is routed to it. Mirrors C++'s dtape_thread_dying on checkout.
 pub unsafe fn dying(thread: *mut dtape_thread_t) {
+    // Drop it from the thread_lookup table first, so no lookup resolves a dead thread.
+    crate::sched::unregister_thread_lookup(thread);
     dtape_thread_dying(thread);
 }
 

@@ -40,6 +40,9 @@ extern "C" {
     // handed dtape_thread_create (our *mut Microthread). Backs thread_for_port. duct-tape.h:71.
     fn dtape_thread_for_port(thread_port: u32) -> *mut dtape_thread_t;
     fn dtape_thread_context(thread: *mut dtape_thread_t) -> *mut c_void;
+    // Bump a thread's refcount, so a thread_lookup(retain=true) result stays alive for its
+    // caller (paired with the caller's dtape_thread_release). duct-tape.h:77.
+    fn dtape_thread_retain(thread: *mut dtape_thread_t);
 
     fn dserver_fast_getcontext(ucp: *mut libc::ucontext_t) -> c_int;
     fn dserver_fast_setcontext(ucp: *const libc::ucontext_t);
@@ -195,11 +198,27 @@ thread_local! {
     // so an entry stays valid for the daemon's life: a lookup after the process exits returns a
     // leaked-but-valid pointer, never a dangling one. Mirrors C++ processRegistry() lookups.
     static TASK_BY_NSID: RefCell<HashMap<u32, (*mut dtape_task_t, libc::pid_t)>> = RefCell::new(HashMap::new());
+    // guest tid (nsid) -> dtape_thread, for the thread_lookup dtape hook. Populated per guest
+    // thread by registry::spawn_on, removed on death (dtape_thread_dying). Like the task table,
+    // dtape_threads are currently leak-lived (the daemon never dtape_thread_release's them), so
+    // even a stale entry is a valid pointer, never dangling. Mirrors C++ threadRegistry().
+    static THREAD_BY_TID: RefCell<HashMap<u64, *mut dtape_thread_t>> = RefCell::new(HashMap::new());
 }
 
 /// Record a guest task in the task_lookup table (called once per task from ensure_task).
 pub fn register_task_lookup(nsid: u32, task: *mut dtape_task_t, host_pid: libc::pid_t) {
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
+}
+
+/// Record a guest thread in the thread_lookup table (called once per guest thread by spawn_on).
+pub fn register_thread_lookup(tid: u64, thread: *mut dtape_thread_t) {
+    THREAD_BY_TID.with(|m| m.borrow_mut().insert(tid, thread));
+}
+
+/// Remove a thread from the thread_lookup table by its dtape_thread pointer (on death, so a
+/// later lookup of the dead thread returns null). Called from thread::dying.
+pub fn unregister_thread_lookup(thread: *mut dtape_thread_t) {
+    THREAD_BY_TID.with(|m| m.borrow_mut().retain(|_, &mut t| t != thread));
 }
 
 fn back_to_top_ptr() -> *mut libc::ucontext_t {
@@ -537,8 +556,25 @@ mod hooks {
     // failure, and memory introspection returns empty. Real impls arrive with a global
     // thread/task registry (lookups) and s2c (VM). Mirrors the C++ DTapeHooks set. ----
     pub(super) unsafe extern "C" fn thread_set_pending_call_override(_ctx: *mut c_void, _o: bool) {}
-    pub(super) unsafe extern "C" fn thread_lookup(_id: c_int, _is_nsid: bool, _retain: bool) -> *mut dtape_thread_t {
-        std::ptr::null_mut()
+    /// Resolve a guest thread by its nsid (tid), returning the dtape_thread (retained if asked,
+    /// so it outlives the lookup for its caller). null if unknown. Lookup by host tid
+    /// (`is_nsid == false`) is not supported (the daemon does not track host tids) and returns
+    /// null. Mirrors C++ dtape_hook_thread_lookup -> threadRegistry().lookupEntryByNSID
+    /// (server.cpp:173).
+    pub(super) unsafe extern "C" fn thread_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut dtape_thread_t {
+        if !is_nsid {
+            return std::ptr::null_mut();
+        }
+        let thread = THREAD_BY_TID.with(|m| m.borrow().get(&(id as u64)).copied());
+        match thread {
+            Some(t) if !t.is_null() => {
+                if retain {
+                    dtape_thread_retain(t);
+                }
+                t
+            }
+            _ => std::ptr::null_mut(),
+        }
     }
     pub(super) unsafe extern "C" fn thread_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_thread_t {
         std::ptr::null_mut()
