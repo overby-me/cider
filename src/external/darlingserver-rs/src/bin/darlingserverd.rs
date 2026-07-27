@@ -322,8 +322,17 @@ unsafe fn run(cfg: Config) -> ! {
                 // Drain all pending RPC datagrams; dispatch each on its guest thread's
                 // doWork microthread, flush replies, and register any kqchans it opened.
                 while let Ok(Some((msg, peer))) = listener.recv() {
+                    // checkout (call #2) = a guest thread exiting: reap its microthread + slot
+                    // after its reply flushes, or every thread leaks (captured before the move).
+                    let reap = msg
+                        .header()
+                        .filter(|h| h.number == 2)
+                        .map(|h| (h.pid as u32, h.tid as u64));
                     handle_call(&listener, &mut reg, handler_ptr, &mut slots, msg, peer);
                     flush_replies(&listener, &mut slots);
+                    if let Some((rn, rt)) = reap {
+                        reap_thread(&mut reg, &mut slots, rn, rt);
+                    }
                     for kq in (*handler_ptr).take_pending_kqchans() {
                         epoll_add(epfd, kq.daemon_fd);
                         if kq.pidfd >= 0 {
@@ -436,6 +445,21 @@ unsafe fn handle_call(
     }
     reg.wake_thread(nsid, tid);
     sched::drain();
+}
+
+/// Reap an exited guest thread after its `checkout` reply has been flushed: stop its doWork
+/// microthread (so its two big stacks are freed) and drop its Slot. Without this, every
+/// guest thread ever seen leaks a parked microthread -- a nix build's thousands of configure
+/// subprocesses then exhaust memory and kill the daemon. `stop` makes the parked
+/// process_one_call loop break; wake_thread runs it once so it exits and the registry
+/// reclaims its box.
+unsafe fn reap_thread(reg: &mut Registry, slots: &mut HashMap<(u32, u64), Slot>, nsid: u32, tid: u64) {
+    if let Some(slot) = slots.get(&(nsid, tid)) {
+        slot.mailbox.borrow_mut().stop = true;
+    }
+    reg.wake_thread(nsid, tid);
+    sched::drain();
+    slots.remove(&(nsid, tid));
 }
 
 /// Flush every mailbox that has a ready reply to its peer (attaching any reply fds via
