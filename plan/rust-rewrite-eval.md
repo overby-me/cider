@@ -736,3 +736,22 @@ So the Rust-daemon M1 blocker was a plain fd leak, not signals/interrupts. (The 
 shared SIGFPE flake, task #44, is retryable and independent.) A secondary `vchroot_fd`
 dir-fd leak remains (the `procs` map is never pruned) -- lower impact (dir fds, not pipes;
 bounded by RLIMIT_NOFILE) and a good follow-up.
+
+### 2026-07-27 M1 ACHIEVED on the Rust daemon: guest `nix build hello` from source completes
+
+With the checkout lifetime-pipe leak fixed (commit ed04ef4a), the OFFICIAL nix-build M1
+(`scripts/gnix-hello.sh`: guest Nix builds GNU hello FROM SOURCE and runs it) now COMPLETES
+on the Rust daemon:
+- All phases ran: unpack -> patch -> configure -> **build -> check -> install -> installCheck**.
+- config.status generated the full Makefile + config.h (the hang is GONE).
+- `build_rc=0` (a REAL from-source guest-nix build, not the pre-existing binary),
+  **"Hello, world!"**, `hello_rc=0` -- clean on the FIRST attempt (0 retries, no SIGFPE this run).
+- Daemon pipe-fd count stayed at **0** throughout (leak fixed).
+
+So both M1 paths now complete under the Rust daemon at parity with C++: the toolchain M1
+(bootstrap clang) and the official nix-build M1 (guest nix). The blocker was purely the
+checkout fd leak -> pipe-page starvation -> config.status here-doc deadlock, NOT signals/
+interrupts. The shared SIGFPE flake (task #44) remains but is retryable (the script's 4-try
+loop covers it; this run didn't even hit it). Env note: the GC'd darwin closure must be
+re-realized with `nix-store -r $(nix-store -q --references $HELLO_DRV | grep '\.drv$')`
+(the `--include-outputs` form left some inputs incomplete); prereqs gcrooted at ~/m1roots.
