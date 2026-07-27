@@ -409,7 +409,7 @@ impl rpc_wire::RpcHandler for Handler {
     /// receive) copy it OUT to the caller's `rcv_msg` buffer -- both in the caller's own
     /// address space via the memory hooks. The reply carries only the mach_msg_return_t.
     fn mach_msg_overwrite(&mut self, call: &CallMachMsgOverwrite, _fds: &[RawFd]) -> Result<(), i32> {
-        match unsafe {
+        let code = unsafe {
             mach::msg_overwrite(
                 call.msg,
                 call.option,
@@ -420,9 +420,21 @@ impl rpc_wire::RpcHandler for Handler {
                 call.priority,
                 call.rcv_msg,
             )
-        } {
+        };
+        // Diagnostic (DSERVER_TRACE_MSG): a timed-out receive is a poll. A tight repeat on one
+        // rcv_name flags a port whose expected message never arrives (a Mach-side livelock) --
+        // a lead worth checking when a guest hangs. MACH_RCV_TIMED_OUT == 0x10004003. (Note:
+        // the M1 config.status hang is NOT this -- it is a guest bash here-doc pipe deadlock
+        // with the daemon idle; see plan/rust-rewrite-eval.md "M1 status 2026-07-27".)
+        if code as u32 == 0x10004003 && std::env::var_os("DSERVER_TRACE_MSG").is_some() {
+            eprintln!(
+                "darlingserver-rs: mach_msg RCV TIMED_OUT rcv_name={} option={:#x} timeout={}",
+                call.rcv_name, call.option, call.timeout
+            );
+        }
+        match code {
             0 => Ok(()),
-            code => Err(code),
+            c => Err(c),
         }
     }
 

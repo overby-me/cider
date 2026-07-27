@@ -557,3 +557,47 @@ copyout) are all DONE** -> remaining: **checkin/checkout lifecycle -> the contai
 (M1 running on it). The mechanisms are all proven in running code; what remains is
 mechanical breadth plus the container bring-up -- known subsystems against a duct-tape
 API that already works from Rust, not research.
+
+---
+
+## M1 status (2026-07-27): Rust daemon reaches config.status; deadlock is NOT the daemon
+
+Ran the real M1 build (guest `nix build hello` from source) through the **Rust** daemon
+end to end and captured where it stalls. Result: **huge progress + a precise, non-daemon
+deadlock.**
+
+**Progress.** The build boots the container, seeds the guest nix db, and runs hello's
+`./configure` to completion -- ALL clang probes and the full gnulib check battery pass
+(234k+ log lines; `checking ... mbrtowc/realloc/wcwidth/...` all answered) -- reaching
+`configure: creating ./config.status`. clang works fully (the libc++ verbose-abort wrapper
+holds). Basic fork/exec/wait/signal/pipe/subshell/cmd-subst all validated via fast repros
+(40x fork-storm rc=0; pipes+subshells+sed+heredoc rc=0).
+
+**The stall (config.status).** Fully reproducible. Daemon goes **State=S (idle)**, not
+spinning -- its single thread parks in `epoll_wait`. Process snapshot at the stall:
+- `bash ./configure` (generating config.status, fd 1 -> config.status) is blocked in
+  `write()` -> `anon_pipe_write` on fd 4, and holds BOTH ends of that pipe (fd 3 = read,
+  fd 4 = write). No other process shares the pipe; there is no reader child.
+- This pipe is **bash-internal** (configure's own fd 3/4 are only the transient
+  `(exec 3>&N)` probes at lines 73-75). It is a real Linux anon pipe (kernel-level block),
+  NOT daemon-mediated.
+
+**Diagnosis.** This is bash's **here-document mechanism** for the large `<<\_ACEOF` block
+that generates config.status: bash buffers a large here-doc to a temp file, and on
+temp-file failure falls back to writing the body to a pipe before the consumer (`cat`)
+reads -> self-deadlock (bash holds the read end, so no EPIPE). It is a guest bash/container
+filesystem behavior, reached only after a full configure. It is **NOT** the daemon's
+interrupt/reply path: the daemon is idle with no RPC pending, so the earlier
+"fork_wait_for_child interrupt-deferral" hypothesis is RULED OUT for this stall. (The
+nested-interrupt getcontext dance is a real C++ mechanism -- thread.cpp:479-487 push an
+interrupt frame saving the blocked call's stack/continuation/activeCall; InterruptExit
+re-sends the deferred reply -- but it is NOT what blocks M1 here.)
+
+**Open (the parity question).** Does the **C++** daemon complete this exact build or hit
+the same config.status here-doc deadlock? If C++ also deadlocks -> the Rust daemon is at
+**parity** on the M1 path (a pre-existing darling here-doc/tmp-file limitation, task
+#44/#47 territory). If C++ completes -> a Rust-specific regression in the guest tmp-file
+path to chase. Experiment blocked momentarily on a host disk GC (store was 99% full);
+run C++ M1 on ~/.wnix once the disk frees. Likely trigger to probe next: why bash's
+here-doc temp file (`sys_mkstemp` under TMPDIR=the nix build dir) fails in-container,
+forcing the pipe fallback.
