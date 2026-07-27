@@ -601,3 +601,32 @@ path to chase. Experiment blocked momentarily on a host disk GC (store was 99% f
 run C++ M1 on ~/.wnix once the disk frees. Likely trigger to probe next: why bash's
 here-doc temp file (`sys_mkstemp` under TMPDIR=the nix build dir) fails in-container,
 forcing the pipe fallback.
+
+### Parity experiment result (2026-07-27): C++ ALSO fails M1 (both flaky); Rust hangs vs C++ clean-fails
+
+Ran the identical nix-build M1 through the **C++** daemon (~/darling-rt restored to the
+C++ backup). Result across the script's 4-attempt retry loop:
+- **Attempt 1** got PAST config.status (`config.status: creating Makefile / config.h /
+  executing depfiles commands`) into the make phase, then failed (rc=1).
+- **Attempts 2-4** each failed EARLY at `configure: error: C compiler cannot create
+  executables` (the first clang link/run probe).
+- Overall `build_rc=1` -- **C++ never completes the nix-build M1 either.**
+
+So the "official" nix-build M1 is **flaky on BOTH daemons** -- dominated by task #44
+transient exec-fidelity failures (a freshly-linked binary intermittently fails to run /
+link), NOT by the daemon rewrite. Pipe pressure was identical under both (~529 my-uid
+pipe-fd refs, far under the 16384-page soft limit), ruling out pipe-shrink.
+
+**The one Rust-specific difference:** where the flake hits, C++ tends to **fail cleanly**
+(configure exits with an error -> the retry loop re-attempts), whereas Rust can **HANG**
+(the config.status bash here-doc pipe deadlock -> the build never exits -> the retry loop
+never fires -> permanent stall). Making Rust fail-cleanly (or not hang) where C++ does
+would bring the failure MODE to parity and let the retry loop mask the shared task-#44
+flakiness the same way. Whether the Rust config.status hang is deterministic or just one
+flaky manifestation is being re-tested (re-run of Rust M1).
+
+**Bottom line for the rewrite (task #50):** the Rust daemon drives the guest through the
+FULL hello ./configure identically to C++ (configure-level parity reached). The remaining
+M1 non-completion is a **shared, daemon-independent** darling exec-fidelity issue (task
+#44) -- not a Rust-vs-C++ gap -- plus a Rust robustness gap (hang vs clean-fail) worth
+closing.
