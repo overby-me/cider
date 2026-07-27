@@ -262,9 +262,16 @@ impl rpc_wire::RpcHandler for Handler {
         }
         Ok(())
     }
-    /// A guest thread checks out on exit/exec. Acknowledged; the death/exec lifecycle
-    /// (reaping, exec listener) is a later refinement.
+    /// A guest thread checks out on exit. Tell XNU the thread is dying so its Mach state
+    /// (ports, rights, notifications) is torn down -- otherwise a later send to the dead
+    /// thread's ports spins the daemon ("kmsg to pid -1"). The daemon then reaps its
+    /// microthread + slot (see darlingserverd::reap_thread). Mirrors C++ Call::Checkout ->
+    /// dtape_thread_dying. (The exec-listener branch is a later refinement.)
     fn checkout(&mut self, _call: &CallCheckout, _fds: &[RawFd]) -> Result<(), i32> {
+        let mt = sched::current();
+        if !mt.is_null() {
+            unsafe { thread::dying((*mt).dtape_thread()) };
+        }
         Ok(())
     }
 
