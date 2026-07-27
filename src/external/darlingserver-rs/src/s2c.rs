@@ -150,13 +150,19 @@ pub fn deliver_reply(bytes: Vec<u8>) -> Option<(u32, u64)> {
 /// S2C inline; control returns to the daemon main loop while suspended, which receives the
 /// reply datagram, routes it by (pid,tid), and reschedules this microthread.
 unsafe fn perform_raw(call_bytes: &[u8], min_reply: usize) -> Option<Vec<u8>> {
+    perform_raw_fds(call_bytes, &[], min_reply)
+}
+
+/// Like `perform_raw` but also passes `fds` to the guest via SCM_RIGHTS -- for the S2C mmap of
+/// a real file, which hands the guest a dup of the file descriptor to map. See perform_map_file.
+unsafe fn perform_raw_fds(call_bytes: &[u8], fds: &[RawFd], min_reply: usize) -> Option<Vec<u8>> {
     let (nsid, tid, peer) = CURRENT.with(|c| c.borrow().clone())?;
     let listener = LISTENER_FD.with(|f| *f.borrow());
     if listener < 0 {
         return None;
     }
     REPLIES.with(|r| r.borrow_mut().remove(&(nsid, tid)));
-    if rpc_io::send_datagram(listener, call_bytes, &[], &peer).is_err() {
+    if rpc_io::send_datagram(listener, call_bytes, fds, &peer).is_err() {
         return None;
     }
     sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
@@ -180,6 +186,38 @@ pub unsafe fn perform_mmap(address: usize, length: usize, protection: i32, flags
     };
     let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMmap>());
     match perform_raw(bytes, std::mem::size_of::<S2CReplyMmap>()) {
+        Some(b) => {
+            let reply: S2CReplyMmap = std::ptr::read_unaligned(b.as_ptr() as *const _);
+            (reply.address as usize, reply.errno_result)
+        }
+        None => (usize::MAX, libc::EIO),
+    }
+}
+
+/// Perform an S2C mmap of a real file: like perform_mmap, but the daemon dups `fd` and passes
+/// the copy to the guest via SCM_RIGHTS (descriptor index 0) so the guest maps the actual
+/// file. The call's fd field is set to 0 (that SCM_RIGHTS index), mirroring C++
+/// Thread::_mmap's fd>=0 branch (thread.cpp:1158-1169). Returns (address, errno); address ==
+/// usize::MAX (MAP_FAILED) on error.
+pub unsafe fn perform_map_file(address: usize, length: usize, protection: i32, flags: i32, fd: i32, offset: i64) -> (usize, i32) {
+    let dupfd = libc::dup(fd);
+    if dupfd < 0 {
+        return (usize::MAX, std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EBADF));
+    }
+    let call = S2CCallMmap {
+        header: S2CCallhdr { call_number: S2C_CALLNUM, s2c_number: S2C_MSGNUM_MMAP },
+        address: address as u64,
+        length: length as u64,
+        protection,
+        flags,
+        fd: 0, // index of the dup'd descriptor in the SCM_RIGHTS array
+        offset,
+    };
+    let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMmap>());
+    let result = perform_raw_fds(bytes, &[dupfd], std::mem::size_of::<S2CReplyMmap>());
+    // The guest received its own copy via SCM_RIGHTS at send time, so ours is done.
+    libc::close(dupfd);
+    match result {
         Some(b) => {
             let reply: S2CReplyMmap = std::ptr::read_unaligned(b.as_ptr() as *const _);
             (reply.address as usize, reply.errno_result)

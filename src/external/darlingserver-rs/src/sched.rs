@@ -386,6 +386,24 @@ pub struct TaskCtx {
     pub pid: libc::pid_t,
 }
 
+/// The start address of the first /proc/<pid>/maps region strictly above `addr`, or 0 if
+/// none. The map is sorted ascending, so the first line whose start > addr is the answer.
+/// Each line begins "start-end perms ..."; only the start (hex) is needed. Pure host-side.
+fn next_region_after(pid: libc::pid_t, addr: usize) -> usize {
+    let maps = match std::fs::read_to_string(format!("/proc/{pid}/maps")) {
+        Ok(s) => s,
+        Err(_) => return 0,
+    };
+    for line in maps.lines() {
+        if let Some(start) = line.split('-').next().and_then(|h| usize::from_str_radix(h, 16).ok()) {
+            if start > addr {
+                return start;
+            }
+        }
+    }
+    0
+}
+
 /// Read `local.len()` bytes from process `pid`'s address space at `remote_address`,
 /// via process_vm_readv -- the exact primitive DarlingServer::Process uses
 /// (process.cpp). Pure host-side, no guest cooperation. Returns false unless the whole
@@ -558,11 +576,39 @@ mod hooks {
         let (rv, err) = crate::s2c::perform_munmap(addr, length);
         if rv == 0 { 0 } else { -err }
     }
-    pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, _fd: c_int, _pages: usize, _prot: c_int, _hint: usize, _off: usize, _flags: dtape_memory_flags_t) -> usize {
-        0
+    /// Map a real file (the daemon-side `fd`) into the guest's address space via S2C: the
+    /// daemon passes a dup of the fd to the guest, which mmaps it. File mappings are MAP_SHARED
+    /// (not the anonymous MAP_PRIVATE of task_allocate_pages). Returns the mapped address, or 0
+    /// on failure. Mirrors C++ Thread::mapFile (thread.cpp) + Process::mapFile.
+    pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, fd: c_int, pages: usize, prot: c_int, hint: usize, page_offset: usize, flags: dtape_memory_flags_t) -> usize {
+        let flags_u = flags as u32;
+        let fixed = (flags_u & 1) != 0; // dtape_memory_flag_fixed
+        let overwrite = (flags_u & 2) != 0; // dtape_memory_flag_overwrite
+        let mut mflags = libc::MAP_SHARED;
+        if fixed && overwrite {
+            mflags |= libc::MAP_FIXED;
+        } else if fixed {
+            mflags |= 0x100000; // MAP_FIXED_NOREPLACE (libc may not name it here)
+        }
+        let length = pages.saturating_mul(4096);
+        let offset = page_offset.saturating_mul(4096) as i64;
+        let (addr, _err) = crate::s2c::perform_map_file(hint, length, prot, mflags, fd, offset);
+        if addr == usize::MAX {
+            0
+        } else {
+            addr
+        }
     }
-    pub(super) unsafe extern "C" fn task_get_next_region(_ctx: *mut c_void, _addr: usize) -> usize {
-        0
+    /// Return the start of the first mapped region strictly above `addr` in the guest's
+    /// address space (0 if none). Pure host-side: parse /proc/<host_pid>/maps, which is sorted
+    /// ascending, and take the first region whose start > addr. Mirrors C++
+    /// Process::getNextRegion (process.cpp:662); backs mach_vm_region[_recurse] introspection.
+    pub(super) unsafe extern "C" fn task_get_next_region(ctx: *mut c_void, addr: usize) -> usize {
+        if ctx.is_null() {
+            return 0;
+        }
+        let pid = (*(ctx as *const TaskCtx)).pid;
+        next_region_after(pid, addr)
     }
     /// Change the protection of `pages` in the guest's address space via an S2C mprotect.
     /// Returns true on success. Mirrors C++ Process/Thread::changeProtection.
