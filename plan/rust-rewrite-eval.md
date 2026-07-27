@@ -684,3 +684,55 @@ call #12). A subtly wrong float_state save/restore (address/size/ordering) under
 SIGCHLD storm would corrupt FP regs and fault later. Compare the Rust sigprocess/state path
 (thread.rs load/process/save + the handler) against C++ thread.cpp processSignal. This is
 the next concrete lead for making the Rust toolchain M1 complete.
+
+### 2026-07-27 ROOT CAUSE + FIX: config.status hang = checkin lifetime-pipe leak -> pipe-page starvation
+
+Found and fixed the Rust-specific M1 blocker. At a live config.status hang under the Rust
+daemon, the DAEMON held **1838 pipe fds with only 5 live guest processes** -- a per-process
+`lifetime_listener_pipe` LEAK. The chain:
+
+1. Every guest process's `checkin` (call #1) passes a `lifetime_listener_pipe` fd via
+   SCM_RIGHTS. The C++ daemon holds its read end and watches EOF for ungraceful death; this
+   Rust daemon reaps on the explicit `checkout` and NEVER read or closed it. `Message.fds`
+   (rpc_io.rs) has no Drop and only *reply* fds were closed, so `handler.rs:checkin` dropped
+   the received fd on the floor -> one leaked pipe fd per process.
+2. A configure run spawns ~thousands of processes -> thousands of leaked pipe read ends. Each
+   pipe reserves ~16 pages, so the daemon's leak blows past `fs.pipe-user-pages-soft`
+   (16384 pages, ~1024 pipes). Past that the kernel silently shrinks EVERY NEW pipe to a
+   single 4KB page (rootless, host netns, so the limit is the host's).
+3. bash generating config.status writes the multi-KB M4sh-init here-doc
+   (`cat >>config.status <<\_ASEOF`, configure:33086) into a pipe expecting the normal 64KB
+   buffer. Against a 1-page pipe with no reader yet, `write()` blocks FOREVER -> the exact
+   "config.status hang" (bash in anon_pipe_write, daemon idle). C++ never leaks, so its
+   guest pipes stay 64KB and the here-doc fits -> C++ completes M1.
+
+This also explains every prior observation: fresh container = few pipes = 64KB = all here-doc
+sizes pass; full configure = leak accumulates = 4KB = deadlock; and it is DAEMON-specific
+(the daemon owns the leak), matching "C++ completes, Rust hangs".
+
+**Fix (handler.rs checkin):** close the received fd(s) -- `for &fd in fds { close(fd) }`.
+Stops the leak at the source, so guest pipes keep the normal 64KB buffer. (The SIGFPE crash
+seen in another run is a SEPARATE, shared darling flake, task #44; it is retryable and NOT
+this bug.) Validation pending: rebuild the (GC'd) duct-tape lib, cargo-build, splice, re-run
+the toolchain M1 and confirm (a) daemon pipe-fd count stays flat and (b) it reaches
+Makefile / "Hello, world!".
+
+### 2026-07-27 FIXED + VALIDATED: leak is on CHECKOUT (not checkin); Rust M1 now completes
+
+Correction to the section above: the leaked `lifetime_listener_pipe` read end rides
+**`checkout` (call #2), not checkin** -- confirmed by instrumenting the recv path
+(`RECV_FDS call=2 nfds=1` per process exit; checkin carries 0 fds here because
+`__mldr_lifetime_pipe` is unset, so the pipe is passed at checkout). The `checkout` handler
+ignored `_fds` and dropped the read end -> one leaked pipe per process EXIT.
+
+**Fix:** `handler.rs::checkout` now closes the received fd(s) (`for &fd in fds { close(fd) }`);
+`checkin` closes any too, defensively. **Validated:**
+- 40-fork storm: daemon pipe-fd count stays at **0** (was climbing 845 -> 1695 -> 1838).
+- Toolchain M1 under the fixed daemon: `configure_rc=0`, `make_rc=0`, **"Hello, world!"**,
+  `hello_rc=0`, config.status = 98995 bytes (full), Makefile = 480583, hello = 76368. The
+  config.status hang is GONE -- the Rust daemon now builds + runs hello, at parity with C++.
+
+So the Rust-daemon M1 blocker was a plain fd leak, not signals/interrupts. (The separate
+shared SIGFPE flake, task #44, is retryable and independent.) A secondary `vchroot_fd`
+dir-fd leak remains (the `procs` map is never pruned) -- lower impact (dir fds, not pipes;
+bounded by RLIMIT_NOFILE) and a good follow-up.

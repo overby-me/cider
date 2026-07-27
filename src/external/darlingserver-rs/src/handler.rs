@@ -254,7 +254,13 @@ impl rpc_wire::RpcHandler for Handler {
     /// its forked child has arrived, upping the parent's fork-wait semaphore so its
     /// fork_wait_for_child unblocks. Mirrors Process::notifyCheckin's fork case. (Exec-
     /// replacement's task/thread swap is a later refinement.)
-    fn checkin(&mut self, _call: &CallCheckin, _fds: &[RawFd]) -> Result<(), i32> {
+    fn checkin(&mut self, _call: &CallCheckin, fds: &[RawFd]) -> Result<(), i32> {
+        // Defensive: close any SCM_RIGHTS fd (a lifetime pipe can ride checkin when
+        // __mldr_lifetime_pipe is set). The high-volume leak is on `checkout` -- see there for
+        // the full pipe-page-starvation mechanism that this prevents.
+        for &fd in fds {
+            unsafe { libc::close(fd); }
+        }
         if let Some(parent_nsid) = self.cur().and_then(|p| p.parent_nsid) {
             if let Some(sem) = self.procs.get(&parent_nsid).and_then(|p| p.fork_sem) {
                 unsafe { task::semaphore_up(sem) };
@@ -267,7 +273,21 @@ impl rpc_wire::RpcHandler for Handler {
     /// thread's ports spins the daemon ("kmsg to pid -1"). The daemon then reaps its
     /// microthread + slot (see darlingserverd::reap_thread). Mirrors C++ Call::Checkout ->
     /// dtape_thread_dying. (The exec-listener branch is a later refinement.)
-    fn checkout(&mut self, _call: &CallCheckout, _fds: &[RawFd]) -> Result<(), i32> {
+    fn checkout(&mut self, _call: &CallCheckout, fds: &[RawFd]) -> Result<(), i32> {
+        // Checkout carries the process's `lifetime_listener_pipe` read end via SCM_RIGHTS.
+        // The C++ daemon holds it (EOF => ungraceful-death detection); this daemon reaps here
+        // explicitly and never reads it, so CLOSE it. Otherwise ONE pipe read end leaks per
+        // process exit: a build's thousands of exits accumulate thousands of pipe read ends in
+        // the daemon (~16 reserved pages each), blow past `fs.pipe-user-pages-soft` (16384
+        // pages), and the kernel then shrinks EVERY NEW pipe to a single 4KB page. bash's
+        // config.status generation writes a multi-KB here-doc (the M4sh-init block) into a pipe
+        // expecting the normal 64KB buffer; against a 1-page pipe with no reader yet it blocks
+        // in write() FOREVER -- the "config.status hang" that deadlocks guest nix/toolchain
+        // builds (M1) under this daemon but not under C++ (which closes it). Verified: the
+        // daemon held 1838 read-end pipes for 5 live processes at a live hang.
+        for &fd in fds {
+            unsafe { libc::close(fd); }
+        }
         let mt = sched::current();
         if !mt.is_null() {
             unsafe { thread::dying((*mt).dtape_thread()) };
