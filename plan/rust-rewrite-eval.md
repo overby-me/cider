@@ -419,13 +419,17 @@ itself, reports `nix 2.34.8`, sees a `nix_store_WRITABLE` store, and seeds the c
 Driving `nix build hello` from source, the daemon runs the full build machinery -- unpack,
 patch, and configure through dozens of autoconf checks (BSD install, mkdir -p, gawk, make,
 ustar, `checking for gcc... clang`, and ~27 more) up to configure's compiler probe --
-**without the daemon ever crashing** (0 host SIGSEGV/SIGABRT). The build does not yet
-complete: at the probe, configure's forked subshells (`( for ac_var in \`(set)\` ...)` and
-`( eval "$ac_compiler ..." )`, its lines 85-86) die with a *guest* `Abort trap: 6` -- the
-darling execution-fidelity flake (forked build/probe binaries taking a signal under load)
-the M1 notes already call out as what trips the C++ daemon around the first clang call. So
-this is a shared darling-fidelity ceiling, not a Rust-daemon parity gap: the daemon side of
-M1 (hosting nix + driving the compile up to that ceiling) is done.
+**without the daemon ever crashing** (0 host SIGSEGV/SIGABRT), and it services the S2C
+memory allocations clang needs along the way (`task_allocate_pages` -> S2C mmap, verified
+live: 4/4 round-trips return valid addresses, errno=0). The build does not complete, but the
+blocker is now precisely diagnosed from the kept `conftest.err`, and it is **not the
+daemon**: clang's `libLLVM.dylib` (LLVM 21, built for macOS 14) references
+`std::__1::__libcpp_verbose_abort` (`__ZNSt3__122__libcpp_verbose_abortEPKcz`), a newer
+libc++ symbol that darling's bundled `/usr/lib/libc++.1.dylib` does not export, so dyld
+fails the lookup -> `abort_with_payload` -> the `Abort trap: 6`. That is a darling **guest
+libc++ symbol gap** (task #10, "grind the libSystem symbol gap"), identical under the C++
+daemon. So the daemon side of M1 -- hosting nix, driving the compile, servicing S2C -- is
+done; completing M1 needs the guest libc++ updated, which is orthogonal to the daemon.
 
 The other remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not
 hit by any workload tested so far, hooks stubbed to fail safely), mach-port kqchan
