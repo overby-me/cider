@@ -23,7 +23,7 @@ set -euo pipefail
 
 DARLING="${DARLING:-darling}"
 PREFIX="${DPREFIX:-/tmp/dc}"
-RETRIES="${RETRIES:-4}"
+RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 BT="${BOOTSTRAP_TOOLS:-/nix/store/v6wk45fap70cgcw88x4ilzkiwzhwq6r0-bootstrap-tools}"
 SDK_ROOT="${APPLE_SDK:-/nix/store/dfd1kijwi4r02dk8ridqwmx1vzfg7dik-apple-sdk-14.4}"
 SDK="$SDK_ROOT/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.4.sdk"

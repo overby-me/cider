@@ -29,7 +29,7 @@ DARLING="${DARLING:-darling}"
 # Keep the prefix path short: the shellspawn Unix socket lives at
 # <prefix>/var/run/… and must fit sockaddr_un.sun_path (~108 chars).
 PREFIX="${DPREFIX:-/tmp/dh}"
-RETRIES="${RETRIES:-5}"
+RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 
 while [ $# -gt 0 ]; do
 	case "$1" in

@@ -18,7 +18,7 @@ set -euo pipefail
 
 DARLING="${DARLING:-darling}"
 PREFIX="${DPREFIX:-/tmp/dhb}"
-RETRIES="${RETRIES:-3}"
+RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 NIXPKGS_REV="${NIXPKGS_REV:-fd1462031fdee08f65fd0b4c6b64e22239a77870}"
 CACHE="https://cache.nixos.org"
 
