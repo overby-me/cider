@@ -794,13 +794,30 @@ mod hooks {
     pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_task_t {
         std::ptr::null_mut()
     }
-    pub(super) unsafe extern "C" fn task_get_memory_info(_ctx: *mut c_void, info: *mut dtape_memory_info_t) {
-        if !info.is_null() {
-            (*info).virtual_size = 0;
-            (*info).resident_size = 0;
-            (*info).page_size = 4096;
-            (*info).region_count = 0;
+    pub(super) unsafe extern "C" fn task_get_memory_info(ctx: *mut c_void, info: *mut dtape_memory_info_t) {
+        if info.is_null() {
+            return;
         }
+        (*info).page_size = 4096;
+        (*info).region_count = 0;
+        // Real virtual + resident size from /proc/<hostpid>/statm (fields in pages: size resident
+        // shared text lib data dt). ctx is the task's TaskCtx carrying the host-namespace pid, so
+        // ps/top/task_info now report real memory instead of zeros (task #62). region_count is left
+        // 0 (a full /proc/<pid>/maps parse is deferred; task_get_next_region already walks maps).
+        let mut vsz = 0u64;
+        let mut rss = 0u64;
+        if !ctx.is_null() {
+            let host_pid = (*(ctx as *mut TaskCtx)).pid;
+            if let Ok(s) = std::fs::read_to_string(format!("/proc/{host_pid}/statm")) {
+                let mut it = s.split_whitespace();
+                let size: u64 = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+                let resident: u64 = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+                vsz = size * 4096;
+                rss = resident * 4096;
+            }
+        }
+        (*info).virtual_size = vsz;
+        (*info).resident_size = rss;
     }
     pub(super) unsafe extern "C" fn task_get_memory_region_info(_ctx: *mut c_void, _addr: usize, _info: *mut dtape_memory_region_info_t) -> bool {
         false
@@ -909,7 +926,14 @@ mod hooks {
     pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn thread_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
     pub(super) unsafe extern "C" fn get_load_info(li: *mut dtape_load_info_t) {
-        if !li.is_null() { (*li).task_count = 0; (*li).thread_count = 0; }
+        if li.is_null() {
+            return;
+        }
+        // Live thread count is exact (THREAD_BY_TID entries are removed on thread death). task_count
+        // uses the task_lookup table, which is leak-lived (task #52), so it counts tasks ever seen
+        // -- a slight over-count, but far better than 0 for host_statistics/load queries (task #62).
+        (*li).thread_count = THREAD_BY_TID.with(|m| m.borrow().len()) as _;
+        (*li).task_count = TASK_BY_NSID.with(|m| m.borrow().len()) as _;
     }
     /// Arm (or, with a 0/UINT64_MAX deadline, disarm) the daemon timerfd for the XNU timer
     /// subsystem. `override_` forces the deadline even if it is later than the current one;
