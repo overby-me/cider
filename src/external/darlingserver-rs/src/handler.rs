@@ -107,6 +107,19 @@ pub struct ProcState {
     pub fork_sem: Option<*mut dtape_semaphore_t>,
 }
 
+impl Drop for ProcState {
+    /// Close the retained vchroot directory fd when the process's state is dropped (on
+    /// process exit, when the serve loop prunes it). Without this, every guest process ever
+    /// seen leaks its vchroot DIR fd -- a build's thousands of subprocesses exhaust the
+    /// daemon's fd table. The fork_sem (owned by the task) is intentionally left to the task's
+    /// own lifecycle, not freed here.
+    fn drop(&mut self) {
+        if let Some(fd) = self.vchroot_fd.take() {
+            unsafe { libc::close(fd) };
+        }
+    }
+}
+
 impl ProcState {
     fn new(nsid: u32, host_pid: libc::pid_t, architecture: u32) -> Self {
         ProcState {
@@ -216,6 +229,17 @@ impl Handler {
             ps.fork_sem = Some(unsafe { task::semaphore_create(task, 0) });
         }
         self.procs.insert(nsid, ps);
+    }
+
+    /// Drop a process's state on its exit (the serve loop calls this once the process's last
+    /// thread has done a real, non-exec checkout). Removing the ProcState runs its Drop, which
+    /// closes the retained vchroot fd. Returns whether a state existed. Mirrors the process-
+    /// side of C++ Process::notifyDead cleanup (the ProcState part).
+    pub fn prune_process(&mut self, nsid: u32) -> bool {
+        if self.current_pid == nsid {
+            self.current_pid = 0;
+        }
+        self.procs.remove(&nsid).is_some()
     }
 
     fn cur(&self) -> Option<&ProcState> {

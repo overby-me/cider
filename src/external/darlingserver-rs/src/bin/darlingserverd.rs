@@ -324,14 +324,25 @@ unsafe fn run(cfg: Config) -> ! {
                 while let Ok(Some((msg, peer))) = listener.recv() {
                     // checkout (call #2) = a guest thread exiting: reap its microthread + slot
                     // after its reply flushes, or every thread leaks (captured before the move).
-                    let reap = msg
-                        .header()
-                        .filter(|h| h.number == 2)
-                        .map(|h| (h.pid as u32, h.tid as u64));
+                    // Also note whether it is a REAL exit vs an execve: CallCheckout's body
+                    // begins with exec_listener_pipe: i32, which is >= 0 only for an execve (the
+                    // process lives on); < 0 is a real exit. If the LAST thread of a process
+                    // does a real exit, the process is gone -> prune its ProcState (task #52).
+                    let reap = msg.header().filter(|h| h.number == 2).map(|h| {
+                        let body = msg.body();
+                        let real_exit = body.len() >= 4
+                            && i32::from_ne_bytes([body[0], body[1], body[2], body[3]]) < 0;
+                        (h.pid as u32, h.tid as u64, real_exit)
+                    });
                     handle_call(&listener, &mut reg, handler_ptr, &mut slots, msg, peer);
                     flush_replies(&listener, &mut slots);
-                    if let Some((rn, rt)) = reap {
+                    if let Some((rn, rt, real_exit)) = reap {
                         reap_thread(&mut reg, &mut slots, rn, rt);
+                        if real_exit && !slots.keys().any(|(n, _)| *n == rn) {
+                            // last thread of the process exited (not an execve) -> drop its
+                            // ProcState, whose Drop closes the retained vchroot fd.
+                            (*handler_ptr).prune_process(rn);
+                        }
                     }
                     for kq in (*handler_ptr).take_pending_kqchans() {
                         epoll_add(epfd, kq.daemon_fd);
