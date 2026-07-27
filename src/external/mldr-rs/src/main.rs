@@ -7,7 +7,14 @@
 // this compiles first and the parse path can be validated on real guest binaries.
 #![allow(dead_code)]
 
+use std::ffi::CString;
 use std::os::raw::c_int;
+
+mod loader;
+
+fn cstr(s: &str) -> CString {
+    CString::new(s).unwrap_or_else(|_| CString::new("").unwrap())
+}
 
 /// State accumulated while loading a Mach-O image (mirrors mldr.c's `struct loader`).
 #[derive(Default)]
@@ -67,7 +74,23 @@ fn main() {
                 macho.entry,
                 macho.load_commands.len()
             );
-            // TODO M2: setup_space (commpage + stack) + map segments at vmaddr+slide.
+            // M2: map the segments at vmaddr+slide (raw mmap from the fd).
+            let path_c = cstr(&guest_path);
+            let fd = unsafe { libc::open(path_c.as_ptr(), libc::O_RDONLY) };
+            if fd < 0 {
+                eprintln!("[mldr-rs] open({guest_path}) failed");
+                std::process::exit(1);
+            }
+            let r = unsafe { loader::map_image(fd, &macho, 0) };
+            eprintln!(
+                "[mldr-rs] mapped: slide={:#x} mh={:#x} vm_addr_max={:#x} entry={:#x}",
+                r.slide, r.mh, r.vm_addr_max, r.entry
+            );
+            // Sanity: the mapped mach_header must carry MH_MAGIC_64.
+            if r.mh != 0 {
+                let magic = unsafe { *(r.mh as *const u32) };
+                eprintln!("[mldr-rs] mapped mach_header magic={magic:#x} (expect 0xfeedfacf)");
+            }
             // TODO M3: load LC_LOAD_DYLINKER (dyld) + build the start stack + apple[].
             // TODO M4: darlingserver checkin over the __mldr_sockpath datagram socket.
             // TODO M5: CPU register setup + jmp to the (slid) entry point.

@@ -84,3 +84,8 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   binaries (libstdc++.6.dylib 16 lcmds; dyld entry=0x1000, 16 lcmds). Next M2: PIE slide +
   map segments at vmaddr+slide (raw libc mmap, MAP_FIXED_NOREPLACE, the protection quirk +
   __PAGEZERO tolerance), commpage (with the CPU-count-never-zero SIGFPE fix), start stack.
+- 2026-07-28 overnight (cont'd): **mldr M2 DONE** -- src/external/mldr-rs/loader.rs maps
+  LC_SEGMENT_64 segments at vmaddr+slide via raw libc mmap: PIE slide (reserve-span-then-
+  release), the useprot protection quirk, two-phase BSS (anon then file overlay), __PAGEZERO
+  tolerance. Validated on dyld: slide 0x79d5e02c5000, mapped mach_header reads magic=0xfeedfacf.
+  Next M3: recursive dyld load (LC_LOAD_DYLINKER) + commpage (SIGFPE fix) + start stack.
