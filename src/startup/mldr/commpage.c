@@ -49,11 +49,23 @@ void commpage_setup(bool _64bit)
 	strcpy(signature, _64bit ? SIGNATURE64 : SIGNATURE32);
 	*version = _COMM_PAGE_THIS_VERSION;
 
+	// CPU counts. `_SC_NPROCESSORS_CONF` reads /sys/devices/system/cpu, which the rootless
+	// container's mount namespace may not expose -> it returns 0 (or -1) intermittently. A 0
+	// here is FATAL: __malloc_initialize (libsystem_malloc) computes `logical_cpus /
+	// physical_cpus`, so a zero physical-CPU byte is an integer divide-by-zero and the guest
+	// process takes SIGFPE ("Floating point exception: 8") at startup -- the intermittent
+	// build-crash flake. `_SC_NPROCESSORS_ONLN` uses sched_getaffinity (a syscall, always
+	// available), so fall back to it, then to 1, and NEVER store 0.
+	long nconf = sysconf(_SC_NPROCESSORS_CONF);
+	long nonln = sysconf(_SC_NPROCESSORS_ONLN);
+	if (nonln < 1) nonln = 1;
+	if (nconf < 1) nconf = nonln;
+
 	ncpus = (uint8_t*)CGET(_COMM_PAGE_NCPUS);
-	*ncpus = sysconf(_SC_NPROCESSORS_CONF);
+	*ncpus = (uint8_t) nconf;
 
 	nactivecpus = (uint8_t*)CGET(_COMM_PAGE_ACTIVE_CPUS);
-	*nactivecpus = sysconf(_SC_NPROCESSORS_ONLN);
+	*nactivecpus = (uint8_t) nonln;
 
 	// Better imprecise information than no information
 	physcpus = (uint8_t*)CGET(_COMM_PAGE_PHYSICAL_CPUS);

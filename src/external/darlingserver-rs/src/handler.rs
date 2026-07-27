@@ -362,6 +362,23 @@ impl rpc_wire::RpcHandler for Handler {
         if dthread.is_null() {
             return Err(-libc::ESRCH);
         }
+        // SIGFPE diagnostic (task #51): capture the FP-fault kind + faulting instruction.
+        // linux si_code for SIGFPE: 1=INTDIV 2=INTOVF 3=FLTDIV 4=FLTOVF 5=FLTUND 6=FLTRES
+        // 7=FLTINV 8=FLTSUB. signal_address is the faulting RIP; dump 16 bytes there so we can
+        // disassemble the instruction that faulted (integer `idiv` => a wrongly-zero divisor;
+        // an FP op => corrupted float state). Gated so normal runs are quiet.
+        if call.linux_signal_number == 8 && std::env::var_os("DSERVER_TRACE_SIGFPE").is_some() {
+            let pid = self.cur().map(|p| p.host_pid);
+            let mut insn = [0u8; 16];
+            let got = pid
+                .map(|pid| unsafe { crate::sched::read_process_memory(pid, call.signal_address as usize, &mut insn) })
+                .unwrap_or(false);
+            let hex = if got { insn.iter().map(|b| format!("{b:02x} ")).collect::<String>() } else { "?".to_string() };
+            eprintln!(
+                "darlingserver-rs: SIGFPE_DIAG code={} rip={:#x} sender_pid={} insn=[{}]",
+                call.code, call.signal_address, call.sender_pid, hex.trim_end()
+            );
+        }
         unsafe {
             let r = thread::load_state_from_user(dthread, call.thread_state, call.float_state);
             if r != 0 {
