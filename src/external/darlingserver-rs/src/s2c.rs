@@ -26,8 +26,11 @@ use std::os::unix::io::RawFd;
 /// Magic call number for S2C messages (dserver_callnum_s2c). Both the daemon's S2C call and
 /// the guest's S2C reply carry it.
 pub const S2C_CALLNUM: i32 = 0x52cca11;
-/// dserver_s2c_msgnum_mmap (the enum starts at invalid=0, mmap=1).
+/// dserver_s2c_msgnum enum (invalid=0, then these). rpc-supplement.h:147.
 pub const S2C_MSGNUM_MMAP: i32 = 1;
+pub const S2C_MSGNUM_MUNMAP: i32 = 2;
+pub const S2C_MSGNUM_MPROTECT: i32 = 3;
+pub const S2C_MSGNUM_MSYNC: i32 = 4;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
@@ -65,6 +68,41 @@ struct S2CReplyhdr {
 struct S2CReplyMmap {
     header: S2CReplyhdr,
     address: u64,
+    errno_result: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct S2CCallMunmap {
+    header: S2CCallhdr,
+    address: u64,
+    length: u64,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct S2CCallMprotect {
+    header: S2CCallhdr,
+    address: u64,
+    length: u64,
+    protection: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct S2CCallMsync {
+    header: S2CCallhdr,
+    address: u64,
+    size: u64,
+    sync_flags: i32,
+}
+
+/// The shared reply for munmap/mprotect/msync: {replyhdr, return_value, errno_result}.
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct S2CReplyRc {
+    header: S2CReplyhdr,
+    return_value: i32,
     errno_result: i32,
 }
 
@@ -106,20 +144,31 @@ pub fn deliver_reply(bytes: Vec<u8>) -> Option<(u32, u64)> {
     Some(key)
 }
 
-/// Perform an S2C mmap on the current guest thread: send the request, suspend until the
-/// guest replies, and return (address, errno). address == usize::MAX (MAP_FAILED) on error.
-/// Runs on the guest thread's own microthread (mid-RPC), so the guest is blocked in recvmsg
-/// and services the S2C inline.
-pub unsafe fn perform_mmap(address: usize, length: usize, protection: i32, flags: i32, fd: i32, offset: i64) -> (usize, i32) {
-    let (nsid, tid, peer) = match CURRENT.with(|c| c.borrow().clone()) {
-        Some(v) => v,
-        None => return (usize::MAX, libc::ESRCH),
-    };
+/// Send an S2C call to the current guest thread, suspend until it replies, and return the
+/// reply bytes (None on error or a short reply). Shared by all S2C VM ops. Runs on the guest
+/// thread's own microthread (mid-RPC), so the guest is blocked in recvmsg and services the
+/// S2C inline; control returns to the daemon main loop while suspended, which receives the
+/// reply datagram, routes it by (pid,tid), and reschedules this microthread.
+unsafe fn perform_raw(call_bytes: &[u8], min_reply: usize) -> Option<Vec<u8>> {
+    let (nsid, tid, peer) = CURRENT.with(|c| c.borrow().clone())?;
     let listener = LISTENER_FD.with(|f| *f.borrow());
     if listener < 0 {
-        return (usize::MAX, libc::ESRCH);
+        return None;
     }
+    REPLIES.with(|r| r.borrow_mut().remove(&(nsid, tid)));
+    if rpc_io::send_datagram(listener, call_bytes, &[], &peer).is_err() {
+        return None;
+    }
+    sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+    match REPLIES.with(|r| r.borrow_mut().remove(&(nsid, tid))) {
+        Some(b) if b.len() >= min_reply => Some(b),
+        _ => None,
+    }
+}
 
+/// Perform an S2C mmap on the current guest thread. Returns (address, errno); address ==
+/// usize::MAX (MAP_FAILED) on error.
+pub unsafe fn perform_mmap(address: usize, length: usize, protection: i32, flags: i32, fd: i32, offset: i64) -> (usize, i32) {
     let call = S2CCallMmap {
         header: S2CCallhdr { call_number: S2C_CALLNUM, s2c_number: S2C_MSGNUM_MMAP },
         address: address as u64,
@@ -130,23 +179,57 @@ pub unsafe fn perform_mmap(address: usize, length: usize, protection: i32, flags
         offset,
     };
     let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMmap>());
-
-    // Clear any stale reply, send the call to the guest, then suspend until the main loop
-    // delivers the reply and resumes us.
-    REPLIES.with(|r| r.borrow_mut().remove(&(nsid, tid)));
-    if rpc_io::send_datagram(listener, bytes, &[], &peer).is_err() {
-        return (usize::MAX, libc::EIO);
+    match perform_raw(bytes, std::mem::size_of::<S2CReplyMmap>()) {
+        Some(b) => {
+            let reply: S2CReplyMmap = std::ptr::read_unaligned(b.as_ptr() as *const _);
+            (reply.address as usize, reply.errno_result)
+        }
+        None => (usize::MAX, libc::EIO),
     }
-    // Suspend (stackful): control returns to the daemon main loop, which will receive the
-    // S2C reply and reschedule this microthread. On resume we fall through.
-    sched::suspend_current(None, std::ptr::null_mut(), std::ptr::null_mut());
+}
 
-    let reply_bytes = match REPLIES.with(|r| r.borrow_mut().remove(&(nsid, tid))) {
-        Some(b) if b.len() >= std::mem::size_of::<S2CReplyMmap>() => b,
-        _ => return (usize::MAX, libc::EIO),
+/// Perform an S2C munmap. Returns (return_value, errno); return_value == 0 on success.
+pub unsafe fn perform_munmap(address: usize, length: usize) -> (i32, i32) {
+    let call = S2CCallMunmap {
+        header: S2CCallhdr { call_number: S2C_CALLNUM, s2c_number: S2C_MSGNUM_MUNMAP },
+        address: address as u64,
+        length: length as u64,
     };
-    let reply: S2CReplyMmap = std::ptr::read_unaligned(reply_bytes.as_ptr() as *const _);
-    (reply.address as usize, reply.errno_result)
+    let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMunmap>());
+    match perform_raw(bytes, std::mem::size_of::<S2CReplyRc>()) {
+        Some(b) => { let r: S2CReplyRc = std::ptr::read_unaligned(b.as_ptr() as *const _); (r.return_value, r.errno_result) }
+        None => (-1, libc::EIO),
+    }
+}
+
+/// Perform an S2C mprotect. Returns (return_value, errno); return_value == 0 on success.
+pub unsafe fn perform_mprotect(address: usize, length: usize, protection: i32) -> (i32, i32) {
+    let call = S2CCallMprotect {
+        header: S2CCallhdr { call_number: S2C_CALLNUM, s2c_number: S2C_MSGNUM_MPROTECT },
+        address: address as u64,
+        length: length as u64,
+        protection,
+    };
+    let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMprotect>());
+    match perform_raw(bytes, std::mem::size_of::<S2CReplyRc>()) {
+        Some(b) => { let r: S2CReplyRc = std::ptr::read_unaligned(b.as_ptr() as *const _); (r.return_value, r.errno_result) }
+        None => (-1, libc::EIO),
+    }
+}
+
+/// Perform an S2C msync. Returns (return_value, errno); return_value == 0 on success.
+pub unsafe fn perform_msync(address: usize, size: usize, sync_flags: i32) -> (i32, i32) {
+    let call = S2CCallMsync {
+        header: S2CCallhdr { call_number: S2C_CALLNUM, s2c_number: S2C_MSGNUM_MSYNC },
+        address: address as u64,
+        size: size as u64,
+        sync_flags,
+    };
+    let bytes = std::slice::from_raw_parts(&call as *const _ as *const u8, std::mem::size_of::<S2CCallMsync>());
+    match perform_raw(bytes, std::mem::size_of::<S2CReplyRc>()) {
+        Some(b) => { let r: S2CReplyRc = std::ptr::read_unaligned(b.as_ptr() as *const _); (r.return_value, r.errno_result) }
+        None => (-1, libc::EIO),
+    }
 }
 
 /// The mmap flags XNU's allocate_pages wants: private anonymous, plus MAP_FIXED[_NOREPLACE]

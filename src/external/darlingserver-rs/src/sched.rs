@@ -515,8 +515,13 @@ mod hooks {
             addr
         }
     }
-    pub(super) unsafe extern "C" fn task_free_pages(_ctx: *mut c_void, _addr: usize, _pages: usize) -> c_int {
-        -1
+    /// Free `pages` in the guest's address space via an S2C munmap (the guest does the munmap
+    /// on our behalf, like task_allocate_pages does for mmap). Returns 0 on success, else a
+    /// negative errno. Mirrors C++ Process/Thread::freePages.
+    pub(super) unsafe extern "C" fn task_free_pages(_ctx: *mut c_void, addr: usize, pages: usize) -> c_int {
+        let length = pages.saturating_mul(4096);
+        let (rv, err) = crate::s2c::perform_munmap(addr, length);
+        if rv == 0 { 0 } else { -err }
     }
     pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, _fd: c_int, _pages: usize, _prot: c_int, _hint: usize, _off: usize, _flags: dtape_memory_flags_t) -> usize {
         0
@@ -524,11 +529,18 @@ mod hooks {
     pub(super) unsafe extern "C" fn task_get_next_region(_ctx: *mut c_void, _addr: usize) -> usize {
         0
     }
-    pub(super) unsafe extern "C" fn task_change_protection(_ctx: *mut c_void, _addr: usize, _pages: usize, _prot: c_int) -> bool {
-        false
+    /// Change the protection of `pages` in the guest's address space via an S2C mprotect.
+    /// Returns true on success. Mirrors C++ Process/Thread::changeProtection.
+    pub(super) unsafe extern "C" fn task_change_protection(_ctx: *mut c_void, addr: usize, pages: usize, prot: c_int) -> bool {
+        let length = pages.saturating_mul(4096);
+        let (rv, _err) = crate::s2c::perform_mprotect(addr, length, prot);
+        rv == 0
     }
-    pub(super) unsafe extern "C" fn task_sync_memory(_ctx: *mut c_void, _addr: usize, _size: usize, _flags: c_int) -> bool {
-        false
+    /// Flush `size` bytes of the guest's address space to backing store via an S2C msync.
+    /// Returns true on success. Mirrors C++ Process/Thread::syncMemory.
+    pub(super) unsafe extern "C" fn task_sync_memory(_ctx: *mut c_void, addr: usize, size: usize, flags: c_int) -> bool {
+        let (rv, _err) = crate::s2c::perform_msync(addr, size, flags);
+        rv == 0
     }
     pub(super) unsafe extern "C" fn task_context_dispose(_ctx: *mut c_void) {}
     pub(super) unsafe extern "C" fn interrupt_disable() {
