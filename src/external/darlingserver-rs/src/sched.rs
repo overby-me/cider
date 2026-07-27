@@ -33,6 +33,10 @@ extern "C" {
     fn dtape_thread_create(task: *mut dtape_task_t, nsid: u64, context: *mut c_void) -> *mut dtape_thread_t;
     fn dtape_thread_entering(thread: *mut dtape_thread_t);
     fn dtape_thread_exiting(thread: *mut dtape_thread_t);
+    // Resolve a guest Mach thread port to its dtape_thread, and recover the void* context we
+    // handed dtape_thread_create (our *mut Microthread). Backs thread_for_port. duct-tape.h:71.
+    fn dtape_thread_for_port(thread_port: u32) -> *mut dtape_thread_t;
+    fn dtape_thread_context(thread: *mut dtape_thread_t) -> *mut c_void;
 
     fn dserver_fast_getcontext(ucp: *mut libc::ucontext_t) -> c_int;
     fn dserver_fast_setcontext(ucp: *const libc::ucontext_t);
@@ -124,6 +128,13 @@ pub struct Microthread {
     // hook before unix_syscall_return. C++'s Thread::_bsdReturnValue; sendBSDReply pairs it
     // with the syscall's errno code.
     bsd_retval: u32,
+    // ---- guest-thread identity (Foundation A) ----
+    // Resolved from a Mach thread port via dtape_thread_for_port -> dtape_thread_context
+    // (which returns this Microthread), these answer the port-keyed thread calls without a
+    // separate registry. The guest tid (nsid) this thread was created with. C++ Thread::_nstid.
+    nsid_tid: u64,
+    // Set by pthread_markcancel, observed by pthread_canceled. C++ Thread::_canceled.
+    canceled: bool,
 }
 
 impl Microthread {
@@ -144,6 +155,28 @@ impl Microthread {
     /// The result a blocking call delivered via thread_syscall_return (None if the call
     /// returned normally instead of blocking). Cleared on read.
     pub fn take_syscall_return(&mut self) -> Option<i32> { self.syscall_return.take() }
+
+    /// The guest tid (nsid) this thread was created with. tid_for_thread reports it.
+    pub fn nsid_tid(&self) -> u64 { self.nsid_tid }
+    /// True if this thread has been marked canceled (pthread_markcancel).
+    pub fn is_canceled(&self) -> bool { self.canceled }
+    /// Mark this thread canceled (pthread_markcancel); pthread_canceled later observes it.
+    pub fn set_canceled(&mut self) { self.canceled = true; }
+}
+
+/// Resolve a guest Mach thread port to its Microthread, via the duct-tape port registry
+/// (dtape_thread_for_port) and the context stored at dtape_thread_create. Returns None for an
+/// invalid or dead port. Mirrors C++ Thread::threadForPort (thread.cpp:916).
+pub unsafe fn thread_for_port(thread_port: u32) -> Option<*mut Microthread> {
+    let dt = dtape_thread_for_port(thread_port);
+    if dt.is_null() {
+        return None;
+    }
+    let ctx = dtape_thread_context(dt);
+    if ctx.is_null() {
+        return None;
+    }
+    Some(ctx as *mut Microthread)
 }
 
 // ---- per-worker (per-OS-thread) state ----
@@ -224,6 +257,8 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         syscall_return: None,
         pending_signal: 0,
         bsd_retval: 0,
+        nsid_tid: nsid,
+        canceled: false,
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
     mt

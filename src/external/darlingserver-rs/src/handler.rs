@@ -666,17 +666,48 @@ impl rpc_wire::RpcHandler for Handler {
 
     /// `__pthread_canceled(action)` -- the cancellation-point query libpthread makes at every
     /// interruptible syscall. `action == 0` is the query: reply 0 means "this thread is
-    /// canceled, act on it", anything else means "not canceled, proceed". We never mark a
-    /// thread canceled (pthread_markcancel stays unimplemented -- the risky delivery half,
-    /// task #45), so a query is always "not canceled" (`-EINVAL`); actions 1/2 (enable/
-    /// disable cancel notifications) are guest-local, so ack them. Mirrors C++
-    /// Call::PthreadCanceled (call.cpp:619) for the not-canceled case, which is always ours.
+    /// canceled, act on it", anything else means "not canceled, proceed". The calling thread's
+    /// cancel bit is set by a prior pthread_markcancel; actions 1/2 (enable/disable cancel
+    /// notifications) are guest-local, so ack them. Mirrors C++ Call::PthreadCanceled
+    /// (call.cpp:619), operating on the current thread.
     fn pthread_canceled(&mut self, call: &CallPthreadCanceled, _fds: &[RawFd]) -> Result<(), i32> {
         if call.action == 0 {
-            Err(-libc::EINVAL)
+            let mt = crate::sched::current();
+            let canceled = !mt.is_null() && unsafe { (*mt).is_canceled() };
+            if canceled { Ok(()) } else { Err(-libc::EINVAL) }
         } else {
             Ok(())
         }
+    }
+
+    /// `tid_for_thread(thread_port)` -> the target thread's guest tid. Resolve the Mach thread
+    /// port to its microthread and report its nsid. An invalid port or dead thread is (likely)
+    /// user error, so return a non-negated ESRCH. Mirrors Call::TidForThread (call.cpp:936).
+    fn tid_for_thread(&mut self, call: &CallTidForThread, _fds: &[RawFd]) -> Result<ReplyTidForThread, i32> {
+        match unsafe { crate::sched::thread_for_port(call.thread) } {
+            Some(mt) => Ok(ReplyTidForThread { tid: unsafe { (*mt).nsid_tid() } as i32 }),
+            None => Err(libc::ESRCH),
+        }
+    }
+
+    // NOTE: `pthread_kill(thread_port, signal)` is intentionally left ENOSYS for now. Resolving
+    // the target (thread_for_port) and sending the signal (tgkill) is straightforward, but
+    // delivering a signal to a guest thread that is blocked mid-daemon-call trips the
+    // still-unimplemented nested signal-interrupt path (interrupt_enter's "later refinement"
+    // above) and panics the shared duct-tape in semaphore_convert_wait_result. A graceful
+    // ENOSYS is strictly better than crashing the daemon until that path lands.
+
+    /// `pthread_markcancel(thread_port)`: mark the target thread canceled so its next
+    /// cancellation point (queried via pthread_canceled) cancels it. C++ additionally sends
+    /// SIGNAL_SIGEXC_KICK to interrupt a blocking syscall for *prompt* cancellation; that kick
+    /// is deferred with pthread_kill until the nested signal-interrupt path lands. A thread
+    /// blocked mid-call still cancels, just not until it next reaches a cancellation point on
+    /// its own. Mirrors Call::PthreadMarkcancel + Thread::markCanceled (thread.cpp:1459), minus
+    /// the kick.
+    fn pthread_markcancel(&mut self, call: &CallPthreadMarkcancel, _fds: &[RawFd]) -> Result<(), i32> {
+        let mt = unsafe { crate::sched::thread_for_port(call.thread_port) }.ok_or(-libc::ESRCH)?;
+        unsafe { (*mt).set_canceled() };
+        Ok(())
     }
 
     // ================= per-process state handlers =================
