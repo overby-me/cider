@@ -103,9 +103,41 @@ fn main() {
                 let magic = unsafe { *(r.mh as *const u32) };
                 eprintln!("[mldr-rs] mapped mach_header magic={magic:#x} (expect 0xfeedfacf)");
             }
-            // TODO M3: load LC_LOAD_DYLINKER (dyld) + build the start stack + apple[].
+            // M3b: recursive dyld load (LC_LOAD_DYLINKER). dyld's entry becomes the real
+            // jump target. The dylinker path is a Mac path needing vchroot (root_path from
+            // M4); MLDR_ROOT_PATH lets us test before the checkin RPC exists.
+            let mut final_entry = r.entry;
+            if macho.header.filetype == 2 {
+                // MH_EXECUTE
+                if let Some(dylinker) = loader::find_dylinker(&data) {
+                    let root = std::env::var("MLDR_ROOT_PATH").unwrap_or_default();
+                    let dyld_path = format!("{root}{dylinker}");
+                    eprintln!("[mldr-rs] dylinker={dylinker} -> {dyld_path}");
+                    match std::fs::read(&dyld_path) {
+                        Ok(ddata) => {
+                            if let Ok(goblin::mach::Mach::Binary(dmacho)) =
+                                goblin::mach::Mach::parse(&ddata)
+                            {
+                                let dfd =
+                                    unsafe { libc::open(cstr(&dyld_path).as_ptr(), libc::O_RDONLY) };
+                                let dr = unsafe { loader::map_image(dfd, &dmacho, 0) };
+                                eprintln!(
+                                    "[mldr-rs] dyld mapped: slide={:#x} entry={:#x}",
+                                    dr.slide, dr.entry
+                                );
+                                final_entry = dr.entry; // dyld's entry wins
+                            }
+                        }
+                        Err(e) => eprintln!(
+                            "[mldr-rs] dyld not found at {dyld_path}: {e} (set MLDR_ROOT_PATH)"
+                        ),
+                    }
+                }
+            }
+            eprintln!("[mldr-rs] FINAL entry={final_entry:#x}");
+            // TODO M3c: build the start stack (argc/argv/envp/apple[]) below the commpage.
             // TODO M4: darlingserver checkin over the __mldr_sockpath datagram socket.
-            // TODO M5: CPU register setup + jmp to the (slid) entry point.
+            // TODO M5: CPU register setup + jmp to final_entry.
         }
         Ok(goblin::mach::Mach::Fat(_fat)) => {
             // TODO: honor bprefs, else prefer CPU_TYPE_X86_64 (mldr.c:340-448).

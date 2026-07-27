@@ -95,3 +95,9 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   (signature/version/CPU-counts/page-shifts/memsize); counts use CONF->ONLN->1 so never 0 (the
   SIGFPE fix). Validated on dyld: sig="commpage 64-bit", ncpu=22. CPU capability bits = TODO
   (need cpu_capabilities.h). Next M3b: recursive dyld load (LC_LOAD_DYLINKER); M3c: start stack.
+- 2026-07-28 overnight (cont'd): **mldr M3b DONE** -- loader::find_dylinker (manual
+  LC_LOAD_DYLINKER load-command walk) + recursive dyld load in main. Validated on
+  /bin/launchctl: extracts dylinker=/usr/lib/dyld, maps the executable (magic 0xfeedfacf)
+  AND dyld (slide 0x73fb910c5000, entry ...910c6000) in one address space, FINAL entry =
+  dyld's entry. MLDR_ROOT_PATH stands in for vchroot (real root_path arrives with M4).
+  Next M3c: start stack (mach_header ptr + argc/argv/envp/apple[]) just below the commpage.

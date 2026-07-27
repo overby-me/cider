@@ -150,6 +150,38 @@ unsafe fn compute_slide(macho: &MachO) -> u64 {
     (p as u64).wrapping_sub(base)
 }
 
+/// Extract the LC_LOAD_DYLINKER path (mldr.c:260-314) by walking the raw load commands
+/// (x86_64 Mach-O is little-endian). Returns the Mach-O dylinker path (needs vchroot).
+pub fn find_dylinker(data: &[u8]) -> Option<String> {
+    const LC_LOAD_DYLINKER: u32 = 0xe;
+    if data.len() < 32 {
+        return None;
+    }
+    let ncmds = u32::from_le_bytes(data[16..20].try_into().ok()?) as usize;
+    let mut off = 32usize; // sizeof(mach_header_64)
+    for _ in 0..ncmds {
+        if off + 8 > data.len() {
+            break;
+        }
+        let cmd = u32::from_le_bytes(data[off..off + 4].try_into().ok()?);
+        let cmdsize = u32::from_le_bytes(data[off + 4..off + 8].try_into().ok()?) as usize;
+        if cmdsize == 0 || off + cmdsize > data.len() {
+            break;
+        }
+        if cmd == LC_LOAD_DYLINKER {
+            let name_off = u32::from_le_bytes(data[off + 8..off + 12].try_into().ok()?) as usize;
+            let s = off + name_off;
+            if s < off + cmdsize {
+                let region = &data[s..off + cmdsize];
+                let end = region.iter().position(|&b| b == 0).unwrap_or(region.len());
+                return Some(String::from_utf8_lossy(&region[..end]).into_owned());
+            }
+        }
+        off += cmdsize;
+    }
+    None
+}
+
 fn fail(msg: &str) -> ! {
     eprintln!("[mldr-rs] map error: {msg}");
     std::process::exit(1);
