@@ -12,6 +12,7 @@ use std::os::raw::c_int;
 
 mod commpage;
 mod loader;
+mod rpc;
 mod stack;
 
 fn cstr(s: &str) -> CString {
@@ -153,8 +154,26 @@ fn main() {
             let sp0 = unsafe { *(sp as *const u64) };
             let argc = unsafe { *((sp + 8) as *const u64) };
             eprintln!("[mldr-rs] stack sp={sp:#x} sp[0](mh)={sp0:#x} argc={argc}");
-            // TODO M4: darlingserver checkin over the __mldr_sockpath datagram socket.
-            // TODO M5: CPU register setup + jmp to final_entry with sp in %rsp.
+
+            // M4: darlingserver checkin. Wire sanity first, then check in if a socket path
+            // was provided (__mldr_sockpath).
+            eprintln!(
+                "[mldr-rs] wire: sizeof(RpcCallCheckin)={} (expect 40)",
+                rpc::checkin_call_size()
+            );
+            if let Some(ref sockpath) = special.sockpath {
+                let rpcfd = unsafe { rpc::create_socket() };
+                if rpcfd >= 0 {
+                    let code = unsafe { rpc::checkin(rpcfd, sockpath, sp) };
+                    eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
+                    // kernfd = rpcfd would feed apple[] here (M5 uses the real socket).
+                } else {
+                    eprintln!("[mldr-rs] rpc socket creation failed");
+                }
+            } else {
+                eprintln!("[mldr-rs] (no __mldr_sockpath; skipping checkin)");
+            }
+            // TODO M5: elfcalls vtable + register setup + jmp to final_entry with sp in %rsp.
         }
         Ok(goblin::mach::Mach::Fat(_fat)) => {
             // TODO: honor bprefs, else prefer CPU_TYPE_X86_64 (mldr.c:340-448).

@@ -108,3 +108,11 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   argc=1. mldr now M0-M3c. Remaining: M4 darlingserver checkin RPC (reuse rpc_wire/rpc_io);
   M5 elfcalls vtable + register setup + jmp-to-entry. Plus TODOs: CPU cap bits, argv/envp
   in-place compaction + __mldr_* env stripping, the fd socket-bitmap + lifetime pipe.
+- 2026-07-28 overnight (cont'd): **mldr M4 (code) DONE** -- rpc.rs: darlingserver checkin
+  over AF_UNIX SOCK_DGRAM. Wire structs byte-identical to the daemon's rpc_wire.rs
+  (DserverRpcCallhdr{number,pid,tid,architecture} + CallCheckin{is_fork,stack_hint,
+  lifetime_listener_pipe}; CHECKIN=1, x86_64=2). Validated sizeof(RpcCallCheckin)=40 (matches
+  the C exactly). Socket create+autobind, server addr from __mldr_sockpath, checkin send/recv
+  -> reply.code. The live code=0 test needs mldr running as a real guest (daemon uses
+  SCM_CREDENTIALS + container ctx) -> deferred to M5 integration. Next M5: elfcalls vtable +
+  register setup + jmp-to-entry (then wire mldr-rs into a container boot to validate end-to-end).
