@@ -995,6 +995,46 @@ impl rpc_wire::RpcHandler for Handler {
         Ok(ReplyConsoleOpen { console: 0 })
     }
 
+    /// Enumerate the daemon's known guest processes for dserverdbg's `ps` (task #60): write one
+    /// {pid, port_count} record per process to a pipe and return the read end (@fd) + count. Real
+    /// diagnostic utility -- inspect the live daemon's process/port state when debugging Darling
+    /// itself (hangs, leaks). Mirrors Call::DebugListProcesses (call.cpp:1092).
+    fn debug_list_processes(&mut self, _fds: &[RawFd]) -> Result<ReplyDebugListProcesses, i32> {
+        extern "C" {
+            fn dtape_debug_task_port_count(task: *mut crate::bindings::dtape_task_t) -> u64;
+        }
+        // Matches dserver_debug_process_t (dserverdbg.c:336 reads pid:%u, port_count:%lu): u32 then
+        // 4 bytes pad then u64 = 16 bytes under repr(C), exactly what the reader expects.
+        #[repr(C)]
+        struct DebugProcess {
+            pid: u32,
+            port_count: u64,
+        }
+        let mut pipes = [0 as RawFd; 2];
+        if unsafe { libc::pipe(pipes.as_mut_ptr()) } < 0 {
+            return Err(-std::io::Error::last_os_error().raw_os_error().unwrap_or(libc::EMFILE));
+        }
+        let (rd, wr) = (pipes[0], pipes[1]);
+        let mut count = 0u64;
+        let nsids: Vec<u32> = self.procs.keys().copied().collect();
+        for nsid in nsids {
+            let task = crate::sched::task_for_nsid(nsid);
+            let port_count = if task.is_null() {
+                0
+            } else {
+                unsafe { dtape_debug_task_port_count(task) }
+            };
+            let entry = DebugProcess { pid: nsid, port_count };
+            unsafe {
+                libc::write(wr, &entry as *const _ as *const libc::c_void, std::mem::size_of::<DebugProcess>());
+            }
+            count += 1;
+        }
+        unsafe { libc::close(wr) };
+        self.reply_fds.push(rd);
+        Ok(ReplyDebugListProcesses { process_count: count, fd: 0 })
+    }
+
     /// Copy the process's vchroot (container root) path into the caller's buffer; reply
     /// carries the untruncated length.
     fn vchroot_path(&mut self, call: &CallVchrootPath, _fds: &[RawFd]) -> Result<ReplyVchrootPath, i32> {
