@@ -427,9 +427,28 @@ daemon**: clang's `libLLVM.dylib` (LLVM 21, built for macOS 14) references
 `std::__1::__libcpp_verbose_abort` (`__ZNSt3__122__libcpp_verbose_abortEPKcz`), a newer
 libc++ symbol that darling's bundled `/usr/lib/libc++.1.dylib` does not export, so dyld
 fails the lookup -> `abort_with_payload` -> the `Abort trap: 6`. That is a darling **guest
-libc++ symbol gap** (task #10, "grind the libSystem symbol gap"), identical under the C++
-daemon. So the daemon side of M1 -- hosting nix, driving the compile, servicing S2C -- is
-done; completing M1 needs the guest libc++ updated, which is orthogonal to the daemon.
+libc++ symbol gap** (task #10), identical under the C++ daemon.
+
+**With that guest gap worked around, the build now runs FAR past the compiler probe.** A
+host-linked wrapper `libc++.1.dylib` (defines `__libcpp_verbose_abort` -> `abort()`,
+`-reexport_library`s the renamed original via the darling-ld64 Mach-O linker; see
+scripts) was staged into the runtime, and clang loads: `checking whether the C compiler
+works... yes`, cross-compile/GNU-C checks pass, and configure proceeds through hundreds of
+autoconf subprocess checks (1000s of guest exec RPCs). Two further **daemon** fixes were
+needed to get here and are committed: `reap_thread` on checkout (the daemon leaked a parked
+microthread -- two big stacks -- per guest thread, so the build's thousands of subprocesses
+exhausted memory and killed the daemon; now reaped) and `dtape_thread_dying` on checkout
+(tear down a dead thread's Mach state). The daemon stays up through it all.
+
+The build still doesn't reach the compile phase: in the config.status region it hits a
+**Mach-message-routing livelock** -- a guest thread spins `mach_msg_overwrite` polling for a
+reply that never arrives (duct-tape logs the message routed `to pid -1`, a dead/wrong task),
+burning ~15% CPU with no forward progress. The stall point varies run to run (a race, not a
+fixed operation). This is the current frontier: a deep Mach-message-routing/port-cleanup
+issue under sustained multi-process load, distinct from every earlier blocker. So the daemon
+now hosts guest nix and drives a real from-source compile through nearly all of configure --
+an enormous advance over the prior first-clang-call ceiling -- with this Mach-routing
+livelock the remaining thing between here and a fully-completing M1.
 
 The other remaining gaps are narrower: s2c (VM ops the daemon delegates to the guest; not
 hit by any workload tested so far, hooks stubbed to fail safely), mach-port kqchan
