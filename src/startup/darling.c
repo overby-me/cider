@@ -102,6 +102,22 @@ static void enterUserNamespaceAndReexec(char** argv)
 	// If execv returns, it failed; fall through to the caller's error path.
 }
 
+static void killContainer(void);
+// True if `pid`'s mount namespace file can be opened (a prerequisite for joining its
+// container). In the rootless case each launch is a fresh user namespace and cannot open a
+// prior launch's container ns, so this returns false and the caller starts fresh instead of
+// failing with "Cannot open mnt namespace".
+static bool containerJoinable(pid_t pid)
+{
+	char pathNS[4096];
+	snprintf(pathNS, sizeof(pathNS), "/proc/%d/ns/mnt", pid);
+	int fd = open(pathNS, O_RDONLY);
+	if (fd < 0)
+		return false;
+	close(fd);
+	return true;
+}
+
 int main(int argc, char ** argv)
 {
 	pid_t pidInit;
@@ -220,6 +236,22 @@ int main(int argc, char ** argv)
 		kill(launchd_pid, SIGKILL);
 		kill(pidInit, SIGKILL);
 		return 0;
+	}
+
+	// If a container is recorded but we cannot join its mount namespace (the common
+	// rootless case: this launch is in a fresh user namespace and cannot setns into a prior
+	// launch's container), it is useless to us. Tear the stale container down and start a
+	// fresh one instead of aborting with "Cannot open mnt namespace". This lets sequential
+	// `darling` commands work in --no-launchd mode without manually clearing .init.pid.
+	if (pidInit != 0 && !containerJoinable(pidInit))
+	{
+		killContainer();
+		char stalePath[4096];
+		snprintf(stalePath, sizeof(stalePath), "%s/.init.pid", prefix);
+		unlink(stalePath);
+		snprintf(stalePath, sizeof(stalePath), "%s" SHELLSPAWN_SOCKPATH, prefix);
+		unlink(stalePath);
+		pidInit = 0;
 	}
 
 	// If prefix's init is not running, start it up
