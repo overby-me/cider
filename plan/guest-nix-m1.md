@@ -815,3 +815,37 @@ Mitigation (landed): scripts/gnix-build.sh and scripts/gnix-hello.sh retry the
 (darling signal/FP/exec fidelity) is task #44 and is deliberately not attempted
 overnight (it would destabilise the working M1). Reproducing the crash: just
 re-run scripts/build-pkg-bypass.sh hello hello a few times.
+
+### 2026-07-27 update: qlen=16384 is now the host default; -111 overflow mitigated; band-aids vestigial
+
+Re-diagnosed task #44 end to end (Rust rewrite context). Findings:
+
+- **`net.unix.max_dgram_qlen` is already 16384 on this host** (not the 512 default) --
+  fix #1 is effectively applied. Cannot be re-raised in-session (needs root; darling
+  uses the host netns).
+- **Empirical: the -111 overflow does NOT fire under load anymore.** A 160x concurrent
+  clang compile+link+run storm (40 rounds x 4 parallel) completes with **0 failures**
+  under BOTH the C++ and Rust daemons; the daemon stays healthy (34 fds, 27MB, no leak).
+  50x concurrent `hello` and 30x sequential clang also 0 failures. So with qlen=16384 the
+  single-socket DGRAM queue no longer overflows for a hello-scale burst.
+- **The two guest busy-spin band-aids are therefore vestigial here**: `sigexc.c:194-202`
+  (`interrupt_enter_tolerant`) and `mach_traps.c:104-108` (mach_msg `-111` retry). They can
+  be dropped on a qlen=16384 host; on a qlen=512 host they (or a proper fix) are still
+  needed.
+- **The real M1 blocker is NOT the -111.** Both the nix-build M1 and the toolchain M1 reach
+  `configure: creating ./config.status` under the Rust daemon -- clang works through ALL of
+  configure. The stall there is a GUEST-side bash here-doc pipe deadlock (guest blocked in
+  `anon_pipe_write` holding both ends, daemon IDLE), which is distinct from the mono5
+  recv-side RPC deadlock (guest in `recvmsg` for a reply the daemon never sends). See
+  plan/rust-rewrite-eval.md "M1 status 2026-07-27".
+
+**Proper fix so the band-aids can be dropped on ANY host (not just qlen=16384):** the
+daemon must not depend on the host sysctl. SO_RCVBUF (fix #2) does not help -- the AF_UNIX
+DGRAM limit is datagram-COUNT (`sk_max_ack_backlog` from max_dgram_qlen at socket creation),
+not bytes. Options: (a) daemon drains the socket aggressively (recvmmsg in a loop until
+EAGAIN into an internal queue) so the socket queue never backs up regardless of qlen -- the
+"real fix #4", achievable rootless; (b) the container adds CLONE_NEWNET and sets
+max_dgram_qlen high (unprivileged inside a userns-owned netns) -- but that risks guest host
+networking and prior attempts couldn't finish shellspawn in a fresh netns. (a) is the safe
+path; it needs a qlen=512 host to validate the overflow is actually gone (can't lower qlen
+rootless here).
