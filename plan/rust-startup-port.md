@@ -124,3 +124,11 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   threaded into the stack; sp/mh/argc still correct. Next M5b: the jump (mov rsp; xor rbp; jmp
   entry, gated on being a real guest); reorder socket+checkin before the stack for a real kernfd;
   then INTEGRATION -- exec mldr-rs as the guest loader and boot `uname` (the boot-green gate).
+- 2026-07-28 overnight (cont'd): **mldr M5b DONE (code) -- mldr-rs is CODE-COMPLETE**. jump.rs
+  (mov rsp; xor rbp; jmp entry, options(noreturn)). Reordered main: socket+checkin (-> kernfd)
+  -> elfcalls -> start stack -> gated jump (only jumps as a real guest, i.e. __mldr_sockpath set;
+  a test run stops before abandoning the Rust stack). Full flow M0-M5: parse->map->commpage->
+  dyld->checkin->elfcalls->stack->jump. Test run on launchctl flows through cleanly. NEXT:
+  INTEGRATION (the boot-green gate for #65) -- exec mldr-rs as the guest loader + boot a guest.
+  Expect grinding: CPU cap bits (commpage), argv/envp in-place compaction + __mldr_* stripping,
+  the real dserver_socket_address + top-down fd allocator, and the native-pthread thread bridge.

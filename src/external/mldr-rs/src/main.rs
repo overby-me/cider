@@ -12,6 +12,7 @@ use std::os::raw::c_int;
 
 mod commpage;
 mod elfcalls;
+mod jump;
 mod loader;
 mod rpc;
 mod stack;
@@ -139,7 +140,27 @@ fn main() {
             }
             eprintln!("[mldr-rs] FINAL entry={final_entry:#x}");
 
-            // M3c: build the start stack (kernfd/elfcalls placeholders until M4/M5).
+            // M4: create the RPC socket + check in with darlingserver BEFORE the stack, so the
+            // socket fd becomes kernfd in apple[]. stack_hint is the guest stack top.
+            eprintln!(
+                "[mldr-rs] wire: sizeof(RpcCallCheckin)={} (expect 40)",
+                rpc::checkin_call_size()
+            );
+            let mut kernfd: c_int = -1;
+            if let Some(ref sockpath) = special.sockpath {
+                let rpcfd = unsafe { rpc::create_socket() };
+                if rpcfd >= 0 {
+                    kernfd = rpcfd;
+                    let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
+                    eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
+                } else {
+                    eprintln!("[mldr-rs] rpc socket creation failed");
+                }
+            } else {
+                eprintln!("[mldr-rs] (no __mldr_sockpath; skipping checkin)");
+            }
+
+            // M5a + M3c: the elf_calls vtable, then the start stack with the real kernfd/elfcalls.
             let envp: Vec<String> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
             let elfcalls_addr = elfcalls::make();
             eprintln!("[mldr-rs] elf_calls vtable @ {elfcalls_addr:#x}");
@@ -147,7 +168,7 @@ fn main() {
                 stack::setup_stack(
                     0x7fff_ffe0_0000,
                     r.mh,
-                    3,
+                    kernfd,
                     elfcalls_addr,
                     &guest_path,
                     std::slice::from_ref(&guest_path),
@@ -158,25 +179,14 @@ fn main() {
             let argc = unsafe { *((sp + 8) as *const u64) };
             eprintln!("[mldr-rs] stack sp={sp:#x} sp[0](mh)={sp0:#x} argc={argc}");
 
-            // M4: darlingserver checkin. Wire sanity first, then check in if a socket path
-            // was provided (__mldr_sockpath).
-            eprintln!(
-                "[mldr-rs] wire: sizeof(RpcCallCheckin)={} (expect 40)",
-                rpc::checkin_call_size()
-            );
-            if let Some(ref sockpath) = special.sockpath {
-                let rpcfd = unsafe { rpc::create_socket() };
-                if rpcfd >= 0 {
-                    let code = unsafe { rpc::checkin(rpcfd, sockpath, sp) };
-                    eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
-                    // kernfd = rpcfd would feed apple[] here (M5 uses the real socket).
-                } else {
-                    eprintln!("[mldr-rs] rpc socket creation failed");
-                }
+            // M5b: jump into dyld -- only when we are a real guest (checked in). A test run
+            // (no __mldr_sockpath) stops here rather than abandoning the Rust runtime's stack.
+            if special.sockpath.is_some() {
+                eprintln!("[mldr-rs] jumping to entry {final_entry:#x} with sp {sp:#x}");
+                unsafe { jump::jump_to_entry(final_entry, sp) };
             } else {
-                eprintln!("[mldr-rs] (no __mldr_sockpath; skipping checkin)");
+                eprintln!("[mldr-rs] (test run; not jumping -- set __mldr_sockpath to run a guest)");
             }
-            // TODO M5: elfcalls vtable + register setup + jmp to final_entry with sp in %rsp.
         }
         Ok(goblin::mach::Mach::Fat(_fat)) => {
             // TODO: honor bprefs, else prefer CPU_TYPE_X86_64 (mldr.c:340-448).
