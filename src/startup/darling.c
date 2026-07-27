@@ -992,23 +992,13 @@ pid_t spawnInitProcess(void)
 
 		close(pipefd[0]);
 
-		// Cutover (task #50/#55): the Rust darlingserver is now the DEFAULT daemon. Selection:
-		//   DSERVER_IMPL=cpp  -> the C++ daemon (explicit opt-out)
-		//   DSERVER_IMPL=rust -> the Rust daemon (explicit opt-in)
-		//   unset             -> the Rust daemon IF its binary is present, else the C++ daemon
-		// The access() fallback keeps an install that ships only the C++ binary bootable. The Rust
-		// binary lives at bin/rust/darlingserver (a subdir, so its basename -- hence
-		// /proc/<pid>/comm -- stays "darlingserver" and getInitProcess() still recognizes init).
-		const char* dsImpl = getenv("DSERVER_IMPL");
-		const char* rustBin = INSTALL_PREFIX "/bin/rust/darlingserver";
-		const char* cppBin = INSTALL_PREFIX "/bin/darlingserver";
-		const char* dsBin;
-		if (dsImpl && strcmp(dsImpl, "cpp") == 0)
-			dsBin = cppBin;
-		else if (dsImpl && strcmp(dsImpl, "rust") == 0)
-			dsBin = rustBin;
-		else
-			dsBin = (access(rustBin, X_OK) == 0) ? rustBin : cppBin;
+		// The C++ darlingserver has been REMOVED; the Rust rewrite (src/external/darlingserver-rs)
+		// is installed as bin/darlingserver and is the sole daemon. DSERVER_PATH overrides the
+		// binary path (for a dev splice pointing at an alternate build).
+		const char* dsBin = getenv("DSERVER_PATH");
+		if (!dsBin || !*dsBin) {
+			dsBin = INSTALL_PREFIX "/bin/darlingserver";
+		}
 
 		execl(dsBin, "darlingserver", prefix, uid_str, gid_str, pipefd_str, g_fixPermissions ? "1" : "0", NULL);
 

@@ -7,14 +7,17 @@
 #
 #   nix build .#darlingserver-rs
 {
-  pkgs,
+  lib,
+  runCommand,
+  rustPlatform,
+  clang,
   darlingserver,
   src,
 }:
 let
   # Minimal source tree preserving the layout darlingserver-rs/build.rs's relative
   # paths expect (crate + the source headers it bindgens + fast_context.c).
-  crateSrc = pkgs.runCommand "darlingserver-rs-src" { } ''
+  crateSrc = runCommand "darlingserver-rs-src" { } ''
     mkdir -p $out/src/external/darlingserver/duct-tape $out/src/external/darlingserver/src $out/src/libsimple
     cp -r ${src}/src/external/darlingserver-rs $out/src/external/darlingserver-rs
     cp -r ${src}/src/external/darlingserver/duct-tape/include $out/src/external/darlingserver/duct-tape/include
@@ -22,7 +25,7 @@ let
     cp -r ${src}/src/libsimple/include $out/src/libsimple/include
   '';
 in
-pkgs.rustPlatform.buildRustPackage {
+rustPlatform.buildRustPackage {
   pname = "darlingserver-rs";
   version = "0.0.0";
 
@@ -33,8 +36,8 @@ pkgs.rustPlatform.buildRustPackage {
   # bindgenHook sets LIBCLANG_PATH + clang args for the dtape-hooks bindgen; clang
   # also backs the cc crate that compiles fast_context.c.
   nativeBuildInputs = [
-    pkgs.rustPlatform.bindgenHook
-    pkgs.clang
+    rustPlatform.bindgenHook
+    clang
   ];
 
   # Link the prebuilt duct-tape from the standalone daemon build (committed source).
@@ -44,7 +47,7 @@ pkgs.rustPlatform.buildRustPackage {
   # daemon), not `#[test]`s, so there is nothing for `cargo test` to run.
   doCheck = false;
 
-  meta = with pkgs.lib; {
+  meta = with lib; {
     description = "Rust host-side rewrite of darlingserver (Stage 4, work in progress)";
     license = licenses.gpl3Plus;
     platforms = [ "x86_64-linux" ];

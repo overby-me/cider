@@ -83,20 +83,17 @@ stdenv.mkDerivation {
   env.LD_LIBRARY_PATH = ldLibraryPath;
   dontPatchShebangs = true;
 
-  # Build only the daemon target (+ its transitive deps), not `all`.
-  buildFlags = [ "darlingserver" ];
+  # The C++ daemon target was REMOVED (the Rust rewrite is now the daemon); build just the shared
+  # duct-tape + libsimple static libs the Rust daemon links (they no longer get pulled in as deps
+  # of the deleted executable, so name them explicitly instead of relying on `all`).
+  buildFlags = [ "darlingserver_duct_tape" "libsimple_darlingserver" ];
 
-  # darlingserver is a Linux ELF with correct store RPATHs from the cc-wrapper
-  # link; it legitimately references the store (unlike the Darwin root), so no
-  # postFixup store-ref check is needed -- just install the one binary.
   installPhase = ''
     runHook preInstall
-    mkdir -p $out/bin
-    cp src/external/darlingserver/darlingserver $out/bin/darlingserver
 
-    # Export the duct-tape + libsimple static libs for the Rust rewrite
-    # (darlingserver-rs consumes them via DUCT_TAPE_LIB). Built from committed
-    # source here, so a pure `nix build .#darlingserver-rs` works.
+    # This package now only exports the duct-tape + libsimple static libs for the Rust rewrite
+    # (darlingserver-rs consumes them via DUCT_TAPE_LIB). Built from committed source here, so a
+    # pure `nix build .#darlingserver-rs` works.
     mkdir -p $out/rust-consume/lib
     find . -name 'libdarlingserver_duct_tape.a' -exec cp -v {} $out/rust-consume/lib/ \; || true
     find . -name 'liblibsimple_darlingserver.a'  -exec cp -v {} $out/rust-consume/lib/ \; || true

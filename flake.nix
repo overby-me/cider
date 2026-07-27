@@ -143,8 +143,7 @@
       #   nix build .#darlingserver-rs
       packages.darlingserver-rs =
         pkgs:
-        import ./nix/darlingserver-rs.nix {
-          inherit pkgs;
+        pkgs.callPackage ./nix/darlingserver-rs.nix {
           darlingserver = pkgs.darlingserver;
           src = ./.;
         };

@@ -17,6 +17,14 @@ let
     ldLibraryPath
     nixCflags
     ;
+
+  # The C++ daemon was removed; build the Rust rewrite (and the standalone darlingserver that
+  # produces the duct-tape libs it links) so postInstall can install it as bin/darlingserver.
+  darlingserverStandalone = callPackage ./darlingserver.nix { inherit src; };
+  darlingserverRust = callPackage ./darlingserver-rs.nix {
+    inherit src;
+    darlingserver = darlingserverStandalone;
+  };
 in
 stdenv.mkDerivation {
   pname = "darling";
@@ -122,6 +130,12 @@ stdenv.mkDerivation {
     find . -name 'libdarlingserver_duct_tape.a' -exec cp -v {} $out/rust-consume/lib/ \; || true
     find . -name 'liblibsimple_darlingserver.a'  -exec cp -v {} $out/rust-consume/lib/ \; || true
     echo "rust-consume export:"; ls -la $out/rust-consume/lib/ || true
+
+    # The C++ darlingserver was REMOVED; install the Rust rewrite as bin/darlingserver (the launcher
+    # execs INSTALL_PREFIX/bin/darlingserver; the plain name keeps /proc/<pid>/comm "darlingserver"
+    # so getInitProcess() recognizes the container init).
+    mkdir -p $out/bin
+    cp ${darlingserverRust}/bin/darlingserverd $out/bin/darlingserver
   '';
 
   postFixup = ''
