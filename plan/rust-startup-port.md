@@ -62,3 +62,11 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   L0-L5 for the NON-interactive path. NOT yet flipped (C still default; main bootable).
   Next -- Phase B: PTY/interactive path, signal forwarding (self-pipe), startup watchdog
   killContainer; then L6 flip (`darling` -> Rust via nix/package.nix + splice) + push.
+- 2026-07-28 overnight (cont'd): **darling.c Phase B DONE** -- interactive PTY path
+  (openpty/raw-mode/winsize), signal forwarding via a safe self-pipe (not the C's
+  malloc-in-signal-handler), startup watchdog + killContainer. Also ds_bin_path now
+  resolves the daemon NEXT TO the launcher binary (relocatable, no baked prefix). Validated:
+  non-interactive 8/8 stress clean (avg 396ms) + interactive PTY 3/3 (exit code 7 + guest
+  output both correct, via an openpty harness). Launcher is a FULL replacement now.
+  Next: L6 flip (nix/darling-launcher-rs.nix + package.nix, validate via full build) + push,
+  then Part 2 (mldr).

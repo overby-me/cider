@@ -17,6 +17,7 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
 // ---- compile-time config (darling-config.h / shellspawn.h) ----
 const SYSTEM_ROOT: &str = "/Volumes/SystemRoot";
@@ -33,6 +34,16 @@ const SHELLSPAWN_GO: u16 = 4;
 const SHELLSPAWN_SIGNAL: u16 = 5;
 const SHELLSPAWN_SETUIDGID: u16 = 6;
 const SHELLSPAWN_SETEXEC: u16 = 7;
+
+// Globals for the interactive proxy (Phase B): the signal self-pipe, the pty master, and
+// the shellspawn socket, so the async-signal handler and the atexit termios-restore can
+// reach them without threading state through the loop.
+static SELF_PIPE_R: AtomicI32 = AtomicI32::new(-1);
+static SELF_PIPE_W: AtomicI32 = AtomicI32::new(-1);
+static PTY_MASTER: AtomicI32 = AtomicI32::new(-1);
+static SHSOCK: AtomicI32 = AtomicI32::new(-1);
+static TERMIOS_SAVED: AtomicBool = AtomicBool::new(false);
+static mut ORIG_TERMIOS: std::mem::MaybeUninit<libc::termios> = std::mem::MaybeUninit::uninit();
 
 /// Launcher-wide state, the C globals g_originalUid/Gid/workingDirectory/fixPermissions.
 struct Ctx {
@@ -482,10 +493,22 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
 }
 
 fn ds_bin_path() -> String {
-    match std::env::var("DSERVER_PATH") {
-        Ok(p) if !p.is_empty() => p,
-        _ => format!("{INSTALL_PREFIX}/bin/darlingserver"),
+    if let Ok(p) = std::env::var("DSERVER_PATH") {
+        if !p.is_empty() {
+            return p;
+        }
     }
+    // Resolve the daemon next to our own binary (same bin/ dir) -- relocatable, so the
+    // installed launcher needs no baked absolute prefix. Falls back to INSTALL_PREFIX.
+    if let Ok(exe) = std::fs::read_link("/proc/self/exe") {
+        if let Some(dir) = exe.parent() {
+            let cand = dir.join("darlingserver");
+            if cand.exists() {
+                return cand.to_string_lossy().into_owned();
+            }
+        }
+    }
+    format!("{INSTALL_PREFIX}/bin/darlingserver")
 }
 
 fn put_init_pid(ctx: &Ctx, pid: i32) {
@@ -553,9 +576,10 @@ fn spawn_shell(ctx: &Ctx, args: &[String]) -> ! {
     }
     setup_working_dir(ctx, sockfd);
     setup_ids(ctx, sockfd);
-    let fds = setup_fds();
+    let (fds, master) = setup_fds();
+    install_signal_forwarding(sockfd, master);
     spawn_go(sockfd, &fds);
-    shell_loop(sockfd)
+    shell_loop(ctx, sockfd, master)
 }
 
 fn spawn_binary(ctx: &Ctx, binary: &str, args: &[String]) -> ! {
@@ -567,9 +591,10 @@ fn spawn_binary(ctx: &Ctx, binary: &str, args: &[String]) -> ! {
     }
     setup_working_dir(ctx, sockfd);
     setup_ids(ctx, sockfd);
-    let fds = setup_fds();
+    let (fds, master) = setup_fds();
+    install_signal_forwarding(sockfd, master);
     spawn_go(sockfd, &fds);
-    shell_loop(sockfd)
+    shell_loop(ctx, sockfd, master)
 }
 
 fn connect_shellspawn(ctx: &Ctx) -> c_int {
@@ -653,11 +678,19 @@ fn setup_ids(ctx: &Ctx, fd: c_int) {
     push_cmd(fd, SHELLSPAWN_SETUIDGID, bytes);
 }
 
-/// PHASE A: non-interactive -- pass our stdio directly (darling.c setupFDs, non-tty
-/// branch). The guest holds our real fds, so its output reaches us with no proxying.
-/// PHASE B replaces the isatty() branch with a real PTY.
-fn setup_fds() -> [c_int; 3] {
-    unsafe { [libc::dup(0), libc::dup(1), libc::dup(2)] }
+/// setupFDs/setupPtys (darling.c:655-838). Interactive (isatty(stdin)): allocate a PTY,
+/// raw-mode our terminal, hand the slave to the guest as all three fds, keep the master.
+/// Non-interactive: pass our real stdio directly. Returns (guest_fds, pty_master|-1).
+fn setup_fds() -> ([c_int; 3], c_int) {
+    unsafe {
+        if libc::isatty(0) == 1 {
+            let (master, slave) = openpty_darling();
+            setup_raw_termios(master);
+            ([slave, slave, slave], master)
+        } else {
+            ([libc::dup(0), libc::dup(1), libc::dup(2)], -1)
+        }
+    }
 }
 
 fn spawn_go(fd: c_int, fds: &[c_int; 3]) {
@@ -693,24 +726,25 @@ fn send_go_with_fds(fd: c_int, fds: &[c_int; 3]) {
     }
 }
 
-/// PHASE A shell_loop: non-interactive, so only the socket matters (darling.c fdcount=1
-/// when the pty master is -1). Wait for the 1-byte "started" marker, then the 4-byte
-/// exit status. PHASE B adds stdin/master polling + signal forwarding + killContainer.
-fn shell_loop(sockfd: c_int) -> ! {
+/// The proxy loop (darling.c shellLoop:491-621). Poll fds: [0]=sockfd, [1]=signal
+/// self-pipe, and for an interactive PTY [2]=stdin, [3]=master. Non-interactive keeps
+/// only sockfd + self-pipe (the guest holds our real fds directly). Watchdog bounds the
+/// pre-"started" wait (DARLING_SHELL_STARTUP_TIMEOUT, default 60s) then killContainer +
+/// exit(120) so a captured stdout pipe is released.
+fn shell_loop(ctx: &Ctx, sockfd: c_int, master: c_int) -> ! {
+    let pipe_r = SELF_PIPE_R.load(Ordering::SeqCst);
     let mut started = false;
     let startup_to = startup_timeout();
     loop {
-        let mut pfd = libc::pollfd {
-            fd: sockfd,
-            events: libc::POLLIN,
-            revents: 0,
-        };
-        let timeout = if started || startup_to <= 0 {
-            -1
-        } else {
-            startup_to * 1000
-        };
-        let r = unsafe { libc::poll(&mut pfd, 1, timeout) };
+        let mut pfds = [
+            libc::pollfd { fd: sockfd, events: libc::POLLIN, revents: 0 },
+            libc::pollfd { fd: pipe_r, events: libc::POLLIN, revents: 0 },
+            libc::pollfd { fd: if master != -1 { 0 } else { -1 }, events: libc::POLLIN, revents: 0 },
+            libc::pollfd { fd: master, events: libc::POLLIN, revents: 0 },
+        ];
+        let n: libc::nfds_t = if master != -1 { 4 } else { 2 };
+        let timeout = if started || startup_to <= 0 { -1 } else { startup_to * 1000 };
+        let r = unsafe { libc::poll(pfds.as_mut_ptr(), n, timeout) };
         if r < 0 {
             if errno() == libc::EINTR {
                 continue;
@@ -719,25 +753,191 @@ fn shell_loop(sockfd: c_int) -> ! {
         }
         if r == 0 && !started {
             eprintln!("darling: timed out waiting for the guest program to start");
-            std::process::exit(120);
+            kill_container(ctx);
+            exit_clean(120);
         }
-        if pfd.revents & (libc::POLLIN | libc::POLLHUP) != 0 {
+        // pty master -> our stdout
+        if master != -1 && pfds[3].revents & (libc::POLLIN | libc::POLLHUP) != 0 {
+            pump(master, 1);
+        }
+        // our stdin -> pty master
+        if master != -1 && pfds[2].revents & libc::POLLIN != 0 {
+            pump(0, master);
+        }
+        // forwarded signals
+        if pfds[1].revents & libc::POLLIN != 0 {
+            drain_signals(pipe_r, master);
+        }
+        // socket: the 1-byte started marker, then the 4-byte exit status
+        if pfds[0].revents & (libc::POLLIN | libc::POLLHUP) != 0 {
             if !started {
                 let mut b = [0u8; 1];
-                let n = unsafe { libc::read(sockfd, b.as_mut_ptr() as *mut c_void, 1) };
-                if n == 1 {
+                let rn = unsafe { libc::read(sockfd, b.as_mut_ptr() as *mut c_void, 1) };
+                if rn == 1 {
                     started = true;
-                    continue;
+                } else {
+                    exit_clean(1); // EOF before the started marker
                 }
-                std::process::exit(1); // EOF before the started marker
+            } else {
+                let mut st = [0u8; 4];
+                if read_full(sockfd, &mut st) == 4 {
+                    exit_clean(i32::from_le_bytes(st));
+                }
+                exit_clean(1);
             }
-            let mut st = [0u8; 4];
-            if read_full(sockfd, &mut st) == 4 {
-                std::process::exit(i32::from_le_bytes(st));
-            }
-            std::process::exit(1);
         }
     }
+}
+
+// ===================== interactive PTY + signals (Phase B) =====================
+
+unsafe fn openpty_darling() -> (c_int, c_int) {
+    // Lenient openpty (darling.c:630-653): tolerate grantpt EPERM (Debian).
+    let master = libc::posix_openpt(libc::O_RDWR);
+    if master < 0 {
+        die("posix_openpt() failed");
+    }
+    libc::grantpt(master); // return ignored on purpose
+    if libc::unlockpt(master) != 0 {
+        die("unlockpt() failed");
+    }
+    let name = libc::ptsname(master);
+    if name.is_null() {
+        die("ptsname() failed");
+    }
+    let slave = libc::open(name, libc::O_RDWR | libc::O_NOCTTY);
+    if slave < 0 {
+        die("open(pts slave) failed");
+    }
+    (master, slave)
+}
+
+fn setup_raw_termios(master: c_int) {
+    unsafe {
+        let mut orig: libc::termios = std::mem::zeroed();
+        if libc::tcgetattr(0, &mut orig) != 0 {
+            return;
+        }
+        ORIG_TERMIOS.write(orig);
+        TERMIOS_SAVED.store(true, Ordering::SeqCst);
+        libc::atexit(restore_termios);
+        // Raw mode (darling.c:655-693).
+        let mut raw = orig;
+        raw.c_lflag &= !(libc::ICANON | libc::ISIG | libc::IEXTEN | libc::ECHO);
+        raw.c_iflag &= !(libc::BRKINT
+            | libc::ICRNL
+            | libc::IGNBRK
+            | libc::IGNCR
+            | libc::INLCR
+            | libc::INPCK
+            | libc::ISTRIP
+            | libc::IXON
+            | libc::PARMRK);
+        raw.c_oflag &= !libc::OPOST;
+        raw.c_cc[libc::VMIN] = 1;
+        raw.c_cc[libc::VTIME] = 0;
+        libc::tcsetattr(0, libc::TCSANOW, &raw);
+        // Push our window size to the master.
+        let mut ws: libc::winsize = std::mem::zeroed();
+        if libc::ioctl(0, libc::TIOCGWINSZ, &mut ws) == 0 {
+            libc::ioctl(master, libc::TIOCSWINSZ, &ws);
+        }
+    }
+}
+
+extern "C" fn restore_termios() {
+    if TERMIOS_SAVED.load(Ordering::SeqCst) {
+        unsafe {
+            let t = ORIG_TERMIOS.assume_init_ref();
+            libc::tcsetattr(0, libc::TCSANOW, t);
+        }
+    }
+}
+
+/// Install a self-pipe + a handler for signals 1..31 (darling.c:501-506). The handler
+/// only writes the signal number to the pipe (async-signal-safe), and the poll loop
+/// forwards it -- avoiding the C handler's malloc-in-signal-context (map 3.6).
+fn install_signal_forwarding(sockfd: c_int, master: c_int) {
+    let mut pipefd = [0 as c_int; 2];
+    if unsafe { libc::pipe(pipefd.as_mut_ptr()) } != 0 {
+        return;
+    }
+    unsafe { libc::fcntl(pipefd[1], libc::F_SETFL, libc::O_NONBLOCK) };
+    SELF_PIPE_R.store(pipefd[0], Ordering::SeqCst);
+    SELF_PIPE_W.store(pipefd[1], Ordering::SeqCst);
+    SHSOCK.store(sockfd, Ordering::SeqCst);
+    PTY_MASTER.store(master, Ordering::SeqCst);
+    let mut sa: libc::sigaction = unsafe { std::mem::zeroed() };
+    sa.sa_sigaction = handle_signal as extern "C" fn(c_int) as libc::sighandler_t;
+    unsafe { libc::sigfillset(&mut sa.sa_mask) };
+    sa.sa_flags = 0;
+    for sig in 1..32 {
+        // KILL/STOP cannot be caught -- those sigaction calls fail harmlessly.
+        unsafe { libc::sigaction(sig, &sa, std::ptr::null_mut()) };
+    }
+}
+
+extern "C" fn handle_signal(sig: c_int) {
+    let w = SELF_PIPE_W.load(Ordering::SeqCst);
+    if w >= 0 {
+        let b = [sig as u8];
+        unsafe { libc::write(w, b.as_ptr() as *const c_void, 1) };
+    }
+}
+
+fn drain_signals(pipe_r: c_int, master: c_int) {
+    let mut buf = [0u8; 64];
+    let n = unsafe { libc::read(pipe_r, buf.as_mut_ptr() as *mut c_void, buf.len()) };
+    if n <= 0 {
+        return;
+    }
+    let sockfd = SHSOCK.load(Ordering::SeqCst);
+    for &sig in &buf[..n as usize] {
+        let signo = sig as c_int;
+        if signo == libc::SIGWINCH && master != -1 {
+            // Copy our new window size to the master (darling.c:431-437).
+            let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
+            unsafe {
+                if libc::ioctl(0, libc::TIOCGWINSZ, &mut ws) == 0 {
+                    libc::ioctl(master, libc::TIOCSWINSZ, &ws);
+                }
+            }
+        } else {
+            // Non-pty SIGINT -> SIGTERM (bash ignores a forwarded SIGINT) (darling.c:443-447).
+            let s = if master == -1 && signo == libc::SIGINT {
+                libc::SIGTERM
+            } else {
+                signo
+            };
+            push_cmd(sockfd, SHELLSPAWN_SIGNAL, &(s as i32).to_le_bytes());
+        }
+    }
+}
+
+fn pump(from: c_int, to: c_int) {
+    let mut buf = [0u8; 4096];
+    let n = unsafe { libc::read(from, buf.as_mut_ptr() as *mut c_void, buf.len()) };
+    if n > 0 {
+        let mut off = 0isize;
+        while off < n {
+            let w = unsafe {
+                libc::write(
+                    to,
+                    buf.as_ptr().offset(off) as *const c_void,
+                    (n - off) as usize,
+                )
+            };
+            if w <= 0 {
+                break;
+            }
+            off += w;
+        }
+    }
+}
+
+fn exit_clean(code: i32) -> ! {
+    restore_termios();
+    std::process::exit(code);
 }
 
 // ============================= small helpers =============================
