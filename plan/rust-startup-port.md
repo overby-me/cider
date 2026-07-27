@@ -89,3 +89,9 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   release), the useprot protection quirk, two-phase BSS (anon then file overlay), __PAGEZERO
   tolerance. Validated on dyld: slide 0x79d5e02c5000, mapped mach_header reads magic=0xfeedfacf.
   Next M3: recursive dyld load (LC_LOAD_DYLINKER) + commpage (SIGFPE fix) + start stack.
+- 2026-07-28 overnight (cont'd): **#64 launcher FLIP validated + PUSHED** (full nix build
+  exit 0; bin/darling=Rust launcher, bin/darlingserver=Rust daemon; main=d95ac20b). darling.c
+  port COMPLETE (#64 closed). **mldr M3a DONE**: commpage.rs maps the commpage at 0x7fffffe00000
+  (signature/version/CPU-counts/page-shifts/memsize); counts use CONF->ONLN->1 so never 0 (the
+  SIGFPE fix). Validated on dyld: sig="commpage 64-bit", ncpu=22. CPU capability bits = TODO
+  (need cpu_capabilities.h). Next M3b: recursive dyld load (LC_LOAD_DYLINKER); M3c: start stack.

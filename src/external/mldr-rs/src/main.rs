@@ -10,6 +10,7 @@
 use std::ffi::CString;
 use std::os::raw::c_int;
 
+mod commpage;
 mod loader;
 
 fn cstr(s: &str) -> CString {
@@ -74,6 +75,17 @@ fn main() {
                 macho.entry,
                 macho.load_commands.len()
             );
+            // M3a: set up the commpage (setup_space does this first).
+            let cp = unsafe { commpage::setup() };
+            let sig = unsafe { std::ffi::CStr::from_ptr(cp as *const std::os::raw::c_char) }
+                .to_string_lossy()
+                .into_owned();
+            eprintln!(
+                "[mldr-rs] commpage@{:#x} sig={sig:?} ncpu={}",
+                cp as u64,
+                unsafe { *cp.add(0x22) }
+            );
+
             // M2: map the segments at vmaddr+slide (raw mmap from the fd).
             let path_c = cstr(&guest_path);
             let fd = unsafe { libc::open(path_c.as_ptr(), libc::O_RDONLY) };
