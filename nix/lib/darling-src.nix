@@ -1,11 +1,12 @@
 # darling-src.nix - assemble Darling's source tree from nix-pinned submodules
 # instead of git submodules (task #23, the "off git submodules" move).
 #
-# Darling vendors 147 trees as git submodules. Building today needs either
-# `git submodule update --recursive` or a dirty `nix build .?submodules=1`, both
-# of which fetch outside nix and are not content-addressed. This function instead
-# reads nix/submodules.json (produced by scripts/gen-submodule-manifest.sh) and
-# for every entry with a pinned `hash` fetches it with fetchFromGitHub, then
+# Darling vendors 147 trees that used to be git submodules; they were removed
+# (task #71) so nix is the sole source path -- no `git submodule update`, no dirty
+# `nix build .?submodules=1`, both of which fetch outside nix and are not content-
+# addressed. This function reads nix/submodules.json (the hand-maintained pin
+# manifest; its `hash` fields are filled by scripts/prefetch-submodule-hashes.sh)
+# and for every entry with a pinned `hash` fetches it with fetchFromGitHub, then
 # overlays it onto a base tree and applies patches/<name>/*.patch. The result is
 # a complete, content-addressed Darling source tree with no git submodule step.
 #
