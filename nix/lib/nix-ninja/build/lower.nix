@@ -947,7 +947,11 @@ in {
     #   the per-edge behaviour (each edge its own group).
     lowerGroupsBy = groupOf: let
       realIds = filter (i: !(isNoOp (elemAt edges i))) (indices edges);
-      gidOf = listToAttrs (map (i: {name = toString i; value = groupOf i;}) realIds);
+      # groupOf receives the EDGE (has .rule/.outputs/.command) so a caller can group
+      # by rule or output path. The grouping MUST be acyclic across groups: a group
+      # drv depends on its external dependency groups' drvs, so a cycle is an infinite
+      # Nix-eval recursion (component-dag condenses SCCs to guarantee this).
+      gidOf = listToAttrs (map (i: {name = toString i; value = groupOf (elemAt edges i);}) realIds);
       gid = i: gidOf.${toString i};
       groupIds = lib.unique (map gid realIds);
       idsInGroup = listToAttrs (map (g: {

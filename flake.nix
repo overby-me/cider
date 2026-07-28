@@ -212,6 +212,41 @@
           grouping = _: "all";
         };
 
+      # #78 second test: split migcom's closure into TWO groups to exercise
+      # EXTERNAL-group staging (a group symlinking another group's outputs). The
+      # bison/flex CUSTOM_COMMANDs (lexer.c/parser.c) go in group "gen"; the compiles
+      # and link go in "main". "main" consumes gen's generated lexer.c/parser.c, so it
+      # depends on the "gen" group's output derivation (acyclic: gen needs only
+      # sources). Validates cp -rs of an upstream group before real per-component.
+      #   nix build .#darling-group-test2
+      packages.darling-group-test2 =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget {
+          target = "src/external/bootstrap_cmds/migcom";
+          grouping = e: if (e.rule or "") == "CUSTOM_COMMAND" then "gen" else "main";
+        };
+
+      # #78 third test: the REAL per-component grouping (componentGrouping) -- each
+      # CMake target is its own input-isolated group, links inherit their compiles'
+      # target. On migcom this yields the ::migcom group (compiles+link) depending on
+      # the bootstrap_cmds gen group (lexer.c/parser.c). Same engine, real grouping fn.
+      #   nix build .#darling-group-test3
+      packages.darling-group-test3 =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          target = "src/external/bootstrap_cmds/migcom";
+          grouping = dn.componentGrouping;
+        };
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes

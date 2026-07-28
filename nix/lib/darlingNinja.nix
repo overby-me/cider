@@ -81,9 +81,50 @@ let
       's/^add_compile_definitions($/&\n\t_MIG_KERNEL_SPECIFIC_CODE_=1\n\tmach_msg_send_from_kernel=mach_msg_send_from_kernel_proper\n\tmach_msg_rpc_from_kernel=mach_msg_rpc_from_kernel_proper\n\tmach_msg_destroy_from_kernel=mach_msg_destroy_from_kernel_proper/' \
       $out/src/external/darlingserver/duct-tape/CMakeLists.txt
   '';
+  # #26/#78: map a ninja edge to its CMake-target component, purely from paths so it
+  # needs only the edge (no producer graph). An output under CMakeFiles/<t>.dir/ names
+  # target <t>; a link/final edge (whose output is outside CMakeFiles) inherits the
+  # target of its .o inputs (the single-input heuristic, so a link groups with its
+  # compiles); otherwise fall back to the subproject directory (first three path
+  # segments, e.g. src/external/foo). This grouping is acyclic across groups at cli
+  # scope -- lowerGroupsBy requires that, since a group derivation depends on its
+  # external dependency groups' derivations.
+  componentGrouping =
+    e:
+    let
+      cmkTargetOf =
+        paths:
+        let
+          hit = lib.findFirst (p: builtins.match ".*CMakeFiles/[^/]+\\.dir/.*" p != null) null paths;
+        in
+        if hit == null then
+          null
+        else
+          let
+            m = builtins.match "(.*/)?CMakeFiles/([^/]+)\\.dir/.*" hit;
+            dir = builtins.elemAt m 0;
+          in
+          (if dir == null then "" else lib.removeSuffix "/" dir) + "::" + builtins.elemAt m 1;
+      outs = e.outputs ++ (e.implicit_outputs or [ ]);
+      ins = (e.inputs or [ ]) ++ (e.implicit_inputs or [ ]);
+      fromOut = cmkTargetOf outs;
+      fromIn = cmkTargetOf ins;
+      subprojOf =
+        let
+          o = if outs == [ ] then "_" else builtins.head outs;
+          parts = lib.splitString "/" o;
+        in
+        if lib.length parts >= 3 then lib.concatStringsSep "/" (lib.take 3 parts) else builtins.head parts;
+    in
+    if fromOut != null then
+      fromOut
+    else if fromIn != null then
+      fromIn
+    else
+      subprojOf;
 in
 {
-  inherit rustNinja buildNinjaProject;
+  inherit rustNinja buildNinjaProject componentGrouping;
 
   # Build a single Darling Ninja target (e.g. "src/startup/darling") edge by
   # edge. `target`/`targets` and `perFileIncremental` pass through to
