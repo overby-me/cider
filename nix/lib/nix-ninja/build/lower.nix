@@ -980,9 +980,50 @@ in {
       # by rule or output path. The grouping MUST be acyclic across groups: a group
       # drv depends on its external dependency groups' drvs, so a cycle is an infinite
       # Nix-eval recursion (component-dag condenses SCCs to guarantee this).
-      gidOf = listToAttrs (map (i: {name = toString i; value = groupOf (elemAt edges i);}) realIds);
-      gid = i: gidOf.${toString i};
-      groupIds = lib.unique (map gid realIds);
+      # Raw per-edge grouping from the caller's groupOf.
+      rawGidOf = listToAttrs (map (i: {name = toString i; value = groupOf (elemAt edges i);}) realIds);
+      rawGid = i: rawGidOf.${toString i};
+      rawGroupIds = lib.unique (map rawGid realIds);
+      rawIdsInGroup = listToAttrs (map (g: {
+          name = g;
+          value = filter (i: rawGid i == g) realIds;
+        }) rawGroupIds);
+      # SCC CONDENSATION. A group derivation depends on its external dependency groups'
+      # derivations, so the group graph MUST be acyclic or Nix eval infinitely recurses
+      # (group A -> B -> A). A path-based grouping (componentGrouping) can produce cyclic
+      # groups -- two CMake targets that link each other, common in libc/libsystem. So
+      # merge each strongly-connected set of groups into one derivation (the condensation
+      # of a digraph is always a DAG). rawGroupDeps: g -> h when an edge in g consumes an
+      # output produced by an edge in h.
+      rawGroupDeps = listToAttrs (map (g: {
+        name = g;
+        value = lib.unique (filter (h: h != g)
+          (map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
+            rawIdsInGroup.${g})));
+      }) rawGroupIds);
+      # Transitive closure reach.${g} = every group reachable from g (fixpoint expand).
+      # normalise (sorted unique) so list equality is order-independent -- otherwise
+      # the fixpoint's `acc' == acc` may never hold (unique keeps insertion order,
+      # which oscillates) and the closure loops forever.
+      reach = let
+        norm = xs: builtins.sort (a: b: a < b) (lib.unique xs);
+        expand = acc: let
+          acc' = lib.mapAttrs (_g: rs: norm (rs ++ concatMap (h: acc.${h} or []) rs)) acc;
+        in if acc' == acc then acc else expand acc';
+      in expand (lib.mapAttrs (_g: norm) rawGroupDeps);
+      # g and h are one SCC iff each reaches the other; the canonical merged id is the
+      # lexicographically smallest member. Memoise per raw group (sccRepOf is consulted
+      # once per edge via gid, so recomputing the O(groups) scan each time would be
+      # O(edges * groups)).
+      sccRep = listToAttrs (map (g: {
+        name = g;
+        value = builtins.head (builtins.sort (a: b: a < b)
+          ([g] ++ filter (h: h != g && elem h (reach.${g} or []) && elem g (reach.${h} or []))
+            rawGroupIds));
+      }) rawGroupIds);
+      # Effective grouping = raw grouping condensed through SCC representatives.
+      gid = i: sccRep.${rawGid i};
+      groupIds = lib.unique (builtins.attrValues sccRep);
       idsInGroup = listToAttrs (map (g: {
           name = g;
           value = filter (i: gid i == g) realIds;
