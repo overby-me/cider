@@ -37,22 +37,7 @@ stdenv.mkDerivation {
   # Identical configure prep to package.nix so the tree configures byte-for-byte
   # the same (patches, mig shebang, darlingserver scripts).
   postPatch = ''
-    for dir in patches/*/; do
-      [ -d "$dir" ] || continue
-      target="src/external/$(basename "$dir")"
-      if [ ! -d "$target" ]; then
-        echo "patches: no submodule dir for $dir" >&2
-        exit 1
-      fi
-      for p in "$dir"*.patch; do
-        [ -e "$p" ] || continue
-        if patch -R -p1 -d "$target" --dry-run --force --silent < "$p" >/dev/null 2>&1; then
-          echo "patch $p: already applied"
-        else
-          patch -p1 -d "$target" --force < "$p"
-        fi
-      done
-    done
+    # Submodule patches are pre-applied by darling-src.nix; no patch loop needed here.
 
     chmod +x src/external/bootstrap_cmds/migcom.tproj/mig.sh
     patchShebangs \

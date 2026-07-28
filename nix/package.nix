@@ -45,26 +45,8 @@ stdenv.mkDerivation {
   ];
 
   postPatch = ''
-    # Apply local submodule patches (patches/<submodule-dir-basename>/*.patch).
-    # A dirty-tree flake build may already contain applied patches (the
-    # init-submodules script applies them in the working tree), so detect
-    # that case with a reverse dry-run and skip.
-    for dir in patches/*/; do
-      [ -d "$dir" ] || continue
-      target="src/external/$(basename "$dir")"
-      if [ ! -d "$target" ]; then
-        echo "patches: no submodule dir for $dir" >&2
-        exit 1
-      fi
-      for p in "$dir"*.patch; do
-        [ -e "$p" ] || continue
-        if patch -R -p1 -d "$target" --dry-run --force --silent < "$p" >/dev/null 2>&1; then
-          echo "patch $p: already applied"
-        else
-          patch -p1 -d "$target" --force < "$p"
-        fi
-      done
-    done
+    # Submodule patches (patches/<name>/*) are pre-applied by darling-src.nix when it
+    # assembles the source tree (this package's src), so no patch loop is needed here.
 
     # Be careful -- patching everything indiscriminately
     # would affect Darwin scripts as well.

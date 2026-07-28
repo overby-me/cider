@@ -32,9 +32,24 @@
       # check to fail on `diff` of missing files.
       flakelight.builtinFormatters = false;
 
-      # Default package is autoloaded from ./nix/package.nix
       # Default devShell is autoloaded from ./nix/devShell.nix
       # NixOS module is autoloaded from ./nix/nixosModule.nix
+
+      # The default package (the full Darling) is built from the off-submodules
+      # darling-src tree (nix-fetched submodule pins) rather than git submodules, so a
+      # plain `nix build` needs no ?submodules=1. mkForce overrides flakelight's autoload
+      # of ./nix/package.nix (which injects the raw ./. flake source -- submodule dirs
+      # empty without ?submodules=1). The build is identical; only the source assembly
+      # differs. See nix/lib/darling-src.nix (147/147 pins).
+      packages.default = inputs.nixpkgs.lib.mkForce (
+        pkgs:
+        pkgs.callPackage ./nix/package.nix {
+          src = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+        }
+      );
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
