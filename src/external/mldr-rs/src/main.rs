@@ -116,9 +116,32 @@ fn main() {
                 let magic = unsafe { *(r.mh as *const u32) };
                 eprintln!("[mldr-rs] mapped mach_header magic={magic:#x} (expect 0xfeedfacf)");
             }
-            // M3b: recursive dyld load (LC_LOAD_DYLINKER). dyld's entry becomes the real
-            // jump target. The dylinker path is a Mac path needing vchroot (root_path from
-            // M4); MLDR_ROOT_PATH lets us test before the checkin RPC exists.
+            // M4: create the RPC socket, check in, and fetch the vchroot root -- all BEFORE the
+            // dyld load (which needs the root) and the stack (which needs kernfd).
+            eprintln!(
+                "[mldr-rs] wire: sizeof(RpcCallCheckin)={} (expect 40)",
+                rpc::checkin_call_size()
+            );
+            let mut kernfd: c_int = -1;
+            let mut vchroot_root: Option<String> = None;
+            if let Some(ref sockpath) = special.sockpath {
+                let rpcfd = unsafe { rpc::create_socket(sockpath) };
+                if rpcfd >= 0 {
+                    kernfd = rpcfd;
+                    let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
+                    eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
+                    vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
+                    eprintln!("[mldr-rs] vchroot_path -> {vchroot_root:?}");
+                } else {
+                    eprintln!("[mldr-rs] rpc socket creation failed");
+                }
+            } else {
+                eprintln!("[mldr-rs] (no __mldr_sockpath; skipping checkin)");
+            }
+
+            // M3b: recursive dyld load (LC_LOAD_DYLINKER); dyld's entry is the real jump target.
+            // root_path priority: __mldr_DYLD_ROOT_PATH (first proc) -> vchroot_path RPC (post-
+            // vchroot) -> derive from guest_path minus the Mac path -> MLDR_ROOT_PATH.
             let mut final_entry = r.entry;
             if macho.header.filetype == 2 {
                 // MH_EXECUTE
@@ -126,10 +149,8 @@ fn main() {
                     let root = special
                         .root_path
                         .clone()
+                        .or_else(|| vchroot_root.clone())
                         .or_else(|| {
-                            // Derive the root from the guest's Linux path minus its Mac path
-                            // (guest argv[0]) -- reliable across the exec chain post-vchroot,
-                            // where __mldr_DYLD_ROOT_PATH / DYLD_ROOT_PATH are not forwarded.
                             let mac = guest_argv.first()?;
                             if mac.starts_with('/') {
                                 guest_path.strip_suffix(mac.as_str()).map(String::from)
@@ -163,26 +184,6 @@ fn main() {
                 }
             }
             eprintln!("[mldr-rs] FINAL entry={final_entry:#x}");
-
-            // M4: create the RPC socket + check in with darlingserver BEFORE the stack, so the
-            // socket fd becomes kernfd in apple[]. stack_hint is the guest stack top.
-            eprintln!(
-                "[mldr-rs] wire: sizeof(RpcCallCheckin)={} (expect 40)",
-                rpc::checkin_call_size()
-            );
-            let mut kernfd: c_int = -1;
-            if let Some(ref sockpath) = special.sockpath {
-                let rpcfd = unsafe { rpc::create_socket(sockpath) };
-                if rpcfd >= 0 {
-                    kernfd = rpcfd;
-                    let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
-                    eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
-                } else {
-                    eprintln!("[mldr-rs] rpc socket creation failed");
-                }
-            } else {
-                eprintln!("[mldr-rs] (no __mldr_sockpath; skipping checkin)");
-            }
 
             // M5a + M3c: the elf_calls vtable, then the start stack with the real kernfd/elfcalls.
             // Clean the guest env: expose __mldr_DYLD_ROOT_PATH to dyld as DYLD_ROOT_PATH,

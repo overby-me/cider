@@ -75,6 +75,75 @@ fn errno() -> c_int {
     unsafe { *libc::__errno_location() }
 }
 
+const VCHROOT_PATH: u32 = 3;
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct CallVchrootPath {
+    buffer: u64,
+    buffer_size: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RpcCallVchrootPath {
+    header: DserverRpcCallhdr,
+    body: CallVchrootPath,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct ReplyVchrootPath {
+    length: u64,
+}
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct RpcReplyVchrootPath {
+    header: DserverRpcReplyhdr,
+    body: ReplyVchrootPath,
+}
+
+/// Fetch the container's vchroot Linux prefix (the daemon writes it into our buffer via a
+/// cross-process write, replies the length). Empty for the first process (before the vchroot
+/// helper sets it). Requires a connected socket.
+pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
+    let mut buf = vec![0u8; 4096];
+    let call = RpcCallVchrootPath {
+        header: DserverRpcCallhdr {
+            number: VCHROOT_PATH,
+            pid: libc::getpid(),
+            tid: gettid(),
+            architecture: ARCH_X86_64,
+        },
+        body: CallVchrootPath {
+            buffer: buf.as_mut_ptr() as u64,
+            buffer_size: buf.len() as u64,
+        },
+    };
+    let bytes = std::slice::from_raw_parts(
+        &call as *const _ as *const u8,
+        std::mem::size_of::<RpcCallVchrootPath>(),
+    );
+    if libc::send(fd, bytes.as_ptr() as *const c_void, bytes.len(), 0) < 0 {
+        return None;
+    }
+    let mut reply: RpcReplyVchrootPath = std::mem::zeroed();
+    if libc::recv(
+        fd,
+        &mut reply as *mut _ as *mut c_void,
+        std::mem::size_of::<RpcReplyVchrootPath>(),
+        0,
+    ) < 0
+    {
+        return None;
+    }
+    if reply.header.code != 0 {
+        return None;
+    }
+    let len = (reply.body.length as usize).min(buf.len());
+    if len == 0 {
+        return None;
+    }
+    Some(String::from_utf8_lossy(&buf[..len]).into_owned())
+}
+
 /// Create the RPC socket (SOCK_DGRAM) and autobind it so the daemon can reply.
 pub unsafe fn create_socket(sockpath: &str) -> c_int {
     let fd = libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0);

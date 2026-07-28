@@ -165,3 +165,15 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   (darling_thread_create stub returns null -> no active Darwin thread). NEXT: fill commpage cpu_caps
   (read src/startup/mldr/include/i386/cpu_capabilities.h + cpuid) and implement the
   darling_thread_create native-pthread -> Darwin-thread bridge (src/startup/mldr/elfcalls/threads.c).
+- 2026-07-28 overnight (cont'd): **CPU caps fixed the SIGILL + vchroot_path gives robust root
+  resolution.** commpage cpu_caps via cpuid (committed 1530a86f) cleared the libSystem SIGILL;
+  the boot chain now runs vchroot->shellspawn->bash->path_helper->bash (the final sh -c echo).
+  Added vchroot_path RPC (VCHROOT_PATH=3; daemon cross-process-writes the vchroot Linux prefix
+  into our buffer) + reordered main (socket/checkin/vchroot BEFORE the dyld load) -> root resolves
+  robustly (None first proc, Some(/home/overby.me/.wnix) post-vchroot). NEW BLOCKER: the guest is
+  mis-threaded -- elfcalls darling_thread_create is still a stub returning null -> "[dtape] mutex
+  without an active thread", and eventually the DAEMON panics (FATAL host signal 04) on a bad RPC
+  from the mis-threaded guest. NEXT (the last major piece): implement the darling_thread_create
+  native-pthread -> Darwin-thread bridge (threads.c:116-325 -- dthread alloc, native pthread, TSD
+  base via callbacks, per-thread socket + checkin, register-exact stack switch + jump). C mldr
+  stays default; main is safe.
