@@ -161,7 +161,13 @@ in {
     # so an edge depends only on the specific inputs it reads.
     indivOf = p:
       builtins.path {
-        path = (rootFor p) + "/${relUnder p}";
+        # unsafeDiscardStringContext: the path is built from `rootFor p` (a rewrite
+        # root, e.g. cmakeSrcStore), whose string context would otherwise propagate
+        # into this content-addressed copy -- making the whole source tree an input
+        # of every edge/group derivation and defeating per-input isolation. The file
+        # still exists at eval time, so builtins.path imports it fresh with no ref
+        # back to the containing store path.
+        path = builtins.unsafeDiscardStringContext (toString (rootFor p) + "/" + relUnder p);
         name = "src-" + lib.strings.sanitizeDerivationName (relUnder p);
       };
 
@@ -549,7 +555,16 @@ in {
           ${scanCmd} ${lib.concatStringsSep " " (genIncs ++ generatedHeaderIncs ++ migHeaderIncsFor i)}
         '';
     in
-      filter underAnyRoot (parseDepfile (builtins.readFile scanDrv));
+      # unsafeDiscardStringContext: the depfile paths are substrings of the scan
+      # derivation's OUTPUT, whose string context transitively references the mounted
+      # source tree (cmakeSrcStore). That context would otherwise ride along on every
+      # `relUnder p` substring (via `esc (relUnder p)` in the staging script) and make
+      # the WHOLE source tree an inputSrc of each consuming edge/group derivation --
+      # silently defeating per-input isolation (an edit to any source rehashes every
+      # edge). indivOf re-imports each header content-addressed via `rootFor`, so the
+      # real per-file dependency is preserved without the whole-tree reference.
+      filter underAnyRoot
+        (parseDepfile (builtins.unsafeDiscardStringContext (builtins.readFile scanDrv)));
 
     # ---- one derivation per (non-phony) edge -------------------------------
     mkEdge = i: let
@@ -1113,7 +1128,16 @@ in {
         '';
       groupDrvs = listToAttrs (map (g: {name = g; value = mkGroup g;}) groupIds);
       groupDrvForOutput = p: groupDrvs.${groupOfOutput p};
-    in {inherit groupDrvs groupDrvForOutput idsInGroup;};
+      # Group-aware realOutputsForTarget: every real output of the edges a (possibly
+      # phony) target resolves to, paired with the GROUP derivation that produces it.
+      # Lets buildOne materialize a whole-graph build (`all`) from group drvs instead
+      # of per-edge drvs -- each final output's group (and its dependency groups) is
+      # built transitively, so cp-ing them all yields the full staged tree.
+      realOutputsForTargetG = p:
+        lib.concatMap
+          (i: map (o: {path = o; drv = groupDrvForOutput o;}) (edgeOutputs (elemAt edges i)))
+          (realProducers p);
+    in {inherit groupDrvs groupDrvForOutput idsInGroup realOutputsForTargetG;};
   in {
     inherit producerOf edgeDrvs drvForOutput edges;
     inherit isPhonyTarget realOutputsForTarget lowerGroupsBy;

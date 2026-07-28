@@ -190,7 +190,11 @@
         ${lib.concatMapStringsSep "\n" (o: ''
           mkdir -p "$out/$(dirname ${esc o.path})"
           cp -r --reflink=auto ${o.drv}/${esc o.path} "$out/${o.path}"
-        '') (lowered.realOutputsForTarget t)}
+        '') (
+          if grouping != null
+          then groupedLowered.realOutputsForTargetG t
+          else lowered.realOutputsForTarget t
+        )}
       ''
     else
       let
