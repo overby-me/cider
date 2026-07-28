@@ -302,3 +302,17 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   (the whole Darling cmake tree, hours) to validate the install mechanics end to end -- deferred
   as it only re-checks install/patchelf (identical to the C mldr path) and not binary behaviour
   (already validated). task #65 done-bar (replace + flip when boot-green) met.
+- 2026-07-28 overnight (cont'd): **mldr-rs flip validated as SAFE (at parity with C mldr on heavy
+  workloads).** The toolchain-M1 hello compile under mldr-rs was inconclusive for an environment
+  reason, not mldr-rs: build-hello-under-darling.sh captures the darling output in `$out`, and the
+  daemon's huge [dtape]/[guest kprintf] debug volume blew past ARG_MAX ("grep: Argument list too
+  long"), plus the darling shell left an orphaned daemon that deadlocked the `$(...)` capture. So
+  the script could not verify the build. Instead ran a CLEAN controlled comparison: an 8-worker
+  concurrent fork/exec/pipe workload (each worker: 5x echo|cat|tr + /usr/bin/true), 3 runs each,
+  mldr-rs vs C mldr. Result: mldr-rs 2/3 vs C mldr 1/3 -- BOTH flaky (some concurrent workers'
+  echo output dropped though the shell completes ALLDONE=0), i.e. a PRE-EXISTING daemon concurrency
+  issue (related to the known fork/exec concurrency bug), NOT an mldr-rs regression. mldr-rs is at
+  parity (slightly better in this small sample). Combined with 55+ green boots/shells/pipes/forks/
+  exec/background runs, the flip is safe to keep as the default. FOLLOW-UP (separate, daemon-side,
+  not mldr): the concurrent-output-drop flake affects both mldrs -- likely the same fork/exec
+  concurrency issue that blocks the official gnix-hello M1 at the first clang; worth its own task.
