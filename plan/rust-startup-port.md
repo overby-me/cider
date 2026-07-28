@@ -143,3 +143,13 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   buffer_size:u64} -> ReplyVchrootPath{length}; the daemon writes the Linux vchroot prefix into the
   buffer -- CHECK the daemon handler in handler.rs to confirm the write mechanism). Use root_path
   to resolve dyld = <root>/usr/lib/dyld, map dyld, jump to DYLD's entry. Then re-test the boot.
+- 2026-07-28 overnight (cont'd): **mldr integration -- dyld now RUNS libSystem.** Fixed dyld
+  resolution: parse __mldr_DYLD_ROOT_PATH (the daemon sets it = libexec root, container.rs:251) as
+  root_path; and clean the guest env (rename __mldr_DYLD_ROOT_PATH -> DYLD_ROOT_PATH, strip other
+  __mldr_*). Now mldr-rs maps dyld + jumps to DYLD's entry, and dyld RUNS libSystem -- the guest
+  makes REAL RPC calls (task_self_trap, mach_reply_port, kprintf, started_suspended,
+  interrupt_enter). NEW BLOCKER: they fail "BAD SEND STATUS: -107" because elfcalls
+  dserver_socket_address() is stubbed (returns null) -> the guest RPC has no server sockaddr to
+  send to. NEXT: implement dserver_socket_address (return a sockaddr_un built from __mldr_sockpath;
+  check resources/dserver-rpc-defs.h for the exact format) + likely a real per-thread socket. The
+  guest is running Mac code -- very close.

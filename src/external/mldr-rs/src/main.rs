@@ -42,6 +42,7 @@ struct SpecialEnv {
     sockpath: Option<String>,
     lifetime_pipe: Option<c_int>,
     bprefs: [u32; 4],
+    root_path: Option<String>,
 }
 
 fn main() {
@@ -114,7 +115,11 @@ fn main() {
             if macho.header.filetype == 2 {
                 // MH_EXECUTE
                 if let Some(dylinker) = loader::find_dylinker(&data) {
-                    let root = std::env::var("MLDR_ROOT_PATH").unwrap_or_default();
+                    let root = special
+                        .root_path
+                        .clone()
+                        .or_else(|| std::env::var("MLDR_ROOT_PATH").ok())
+                        .unwrap_or_default();
                     let dyld_path = format!("{root}{dylinker}");
                     eprintln!("[mldr-rs] dylinker={dylinker} -> {dyld_path}");
                     match std::fs::read(&dyld_path) {
@@ -161,7 +166,19 @@ fn main() {
             }
 
             // M5a + M3c: the elf_calls vtable, then the start stack with the real kernfd/elfcalls.
-            let envp: Vec<String> = std::env::vars().map(|(k, v)| format!("{k}={v}")).collect();
+            // Clean the guest env: expose __mldr_DYLD_ROOT_PATH to dyld as DYLD_ROOT_PATH,
+            // and strip the other __mldr_ control vars (mldr.c:208-252).
+            let envp: Vec<String> = std::env::vars()
+                .filter_map(|(k, v)| {
+                    if k == "__mldr_DYLD_ROOT_PATH" {
+                        Some(format!("DYLD_ROOT_PATH={v}"))
+                    } else if k.starts_with("__mldr_") {
+                        None
+                    } else {
+                        Some(format!("{k}={v}"))
+                    }
+                })
+                .collect();
             let elfcalls_addr = elfcalls::make();
             eprintln!("[mldr-rs] elf_calls vtable @ {elfcalls_addr:#x}");
             let sp = unsafe {
@@ -212,6 +229,13 @@ fn parse_special_env() -> SpecialEnv {
     if let Ok(v) = std::env::var("__mldr_bprefs") {
         for (i, tok) in v.split(',').take(4).enumerate() {
             s.bprefs[i] = tok.trim().parse().unwrap_or(0);
+        }
+    }
+    // The daemon passes the vchroot/libexec root here (container.rs sets
+    // __mldr_DYLD_ROOT_PATH = libexec_path); it is the root for resolving dyld.
+    if let Ok(v) = std::env::var("__mldr_DYLD_ROOT_PATH") {
+        if !v.is_empty() {
+            s.root_path = Some(v);
         }
     }
     s
