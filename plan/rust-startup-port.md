@@ -229,3 +229,46 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   (find the dir: `find /nix/store -name libdarlingserver_duct_tape.a | head`), cp target/debug/
   darlingserverd -> ~/darling-rt/bin/darlingserver, re-test WITHOUT the trace. Or symbolicate the
   guest fault rip vs the loaded library maps. IGNORE the active-thread warnings -- not the bug.
+- 2026-07-28 overnight (cont'd): **ROOT-CAUSED the flaky fault (supersedes the "SIGABRT/psynch"
+  guesses above -- those were wrong).** Method: symbolicated the guest fault RIP against
+  /proc/<pid>/maps, then disassembled the dylib. The fault is NOT random: it is `ud2` at
+  `libsystem_kernel.dylib+0x373e0`, inside `__mach_fork_parent`:
+  `call _dserver_rpc_fork_wait_for_child; if ret>=0 ok; else if ret==-4 retry; else ud2`. The guest
+  is **forking** (bash/shellspawn fork constantly) and `fork_wait_for_child` returns **-70 == -ECOMM**
+  (a socket comms error), which is neither >=0 nor -4, so it hits the `ud2` (EXC_BAD_INSTRUCTION,
+  signal 4). The daemon's fork_wait_for_child only ever returns 0 or -ESRCH(-3), so the -70 is a
+  GUEST-SIDE socket failure: the forked child inherits the parent's RPC socket fd, both race on it,
+  and the parent's fork-wait RPC gets ECOMM. C never hits this because its RPC sockets are set up
+  differently (below). Nondeterministic (~60-75%); adding any slowdown (DYLD_PRINT_SEGMENTS) makes it
+  pass. AVX/commpage caps were a RED HERRING (disabling AVX did not help; the DYLD_PRINT pass proved
+  it is timing, not a deterministic commpage bug).
+- 2026-07-28 overnight (cont'd): mldr-rs RPC-socket setup diverged from C `__mldr_create_rpc_socket`
+  (mldr.c:701) in three ways; FIXED to match C: (1) **high fd + FD_CLOEXEC** -- C hands out sockets
+  from the top of the fd table (socket_bitmap) so they never collide with the guest's own low fds; a
+  forked subshell (bash) dup2s/closes low fds and clobbers a low RPC socket. mldr-rs now dups the
+  socket to a high fd (rpc.rs `reserve_high_cloexec`, F_DUPFD_CLOEXEC into [512,1023)) + CLOEXEC.
+  (2) **no connect() + sendto everywhere** -- C never connects; it sends to the server addr on every
+  RPC. mldr-rs used connect()+send() for vchroot_path; switched to sendto (a connected *high* fd
+  wedged the guest's interrupt_enter with EBADF). (3) `create_thread_socket` made allocation-free
+  (no String clone) so it is fork-safe. These are correct and match C.
+- 2026-07-28 overnight (cont'd): **the child socket-refresh (elfcalls dserver_per_thread_socket_refresh
+  + close_socket) is implemented but LEFT DISABLED (no-op).** C's guest fork.c calls refresh in the
+  child to get its own socket (matches C `__darling_thread_rpc_socket_refresh`, threads.c:397). With
+  refresh enabled the child DOES get its own high fd, the -ECOMM ud2 goes away (faults=0), BUT the
+  forked child then **wild-jumps into mldr-rs .text and SIGSEGVs** (strace: the child does close(512)
+  then a wild jump; symbolicated RIP lands on ICF-folded thunks like CString::new/Default at
+  mldr-rs+0x30xxx -- i.e. corrupted control flow, not a real call). This is a **deeper fork-state
+  corruption in the mldr-rs guest, orthogonal to the socket**: enabling refresh trades the
+  intermittent ud2 (~30% boot) for a deterministic child crash (0% boot). So refresh is a no-op for
+  now; the fork-safe create_thread_socket + reserve plumbing stays so it is a one-line re-enable once
+  the corruption is fixed. Boot rate with refresh-off + the socket fixes is ~25-30% (== baseline, the
+  ud2 is the remaining blocker).
+- NEXT (fork-corruption, the real blocker): the forked child's control flow is corrupted before it can
+  run. Candidates to investigate: (a) the microthread/thread-bridge state across fork -- mldr-rs's
+  darling_thread_create uses native pthreads + a ucontext microthread scheduler; fork() copies only
+  the calling thread, so any per-thread bridge state the child expects may be stale/half-initialized;
+  (b) the guest's atfork handlers running with a corrupted mldr-rs elfcall stack; (c) whether the
+  daemon's fork handling (checkin is_fork + fork_sem) needs the child to re-register threads that
+  mldr-rs never re-creates. Method that worked: run under `strace -f` and symbolicate the child's
+  fault RIP vs /proc/<pid>/maps; compare the child's syscall sequence to the C mldr's. C mldr boots
+  reliably with the SAME daemon, so the divergence is purely in mldr-rs's guest-side fork path.

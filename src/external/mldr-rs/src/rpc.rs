@@ -46,12 +46,56 @@ pub fn thread_socket() -> c_int {
         main_socket()
     }
 }
-/// Create a per-thread RPC socket (bind + connect) for a newly created guest thread.
-pub unsafe fn create_thread_socket() -> c_int {
-    let path = match SOCKPATH.get() {
-        Some(p) => p.clone(),
-        None => return -1,
+/// Move `fd` to a high fd number (above the guest program's own low fds) with FD_CLOEXEC set,
+/// closing the original. Mirrors C __mldr_create_rpc_socket, which hands out the highest
+/// available fds (socket_bitmap, from rlim_cur-1 downward) and sets FD_CLOEXEC. This is
+/// essential: RPC socket fds must never collide with the guest's low fds -- a forked subshell
+/// (bash) freely dup2s/closes low fds and would otherwise clobber the RPC socket, corrupting
+/// the child's control flow (a wild jump / SIGSEGV). CLOEXEC keeps the socket from leaking
+/// across the guest's fork+exec. Raw syscalls only, so it is allocation-free / fork-safe.
+/// Returns the new high fd, or the original fd if reservation fails.
+unsafe fn reserve_high_cloexec(fd: c_int) -> c_int {
+    // Land the RPC socket at a moderately high fd: above the guest program's own low fds (bash
+    // uses up to fd 255 for its shell fd) but below FD_SETSIZE (1024), so nothing that indexes
+    // fds by a fixed-size table or uses select() trips over it. C's socket_bitmap starts at
+    // rlim_cur-1, but the guest's rlimit here is enormous (~524288), and an absurdly high fd
+    // (~524224) wedges the guest's RPC layer (interrupt_enter -> EBADF); a fd in [512,1023]
+    // clears bash without going that high.
+    let mut rl: libc::rlimit = std::mem::zeroed();
+    let base = if libc::getrlimit(libc::RLIMIT_NOFILE, &mut rl) == 0
+        && rl.rlim_cur != libc::RLIM_INFINITY
+        && rl.rlim_cur > 512
+        && (rl.rlim_cur as u64) < 1024
+    {
+        (rl.rlim_cur - 8) as c_int
+    } else {
+        512
     };
+    let hi = libc::fcntl(fd, libc::F_DUPFD_CLOEXEC, base);
+    if hi < 0 {
+        // Could not reserve a high fd; at least set CLOEXEC on the original and keep it.
+        let flags = libc::fcntl(fd, libc::F_GETFD);
+        if flags >= 0 {
+            libc::fcntl(fd, libc::F_SETFD, flags | libc::FD_CLOEXEC);
+        }
+        return fd;
+    }
+    libc::close(fd);
+    hi
+}
+
+/// Create a per-thread RPC socket (bind + connect) for a newly created guest thread, or a
+/// fresh socket for the post-fork child (dserver_per_thread_socket_refresh).
+///
+/// MUST be allocation-free: it runs in the forked child, where another guest thread may have
+/// held the malloc lock at fork time, so any heap allocation here can deadlock or corrupt the
+/// child. We therefore read the server address straight from `SOCKPATH` by reference (no
+/// String clone) and build the sockaddr on the stack. Mirrors C __mldr_create_rpc_socket,
+/// which likewise only does socket/bind/connect with a static sockaddr.
+pub unsafe fn create_thread_socket() -> c_int {
+    if SOCKPATH.get().is_none() {
+        return -1;
+    }
     let fd = libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0);
     if fd < 0 {
         return -1;
@@ -63,8 +107,8 @@ pub unsafe fn create_thread_socket() -> c_int {
         &addr as *const _ as *const libc::sockaddr,
         std::mem::size_of::<libc::sa_family_t>() as libc::socklen_t,
     );
-    let (server, slen) = make_server_addr(&path);
-    libc::connect(fd, &server as *const _ as *const libc::sockaddr, slen);
+    let fd = reserve_high_cloexec(fd);
+    // No connect(): RPCs use sendto with the server address (matches C __mldr_create_rpc_socket).
     set_thread_socket(fd);
     fd
 }
@@ -121,6 +165,12 @@ fn gettid() -> i32 {
     unsafe { libc::syscall(libc::SYS_gettid) as i32 }
 }
 
+/// True on the process's main thread (pid == tid). Used by the socket-refresh elfcall to also
+/// update the main-thread socket, matching C __darling_thread_rpc_socket_refresh.
+pub fn is_main_thread() -> bool {
+    unsafe { libc::getpid() == gettid() }
+}
+
 fn errno() -> c_int {
     unsafe { *libc::__errno_location() }
 }
@@ -154,6 +204,7 @@ struct RpcReplyVchrootPath {
 /// cross-process write, replies the length). Empty for the first process (before the vchroot
 /// helper sets it). Requires a connected socket.
 pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
+    let (server, slen) = make_server_addr(SOCKPATH.get()?);
     let mut buf = vec![0u8; 4096];
     let call = RpcCallVchrootPath {
         header: DserverRpcCallhdr {
@@ -171,7 +222,15 @@ pub unsafe fn vchroot_path(fd: c_int) -> Option<String> {
         &call as *const _ as *const u8,
         std::mem::size_of::<RpcCallVchrootPath>(),
     );
-    if libc::send(fd, bytes.as_ptr() as *const c_void, bytes.len(), 0) < 0 {
+    if libc::sendto(
+        fd,
+        bytes.as_ptr() as *const c_void,
+        bytes.len(),
+        0,
+        &server as *const _ as *const libc::sockaddr,
+        slen,
+    ) < 0
+    {
         return None;
     }
     let mut reply: RpcReplyVchrootPath = std::mem::zeroed();
@@ -208,13 +267,16 @@ pub unsafe fn create_socket(sockpath: &str) -> c_int {
         &addr as *const _ as *const libc::sockaddr,
         std::mem::size_of::<libc::sa_family_t>() as libc::socklen_t,
     );
+    // Reserve a high fd + CLOEXEC (matches C __mldr_create_rpc_socket): RPC sockets must sit
+    // above the guest's low fds so a forked subshell can't clobber them.
+    let fd = reserve_high_cloexec(fd);
     set_main_socket(fd);
-    // Record the server address for the guest (elfcalls dserver_socket_address) and connect,
-    // so the guest's send() reaches the daemon.
-    let (server, slen) = make_server_addr(sockpath);
+    // Record the server address for the guest (elfcalls dserver_socket_address). We deliberately
+    // do NOT connect(): every RPC uses sendto() with this address (exactly as the C mldr does).
+    // A *connected* high fd wedged the guest's interrupt_enter with EBADF.
+    let (server, _slen) = make_server_addr(sockpath);
     SERVER_ADDR.write(server);
     SERVER_ADDR_SET.store(true, Ordering::SeqCst);
-    libc::connect(fd, &server as *const _ as *const libc::sockaddr, slen);
     fd
 }
 

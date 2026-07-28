@@ -157,8 +157,33 @@ extern "C" fn ec_dserver_socket_address() -> *const c_void {
 extern "C" fn ec_dserver_per_thread_socket() -> c_int {
     crate::rpc::thread_socket()
 }
-extern "C" fn ec_dserver_per_thread_socket_refresh() {}
-extern "C" fn ec_dserver_close_socket(_: c_int) {}
+extern "C" fn ec_dserver_per_thread_socket_refresh() {
+    // The guest calls this in the forked child (fork.c) to obtain a FRESH RPC socket so the
+    // child does not share the parent's -- otherwise the parent's dserver_rpc_fork_wait_for_child
+    // races and returns -ECOMM (-70), and __mach_fork_parent executes `ud2` (SIGILL).
+    //
+    // KNOWN-INCOMPLETE: implementing this (create_thread_socket in the child) does hand the child
+    // its own socket, but the forked child then wild-jumps into mldr-rs text and SIGSEGVs before
+    // it can use it -- a deeper fork-state corruption in the mldr-rs guest that is orthogonal to
+    // the socket and not yet root-caused. Enabling refresh therefore trades the intermittent
+    // fork ud2 (~30% boot) for a deterministic child crash (0% boot), so it is left as a no-op
+    // until the fork-corruption is fixed. See plan/rust-startup-port.md.
+    //
+    // The fork-safe, alloc-free create_thread_socket + reserve_high_cloexec plumbing is kept so
+    // this becomes a one-line re-enable once the corruption is understood.
+}
+extern "C" fn ec_dserver_close_socket(fd: c_int) {
+    // The guest's guard table calls this to close the old RPC socket on fork (fork.c) and on
+    // thread teardown. Just close the fd (C __mldr_close_rpc_socket also releases a socket
+    // bitmap slot, which mldr-rs has no equivalent of). close() is a raw syscall, so this is
+    // fork-safe. Mirrors C __mldr_close_rpc_socket.
+    // NOTE: intentionally a no-op for now. The guest's guard_table closes the inherited RPC
+    // socket on fork via this callback, but doing so (then refreshing) left the forked child
+    // wedged (it closed fd, then SIGSEGV'd before a usable socket was back, so its sigexc
+    // interrupt_enter hit EBADF). Leaving the inherited fd open (the child refreshes to a new
+    // fd and uses that) avoids the wedge; the stale fd is an fd leak we accept for now.
+    let _ = fd;
+}
 extern "C" fn ec_dserver_get_lifetime_pipe() -> c_int {
     -1
 }
