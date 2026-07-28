@@ -2,7 +2,7 @@
 # See plan/rust-rewrite-eval.md (plan) + plan/rust-spike-stage3.md (the make-or-break
 # spike). Stage 0: bindgen the real dtape hooks contract + link the prebuilt
 # duct-tape static lib and call the real dtape_init(&hooks). The prior end-to-end
-# link-model proof (stub duct-tape) lives in prototype/rust-consume-model/.
+# link-model proof (stub duct-tape) was validated in a throwaway prototype, since removed.
 [package]
 name = "darlingserver-rs"
 version = "0.0.0"

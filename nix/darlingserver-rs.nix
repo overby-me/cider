@@ -1,7 +1,7 @@
 # The Rust host-side rewrite of darlingserver, built reproducibly. It CONSUMES the
 # duct-tape + libsimple static libs exported by the standalone `darlingserver`
 # package (DUCT_TAPE_LIB), never rebuilds them -- the "consume, don't build" model
-# from prototype/rust-consume-model/. bindgen (via rustPlatform.bindgenHook) and the
+# (proven first in a throwaway prototype, since removed). bindgen (via rustPlatform.bindgenHook) and the
 # cc crate (fast_context.c, the P1 switch) run at build time. See
 # plan/rust-rewrite-eval.md.
 #

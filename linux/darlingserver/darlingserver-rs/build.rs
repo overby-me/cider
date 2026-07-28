@@ -7,8 +7,8 @@
 // 3. Compile fast_context.c (the landed P1 signal-mask-free ucontext) into the
 //    crate for the Stage 3 spike (Arm A).
 //
-// The prior link-model proof (stub duct-tape, DUCT_TAPE_LIB wiring) is in
-// prototype/rust-consume-model/; this consumes the REAL project the same way.
+// The prior link-model proof (stub duct-tape, DUCT_TAPE_LIB wiring) was validated in
+// a throwaway prototype (since removed); this consumes the REAL project the same way.
 use std::env;
 use std::path::PathBuf;
 
