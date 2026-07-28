@@ -153,3 +153,15 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   send to. NEXT: implement dserver_socket_address (return a sockaddr_un built from __mldr_sockpath;
   check resources/dserver-rpc-defs.h for the exact format) + likely a real per-thread socket. The
   guest is running Mac code -- very close.
+- 2026-07-28 overnight (cont'd): **mldr integration -- runs DEEP into the boot chain.** Fixed:
+  (a) dserver_socket_address returns the sockaddr_un from __mldr_sockpath + connect the socket ->
+  guest RPC works (-107 gone); (b) guest argv = mldr argv[1..] not [guest_path] -> vchroot gets its
+  args + execs the next binary; (c) root-path on re-exec = derive root from guest_path minus the Mac
+  path (guest argv[0]), since execve does not forward DYLD_ROOT_PATH. Now the chain RUNS: vchroot
+  sets up the vchroot + execs shellspawn; shellspawn's dyld resolves + runs libSystem -- threads,
+  mutexes, and signal handling (sigexc) all active. BLOCKER: the guest hits SIGILL (signal 4) deep
+  in libSystem, with "[dtape] mutex without an active thread". LIKELY CAUSES: commpage CPU cap bits
+  (cpu_caps()=0 -> libSystem SIMD path mis-selection) and/or the elfcalls thread bridge
+  (darling_thread_create stub returns null -> no active Darwin thread). NEXT: fill commpage cpu_caps
+  (read src/startup/mldr/include/i386/cpu_capabilities.h + cpuid) and implement the
+  darling_thread_create native-pthread -> Darwin-thread bridge (src/startup/mldr/elfcalls/threads.c).

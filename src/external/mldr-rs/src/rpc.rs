@@ -15,6 +15,17 @@ pub fn main_socket() -> c_int {
     MAIN_SOCKET.load(Ordering::SeqCst)
 }
 
+/// The darlingserver socket address, exposed to the guest RPC via elfcalls.
+static mut SERVER_ADDR: std::mem::MaybeUninit<libc::sockaddr_un> = std::mem::MaybeUninit::uninit();
+static SERVER_ADDR_SET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+pub fn server_addr_ptr() -> *const c_void {
+    if SERVER_ADDR_SET.load(Ordering::SeqCst) {
+        unsafe { SERVER_ADDR.as_ptr() as *const c_void }
+    } else {
+        std::ptr::null()
+    }
+}
+
 const CHECKIN: u32 = 1;
 const ARCH_X86_64: u32 = 2; // dserver_rpc_architecture_x86_64
 
@@ -65,7 +76,7 @@ fn errno() -> c_int {
 }
 
 /// Create the RPC socket (SOCK_DGRAM) and autobind it so the daemon can reply.
-pub unsafe fn create_socket() -> c_int {
+pub unsafe fn create_socket(sockpath: &str) -> c_int {
     let fd = libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0);
     if fd < 0 {
         return -1;
@@ -79,6 +90,12 @@ pub unsafe fn create_socket() -> c_int {
         std::mem::size_of::<libc::sa_family_t>() as libc::socklen_t,
     );
     set_main_socket(fd);
+    // Record the server address for the guest (elfcalls dserver_socket_address) and connect,
+    // so the guest's send() reaches the daemon.
+    let (server, slen) = make_server_addr(sockpath);
+    SERVER_ADDR.write(server);
+    SERVER_ADDR_SET.store(true, Ordering::SeqCst);
+    libc::connect(fd, &server as *const _ as *const libc::sockaddr, slen);
     fd
 }
 

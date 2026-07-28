@@ -152,7 +152,7 @@ extern "C" fn ec_shm_unlink(_: *const c_char) -> c_int {
     -1
 }
 extern "C" fn ec_dserver_socket_address() -> *const c_void {
-    ptr::null()
+    crate::rpc::server_addr_ptr()
 }
 extern "C" fn ec_dserver_per_thread_socket() -> c_int {
     crate::rpc::main_socket()

@@ -58,6 +58,14 @@ fn main() {
         Some(idx) => argv[0][idx + 1..].to_string(),
         None => argv.get(1).cloned().unwrap_or_default(),
     };
+    // The guest program's argv is mldr's argv[1..] (both the execve-! and binfmt shapes put
+    // the guest's own argv there). Falls back to [guest_path] when mldr has no extra args.
+    let guest_argv: Vec<String> = if argv.len() > 1 {
+        argv[1..].to_vec()
+    } else {
+        vec![guest_path.clone()]
+    };
+    eprintln!("[mldr-rs] argv={argv:?}");
 
     let special = parse_special_env();
     eprintln!(
@@ -118,6 +126,17 @@ fn main() {
                     let root = special
                         .root_path
                         .clone()
+                        .or_else(|| {
+                            // Derive the root from the guest's Linux path minus its Mac path
+                            // (guest argv[0]) -- reliable across the exec chain post-vchroot,
+                            // where __mldr_DYLD_ROOT_PATH / DYLD_ROOT_PATH are not forwarded.
+                            let mac = guest_argv.first()?;
+                            if mac.starts_with('/') {
+                                guest_path.strip_suffix(mac.as_str()).map(String::from)
+                            } else {
+                                None
+                            }
+                        })
                         .or_else(|| std::env::var("MLDR_ROOT_PATH").ok())
                         .unwrap_or_default();
                     let dyld_path = format!("{root}{dylinker}");
@@ -153,7 +172,7 @@ fn main() {
             );
             let mut kernfd: c_int = -1;
             if let Some(ref sockpath) = special.sockpath {
-                let rpcfd = unsafe { rpc::create_socket() };
+                let rpcfd = unsafe { rpc::create_socket(sockpath) };
                 if rpcfd >= 0 {
                     kernfd = rpcfd;
                     let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
@@ -188,7 +207,7 @@ fn main() {
                     kernfd,
                     elfcalls_addr,
                     &guest_path,
-                    std::slice::from_ref(&guest_path),
+                    &guest_argv,
                     &envp,
                 )
             };
@@ -236,6 +255,15 @@ fn parse_special_env() -> SpecialEnv {
     if let Ok(v) = std::env::var("__mldr_DYLD_ROOT_PATH") {
         if !v.is_empty() {
             s.root_path = Some(v);
+        }
+    }
+    // On re-exec (execve emulation), __mldr_DYLD_ROOT_PATH is gone but the guest env carries
+    // plain DYLD_ROOT_PATH -- use it as the root fallback.
+    if s.root_path.is_none() {
+        if let Ok(v) = std::env::var("DYLD_ROOT_PATH") {
+            if !v.is_empty() {
+                s.root_path = Some(v);
+            }
         }
     }
     s
