@@ -459,6 +459,15 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
     let gid_c = cstr(&ctx.orig_gid.to_string());
     let pipe_c = cstr(&pipefd[1].to_string());
     let fixperm_c = cstr(if ctx.fix_permissions { "1" } else { "0" });
+    // Pre-built (the child is async-signal-safe, no alloc): detach the daemon's stdio.
+    // The daemon -- and the shellspawn init it spawns -- are PERSISTENT (the launcher
+    // reuses a joinable container), so if they inherit the launcher's fd-0/1/2 they pin
+    // the CALLER's stdout open forever and a one-shot `darling <cmd>` never sees its pipe
+    // close (looks like a hang; the launcher can't exit). Per-command guest output flows
+    // via explicit shellspawn fd-passing, not inheritance, so redirecting the daemon's
+    // own stdio is safe. Validated: the launcher now exits cleanly after a one-shot cmd.
+    let devnull_c = cstr("/dev/null");
+    let log_c = cstr(&format!("{}/darlingserver.log", ctx.prefix));
     let argv: [*const c_char; 7] = [
         argv0.as_ptr(),
         prefix_c.as_ptr(),
@@ -475,9 +484,31 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
         die("fork() failed");
     }
     if pid == 0 {
-        // CHILD: async-signal-safe only -- close, execv, _exit. No allocation.
+        // CHILD: async-signal-safe only -- close, open/dup2, execv, _exit. No allocation.
         unsafe {
             libc::close(read_fd);
+            // stdin <- /dev/null, stdout+stderr -> prefix/darlingserver.log, so the
+            // persistent daemon/shellspawn release the caller's fd-0/1/2 (fixes the
+            // one-shot teardown hang). Readiness sync uses its own high fd (pipefd[1]).
+            let nfd = libc::open(devnull_c.as_ptr(), libc::O_RDONLY);
+            if nfd >= 0 {
+                libc::dup2(nfd, 0);
+                if nfd > 2 {
+                    libc::close(nfd);
+                }
+            }
+            let lfd = libc::open(
+                log_c.as_ptr(),
+                libc::O_WRONLY | libc::O_CREAT | libc::O_APPEND,
+                0o644 as libc::c_int,
+            );
+            if lfd >= 0 {
+                libc::dup2(lfd, 1);
+                libc::dup2(lfd, 2);
+                if lfd > 2 {
+                    libc::close(lfd);
+                }
+            }
             libc::execv(ds_bin_c.as_ptr(), argv.as_ptr());
             libc::_exit(1);
         }
