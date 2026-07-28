@@ -132,3 +132,14 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   INTEGRATION (the boot-green gate for #65) -- exec mldr-rs as the guest loader + boot a guest.
   Expect grinding: CPU cap bits (commpage), argv/envp in-place compaction + __mldr_* stripping,
   the real dserver_socket_address + top-down fd allocator, and the native-pthread thread bridge.
+- 2026-07-28 overnight (cont'd): **mldr INTEGRATION FIRST RUN -- HUGE.** Exec'd mldr-rs as the
+  guest loader (DSERVER_MLDR_PATH=a copy at darling-rt/.../mldr-rs). The daemon spawned it for the
+  `vchroot` helper (guest=.../vchroot, sockpath=.wnix/.darlingserver.sock). mldr-rs parsed it, set
+  up the commpage (ncpu=22), mapped segments (magic 0xfeedfacf), built the elfcalls vtable + start
+  stack, and **checkin RPC returned code=0 (M4 LIVE-VALIDATED!)**, then jumped. BLOCKER: dyld
+  resolution -- dylinker=/usr/lib/dyld but "dyld not found" (root_path unset, no vchroot yet), so
+  mldr-rs jumped to the EXECUTABLE entry (0x100000c80) not dyld's -> guest hung (timeout 60s).
+  NEXT (the unblock): implement vchroot_path RPC (VCHROOT_PATH=3; CallVchrootPath{buffer:u64,
+  buffer_size:u64} -> ReplyVchrootPath{length}; the daemon writes the Linux vchroot prefix into the
+  buffer -- CHECK the daemon handler in handler.rs to confirm the write mechanism). Use root_path
+  to resolve dyld = <root>/usr/lib/dyld, map dyld, jump to DYLD's entry. Then re-test the boot.
