@@ -70,39 +70,9 @@
 
       # ── nix-ninja incremental build (per-edge Nix) ───────────────────
       #
-      # The Darling launcher (src/startup/darling) built edge-by-edge via
-      # nix-ninja, reusing package.nix's exact configure inputs
-      # (nix/darlingBuildInputs.nix). A demonstration/entry point for the
-      # incremental per-edge build path; see nix/lib/darlingNinja.nix.
-      #   nix build .#darling-launcher-ninja
-      packages.darling-launcher-ninja =
-        pkgs:
-        (import ./nix/lib/darlingNinja.nix {
-          inherit pkgs;
-          overby = inputs.overby;
-        }).buildTarget
-          { target = "src/startup/darling"; };
-
-      # The launcher, baked to exec a spliced runtime's darlingserver (see
-      # scripts/splice-darlingserver.sh). The install prefix comes from the
-      # DARLING_SPLICE_PREFIX env var (needs --impure); unset -> a normal launcher,
-      # so `nix flake check` (pure) still builds it fine.
-      #   DARLING_SPLICE_PREFIX=$HOME/darling-rt nix build --impure \
-      #     '.?submodules=1#darling-launcher-spliced'
-      packages.darling-launcher-spliced =
-        pkgs:
-        (import ./nix/lib/darlingNinja.nix {
-          inherit pkgs;
-          overby = inputs.overby;
-        }).buildTarget
-          {
-            target = "src/startup/darling";
-            installPrefix =
-              let
-                e = builtins.getEnv "DARLING_SPLICE_PREFIX";
-              in
-              if e == "" then null else e;
-          };
+      # (The nix-ninja darling-launcher-ninja / darling-launcher-spliced targets were removed:
+      # they built the C src/startup/darling, which is deleted. The launcher is now the Rust
+      # darling-launcher-rs (packages.darling-launcher-rs, installed as bin/darling). task #67.)
 
       # A per-edge nix-ninja build of the darlingserver daemon. Its edges pull in
       # the mig/migcom code generators; unblocking their per-edge scan is the path

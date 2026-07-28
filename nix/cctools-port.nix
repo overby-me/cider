@@ -75,7 +75,6 @@ stdenv.mkDerivation {
       --replace-quiet '/bin/rmdir' 'rmdir' \
       --replace-quiet '/bin/mkdir' 'mkdir'
 
-    substituteInPlace src/startup/CMakeLists.txt --replace SETUID ""
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
   '';
 

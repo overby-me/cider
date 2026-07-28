@@ -74,7 +74,6 @@ stdenv.mkDerivation {
       src/external/darlingserver/scripts \
       src/external/openssl_certificates/scripts
 
-    substituteInPlace src/startup/CMakeLists.txt --replace SETUID ""
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
   '';
 
