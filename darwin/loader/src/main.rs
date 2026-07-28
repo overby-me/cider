@@ -22,6 +22,35 @@ fn cstr(s: &str) -> CString {
     CString::new(s).unwrap_or_else(|_| CString::new("").unwrap())
 }
 
+/// mldr prints ~15 diagnostic lines per guest process. A real build spawns
+/// thousands of processes, so that per-process flood is gated OFF by default and
+/// enabled with `MLDR_DEBUG=1`; genuine errors stay unconditional. The flood also
+/// caused a false "concurrent-output flake" (task #66): when a caller merges the
+/// guest's stdout and stderr (`2>&1`), these stderr lines interleave with real
+/// stdout and glue onto output lines, so a line-anchored count under-reports and
+/// looks like dropped output. With the flood gated (or streams separated) output
+/// is complete. Cached after the first read. It MUST be primed on the aligned
+/// main stack (see [`mldr_debug`] callers): the env read is not guaranteed
+/// movaps-free, and elfcall-reachable code runs on an 8-byte-misaligned stack.
+static MLDR_DEBUG: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+fn mldr_debug() -> bool {
+    use std::sync::atomic::Ordering;
+    match MLDR_DEBUG.load(Ordering::Relaxed) {
+        1 => false,
+        2 => true,
+        _ => {
+            let on = std::env::var_os("MLDR_DEBUG").is_some();
+            MLDR_DEBUG.store(if on { 2 } else { 1 }, Ordering::Relaxed);
+            on
+        }
+    }
+}
+/// `eprintln!` gated behind [`mldr_debug`]. Use for per-process diagnostics; keep
+/// real errors on a bare `eprintln!` so failures are always visible.
+macro_rules! dlog {
+    ($($arg:tt)*) => { if mldr_debug() { eprintln!($($arg)*); } };
+}
+
 /// x86_64 cputype (CPU_TYPE_X86 | CPU_ARCH_ABI64), the default slice preference.
 const CPU_TYPE_X86_64: u32 = 0x0100_0007;
 
@@ -47,7 +76,7 @@ fn select_slice<'a>(
             match chosen {
                 Some(fa) => match goblin::mach::MachO::parse(data, fa.offset as usize) {
                     Ok(m) => {
-                        eprintln!(
+                        dlog!(
                             "[mldr] fat: selected slice cputype={:#x} offset={:#x} size={:#x}",
                             fa.cputype, fa.offset, fa.size
                         );
@@ -92,6 +121,10 @@ struct SpecialEnv {
 }
 
 fn main() {
+    // Prime the MLDR_DEBUG flag here, on main's aligned stack: the env read must
+    // not happen later on an elfcall's misaligned stack (movaps constraint).
+    mldr_debug();
+
     let argv: Vec<String> = std::env::args().collect();
     if argv.is_empty() {
         std::process::exit(1);
@@ -111,10 +144,10 @@ fn main() {
     } else {
         vec![guest_path.clone()]
     };
-    eprintln!("[mldr] argv={argv:?}");
+    dlog!("[mldr] argv={argv:?}");
 
     let special = parse_special_env();
-    eprintln!(
+    dlog!(
         "[mldr] guest={guest_path} sockpath={:?} lifetime_pipe={:?}",
         special.sockpath, special.lifetime_pipe
     );
@@ -137,7 +170,7 @@ fn main() {
     // For a fat/universal binary, pick the slice (bprefs -> x86_64); thin binaries pass through.
     let (macho, fat_offset) = select_slice(mach, &special.bprefs, &data);
     {
-            eprintln!(
+            dlog!(
                 "[mldr] Mach-O: entry={:#x}, {} load commands",
                 macho.entry,
                 macho.load_commands.len()
@@ -147,7 +180,7 @@ fn main() {
             let sig = unsafe { std::ffi::CStr::from_ptr(cp as *const std::os::raw::c_char) }
                 .to_string_lossy()
                 .into_owned();
-            eprintln!(
+            dlog!(
                 "[mldr] commpage@{:#x} sig={sig:?} ncpu={}",
                 cp as u64,
                 unsafe { *cp.add(0x22) }
@@ -161,18 +194,18 @@ fn main() {
                 std::process::exit(1);
             }
             let r = unsafe { loader::map_image(fd, &macho, fat_offset) };
-            eprintln!(
+            dlog!(
                 "[mldr] mapped: slide={:#x} mh={:#x} vm_addr_max={:#x} entry={:#x}",
                 r.slide, r.mh, r.vm_addr_max, r.entry
             );
             // Sanity: the mapped mach_header must carry MH_MAGIC_64.
             if r.mh != 0 {
                 let magic = unsafe { *(r.mh as *const u32) };
-                eprintln!("[mldr] mapped mach_header magic={magic:#x} (expect 0xfeedfacf)");
+                dlog!("[mldr] mapped mach_header magic={magic:#x} (expect 0xfeedfacf)");
             }
             // M4: create the RPC socket, check in, and fetch the vchroot root -- all BEFORE the
             // dyld load (which needs the root) and the stack (which needs kernfd).
-            eprintln!(
+            dlog!(
                 "[mldr] wire: sizeof(RpcCallCheckin)={} (expect 40)",
                 rpc::checkin_call_size()
             );
@@ -187,11 +220,11 @@ fn main() {
                     let hint = 0u64;
                     let code =
                         unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
-                    eprintln!("[mldr] checkin({sockpath}) -> code={code}");
+                    dlog!("[mldr] checkin({sockpath}) -> code={code}");
                     rpc::set_sockpath(sockpath);
                     rpc::set_thread_socket(rpcfd);
                     vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
-                    eprintln!("[mldr] vchroot_path -> {vchroot_root:?}");
+                    dlog!("[mldr] vchroot_path -> {vchroot_root:?}");
                 } else {
                     eprintln!("[mldr] rpc socket creation failed");
                 }
@@ -221,7 +254,7 @@ fn main() {
                         .or_else(|| std::env::var("MLDR_ROOT_PATH").ok())
                         .unwrap_or_default();
                     let dyld_path = format!("{root}{dylinker}");
-                    eprintln!("[mldr] dylinker={dylinker} -> {dyld_path}");
+                    dlog!("[mldr] dylinker={dylinker} -> {dyld_path}");
                     match std::fs::read(&dyld_path) {
                         Ok(ddata) => {
                             if let Ok(goblin::mach::Mach::Binary(dmacho)) =
@@ -230,7 +263,7 @@ fn main() {
                                 let dfd =
                                     unsafe { libc::open(cstr(&dyld_path).as_ptr(), libc::O_RDONLY) };
                                 let dr = unsafe { loader::map_image(dfd, &dmacho, 0) };
-                                eprintln!(
+                                dlog!(
                                     "[mldr] dyld mapped: slide={:#x} entry={:#x}",
                                     dr.slide, dr.entry
                                 );
@@ -243,7 +276,7 @@ fn main() {
                     }
                 }
             }
-            eprintln!("[mldr] FINAL entry={final_entry:#x}");
+            dlog!("[mldr] FINAL entry={final_entry:#x}");
 
             // M5a + M3c: the elf_calls vtable, then the start stack with the real kernfd/elfcalls.
             // Clean the guest env: expose __mldr_DYLD_ROOT_PATH to dyld as DYLD_ROOT_PATH,
@@ -260,7 +293,7 @@ fn main() {
                 })
                 .collect();
             let elfcalls_addr = elfcalls::make();
-            eprintln!("[mldr] elf_calls vtable @ {elfcalls_addr:#x}");
+            dlog!("[mldr] elf_calls vtable @ {elfcalls_addr:#x}");
             let sp = unsafe {
                 stack::setup_stack(
                     0x7fff_ffe0_0000,
@@ -274,12 +307,12 @@ fn main() {
             };
             let sp0 = unsafe { *(sp as *const u64) };
             let argc = unsafe { *((sp + 8) as *const u64) };
-            eprintln!("[mldr] stack sp={sp:#x} sp[0](mh)={sp0:#x} argc={argc}");
+            dlog!("[mldr] stack sp={sp:#x} sp[0](mh)={sp0:#x} argc={argc}");
 
             // M5b: jump into dyld -- only when we are a real guest (checked in). A test run
             // (no __mldr_sockpath) stops here rather than abandoning the Rust runtime's stack.
             if special.sockpath.is_some() {
-                eprintln!("[mldr] jumping to entry {final_entry:#x} with sp {sp:#x}");
+                dlog!("[mldr] jumping to entry {final_entry:#x} with sp {sp:#x}");
                 unsafe { jump::jump_to_entry(final_entry, sp) };
             } else {
                 eprintln!("[mldr] (test run; not jumping -- set __mldr_sockpath to run a guest)");

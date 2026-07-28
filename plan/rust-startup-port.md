@@ -316,6 +316,25 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   exec/background runs, the flip is safe to keep as the default. FOLLOW-UP (separate, daemon-side,
   not mldr): the concurrent-output-drop flake affects both mldrs -- likely the same fork/exec
   concurrency issue that blocks the official gnix-hello M1 at the first clang; worth its own task.
+- 2026-07-28 (task #66 RESOLVED -- the "concurrent-output-drop flake" was a MEASUREMENT ARTIFACT,
+  not a real bug): the drop was reproduced (150 concurrent `echo|cat|tr` pipelines => 143/150 by a
+  line-anchored count) ONLY when the harness merged the guest's stdout and stderr (`2>&1`). The
+  "missing" markers were all present but GLUED onto `[mldr]` stderr debug lines (e.g.
+  `vm_addr_max=mark_20`, `entry=mark_97`), so an `^mark_N$` grep under-counted them; `grep -c mark_`
+  showed exactly 2x per marker (argv line + echo output) = all delivered. Proof matrix (all on the
+  correctly-built .#default; the earlier "boot fails/deadlocks" was the PHANTOM-PATH trap -- booting
+  an unbuilt store path): guest stdout -> PIPE, stderr separated = 150/150; -> shared regular FILE,
+  stderr separated = 150/150; O_APPEND `>>` = 150/150; native Linux (same workload, shared fd) =
+  150/150. No lost or interleaved data anywhere once the streams are separated. Fork coordination is
+  correct by construction (fork_wait_for_child -> XNU semaphore_wait PARKS the microthread; checkin
+  ups the parent fork_sem; handle_call's sched::drain resumes it; read_ppid can't race). REAL FIX:
+  mldr printed ~15 unconditional `[mldr]` diagnostic lines per guest process -- a per-process flood
+  that (a) interleaved with stdout to create this false flake and the prior "Argument list too long"
+  in build-hello-under-darling.sh, and (b) would swamp a real build (thousands of procs). Gated it
+  behind `MLDR_DEBUG` (default OFF) in darwin/loader/src/main.rs (16 `dlog!` sites; genuine errors
+  stay unconditional). Heavy concurrent fork/exec (600 procs, 5 rounds) completes clean; teardown
+  gap fixed earlier (df0da389). So M1/heavy builds are NOT output-blocked. Repro harnesses in the
+  session scratchpad: dboot.sh (merged), dbootp.sh (pipe), dbootf.sh (file, stderr split).
 - 2026-07-28 (parity gap #1 for the C-source deletion, task #67): **mldr-rs now handles fat/
   universal Mach-O.** Was a TODO (main.rs bailed on Mach::Fat). Added `select_slice()` which
   normalizes thin-or-fat to (MachO, fat_offset): for a fat binary it honors the guest's bprefs
@@ -328,4 +347,5 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   regression). Note the guest is entirely thin x86_64 in practice (0 fat binaries in 400 scanned),
   so this closes a parity gap for external universal binaries rather than a live failure.
   REMAINING #67 gaps before deleting the C sources: (2) 32-bit -- cmake builds mldr32 (gated
-  BUILD_TARGET_32BIT); decide port-or-drop. (3) validate a real heavy build (blocked by #66).
+  BUILD_TARGET_32BIT); decide port-or-drop. (3) validate a real heavy build (#66 resolved: not
+  output-blocked -- concurrent guest output is complete once the mldr debug flood is gated).
