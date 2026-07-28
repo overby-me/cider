@@ -1,0 +1,17 @@
+diff --git a/cctools/ld64/src/ld/HeaderAndLoadCommands.hpp b/cctools/ld64/src/ld/HeaderAndLoadCommands.hpp
+index b385403..52943d9 100644
+--- a/cctools/ld64/src/ld/HeaderAndLoadCommands.hpp
++++ b/cctools/ld64/src/ld/HeaderAndLoadCommands.hpp
+@@ -291,9 +291,9 @@ HeaderAndLoadCommandsAtom<A>::HeaderAndLoadCommandsAtom(const Options& opts, ld:
+ 					bool isFrameworkReExport = false;
+ 					const char* lastSlash = strrchr(dylib->installPath(), '/');
+ 					if ( lastSlash != NULL ) {
+-						char frameworkName[strlen(lastSlash)+20];
+-						sprintf(frameworkName, "/%s.framework/", &lastSlash[1]);
+-						isFrameworkReExport = (strstr(dylib->installPath(), frameworkName) != NULL);
++						std::vector<char> frameworkName(strlen(lastSlash)+20);
++						sprintf(frameworkName.data(), "/%s.framework/", &lastSlash[1]);
++						isFrameworkReExport = (strstr(dylib->installPath(), frameworkName.data()) != NULL);
+ 					}
+ 					if ( isFrameworkReExport ) {
+ 						// needs a LC_SUB_UMBRELLA command

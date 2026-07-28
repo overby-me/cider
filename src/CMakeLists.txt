@@ -144,6 +144,9 @@ include_directories(AFTER
 	${CMAKE_CURRENT_SOURCE_DIR}/libDiagnosticMessagesClient/include
 	${CMAKE_CURRENT_SOURCE_DIR}/libMobileGestalt/include
 	${CMAKE_CURRENT_SOURCE_DIR}/lib/include
+	# configd public dnsinfo.h -- Libinfo (mdns_module.c) + others #include <dnsinfo.h>;
+	# global so it does not depend on Libinfo (:185) being configured before configd (:203).
+	${CMAKE_CURRENT_SOURCE_DIR}/external/configd/dnsinfo
 
 	# necessary because this is the expected behavior when using `xml2-config --cflags`
 	# it adds `$sdk_dir/libxml2` to the include path
