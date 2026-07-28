@@ -37,6 +37,11 @@
   target ? null,
   targets ? null,
   ninjaFile ? "build.ninja",
+  # Per-component grouping (task #26/#78): a function edgeIndex -> groupId. When
+  # set, edges are lowered one derivation per GROUP (each group's internal edges
+  # run via an emitted mini build.ninja) instead of one per edge -- far fewer
+  # derivations, still input-isolated. null keeps the per-edge behaviour.
+  grouping ? null,
   # Packages on PATH for every edge command (CMake bakes absolute tool paths;
   # hand-written manifests calling `cc`/`ar`/... need a toolchain here).
   toolchain ? [pkgs.stdenv.cc pkgs.coreutils],
@@ -162,6 +167,9 @@
     }).lowerGraph
     graph;
 
+  # Per-component grouping view of the same lowering (task #26/#78), or null.
+  groupedLowered = if grouping == null then null else lowered.lowerGroupsBy grouping;
+
   sanOut = s:
     "ninja-out-"
     + lib.strings.sanitizeDerivationName (builtins.unsafeDiscardStringContext s);
@@ -186,7 +194,10 @@
       ''
     else
       let
-        drv = lowered.drvForOutput t;
+        drv =
+          if grouping != null
+          then groupedLowered.groupDrvForOutput t
+          else lowered.drvForOutput t;
       in
       pkgs.runCommand (sanOut t) {
         passthru = {

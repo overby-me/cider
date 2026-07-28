@@ -93,6 +93,9 @@ in
       target ? null,
       targets ? null,
       perFileIncremental ? true,
+      # Per-component grouping (task #26/#78): edgeIndex -> groupId, or null for
+      # the per-edge lowering.
+      grouping ? null,
       # Bake CMAKE_INSTALL_PREFIX so a nix-ninja-built launcher's compiled-in
       # INSTALL_PREFIX (it execs `INSTALL_PREFIX/bin/darlingserver`) points at an
       # existing monolithic `result` runtime — enabling seconds-fast launcher
@@ -114,6 +117,7 @@ in
         target
         targets
         perFileIncremental
+        grouping
         rustNinja
         ;
 

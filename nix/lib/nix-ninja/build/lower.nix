@@ -935,9 +935,184 @@ in {
           drv = edgeDrvs.${toString i};
         }) (edgeOutputs (elemAt edges i)))
         (realProducers p);
+
+    # ---- grouped lowering (per-component): one derivation per edge GROUP -----
+    # A group is a set of edges (a CMake subproject, from component-dag). Its
+    # internal producer->consumer order and internal generated headers (mig/rpc)
+    # are resolved by an emitted mini `build.ninja` run inside the group, so the
+    # per-edge generated-header/cycle bridging is unnecessary here. Isolation
+    # comes from staging only: the group's own declared sources, the include dirs
+    # its commands name, and its EXTERNAL dependency groups' outputs (symlinked).
+    #   groupOf : edgeIndex(int) -> groupId(string).  `groupOf = toString` recovers
+    #   the per-edge behaviour (each edge its own group).
+    lowerGroupsBy = groupOf: let
+      realIds = filter (i: !(isNoOp (elemAt edges i))) (indices edges);
+      gidOf = listToAttrs (map (i: {name = toString i; value = groupOf i;}) realIds);
+      gid = i: gidOf.${toString i};
+      groupIds = lib.unique (map gid realIds);
+      idsInGroup = listToAttrs (map (g: {
+          name = g;
+          value = filter (i: gid i == g) realIds;
+        })
+        groupIds);
+      groupOfOutput = p: let ids = realProducers p; in
+        if ids == [] then null else gid (builtins.head ids);
+      shebangSedG = p: ''
+        if [ -f ${p} ] && [ "$(head -c2 ${p} 2>/dev/null)" = "#!" ]; then
+          chmod u+w ${p} 2>/dev/null || true
+          sed -i -e "1s|^#! *\(/usr\)\?/bin/bash|#!${pkgs.bash}/bin/bash|" \
+                 -e "1s|^#! */usr/bin/env  *bash|#!${pkgs.bash}/bin/bash|" \
+                 -e "1s|^#! */usr/bin/env  *|#!${pkgs.coreutils}/bin/env |" ${p}
+        fi
+      '';
+      ninjaEsc = s: builtins.replaceStrings [" " ":" "$" "\n"] ["$ " "$:" "$$" " "] s;
+      mkGroup = g: let
+        myIds = idsInGroup.${g};
+        mySet = listToAttrs (map (i: {name = toString i; value = true;}) myIds);
+        allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
+        extProducerIds = lib.unique (filter (i: !(mySet ? ${toString i}))
+          (concatMap realProducers allIns));
+        extGroupDrvs = lib.unique (map (i: groupDrvs.${gid i}) extProducerIds);
+        relSrcs = lib.unique (filter (r: safeNotSymlink (src + "/${r}"))
+          (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
+        # For compile edges use the depfile scan (mkEdge's approach): it stages the
+        # EXACT headers a compile reads, following symlink-dirs like the SDK/mach
+        # tree that coarse -I staging misses. Content-addressed, so the group stays
+        # isolated. Non-compile edges use declared under-root inputs + command paths.
+        rootSrcs = lib.unique (concatMap (i: let e = elemAt edges i; in
+            if depfilePrecise && isCompile e
+            then filter builtins.pathExists (scanDepsOf i)
+            else (filter (p: underAnyRoot p && safeNotSymlink p) (edgeInputs e))
+                 ++ (filter (p: underAnyRoot p && safeRegular p)
+                      (concatMap (lib.splitString ",") (lib.splitString " " e.command))))
+          myIds);
+        # Only NON-compile edges contribute -I dir staging. Compile edges use the
+        # scan (rootSrcs) for exact headers; staging their -I dirs would cp -rsf the
+        # shim symlinks over the scan's real headers (mkEdge sets rootIncs=[] for
+        # useScan edges for exactly this reason).
+        rootIncs = lib.unique (filter safeNotSymlink
+          (concatMap (i: let e = elemAt edges i; in
+            if depfilePrecise && isCompile e then [] else incAbsDirs e.command) myIds));
+        symlinkTargets = lib.unique (filter
+          (p: underAnyRoot p && hasSymlinkComponent p && builtins.pathExists p)
+          (concatMap (i: let e = elemAt edges i; in
+            incAbsDirs e.command ++ edgeInputs e
+            ++ concatMap (lib.splitString ",") (lib.splitString " " e.command)) myIds));
+        # cp -rs each -I dir, then re-create its source symlinks with their original
+        # targets so they resolve against the merged tree (mkEdge's stageIncs).
+        stageIncs = lib.concatMapStringsSep "\n" (p: ''
+          if [ -L ${esc (relUnder p)} ] && [ ! -e ${esc (relUnder p)} ]; then rm -f ${esc (relUnder p)}; fi
+          mkdir -p ${esc (relUnder p)}
+          cp -rsf --no-preserve=mode ${indivOf p}/. ${esc (relUnder p)}/ || true
+          (cd ${indivOf p} && find . -type l 2>/dev/null) | while IFS= read -r l; do
+            d=${esc (relUnder p)}/"$l"
+            # Skip if a real file OR dir is already here: the depfile scan staged the
+            # exact (deref'd) header at this path, and it must win over the shim
+            # symlink (which would re-chain to an unstaged SDK path and dangle).
+            if [ -e "$d" ] && [ ! -L "$d" ]; then continue; fi
+            t=$(readlink "${indivOf p}/$l" 2>/dev/null) || continue
+            ln -sfn "$t" "$d" 2>/dev/null || true
+          done
+        '') rootIncs;
+        # Deref the Mach/kernel interface symlinks (mach/*.h etc.) to real content
+        # so a `<mach/boolean.h>` include resolves (mkEdge's stageIfaceDeref).
+        stageIfaceDeref = lib.concatMapStringsSep "\n" (p:
+          lib.optionalString (rewriteRoots != [] && rootFor p == builtins.head rewriteRoots)
+          (lib.concatMapStringsSep "\n" (rel: let
+              orig = toString (rootFor p) + "/" + relUnder p + "/" + rel;
+              content = builtins.path {path = orig; name = "iref-" + lib.strings.sanitizeDerivationName rel;};
+            in lib.optionalString (builtins.pathExists orig && builtins.readFileType content == "regular") ''
+                rm -f ${esc (relUnder p + "/" + rel)}
+                install -Dm644 ${content} ${esc (relUnder p + "/" + rel)}
+              '')
+            (ifaceSymlinksUnder (toString (rootFor p) + "/" + relUnder p))))
+          rootIncs;
+        stageSymlinkTargets = lib.concatMapStringsSep "\n" (p: let r = relUnder p; cp = indivOf p; in
+          lib.optionalString (builtins.readFileType cp == "regular") ''
+            if [ -L ${esc r} ]; then rm -f ${esc r}; fi
+            install -Dm644 ${cp} ${esc r}
+            if [ -x ${cp} ]; then chmod +x ${esc r}; ${shebangSedG (esc r)} fi
+          '') symlinkTargets;
+        # topological order of the group's internal edges (producers first). The
+        # group is acyclic (SCC-condensed), so this terminates; the ready==[] arm
+        # is a defensive residue-dump, not expected.
+        topo = let
+          go = remaining: done: order:
+            if remaining == [] then order
+            else let
+              intDeps = i: filter (j: mySet ? ${toString j})
+                (concatMap realProducers (edgeInputs (elemAt edges i)));
+              ready = filter (i: lib.all (d: done ? ${toString d}) (intDeps i)) remaining;
+              batch = if ready == [] then remaining else ready;
+              nd = done // listToAttrs (map (i: {name = toString i; value = true;}) batch);
+            in go (filter (i: !(lib.elem i batch)) remaining) nd (order ++ batch);
+        in go myIds {} [];
+        relOf = o: if underAnyRoot o then relUnder o else o;
+        # Run one internal edge DIRECTLY (not via ninja): stripRoots gives
+        # $out-absolute paths (cd-immune, and $out is the shell env var here --
+        # no ninja `$out` variable to collide with). Reuses mkEdge's command
+        # construction; internal generated headers are already produced by earlier
+        # edges in this topo order, so no generated-header -I bridging is needed.
+        runEdge = i: let
+          e = elemAt edges i;
+          outs = edgeOutputs e;
+          rsp = e.rspfile or null;
+          cmd = let
+            stripped = if rewriteRoots == [] then e.command else stripRoots e.command;
+            withSubs = builtins.replaceStrings (map (s: s.from) subs) (map (s: s.to) subs) stripped;
+          in builtins.replaceStrings (map (s: s.from) toolPathSubs) (map (s: s.to) toolPathSubs) withSubs;
+        in ''
+          # Subshell resetting to $out: edges run sequentially in one shell, and a
+          # compile command that `cd`s into its WORKING_DIRECTORY (and does not
+          # return) would otherwise leave the next edge -- e.g. a link with a
+          # relative -o and no cd of its own -- writing to a doubled path.
+          ( cd "$out"
+          ${lib.concatMapStringsSep "\n" (o: ''
+            realize_writable "$(dirname ${esc (relOf o)})"
+            if [ -L ${esc (relOf o)} ]; then rm -f ${esc (relOf o)}; fi'') outs}
+          ${lib.optionalString (rsp != null && rsp != "") ''
+            mkdir -p "$(dirname ${esc rsp})"
+            printf '%s' ${esc (e.rspfile_content or "")} > ${esc rsp}''}
+          ${cmd}
+          ${lib.concatMapStringsSep "\n" (o: shebangSedG ''"$out/${relOf o}"'') outs}
+          ${lib.optionalString (rsp != null && rsp != "") "rm -f ${esc rsp}"} )
+        '';
+      in
+        pkgs.runCommand "ninja-group-${lib.strings.sanitizeDerivationName g}" {
+          nativeBuildInputs = toolchain ++ extraInputs;
+          preferLocalBuild = true;
+          passthru = {groupId = g; edgeIndices = myIds;};
+        } ''
+          mkdir -p $out; cd $out
+          realize_writable() {
+            local p="$1" cur="" comp tgt oldIFS="$IFS"
+            IFS='/'; set -- $p; IFS="$oldIFS"
+            for comp in "$@"; do
+              [ -z "$comp" ] && continue
+              if [ -z "$cur" ]; then cur="$comp"; else cur="$cur/$comp"; fi
+              if [ -L "$cur" ]; then
+                tgt="$(readlink -f "$cur" 2>/dev/null || true)"; rm -f "$cur"; mkdir -p "$cur"
+                if [ -n "$tgt" ] && [ -d "$tgt" ]; then cp -rsf --no-preserve=mode "$tgt"/. "$cur"/ 2>/dev/null || true; fi
+              else mkdir -p "$cur"; fi
+            done
+          }
+          ${lib.concatMapStringsSep "\n" (d: "cp -rsf --no-preserve=mode ${d}/. ./ 2>/dev/null || true") extGroupDrvs}
+          ${lib.concatMapStringsSep "\n" (s: ''
+            if [ ! -e ${esc s} ]; then install -Dm644 ${srcStorePath s} ${esc s}; if [ -x ${srcStorePath s} ]; then chmod +x ${esc s}; ${shebangSedG (esc s)} fi; fi'') relSrcs}
+          ${lib.concatMapStringsSep "\n" (p: ''
+            if [ ! -e ${esc (relUnder p)} ]; then install -Dm644 ${indivOf p} ${esc (relUnder p)}; if [ -x ${indivOf p} ]; then chmod +x ${esc (relUnder p)}; ${shebangSedG (esc (relUnder p))} fi; fi'') rootSrcs}
+          ${stageIncs}
+          find . -xtype l -delete 2>/dev/null || true
+          ${stageIfaceDeref}
+          ${stageSymlinkTargets}
+          ${lib.concatMapStringsSep "\n" runEdge topo}
+        '';
+      groupDrvs = listToAttrs (map (g: {name = g; value = mkGroup g;}) groupIds);
+      groupDrvForOutput = p: groupDrvs.${groupOfOutput p};
+    in {inherit groupDrvs groupDrvForOutput idsInGroup;};
   in {
     inherit producerOf edgeDrvs drvForOutput edges;
-    inherit isPhonyTarget realOutputsForTarget;
+    inherit isPhonyTarget realOutputsForTarget lowerGroupsBy;
     inherit (graph) defaults;
   };
 }

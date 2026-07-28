@@ -198,6 +198,20 @@
           overby = inputs.overby;
         }).dag;
 
+      # #78 first test of lowerGroupsBy: build migcom (a host tool, small closure,
+      # no libSystem) with ALL its edges in ONE group -- validates the emit-a-mini-
+      # build.ninja-and-run grouped lowering cheaply before per-component grouping.
+      #   nix build .#darling-group-test
+      packages.darling-group-test =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget {
+          target = "src/external/bootstrap_cmds/migcom";
+          grouping = _: "all";
+        };
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes

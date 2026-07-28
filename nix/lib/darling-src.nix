@@ -28,6 +28,35 @@
 }:
 let
   inherit (pkgs) lib;
+
+  # Filter the superproject source so nix-expression / doc edits do NOT rehash the
+  # whole darling-src derivation (and thus every darling build). nix/ holds the
+  # build graph's Nix expressions -- evaluated, never read by the C build; the pin
+  # manifest reaches this function via the `manifest` arg, not baseSrc -- and
+  # docs/flake are not read by the build either. src/ darwin/ cmake/ CMakeLists.txt
+  # etc. are kept. This is a build-iteration speedup, orthogonal to per-component
+  # input isolation (#26/#78).
+  baseSrcClean = builtins.path {
+    name = "darling-superproject-src";
+    path = baseSrc;
+    filter =
+      path: _type:
+      let
+        rel = lib.removePrefix (toString baseSrc + "/") (toString path);
+      in
+      !(builtins.elem rel [
+        "nix"
+        "flake.nix"
+        "flake.lock"
+        "docs"
+        "PLAN.md"
+        "README.md"
+        "CONTRIBUTORS.md"
+        ".git"
+        ".jj"
+      ]);
+  };
+
   entries = builtins.fromJSON (builtins.readFile manifest);
 
   pinned = builtins.filter (e: e.hash or "" != "") entries;
@@ -97,7 +126,7 @@ pkgs.runCommand "darling-src"
     # them non-executable and the rpc.h generator fails "Permission denied". Drop
     # only ownership (unsettable as non-root); chmod -R u+w then adds write for the
     # submodule overlays and patches without clearing the execute bits.
-    cp -a --no-preserve=ownership ${baseSrc} $out
+    cp -a --no-preserve=ownership ${baseSrcClean} $out
     chmod -R u+w $out
     echo "assembling darling-src: ${toString (builtins.length pinned)}/${toString (builtins.length entries)} submodules pinned"
     ${lib.concatMapStringsSep "\n" overlayOne pinned}
