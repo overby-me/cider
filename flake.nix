@@ -96,18 +96,34 @@
       # they built the C src/startup/darling, which is deleted. The launcher is now the Rust
       # `launcher` crate (packages.launcher, installed as bin/darling). task #67.)
 
-      # A per-edge nix-ninja build of the darlingserver daemon. Its edges pull in
-      # the mig/migcom code generators; unblocking their per-edge scan is the path
-      # to a fully per-edge (cacheable, seconds-incremental) Darling build. See
-      # plan/nix-ninja-primary.md.
-      #   nix build '.?submodules=1#darlingserver-ninja'
+      # A per-edge nix-ninja build of the darlingserver duct-tape static lib (the
+      # kernel-emulation glue: real XNU osfmk/bsd sources + mig/migcom generators).
+      # A mig-exercising subgraph smaller than the full build -- the fast validation
+      # target for the per-edge lowering. (The old target was the C++ darlingserver
+      # daemon executable, obsolete since the daemon became the Rust `server` crate,
+      # task #50; its CMake add_executable lingers but nothing installs it.) See PLAN.md.
+      #   nix build .#darlingserver-ninja
       packages.darlingserver-ninja =
         pkgs:
         (import ./nix/lib/darlingNinja.nix {
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "src/external/darlingserver/darlingserver"; };
+          { target = "src/external/darlingserver/duct-tape/libdarlingserver_duct_tape.a"; };
+
+      # The FULL per-edge nix-ninja build of Darling's CLI userland (the `all`
+      # default of the `cli` component graph, ~tens of thousands of edges), each
+      # edge its own cached derivation. This is task #39's keystone. It evaluates
+      # thousands of derivations, so it is NOT wired into `nix flake check`; build
+      # it directly:
+      #   nix build .#darling-ninja
+      packages.darling-ninja =
+        pkgs:
+        (import ./nix/lib/darlingNinja.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { };
 
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
