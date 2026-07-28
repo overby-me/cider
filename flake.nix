@@ -247,6 +247,41 @@
           grouping = dn.componentGrouping;
         };
 
+      # #78 core milestone: build libSystem.B.dylib (the core umbrella: ~13 core
+      # components with real cross-group deps + heavy Mach/kernel header staging) via
+      # per-component grouping. The first grouped build that exercises libSystem-scale
+      # cross-component staging, not just a self-contained host tool.
+      #   nix build .#darling-libsystem-group
+      packages.darling-libsystem-group =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          target = "src/external/libsystem/libSystem.B.dylib";
+          grouping = dn.componentGrouping;
+        };
+
+      # #78 GOAL: the full darling built via per-component grouping. No explicit
+      # target -> the manifest's `default` (the `all` phony) -> every final artifact,
+      # each materialized from its component group derivation (dependency groups built
+      # transitively). This is the "fully build everything via grouping" deliverable.
+      #   nix build .#darling-full-group
+      packages.darling-full-group =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          grouping = dn.componentGrouping;
+        };
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes

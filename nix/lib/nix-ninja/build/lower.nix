@@ -488,7 +488,7 @@ in {
     # reference to the producing edge's output (which the string then pulls in
     # as a dependency) so the preprocessor can read it. Non-generated inputs are
     # untouched and still resolve through the mounted source/configured trees.
-    scanDepsOf = i: let
+    scanDrvOf = i: let
       e = elemAt edges i;
       # Each generated input (produced by another edge), normalised to the
       # build-dir-relative path the producer writes plus that producer's drv.
@@ -555,16 +555,41 @@ in {
           ${scanCmd} ${lib.concatStringsSep " " (genIncs ++ generatedHeaderIncs ++ migHeaderIncsFor i)}
         '';
     in
-      # unsafeDiscardStringContext: the depfile paths are substrings of the scan
-      # derivation's OUTPUT, whose string context transitively references the mounted
-      # source tree (cmakeSrcStore). That context would otherwise ride along on every
-      # `relUnder p` substring (via `esc (relUnder p)` in the staging script) and make
-      # the WHOLE source tree an inputSrc of each consuming edge/group derivation --
-      # silently defeating per-input isolation (an edit to any source rehashes every
-      # edge). indivOf re-imports each header content-addressed via `rootFor`, so the
-      # real per-file dependency is preserved without the whole-tree reference.
-      filter underAnyRoot
-        (parseDepfile (builtins.unsafeDiscardStringContext (builtins.readFile scanDrv)));
+      scanDrv;
+
+    # Batch ALL compile-edge depfile scans into ONE parallel realization instead of
+    # forcing each per-edge scan serially during evaluation. `builtins.readFile` on a
+    # scan drv is an import-from-derivation, and Nix's evaluator is single-threaded:
+    # it blocks on each IFD in turn, so N per-edge scans serialize BEFORE the real
+    # build graph is even scheduled -- the dominant wall-clock cost at CMake scale.
+    # Here one `allScansDrv` takes every compile edge's scan drv as an input, so
+    # realizing it (a single IFD) builds them all in parallel up to the job limit;
+    # every subsequent per-edge readFile is then a store cache hit. The one-time
+    # graph-extraction IFD stays the only other one. This does not change WHAT is
+    # scanned, only that the scans run concurrently.
+    compileScanIds =
+      filter (i: depfilePrecise && isCompile (elemAt edges i)) (indices edges);
+    allScansDrv =
+      pkgs.runCommand "ninja-all-scans" {
+        scans = map scanDrvOf compileScanIds;
+      } "touch $out";
+    # Force that single parallel realization once; thread it in front of every read.
+    scansForced =
+      if compileScanIds == []
+      then true
+      else builtins.seq (builtins.readFile allScansDrv) true;
+    scanDepsOf = i:
+      builtins.seq scansForced
+        # unsafeDiscardStringContext: the depfile paths are substrings of the scan
+        # derivation's OUTPUT, whose string context transitively references the mounted
+        # source tree (cmakeSrcStore). That context would otherwise ride along on every
+        # `relUnder p` substring (via `esc (relUnder p)` in the staging script) and make
+        # the WHOLE source tree an inputSrc of each consuming edge/group derivation --
+        # silently defeating per-input isolation (an edit to any source rehashes every
+        # edge). indivOf re-imports each header content-addressed via `rootFor`, so the
+        # real per-file dependency is preserved without the whole-tree reference.
+        (filter underAnyRoot
+          (parseDepfile (builtins.unsafeDiscardStringContext (builtins.readFile (scanDrvOf i)))));
 
     # ---- one derivation per (non-phony) edge -------------------------------
     mkEdge = i: let
