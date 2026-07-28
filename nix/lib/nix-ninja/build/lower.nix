@@ -1040,6 +1040,36 @@ in {
         fi
       '';
       ninjaEsc = s: builtins.replaceStrings [" " ":" "$" "\n"] ["$ " "$:" "$$" " "] s;
+      # #79: one shared, content-addressed copy of the WHOLE source tree filtered to
+      # headers (+ every symlink + the dir structure) -- the entire include namespace,
+      # with the darling/include -> SDK -> xnu shim maze intact. Every group mounts it
+      # (cp -rs) so its compiles resolve <...>/"..." includes at BUILD time, which
+      # ELIMINATES the per-edge -M scan (an eval-time import-from-derivation that Nix
+      # forces serially -- the dominant first-build cost). Dropping .c/.cpp/.m/.mm keeps
+      # this base STABLE across source edits: editing a component's .c does not rehash
+      # the header base, so only that component's group rebuilds -- component-level
+      # input isolation, now without any scan. Header edits (rarer) rehash it, as they
+      # should. Built once and shared, so its ~300MB is paid a single time.
+      hdrExts = [ "h" "hpp" "hh" "hxx" "h++" "inc" "def" "defs" "modulemap" "apinotes" "tbd" "pch" ];
+      srcHeaders =
+        if rewriteRoots == [ ]
+        then null
+        else builtins.path {
+          path = builtins.head rewriteRoots;
+          name = "darling-src-headers";
+          filter =
+            path: type:
+            type == "directory"
+            || type == "symlink"
+            || (
+              let
+                b = baseNameOf path;
+                ext = if lib.hasInfix "." b then lib.toLower (lib.last (lib.splitString "." b)) else "";
+              in
+              builtins.elem ext hdrExts
+              || (ext == "" && (lib.hasInfix "/include/" path || lib.hasInfix "/Headers/" path))
+            );
+        };
       mkGroup = g: let
         myIds = idsInGroup.${g};
         mySet = listToAttrs (map (i: {name = toString i; value = true;}) myIds);
@@ -1049,16 +1079,14 @@ in {
         extGroupDrvs = lib.unique (map (i: groupDrvs.${gid i}) extProducerIds);
         relSrcs = lib.unique (filter (r: safeNotSymlink (src + "/${r}"))
           (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
-        # For compile edges use the depfile scan (mkEdge's approach): it stages the
-        # EXACT headers a compile reads, following symlink-dirs like the SDK/mach
-        # tree that coarse -I staging misses. Content-addressed, so the group stays
-        # isolated. Non-compile edges use declared under-root inputs + command paths.
+        # #79: no per-edge scan. Headers come from the mounted srcHeaders base at
+        # build time; here stage only each edge's DECLARED under-root inputs (the .c
+        # source and any explicitly-listed files) plus under-root files named in the
+        # command (a linker's alias list, a custom command's template, ...).
         rootSrcs = lib.unique (concatMap (i: let e = elemAt edges i; in
-            if depfilePrecise && isCompile e
-            then filter builtins.pathExists (scanDepsOf i)
-            else (filter (p: underAnyRoot p && safeNotSymlink p) (edgeInputs e))
-                 ++ (filter (p: underAnyRoot p && safeRegular p)
-                      (concatMap (lib.splitString ",") (lib.splitString " " e.command))))
+            (filter (p: underAnyRoot p && safeNotSymlink p) (edgeInputs e))
+            ++ (filter (p: underAnyRoot p && safeRegular p)
+                 (concatMap (lib.splitString ",") (lib.splitString " " e.command))))
           myIds);
         # Only NON-compile edges contribute -I dir staging. Compile edges use the
         # scan (rootSrcs) for exact headers; staging their -I dirs would cp -rsf the
@@ -1170,6 +1198,11 @@ in {
               else mkdir -p "$cur"; fi
             done
           }
+          # #79: mount the shared source-header namespace (headers + the shim maze) so
+          # this group's compiles resolve includes at build time -- no per-edge scan.
+          # cp -rs, so it is symlinks into the content-addressed base (no data copy).
+          ${lib.optionalString (srcHeaders != null)
+            "cp -rsf --no-preserve=mode ${srcHeaders}/. ./ 2>/dev/null || true"}
           ${lib.concatMapStringsSep "\n" (d: "cp -rsf --no-preserve=mode ${d}/. ./ 2>/dev/null || true") extGroupDrvs}
           ${lib.concatMapStringsSep "\n" (s: ''
             if [ ! -e ${esc s} ]; then install -Dm644 ${srcStorePath s} ${esc s}; if [ -x ${srcStorePath s} ]; then chmod +x ${esc s}; ${shebangSedG (esc s)} fi; fi'') relSrcs}
