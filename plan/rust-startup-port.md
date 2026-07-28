@@ -272,3 +272,21 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   mldr-rs never re-creates. Method that worked: run under `strace -f` and symbolicate the child's
   fault RIP vs /proc/<pid>/maps; compare the child's syscall sequence to the C mldr's. C mldr boots
   reliably with the SAME daemon, so the divergence is purely in mldr-rs's guest-side fork path.
+- 2026-07-28 overnight (cont'd): **BOOT-GREEN. mldr-rs now boots BOOT=Darwin reliably (33/33
+  across configs).** The forked-child corruption was a **#GP from an aligned SSE store**: the
+  guest calls the refresh elfcall (in the child, from fork.c) on a stack that is **misaligned by
+  8**; the C mldr tolerates this (C uses unaligned movs), but mldr-rs's `reserve_high_cloexec`
+  zeroed a 16-byte `rlimit` via `std::mem::zeroed()`, which the compiler lowers to
+  `movaps %xmm0, 0x50(%rsp)` -- an *aligned* SSE store that #GPs on the misaligned stack
+  (SIGSEGV, si_code=SI_KERNEL, si_addr=NULL, exactly at movaps per objdump). Method that nailed
+  it: strace -f showed the child do socket()+bind() then SIGSEGV before getrlimit; ruled out lazy
+  PLT (mldr is BIND_NOW) and stack canaries (zero %fs:0x28 in the binary); disassembled
+  reserve_high_cloexec and found the `movaps`. FIX: use `MaybeUninit::<rlimit>::uninit()` + let
+  getrlimit fill it (scalar stores, no movaps). With that, refresh + close_socket are ENABLED (the
+  child gets its own high-fd CLOEXEC socket and closes the inherited one), which removes the fork
+  ud2 too. Verified: 8/8 + 15/15 + 10/10 boots, a fork-heavy guest (`uname -a; $(echo hi); loop
+  /usr/bin/true`) prints `Darwin gravitas 23.4.0 ... x86_64` + DONE=0, and the C mldr still boots
+  (CBOOT=Darwin, main not regressed). LESSON: any mldr-rs code reachable as an elfcall from the
+  guest must be movaps-free (no aligned SSE) because the guest may call elfcalls on an 8-byte-
+  misaligned stack. NEXT: flip mldr-rs to be the default loader (done-bar for #65), mirroring how
+  darling-launcher-rs replaced darling.c (#64).

@@ -158,31 +158,35 @@ extern "C" fn ec_dserver_per_thread_socket() -> c_int {
     crate::rpc::thread_socket()
 }
 extern "C" fn ec_dserver_per_thread_socket_refresh() {
-    // The guest calls this in the forked child (fork.c) to obtain a FRESH RPC socket so the
-    // child does not share the parent's -- otherwise the parent's dserver_rpc_fork_wait_for_child
-    // races and returns -ECOMM (-70), and __mach_fork_parent executes `ud2` (SIGILL).
-    //
-    // KNOWN-INCOMPLETE: implementing this (create_thread_socket in the child) does hand the child
-    // its own socket, but the forked child then wild-jumps into mldr-rs text and SIGSEGVs before
-    // it can use it -- a deeper fork-state corruption in the mldr-rs guest that is orthogonal to
-    // the socket and not yet root-caused. Enabling refresh therefore trades the intermittent
-    // fork ud2 (~30% boot) for a deterministic child crash (0% boot), so it is left as a no-op
-    // until the fork-corruption is fixed. See plan/rust-startup-port.md.
-    //
-    // The fork-safe, alloc-free create_thread_socket + reserve_high_cloexec plumbing is kept so
-    // this becomes a one-line re-enable once the corruption is understood.
+    // The guest calls this in the forked child (fork.c) to obtain a FRESH RPC socket so the child
+    // does not share the parent's -- otherwise the parent's dserver_rpc_fork_wait_for_child races
+    // and returns -ECOMM (-70), and __mach_fork_parent executes `ud2` (SIGILL). create_thread_socket
+    // binds a new autobound socket, moves it to a high CLOEXEC fd, and stores it as this thread's
+    // T_SOCKET. Mirrors C __darling_thread_rpc_socket_refresh (threads.c:397). (This works only
+    // because create_thread_socket/reserve_high_cloexec are movaps-free: the guest calls this
+    // elfcall on a stack that is misaligned by 8, so any aligned SSE store would #GP -- see
+    // reserve_high_cloexec.)
+    let fd = unsafe { crate::rpc::create_thread_socket() };
+    if fd < 0 {
+        unsafe { libc::abort() };
+    }
+    if crate::rpc::is_main_thread() {
+        crate::rpc::set_main_socket(fd);
+    }
 }
 extern "C" fn ec_dserver_close_socket(fd: c_int) {
     // The guest's guard table calls this to close the old RPC socket on fork (fork.c) and on
     // thread teardown. Just close the fd (C __mldr_close_rpc_socket also releases a socket
     // bitmap slot, which mldr-rs has no equivalent of). close() is a raw syscall, so this is
     // fork-safe. Mirrors C __mldr_close_rpc_socket.
-    // NOTE: intentionally a no-op for now. The guest's guard_table closes the inherited RPC
-    // socket on fork via this callback, but doing so (then refreshing) left the forked child
-    // wedged (it closed fd, then SIGSEGV'd before a usable socket was back, so its sigexc
-    // interrupt_enter hit EBADF). Leaving the inherited fd open (the child refreshes to a new
-    // fd and uses that) avoids the wedge; the stale fd is an fd leak we accept for now.
-    let _ = fd;
+    // The guest's guard_table calls this to close the old RPC socket on fork (fork.c) and on
+    // thread teardown. Close the fd (C __mldr_close_rpc_socket also releases a socket-bitmap slot,
+    // which mldr-rs has no equivalent of). close() is a raw syscall, so this is fork-safe. Without
+    // this the forked child leaks the inherited RPC socket fd -- one per fork, which a build's
+    // thousands of processes would accumulate.
+    if fd >= 0 {
+        unsafe { libc::close(fd) };
+    }
 }
 extern "C" fn ec_dserver_get_lifetime_pipe() -> c_int {
     -1

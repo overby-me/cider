@@ -61,13 +61,21 @@ unsafe fn reserve_high_cloexec(fd: c_int) -> c_int {
     // rlim_cur-1, but the guest's rlimit here is enormous (~524288), and an absurdly high fd
     // (~524224) wedges the guest's RPC layer (interrupt_enter -> EBADF); a fd in [512,1023]
     // clears bash without going that high.
-    let mut rl: libc::rlimit = std::mem::zeroed();
-    let base = if libc::getrlimit(libc::RLIMIT_NOFILE, &mut rl) == 0
-        && rl.rlim_cur != libc::RLIM_INFINITY
-        && rl.rlim_cur > 512
-        && (rl.rlim_cur as u64) < 1024
-    {
-        (rl.rlim_cur - 8) as c_int
+    // CRITICAL: do NOT use std::mem::zeroed::<rlimit>() here. The compiler lowers zeroing a
+    // 16-byte struct to an ALIGNED SSE store (movaps [rsp+..],xmm0), which #GPs (SIGSEGV,
+    // si_code=SI_KERNEL, si_addr=NULL) when this runs on a stack that is not 16-byte aligned.
+    // The guest calls this elfcall from the forked child's fork.c on a stack that is misaligned
+    // by 8; the C mldr tolerates it (its C uses unaligned movs), but movaps does not. Using
+    // MaybeUninit + letting getrlimit fill it keeps the codegen to scalar stores, so it works on
+    // the misaligned stack too.
+    let mut rl = std::mem::MaybeUninit::<libc::rlimit>::uninit();
+    let base = if libc::getrlimit(libc::RLIMIT_NOFILE, rl.as_mut_ptr()) == 0 {
+        let cur = rl.assume_init().rlim_cur;
+        if cur != libc::RLIM_INFINITY && cur > 512 && (cur as u64) < 1024 {
+            (cur - 8) as c_int
+        } else {
+            512
+        }
     } else {
         512
     };
