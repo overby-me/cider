@@ -141,6 +141,39 @@
           baseSrc = ./.;
         };
 
+      # Darling's Ninja build graph as JSON, for the component-granularity build
+      # (#26): group by CMakeFiles/<target>.dir/ to get the per-subproject DAG.
+      # Cheap -- configure + graph parse, no compilation. COMPONENTS=system default.
+      #   nix build .#darling-graph
+      packages.darling-graph =
+        pkgs:
+        import ./nix/lib/darling-graph.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        };
+
+      # darling-base (#26): the shared foundation (toolchain + SDK header staging
+      # + core libSystem runtime) as ONE cached derivation, the Darling `core`
+      # COMPONENT scope. Per-component derivations layer on top of this.
+      #   nix build .#darling-base
+      packages.darling-base =
+        pkgs:
+        import ./nix/lib/darling-base.nix {
+          inherit pkgs;
+        };
+
+      # Proof of #26: build ONE component (the leaf `bsdln`, which links libSystem)
+      # on top of cached darling-base, reusing its toolchain + core + headers. Should
+      # run only bsdln's own edges, not the ~4700-edge monolith.
+      #   nix build .#darling-component-bsdln
+      packages.darling-component-bsdln =
+        pkgs:
+        import ./nix/lib/darling-component.nix {
+          inherit pkgs;
+          base = import ./nix/lib/darling-base.nix { inherit pkgs; };
+          target = "src/bsdln/bsdln";
+        };
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes
