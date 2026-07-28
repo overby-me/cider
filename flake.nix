@@ -187,6 +187,17 @@
           name = "memberd-xtrace-mig";
         };
 
+      # The base-filtered, cycle-condensed component DAG as JSON (component-dag.py
+      # over the ninja graph): 286 components, 13 base-covered, 186 generated, the
+      # 12 genuine cross-component deps. Inspection / driver for the codegen.
+      #   nix build .#darling-component-dag && cat result
+      packages.darling-component-dag =
+        pkgs:
+        (import ./nix/lib/darling-components.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).dag;
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes
