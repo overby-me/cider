@@ -190,3 +190,15 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   sigexc rip + the commpage cpu-caps. STATUS: mldr-rs is functionally complete and runs the guest
   boot chain DEEP into libSystem (vchroot->shellspawn->bash->path_helper->bash) -- an extraordinary
   result; the remaining work is subtle guest/daemon-interaction debugging toward BOOT=Darwin.
+- 2026-07-28 overnight (cont'd): **C mldr boots BOOT=Darwin here -> confirmed mldr-rs-specific.**
+  FIX 1: checkin stack_hint was the commpage base (0x7fffffe00000); changed to a real stack addr
+  (&local, like the C's &dummy). This ADVANCED the chain from a SIGILL at the --login bash to the
+  FINAL `sh -c echo BOOT=...`, and the DAEMON NO LONGER CRASHES (rc=1 not 132). New blocker: the final
+  sh hits SIGABRT (signal 6, abort()) -- labeled reg dump: rip in a library (0x7631b6e1d69b, == rcx =>
+  right after a syscall), rax=-4 (syscall/mach error). LIKELY ROOT CAUSE: the "mutex without an active
+  thread" IS biting -- the psynch path (duct-tape psynch.c uses current_thread()) errors when the main
+  thread is not the daemon's active microthread, so pthread_mutex aborts. NEXT: find why mldr-rs's MAIN
+  thread is not bound as the daemon's active thread for psynch (grep the daemon RPC dispatch /
+  current_thread binding; diff mldr-rs vs C main-thread registration -- maybe a missing setup RPC, or
+  the socket-fd relocation, or the thread-self/TSD ordering). Making the main thread "active" should
+  unblock the final command -> BOOT=Darwin.

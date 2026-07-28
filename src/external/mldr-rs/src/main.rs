@@ -129,7 +129,11 @@ fn main() {
                 let rpcfd = unsafe { rpc::create_socket(sockpath) };
                 if rpcfd >= 0 {
                     kernfd = rpcfd;
-                    let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
+                    // stack_hint must be a real stack address (the C passes &dummy), not the
+                    // commpage base -- the daemon uses it to locate the thread's stack.
+                    let hint = 0u64;
+                    let code =
+                        unsafe { rpc::checkin(rpcfd, sockpath, &hint as *const u64 as u64) };
                     eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
                     rpc::set_sockpath(sockpath);
                     rpc::set_thread_socket(rpcfd);
