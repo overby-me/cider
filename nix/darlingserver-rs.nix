@@ -15,11 +15,15 @@
   src,
 }:
 let
-  # Minimal source tree preserving the layout darlingserver-rs/build.rs's relative
-  # paths expect (crate + the source headers it bindgens + fast_context.c).
+  # Minimal source tree that MIRRORS the repo's real relative layout, so build.rs's
+  # relative paths (crate -> duct-tape headers, fast_context.c, libsimple) resolve
+  # identically here and in a dev `cargo build`. The Rust crate now lives at
+  # linux/darlingserver/darlingserver-rs; the C++ duct-tape it links (+ fast_context.c)
+  # is still at src/external/darlingserver and libsimple at src/libsimple, so all three
+  # are staged at their real repo paths rather than a flattened sandbox layout.
   crateSrc = runCommand "darlingserver-rs-src" { } ''
-    mkdir -p $out/src/external/darlingserver/duct-tape $out/src/external/darlingserver/src $out/src/libsimple
-    cp -r ${src}/src/external/darlingserver-rs $out/src/external/darlingserver-rs
+    mkdir -p $out/linux/darlingserver $out/src/external/darlingserver/duct-tape $out/src/external/darlingserver/src $out/src/libsimple
+    cp -r ${src}/linux/darlingserver/darlingserver-rs $out/linux/darlingserver/darlingserver-rs
     cp -r ${src}/src/external/darlingserver/duct-tape/include $out/src/external/darlingserver/duct-tape/include
     cp ${src}/src/external/darlingserver/src/fast_context.c $out/src/external/darlingserver/src/fast_context.c
     cp -r ${src}/src/libsimple/include $out/src/libsimple/include
@@ -30,8 +34,8 @@ rustPlatform.buildRustPackage {
   version = "0.0.0";
 
   src = crateSrc;
-  sourceRoot = "darlingserver-rs-src/src/external/darlingserver-rs";
-  cargoLock.lockFile = src + "/src/external/darlingserver-rs/Cargo.lock";
+  sourceRoot = "darlingserver-rs-src/linux/darlingserver/darlingserver-rs";
+  cargoLock.lockFile = src + "/linux/darlingserver/darlingserver-rs/Cargo.lock";
 
   # bindgenHook sets LIBCLANG_PATH + clang args for the dtape-hooks bindgen; clang
   # also backs the cc crate that compiles fast_context.c.

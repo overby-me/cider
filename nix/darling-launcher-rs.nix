@@ -13,8 +13,8 @@ rustPlatform.buildRustPackage {
   pname = "darling-launcher-rs";
   version = "0.0.0";
 
-  src = src + "/src/external/darling-launcher-rs";
-  cargoLock.lockFile = src + "/src/external/darling-launcher-rs/Cargo.lock";
+  src = src + "/linux/launcher/darling-launcher-rs";
+  cargoLock.lockFile = src + "/linux/launcher/darling-launcher-rs/Cargo.lock";
 
   # No tests in the crate (it is a single [[bin]]).
   doCheck = false;

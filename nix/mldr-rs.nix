@@ -14,8 +14,8 @@ rustPlatform.buildRustPackage {
   pname = "mldr-rs";
   version = "0.0.0";
 
-  src = src + "/src/external/mldr-rs";
-  cargoLock.lockFile = src + "/src/external/mldr-rs/Cargo.lock";
+  src = src + "/darwin/loader/mldr-rs";
+  cargoLock.lockFile = src + "/darwin/loader/mldr-rs/Cargo.lock";
 
   # No tests in the crate (it is a single [[bin]] named "mldr").
   doCheck = false;

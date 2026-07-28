@@ -1,6 +1,6 @@
 // mldr M4: darlingserver checkin RPC. AF_UNIX SOCK_DGRAM to the server at __mldr_sockpath.
 // The wire structs are byte-identical to the daemon's generated rpc_wire.rs (x86_64 layout);
-// see src/external/darlingserver-rs/src/rpc_wire.rs. mldr is a client of ~6 calls; this
+// see linux/darlingserver/darlingserver-rs/src/rpc_wire.rs. mldr is a client of ~6 calls; this
 // starts with checkin (the essential one). The lifetime pipe is -1 on kernels >= 5.3 (the
 // daemon uses pidfd), so no SCM_RIGHTS fd is needed for the common path.
 use std::os::raw::{c_char, c_int, c_void};

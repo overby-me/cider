@@ -14,10 +14,13 @@ use std::path::PathBuf;
 
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    // crate lives at <repo>/src/external/darlingserver-rs
-    let dtape_inc = manifest.join("../darlingserver/duct-tape/include");
-    let libsimple_inc = manifest.join("../../libsimple/include");
-    let fast_context = manifest.join("../darlingserver/src/fast_context.c");
+    // crate lives at <repo>/linux/darlingserver/darlingserver-rs; the C++ duct-tape it
+    // links is still at <repo>/src/external/darlingserver. nix/darlingserver-rs.nix
+    // stages a synthetic tree mirroring these real repo paths, so the same relative
+    // paths resolve in a dev `cargo build` and in the nix build.
+    let dtape_inc = manifest.join("../../../src/external/darlingserver/duct-tape/include");
+    let libsimple_inc = manifest.join("../../../src/libsimple/include");
+    let fast_context = manifest.join("../../../src/external/darlingserver/src/fast_context.c");
 
     // ---- (1) bindgen: the hooks contract + types (source headers only) ----
     let bindings = bindgen::Builder::default()

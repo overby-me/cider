@@ -6,7 +6,7 @@
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 GEN="$REPO/src/external/darlingserver/scripts/generate-rpc-wrappers.py"
-CRATE="$REPO/src/external/darlingserver-rs"
+CRATE="$REPO/linux/darlingserver/darlingserver-rs"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 
 python3 "$GEN" "$tmp/pub.h" "$tmp/int.h" "$tmp/lib.c" '<darlingserver/rpc.h>' \
