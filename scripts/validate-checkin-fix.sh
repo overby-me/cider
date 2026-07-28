@@ -18,9 +18,9 @@ export PATH="/nix/store/1vna555h23v6s4v00gaz5kh1ynva6vj0-rust-default-1.96.0/bin
 export LIBCLANG_PATH="/nix/store/7306wrcri9nmdp7w4pbqc5rqdn6y048d-clang-21.1.8-lib/lib"
 export DUCT_TAPE_LIB="$LIB"
 export CC=clang CARGO_HOME="$HOME/.cargo" CARGO_NET_OFFLINE=true
-cd "$REPO/linux/darlingserver/darlingserver-rs" || exit 3
+cd "$REPO/linux/server" || exit 3
 cargo build --bin darlingserverd 2>&1 | tail -4
-BIN="$REPO/linux/darlingserver/darlingserver-rs/target/debug/darlingserverd"
+BIN="$REPO/linux/server/target/debug/darlingserverd"
 [ -x "$BIN" ] || { echo "cargo build failed"; exit 4; }
 
 echo "=== splice fixed Rust daemon ==="

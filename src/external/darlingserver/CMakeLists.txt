@@ -118,6 +118,6 @@ add_custom_target(generate_dserver_rpc_wrappers
 )
 
 # The C++ host-side daemon (add_executable(darlingserver) + src/*.cpp) has been REMOVED: the Rust
-# rewrite (linux/darlingserver/darlingserver-rs) is now the daemon. This build only produces the shared
+# rewrite (linux/server) is now the daemon. This build only produces the shared
 # duct-tape static libs (add_subdirectory(duct-tape) above) that the Rust daemon links against,
 # plus the generated RPC wrappers and the optional debug tools. See plan/rust-rewrite-eval.md.

@@ -16,7 +16,7 @@ add_definitions(-D_GNU_SOURCE)
 # emit rtsig.h (LINUX_SIGRTMIN/LINUX_SIGRTMAX), which the xnu emulation layer
 # (emulation/emulation_dyld), the darlingserver duct-tape, and the darlingserver
 # tools include via ${CMAKE_BINARY_DIR}/src/startup. It is NOT the launcher/loader
-# -- those were ported to Rust (darling-launcher-rs + mldr-rs, tasks #64/#65) and
+# -- those were ported to Rust (launcher + loader, tasks #64/#65) and
 # deleted in task #67. rtsig.c was removed with them by mistake (it is shared
 # codegen, not part of the launcher/loader), so only this target is restored here.
 add_executable(rtsig rtsig.c)

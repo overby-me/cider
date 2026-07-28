@@ -18,17 +18,17 @@ let
     nixCflags
     ;
 
-  # The C++ daemon was removed; build the Rust rewrite (and the standalone darlingserver that
-  # produces the duct-tape libs it links) so postInstall can install it as bin/darlingserver.
-  darlingserverStandalone = callPackage ./darlingserver.nix { inherit src; };
-  darlingserverRust = callPackage ./darlingserver-rs.nix {
+  # The C++ daemon was removed; build the Rust `server` daemon (and the standalone
+  # `duct-tape` libs it links) so postInstall can install it as bin/darlingserver.
+  ductTapeStandalone = callPackage ./duct-tape.nix { inherit src; };
+  serverRust = callPackage ./server.nix {
     inherit src;
-    darlingserver = darlingserverStandalone;
+    ductTape = ductTapeStandalone;
   };
   # task #64: the Rust launcher, installed as bin/darling (the flip).
-  darlingLauncherRust = callPackage ./darling-launcher-rs.nix { inherit src; };
+  launcherRust = callPackage ./launcher.nix { inherit src; };
   # task #65: the Rust guest Mach-O loader, installed OVER the C mldr (the flip).
-  mldrRust = callPackage ./mldr-rs.nix { inherit src; };
+  loaderRust = callPackage ./loader.nix { inherit src; };
 in
 stdenv.mkDerivation {
   pname = "darling";
@@ -126,7 +126,7 @@ stdenv.mkDerivation {
     cp src/external/cctools-port/cctools/ar/*-{ar,ranlib} $sdk/bin
 
     # Stage 0 of the Rust host-side rewrite: export the duct-tape + libsimple
-    # static libs so the darlingserver-rs crate can link the REAL duct-tape and
+    # static libs so the server crate can link the REAL duct-tape and
     # call dtape_init(&hooks) (plan/rust-rewrite-eval.md, plan/rust-spike-stage3.md).
     # Consumed via DUCT_TAPE_LIB. Best-effort; harmless if the archives move.
     mkdir -p $out/rust-consume/lib
@@ -138,16 +138,16 @@ stdenv.mkDerivation {
     # execs INSTALL_PREFIX/bin/darlingserver; the plain name keeps /proc/<pid>/comm "darlingserver"
     # so getInitProcess() recognizes the container init).
     mkdir -p $out/bin
-    cp ${darlingserverRust}/bin/darlingserverd $out/bin/darlingserver
+    cp ${serverRust}/bin/darlingserverd $out/bin/darlingserver
 
     # task #64: override the cmake-installed C launcher with the Rust one. It resolves
     # bin/darlingserver next to itself, so no prefix baking is needed.
-    install -m 0755 ${darlingLauncherRust}/bin/darling $out/bin/darling
+    install -m 0755 ${launcherRust}/bin/darling $out/bin/darling
 
     # task #65: override the cmake-installed C mldr (the guest Mach-O loader) with the Rust one.
     # The daemon's DSERVER_MLDR_PATH points at this path, so replacing the binary flips the guest
     # loader to Rust. postFixup patchelf's this path for the container's glibc/driver rpath.
-    install -m 0755 ${mldrRust}/bin/mldr $out/libexec/darling/usr/libexec/darling/mldr
+    install -m 0755 ${loaderRust}/bin/mldr $out/libexec/darling/usr/libexec/darling/mldr
   '';
 
   postFixup = ''

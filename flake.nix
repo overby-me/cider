@@ -38,16 +38,16 @@
 
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
-      # Just the darlingserver daemon (Linux ELF), built standalone for fast perf
-      # iteration (~5-10 min vs ~40 min for the whole darling). Builds from the
-      # off-submodules darling-src tree (nix-fetched submodules) + package.nix's
-      # exact configure; see nix/darlingserver.nix.
-      #   nix build .#darlingserver
-      packages.darlingserver =
+      # Darling's duct-tape + libsimple static libs (the kernel-emulation glue the Rust
+      # `server` daemon links), built standalone and cached (~5-10 min vs ~40 min for the
+      # whole darling). Builds from the off-submodules darling-src tree + package.nix's
+      # exact configure; see nix/duct-tape.nix.
+      #   nix build .#duct-tape
+      packages.duct-tape =
         pkgs:
-        pkgs.callPackage ./nix/darlingserver.nix {
-          # Off-submodules darling-src tree so a pure `nix build .#darlingserver`
-          # (and the darlingserver-rs build that depends on this) resolves libcxx +
+        pkgs.callPackage ./nix/duct-tape.nix {
+          # Off-submodules darling-src tree so a pure `nix build .#duct-tape`
+          # (and the `server` build that depends on this) resolves libcxx +
           # every other submodule without ?submodules=1.
           src = import ./nix/lib/darling-src.nix {
             inherit pkgs;
@@ -79,7 +79,7 @@
       #
       # (The nix-ninja darling-launcher-ninja / darling-launcher-spliced targets were removed:
       # they built the C src/startup/darling, which is deleted. The launcher is now the Rust
-      # darling-launcher-rs (packages.darling-launcher-rs, installed as bin/darling). task #67.)
+      # `launcher` crate (packages.launcher, installed as bin/darling). task #67.)
 
       # A per-edge nix-ninja build of the darlingserver daemon. Its edges pull in
       # the mig/migcom code generators; unblocking their per-edge scan is the path
@@ -110,34 +110,34 @@
           baseSrc = ./.;
         };
 
-      # ── Rust host-side rewrite of darlingserver ──────────────────────
+      # ── The darling host-side daemon (Rust) ──────────────────────────
       #
-      # The Rust darlingserver (plan/rust-rewrite-eval.md), built reproducibly. It
-      # consumes the duct-tape + libsimple static libs exported by the standalone
-      # `darlingserver` package (built from committed source), bindgens the dtape
-      # hooks, and compiles fast_context.c (the P1 switch). Produces the proof/demo
-      # binaries incl. the capstone `daemon_demo`. See nix/darlingserver-rs.nix.
-      #   nix build .#darlingserver-rs
-      packages.darlingserver-rs =
+      # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes
+      # the duct-tape + libsimple static libs exported by the standalone `duct-tape`
+      # package (built from committed source), bindgens the dtape hooks, and compiles
+      # fast_context.c (the P1 switch). Produces the daemon `darlingserverd` + the
+      # proof/demo binaries. Its lib crate is named `darling`. See nix/server.nix.
+      #   nix build .#server
+      packages.server =
         pkgs:
-        pkgs.callPackage ./nix/darlingserver-rs.nix {
-          darlingserver = pkgs.darlingserver;
+        pkgs.callPackage ./nix/server.nix {
+          ductTape = pkgs.duct-tape;
           src = ./.;
         };
 
       # The Rust launcher (src/startup/darling.c rewrite), task #64.
-      #   nix build .#darling-launcher-rs
-      packages.darling-launcher-rs =
+      #   nix build .#launcher
+      packages.launcher =
         pkgs:
-        pkgs.callPackage ./nix/darling-launcher-rs.nix {
+        pkgs.callPackage ./nix/launcher.nix {
           src = ./.;
         };
 
       # The Rust guest Mach-O loader (src/startup/mldr rewrite), task #65.
-      #   nix build .#mldr-rs
-      packages.mldr-rs =
+      #   nix build .#loader
+      packages.loader =
         pkgs:
-        pkgs.callPackage ./nix/mldr-rs.nix {
+        pkgs.callPackage ./nix/loader.nix {
           src = ./.;
         };
 
@@ -202,16 +202,16 @@
           # `packages.default` but makes `nix flake check` self-contained.
           darling-build = darling;
 
-          # ── Rust darlingserver rewrite: build + run its demos ───────────
-          # Builds darlingserver-rs (the Rust host-side rewrite) and runs its
-          # proof/demo binaries, asserting each prints its OK marker -- the whole
-          # daemon pipeline (link + dtape_init, the microthread scheduler, the
-          # byte-parity wire codec, the code-generated dispatch, per-guest routing,
-          # the epoll loop) exercised end to end. See plan/rust-rewrite-eval.md.
-          #   nix build '.?submodules=1#checks.x86_64-linux.darlingserver-rs' -L
-          darlingserver-rs =
-            pkgs.runCommand "darlingserver-rs-check"
-              { nativeBuildInputs = [ pkgs.darlingserver-rs ]; }
+          # ── Rust darling daemon: build + run its demos ─────────────────
+          # Builds `server` (the Rust host-side daemon) and runs its proof/demo
+          # binaries, asserting each prints its OK marker -- the whole daemon
+          # pipeline (link + dtape_init, the microthread scheduler, the byte-parity
+          # wire codec, the code-generated dispatch, per-guest routing, the epoll
+          # loop) exercised end to end. See plan/rust-rewrite-eval.md.
+          #   nix build '.?submodules=1#checks.x86_64-linux.server' -L
+          server =
+            pkgs.runCommand "server-check"
+              { nativeBuildInputs = [ pkgs.server ]; }
               ''
                 export TMPDIR="$(mktemp -d)"
                 # Merge stderr into the grep input (2>&1, not 2>/dev/null): some
@@ -273,7 +273,7 @@
                 # daemon_demo / epoll_demo bind a filesystem unix socket; validated
                 # locally + by the reproducible build, but skipped here since the nix
                 # build sandbox restricts socket paths.
-                echo "darlingserver-rs: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket, full session)"
+                echo "server: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket, full session)"
                 touch "$out"
               '';
 
