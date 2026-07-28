@@ -22,6 +22,51 @@ fn cstr(s: &str) -> CString {
     CString::new(s).unwrap_or_else(|_| CString::new("").unwrap())
 }
 
+/// x86_64 cputype (CPU_TYPE_X86 | CPU_ARCH_ABI64), the default slice preference.
+const CPU_TYPE_X86_64: u32 = 0x0100_0007;
+
+/// Normalize a thin-or-fat Mach-O to (selected MachO, its file offset). For a fat/universal
+/// binary, pick a slice: honor the guest's bprefs (requested cpu types) in order, else prefer
+/// x86_64, else the first slice. Mirrors mldr.c:340-448. The returned offset is threaded into
+/// loader::map_image (fat_offset) and find_dylinker so both read the slice, not the fat header.
+fn select_slice<'a>(
+    mach: goblin::mach::Mach<'a>,
+    bprefs: &[u32; 4],
+    data: &'a [u8],
+) -> (goblin::mach::MachO<'a>, u64) {
+    match mach {
+        goblin::mach::Mach::Binary(m) => (m, 0),
+        goblin::mach::Mach::Fat(multi) => {
+            let arches = multi.arches().unwrap_or_default();
+            let chosen = bprefs
+                .iter()
+                .filter(|&&p| p != 0)
+                .find_map(|&p| arches.iter().find(|a| a.cputype == p))
+                .or_else(|| arches.iter().find(|a| a.cputype == CPU_TYPE_X86_64))
+                .or_else(|| arches.first());
+            match chosen {
+                Some(fa) => match goblin::mach::MachO::parse(data, fa.offset as usize) {
+                    Ok(m) => {
+                        eprintln!(
+                            "[mldr-rs] fat: selected slice cputype={:#x} offset={:#x} size={:#x}",
+                            fa.cputype, fa.offset, fa.size
+                        );
+                        (m, fa.offset as u64)
+                    }
+                    Err(e) => {
+                        eprintln!("[mldr-rs] fat: selected slice failed to parse: {e}");
+                        std::process::exit(1);
+                    }
+                },
+                None => {
+                    eprintln!("[mldr-rs] fat: no usable slice (arches empty)");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
 /// State accumulated while loading a Mach-O image (mirrors mldr.c's `struct loader`).
 #[derive(Default)]
 struct Loader {
@@ -82,8 +127,16 @@ fn main() {
             std::process::exit(1);
         }
     };
-    match goblin::mach::Mach::parse(&data) {
-        Ok(goblin::mach::Mach::Binary(macho)) => {
+    let mach = match goblin::mach::Mach::parse(&data) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!("[mldr-rs] Mach-O parse error: {e}");
+            std::process::exit(1);
+        }
+    };
+    // For a fat/universal binary, pick the slice (bprefs -> x86_64); thin binaries pass through.
+    let (macho, fat_offset) = select_slice(mach, &special.bprefs, &data);
+    {
             eprintln!(
                 "[mldr-rs] Mach-O: entry={:#x}, {} load commands",
                 macho.entry,
@@ -107,7 +160,7 @@ fn main() {
                 eprintln!("[mldr-rs] open({guest_path}) failed");
                 std::process::exit(1);
             }
-            let r = unsafe { loader::map_image(fd, &macho, 0) };
+            let r = unsafe { loader::map_image(fd, &macho, fat_offset) };
             eprintln!(
                 "[mldr-rs] mapped: slide={:#x} mh={:#x} vm_addr_max={:#x} entry={:#x}",
                 r.slide, r.mh, r.vm_addr_max, r.entry
@@ -152,7 +205,7 @@ fn main() {
             let mut final_entry = r.entry;
             if macho.header.filetype == 2 {
                 // MH_EXECUTE
-                if let Some(dylinker) = loader::find_dylinker(&data) {
+                if let Some(dylinker) = loader::find_dylinker(&data[fat_offset as usize..]) {
                     let root = special
                         .root_path
                         .clone()
@@ -231,15 +284,6 @@ fn main() {
             } else {
                 eprintln!("[mldr-rs] (test run; not jumping -- set __mldr_sockpath to run a guest)");
             }
-        }
-        Ok(goblin::mach::Mach::Fat(_fat)) => {
-            // TODO: honor bprefs, else prefer CPU_TYPE_X86_64 (mldr.c:340-448).
-            eprintln!("[mldr-rs] fat Mach-O (slice selection TODO)");
-        }
-        Err(e) => {
-            eprintln!("[mldr-rs] Mach-O parse error: {e}");
-            std::process::exit(1);
-        }
     }
 }
 

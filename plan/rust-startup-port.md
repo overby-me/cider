@@ -316,3 +316,16 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   exec/background runs, the flip is safe to keep as the default. FOLLOW-UP (separate, daemon-side,
   not mldr): the concurrent-output-drop flake affects both mldrs -- likely the same fork/exec
   concurrency issue that blocks the official gnix-hello M1 at the first clang; worth its own task.
+- 2026-07-28 (parity gap #1 for the C-source deletion, task #67): **mldr-rs now handles fat/
+  universal Mach-O.** Was a TODO (main.rs bailed on Mach::Fat). Added `select_slice()` which
+  normalizes thin-or-fat to (MachO, fat_offset): for a fat binary it honors the guest's bprefs
+  (requested cpu types) in order, else prefers x86_64 (CPU_TYPE_X86_64=0x1000007), else the first
+  slice (mirrors mldr.c:340-448). The chosen slice's file offset is threaded through
+  loader::map_image (fat_offset, which already existed) and find_dylinker so both read the slice
+  instead of the fat header. Verified: `llvm-lipo -create` a universal binary (x86_64 slice at
+  offset 0x1000), mldr-rs test-mode selects cputype=0x1000007 @0x1000 and maps it with the correct
+  mach_header magic 0xfeedfacf (offset threaded right); thin boots still 4/4 BOOT=Darwin (no
+  regression). Note the guest is entirely thin x86_64 in practice (0 fat binaries in 400 scanned),
+  so this closes a parity gap for external universal binaries rather than a live failure.
+  REMAINING #67 gaps before deleting the C sources: (2) 32-bit -- cmake builds mldr32 (gated
+  BUILD_TARGET_32BIT); decide port-or-drop. (3) validate a real heavy build (blocked by #66).
