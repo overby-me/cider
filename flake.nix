@@ -174,6 +174,19 @@
           target = "src/bsdln/bsdln";
         };
 
+      # Second proof: a system-level (non-core) component whose only DAG dep is
+      # migcom -- which lives in darling-base -- so it should also build base-only,
+      # exercising the mig codegen path. Confirms base covers the migcom-dep majority.
+      #   nix build .#darling-component-memberd
+      packages.darling-component-memberd =
+        pkgs:
+        import ./nix/lib/darling-component.nix {
+          inherit pkgs;
+          base = import ./nix/lib/darling-base.nix { inherit pkgs; };
+          target = "src/external/OpenDirectory/memberd-21.1/libmemberd_xtrace_mig.dylib";
+          name = "memberd-xtrace-mig";
+        };
+
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
       # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes
