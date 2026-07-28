@@ -1,1 +1,0 @@
-../../../../../../../../src/external/libresolv/darling/include/dns_util.h

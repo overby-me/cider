@@ -101,4 +101,27 @@ pkgs.runCommand "darling-src"
     chmod -R u+w $out
     echo "assembling darling-src: ${toString (builtins.length pinned)}/${toString (builtins.length entries)} submodules pinned"
     ${lib.concatMapStringsSep "\n" overlayOne pinned}
+
+    # task #68: the guest SDK tree moved to darwin/Developer, but several pinned
+    # submodules (e.g. bootstrap_cmds/darling/include/{mach,machine,i386,...}) carry
+    # relative symlinks into the OLD superproject Developer/ SDK path, which the
+    # working-tree move can't reach (pins are fetched here, not committed). Re-point
+    # any such symlink into `Developer/Platforms/MacOSX.platform` -> `darwin/Developer/...`.
+    #
+    # PRUNE $out/darwin: the working-tree move already recomputed every committed
+    # symlink there. The darwin/-internal indexes (framework-include/*, ...) point at
+    # `../Developer/...`, which resolves WITHIN darwin/ (framework-include and Developer
+    # moved together); blindly inserting `darwin/` turns them into `../darwin/Developer`
+    # = darwin/darwin/... and dangles them -- this silently broke all 141 framework-include
+    # links (and thus <CoreFoundation/...> et al.). Only the fetched pins outside darwin/
+    # carry stale root-relative Developer/ targets that actually need the rewrite.
+    find "$out" -path "$out/darwin" -prune -o -type l -print | while read -r l; do
+      t=$(readlink "$l") || continue
+      case "$t" in
+        *darwin/Developer/Platforms/*) : ;;
+        *Developer/Platforms/MacOSX.platform*)
+          nt=$(printf '%s' "$t" | sed 's#Developer/Platforms/MacOSX.platform#darwin/Developer/Platforms/MacOSX.platform#')
+          rm -f "$l"; ln -s "$nt" "$l" ;;
+      esac
+    done
   ''

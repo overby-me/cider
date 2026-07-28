@@ -57,6 +57,12 @@ stdenv.mkDerivation {
       src/external/openssl_certificates/scripts
 
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
+
+    # task #68: libnotify (a fetched pin, so not covered by the committed-tree move)
+    # hardcodes the pre-move SDK path for its -include of sys/fileport.h; repoint it
+    # at darwin/Developer.
+    substituteInPlace src/external/libnotify/CMakeLists.txt \
+      --replace 'SOURCE_DIR}/Developer/Platforms' 'SOURCE_DIR}/darwin/Developer/Platforms'
   '';
 
   inherit nativeBuildInputs buildInputs;
@@ -82,7 +88,9 @@ stdenv.mkDerivation {
     # Install the SDK as a separate output
     mkdir -p $sdk
 
-    sdkDir=$(readlink -f ../Developer)
+    # The guest SDK source tree moved under darwin/ (task #68); the split-out $sdk
+    # output keeps the macOS-convention Developer/ layout (dst below is unchanged).
+    sdkDir=$(readlink -f ../darwin/Developer)
 
     while read -r path; do
       dst="$sdk/Developer/''${path#$sdkDir}"

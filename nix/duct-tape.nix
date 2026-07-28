@@ -46,6 +46,12 @@ stdenv.mkDerivation {
       src/external/openssl_certificates/scripts
 
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
+
+    # task #68: libnotify (pulled in as a duct-tape dep) hardcodes the pre-move SDK
+    # path for its -include of sys/fileport.h; repoint it at darwin/Developer. Kept in
+    # sync with package.nix's identical substitution.
+    substituteInPlace src/external/libnotify/CMakeLists.txt \
+      --replace 'SOURCE_DIR}/Developer/Platforms' 'SOURCE_DIR}/darwin/Developer/Platforms'
   '';
 
   inherit nativeBuildInputs buildInputs;

@@ -76,8 +76,11 @@ include_directories(SYSTEM ${COMPILER_INC_PATH})
 find_package(BISON)
 find_package(FLEX)
 
-set(DARLING_SDK_RELATIVE_PATH "Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
-set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../..")
+# The guest SDK tree moved under darwin/ (task #68); everything using this variable
+# (source + build SDK include paths) follows automatically. ROOT_RELATIVE_TO_SDK gains
+# one ../ because darwin/Developer/... is one level deeper than the old Developer/...
+set(DARLING_SDK_RELATIVE_PATH "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk")
+set(DARLING_ROOT_RELATIVE_TO_SDK "../../../../../../..")
 
 add_subdirectory(external/cctools-port/cctools/ld64/src)
 add_subdirectory(external/cctools-port/cctools/ar)
@@ -101,7 +104,7 @@ add_subdirectory(external/darlingserver)
 # ABI + macOS headers) are referenced by absolute path (wrap_elf.cmake / hosttools).
 add_subdirectory(startup)
 
-include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
+include_directories(${CMAKE_SOURCE_DIR}/darwin/basic-headers)
 
 add_subdirectory(external/bootstrap_cmds)
 
@@ -135,8 +138,8 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 include_directories(
 	${CMAKE_SOURCE_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
 	${CMAKE_BINARY_DIR}/${DARLING_SDK_RELATIVE_PATH}/usr/include
-	${CMAKE_SOURCE_DIR}/framework-include
-	${CMAKE_SOURCE_DIR}/framework-private-include
+	${CMAKE_SOURCE_DIR}/darwin/framework-include
+	${CMAKE_SOURCE_DIR}/darwin/framework-private-include
 )
 
 include_directories(AFTER
@@ -431,8 +434,10 @@ add_subdirectory(external/vim)
 add_subdirectory(tools)
 
 # these have their own component checks on a per-framework basis
-add_subdirectory(frameworks)
-add_subdirectory(private-frameworks)
+# Guest Darwin frameworks moved to darwin/ (task #68); binary dir kept at src/<name>
+# so ${CMAKE_BINARY_DIR}/src/... refs (use_ld64, SDK staging) stay valid.
+add_subdirectory(${CMAKE_SOURCE_DIR}/darwin/frameworks frameworks)
+add_subdirectory(${CMAKE_SOURCE_DIR}/darwin/private-frameworks private-frameworks)
 
 # /Applications
 #add_subdirectory(external/TextEdit)

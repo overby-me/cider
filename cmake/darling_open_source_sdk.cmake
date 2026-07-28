@@ -17,16 +17,16 @@ function(remove_sdk_framework name)
 
         if (SDK_PRIVATE)
             set(developer_framework_dir "PrivateFrameworks")
-            set(header_framework_include "framework-private-include")
+            set(header_framework_include "darwin/framework-private-include")
         else (SDK_PRIVATE)
             set(developer_framework_dir "Frameworks")
-            set(header_framework_include "framework-include")
+            set(header_framework_include "darwin/framework-include")
         endif (SDK_PRIVATE)
 
         set(developer_platform "MacOSX.platform")
         set(developer_sdk "MacOSX.sdk")
 
-        set(developer_sdk_path "Developer/Platforms/${developer_platform}/Developer/SDKs/${developer_sdk}")
+        set(developer_sdk_path "darwin/Developer/Platforms/${developer_platform}/Developer/SDKs/${developer_sdk}")
         set(developer_framework_path "${DARLING_TOP_DIRECTORY}/${developer_sdk_path}/${developer_sys_library_dir}/${developer_framework_dir}/${name}.framework")
 
         if (SDK_PARENT_DIR)
@@ -54,7 +54,7 @@ function(get_path_preframework result)
 
     set(developer_platform "MacOSX.platform")
     set(developer_sdk "MacOSX.sdk")
-    set(developer_sdk_path "Developer/Platforms/${developer_platform}/Developer/SDKs/${developer_sdk}")
+    set(developer_sdk_path "darwin/Developer/Platforms/${developer_platform}/Developer/SDKs/${developer_sdk}")
 
     if (SDK_IOSSUPPORT)
         set(developer_sys_library_dir "System/iOSSupport/System/Library")
@@ -127,9 +127,9 @@ function(internal_generate_framework_include name path)
     )
 
     if (SDK_PRIVATE)
-        set(header_framework_include "framework-private-include")
+        set(header_framework_include "darwin/framework-private-include")
     else (SDK_PRIVATE)
-        set(header_framework_include "framework-include")
+        set(header_framework_include "darwin/framework-include")
     endif (SDK_PRIVATE)
 
     set(developer_headers_path "${path}/${name}.framework/Headers")
