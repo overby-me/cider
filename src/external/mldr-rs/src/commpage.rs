@@ -101,9 +101,68 @@ fn memory_size() -> u64 {
     }
 }
 
-/// TODO(M3a-refine): full cpuid parse per commpage.c:97-167 (kHasSSE.., k64Bit, kUP, ..).
-/// The counts above are what caused the SIGFPE; the capability bits affect libSystem's
-/// SIMD path selection and must be filled from cpu_capabilities.h before running a guest.
+/// CPU capability bitmask (commpage.c:97-167) from cpuid. libSystem selects its SIMD code
+/// paths (memcpy/memset/... function pointers) from these bits, so a zero here mis-dispatches
+/// -> SIGILL. Bit values are from i386/cpu_capabilities.h.
 fn cpu_caps() -> u64 {
-    0
+    use core::arch::x86_64::__cpuid_count;
+    let mut caps: u64 = 0;
+    unsafe {
+        let c1 = __cpuid_count(1, 0);
+        if c1.edx & (1 << 23) != 0 {
+            caps |= 0x1; // MMX
+        }
+        if c1.edx & (1 << 25) != 0 {
+            caps |= 0x2; // SSE
+        }
+        if c1.edx & (1 << 26) != 0 {
+            caps |= 0x4; // SSE2
+        }
+        if c1.ecx & (1 << 0) != 0 {
+            caps |= 0x8; // SSE3
+        }
+        if c1.ecx & (1 << 9) != 0 {
+            caps |= 0x100; // SupplementalSSE3
+        }
+        if c1.ecx & (1 << 19) != 0 {
+            caps |= 0x400; // SSE4.1
+        }
+        if c1.ecx & (1 << 20) != 0 {
+            caps |= 0x800; // SSE4.2
+        }
+        if c1.ecx & (1 << 25) != 0 {
+            caps |= 0x1000; // AES
+        }
+        if c1.ecx & (1 << 12) != 0 {
+            caps |= 0x1000_0000; // FMA
+        }
+        if c1.ecx & (1 << 28) != 0 {
+            caps |= 0x0100_0000; // AVX
+        }
+        if c1.ecx & (1 << 29) != 0 {
+            caps |= 0x0400_0000; // F16C
+        }
+        if c1.ecx & (1 << 30) != 0 {
+            caps |= 0x0200_0000; // RDRAND
+        }
+        let c7 = __cpuid_count(7, 0);
+        if c7.ebx & (1 << 3) != 0 {
+            caps |= 0x4000_0000; // BMI1
+        }
+        if c7.ebx & (1 << 5) != 0 {
+            caps |= 0x2000_0000; // AVX2
+        }
+        if c7.ebx & (1 << 8) != 0 {
+            caps |= 0x8000_0000; // BMI2
+        }
+    }
+    caps |= 0x200; // k64Bit
+    caps |= 0x20; // kCache64 (64-byte cache line)
+    caps |= 0x80; // kFastThreadLocalStorage (fs/gs base)
+    let n = cpu_count() as u64;
+    caps |= (n << 16) & 0x00FF_0000; // kNumCPUs
+    if n == 1 {
+        caps |= 0x8000; // kUP
+    }
+    caps
 }
