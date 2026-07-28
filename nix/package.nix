@@ -27,6 +27,8 @@ let
   };
   # task #64: the Rust launcher, installed as bin/darling (the flip).
   darlingLauncherRust = callPackage ./darling-launcher-rs.nix { inherit src; };
+  # task #65: the Rust guest Mach-O loader, installed OVER the C mldr (the flip).
+  mldrRust = callPackage ./mldr-rs.nix { inherit src; };
 in
 stdenv.mkDerivation {
   pname = "darling";
@@ -142,6 +144,11 @@ stdenv.mkDerivation {
     # task #64: override the cmake-installed C launcher with the Rust one. It resolves
     # bin/darlingserver next to itself, so no prefix baking is needed.
     install -m 0755 ${darlingLauncherRust}/bin/darling $out/bin/darling
+
+    # task #65: override the cmake-installed C mldr (the guest Mach-O loader) with the Rust one.
+    # The daemon's DSERVER_MLDR_PATH points at this path, so replacing the binary flips the guest
+    # loader to Rust. postFixup patchelf's this path for the container's glibc/driver rpath.
+    install -m 0755 ${mldrRust}/bin/mldr $out/libexec/darling/usr/libexec/darling/mldr
   '';
 
   postFixup = ''

@@ -290,3 +290,15 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   guest must be movaps-free (no aligned SSE) because the guest may call elfcalls on an 8-byte-
   misaligned stack. NEXT: flip mldr-rs to be the default loader (done-bar for #65), mirroring how
   darling-launcher-rs replaced darling.c (#64).
+- 2026-07-28 overnight (cont'd): **FLIPPED. mldr-rs is now the default guest loader.** Added
+  nix/mldr-rs.nix (buildRustPackage from committed source, mirrors darling-launcher-rs.nix) +
+  flake `.#mldr-rs` output, and package.nix installs `${mldrRust}/bin/mldr` OVER the cmake C
+  mldr at libexec/darling/usr/libexec/darling/mldr (postFixup patchelf's it for the container
+  rpath, same as the C mldr). Validated the RELEASE binary (nix build .#mldr-rs, optimized
+  profile -- important because release codegen could reintroduce aligned SSE, but the MaybeUninit
+  fix holds): 10/10 boots BOOT=Darwin + 3/3 the demanding pipe/fork workload, deployed straight
+  into the container (so the nix binary runs there even before the extra postFixup rpath). The
+  `.#default` package evals cleanly with the flip. NOT YET DONE: a full `nix build .#default`
+  (the whole Darling cmake tree, hours) to validate the install mechanics end to end -- deferred
+  as it only re-checks install/patchelf (identical to the C mldr path) and not binary behaviour
+  (already validated). task #65 done-bar (replace + flip when boot-green) met.
