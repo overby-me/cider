@@ -1,340 +1,317 @@
-# PLAN.md — Campaign 2: x86_64-darwin builds on nixpkgs 26.05, structured for the aarch64 port
+# darling-nix
 
-> **Audience:** an autonomous agent (Claude) working in this repository (`darling-nix`,
-> a fork of darlinghq/darling with Nix support layered on top).
-> **Read this whole file before touching anything.** Then read `plan/README.md` and skim
-> the `plan/` documents from Campaign 1 — the phase machinery, scripts, and conventions
-> from that campaign are reused here, not reinvented.
+darling-nix is a Nix-packaged fork of [Darling](https://github.com/darlinghq/darling)
+(a userspace macOS/Darwin compatibility layer for Linux, "Wine for macOS"). Its host and
+guest runtime have been rewritten in Rust.
 
----
+**End goal:** build `aarch64-darwin` nixpkgs derivations on non-Apple ARM Linux, using
+Darling as the Darwin layer, verified bit-for-bit against cache.nixos.org.
 
-## 1. Mission
+**Current campaign:** make `x86_64-darwin` builds work end-to-end against **nixpkgs 26.05**
+(the last release supporting x86_64-darwin: a frozen target and a permanent cache oracle).
+x86_64 is the native-speed test rig; most work (libSystem surface, harness, oracle, daemon)
+is architecture-independent and transfers to ARM.
 
-**End goal (not this campaign):** build `aarch64-darwin` nixpkgs derivations on
-non-Apple ARM Linux hardware, using Darling as the Darwin compatibility layer.
+Tag work: **[ARCH-FREE]** (transfers as-is), **[ARCH-PARAM]** (transfers if parameterized
+now), **[X86-ONLY]** (throwaway, minimize investment).
 
-**This campaign:** make `x86_64-darwin` builds actually work end-to-end against
-**nixpkgs 26.05**, because:
-
-1. Iteration is native-speed on our x86_64 dev machines (no QEMU tax).
-2. nixpkgs 26.05 is the **final** release supporting x86_64-darwin. It is a *frozen
-   target*: the package set, bootstrap tools, and Hydra-built cache paths will never
-   move again. cache.nixos.org historically retains old store paths, so it remains a
-   permanent correctness oracle.
-3. Most of the remaining work (libSystem symbol surface for macOS 14, the build/verify
-   harness, the cache-diff oracle, daemon plumbing) is **architecture-independent** and
-   transfers wholesale to aarch64.
-
-Every task below is tagged **[ARCH-FREE]** (transfers to aarch64 as-is),
-**[ARCH-PARAM]** (transfers if parameterized now), or **[X86-ONLY]** (throwaway —
-minimize investment).
+> This file supersedes the old sprawling `plan/` docs (Campaign 1 + Campaign 2), which
+> were consolidated into it. Campaign 1's detailed history lives in git and the removed
+> `plan/*.md` (recoverable from history).
 
 ---
 
-## 2. Ground truth (verified July 2026 — re-verify anything load-bearing)
+## Status (2026-07)
 
-### 2.1 nixpkgs / platform facts
+Done:
+- **Rust rewrite complete and default.** Host daemon (`linux/server`, crate `darling`, bin
+  `darlingserverd`), launcher (`linux/launcher`, bin `darling`), guest loader
+  (`darwin/loader`, bin `mldr`). The C++ daemon and C launcher/loader are deleted.
+- **Boots to Darwin; M1 achieved.** Guest nix 2.34.8 builds and runs `hello` (and `pv`)
+  from source under rootless Darling, launchd-free. `nix eval builtins.currentSystem` →
+  `"x86_64-darwin"`.
+- **Off git submodules.** Nix (`nix/submodules.json`, 147 pins + `nix/lib/darling-src.nix`)
+  is the sole source path; `.gitmodules` + gitlinks deleted, no `?submodules=1`.
+- **Full `.#default` builds green and boots.**
+- **Identity:** macOS **14.4.1** / Darwin **23.4.0** / build **23E224**
+  (`patches/xnu/0005` + `SystemVersion.plist`); clang auto-targets
+  `x86_64-apple-darwin23.4.0`. `CMAKE_OSX_DEPLOYMENT_TARGET` stays 11.0 by choice.
 
-- Nixpkgs **26.05 "Yarara"** (released 2026-05-30) is the **last release supporting
-  x86_64-darwin**. Binaries are built until 26.05 EOL at end of 2026. 26.11 drops the
-  platform entirely, including building from source.
-- Since nixpkgs 25.11, the minimum supported macOS is **Sonoma 14.0** (Darwin kernel
-  **23.x**). Default SDK was 14.4 as of 25.11. `cc-wrapper` enforces availability
-  annotations / deployment targets.
-  **Do not hardcode these — verify against the actual pin** (see Phase A task 1).
-- The modern SDK pattern: a unified `apple-sdk` package provides `$SDKROOT` with
-  `.tbd` text-stub libraries (`usr/lib/libSystem.tbd` re-exporting the
-  `libsystem_*` constellation). Binaries link against stubs; symbols resolve at
-  runtime from the host — i.e. **from Darling's reimplemented libraries**. This is
-  why derivation hashes don't depend on Darling at all.
-
-### 2.2 Repository state (end of Campaign 1)
-
-Already built and working to some degree — reuse, don't rebuild:
-
-- **Syscall fixes:** `renameatx_np`→`renameat2`, `setattrlist`/`getattrlist`
-  ATTR_CMN_FLAGS handling (the lchflags blocker), `clonefile`→`ENOTSUP` fallback,
-  `utimensat` fixes + regression tests (`tests/syscall/`).
-- **Sandbox:** `sandbox-exec` parse-and-ignore stub (`src/sandbox-exec/`),
-  sandbox API stubs fixed to report success.
-- **Directory Services stubs:** `dscl`, `dseditgroup`, `sysadminctl`
-  (`src/dirserv/`, 78-test suite).
-- **Nix install automation:** `scripts/install-nix-in-darling.sh`,
-  `scripts/darling-nix` wrapper, `scripts/verify-nix.sh` health check.
-- **Build testing:** `scripts/build-trivial.sh` (5 progressive levels),
-  `tests/nix/compatibility-matrix.sh` (4-tier matrix, JSON reporting).
-- **Triage automation:** `scripts/triage-syscalls.sh` — runs Nix ops inside Darling,
-  captures unimplemented-syscall messages, emits a Markdown report. This is the core
-  grind loop; extend it, keep it working.
-- **Remote builder:** `nix/darlingBuilderModule.nix` (`services.darling-builder`,
-  sshd in prefix, `nix.buildMachines`), `scripts/darling-build-hook` (no-SSH offload),
-  NixOS VM tests (`tests/darling-builder.nix`, `tests/nix-in-darling.nix`,
-  `tests/darling-smoke.nix`), tangled.org CI (`.tangled/workflows/ci.yml`).
-- **Known problem branches:** `fixPythonPipStalling` (runtime stall class — likely
-  kqueue/select/poll fidelity), three `feature/arm-support*` attempts (salvage
-  assessment is Phase F).
-
-**Campaign 2 addendum (verified 2026-07-19):** Campaign 1 machinery was never
-validated end-to-end on a live prefix. The fork's submodules are fetched from
-upstream darlinghq via `scripts/init-submodules.sh` (relative URLs are unhosted),
-and the Campaign-1 xnu changes are carried as `patches/xnu/*.patch` on top of the
-upstream base rev. See `plan/26.05-facts.md` for verified pin facts.
-
-### 2.3 Identity masquerade: **fixed in A.2**
-
-Campaign 1 pinned `SystemVersion.plist` to **11.7.4** (Big Sur) with
-`CMAKE_OSX_DEPLOYMENT_TARGET=11.0`. nixpkgs ≥25.11 refuses / misbehaves below
-macOS 14.0, and official 26.05 binaries **strongly link the macOS 14.0 libSystem
-symbol surface**. A.2 retargeted the identity to macOS **14.4.1** (Darwin
-**23.4.0** / build **23E224**); validated under a rebuilt prefix (`sw_vers`,
-`uname -r`, and the `kern.os*` sysctls all report it). The deployment target
-stays at 11.0 by choice (identity is independent of it; see plan/26.05-facts.md).
-Phase B closes any remaining symbol-surface gap.
+Phases A (identity), B (symbol gap), C (bootstrap tools execute + build hello / M1) are done.
+The open frontier is D (oracle), E (package ladder), F (ARM prep), plus the Rust/build/perf
+tracks below.
 
 ---
 
-## 3. Invariants — never violate these
+## Architecture
 
-1. **Official expressions only.** Build with unmodified nixpkgs 26.05 and its official
-   `apple-sdk` derivations. Derivation identity lives in the Nix expressions; our job
-   is to make the *outputs* correct, not to fork the inputs. A patched nixpkgs means
-   incomparable hashes and a worthless oracle. If a nixpkgs-side change seems
-   unavoidable, stop and record it in `plan/blockers.md` instead.
-2. **Never copy Apple-proprietary bits into build outputs or the repo.** SDK stubs and
-   headers flow through Nix's own fetch of `apple-sdk` (the user accepts that posture);
-   we never vendor them. Implementations we write come from Apple's open-source
-   releases (APSL: Libc, libsystem_kernel surface, libdispatch, libpthread, libmalloc,
-   libplatform, objc4, libc++, CF, dyld) or clean-room work from public documentation.
-   Do not consult leaked/proprietary sources. Note provenance in commit messages when
-   porting from Apple open source.
-3. **The ratchet: green never regresses.** Every fix lands with a regression test.
-   `scripts/run-tests.sh` and the flake checks must pass before every commit.
-   The compatibility matrix is append-only progress: a package that built keeps
-   building.
-4. **Arch discipline.** New code that touches registers, syscall numbers, thread
-   state, signal frames, TLS, page size, or Mach-O CPU types goes behind the existing
-   arch abstraction (or a new `arch/` boundary you create). aarch64 is the customer;
-   x86_64 is the test rig.
-5. **Follow house style.** Conventional commits with phase tags
-   (`feat(phaseB.3): ...`), update this file's checkboxes and the relevant `plan/`
-   doc in the same commit, keep `plan/syscall-triage.md` current.
-
----
-
-## 4. Phase A — Retarget identity to nixpkgs 26.05 / macOS 14 **[ARCH-FREE]**
-
-Goal: Darling credibly claims to be a macOS-14-class system to Nix and to nixpkgs
-builds.
-
-- [x] **A.1 Pin and interrogate nixpkgs.** Add a flake input pinned to the
-      `nixpkgs-26.05-darwin` branch (fall back to `nixos-26.05` if needed). Record in
-      `plan/26.05-facts.md`: `nix eval` results for
-      `pkgs.stdenv.hostPlatform.darwinMinVersion`, `darwinSdkVersion`, the default
-      `apple-sdk` version, and the exact bootstrap-tools derivation + hash used by
-      `pkgs/stdenv/darwin` for `x86_64-darwin`. All later phases cite this file, not
-      memory.
-- [x] **A.2 Bump the masquerade.** `SystemVersion.plist` → 14.4.1 / 23E224;
-      `patches/xnu/0005` sets the `EMULATED_*` defines (kern.osrelease 23.4.0,
-      kern.osproductversion 14.4.1, kern.osversion 23E224, banner
-      "Darwin Kernel Version 23.4.0") that the guest-side `sysctl_kern.c` handlers
-      serve; uname follows osrelease. `CMAKE_OSX_DEPLOYMENT_TARGET` kept at 11.0
-      (identity-independent; raising it risks Big-Sur-era sources; see plan/26.05-facts.md).
-      Validated: rebuilt Darling reports 14.4.1 / Darwin 23.4.0 / 23E224 across
-      sw_vers, uname -r, and the kern.os* sysctls.
-- [x] **A.3 Regression-test the identity.** `tests/identity/test_sw_vers.sh`
-      passes 3/3 under the rebuilt prefix (macOS 14.4.1 / 23E224).
-      `tests/identity/test_identity.c` asserts the same uname/kern.os* triple; its
-      raw values are confirmed green, the compiled in-prefix run lands in Phase C
-      once guest `clang` is available. Guest `builtins.currentSystem` check folds
-      into Phase 0.5 / verify-nix.
-
-**Exit criteria:** `verify-nix.sh` green against the 26.05 pin; no version-floor
-refusals anywhere in `nix`'s own operation.
+- **Call chain (the debugging map):** Darwin binary → Darwin libc → `libsystem_kernel`
+  BSD-trap stub → daemon translates to Linux → kernel. Syscalls are implemented only to the
+  depth Nix needs, not for general macOS compat.
+- **launcher** (`linux/launcher`, libc-only, builds offline): rootless userns re-exec,
+  prefix bootstrap, spawns the daemon as container init, shellspawn client, teardown. Owns
+  NO mounts/vchroot (the daemon does).
+- **daemon** (`linux/server`): single-threaded epoll loop + a **stackful microthread
+  scheduler** (`sched.rs`) — not async, because duct-tape suspends microthreads
+  synchronously from inside C stacks; single-worker is correct (duct-tape locks are
+  cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
+  byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
+  for `process_vm_readv` because the guest is in its own PID namespace).
+- **duct-tape** (`src/external/darlingserver/duct-tape/`, still C): kernel-emulation glue
+  that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
+  `linux/server/build.rs`: bindgen generates the 36-field `dtape_hooks_t` from source
+  headers; static libs (`libdarlingserver_duct_tape.a`, `liblibsimple_darlingserver.a`)
+  come via the `DUCT_TAPE_LIB` env var. The Rust/C seam is the frozen `dtape_*` API +
+  `dtape_hooks` vtable — Rust above, C+XNU below.
+- **mldr loader** (`darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
+  commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
+- **Container model:** an overlayfs prefix (`~/.darling`, macOS FS hierarchy) entered
+  **rootless** via unprivileged user namespaces (needs
+  `kernel.unprivileged_userns_clone=1`, kernel ≥5.11). **One command per fresh container** —
+  a sibling userns cannot join a running container's mount ns.
+- **Shared store:** guest `/nix/store` is the host store via a `/nix →
+  /Volumes/SystemRoot/nix` symlink (the host root is mounted at `/Volumes/SystemRoot`);
+  `/nix/var` stays Darling-local to avoid db/schema conflicts.
+- **apple-sdk `.tbd` stubs:** binaries link against stub symbols, resolved at runtime from
+  Darling's reimplemented libraries — so derivation hashes never depend on Darling.
+- **sandbox-exec** is a parse-and-ignore stub (the Linux container already isolates).
+- **Nix packaging:** `nix/lib/darling-src.nix` assembles the tree from the 147 pins +
+  `patches/<name>/`; `nix/package.nix` builds the Darwin userland and installs the Rust
+  crates; `nix/{launcher,server,duct-tape,loader,cctools-port}.nix`.
 
 ---
 
-## 5. Phase B — Close the libSystem symbol gap to the 14.0 surface **[ARCH-FREE]**
+## Invariants (never violate)
 
-Goal: official 26.05 binaries load under Darling without missing-symbol failures.
-This is the highest-value arch-independent work in the whole project.
-
-Strategy: **demand-driven first, exhaustive second.** Implement what real binaries
-actually import before grinding the full theoretical surface.
-
-- [x] **B.1 Build the demand list.** `scripts/symbol-demand.sh` — extracts
-      system-library imports from Mach-O bind tables (llvm-objdump/otool),
-      excluding intra-closure `@rpath` deps, ranked by referencing-binary count.
-      Against the 26.05 bootstrap-tools closure: 728 system symbols.
-- [x] **B.2 Build the supply list.** `scripts/tbd-diff.py` — parses the 14.4 SDK
-      `libSystem.tbd` re-export closure (7988 symbols) and diffs vs Darling's built
-      dylibs read from the **exports trie** (critical: Darling re-exports the plain
-      str/mem functions; `nm` misses these). Result in `plan/symbol-gap.md`.
-      **Finding: the libSystem surface for bootstrap-tools is already covered.**
-      Real gap = 6 lazy-bound FSEvents functions in CoreServices; 0 libSystem, 0 CF,
-      0 SC. Phase B is nearly a no-op for the `hello` milestone.
-- [ ] **B.3 Grind the demand-side gap.** *Mostly moot for hello* (see B.2). Remaining:
-      6 `FSEventStream*` stubs in CoreServices, added only if a real binary calls
-      them (they are lazy-bound; a hello build should not). For future packages
-      (Phase E) that reopen a real gap: (a) port from Apple open source; (b)
-      clean-room; (c) loudly-logging stub last. Every addition gets a link-and-call
-      test.
-- [ ] **B.4 Wire symbol checking into CI.** A flake check that runs B.1's tool over a
-      pinned reference closure and fails on *new* unresolved symbols (ratchet file of
-      known-missing allowed, shrinking over time).
-
-**Exit criteria:** every binary in the bootstrap-tools closure passes a dyld load
-test (no missing strong symbols) under Darling. *Static analysis says this already
-holds; confirm empirically in C.2.*
+1. **Official nixpkgs 26.05 only.** A patched input makes hashes incomparable and the oracle
+   worthless. Record nixpkgs-side needs as a blocker entry (see Blockers), don't fork inputs.
+2. **No Apple-proprietary bits** in outputs or the repo. Reimplement from Apple open source
+   (APSL) or clean-room from public docs; note provenance in commits. SDK stubs flow through
+   Nix's own `apple-sdk` fetch, never vendored.
+3. **Green never regresses.** Every fix lands with a regression test; `scripts/run-tests.sh`
+   + flake checks pass before every commit; the compatibility matrix is append-only.
+4. **Arch discipline.** Code touching registers, syscall numbers, thread state, signal
+   frames, TLS, page size, or Mach-O CPU types goes behind the arch boundary. aarch64 is the
+   customer; x86_64 is the test rig.
 
 ---
 
-## 6. Phase C — The keystone: official bootstrap tools execute **[ARCH-FREE]**
+## Open work
 
-This is the milestone that converts the project from "OS revival" to "treadmill."
-Aim everything at it.
+### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
+"It built" → "it built **correctly**." The project's core value proposition.
+- **D.1** `scripts/oracle.sh <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
+  (match / mismatch / build-failure / known-nondeterministic).
+- **D.2** oracle column in `tests/nix/compatibility-matrix.sh`; a justified
+  non-determinism allowlist.
+- **D.3** on mismatch: diffoscope + classify (codegen vs metadata vs fs-ordering vs
+  miscompile). **A codegen-class divergence is stop-the-line** — the shim is lying to the
+  compiler (math, memory layout, or a syscall result) and everything above is suspect.
 
-- [x] **C.1 Substitute and stage.** bootstrap-tools (`v6wk45fap…`), apple-sdk-14.4
-      (`dfd1kij…`) and `hello.src` substitute from cache.nixos.org; staged into
-      Darling through the host-root mount `/Volumes/SystemRoot` (host `/nix` is not
-      at `/nix` inside the container). See plan/26.05-facts.md.
-- [x] **C.2 Execute.** The bootstrap Darwin binaries run under rootless Darling
-      (`bash 5.2.37`, `sh`, `clang 19.1.7` auto-targeting `x86_64-apple-darwin23.4.0`,
-      coreutils) and clang **compiles + links + runs** a program end to end with
-      `-isysroot <apple-sdk>` (Phase C keystone, plan/26.05-facts.md).
-- [x] **C.3 Build `hello` from source (M1).** GNU `hello-2.12.3` (the nixpkgs
-      `hello.src`) runs `./configure && make` end to end in one rootless Darling
-      session and the freshly linked Mach-O prints `Hello, world!` (all rc 0).
-      `scripts/build-hello-under-darling.sh`. Follow-up: drive it through **guest
-      Nix** (`nix build …#hello`) rather than hand-run configure/make (needs Nix
-      running under Darling; see plan/blockers.md). Widening to no-substitute deps
-      also pending.
-- [x] **C.4 Stall defense (partial).** The one-shot runner/build harnesses wrap
-      every `darling shell` in a per-attempt `timeout` + retry (kills stale
-      darlingserver/mldr). First live triage finding logged: `dup2`-to-guarded-fd
-      abort (`patches/xnu/0006`, plan/syscall-triage.md). Full gdb-on-timeout
-      capture still TODO.
-- [ ] **C.4b Stall defense (gdb capture).** Wrap all matrix/build invocations in a watchdog
-      (timeout + on-timeout stack capture of the guest process and darlingserver via
-      gdb attach). Stalls are the signature failure mode of a subtly-wrong kernel
-      shim (see `fixPythonPipStalling`); suspects are kqueue/kevent, poll/select
-      edge semantics, and Mach IPC waits. File each stall signature in
-      `plan/stall-triage.md`.
+### M1 tail (Phase C.3–C.4b) [ARCH-FREE]
+- Drive the official `pkgs.hello` **derivation** through guest nix (not hand-run
+  configure/make). `scripts/build-pkg-bypass.sh <attr>` generalizes to any nixpkgs
+  x86_64-darwin attr. Widen to no-substitute deps.
+- **C.4b** gdb-on-timeout stall capture (timeout + on-timeout stack of the guest process +
+  daemon), filed to the Stall notes below. (The old `config.status` here-doc pipe hang was
+  the checkout lifetime-pipe fd leak → pipe-page starvation, now FIXED; reverify if it
+  recurs.)
 
-**Exit criteria:** `pkgs.hello` (26.05, x86_64-darwin) builds from source under
-Darling with only official inputs. **Met at the toolchain level (M1):** the
-official bootstrap-tools + apple-sdk build `hello.src` via `./configure && make`
-under Darling and it runs. Remaining to close fully: drive the same build through
-guest Nix (the derivation, not hand-run) and the Phase D bit-compare oracle.
+### E — Climb the package ladder [ARCH-FREE]
+- **E.1** dependency-weighted 26.05 x86_64-darwin target list (CLI-only; GUI *runtime* out
+  of scope — building GUI apps against link-time framework stubs is fine).
+- **E.2** grind loop per package: build → triage (syscall / symbol / stall / semantic
+  divergence) → fix with a regression test → oracle → append to matrix.
+- **E.3** milestone packages: `python3` (pip-stall class), `git`, `cmake`, `openssl`, a
+  large C++ package (`llvm`); stretch: `swiftc` (stresses libdispatch/CF).
+- **Exit (campaign):** the full Tier-1..3 matrix green with oracle, on a frozen 26.05 pin,
+  in CI, reproducibly from a clean prefix.
+
+### F — ARM readiness (prep only, do not start the port) [ARCH-PARAM]
+- **F.1** salvage-assess the three `feature/arm-support*` branches → `plan/arm-salvage.md`.
+- **F.2** arch-boundary audit (syscall numbers, ucontext layouts, asm, page size). Audit
+  host-page-size vs Darwin `vm_page_size`: arm64 userland assumes **16K pages** — plan to
+  report 16K from libSystem regardless of host, and prefer `CONFIG_ARM64_16K_PAGES` guests.
+- **F.3** parameterize harness / VM tests / matrix / oracle / symbol tooling by arch.
+  aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via sigtool) — the
+  oracle must handle signature bytes correctly, not diff them naively.
+- **F.4** document the QEMU aarch64 dev recipe (share `/nix/store` via virtiofs; never run
+  darlingserver under qemu-user — signal/TLS fidelity).
+
+### Rust + tooling
+- **#63 exec across architectures** [narrow] — daemon cross-arch exec; the guest 32-bit
+  loader (`mldr32`, cmake `BUILD_TARGET_32BIT`) is port-or-drop-undecided. Fat/universal
+  Mach-O selection already done.
+- **#72 duct-tape → self-contained `-sys` crate** — decouple XNU from the cmake tree (today
+  linked via `DUCT_TAPE_LIB` at the cmake build's `.a`; bindgen runs on in-tree headers).
+  Aspirational, not started.
+- **#73 port build-time codegen to Rust** — `generate-rpc-wrappers.py` (already extended to
+  emit the Rust codec, but still Python) and `tools/generate-xcode-stubs.py`.
+- **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
+  no nixpkgs substitute). A Rust rewrite is unstarted; only its nix-ninja edge handling is
+  patched (see Build system).
+- **#68 finish the repo reorg** — move the C++ darlingserver + duct-tape from `src/external`
+  into `linux/darlingserver/`, completing the `darwin/` (guest) + `linux/` (host) seam.
+- **Linker (#57 tail)** — `packages.darling-ld64` (`nix/cctools-port.nix`) done; fold in
+  `install_name_tool`/`nmedit`, validate a real darwin dylib link with `-DDARLING_LD64_DIR`.
+
+### Build system — make nix-ninja the primary incremental build (#26/#39)
+Lower every edge of Darling's ~26k-edge ninja graph to its own content-addressed nix
+derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-nix). Infra:
+`nix/lib/darlingNinja.nix` (`buildTarget`), vendored `nix/lib/nix-ninja/`.
+- **State:** the libSystem umbrella builds per-edge (~5036 edges, valid Mach-O);
+  darlingserver-ninja green per-edge; the graph-json IFD is feasible (~100s). Interim fast
+  loops exist (`packages.darlingserver` coarse ~5-6 min vs 40; launcher fast-path).
+- **Open blocker:** full-graph `buildTarget {}` (the `all` phony) stops at
+  `migHeaderIncsFor` scope-sensitivity — `asl.c`'s `<asl_ipc.h>` `-I` resolves at subgraph
+  scope but returns `[]` at full-graph scope.
+- **To make primary:** (1) close the asl.c blocker → full-graph green; (2) build the
+  install/fixup wrapper reproducing `package.nix`'s exact `libexec/darling` layout from
+  per-edge outputs, diff'd identical; (3) wire `packages.darling-ninja`, kept OUT of
+  `nix flake check` (thousands of derivations hang it); (4) vendor rust-ninja, drop the
+  `overby` input.
+
+### Multi-user / launchd / #47
+- **#47 launchd portset kqueue deadlock** [long-term] — launchd's dispatch kqueue watches an
+  empty portset (0x707) while its receive ports live in a different, unwatched portset
+  (0xa03), so bootstrap messages never wake the dispatch loop and
+  `launchctl bootstrap -S System` deadlocks. Fix locus: `kqchan_waitq_waiter_entry` /
+  `filt_machportattach` / portset linkage (does launchd allocate one portset that darling
+  hands out as two inconsistent names, or two it fails to link?). Bypassed by
+  `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path. Likely an upstream
+  darlingserver rootless-maturity gap (issues #1173/#1093/#610; the LKM path needs root).
+- Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
+  production-hardening, not on the critical path (single-user M1 sidesteps it).
+
+### CI + remote builder (built in Campaign 1, unvalidated — needs rework)
+Machinery exists but was **never validated end-to-end on a live prefix** and predates the
+Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
+- CI: `.tangled/workflows/ci.yml` (tangled.org), `tests/*.nix`,
+  `tests/nix/compatibility-matrix.sh`, dirserv-stubs check.
+- Remote builder: `nix/darlingBuilderModule.nix` (`services.darling-builder`, sshd in prefix,
+  `nix.buildMachines`), `scripts/darling-build-hook`, VM tests. Design (host
+  `nix.buildMachines` → sshd in Darling → guest nix-daemon, shared store avoids SSH copy) is
+  the north star but unexercised — and conflicts with one-command-per-container.
+
+### Performance (measure during E; acceptable-if-slow for CI)
+Baseline: spawn ~11–12× native (~28 ms/proc), compute ~7.6×. Spawn tax: ~22 ms (78%) = the
+daemon fork/exec/RPC path. Landed and done: P0 ucred cache, P1 sigmask-free context switch,
+P2 epoll re-arm memoize.
+- **P0.7 spawn-path round-trips** — batch the fork/exec/registration RPCs. THE biggest
+  wall-clock lever (~22 ms/spawn). High risk (IPC core).
+- **P3 mach_msg same-task fast path** — handle same-task/local-port sends+recvs in-process.
+  High risk. **P4** userspace signal deferral (drop the per-RPC sigmask pair). **P5** psynch
+  uncontended CAS fast path. **P6** inline small OOL payloads into the datagram. **P8**
+  scheduler futex contention (lock-free hot path) — deepest, do last.
+- P0.5 dyld shared cache: DOWNGRADED to low (saves ~1.8 ms/spawn only).
+- **Meta-blocker:** P3–P8 are core-cutting and not isolate-testable → gated on a reliable
+  non-flaky spawn/IPC stress harness + fast daemon iteration (nix-ninja). Build that first.
+- Already optimal (don't touch): BSD syscall dispatch (table-driven to Linux),
+  `__ulock_wait/wake`→`futex(2)`, `vchroot_expand` path translation, cached
+  `mach_task_self`/`mach_host_self`, getpwuid via glibc NSS.
+
+### Watch-items (reopen on demand)
+- **Symbol:** 6 lazy-bound FSEvents stubs (`_FSEventStream*`, CoreServices) only if a real
+  binary calls them. Re-run `symbol-demand.sh` as the package set widens (larger C++/Swift
+  broadens the surface). Supply = `nm --defined-only` ∪ full export-trie (both, or you
+  undercount re-exports).
+- **Syscall:** dup2-to-guarded-fd → return EBADF, don't abort; may recur in
+  `fcntl(F_DUPFD)`/`dup`. Network.framework `nw_*` = 39 loud NULL stubs (real impl out of
+  scope; nix never uses S3 for local builds).
+- **`-111`/ECONNREFUSED:** doesn't fire on `net.unix.max_dgram_qlen=16384` hosts; the two
+  guest busy-spin band-aids (sigexc.c, mach_traps.c) are vestigial there but needed on
+  qlen=512. Proper host-independent fix (open): the daemon drains the socket to EAGAIN
+  (recvmmsg loop) into an internal queue so it never backs up.
+- **SIGFPE exec-fidelity flake (#44):** intermittent signal-8 in guest build/test binaries —
+  retryable (nix build ×4), not a real error nor a Rust regression.
+
+### Upstream adoption
+Fork point `f39a29489` (2026-03); upstream idle on core as of 2026-07-19. Adopt only when a
+concrete failure justifies it:
+- Newer-toolchain build fixes (we build under clang 21): darling
+  `e3fe4288 3f277ba5 9f485c91 ddd118d9 fc5c0666`, xnu `644decacee`. Cherry-pick onto our
+  patched xnu; **don't bump the gitlink** (ours diverges).
+- libkqueue `b0795a2e` (EVFILT_TIMER type-punning) if a kqueue-timer stall appears.
+- Upstream darlingserver C++ tracking is obsolete (we're full-Rust). Fixing the launchd-boot
+  hang would be an upstream-caliber rootless contribution.
 
 ---
 
-## 7. Phase D — The oracle: bit-compare against cache.nixos.org **[ARCH-FREE]**
+## Operational notes / gotchas
 
-"It built" upgrades to "it built **correctly**."
-
-- [ ] **D.1 One-liner oracle.** For any derivation whose output was substituted from
-      the official cache, `nix build --rebuild <installable>` rebuilds locally and
-      fails if the result differs. Wrap this as `scripts/oracle.sh <attr>` with JSON
-      output (match / mismatch / build-failure / known-nondeterministic).
-- [ ] **D.2 Matrix integration.** Extend `tests/nix/compatibility-matrix.sh`: each
-      package row gains an oracle column. Maintain an allowlist of
-      known-nondeterministic packages (timestamps, parallelism artifacts) with links
-      to upstream evidence — an allowlist entry requires justification in the commit.
-- [ ] **D.3 Divergence triage protocol.** On mismatch: `diffoscope` the two outputs,
-      classify (codegen difference vs embedded metadata vs filesystem ordering vs
-      genuine miscompile), and file in `plan/divergence-triage.md`. A codegen-class
-      divergence is a **stop-the-line** event — it means the shim is lying to the
-      compiler somewhere (math, memory layout, or a syscall result), and everything
-      built on top is suspect.
-
-**Exit criteria:** oracle wired into CI; `hello` and the stdenv closure's
-reproducible members bit-match official cache paths.
-
----
-
-## 8. Phase E — Climb the ladder **[ARCH-FREE]**
-
-- [ ] **E.1 Target list.** Generate a dependency-weighted ranking of 26.05
-      x86_64-darwin packages (most-depended-upon first). CLI-only; anything touching
-      AppKit/WindowServer at *runtime* is out of scope (building GUI apps is fine —
-      frameworks are link-time stubs).
-- [ ] **E.2 Grind loop.** For each package: build → on failure triage (syscall gap /
-      symbol gap / stall / semantic divergence) → fix with regression test → oracle →
-      append to matrix. Keep per-package notes only for non-obvious fixes.
-- [ ] **E.3 Milestone packages** (each proves a subsystem): `python3` (pip stall
-      class), `git`, `cmake`, `openssl`, `ninja`-built things, one large C++ package
-      (`llvm` eventually). Stretch, and only after everything above:
-      hosting `swiftc` (stresses libdispatch/CF hard — this is the gateway to
-      building modern GUI apps later, still link-time only).
-
-**Exit criteria (campaign):** ≥ the full Tier-1..3 matrix green with oracle, on a
-frozen 26.05 pin, in CI, reproducibly from a clean prefix.
-
----
-
-## 9. Phase F — ARM readiness (do continuously, finish last) **[ARCH-PARAM]**
-
-Do **not** start the aarch64 port in this campaign — *prepare* it.
-
-- [ ] **F.1 Salvage assessment.** Diff the three `feature/arm-support*` branches
-      against current master; write `plan/arm-salvage.md`: what's reusable (syscall
-      entry, thread state, signal frames, TLS), what's rotten, what was never
-      finished. No code moves yet.
-- [ ] **F.2 Arch-boundary audit.** Inventory every place Campaign-1/2 code assumes
-      x86_64 (syscall numbers, `ucontext` layouts, asm, `PAGE_SIZE` conflation).
-      Introduce/enforce the arch abstraction now, while refactors are cheap.
-      Specifically: audit for host-page-size vs Darwin `vm_page_size` conflation —
-      Darwin/arm64 userland assumes **16K pages**; the plan there is to report 16K
-      from libSystem regardless of host kernel page size (and to prefer
-      `CONFIG_ARM64_16K_PAGES` guest kernels when we get to QEMU).
-- [ ] **F.3 Parameterize the harness.** Flake systems, VM tests, matrix, oracle, and
-      symbol tooling all take an arch parameter (`x86_64-darwin` today,
-      `aarch64-darwin` next). The oracle matters *more* on ARM — that's where
-      cache.nixos.org coverage is best and nixpkgs support continues past 2026. Note:
-      aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via
-      sigtool); the oracle must treat signature bytes correctly, not diff them
-      naively.
-- [ ] **F.4 ARM dev environment recipe.** Document (don't yet automate) the path:
-      `qemu-system-aarch64` with MTCG (`-smp`, `-cpu max`), snapshot after
-      boot+install, share `/nix/store` via virtiofs, build aarch64-linux artifacts on
-      the x86 host via `boot.binfmt.emulatedSystems` — but never run darlingserver
-      itself under qemu-user (signals/TLS fidelity). Real-hardware step-up:
-      GitHub arm64 runners / Hetzner CAX / Oracle Ampere / Asahi.
+- **Run recipe** (from a built `$out = nix build .#default`):
+  `DSERVER_LIBEXEC_PATH=$out/libexec/darling
+  DSERVER_MLDR_PATH=$out/libexec/darling/usr/libexec/darling/mldr DARLING_NO_LAUNCHD=1
+  DPREFIX=<fresh dir> $out/bin/darling shell sh -c 'uname -sm'` → `Darwin x86_64`.
+- **Phantom-path trap:** after any commit that touches a Rust crate, `.#default`'s hash
+  changes and `nix eval .outPath` returns a NEW, UNBUILT path. Booting against it fails
+  SILENTLY (daemon binary absent → launcher spins in its container-acquisition loop,
+  wchan=hrtimer_nanosleep, empty log, `pgrep darlingserver` finds nothing). Always
+  `nix build .#default` first (or assert `test -x $out/bin/darlingserver`). The same drift
+  happens dirty→committed (a dirty-tree build and its commit hash differ).
+- **mldr debug is gated** behind `MLDR_DEBUG=1` (default off). Do NOT grep for `[mldr]` to
+  confirm a boot with the gate off — grep guest stdout (`Darwin`/`uname` output). The ungated
+  ~15-line-per-process flood interleaving with stdout under `2>&1` was the false
+  "concurrent-output flake"; measure output completeness with stdout/stderr SEPARATED.
+- **mldr elfcall movaps constraint:** the guest calls elfcalls on an 8-byte-misaligned
+  stack, so elfcall-reachable loader code must be movaps-free — no `mem::zeroed`/`Default` of
+  a >8-byte struct on the stack (emits an aligned SSE store that #GPs); use `MaybeUninit` +
+  scalar fills.
+- **duct-tape two-phase init:** `dtape_init` then `dtape_init_in_thread` on a kernel
+  microthread (psynch etc.); no hook in the 36-field vtable may ever be NULL (NULL → indirect
+  call to 0x0).
+- **RPC socket fork-safety:** sockets live at high fds + FD_CLOEXEC (so a forked subshell's
+  low-fd dup2/close can't clobber them); the child does a socket-refresh.
+- **One command per fresh container** (kill the stale daemon first). Keep the prefix path
+  short — the daemon/shellspawn AF_UNIX socket lives under `<prefix>/var/run/` and overflows
+  `sockaddr_un.sun_path` (~108 chars) on long paths; use `~/.darling`. Export
+  `TMPDIR=$HOME/tmp` (the default Darwin temp dir EACCESes). Two-boot warm flow; harness
+  output must be file-based, never piped through a reader (a leaked container holds the pipe
+  write-end open and blocks EOF).
+- **`__private_extern__` is not a linker bug (#57):** modern clang emits it as an *undefined*
+  symbol; link the consumer against real ncurses/libtinfo, don't touch ld64. `-fcommon`
+  doesn't fix it.
+- **xnu pin gotcha:** the super-repo gitlink was a Campaign-1 rev never published upstream;
+  darling-src fetches the pinned rev from `submodules.json` + applies `patches/xnu/*`.
+  Cherry-pick upstream fixes onto our patched xnu; don't bump the pin blindly.
+- **nix-ninja / mig gotchas:** merged `$out` conflates a checked-in `osfmk/**/X.h` with the
+  same-named mig-generated header (10 collisions; `notify.h` is
+  `_MIG_KERNEL_SPECIFIC_CODE_`-sensitive — force it to 1 via a duct-tape patch); mig edges
+  need `-DKERNEL_USER -DMACH_KERNEL -DKERNEL`; `lower.nix` must `rm -f` a staged read-only
+  source symlink at a declared output path (else mig `fopen`→EACCES). Full-graph nix-ninja is
+  ~26k derivations — keep it OUT of `nix flake check`.
 
 ---
 
-## 10. Working agreements
+## Working agreements
 
-- **Session start:** read this file, `plan/26.05-facts.md`, and the triage docs;
-  run `scripts/run-tests.sh` and the smoke check to confirm the baseline is green
-  before changing anything.
-- **Verification is execution, not inspection.** A task is done when its test runs
-  green in a clean prefix (`--keep` only for debugging), not when the code looks
-  right.
-- **Small commits, phase-tagged, tests included, plan updated.** Same style as
-  Campaign 1's history.
-- **When blocked** (nixpkgs-side change seems required, licensing question, a
-  divergence-class stop-the-line event, or >1 day stuck on one signature): write it
-  up in `plan/blockers.md` with reproduction steps and stop that thread; pick up the
-  next ranked item. The human reviews blockers.
-- **Time-sensitivity note:** 26.05 is supported until end of 2026 and the cache
-  should persist beyond that, but mirror the bootstrap-tools closure and key
-  reference narinfo/nars into our own Cachix early (cheap insurance for the oracle).
+- **Verification is execution in a clean prefix**, not inspection. A task is done when its
+  test runs green from a fresh prefix, not when the code looks right.
+- **Small commits**, phase-tagged (`feat(phaseB.3): ...`), tests included, this doc updated
+  in the same commit.
+- **When blocked** (a nixpkgs-side change seems required, a licensing question, a
+  divergence-class stop-the-line, or >1 day stuck on one signature): add a dated entry under
+  Blockers with reproduction steps and stop that thread; take the next ranked item.
+- **Insurance:** mirror the bootstrap-tools closure + key reference narinfo/nars to our own
+  Cachix early (the oracle depends on cache retention past 26.05 EOL, end of 2026).
 
-## 11. Risk register (carry-forward from design discussions)
+## Risk register
 
 | Risk | Class | Mitigation |
 |---|---|---|
-| Silent output divergence (shim lies subtly) | correctness | Phase D oracle + stop-the-line protocol |
-| Stalls in event-loop-heavy builds (kqueue/poll) | fidelity | C.4 watchdog + stall triage doc |
-| macOS-14 symbol surface larger than expected | scope | B.1 demand-driven ordering; stubs only as last resort |
-| Mach IPC perf through userspace darlingserver | perf | measure during E; acceptable for CI even if slow |
-| Cache retention past 26.05 EOL | infra | mirror reference closures to own Cachix (§10) |
-| Apple open-source drops lag/stop | existential | affects future surfaces, not the frozen 26.05 target |
-| x86-only effort waste | strategy | ARCH tags; Phase F audit keeps the boundary honest |
+| Silent output divergence (shim lies subtly) | correctness | Phase D oracle + stop-the-line |
+| Stalls in event-loop-heavy builds (kqueue/poll) | fidelity | C.4b watchdog + stall triage |
+| macOS-14 symbol surface larger than expected | scope | demand-driven ordering; stubs last |
+| Mach IPC perf through userspace daemon | perf | measure during E; acceptable for CI |
+| Cache retention past 26.05 EOL | infra | mirror reference closures to own Cachix |
+| x86-only effort waste | strategy | ARCH tags; Phase F keeps the boundary honest |
 
 ---
 
-*Campaign 1 history and background: see `plan/00-background.md` through
-`plan/11-architecture.md` and the git log. This document supersedes the old PLAN.md
-task list; the Campaign 1 plan is archived at `plan/PLAN-campaign1.md`.*
+## Blockers
+
+Active blockers get a dated entry here (repro steps + what's stuck); resolved ones fold into
+Gotchas or Open work. The known standing limitations are already tracked above — the launchd
+portset deadlock (#47, bypassed by `DARLING_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
+(#44, retryable), and the nix-ninja full-graph `migHeaderIncsFor` blocker. Nothing else is
+currently un-tracked.
