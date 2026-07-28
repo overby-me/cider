@@ -294,3 +294,28 @@ contention that aggravated the fork/exec race. The launchd boot itself remains o
   in scripts/gnix-build.sh / scripts/gnix-hello.sh (nix builds are atomic; a fresh
   attempt re-runs configure and passes). Proper fix = darling signal/FP/fork-exec
   fidelity (task #44); not overnight (would risk the working M1).
+
+- **`__private_extern__` common-symbol "linker bug" -- RESOLVED as NOT a linker bug (task #57).**
+  (2026-07-28) Investigated whether darling's linker mis-resolves `__private_extern__` tentative
+  definitions (the readline/termcap BC/UP/PC/ospeed cross-object-undefined issue that the bash
+  build hit). It is NOT a linker bug. Evidence: (1) stock ld64
+  (cctools-port/.../macho_relocatable_file.cpp `scopeFromSymbol`) correctly maps N_PEXT ->
+  `ld::Atom::scopeLinkageUnit` (private-extern, visible within the image, not exported), including
+  for tentative-definition atoms (`TentativeDefinitionSection::appendAtoms` passes
+  `scopeFromSymbol(sym)`); darling does not patch this. (2) The real cause is the COMPILER:
+  modern clang emits `__private_extern__ int BC;` (a tentative def, no initializer) as an
+  UNDEFINED external (N_UNDF|N_EXT, no storage, no N_PEXT) with a deprecation warning
+  ("-Wprivate-extern: use of __private_extern__ on a declaration may not produce external symbol
+  private to the linkage unit and is deprecated"). Verified by cross-compiling to
+  x86_64-apple-darwin Mach-O and reading the nlist:
+    - `int BC;`                                        -> `(__DATA,__common) external` (global common)
+    - `__private_extern__ int BC;`                     -> UNDEFINED (2 warnings) <- the failure
+    - `__private_extern__ int BC = 0;`                 -> `(__DATA,__common) private external` (OK)
+    - `__attribute__((visibility("hidden"))) int BC;`  -> `(__DATA,__common) private external` (OK)
+  `-fcommon` does NOT fix it (still undefined under both -fcommon and -fno-common); -fcommon only
+  fixes plain-tentative-def DUPLICATE symbols. Correct fixes, in order of preference: (a) link the
+  bundled fallback's consumer against real ncurses/libtinfo (which exports BC/UP/PC/ospeed) -- what
+  scripts/build-bash-under-darling.sh now does, matching real macOS + nixpkgs; (b) replace
+  `__private_extern__ X;` with `__attribute__((visibility("hidden"))) X;` (proper private-extern
+  common); (c) add an initializer or drop `__private_extern__` (global common). No darling ld64
+  change needed.

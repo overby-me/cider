@@ -18,9 +18,13 @@ fi
 # System curses. bash -- like real macOS and nixpkgs -- links its readline against
 # ncurses/libtinfo, which provides the termcap functions AND the globals BC/UP/PC/ospeed as
 # strong symbols. Without it bash falls back to its bundled lib/termcap, whose globals are
-# __private_extern__ (hidden/local) and so do not satisfy readline's cross-object references
-# -> "Undefined symbols: _BC, _UP" at link. Providing ncurses is the correct build, not a
-# source patch of the bundled fallback.
+# __private_extern__ TENTATIVE definitions -- and modern clang emits __private_extern__ on a
+# tentative def as an UNDEFINED external (deprecated, -Wprivate-extern), NOT a private-extern
+# common, so they do not satisfy readline's cross-object references -> "Undefined symbols: _BC,
+# _UP" at link. This is NOT a darling linker bug (task #57): ld64 maps N_PEXT->scopeLinkageUnit
+# correctly, and `__attribute__((visibility("hidden"))) int BC;` DOES emit a proper private-extern
+# common. Providing ncurses is the correct build (matches real macOS + nixpkgs), not a source
+# patch of the bundled fallback.
 NCURSES="${NCURSES:-}"
 if [ -z "$NCURSES" ]; then
 	NCURSES="$(nix eval --raw "github:NixOS/nixpkgs/${NIXPKGS_REV}#legacyPackages.x86_64-darwin.ncurses.outPath")"
