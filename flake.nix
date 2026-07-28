@@ -156,6 +156,14 @@
           src = ./.;
         };
 
+      # The Rust guest Mach-O loader (src/startup/mldr rewrite), task #65.
+      #   nix build .#mldr-rs
+      packages.mldr-rs =
+        pkgs:
+        pkgs.callPackage ./nix/mldr-rs.nix {
+          src = ./.;
+        };
+
       # A per-edge nix-ninja build of a whole libSystem sublibrary,
       # src/.../libsystem_kernel/libsystem_kernel.dylib, works end to end and
       # produces a valid Mach-O x86_64 dylib (its full closure — mig codegen,
