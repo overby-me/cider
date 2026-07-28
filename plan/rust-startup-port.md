@@ -177,3 +177,16 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   native-pthread -> Darwin-thread bridge (threads.c:116-325 -- dthread alloc, native pthread, TSD
   base via callbacks, per-thread socket + checkin, register-exact stack switch + jump). C mldr
   stays default; main is safe.
+- 2026-07-28 overnight (cont'd): **thread bridge implemented + wired** (threads.rs). darling_thread_create
+  -> native pthread -> per-thread RPC socket + checkin + Darwin TSD base (dthread+224, probed from
+  dthreads.h via clang offsetof) + thread-self port -> tsd[3] + register-exact stack switch/jump.
+  Wired into elfcalls; dserver_per_thread_socket now returns the calling native thread's socket
+  (thread_local). Compiles clean. KEY REFRAME: the "mutex without an active thread" is a NON-FATAL
+  warning (duct-tape locks.c:59 falls back to a native lock), NOT the blocker. The real crash: the
+  GUEST hits a SIGILL (a libSystem assertion/ud2, deep -- after the whole exec chain) and the daemon's
+  sigexc handling then aborts (FATAL host signal 04). NEXT: diagnose the guest SIGILL. Leading
+  hypothesis: mldr-rs never sets the MAIN thread's Darwin TSD base (only created threads get it via
+  the bridge) -- check how the C mldr/libpthread sets the main thread's %gs TSD; also re-check the
+  sigexc rip + the commpage cpu-caps. STATUS: mldr-rs is functionally complete and runs the guest
+  boot chain DEEP into libSystem (vchroot->shellspawn->bash->path_helper->bash) -- an extraordinary
+  result; the remaining work is subtle guest/daemon-interaction debugging toward BOOT=Darwin.

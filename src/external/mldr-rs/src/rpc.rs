@@ -26,6 +26,56 @@ pub fn server_addr_ptr() -> *const c_void {
     }
 }
 
+// Per-thread RPC socket (for the thread bridge). Each created guest thread gets its own
+// socket; dserver_per_thread_socket returns the calling native thread's fd.
+std::thread_local! {
+    static T_SOCKET: std::cell::Cell<c_int> = const { std::cell::Cell::new(-1) };
+}
+static SOCKPATH: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+pub fn set_sockpath(p: &str) {
+    let _ = SOCKPATH.set(p.to_string());
+}
+pub fn set_thread_socket(fd: c_int) {
+    T_SOCKET.with(|s| s.set(fd));
+}
+pub fn thread_socket() -> c_int {
+    let t = T_SOCKET.with(|s| s.get());
+    if t >= 0 {
+        t
+    } else {
+        main_socket()
+    }
+}
+/// Create a per-thread RPC socket (bind + connect) for a newly created guest thread.
+pub unsafe fn create_thread_socket() -> c_int {
+    let path = match SOCKPATH.get() {
+        Some(p) => p.clone(),
+        None => return -1,
+    };
+    let fd = libc::socket(libc::AF_UNIX, libc::SOCK_DGRAM, 0);
+    if fd < 0 {
+        return -1;
+    }
+    let mut addr: libc::sockaddr_un = std::mem::zeroed();
+    addr.sun_family = libc::AF_UNIX as libc::sa_family_t;
+    libc::bind(
+        fd,
+        &addr as *const _ as *const libc::sockaddr,
+        std::mem::size_of::<libc::sa_family_t>() as libc::socklen_t,
+    );
+    let (server, slen) = make_server_addr(&path);
+    libc::connect(fd, &server as *const _ as *const libc::sockaddr, slen);
+    set_thread_socket(fd);
+    fd
+}
+/// Check in on a created thread's own socket.
+pub unsafe fn checkin_thread(fd: c_int, stack_hint: u64) -> i32 {
+    match SOCKPATH.get() {
+        Some(p) => checkin(fd, &p.clone(), stack_hint),
+        None => -1,
+    }
+}
+
 const CHECKIN: u32 = 1;
 const ARCH_X86_64: u32 = 2; // dserver_rpc_architecture_x86_64
 

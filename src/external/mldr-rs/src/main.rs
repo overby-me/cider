@@ -16,6 +16,7 @@ mod jump;
 mod loader;
 mod rpc;
 mod stack;
+mod threads;
 
 fn cstr(s: &str) -> CString {
     CString::new(s).unwrap_or_else(|_| CString::new("").unwrap())
@@ -130,6 +131,8 @@ fn main() {
                     kernfd = rpcfd;
                     let code = unsafe { rpc::checkin(rpcfd, sockpath, 0x7fff_ffe0_0000) };
                     eprintln!("[mldr-rs] checkin({sockpath}) -> code={code}");
+                    rpc::set_sockpath(sockpath);
+                    rpc::set_thread_socket(rpcfd);
                     vchroot_root = unsafe { rpc::vchroot_path(rpcfd) };
                     eprintln!("[mldr-rs] vchroot_path -> {vchroot_root:?}");
                 } else {

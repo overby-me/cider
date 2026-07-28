@@ -155,7 +155,7 @@ extern "C" fn ec_dserver_socket_address() -> *const c_void {
     crate::rpc::server_addr_ptr()
 }
 extern "C" fn ec_dserver_per_thread_socket() -> c_int {
-    crate::rpc::main_socket()
+    crate::rpc::thread_socket()
 }
 extern "C" fn ec_dserver_per_thread_socket_refresh() {}
 extern "C" fn ec_dserver_close_socket(_: c_int) {}
@@ -174,7 +174,7 @@ pub fn make() -> u64 {
         dlclose: ec_dlclose,
         dlsym: ec_dlsym,
         dlerror: ec_dlerror,
-        darling_thread_create: ec_thread_create,
+        darling_thread_create: crate::threads::darling_thread_create,
         darling_thread_terminate: ec_thread_terminate,
         darling_thread_get_stack: ec_thread_get_stack,
         dlopen_fatal: ec_dlopen_fatal,
