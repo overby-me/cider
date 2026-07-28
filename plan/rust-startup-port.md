@@ -215,3 +215,17 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   main loop + sched spawn_on/THREAD_BY_TID) and find why mldr-rs's threads don't route there while
   the C mldr's do. Check the tid mldr-rs's checkin sends vs the tid on its guest RPCs (they must be
   the same OS-thread gettid); check whether the daemon needs a per-thread checkin the guest triggers.
+- 2026-07-28 overnight (cont'd): **KEY: the "mutex without an active thread" warnings are a RED
+  HERRING.** The C mldr (which boots BOOT=Darwin) emits 270 of them too. The daemon routes fine
+  (handle_call creates a microthread per (nsid,tid) on first sighting, darlingserverd.rs:496). The
+  REAL difference: mldr-rs's guest calls abort() (SIGABRT / sigexc "handler (6)", 3x) where the C
+  mldr's guest hits ZERO fatal signal handlers. The abort follows a syscall returning rax=-4 (likely
+  -EINTR: a guest syscall interrupted by a spurious signal). So mldr-rs's guest gets signals / a bad
+  state the C mldr's doesn't. (DSERVER_TRACE_CALLS works but is too slow -- kept the boot from
+  reaching the abort in 60s; don't rely on it.) NEXT (surgical): add a daemon-side log of ERROR reply
+  codes -- in bin/darlingserverd.rs do_work after rpc_wire::dispatch, decode the reply {number,code}
+  and eprintln when code<0 -- to NAME the failing guest RPC. Rebuild the daemon: `cd
+  src/external/darlingserver-rs && DUCT_TAPE_LIB=<duct-tape .a dir> cargo build --bin darlingserverd`
+  (find the dir: `find /nix/store -name libdarlingserver_duct_tape.a | head`), cp target/debug/
+  darlingserverd -> ~/darling-rt/bin/darlingserver, re-test WITHOUT the trace. Or symbolicate the
+  guest fault rip vs the loaded library maps. IGNORE the active-thread warnings -- not the bug.
