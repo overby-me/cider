@@ -202,3 +202,16 @@ Keep main bootable. Update the Progress log below each turn so the morning repor
   current_thread binding; diff mldr-rs vs C main-thread registration -- maybe a missing setup RPC, or
   the socket-fd relocation, or the thread-self/TSD ordering). Making the main thread "active" should
   unblock the final command -> BOOT=Darwin.
+- 2026-07-28 overnight (cont'd): SIGABRT diagnosis narrowing. RULED OUT: (1) the socket connect --
+  removing it breaks vchroot_path's send() AND raises the warnings (100->218), so the connect is
+  NEEDED (reverted); (2) an UNIMPLEMENTED/ENOSYS daemon RPC (none in the log). The guest runs the
+  full exec chain + fd setup ("dtype for fd 0/2"), then aborts on a syscall returning -4. The daemon
+  serve loop (bin/darlingserverd.rs:120-148) runs each RPC on a microthread (sched.rs:536 CURRENT.set
+  + dtape_thread_entering) and IDs the sender by SCM_CREDENTIALS pid + header pid/tid
+  (set_current(ch.pid, ch.tid, host_pid, arch) at :141). LEADING ROOT CAUSE: mldr-rs's guest
+  pthread/psynch RPCs land WITHOUT an active microthread, so psynch errors -> pthread aborts. NEXT
+  (fresh focus): read the serve-loop message->microthread ROUTING (how the main receive maps a
+  message to the calling thread's microthread and spawns/resumes it; server.rs + darlingserverd.rs
+  main loop + sched spawn_on/THREAD_BY_TID) and find why mldr-rs's threads don't route there while
+  the C mldr's do. Check the tid mldr-rs's checkin sends vs the tid on its guest RPCs (they must be
+  the same OS-thread gettid); check whether the daemon needs a per-thread checkin the guest triggers.
