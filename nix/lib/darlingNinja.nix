@@ -80,6 +80,16 @@ let
     ${pkgs.gnused}/bin/sed -i \
       's/^add_compile_definitions($/&\n\t_MIG_KERNEL_SPECIFIC_CODE_=1\n\tmach_msg_send_from_kernel=mach_msg_send_from_kernel_proper\n\tmach_msg_rpc_from_kernel=mach_msg_rpc_from_kernel_proper\n\tmach_msg_destroy_from_kernel=mach_msg_destroy_from_kernel_proper/' \
       $out/src/external/darlingserver/duct-tape/CMakeLists.txt
+
+    # Parity with nix/package.nix postPatch: fetched-pin source fixes the committed-
+    # tree move (#68) can't reach, needed identically by the nix-ninja build.
+    #  - libnotify hardcodes the PRE-move SDK path for its -include of sys/fileport.h
+    #    (a forced -include, so the miss is fatal at scan time); repoint at darwin/.
+    #  - basic_cmds' SETGID install mode is not settable in the pure sandbox.
+    ${pkgs.gnused}/bin/sed -i \
+      's#SOURCE_DIR}/Developer/Platforms#SOURCE_DIR}/darwin/Developer/Platforms#' \
+      $out/src/external/libnotify/CMakeLists.txt
+    ${pkgs.gnused}/bin/sed -i 's/SETGID//' $out/src/external/basic_cmds/CMakeLists.txt
   '';
   # #26/#78: map a ninja edge to its CMake-target component, purely from paths so it
   # needs only the edge (no producer graph). An output under CMakeFiles/<t>.dir/ names
