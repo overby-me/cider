@@ -39,13 +39,20 @@
       packages.darling-sdk = pkgs: pkgs.darling.sdk;
 
       # Just the darlingserver daemon (Linux ELF), built standalone for fast perf
-      # iteration (~5-10 min vs ~40 min for the whole darling). Reuses the darling
-      # package's submodule-aware source and exact configure; see nix/darlingserver.nix.
-      #   nix build '.?submodules=1#darlingserver'
+      # iteration (~5-10 min vs ~40 min for the whole darling). Builds from the
+      # off-submodules darling-src tree (nix-fetched submodules) + package.nix's
+      # exact configure; see nix/darlingserver.nix.
+      #   nix build .#darlingserver
       packages.darlingserver =
         pkgs:
         pkgs.callPackage ./nix/darlingserver.nix {
-          src = pkgs.darling.src;
+          # Off-submodules darling-src tree so a pure `nix build .#darlingserver`
+          # (and the darlingserver-rs build that depends on this) resolves libcxx +
+          # every other submodule without ?submodules=1.
+          src = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
           # For the splice loop, bake LIBEXEC_PATH to the splice dir (needs --impure);
           # unset -> a normal build, so `nix flake check` (pure) stays green.
           installPrefix =

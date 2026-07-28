@@ -93,10 +93,13 @@ add_subdirectory(libelfloader/wrapgen)
 # add the Linux build of libsimple now
 add_subdirectory(libsimple "${CMAKE_CURRENT_BINARY_DIR}/libsimple-linux")
 add_subdirectory(external/darlingserver)
-# src/startup (the C darling.c launcher + mldr loader) was removed: replaced by the Rust
-# darling-launcher-rs + mldr-rs, installed by package.nix. Only shared headers remain under
-# src/startup/mldr (the elf_calls ABI + macOS headers used by wrap_elf.cmake / hosttools),
-# referenced by absolute path, so no add_subdirectory is needed.
+# src/startup no longer builds the C launcher/loader (darling.c + mldr were ported to Rust
+# -- darling-launcher-rs + mldr-rs -- and deleted in task #67). It is still added for the
+# rtsig_h codegen target, which generates rtsig.h (LINUX_SIGRTMIN/MAX) consumed by the xnu
+# emulation layer, the darlingserver duct-tape, and the darlingserver tools via
+# ${CMAKE_BINARY_DIR}/src/startup. The shared headers under src/startup/mldr (the elf_calls
+# ABI + macOS headers) are referenced by absolute path (wrap_elf.cmake / hosttools).
+add_subdirectory(startup)
 
 include_directories(${CMAKE_SOURCE_DIR}/basic-headers)
 
