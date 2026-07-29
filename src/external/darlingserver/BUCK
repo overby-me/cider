@@ -1,0 +1,36 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:codegen.bzl", "script_gen")
+
+# The host-side daemon itself is the Rust crate linux/server; what remains here
+# for the Buck2 port is the shared header surface and the generated RPC wrappers
+# that duct-tape (and the Rust daemon, via bindgen) compile against.
+
+cc_header_root(
+    name = "dserver_headers",
+    headers = glob(["include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+# generate-rpc-wrappers.py emits the RPC surface from its own calls list:
+# the public header, the internal header, and the library source.
+#
+# The cmake build writes the two headers into separate binary dirs
+# (include/ and internal-include/) and puts both on the include path. Here they
+# land in one staged root under their `darlingserver/` namespace, which resolves
+# <darlingserver/rpc.h> and <darlingserver/rpc.internal.h> identically -- there
+# is no name collision to keep them apart for.
+#
+# The fourth argument is interpolated verbatim into an #include line by the
+# generator, so the literal quotes are part of the value.
+script_gen(
+    name = "dserver_rpc",
+    outs = [
+        "darlingserver/rpc.h",
+        "darlingserver/rpc.internal.h",
+        "src/rpc.c",
+    ],
+    args = ["\"../include/darlingserver/rpc.h\""],
+    script = "scripts/generate-rpc-wrappers.py",
+    visibility = ["PUBLIC"],
+)

@@ -125,14 +125,14 @@ mkdir -p "$outdir/$subdir"
 # The xtrace output is passed (and pre-created) for the same reason cmake
 # touches it: mig only writes it for definitions that produce one, and a
 # missing file would look like a failed action.
-: > "$outdir/$stem@XTRACE@"
+: > "$outdir/${stem}@XTRACE@"
 exec bash "$migsh" \\
   -arch "$arch" -target "$target" -cc "$cc" -migcom "$migcom" \\
-  -user "$outdir/$stem@USER@" \\
-  -header "$outdir/$stem@HEADER@" \\
-  -server "$outdir/$stem@SERVER@" \\
-  -sheader "$outdir/$stem@SHEADER@" \\
-  -xtracemig "$outdir/$stem@XTRACE@" \\
+  -user "$outdir/${stem}@USER@" \\
+  -header "$outdir/${stem}@HEADER@" \\
+  -server "$outdir/${stem}@SERVER@" \\
+  -sheader "$outdir/${stem}@SHEADER@" \\
+  -xtracemig "$outdir/${stem}@XTRACE@" \\
   "$@" "$defs"
 '''
 
@@ -192,26 +192,18 @@ def _mig_gen_impl(ctx):
     cmd.add(ctx.attrs.mig_flags)
     ctx.actions.run(cmd, category = "mig", identifier = stem)
 
-    # Compile the generated sources the consumer asked for, with the consumer's
-    # own flags: the generated .c files are only ever built by the target that
-    # owns the definition, so doing it here keeps the archive assembly trivial
-    # and avoids projecting artifacts across targets.
-    objects = []
-    if ctx.attrs.compile_srcs:
-        srcs = [outdir.project(s) for s in ctx.attrs.compile_srcs]
-        include_dirs = [outdir] + merged.include_dirs
-        objects = compile_objects(
-            ctx,
-            tc,
-            srcs,
-            include_dirs,
-            merged.exported_flags + ctx.attrs.compiler_flags,
-            "__objs",
-        )
+    # Generated sources are EXPORTED, not compiled here. They have to be
+    # compiled by a target that can see every mig output at once: a generated
+    # server stub includes hand-written xnu headers which in turn include OTHER
+    # definitions' generated headers (mach/restartable_server.c reaches
+    # kern/restartable.h, which needs the generated mach/task.h). The cmake build
+    # gets that for free by dumping all mig output into one binary dir; here the
+    # consumer collects the roots through its gen_srcs deps.
+    exported_srcs = [outdir.project(s) for s in ctx.attrs.compile_srcs]
 
     return [
         DefaultInfo(default_output = outdir),
-        CcObjectsInfo(objects = objects),
+        GeneratedSourcesInfo(sources = exported_srcs, headers = []),
         # The generated dir is an include root for consumers, and it comes
         # BEFORE nothing: it is appended after the dep roots, so a hand-written
         # source header of the same name (xnu's mach/notify.h) keeps winning,
@@ -229,7 +221,8 @@ mig_gen = rule(
     attrs = {
         "arch": attrs.string(default = "x86_64"),
         "compiler_flags": attrs.list(attrs.string(), default = []),
-        # Generated files (relative to the output dir) to compile into objects.
+        # Generated files (relative to the output dir) exported as sources, for
+        # a consumer to compile via cc_objects(gen_srcs = ...).
         "compile_srcs": attrs.list(attrs.string(), default = []),
         "defs": attrs.source(),
         "deps": attrs.list(attrs.dep(), default = []),

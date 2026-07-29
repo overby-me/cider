@@ -394,3 +394,35 @@ cc_binary = rule(
         "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },
 )
+
+# ---------------------------------------------------------------------------
+# cc_lib_dir: collect the static libs of a dep graph into one directory.
+#
+# The Rust daemon consumes duct-tape through DUCT_TAPE_LIB, an env var naming a
+# directory that holds libdarlingserver_duct_tape.a and
+# liblibsimple_darlingserver.a. Each archive is its own buck2 artifact in its own
+# output dir, so this stages them together into the shape the consumer expects.
+# ---------------------------------------------------------------------------
+
+def _cc_lib_dir_impl(ctx):
+    merged = merge_dep_libs(ctx.attrs.deps)
+    mapping = {}
+    for lib in merged.static_libs:
+        mapping[lib.basename] = lib
+    staged = ctx.actions.symlinked_dir(ctx.label.name, mapping)
+    return [
+        DefaultInfo(default_output = staged),
+        CcLibInfo(
+            include_dirs = merged.include_dirs,
+            exported_flags = merged.exported_flags,
+            static_libs = merged.static_libs,
+            linker_flags = merged.linker_flags,
+        ),
+    ]
+
+cc_lib_dir = rule(
+    impl = _cc_lib_dir_impl,
+    attrs = {
+        "deps": attrs.list(attrs.dep(), default = []),
+    },
+)

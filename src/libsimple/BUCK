@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_library")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_library")
 
 # The Phase-0 leaf (plan/buck2-port.md): the smallest REAL Darling artifact on
 # the host tier. One source file, two headers, no codegen, and it is one of the
@@ -21,5 +21,18 @@ cc_library(
     include_root = "include",
     compiler_flags = ["-DLIBSIMPLE_LINUX=1"],
     lib_name = "libsimple_darlingserver",
+    visibility = ["PUBLIC"],
+)
+
+# Headers only, for consumers that just need <libsimple/lock.h> on their include
+# path and should not take a build dependency on the archive itself (duct-tape's
+# compile environment).
+cc_header_root(
+    name = "libsimple_headers",
+    headers = [
+        "include/libsimple/base.h",
+        "include/libsimple/lock.h",
+    ],
+    root = "include",
     visibility = ["PUBLIC"],
 )

@@ -1,0 +1,19 @@
+load("//buck/rules:cc.bzl", "cc_lib_dir")
+
+# The C libraries the Rust daemon links, staged into the single directory its
+# build.rs expects in DUCT_TAPE_LIB:
+#
+#   DUCT_TAPE_LIB=$(buck2 build --show-output //linux/server:duct_tape_lib | ...) \
+#     cargo build -p darling
+#
+# The daemon crate itself is still built by cargo (a Rust port of these rules is
+# separate work -- overby.me's nix/lib/cargo is the model); this target is the
+# seam between the Buck2-built C and that cargo build.
+cc_lib_dir(
+    name = "duct_tape_lib",
+    deps = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+    ],
+    visibility = ["PUBLIC"],
+)
