@@ -385,18 +385,22 @@ duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f2
 
 Remaining `darling-full-group-bt` failures (18, taxonomised), in priority order:
 
-1. **libcxx C++ headers leak into C compiles (WALL #1, ~14 failures, dominant).** C/ObjC compiles
-   across `security/*` (e.g. `SecLogging.c`, `-std=gnu99`, **no `-isysroot`**) pull libcxx's C++-only
-   `include/cstddef` (`unknown type name 'using'`). Confirmed via the raw command: `-I src/external/
-   libcxxabi/include -I src/external/libcxx/include` sit FIRST on the `-I` list, ahead of the SDK
-   (`.../MacOSX.sdk/usr/include`), and there is no `-isysroot`, so libcxx's header wrappers shadow the
-   SDK's C-compatible ones for a C compile. This is NOT the notify.h/root-separation class (both dirs
-   live in the SOURCE root; separating source-vs-build roots would not reorder them). Candidate fixes,
-   cheapest first: (a) strip `-I .../libcxx*/include` from NON-C++ (`is_compile && not -x c++/obj-c++`)
-   commands in `lower_group.py` -- libcxx is C++-only, a C/ObjC compile should never see it; (b) add
-   `-isysroot <SDK>` so the SDK sysroot wins; (c) find why the reference toolchain does not hit this
-   (Apple clang vs the nix cc-wrapper default C++ stdlib search). Start with (a) and gate on the
-   `libSystem-group-bt` regression check. UNVERIFIED which fix is correct -- needs one build to test.
+1. **Source header shadows a SYSTEM header for a C compile (WALL #1, ~14 failures, dominant).**
+   Confirmed via the compiler's `In file included from` chain (NOT a plain libcxx-on-`-I` issue):
+   a C compile in `security/*` (e.g. `Security_x86_64_only_stuff`, `SecLogging.c`; `-std=gnu99`, no
+   `-isysroot`) includes the SDK's `corecrypto/ccdigest.h` -> `cc.h` -> `cc_config.h:429`, which does
+   `#include <endian.h>`. That resolves to `src/external/security/OSX/libsecurity_utilities/lib/
+   endian.h` -- a SOURCE header shadowing the system `<endian.h>` because security's lib dir is on the
+   compile's `-I` list -- and it drags in the security_utilities C++ chain (`utilities.h` -> `errors.h`
+   -> `<exception>` -> libcxx `<cstddef>`), which is C++-only and explodes in C mode (`unknown type
+   name 'using'`). So the trigger is `-I` precedence over SYSTEM headers, not libcxx per se. The
+   reference build avoids it (some mix of `-isysroot`, `-iquote` vs `-I`, or not having that lib dir on
+   the C compile's search path); our flat merged-`$out` + broad `-I` list does not. Fix needs deliberate
+   header-search scoping so source-tree dirs do NOT shadow toolchain/SDK system headers for a compile
+   that only asked for `<endian.h>` -- e.g. move project header dirs to `-iquote`/`-idirafter`, or add
+   `-isysroot <SDK>` AND ensure system-name includes prefer the sysroot. This is the genuinely DEEP
+   design wall (same class the eval-time `mkGroup` path would hit); needs a header-search decision, not
+   a one-line strip. UNVERIFIED fix.
 2. **libbsm cross-group `libSystem.B.dylib` staging (1 failure, foundational).** `libbsm` links the
    final umbrella `libSystem.B.dylib`; at BUILD time it is missing from libbsm's group sandbox. Ground
    truth (instrumented): libbsm's group ran but did NOT contain the libSystem.B producer edge, and the
