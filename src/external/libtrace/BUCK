@@ -21,13 +21,13 @@ cc_header_root(
 
 cc_header_root(
     name = "system_trace_inc",
-    headers = glob(["libsbuf/**/*.h"]),
+    headers = glob(["libsbuf/*.h", "libsbuf/**/*.h"]),
     root = "libsbuf",
 )
 
 cc_header_root(
     name = "system_trace_inc1",
-    headers = glob(["include/**/*.h"]),
+    headers = glob(["include/*.h", "include/**/*.h"]),
     root = "include",
 )
 

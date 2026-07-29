@@ -295,9 +295,20 @@ targets, all of which generate.
   the kernel-side (duct-tape) MIG produces. That single ordering fix took libsyscall
   from 68 failures to 14, and it changes header precedence for every generated
   target (the whole suite was re-verified after it).
-- Remaining 14 failures are three missing include roots (`tsd.h`,
-  `stack_logging_internal.h`, `CoreFoundation/CoreFoundation.h`), i.e. the same
-  demand-driven "declare what this target includes" work, not a new class.
+- **ALL 562 sources now compile.** Closing the last 14 turned up the sharpest
+  gotcha of the port so far: **buck2 does not `glob()` through a symlinked
+  DIRECTORY.** It treats it as one opaque entry, so a header root pointing at one
+  stages EMPTY -- while explicit sources through the same symlink still resolve,
+  which is exactly what made it confusing (the `.c` files in that directory
+  compiled fine; only the headers went missing). The materialized pins contain
+  3861 symlinks, and
+  `xnu/darling/src/libsystem_kernel/libsyscall -> xnu/libsyscall` is one of them.
+  The generator now dereferences a root to its real directory. That fixed 12 of
+  the 14; the last 2 just needed the CoreFoundation framework declared.
+- Also fixed while here: `glob(["dir/**/*.h"])` does NOT match `dir/x.h` in buck2 --
+  it requires at least one intermediate directory. Every generated root was
+  therefore missing the headers sitting directly in it, so roots now glob both
+  patterns.
 
 **The pthread "text reloc" was my own bug, and it was hiding a worse one.**
 `libsystem_pthread`'s dylib failed with `illegal text reloc in

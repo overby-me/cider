@@ -7,7 +7,7 @@ load("//buck/rules:codegen.bzl", "script_gen")
 
 cc_header_root(
     name = "dserver_headers",
-    headers = glob(["include/**/*.h"]),
+    headers = glob(["include/*.h", "include/**/*.h"]),
     root = "include",
     visibility = ["PUBLIC"],
 )

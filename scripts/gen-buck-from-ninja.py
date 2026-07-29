@@ -116,6 +116,21 @@ def orig_repo_rel(p: str) -> str:
     return os.path.normpath(SRC_STORE_RE.sub("", p).replace(BIN_DIR, "").lstrip("/"))
 
 
+def deref(rel: str) -> str:
+    """Resolve a repo-relative path through symlinks, staying inside the repo.
+
+    buck2 does NOT glob through a symlinked DIRECTORY: it treats it as one opaque
+    entry, so a header root pointing at one stages EMPTY (while explicit sources
+    through the same symlink still resolve, which is what made this confusing).
+    The materialized pins contain 3861 symlinks, including
+    xnu/darling/src/libsystem_kernel/libsyscall -> xnu/libsyscall, so roots have to
+    name the real directory.
+    """
+    real = os.path.realpath(os.path.join(REPO, rel))
+    out = os.path.relpath(real, REPO)
+    return rel if out.startswith("..") else out
+
+
 def repo_path(p: str):
     """Map a build.ninja path to (kind, path).
 
@@ -130,6 +145,9 @@ def repo_path(p: str):
     if p.startswith("src/external/"):
         rel = p[len("src/external/"):]
         if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
+            real = deref(os.path.join(BUCK_SRC, rel))
+            if real.startswith(BUCK_SRC + "/"):
+                rel = real[len(BUCK_SRC) + 1:]
             return ("buck-src", rel)
     if os.path.exists(os.path.join(REPO, p)):
         return ("src", p)
@@ -358,7 +376,9 @@ def generate(target: str, edges):
             root_name[p] = name
             w("cc_header_root(")
             w(f'    name = "{name}",')
-            w(f'    headers = glob(["{p}/**/*.h"]),')
+            # BOTH patterns: buck2's "dir/**/*.h" does not match dir/x.h, so a
+            # root whose headers sit directly in it would stage EMPTY.
+            w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h"]),')
             w(f'    root = "{p}",')
             w(")")
             w("")

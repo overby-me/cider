@@ -7,7 +7,7 @@ load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 
 cc_header_root(
     name = "libcache_inc",
-    headers = glob(["include/**/*.h"]),
+    headers = glob(["include/*.h", "include/**/*.h"]),
     root = "include",
 )
 

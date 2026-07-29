@@ -26,6 +26,7 @@
     "//src/external/darlingserver:dserver_rpc"
   ],
   "libsyscall": [
+    "//buck-src:fw_CoreFoundation",
     "//src/external/darlingserver:dserver_rpc",
     "//src/external/darlingserver:dserver_headers",
     ":ksmig_mach_clock",

@@ -19,7 +19,7 @@ cc_header_root(
 
 cc_header_root(
     name = "system_coreservices_inc",
-    headers = glob(["libcxx/include/**/*.h"]),
+    headers = glob(["libcxx/include/*.h", "libcxx/include/**/*.h"]),
     root = "libcxx/include",
 )
 

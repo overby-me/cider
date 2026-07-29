@@ -979,7 +979,7 @@ cc_objects(
 cc_objects(
     name = "dt_pthread_objects",
     srcs = ["pthread/kern_synch.c"],
-    headers = glob(["pthread/**/*.h"]),
+    headers = glob(["pthread/*.h", "pthread/**/*.h"]),
     include_root = "pthread",
     deps = [
         ":dt_env",
@@ -1029,7 +1029,7 @@ cc_static_lib(
         ":dt_mig_objects",
         ":dt_pthread_objects",
     ],
-    exported_headers = glob(["include/**/*.h"]),
+    exported_headers = glob(["include/*.h", "include/**/*.h"]),
     include_root = "include",
     deps = [
         "//src/libsimple:libsimple_darlingserver",
