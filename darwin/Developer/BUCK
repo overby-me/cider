@@ -1,0 +1,18 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+
+# BEGIN generated: framework roots
+# One header root per framework, so a target declares the frameworks it includes
+# instead of getting the whole surface. The reference build just puts
+# darwin/framework-include on every Darwin compile's path; being explicit here is
+# what stops a target compiling against a framework it never declared.
+load("//buck/generated:sdk_framework_darwin_Developer.bzl", FRAMEWORKS = "FRAMEWORKS")
+
+[
+    cc_header_root(
+        name = "fw_" + _name,
+        header_map = _map,
+        visibility = ["PUBLIC"],
+    )
+    for _name, _map in FRAMEWORKS.items()
+]
+# END generated: framework roots

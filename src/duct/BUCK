@@ -25,7 +25,7 @@ cc_header_root(
 )
 
 cc_objects(
-    name = "system_duct_obj_obj",
+    name = "system_duct_obj",
     srcs = [
         "src/commpage.c",
         "src/libnotify.c",
@@ -60,7 +60,7 @@ darwin_dylib(
     dylib_name = "libsystem_duct_firstpass.dylib",
     firstpass = True,
     install_name = "/usr/lib/system/libsystem_duct.dylib",
-    objs = [":system_duct_obj_obj"],
+    objs = [":system_duct_obj"],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],

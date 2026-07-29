@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -19,19 +20,19 @@ cc_header_root(
 # cmake target: system_trace_obj  ->  src/external/libtrace/system_trace_obj
 
 cc_header_root(
-    name = "system_trace_obj_inc",
+    name = "system_trace_inc",
     headers = glob(["libsbuf/**/*.h"]),
     root = "libsbuf",
 )
 
 cc_header_root(
-    name = "system_trace_obj_inc1",
+    name = "system_trace_inc1",
     headers = glob(["include/**/*.h"]),
     root = "include",
 )
 
 cc_objects(
-    name = "system_trace_obj_obj",
+    name = "system_trace_obj",
     srcs = [
         "libsystem_trace/libtrace_assert.c",
         "libsystem_trace/os_log.c",
@@ -44,10 +45,23 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_trace_obj_inc",
-        ":system_trace_obj_inc1",
+        ":system_trace_inc",
+        ":system_trace_inc1",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_CoreFoundation",
         "//darwin:sdk_env",
     ],
 )
 # END generated: system_trace_obj
 
+
+darwin_dylib(
+    name = "system_trace_firstpass",
+    dylib_name = "libsystem_trace_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_trace.dylib",
+    objs = [":system_trace_obj"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

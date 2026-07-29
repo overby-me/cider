@@ -62,6 +62,12 @@ targets=(
 	//buck-src:keymgr_firstpass
 	//buck-src:system_pthread_firstpass
 	//buck-src:system_malloc_firstpass
+	//buck-src:system_asl_firstpass
+	//buck-src:system_coretls_firstpass
+	//buck-src:asl_ipc_mig
+	//src/duct:system_duct_firstpass
+	//src/external/libtrace:system_trace_firstpass
+	//src/libsystem_coreservices:system_coreservices_firstpass
 )
 if [ -n "$verbose" ]; then
 	buck2 build "${targets[@]}"
@@ -204,22 +210,30 @@ else
 	bad "expected _free to be undefined in a firstpass dylib"
 fi
 
-say "== more libSystem members (firstpass dylibs) =="
-# name:install_name pairs, from the reference build's -dylib_file map.
+say "== libSystem members, as firstpass dylibs =="
+# target:install_name, from the reference build's -dylib_file map. Every one is
+# checked for being a Mach-O dylib carrying the right install_name.
 for pair in \
-	"keymgr_firstpass:/usr/lib/system/libkeymgr.dylib" \
-	"system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
-	"system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib"; do
-	t=${pair%%:*}
-	want=${pair#*:}
-	art=$(out_of "//buck-src:$t")
+	"//buck-src:system_blocks_firstpass:/usr/lib/system/libsystem_blocks.dylib" \
+	"//buck-src:keymgr_firstpass:/usr/lib/system/libkeymgr.dylib" \
+	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
+	"//buck-src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib" \
+	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
+	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
+	"//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib" \
+	"//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib" \
+	"//src/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"; do
+	t=${pair%:*}
+	want=${pair##*:}
+	art=$(out_of "$t")
 	case "$(file -b "$art")" in
 	*"Mach-O 64-bit x86_64 dynamically linked shared library"*) ;;
 	*) bad "$t is not a Mach-O dylib"; continue ;;
 	esac
 	got=$(llvm-objdump --macho --dylib-id "$art" 2>/dev/null | tail -1)
-	[ "$got" = "$want" ] && ok "$t -> $got" || bad "$t install_name is '$got', want '$want'"
+	[ "$got" = "$want" ] && ok "${t##*:} -> $got" || bad "$t install_name is '$got', want '$want'"
 done
+
 # libsystem_pthread is the one with hand-written assembly in it.
 pth=$(out_of //buck-src:system_pthread_firstpass)
 # Collect first: piping straight into `grep -q` fails under pipefail, because
@@ -230,6 +244,12 @@ if printf '%s\n' "$pth_syms" | grep -qx "_pthread_create"; then
 else
 	bad "libsystem_pthread does not export _pthread_create"
 fi
+
+# asl's sources include <asl_ipc.h>, which MIG generates -- the same include that
+# stalls nix-ninja's full-graph build.
+aslmig=$(out_of //buck-src:asl_ipc_mig)
+[ -f "$aslmig/asl_ipc.h" ] && ok "guest MIG generated asl_ipc.h" ||
+	bad "asl_ipc.h was not generated"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

@@ -1,0 +1,15 @@
+{
+  "_comment": [
+    "Hand-added dependencies merged into GENERATED target blocks by",
+    "scripts/gen-buck-from-ninja.py. They live here rather than inside the block,",
+    "because --write replaces a block wholesale and would drop them.",
+    "",
+    "Almost all of these are frameworks and codegen. The reference build puts all",
+    "141 frameworks on every Darwin compile's include path; this port makes each",
+    "target name the ones it actually includes, so a target cannot silently start",
+    "depending on a framework it never declared."
+  ],
+  "system_asl_obj": [":asl_ipc_mig"],
+  "system_coretls_obj": [":fw_Security", ":fw_CoreFoundation"],
+  "system_trace_obj": ["//buck-src:fw_Foundation", "//buck-src:fw_CoreFoundation"]
+}

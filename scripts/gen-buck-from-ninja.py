@@ -79,6 +79,11 @@ ENV_INCLUDES = {
     "src/libMobileGestalt/include",
     "src/lib/include",
     "src/external/configd/dnsinfo",
+    # The C++ standard library. It MUST NOT be emitted per-target as well: two
+    # copies of libcxx/include on one command line break #include_next, because
+    # libcxx's stdint.h defers to the next stdint.h on the path and finds the other
+    # staged copy of ITSELF instead of the SDK's -- so uint32_t ends up undefined.
+    "src/external/libcxx/include",
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libxml2",
 }
 
@@ -181,6 +186,22 @@ def collect(target: str, edges):
     return srcs, defines, flags, includes, link
 
 
+def extra_deps(target: str) -> list[str]:
+    """Hand-added deps for a target (frameworks, codegen), from a committed file.
+
+    --write replaces a generated block wholesale, so a dep added by hand inside one
+    would be lost on the next run. Keeping them in buck/generated/extra-deps.json
+    makes them survive, and puts every such decision in one reviewable place.
+    """
+    import json
+    f = os.path.join(REPO, "buck", "generated", "extra-deps.json")
+    if not os.path.exists(f):
+        return []
+    with open(f) as fh:
+        data = json.load(fh)
+    return [d for d in data.get(target, []) if isinstance(d, str)]
+
+
 def main(argv: list[str]) -> int:
     if not os.path.exists(GRAPH):
         sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#darling-graph -o result-graph-ref")
@@ -204,6 +225,8 @@ def main(argv: list[str]) -> int:
 
     write = "--write" in argv
     for target in args:
+        # cmake object libraries are already called <thing>_obj; do not double it.
+        obj_name = target if target.endswith("_obj") else target + "_obj"
         out_lines: list[str] = []
 
         def emit(line: str = ""):
@@ -291,7 +314,7 @@ def main(argv: list[str]) -> int:
         emit()
 
         for idx, (kind, p) in enumerate(own_includes):
-            name = target + "_inc" + ("" if idx == 0 else str(idx))
+            name = target.removesuffix("_obj") + "_inc" + ("" if idx == 0 else str(idx))
             emit("cc_header_root(")
             emit(f'    name = "{name}",')
             emit(f'    headers = glob(["{p}/**/*.h"]),')
@@ -300,7 +323,7 @@ def main(argv: list[str]) -> int:
             emit()
 
         emit("cc_objects(")
-        emit(f'    name = "{target}_obj",')
+        emit(f'    name = "{obj_name}",')
         emit("    srcs = [")
         for kind, p in src_paths:
             emit(f'        "{p}",')
@@ -313,7 +336,9 @@ def main(argv: list[str]) -> int:
         emit('    toolchain = "toolchains//:darwin_cc",')
         emit("    deps = [")
         for idx in range(len(own_includes)):
-            emit(f'        ":{target}_inc{"" if idx == 0 else idx}",')
+            emit(f'        ":{target.removesuffix("_obj")}_inc{"" if idx == 0 else idx}",')
+        for d in extra_deps(target):
+            emit(f'        "{d}",')
         emit('        "//darwin:sdk_env",')
         emit("    ],")
         emit(")")
@@ -325,7 +350,7 @@ def main(argv: list[str]) -> int:
             emit(f'    dylib_name = "lib{target.replace("system_", "system_")}_firstpass.dylib",')
             emit("    firstpass = True,")
             emit(f'    install_name = "{install_name}",')
-            emit(f'    objs = [":{target}_obj"],')
+            emit(f'    objs = [":{obj_name}",],')
             emit('    toolchain = "toolchains//:darwin_cc",')
             emit('    deps = ["//darwin:sdk_env"],')
             emit('    visibility = ["PUBLIC"],')
