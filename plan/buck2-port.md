@@ -240,12 +240,43 @@ the reference `install_name`:
 | `libsystem_trace` | 8 | needs the Foundation + CoreFoundation frameworks |
 | `libsystem_asl` | 14 | needs GUEST-side MIG (`asl_ipc.defs`) |
 | `libsystem_coretls` | 31 | needs the Security + CoreFoundation frameworks |
+| **`libsystem_c`** | **641 objects, 43 object libraries** | 1359 exported symbols, 1.35 MB |
 
 Only firstpass, and that is not a shortcut: a firstpass link resolves nothing by
 design, so it is exactly the pass that can be built before its siblings exist.
-A FINAL pass needs `libsystem_c` and `libsystem_kernel`, which are the two big
-ones (libc is ~hundreds of sources; libsystem_kernel needs MIG plus syscall-stub
-generation).
+A FINAL pass now needs only `libsystem_kernel` (MIG plus syscall-stub generation),
+since `libsystem_c` is done.
+
+**`libsystem_c` took three findings, each of which would have produced a subtly
+wrong library rather than a build error:**
+
+1. **Per-source flags are load-bearing.** A cmake target does not compile every
+   source the same way: `SET_SOURCE_FILES_PROPERTIES` gives individual libc files
+   their own `-DLIBC_ALIAS_*` (which decides SYMBOL ALIASING) and their own
+   `-include` shim. `libc-gen` alone is 108 sources in **25 distinct flag groups**.
+   Reading flags off one edge -- the obvious implementation -- would have compiled
+   and linked, and produced a libc with the wrong symbols. The generator now groups
+   sources by their exact flag set, and each group becomes its own `cc_objects`
+   target; the dylib takes them all. That fixed 26 of the 30 libc failures at once.
+2. **A `-include` argument is a header the target NEEDS.** The reference spells it
+   as an absolute nix store path, so passing the flag through verbatim both leaks a
+   store path into the build and leaves the header undeclared. They become
+   `prefix_headers` (real artifacts) instead. libc depends on this: `gen/__dirent.h`
+   is a `#define` shim renaming `dd_*` to `__dd_*`, force-included into every
+   `*dir.c`, and without it those sources do not match the public `dirent.h`
+   (66 `no member named 'dd_td'` errors). A bare NAME rather than a path
+   (`-include __dirent.h`) is different again: it resolves through the include path,
+   so it stays a flag.
+3. **WHICH object libraries a dylib links is not "all of them".** libc ships
+   ALTERNATES of the same sources -- the `_dyld` variants exist for
+   libsystem_dyld -- so linking every `libc-*` group gives **190 duplicate
+   symbols**. The reference link edge is the authority on the subset, and the
+   generator now resolves a dylib's object libraries from it.
+
+Open: `libkqueue` (the 44th object library libsystem_c links) does not compile.
+Its XNU-emulation headers need an include ordering this port has not worked out
+(`struct kevent64_s` comes out incomplete, `uint16_t` undeclared). libsystem_c is
+otherwise complete, and the firstpass dylib links without it.
 
 All three of the failures recorded earlier are now fixed, and each turned out to
 be a real finding:

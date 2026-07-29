@@ -1,0 +1,28 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+
+# BEGIN generated: libcache_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libcache_obj   -- review before committing.
+# cmake target: libcache_obj  ->  src/libcache/libcache_obj
+
+cc_header_root(
+    name = "libcache_inc",
+    headers = glob(["include/**/*.h"]),
+    root = "include",
+)
+
+cc_objects(
+    name = "libcache_obj",
+    srcs = [
+        "src/cache.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libcache_inc",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: libcache_obj

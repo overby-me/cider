@@ -9,7 +9,19 @@
     "target name the ones it actually includes, so a target cannot silently start",
     "depending on a framework it never declared."
   ],
-  "system_asl_obj": [":asl_ipc_mig"],
-  "system_coretls_obj": [":fw_Security", ":fw_CoreFoundation"],
-  "system_trace_obj": ["//buck-src:fw_Foundation", "//buck-src:fw_CoreFoundation"]
+  "system_asl_obj": [
+    ":asl_ipc_mig"
+  ],
+  "system_coretls_obj": [
+    ":fw_Security",
+    ":fw_CoreFoundation"
+  ],
+  "system_trace_obj": [
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "kqueue": [
+    "//src/external/darlingserver:dserver_headers",
+    "//src/external/darlingserver:dserver_rpc"
+  ]
 }

@@ -48,6 +48,7 @@ cc_header_root(
         "//src/OpenScripting:sdk_src_OpenScripting_headers",
         "//src/duct:sdk_src_duct_headers",
         "//src/external/libtrace:sdk_src_external_libtrace_headers",
+        "//src/external/libpthread_workqueue-0.8.2:sdk_src_external_libpthread_workqueue_headers",
         "//src/launchd:sdk_src_launchd_headers",
         "//src/libDiagnosticMessagesClient:sdk_src_libDiagnosticMessagesClient_headers",
         "//src/libMobileGestalt:sdk_src_libMobileGestalt_headers",

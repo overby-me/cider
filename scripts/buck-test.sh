@@ -62,6 +62,7 @@ targets=(
 	//buck-src:keymgr_firstpass
 	//buck-src:system_pthread_firstpass
 	//buck-src:system_malloc_firstpass
+	//buck-src:system_c_firstpass
 	//buck-src:system_asl_firstpass
 	//buck-src:system_coretls_firstpass
 	//buck-src:asl_ipc_mig
@@ -219,6 +220,7 @@ for pair in \
 	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
 	"//buck-src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib" \
 	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
+	"//buck-src:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
 	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
 	"//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib" \
 	"//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib" \
@@ -244,6 +246,19 @@ if printf '%s\n' "$pth_syms" | grep -qx "_pthread_create"; then
 else
 	bad "libsystem_pthread does not export _pthread_create"
 fi
+
+# libsystem_c is the big one: 641 objects from 43 cmake object libraries, each of
+# which can be several flag groups. Spot-check that the C library is really in
+# there rather than an empty shell that happened to link.
+libc_dylib=$(out_of //buck-src:system_c_firstpass)
+libc_syms=$(llvm-nm --defined-only --extern-only "$libc_dylib" 2>/dev/null | awk '{print $3}')
+libc_count=$(printf '%s\n' "$libc_syms" | wc -l)
+[ "$libc_count" -ge 1300 ] && ok "libsystem_c exports $libc_count symbols" ||
+	bad "libsystem_c exports only $libc_count symbols"
+for sym in _printf _fopen _strtod _qsort _getenv _regcomp _uuid_generate _strftime; do
+	printf '%s\n' "$libc_syms" | grep -qx "$sym" && ok "libsystem_c exports $sym" ||
+		bad "libsystem_c is missing $sym"
+done
 
 # asl's sources include <asl_ipc.h>, which MIG generates -- the same include that
 # stalls nix-ninja's full-graph build.
