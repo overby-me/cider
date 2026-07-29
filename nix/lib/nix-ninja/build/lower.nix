@@ -1064,26 +1064,34 @@ in {
         then map (p: {name = relUnder p; value = true;})
                (filter (p: underAnyRoot p && builtins.elem (extOf p) srcExts) (edgeInputs e))
         else []) (indices edges));
+      # The compiled-source exclusion list (one ./-prefixed rel path per line), so the
+      # header-base build can drop compiled .c while keeping #included .c helpers.
+      compiledList = pkgs.writeText "darling-compiled-sources"
+        (lib.concatStringsSep "\n" (map (r: "./" + r) (builtins.attrNames compiledSourceSet)));
+      findNames = exts: lib.concatMapStringsSep " -o " (e: ''-name "*.${e}"'') exts;
+      # Build srcHeaders as a DERIVATION rather than builtins.path. builtins.path
+      # re-walks + re-hashes the entire 4G source tree on EVERY evaluation (minutes of
+      # eval-blocking work, and the window where long builds here kept getting killed);
+      # a derivation is input-addressed by cmakeSrcStore, so it is built ONCE and reused
+      # across every lower.nix edit that leaves the source unchanged, and it builds as a
+      # normal (resumable, cached) graph node. Contents mirror the old filter exactly:
+      # dirs + every symlink (the darling/include -> SDK -> xnu shim maze) + headers +
+      # extensionless include/Headers files + sources NOT compiled by any edge (so
+      # `#include <.../x.c>` helpers resolve; compiled .c stay out to keep .c isolation).
       srcHeaders =
         if rewriteRoots == [ ]
         then null
-        else builtins.path {
-          path = builtins.head rewriteRoots;
-          name = "darling-src-headers";
-          filter =
-            path: type:
-            type == "directory"
-            || type == "symlink"
-            || (
-              let
-                ext = extOf path;
-                rel = lib.removePrefix (toString (builtins.head rewriteRoots) + "/") path;
-              in
-              builtins.elem ext hdrExts
-              || (ext == "" && (lib.hasInfix "/include/" path || lib.hasInfix "/Headers/" path))
-              || (builtins.elem ext srcExts && !(compiledSourceSet ? ${rel}))
-            );
-        };
+        else pkgs.runCommand "darling-src-headers" { nativeBuildInputs = [ pkgs.cpio ]; } ''
+          mkdir -p "$out"
+          cd ${builtins.head rewriteRoots}
+          {
+            find . -type d
+            find . -type l
+            find . -type f \( ${findNames hdrExts} \)
+            find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
+            find . -type f \( ${findNames srcExts} \) | LC_ALL=C grep -vxF -f ${compiledList} || true
+          } | LC_ALL=C sort -u | cpio -pdm --quiet "$out"
+        '';
       mkGroup = g: let
         myIds = idsInGroup.${g};
         mySet = listToAttrs (map (i: {name = toString i; value = true;}) myIds);
