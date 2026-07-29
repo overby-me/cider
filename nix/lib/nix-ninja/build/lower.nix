@@ -1051,6 +1051,19 @@ in {
       # input isolation, now without any scan. Header edits (rarer) rehash it, as they
       # should. Built once and shared, so its ~300MB is paid a single time.
       hdrExts = [ "h" "hpp" "hh" "hxx" "h++" "inc" "def" "defs" "modulemap" "apinotes" "tbd" "pch" ];
+      srcExts = [ "c" "cc" "cpp" "cxx" "c++" "m" "mm" ];
+      extOf = p: let b = baseNameOf p; in if lib.hasInfix "." b then lib.toLower (lib.last (lib.splitString "." b)) else "";
+      # Sources that ARE compiled by some edge. These are staged per-group individually
+      # (rootSrcs), so they stay OUT of the shared header base -- that is what keeps a
+      # .c edit from rehashing the base and rebuilding every group. Their complement --
+      # sources #included AS headers (darling's emulation *_generic.c helpers, included
+      # via `#include <darling/emulation/.../x.c>`) -- must stay IN the base, or those
+      # includes fail (they are not declared edge inputs).
+      compiledSourceSet = listToAttrs (concatMap (i: let e = elemAt edges i; in
+        if isCompile e
+        then map (p: {name = relUnder p; value = true;})
+               (filter (p: underAnyRoot p && builtins.elem (extOf p) srcExts) (edgeInputs e))
+        else []) (indices edges));
       srcHeaders =
         if rewriteRoots == [ ]
         then null
@@ -1063,11 +1076,12 @@ in {
             || type == "symlink"
             || (
               let
-                b = baseNameOf path;
-                ext = if lib.hasInfix "." b then lib.toLower (lib.last (lib.splitString "." b)) else "";
+                ext = extOf path;
+                rel = lib.removePrefix (toString (builtins.head rewriteRoots) + "/") path;
               in
               builtins.elem ext hdrExts
               || (ext == "" && (lib.hasInfix "/include/" path || lib.hasInfix "/Headers/" path))
+              || (builtins.elem ext srcExts && !(compiledSourceSet ? ${rel}))
             );
         };
       mkGroup = g: let
@@ -1205,9 +1219,9 @@ in {
             "cp -rsf --no-preserve=mode ${srcHeaders}/. ./ 2>/dev/null || true"}
           ${lib.concatMapStringsSep "\n" (d: "cp -rsf --no-preserve=mode ${d}/. ./ 2>/dev/null || true") extGroupDrvs}
           ${lib.concatMapStringsSep "\n" (s: ''
-            if [ ! -e ${esc s} ]; then install -Dm644 ${srcStorePath s} ${esc s}; if [ -x ${srcStorePath s} ]; then chmod +x ${esc s}; ${shebangSedG (esc s)} fi; fi'') relSrcs}
+            if [ ! -e ${esc s} ] || [ -L ${esc s} ]; then realize_writable "$(dirname ${esc s})"; rm -f ${esc s}; install -Dm644 ${srcStorePath s} ${esc s}; if [ -x ${srcStorePath s} ]; then chmod +x ${esc s}; ${shebangSedG (esc s)} fi; fi'') relSrcs}
           ${lib.concatMapStringsSep "\n" (p: ''
-            if [ ! -e ${esc (relUnder p)} ]; then install -Dm644 ${indivOf p} ${esc (relUnder p)}; if [ -x ${indivOf p} ]; then chmod +x ${esc (relUnder p)}; ${shebangSedG (esc (relUnder p))} fi; fi'') rootSrcs}
+            if [ ! -e ${esc (relUnder p)} ] || [ -L ${esc (relUnder p)} ]; then realize_writable "$(dirname ${esc (relUnder p)})"; rm -f ${esc (relUnder p)}; install -Dm644 ${indivOf p} ${esc (relUnder p)}; if [ -x ${indivOf p} ]; then chmod +x ${esc (relUnder p)}; ${shebangSedG (esc (relUnder p))} fi; fi'') rootSrcs}
           ${stageIncs}
           find . -xtype l -delete 2>/dev/null || true
           ${stageIfaceDeref}
