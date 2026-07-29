@@ -16,7 +16,7 @@ load(
     "merge_dep_libs",
     "stage_include_root",
 )
-load("@toolchains//:native.bzl", "NativeCcToolchainInfo")
+load("@toolchains//:cc.bzl", "CcToolchainInfo")
 
 # ---------------------------------------------------------------------------
 # bison / flex
@@ -147,7 +147,7 @@ def _mig_stem(defs, base):
     return rel[:-len(".defs")]
 
 def _mig_gen_impl(ctx):
-    tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
     merged = merge_dep_libs(ctx.attrs.deps)
 
     stem = _mig_stem(ctx.attrs.defs, ctx.attrs.out_base)
@@ -238,7 +238,7 @@ mig_gen = rule(
         "target": attrs.string(default = "x86_64-apple-darwin20"),
         "user_suffix": attrs.string(default = "User.c"),
         "xtrace_suffix": attrs.string(default = "XtraceMig.c"),
-        "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },
 )
 

@@ -1,5 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root")
-load(":sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_SYS")
+load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -150,5 +150,37 @@ cc_binary(
 export_file(
     name = "mig.sh",
     src = "bootstrap_cmds/migcom.tproj/mig.sh",
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------
+# The GUEST (Darwin) header environment.
+#
+# A Darwin compile's include path in the reference build is the whole SDK tree,
+# darwin/Developer/.../MacOSX.sdk/usr/include: ~3200 headers reached through
+# committed relative symlinks into these pinned trees. Staged here as one
+# declared root from the map scripts/gen-sdk-header-roots.py derives from that
+# farm, so the search path holds exactly the SDK, under exactly the SDK's names.
+# ---------------------------------------------------------------------------
+
+cc_header_root(
+    name = "sdk_include",
+    header_map = SDK_ROOT,
+    visibility = ["PUBLIC"],
+)
+
+# Two more include dirs the reference build puts on every Darwin compile, both
+# from pinned trees.
+cc_header_root(
+    name = "lkm_include",
+    headers = glob(["lkm/include/**/*.h"]),
+    root = "lkm/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "configd_dnsinfo",
+    headers = glob(["configd/dnsinfo/*.h"]),
+    root = "configd/dnsinfo",
     visibility = ["PUBLIC"],
 )

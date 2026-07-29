@@ -47,6 +47,7 @@ out_of() { # target -> artifact path
 say "== building ported targets =="
 targets=(
 	//src/libsimple:libsimple_darlingserver
+	//src/libsimple:libsimple_darling
 	//buck-src:migcom
 	//src/startup:rtsig_header
 	//src/external/darlingserver:dserver_rpc
@@ -70,6 +71,22 @@ lib=$(out_of //src/libsimple:libsimple_darlingserver)
 [ -f "$lib" ] && ok "archive exists" || bad "archive missing"
 syms=$(nm --defined-only "$lib" | awk '{print $3}' | grep -c '^libsimple_' || true)
 [ "$syms" -ge 13 ] && ok "exports $syms libsimple_* symbols" || bad "expected >= 13 libsimple_* symbols, got $syms"
+
+say "== libsimple, GUEST build (Darwin/Mach-O cross toolchain) =="
+dlib=$(out_of //src/libsimple:libsimple_darling)
+[ -f "$dlib" ] && ok "archive exists" || bad "archive missing"
+obj_kind=$(cd "$(dirname "$dlib")" && ar p "$(basename "$dlib")" lock.c.o 2>/dev/null | file - | cut -d: -f2)
+case "$obj_kind" in
+*"Mach-O 64-bit x86_64"*) ok "member is${obj_kind}" ;;
+*) bad "expected a Mach-O 64-bit x86_64 object, got:${obj_kind:-nothing}" ;;
+esac
+# Darwin mangles C symbols with a leading underscore; seeing it proves the
+# cross toolchain really targeted Darwin rather than the host.
+if llvm-nm --defined-only "$dlib" 2>/dev/null | awk '{print $3}' | grep -qx "_libsimple_lock_lock"; then
+	ok "exports _libsimple_lock_lock (Darwin mangling)"
+else
+	bad "missing the Darwin-mangled _libsimple_lock_lock"
+fi
 
 say "== migcom (the MIG toolchain) =="
 migcom=$(out_of //buck-src:migcom)

@@ -36,3 +36,25 @@ cc_header_root(
     root = "include",
     visibility = ["PUBLIC"],
 )
+
+# The GUEST build of the same source: libsimple compiled for Darwin/Mach-O.
+# Mirrors the CMakeLists' other branch, add_darling_static_library(libsimple_darling
+# FAT ...) with -DLIBSIMPLE_DARLING=1.
+#
+# Same file, same rules, one different toolchain -- which is the point of keeping
+# the toolchain a selectable attribute. (FAT/lipo is not reproduced yet: the
+# reference makes a fat archive with cctools lipo, and only x86_64 is built here.)
+cc_library(
+    name = "libsimple_darling",
+    srcs = ["src/lock.c"],
+    compiler_flags = ["-DLIBSIMPLE_DARLING=1"],
+    exported_headers = [
+        "include/libsimple/base.h",
+        "include/libsimple/lock.h",
+    ],
+    include_root = "include",
+    lib_name = "simple_darling",
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)

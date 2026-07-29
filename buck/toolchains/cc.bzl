@@ -1,13 +1,17 @@
-# The HOST (Linux/ELF) C toolchain: what builds darlingserver's duct-tape, the
-# XNU kernel-emulation glue, and libsimple. Plain nixpkgs clang + binutils ar,
-# no cross-compilation, no Mach-O.
+# A toolchain is a bundle of tools plus the flags every compile with it gets.
+# There are two instances (see BUCK in this directory):
 #
-# The Darwin/Mach-O cross toolchain (clang -target x86_64-apple-darwin*, the
-# cctools ld64 from nix/cctools-port.nix, the SDK sysroot) is a separate
-# toolchain rule, added when the guest tier is ported. Keeping them distinct is
-# the point: a host compile can never accidentally inherit guest header roots.
+#   native_cc  the HOST (Linux/ELF) toolchain: plain nixpkgs clang + binutils ar.
+#              Builds duct-tape, the XNU emulation glue, libsimple, migcom.
+#   darwin_cc  the GUEST (Darwin/Mach-O) cross toolchain: the same clang driving
+#              `-target x86_64-apple-darwin20`, with the cctools Mach-O archiver
+#              and (for links) Darling's own ld64.
+#
+# One provider serves both, because the difference between them IS just tools and
+# flags. Keeping them separate targets is the point: a host compile can never
+# accidentally inherit guest flags or header roots, and vice versa.
 
-NativeCcToolchainInfo = provider(
+CcToolchainInfo = provider(
     fields = [
         # Command names (resolved from PATH) or absolute paths.
         "cc",
@@ -20,10 +24,10 @@ NativeCcToolchainInfo = provider(
     ],
 )
 
-def _native_cc_toolchain_impl(ctx):
+def _cc_toolchain_impl(ctx):
     return [
         DefaultInfo(),
-        NativeCcToolchainInfo(
+        CcToolchainInfo(
             cc = ctx.attrs.cc,
             cxx = ctx.attrs.cxx,
             ar = ctx.attrs.ar,
@@ -33,8 +37,8 @@ def _native_cc_toolchain_impl(ctx):
         ),
     ]
 
-native_cc_toolchain = rule(
-    impl = _native_cc_toolchain_impl,
+cc_toolchain = rule(
+    impl = _cc_toolchain_impl,
     attrs = {
         "ar": attrs.string(default = "ar"),
         "cc": attrs.string(default = "clang"),

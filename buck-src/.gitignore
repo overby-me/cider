@@ -4,4 +4,3 @@
 *
 !.gitignore
 !BUCK
-!sdk_headers.bzl

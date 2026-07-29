@@ -1,0 +1,39 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+
+# The Darwin (guest) compile environment: the defines and include roots every
+# cross-compiled Darling target gets, in the reference build's order. A guest
+# target depends on this one target instead of restating them.
+#
+# Defines and order are the reference build's, read off the configured
+# build.ninja rather than inferred from CMakeLists.
+cc_header_root(
+    name = "sdk_env",
+    exported_flags = [
+        # Inherited by every Darling target from the top-level CMakeLists.
+        "-Wno-error=implicit-function-declaration",
+        "-Wno-nullability-completeness",
+        "-Wno-deprecated-declarations",
+        "-Wno-availability",
+        "-Wno-expansion-to-defined",
+        "-Wno-elaborated-enum-base",
+        "-Wno-undef-prefix",
+        # The Darwin target identity.
+        "-DDARLING",
+        "-DDARWIN",
+        "-DPLATFORM_MacOSX",
+        "-DTARGET_OS_MAC=1",
+        "-D_DARWIN_C_SOURCE",
+        "-D_POSIX_C_SOURCE",
+        "-D__APPLE__",
+        "-D__DYNAMIC__",
+        "-D__MACH__",
+    ],
+    deps = [
+        "//darwin/basic-headers:basic_headers",
+        "//buck-src:sdk_include",
+        "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:sdk_repo_include",
+        "//buck-src:lkm_include",
+        "//buck-src:configd_dnsinfo",
+    ],
+    visibility = ["PUBLIC"],
+)

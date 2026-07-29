@@ -19,7 +19,7 @@
 #    groups compiled with different flags (duct-tape's pthread/kern_synch.c needs
 #    its own -I but must land in libdarlingserver_duct_tape.a).
 
-load("@toolchains//:native.bzl", "NativeCcToolchainInfo")
+load("@toolchains//:cc.bzl", "CcToolchainInfo")
 
 # What a C target hands to its consumers.
 CcLibInfo = provider(fields = [
@@ -182,7 +182,7 @@ def gen_sources(gen_deps):
     return srcs
 
 def _cc_objects_impl(ctx):
-    tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
     # A codegen target in `gen_srcs` contributes BOTH its generated sources and
     # its generated-header include root, so it never has to be listed twice.
     merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
@@ -225,7 +225,7 @@ _cc_objects_attrs = {
     # Headers force-included into every source (-include).
     "prefix_headers": attrs.list(attrs.source(), default = []),
     "srcs": attrs.list(attrs.source(), default = []),
-    "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
+    "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
 }
 
 cc_objects = rule(
@@ -239,7 +239,7 @@ cc_objects = rule(
 # ---------------------------------------------------------------------------
 
 def _cc_static_lib_impl(ctx):
-    tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
     merged = merge_dep_libs(ctx.attrs.deps)
 
     objects = []
@@ -280,7 +280,7 @@ cc_static_lib = rule(
         "lib_name": attrs.string(default = ""),
         "linker_flags": attrs.list(attrs.string(), default = []),
         "objs": attrs.list(attrs.dep(), default = []),
-        "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },
 )
 
@@ -289,7 +289,7 @@ cc_static_lib = rule(
 # ---------------------------------------------------------------------------
 
 def _cc_library_impl(ctx):
-    tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
     merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
     exported_include_dirs = []
@@ -346,7 +346,7 @@ cc_library = rule(
         "prefix_headers": attrs.list(attrs.source(), default = []),
         "private_include_root": attrs.string(default = ""),
         "srcs": attrs.list(attrs.source(), default = []),
-        "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },
 )
 
@@ -355,7 +355,7 @@ cc_library = rule(
 # ---------------------------------------------------------------------------
 
 def _cc_binary_impl(ctx):
-    tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
     merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
     include_dirs = []
@@ -405,7 +405,7 @@ cc_binary = rule(
         "linker_flags": attrs.list(attrs.string(), default = []),
         "objs": attrs.list(attrs.dep(), default = []),
         "srcs": attrs.list(attrs.source(), default = []),
-        "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },
 )
 

@@ -38,6 +38,11 @@ BUCK_SRC = "buck-src"
 
 HEADER_EXTS = (".h", ".hpp", ".modulemap", ".defs")
 
+# Headers that are real files inside the SDK tree, collected while walking. They
+# are declared by a header root in the SDK directory's own package, where their
+# paths are already package-relative (and are exactly the include paths).
+REPO_SIDE: list[str] = []
+
 
 def link_target_repo_rel(link_path: str) -> str | None:
     """Repo-relative path a farm symlink points at, resolved TEXTUALLY.
@@ -72,6 +77,12 @@ def walk_namespace(ns: str):
         for name in sorted(filenames + dirnames):
             path = os.path.join(dirpath, name)
             if not os.path.islink(path):
+                # A REAL file committed in the SDK tree (not a link into a pinned
+                # tree): sys/_symbol_aliasing.h, sys/_posix_availability.h and
+                # friends. It belongs to the SDK directory's own buck2 package, so
+                # it is reported separately rather than mapped into buck-src.
+                if os.path.isfile(path) and name.endswith(HEADER_EXTS):
+                    REPO_SIDE.append(os.path.normpath(os.path.join(rel_dir, name)))
                 continue
             repo_rel = link_target_repo_rel(path)
             if repo_rel is None:
@@ -104,14 +115,20 @@ def walk_namespace(ns: str):
 def to_buck_src(repo_rel: str) -> str | None:
     """`src/external/xnu/osfmk/mach/boolean.h` -> `xnu/osfmk/mach/boolean.h`.
 
-    The returned path is relative to the buck-src package, which is where the
-    materialized pins live. Files that are not under src/external (committed
-    repo content) are returned as None: they belong to a different package.
+    The returned path is relative to the buck-src package, where the materialized
+    pins live. None means "not ours to map": either the file is committed repo
+    content outside src/external, or it is one of the three trees under
+    src/external that are COMMITTED rather than pinned (darlingserver, libtrace,
+    libpthread_workqueue), which therefore never appear in buck-src. Both cases
+    belong to another buck2 package and need a header root there.
     """
     prefix = "src/external/"
-    if repo_rel.startswith(prefix):
-        return repo_rel[len(prefix):]
-    return None
+    if not repo_rel.startswith(prefix):
+        return None
+    buck_rel = repo_rel[len(prefix):]
+    if not os.path.exists(os.path.join(REPO, BUCK_SRC, buck_rel)):
+        return None
+    return buck_rel
 
 
 def main(argv: list[str]) -> int:
@@ -131,7 +148,8 @@ def main(argv: list[str]) -> int:
             pins[pin] = pins.get(pin, 0) + 1
             buck_rel = to_buck_src(repo_rel)
             if buck_rel is None:
-                skipped[repo_rel.split("/")[0]] = skipped.get(repo_rel.split("/")[0], 0) + 1
+                key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("src/external/") else 2])
+                skipped[key] = skipped.get(key, 0) + 1
                 continue
             entries.append((include_path, buck_rel))
         roots[ns] = sorted(set(entries))
@@ -157,10 +175,25 @@ def main(argv: list[str]) -> int:
             print(f'    "{include_path}": "{buck_rel}",')
         print("}")
         print()
+    if REPO_SIDE:
+        print("# Real files committed inside the SDK tree (not links into a pinned tree).")
+        print("# Declared by the header root in the SDK directory's own package, where these")
+        print("# paths are both the file paths and the include paths.")
+        print("SDK_REPO_HEADERS = [")
+        for h in sorted(set(REPO_SIDE)):
+            print(f'    "{h}",')
+        print("]")
+        print()
+
     if skipped:
-        print("# Headers skipped (outside src/external, so not in the buck-src package):")
+        print("# Headers skipped: they live in another buck2 package (committed repo")
+        print("# content, or one of the committed trees under src/external), so they need a")
+        print("# header root declared in the package that owns them:")
         for top, count in sorted(skipped.items()):
-            print(f"#   {count} under {top}/")
+            print(f"#   {count:4d} under {top}/")
+        print("# skipped:", file=sys.stderr)
+        for top, count in sorted(skipped.items()):
+            print(f"#   {count:4d} under {top}/", file=sys.stderr)
     return 0
 
 

@@ -70,9 +70,11 @@ if [ "${1:-}" = "--all" ]; then
 		# inode, so any later chmod/write would mutate the nix store itself.
 		# Left read-only; nothing here is edited, only compiled.
 		cp -a --no-preserve=ownership "$src" "$dest"
-		mkdir -p "$dest"
-		echo "$assembled" >"$dest/.buck-src-assembled" 2>/dev/null ||
-			{ chmod u+w "$dest" && echo "$assembled" >"$dest/.buck-src-assembled"; }
+		# The copy inherits the store's read-only mode, so the stamp needs the
+		# directory itself made writable first (only the directory, not the tree:
+		# nothing in here is edited).
+		chmod u+w "$dest"
+		echo "$assembled" >"$dest/.buck-src-assembled"
 	done
 	echo "buck-src: done ($(du -sh "$dest_root" | cut -f1))"
 	exit 0

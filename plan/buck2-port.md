@@ -126,6 +126,44 @@ Progress:
   exit 0. (The "Trying to lock mutex without an active thread!" lines are
   expected: phase 1 of duct-tape's two-phase init runs off a kernel microthread.)
 
+### Guest tier (Darwin/Mach-O) started
+
+- **Phase 1.4 (cross-arch + SDK) PROVEN for compile + archive.**
+  `buck2 build //src/libsimple:libsimple_darling` cross-compiles the SAME
+  `src/lock.c` for Darwin and archives it: the member is a
+  `Mach-O 64-bit x86_64 object` exporting `_libsimple_lock_lock` (Darwin's
+  leading-underscore mangling), i.e. the toolchain really targeted Darwin.
+- A toolchain here turned out to need no new provider: `cc_toolchain` is a bundle
+  of tools plus flags, and `darwin_cc` differs from `native_cc` only in its
+  values (`-target x86_64-apple-darwin20 -arch x86_64
+  -mmacosx-version-min=11.0`, and a Mach-O archiver). The rules' `toolchain`
+  attribute is what a target picks; keeping the two as separate targets is what
+  makes it impossible for a host compile to inherit guest flags or header roots.
+- The reference build passes `-B <cctools misc>` to guest COMPILES as well; with
+  clang's integrated assembler a `-c` compile never shells out, so it is treated
+  as a link-time flag here.
+- `//darwin:sdk_env` is the guest compile environment (the Darwin defines plus the
+  SDK include roots in the reference build's order), so a guest target depends on
+  one target rather than restating it.
+- Two SDK findings while wiring it:
+  - The farm is not all symlinks: **32 headers are real files committed inside the
+    SDK tree** (`sys/_symbol_aliasing.h`, `sys/_posix_availability.h`, `float.h`,
+    ...) against 1987 symlinks. They belong to the SDK directory's own buck2
+    package, so the generator emits them as a separate list consumed by a header
+    root there.
+  - Three trees under `src/external` are COMMITTED rather than pinned
+    (`darlingserver`, `libtrace`, `libpthread_workqueue`), so SDK links into them
+    (e.g. `os/log.h`) must not be rewritten into `buck-src`. The generator now
+    verifies each mapped path exists and reports what it skipped, grouped by
+    owning tree -- 111 headers across ~20 packages, to be declared on demand.
+- `scripts/buck-src.sh --all` materializes all 147 pinned trees (3.8 GB) out of
+  the nix-assembled tree in one step, which is what the SDK root needs.
+- Open: the Mach-O archiver is `llvm-ar` (overridable via `[darling] darwin_ar`).
+  The reference uses cctools' `x86_64-apple-darwin20-ar`, which
+  `nix/cctools-port.nix` does not export yet; it exports ld/lipo/install_name_tool/
+  nmedit only. ld64 links are the next step and may need the cctools archive
+  format.
+
 **The loop, measured** (this is what the port is for):
 
 | Action | fs_hash_crawler | **watchman** | commands run |

@@ -1,0 +1,16 @@
+load("//buck/generated:sdk_headers.bzl", "SDK_REPO_HEADERS")
+load("//buck/rules:cc.bzl", "cc_header_root")
+
+# The handful of SDK headers that are REAL FILES committed here rather than
+# symlinks into a pinned upstream tree (sys/_symbol_aliasing.h,
+# sys/_posix_availability.h, float.h, ...). Everything else in this tree is a link
+# and is staged by //buck-src:sdk_include.
+#
+# The list is generated (scripts/gen-sdk-header-roots.py) so it cannot drift out
+# of sync with what is actually here. This package's paths ARE the include paths,
+# so no mapping is needed.
+cc_header_root(
+    name = "sdk_repo_include",
+    headers = SDK_REPO_HEADERS,
+    visibility = ["PUBLIC"],
+)
