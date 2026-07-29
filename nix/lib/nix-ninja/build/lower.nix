@@ -414,9 +414,20 @@ in {
       (filter (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
         (indices edges));
     genIncsOutFor = i: let
-        outs = edgeOutputs (elemAt edges i);
+        e = elemAt edges i;
+        outs = edgeOutputs e;
         mod = if outs == [ ] then "" else moduleKey (let o = builtins.head outs; in if underAnyRoot o then relUnder o else o);
-      in map (d: "-I$out" + lib.optionalString (d != "" && d != ".") "/${d}") (genHeaderDirsByModule.${mod} or [ ]);
+        # Same-module generated-header dirs (covers mig headers reached via a cmake
+        # target-include that the graph does not declare at all -- e.g. asl.c/<asl_ipc.h>).
+        moduleDirs = genHeaderDirsByModule.${mod} or [ ];
+        # Plus the header-output dirs of this compile's actual producers (declared +
+        # implicit + order-only) -- covers CROSS-module generated headers the graph DOES
+        # declare a dependency on, without pulling in unrelated dirs that could shadow.
+        prodDirs = concatMap (j:
+          map (o: builtins.dirOf (if underAnyRoot o then relUnder o else o))
+            (filter isHeaderPath (edgeOutputs (elemAt edges j))))
+          (lib.unique (concatMap realProducers (edgeInputs e)));
+      in map (d: "-I$out" + lib.optionalString (d != "" && d != ".") "/${d}") (lib.unique (moduleDirs ++ prodDirs));
 
     # A generated mig header may be `#include <...>`d by a compile in the same
     # source module without the ninja graph declaring the dependency, and (unlike
@@ -1119,16 +1130,32 @@ in {
           # here (this derivation is already input-addressed by the source tree), so
           # keeping all sources also covers compiled sources that live under symlink
           # dirs (e.g. libsyscall/mach/mach_traps.S) which per-file staging cannot reach.
-          for root in ${lib.concatStringsSep " " (map toString rewriteRoots)}; do
-            [ -d "$root" ] || continue
-            cd "$root"
-            {
-              find . -type d
-              find . -type l
-              find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "asm" ])} \)
-              find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
-            } | LC_ALL=C sort -u | cpio -pdmu --quiet "$out" 2>/dev/null || true
-          done
+          # 1. Source tree (bulk cpio): headers + all sources + assembly + the shim maze.
+          cd ${builtins.head rewriteRoots}
+          {
+            find . -type d
+            find . -type l
+            find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "asm" ])} \)
+            find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
+          } | LC_ALL=C sort -u | cpio -pdm --quiet "$out" 2>/dev/null || true
+          # 2. Configured build dir (ninjaRoot): cmake-generated headers (darling-config.h
+          # from configure_file, mig/rpc outputs). These overlay onto dirs the source pass
+          # may have created as SYMLINKS (darling has symlink dirs like src/include), which
+          # makes a bulk cpio silently fail to write there -- so copy per file, de-symlinking
+          # each parent first. The generated-header set is small, so per-file is cheap.
+          ${lib.optionalString (length rewriteRoots > 1) ''
+            cd ${builtins.elemAt rewriteRoots 1}
+            find . -type f \( ${findNames hdrExts} \) 2>/dev/null | while IFS= read -r f; do
+              rel=''${f#./}; d=$(dirname "$rel"); cur="$out"
+              if [ "$d" != "." ]; then
+                oldIFS="$IFS"; IFS='/'; set -- $d; IFS="$oldIFS"
+                for comp in "$@"; do
+                  cur="$cur/$comp"
+                  if [ -L "$cur" ]; then t=$(readlink -f "$cur" 2>/dev/null); rm -f "$cur"; mkdir -p "$cur"; [ -n "$t" ] && [ -d "$t" ] && cp -rs "$t"/. "$cur"/ 2>/dev/null || true; else mkdir -p "$cur"; fi
+                done
+              fi
+              cp -Lf "$f" "$out/$rel" 2>/dev/null || true
+            done''}
         '';
       mkGroup = g: let
         myIds = idsInGroup.${g};
