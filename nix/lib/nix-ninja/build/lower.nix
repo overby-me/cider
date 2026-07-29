@@ -1135,7 +1135,7 @@ in {
           {
             find . -type d
             find . -type l
-            find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "S" "asm" ])} \)
+            find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "S" "asm" "sub" ])} \)
             find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
           } | LC_ALL=C sort -u | cpio -pdm --quiet "$out" 2>/dev/null || true
           # cpio preserves the read-only store mode on the copied dirs; make them
