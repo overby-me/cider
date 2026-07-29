@@ -358,35 +358,54 @@ issue, now fixed). Recommendation: finish the full-green grind (#2) + implement 
 ~1-3 min component-incremental loop with no port; treat Buck2 as the deliberate next step only if
 that loop proves too slow for how Darling actually gets developed.
 
-### Full-green grind (#2): where it stands + the two design walls
+### Full-green grind (#2): where it stands (branch `wip-mega-group-unwind`)
 
-The build-time path (`darling-full-group-bt`) grinds green through migcom -> libSystem -> Security
-export lists -> and reaches the `security/keychain` / libcxx / Foundation tier. Mechanical gaps
-fixed along the way (all committed): skip CMake housekeeping targets (rebuild_cache/edit_cache/
-install/test/package), shebang rewrites on staged sources AND generated script outputs, rspfiles,
-ext-dir de-symlink before cp, command-referenced source staging, and srcHeaders extensions for
-non-header include-chain data (`.exp`, `.exp-in`, `.list`, `.ipp`).
+The build-time path (`darling-full-group-bt`) grinds green through migcom -> libSystem -> duct-tape
+-> libc -> and reaches the `security/*` / openssh tier. Mechanical gaps fixed along the way (all
+committed): skip CMake housekeeping targets, shebang rewrites on staged sources AND generated script
+outputs, rspfiles, ext-dir de-symlink before cp, command-referenced source staging, srcHeaders
+non-header include-chain data (`.exp`/`.exp-in`/`.list`/`.ipp`), cctools ar+ranlib co-grouping by
+OUTPUT tool dir.
 
-Then it hits TWO genuine design walls (not tool/staging gaps — both would bite the eval-time
-`mkGroup` path too; it just never got far enough to see them):
+Wall #2 from the earlier note (the `build-mig` dense-staging mega-SCC) is now UNWOUND, and the
+duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f265`):
+- **notify.h source-restore** (`lower_group.py`): `mach/notify.h` exists as BOTH a hand-written
+  source header (defines `MACH_NOTIFY_*` + the notify structs) and a mig re-emission (routine stubs
+  only). The merged `$out` cannot hold both; mig's copy shadowed the source and broke every
+  `<mach/notify.h>` kernel consumer. Fix: after a source-backed generated header is produced, restore
+  the authoritative source copy over it (the mig `.c` consumers only need the structs, also in source).
+- **mega-SCC unwind** (`lower.nix`): `rawHeaderProducerGroups` is now GROUP-LEVEL pure -- a mixed
+  pure-gen + compile-dependent group no longer becomes a universal dep, so `build-mig` no longer
+  absorbs duct-tape/bootstrap_cmds/... Mixed-group header producers retarget per-component via
+  `migByCompDir` (which skips source-backed headers).
+- **Tarjan SCC topo** (`lower_group.py`): the old Kahn fallback dumped a blocked SCC's edges in
+  list order, mis-ordering acyclic producer->consumer pairs riding on the SCC (libc's dylib link ran
+  before the `notify_firstpass` it links). Replaced with iterative Tarjan condensation (producers
+  first; only genuine cycles emit as a block). Fixed libc.
 
-1. **srcHeaders header precedence.** srcHeaders mounts the WHOLE source-header namespace as one
-   flat base. An Objective-C compile of `security/keychain/ckks/CKKSLogging.m` picks up libcxx's
-   C++-only `include/cstddef` (`using ::size_t _LIBCPP_USING_IF_EXISTS;` -> "unknown type name
-   'using'") because it shadows the SDK's C-compatible `<cstddef>`. Fix needs deliberate header-
-   search-path scoping (source-tree headers must not shadow toolchain/SDK headers for compiles
-   that did not ask for them) -- akin to the module-scoping already done for generated `-I` dirs.
-2. **Dense-staging mega-groups.** `CKKSLogging.m.o` builds inside a group whose SCC rep is
-   `build-mig`, which has absorbed edges from system_cmds, libcxx, and security. Dense header-
-   producer staging (routed through rawGroupDeps so cycles condense) merges header-producer
-   subprojects with their consumers into a few large SCCs at whole-graph scale -- so one deep
-   compile failure blocks a whole swath (curl, CoreServices, launchservicesd cascade off it). The
-   pure-generator restriction avoids this but drops undeclared compile-dependent link deps (e.g.
-   libnotify) and breaks libSystem; the command-parse "targeted" alternative breaks on the
-   libSystem umbrella's positional cross-refs. Needs a proper undeclared-dep story (declare them
-   in Darling's CMake, or a content-addressed shared-lib overlay) rather than dense staging.
+Remaining `darling-full-group-bt` failures (18, taxonomised), in priority order:
 
-Status: the eval floor -- the actual thing that made this unusable -- is fixed and committed. The
-full-green completion is gated on the two design decisions above, which I did not force-fix
-unsupervised. `main` is green on the default (eval-time) path and on `darling-{group-test3,
-libsystem-group}-bt`; `darling-full-group-bt` is green up to the keychain/libcxx tier.
+1. **libcxx `<cstddef>` `-I` precedence (WALL #1, ~14 failures, dominant).** C/ObjC compiles across
+   `security/*` pull libcxx's C++-only `include/cstddef` (`unknown type name 'using'`) because the
+   merged `$out` puts libcxx's include dir ahead of the SDK's C-compatible headers. SAME root cause
+   as notify.h: **`-I` precedence is lost when the source tree and configured build dir merge into a
+   single `$out`.** The real fix is **source/build root-separation** -- give each rewrite-root its own
+   `$out` subtree so per-edge `-I` order (and quote-vs-angle include resolution) is preserved. This is
+   a deliberate architectural change to `lower_group.py`'s staging model; it also fixes the notify.h
+   class properly (retiring the source-restore workaround) and benefits any ninja/CMake project, so it
+   is the right pre-upstream investment.
+2. **libbsm cross-group `libSystem.B.dylib` staging (1 failure, foundational).** `libbsm` links the
+   final umbrella `libSystem.B.dylib`; at BUILD time it is missing from libbsm's group sandbox. Ground
+   truth (instrumented): libbsm's group ran but did NOT contain the libSystem.B producer edge, and the
+   umbrella dylib was not ext-dir-staged in -- yet an eval probe reported the two edges in the SAME
+   group with the producer in `extGids`. That **eval-vs-build grouping inconsistency** is the bug to
+   chase next (idsInGroup vs the `--edges` actually passed, or a realProducers path-form mismatch).
+3. **Generated data files not staged (2 failures).** openssh `ge25519_base.data`, libsecurity_cssm
+   `derived_src/funcnames.gen` -- generated non-header data a compile reads, not reaching the sandbox.
+
+Status: the eval floor is fixed+committed; the notify.h wall + mega-SCC are fixed+committed; libc
+green. `main` stays green on the default (eval-time) path and `darling-{group-test3,libsystem-group}
+-bt`; `libSystem-group-bt` is green on the build-time path too (re-verified). `full-group-bt` green
+through libc; the dominant remaining blocker is WALL #1 (root-separation). The generic `nix-ninja`
+lib is upstreamable to overby.me (sibling to its buck2/cargo libs; rust-ninja extractor already
+lives there) -- root-separation is the main pre-upstream item.
