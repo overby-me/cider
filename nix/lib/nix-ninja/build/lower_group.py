@@ -225,13 +225,14 @@ SHEBANG_ENV_RE = re.compile(r"^#!\s*/usr/bin/env\s+")
 
 BASH_PATH = ""   # set from --bash-path
 ENV_PATH = ""    # set from --env-path (a nix coreutils .../bin/env)
+TOOLSUBS = []    # [(from,to)] host-tool-path -> PATH-relative subs, set from --toolsub
 
 
 def fix_shebang(path):
-    """Rewrite a staged script's first line so it runs in the pure sandbox (no /usr/bin/env
-    /bin/bash). Mirrors lower.nix shebangSedG."""
-    if not (BASH_PATH or ENV_PATH):
-        return
+    """Rewrite a script so it runs in the pure sandbox: fix a /usr/bin/env | /bin/bash
+    shebang (line 1), AND rewrite hardcoded host tool paths (/bin/rmdir, /usr/bin/mkdir, ...)
+    in the BODY -- generated scripts like mig's `build-mig` bake those into their body, not
+    just the command line. Mirrors lower.nix shebangSedG + toolPathSubs, for script files."""
     try:
         with open(path, "rb") as f:
             if f.read(2) != b"#!":
@@ -239,21 +240,26 @@ def fix_shebang(path):
     except OSError:
         return
     with open(path, "r", errors="surrogateescape") as f:
-        lines = f.readlines()
-    if not lines:
-        return
-    l0 = lines[0]
-    if SHEBANG_BASH_RE.match(l0):
-        lines[0] = "#!" + BASH_PATH + l0[SHEBANG_BASH_RE.match(l0).end():]
-    elif SHEBANG_ENV_BASH_RE.match(l0):
-        lines[0] = "#!" + BASH_PATH + "\n"
-    elif SHEBANG_ENV_RE.match(l0):
-        lines[0] = "#!" + ENV_PATH + " " + l0[SHEBANG_ENV_RE.match(l0).end():]
-    else:
-        return
-    os.chmod(path, os.stat(path).st_mode | 0o200)
-    with open(path, "w", errors="surrogateescape") as f:
-        f.writelines(lines)
+        text = f.read()
+    orig = text
+    nl = text.find("\n")
+    first, rest = (text[:nl], text[nl:]) if nl >= 0 else (text, "")
+    if SHEBANG_BASH_RE.match(first):
+        first = "#!" + BASH_PATH + first[SHEBANG_BASH_RE.match(first).end():]
+    elif SHEBANG_ENV_BASH_RE.match(first):
+        first = "#!" + BASH_PATH
+    elif SHEBANG_ENV_RE.match(first):
+        first = "#!" + ENV_PATH + " " + first[SHEBANG_ENV_RE.match(first).end():]
+    # Toolsubs apply to the BODY only -- NOT the rewritten shebang, whose nix interpreter
+    # path (/nix/store/...-coreutils/bin/env) contains "/bin/env"-like substrings a toolsub
+    # would corrupt.
+    for frm, to in TOOLSUBS:
+        rest = rest.replace(frm, to)
+    text = first + rest
+    if text != orig:
+        os.chmod(path, os.stat(path).st_mode | 0o200)
+        with open(path, "w", errors="surrogateescape") as f:
+            f.write(text)
 
 
 def stage_file(srcpath, rel):
@@ -282,8 +288,9 @@ def main():
     ap.add_argument("--bash-path", default="")
     ap.add_argument("--env-path", default="")
     a = ap.parse_args()
-    global BASH_PATH, ENV_PATH
+    global BASH_PATH, ENV_PATH, TOOLSUBS
     BASH_PATH, ENV_PATH = a.bash_path, a.env_path
+    TOOLSUBS = [s.split("=", 1) for s in a.toolsub]
 
     graph = json.load(open(a.graph))
     g = Graph(graph["edges"], a.rewrite_root)

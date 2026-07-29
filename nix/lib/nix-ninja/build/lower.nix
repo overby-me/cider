@@ -145,6 +145,26 @@ in {
       producerOf;
     realProducers = p: realProducersMemo.${p} or [];
 
+    # Producers of paths NAMED IN AN EDGE'S COMMAND but not declared as inputs -- the few
+    # undeclared cross-component LINK deps Darling's ninja graph omits (e.g. system_duct's
+    # command names libsystem_notify.dylib). Restricted to UNDER-ROOT (absolute, real produced
+    # file) tokens so bare words never match, and metadata-flag arguments (-install_name /
+    # -reexport_library / -o / ...) are dropped -- those are Mach-O header strings (the umbrella
+    # reexports), not build deps, and counting them forges the libSystem umbrella into one
+    # un-orderable SCC. -Xlinker/-Wl wrappers stripped so the flag before a path is visible.
+    cmdMetaFlags = [ "-o" "-install_name" "-umbrella" "-reexport_library" "-sub_library"
+                     "-sub_umbrella" "-reexported_symbols_list" "-exported_symbols_list"
+                     "-unexported_symbols_list" "-order_file" ];
+    cmdProducersOf = i: let
+      e = elemAt edges i;
+      toks = filter (t: t != "-Xlinker" && t != "-Wl")
+        (concatMap (lib.splitString ",") (lib.splitString " " (e.command or "")));
+      kept = lib.imap0 (idx: t:
+        let prev = if idx == 0 then "" else elemAt toks (idx - 1); in
+        lib.optionals (underAnyRoot t && isProduced t && !(elem prev cmdMetaFlags)) (realProducers t))
+        toks;
+    in builtins.concatLists kept;
+
     # Relative source inputs to stage, flattening through no-op edges.
     realSources = p:
       if isProduced p
@@ -1075,14 +1095,22 @@ in {
       # on it is quadratic. groupBy-dedup is one linear pass. Order within the result is not
       # semantically meaningful here (dep sets, reach sets), so losing insertion order is fine.
       fastUniq = xs: builtins.attrNames (builtins.groupBy (x: x) xs);
+      # PURE-GENERATOR headers only (!dependsOnCompileMemo): the undeclared -I-reached headers
+      # (rpc.h class), staged everywhere, bounded + cycle-free. NOT dense "every header producer"
+      # -- dense routes every group -> every header producer through rawGroupDeps, and since
+      # header producers mutually depend under that rule they collapse into one giant SCC
+      # (build-mig mega-group), so a single deep failure blocks a whole swath. The few undeclared
+      # cross-component LINK deps (libnotify etc.) are handled targeted-ly by cmdProducersOf.
       rawHeaderProducerGroups = fastUniq (map rawGid
         (filter (i: !(isNoOp (elemAt edges i))
+                    && !dependsOnCompileMemo.${toString i}
                     && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
           (indices edges)));
       rawGroupDeps = listToAttrs (map (g: {
         name = g;
         value = filter (h: h != g)
-          (fastUniq ((map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
+          (fastUniq ((map rawGid (concatMap (i:
+              (concatMap realProducers (edgeInputs (elemAt edges i))) ++ cmdProducersOf i)
             rawIdsInGroup.${g})) ++ rawHeaderProducerGroups));
       }) rawGroupIds);
       # SCC condensation, cycle-core optimised. Only a group that lies ON A CYCLE can merge
@@ -1247,7 +1275,9 @@ in {
         # groups that dominated eval. Mapping producers to gid collapses same-group producers
         # to g, which the `h != g` filter then drops (subsuming the old per-edge mySet filter).
         extGids = filter (h: h != g)
-          (fastUniq ((map gid (concatMap realProducers allIns)) ++ headerProducerReps));
+          (fastUniq ((map gid (concatMap realProducers allIns))
+                     ++ (map gid (concatMap cmdProducersOf myIds))
+                     ++ headerProducerReps));
         extGroupDrvs = map (h: groupDrvs.${h}) extGids;
         relSrcs = fastUniq (filter (r: safeNotSymlink (src + "/${r}"))
           (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
@@ -1425,7 +1455,9 @@ in {
         myIds = idsInGroup.${g};
         allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
         extGids = filter (h: h != g)
-          (fastUniq ((map gid (concatMap realProducers allIns)) ++ headerProducerReps));
+          (fastUniq ((map gid (concatMap realProducers allIns))
+                     ++ (map gid (concatMap cmdProducersOf myIds))
+                     ++ headerProducerReps));
         extGroupDrvs = map (h: groupDrvs.${h}) extGids;
       in
         pkgs.runCommand "ninja-group-${lib.strings.sanitizeDerivationName g}" {
