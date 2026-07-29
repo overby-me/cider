@@ -21,6 +21,11 @@ CcToolchainInfo = provider(
         "cflags",
         "cxxflags",
         "ldflags",
+        # Mach-O links only: the linker to drive via -fuse-ld, and the dirs whose
+        # tools the link invokes (-B). Empty for the host toolchain, which uses
+        # whatever clang's driver already finds.
+        "ld",
+        "ld_search_dirs",
     ],
 )
 
@@ -34,6 +39,8 @@ def _cc_toolchain_impl(ctx):
             cflags = ctx.attrs.cflags,
             cxxflags = ctx.attrs.cxxflags,
             ldflags = ctx.attrs.ldflags,
+            ld = ctx.attrs.ld,
+            ld_search_dirs = ctx.attrs.ld_search_dirs,
         ),
     ]
 
@@ -45,7 +52,10 @@ cc_toolchain = rule(
         "cflags": attrs.list(attrs.string(), default = []),
         "cxx": attrs.string(default = "clang++"),
         "cxxflags": attrs.list(attrs.string(), default = []),
+        # Path to a linker for -fuse-ld (Darling's own ld64 for Mach-O links).
+        "ld": attrs.string(default = ""),
         "ldflags": attrs.list(attrs.string(), default = []),
+        "ld_search_dirs": attrs.list(attrs.string(), default = []),
     },
     is_toolchain_rule = True,
 )

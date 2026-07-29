@@ -160,9 +160,60 @@ Progress:
   the nix-assembled tree in one step, which is what the SDK root needs.
 - Open: the Mach-O archiver is `llvm-ar` (overridable via `[darling] darwin_ar`).
   The reference uses cctools' `x86_64-apple-darwin20-ar`, which
-  `nix/cctools-port.nix` does not export yet; it exports ld/lipo/install_name_tool/
-  nmedit only. ld64 links are the next step and may need the cctools archive
-  format.
+  `nix/cctools-port.nix` does not export yet; it exports ld/lipo only
+  (install_name_tool and nmedit report "not built").
+
+### Phases 1.2 and 1.3 ANSWERED: the biggest risk is not a problem
+
+The plan's go/no-go gate was whether the firstpass two-pass link can be expressed
+in Buck2 at all, with the fallback being to keep libSystem on nix-ninja and start
+Buck2 above it. **That fallback is not needed.** Both idioms are proven, with real
+Mach-O output, by `tests/buck2/firstpass` (a fixture of two mutually dependent
+dylibs plus an umbrella) and `buck/rules/darwin.bzl`:
+
+- **Reading the reference dissolved most of the difficulty.** `add_circular` in
+  `cmake/darling_lib.cmake` builds each library TWICE from the SAME objects: a
+  firstpass linked `-Wl,-flat_namespace -Wl,-undefined,suppress` (resolving
+  nothing), then the real one linked against its siblings' firstpass dylibs. So
+  the ARTIFACT graph is already acyclic. There is no two-pass protocol to invent,
+  only a flag and a dependency edge.
+- The single translation constraint: a circular library must be TWO TARGETS, not
+  one rule emitting both passes. With one rule, `a` naming `b` and `b` naming `a`
+  is a cyclic TARGET graph, which buck2 rejects even though the artifacts are
+  fine. cmake makes two targets for the same reason.
+- **Verified in the output**, which is the part that matters: `liba.dylib` links
+  against `libb_firstpass.dylib` but records `LC_LOAD_DYLIB =
+  /usr/lib/system/libb.dylib`, the sibling's INSTALL_NAME. That is the entire
+  trick of the mechanism, and it works: `_b_value` is a normal two-level import
+  that resolves to the real libb at runtime.
+- **install_name** flows through as `LC_ID_DYLIB` (`-Wl,-dylib_install_name`), and
+  **reexport** produces real `LC_REEXPORT_DYLIB` entries: the fixture's umbrella
+  reexports both members and comes out `NOUNDEFS|DYLDLINK|TWOLEVEL`, which is the
+  shape of `libSystem.B.dylib`.
+- `-dylib_file <install_name>:<path>` is what lets a link resolve an install_name
+  to a file that is not where it will live. cmake keeps ONE GLOBAL map of every
+  firstpass dylib and passes the whole thing to every link; here each target
+  contributes its own mapping through a provider, so a link carries only the
+  mappings for libraries it actually depends on. Same effect, honest dependency
+  edges.
+
+Three concrete things that had to be learned by running it:
+
+1. `-fuse-ld=` accepts a linker NAME or an ABSOLUTE path only, and a Starlark rule
+   cannot compute the project root. `-B <dir>` alone does not work either: clang
+   looks for plain `ld` there, while cctools installs `x86_64-apple-darwin20-ld`,
+   so the link silently fell through to the host linker (which then rejected every
+   Mach-O flag). Fixed by `scripts/buck-setup.sh` writing the nix store path into
+   `.buckconfig.local`, which is machine-local and gitignored. Store paths are
+   immutable, so it only needs regenerating when the derivation changes.
+2. `-nostdlib` is required: clang's Darwin driver adds `-lSystem` otherwise, and
+   libSystem is the thing being built. The reference passes it too.
+3. Any cross-dylib call needs `dyld_stub_binder` in the link, and the real symbol
+   has NO leading underscore (`.globl dyld_stub_binder` in dyld's
+   `src/dyld_stub_binder.S`), so a plain C function is the wrong symbol. The real
+   build gets it via the `-dylib_file` map pointing at the built libSystem; the
+   fixture supplies its own with an asm label. `-Wl,-bind_at_load` does NOT avoid
+   the need for it.
 
 **The loop, measured** (this is what the port is for):
 

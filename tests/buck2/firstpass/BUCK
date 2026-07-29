@@ -1,0 +1,103 @@
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# Phase 1.3 of plan/buck2-port.md, the port's named highest risk: two mutually
+# dependent Mach-O dylibs. `a` calls b_value, `b` calls a_value, so neither can be
+# linked second.
+#
+# Darling's answer (cmake/darling_lib.cmake's add_circular) is to build each
+# library TWICE from the same objects: a FIRSTPASS dylib linked with
+# -flat_namespace -undefined suppress (resolving nothing), then the real one
+# linked against the sibling's firstpass. The artifact graph is therefore acyclic.
+#
+# In Buck2 that means TWO TARGETS per library rather than one rule emitting both
+# passes: with one rule, `a` naming `b` and `b` naming `a` would be a cyclic TARGET
+# graph, which buck2 rejects even though the artifacts are fine.
+
+# What libSystem gives every Mach-O link: dyld_stub_binder for lazy-binding
+# stubs. The real build gets it from the built libSystem via the -dylib_file map.
+darwin_dylib(
+    name = "stub_libsystem",
+    srcs = ["stub_libsystem.c"],
+    dylib_name = "libSystem.B.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libSystem.B.dylib",
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)
+
+darwin_dylib(
+    name = "a_firstpass",
+    srcs = ["a.c"],
+    dylib_name = "liba_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/liba.dylib",
+    # No lazy binding: dyld_stub_binder lives in libSystem, which is exactly what
+    # this tier is building. Darling does the same where it has to
+    # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)
+
+darwin_dylib(
+    name = "b_firstpass",
+    srcs = ["b.c"],
+    dylib_name = "libb_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libb.dylib",
+    # No lazy binding: dyld_stub_binder lives in libSystem, which is exactly what
+    # this tier is building. Darling does the same where it has to
+    # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)
+
+# The final pass: each links the OTHER's firstpass, so both resolve fully.
+darwin_dylib(
+    name = "a",
+    srcs = ["a.c"],
+    dylib_name = "liba.dylib",
+    install_name = "/usr/lib/system/liba.dylib",
+    siblings = [
+        ":b_firstpass",
+        ":stub_libsystem",
+    ],
+    # No lazy binding: dyld_stub_binder lives in libSystem, which is exactly what
+    # this tier is building. Darling does the same where it has to
+    # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)
+
+darwin_dylib(
+    name = "b",
+    srcs = ["b.c"],
+    dylib_name = "libb.dylib",
+    install_name = "/usr/lib/system/libb.dylib",
+    siblings = [
+        ":a_firstpass",
+        ":stub_libsystem",
+    ],
+    # No lazy binding: dyld_stub_binder lives in libSystem, which is exactly what
+    # this tier is building. Darling does the same where it has to
+    # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)
+
+# Phase 1.2's second half: an umbrella that reexports its members' symbols as its
+# own, which is what libSystem.B.dylib is.
+darwin_dylib(
+    name = "umbrella",
+    dylib_name = "libumbrella.dylib",
+    install_name = "/usr/lib/libumbrella.dylib",
+    reexport = [
+        ":a",
+        ":b",
+    ],
+    siblings = [":stub_libsystem"],
+    # No lazy binding: dyld_stub_binder lives in libSystem, which is exactly what
+    # this tier is building. Darling does the same where it has to
+    # (src/duct/src/CMakeLists.txt sets -Wl,-bind_at_load for the same reason).
+    linker_flags = ["-Wl,-bind_at_load"],
+    deps = ["//darwin:sdk_env"],
+)

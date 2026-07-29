@@ -33,9 +33,25 @@ cc_toolchain(
 # x86_64-apple-darwin20-ar; llvm-ar (from the same clang toolchain) writes the
 # same format and is the default here, overridable once nix/cctools-port.nix
 # exports the cctools one.
+# The Mach-O linker and the cctools whose binaries a Darwin link invokes come
+# from nix (`nix build .#darling-ld64 -o result-ld64`); they are prebuilt tools
+# like clang, referenced by path. Override with [darling] ld64_dir in
+# .buckconfig.local if they live elsewhere.
+_LD64_DIR = read_root_config("darling", "ld64_dir", "result-ld64/bin")
+
 cc_toolchain(
     name = "darwin_cc",
     ar = read_root_config("darling", "darwin_ar", "llvm-ar"),
+    # Empty by default: -B below is what selects the linker (see darwin.bzl).
+    # -fuse-ld needs an absolute path, so it is opt-in per machine.
+    ld = read_root_config("darling", "ld", ""),
+    ld_search_dirs = [_LD64_DIR],
+    ldflags = [
+        # -Z: do not search the standard library/framework dirs. Darling links
+        # entirely against its own tree.
+        "-Wl,-Z",
+        "-Wl,-sdk_version,11.0",
+    ],
     cc = read_root_config("darling", "cc", "clang"),
     cxx = read_root_config("darling", "cxx", "clang++"),
     cflags = [

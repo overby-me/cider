@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_library")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # The Phase-0 leaf (plan/buck2-port.md): the smallest REAL Darling artifact on
 # the host tier. One source file, two headers, no codegen, and it is one of the
@@ -56,5 +57,24 @@ cc_library(
     lib_name = "simple_darling",
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# Phase 1.2 spike (plan/buck2-port.md): prove a Mach-O DYLIB link with an
+# install_name flows through Darling's own ld64. libsimple is not a dylib in the
+# real build; this target exists to exercise the link, using the same object.
+darwin_dylib(
+    name = "libsimple_darling_dylib",
+    srcs = ["src/lock.c"],
+    compiler_flags = ["-DLIBSIMPLE_DARLING=1"],
+    dylib_name = "libsimple_darling.dylib",
+    install_name = "/usr/lib/system/libsimple_darling.dylib",
+    # Nothing to resolve against yet (libSystem is not ported), so allow
+    # undefined symbols exactly as a firstpass link does.
+    firstpass = True,
+    deps = [
+        ":libsimple_headers",
+        "//darwin:sdk_env",
+    ],
     visibility = ["PUBLIC"],
 )

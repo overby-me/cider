@@ -39,6 +39,8 @@ tests/*
 !tests/nix-in-darling.nix
 !tests/nix/
 !tests/darlingserver/
+!tests/buck2/
+!tests/buck2/**
 
 # The suggested build folder
 build

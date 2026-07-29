@@ -54,6 +54,10 @@ targets=(
 	//src/external/darlingserver/duct-tape:darlingserver_duct_tape
 	//src/external/darlingserver/tools:dserverdbg
 	//linux/server:duct_tape_lib
+	//src/libsimple:libsimple_darling_dylib
+	//tests/buck2/firstpass:a
+	//tests/buck2/firstpass:b
+	//tests/buck2/firstpass:umbrella
 )
 if [ -n "$verbose" ]; then
 	buck2 build "${targets[@]}"
@@ -140,6 +144,40 @@ msg=$("$dbg" 2>&1 | head -1 || true)
 case "$msg" in
 *"not setuid root"*) ok "dserverdbg runs (reports the expected setuid requirement)" ;;
 *) bad "dserverdbg said: $msg" ;;
+esac
+
+say "== Mach-O dylib: install_name (phase 1.2) =="
+dyl=$(out_of //src/libsimple:libsimple_darling_dylib)
+kind=$(file -b "$dyl")
+case "$kind" in
+*"Mach-O 64-bit x86_64 dynamically linked shared library"*) ok "is a Mach-O dylib" ;;
+*) bad "expected a Mach-O dylib, got: $kind" ;;
+esac
+id=$(llvm-objdump --macho --dylib-id "$dyl" 2>/dev/null | tail -1)
+[ "$id" = "/usr/lib/system/libsimple_darling.dylib" ] &&
+	ok "install_name is $id" || bad "install_name is '$id'"
+
+say "== the firstpass cycle + umbrella reexport (phase 1.3) =="
+a=$(out_of //tests/buck2/firstpass:a)
+umb=$(out_of //tests/buck2/firstpass:umbrella)
+loads=$(llvm-objdump --macho --private-headers "$a" 2>/dev/null | grep -A2 LC_LOAD_DYLIB | grep "name " || true)
+# The point of the firstpass mechanism: liba linked against libb_FIRSTPASS.dylib,
+# but records the sibling INSTALL_NAME, so at runtime it loads the real libb.
+case "$loads" in
+*"/usr/lib/system/libb.dylib"*) ok "liba records the sibling install_name, not the firstpass path" ;;
+*) bad "liba's LC_LOAD_DYLIB entries: $loads" ;;
+esac
+if llvm-nm --undefined-only "$a" 2>/dev/null | grep -qx "_b_value"; then
+	ok "liba imports _b_value from its sibling"
+else
+	bad "liba does not import _b_value"
+fi
+reexports=$(llvm-objdump --macho --private-headers "$umb" 2>/dev/null | grep -A2 LC_REEXPORT_DYLIB | grep -c "name " || true)
+[ "$reexports" -eq 2 ] && ok "umbrella reexports both members" ||
+	bad "expected 2 LC_REEXPORT_DYLIB entries, got $reexports"
+case "$(file -b "$umb")" in
+*NOUNDEFS*) ok "umbrella has no undefined symbols" ;;
+*) bad "umbrella still has undefined symbols" ;;
 esac
 
 say "== DUCT_TAPE_LIB staging =="

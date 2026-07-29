@@ -65,6 +65,7 @@ if [ "${1:-}" = "--all" ]; then
 			[ "$(cat "$dest/.buck-src-assembled")" = "$assembled" ]; then
 			continue
 		fi
+		[ -e "$dest" ] && chmod -R u+w "$dest" 2>/dev/null || true
 		rm -rf "$dest"
 		# Plain copy, NOT hardlinks: hardlinked store files share the store's
 		# inode, so any later chmod/write would mutate the nix store itself.
@@ -109,6 +110,12 @@ for sub in "${paths[@]}"; do
 		echo "buck-src: $name already at $rev"
 		continue
 	fi
+	# --all already put this tree here, copied out of the nix-assembled tree at
+	# the same pinned rev with the same patches. Nothing to do.
+	if [ -z "${FORCE:-}" ] && [ -f "$dest/.buck-src-assembled" ]; then
+		echo "buck-src: $name already materialized from the assembled tree"
+		continue
+	fi
 
 	echo "buck-src: fetching $owner/$repo @ $rev"
 	store_path="$(
@@ -119,6 +126,7 @@ for sub in "${paths[@]}"; do
 		  }"
 	)"
 
+	[ -e "$dest" ] && chmod -R u+w "$dest" 2>/dev/null || true
 	rm -rf "$dest"
 	cp -a --no-preserve=ownership "$store_path" "$dest"
 	chmod -R u+w "$dest"
