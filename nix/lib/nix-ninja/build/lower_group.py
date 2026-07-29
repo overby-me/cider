@@ -148,6 +148,39 @@ def topo(group_ids, g):
                 if j in idset:
                     deps.add(j)
         intdeps[i] = deps
+    # Undeclared generated-header ordering: a compile edge may #include a mig/codegen header
+    # via -I with NO declared ninja dep (e.g. duct-tape's ipc_kobject.c includes the mig-
+    # generated mach/notify.h). The declared-dep topo above would then run the compile before
+    # the generator, so those symbols are undeclared at compile time. Add a precise ordering
+    # edge j -> i whenever compile i has a -I dir that CONTAINS one of non-compile generator
+    # j's header outputs. This cannot cycle the migcom chain (the consumer depends on the
+    # header, never the reverse); any residual cycle is broken by Kahn's defensive dump below.
+    dir_to_gens = {}
+    for j in group_ids:
+        ej = g.edges[j]
+        if is_compile(ej) or is_noop(ej):
+            continue
+        for o in edge_outputs(ej):
+            if not is_header(o):
+                continue
+            rel = g.rel_under(o) if g.under_root(o) else o
+            d = os.path.dirname(rel)
+            while d and d != ".":
+                dir_to_gens.setdefault(d, set()).add(j)
+                nd = os.path.dirname(d)
+                if nd == d:
+                    break
+                d = nd
+    if dir_to_gens:
+        for i in group_ids:
+            ei = g.edges[i]
+            if not is_compile(ei):
+                continue
+            for tok in re.findall(r'-I\s*(\S+)', ei.get("command") or ""):
+                d = g.rel_under(tok) if g.under_root(tok) else tok
+                for j in dir_to_gens.get(d, ()):
+                    if j != i:
+                        intdeps[i].add(j)
     order, done, remaining = [], set(), list(group_ids)
     while remaining:
         ready = [i for i in remaining if intdeps[i] <= done]
@@ -396,6 +429,27 @@ def main():
             orel = g.rel_under(o) if g.under_root(o) else o
             if os.path.isfile(orel) and not os.path.islink(orel):
                 fix_shebang(orel)
+        # Source-backed generated header: when a hand-written source header of the SAME rel path
+        # exists in the source root, it is authoritative and must win. mach/notify.h is the case:
+        # the source header defines MACH_NOTIFY_* and the notify message structs, while mig
+        # re-emits a notify.h from notify.defs that has neither. The real build keeps the source
+        # and build copies at distinct absolute roots so each includer resolves the right one
+        # (kernel sources via source-first -I; the mig .c files via a same-dir quote include that
+        # only needs the structs, which are in source too). Our single merged $out cannot hold
+        # both, and mig's copy would shadow the source and break every <mach/notify.h> consumer.
+        # So restore the SOURCE copy over any source-backed header this edge just produced; the
+        # -I-containment ordering in topo() guarantees this runs before the consuming compiles.
+        if g.roots:
+            for o in edge_outputs(e):
+                if not is_header(o):
+                    continue
+                orel = g.rel_under(o) if g.under_root(o) else o
+                srcv = os.path.join(g.roots[0], orel)
+                if os.path.isfile(srcv) and not os.path.islink(srcv):
+                    realize_writable(os.path.dirname(orel))
+                    if os.path.lexists(orel):
+                        os.remove(orel)
+                    shutil.copy(srcv, orel)
 
 
 if __name__ == "__main__":

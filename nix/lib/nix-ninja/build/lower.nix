@@ -1105,17 +1105,71 @@ in {
       # header producers mutually depend under that rule they collapse into one giant SCC
       # (build-mig mega-group), so a single deep failure blocks a whole swath. The few undeclared
       # cross-component LINK deps (libnotify etc.) are handled targeted-ly by cmdProducersOf.
-      rawHeaderProducerGroups = fastUniq (map rawGid
-        (filter (i: !(isNoOp (elemAt edges i))
-                    && !dependsOnCompileMemo.${toString i}
-                    && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
-          (indices edges)));
+      # A group may be a UNIVERSAL dep (staged into every group so undeclared -I headers resolve)
+      # only if it is CYCLE-FREE in that role: the WHOLE group must be pure-generator (no edge
+      # depends on a compile). The old per-edge test admitted MIXED groups -- a pure-gen header
+      # edge sitting next to a compile-dependent one (the mig-wrapper group is exactly this) --
+      # and a mixed universal-dep group cycles with its own compile deps, forming the build-mig
+      # mega-SCC that swallows duct-tape/bootstrap_cmds/darlingserver/... The header producers in
+      # mixed groups are handled per-component by migByCompDir below instead.
+      rawHeaderProducerGroups = filter (g:
+          lib.all (i: !dependsOnCompileMemo.${toString i}) (rawIdsInGroup.${g} or [ ])
+          && lib.any (i: !(isNoOp (elemAt edges i))
+                         && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+               (rawIdsInGroup.${g} or [ ]))
+        rawGroupIds;
+      pureHdrGroupSet = listToAttrs (map (g: { name = g; value = true; }) rawHeaderProducerGroups);
+      # Header producers whose GROUP is NOT a pure universal producer above (mixed or compile-
+      # dependent groups, e.g. the mig-wrapper group producing xnu/osfmk/mach/notify.h). Their
+      # headers are still #include<>d UNDECLARED via -I by consumers in the same source subtree,
+      # so stage each as a TARGETED dep of the compile groups whose component directory OWNS the
+      # header path (longest-prefix match), NOT universally -- universal staging would make the
+      # producer's group a universal dep and re-form the mega-SCC; targeted stays a per-component
+      # DAG (any real cycle is absorbed locally by the SCC condensation).
+      migHeaderProducerIds = filter (i:
+          !(isNoOp (elemAt edges i))
+          && !(isCompile (elemAt edges i))
+          && lib.any isHeaderPath (edgeOutputs (elemAt edges i))
+          && !(pureHdrGroupSet ? ${rawGid i}))
+        (indices edges);
+      compDirToGids = builtins.groupBy (g: builtins.head (lib.splitString "::" g)) rawGroupIds;
+      # The longest ancestor directory of a produced header that names an actual compile group's
+      # component directory (the group that "owns" and -I-includes that subtree).
+      ownerCompDir = p: let
+          rel = if underAnyRoot p then relUnder p else p;
+          dirs = lib.init (filter (x: x != "") (lib.splitString "/" rel));
+          ancestors = lib.genList
+            (n: builtins.concatStringsSep "/" (lib.take (length dirs - n) dirs))
+            (length dirs);
+        in lib.findFirst (a: compDirToGids ? ${a}) null ancestors;
+      # A generated header is SOURCE-BACKED when a real file of the same rel path exists in the
+      # source rewrite-root: the mounted srcHeaders base already serves it, and it is authoritative
+      # (e.g. xnu/osfmk/mach/notify.h -- the hand-written header defines MACH_NOTIFY_*/the notify
+      # structs, while mig re-emits a DIFFERENT notify.h from notify.defs that lacks them). Never
+      # target such a header: staging the generated copy would (a) clobber the authoritative source
+      # in the consumer's sandbox and (b) add a SPURIOUS producer->consumer dep that, paired with a
+      # real reverse link dep, forms a cycle (duct-tape<->darlingserver) the SCC then re-merges.
+      srcRoot = if rewriteRoots == [ ] then null else builtins.head rewriteRoots;
+      hasSourceVersion = o: let rel = if underAnyRoot o then relUnder o else o;
+        in srcRoot != null && builtins.pathExists (srcRoot + "/" + rel);
+      # componentDir -> [ producer rawGid ] : mig-header producers targeted at that component.
+      migByCompDir = builtins.mapAttrs (_cd: lst: fastUniq (map (x: x.gid) lst))
+        (builtins.groupBy (x: x.compDir)
+          (concatMap (i: let
+              prodGid = rawGid i;
+              owners = fastUniq (filter (x: x != null)
+                (map ownerCompDir
+                  (filter (o: isHeaderPath o && !(hasSourceVersion o)) (edgeOutputs (elemAt edges i)))));
+            in map (cd: { compDir = cd; gid = prodGid; }) owners)
+            migHeaderProducerIds));
       rawGroupDeps = listToAttrs (map (g: {
         name = g;
         value = filter (h: h != g)
           (fastUniq ((map rawGid (concatMap (i:
               (concatMap realProducers (edgeInputs (elemAt edges i))) ++ cmdProducersOf i)
-            rawIdsInGroup.${g})) ++ rawHeaderProducerGroups));
+            rawIdsInGroup.${g}))
+            ++ rawHeaderProducerGroups
+            ++ (migByCompDir.${builtins.head (lib.splitString "::" g)} or [])));
       }) rawGroupIds);
       # SCC condensation, cycle-core optimised. Only a group that lies ON A CYCLE can merge
       # with another; every acyclic group is its own SCC. Full all-pairs reachability over the
@@ -1272,6 +1326,11 @@ in {
         myIds = idsInGroup.${g};
         mySet = listToAttrs (map (i: {name = toString i; value = true;}) myIds);
         allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
+        # #80: undeclared mig/tool-generated headers (see mkGroupViaTool). Targeted per owning
+        # component (migByCompDir), keyed off member compDirs, sccRep-mapped like the reps below.
+        migGids = map (h: sccRep.${h}) (fastUniq (concatMap
+          (cd: migByCompDir.${cd} or [])
+          (fastUniq (map (i: builtins.head (lib.splitString "::" (rawGid i))) myIds))));
         # External dependency GROUPS: producers of this group's inputs that live in another
         # condensed group, plus the cross-cutting header-producer groups. Dedup at the GROUP
         # level (fastUniq of gids) -- NOT lib.unique on the raw producer-EDGE list, whose
@@ -1281,7 +1340,8 @@ in {
         extGids = filter (h: h != g)
           (fastUniq ((map gid (concatMap realProducers allIns))
                      ++ (map gid (concatMap cmdProducersOf myIds))
-                     ++ headerProducerReps));
+                     ++ headerProducerReps
+                     ++ migGids));
         extGroupDrvs = map (h: groupDrvs.${h}) extGids;
         relSrcs = fastUniq (filter (r: safeNotSymlink (src + "/${r}"))
           (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
@@ -1458,10 +1518,17 @@ in {
       mkGroupViaTool = g: let
         myIds = idsInGroup.${g};
         allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
+        # #80: undeclared mig/tool-generated headers (mach/notify.h etc.) this group's compiles
+        # include via -I but never declare. Targeted per owning component (migByCompDir), keyed
+        # off member compDirs so it survives SCC merging, sccRep-mapped like headerProducerReps.
+        migGids = map (h: sccRep.${h}) (fastUniq (concatMap
+          (cd: migByCompDir.${cd} or [])
+          (fastUniq (map (i: builtins.head (lib.splitString "::" (rawGid i))) myIds))));
         extGids = filter (h: h != g)
           (fastUniq ((map gid (concatMap realProducers allIns))
                      ++ (map gid (concatMap cmdProducersOf myIds))
-                     ++ headerProducerReps));
+                     ++ headerProducerReps
+                     ++ migGids));
         extGroupDrvs = map (h: groupDrvs.${h}) extGids;
       in
         pkgs.runCommand "ninja-group-${lib.strings.sanitizeDerivationName g}" {
