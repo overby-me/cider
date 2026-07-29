@@ -1040,11 +1040,21 @@ in {
       # merge each strongly-connected set of groups into one derivation (the condensation
       # of a digraph is always a DAG). rawGroupDeps: g -> h when an edge in g consumes an
       # output produced by an edge in h.
+      # Cross-cutting generated headers (e.g. darlingserver/rpc.h) are #include <...>d by
+      # many groups via a literal -I but with NO declared ninja dependency, so a consumer's
+      # realProducers never names them and extProducerIds misses them. Make EVERY group
+      # depend on every generated-header producer's group, so those headers are always
+      # materialised in $out for their literal -I to resolve. The producers are
+      # codegen/build-tool-like (no component deps) so this adds no real cycle; routing it
+      # through rawGroupDeps lets the SCC condensation absorb any it does introduce.
+      rawHeaderProducerGroups = lib.unique (map rawGid
+        (filter (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+          (indices edges)));
       rawGroupDeps = listToAttrs (map (g: {
         name = g;
         value = lib.unique (filter (h: h != g)
-          (map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
-            rawIdsInGroup.${g})));
+          ((map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
+            rawIdsInGroup.${g})) ++ rawHeaderProducerGroups));
       }) rawGroupIds);
       # Transitive closure reach.${g} = every group reachable from g (fixpoint expand).
       # normalise (sorted unique) so list equality is order-independent -- otherwise
@@ -1174,7 +1184,12 @@ in {
         allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
         extProducerIds = lib.unique (filter (i: !(mySet ? ${toString i}))
           (concatMap realProducers allIns));
-        extGroupDrvs = lib.unique (map (i: groupDrvs.${gid i}) extProducerIds);
+        extGroupDrvs = lib.unique (
+          (map (i: groupDrvs.${gid i}) extProducerIds)
+          # plus every generated-header producer group (cross-cutting headers like rpc.h),
+          # condensed through SCC and minus this group itself.
+          ++ (map (h: groupDrvs.${h})
+               (filter (h: h != g) (lib.unique (map (h: sccRep.${h}) rawHeaderProducerGroups)))));
         relSrcs = lib.unique (filter (r: safeNotSymlink (src + "/${r}"))
           (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
         # #79: no per-edge scan. Headers come from the mounted srcHeaders base at
