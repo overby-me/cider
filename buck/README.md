@@ -1,0 +1,102 @@
+# Buck2 rules for Darling
+
+Darling's Buck2 build defines all of its own rules. Buck2 ships no rules at all
+(every rule name is a Starlark function someone wrote), and Meta's
+`buck2-prelude` is deliberately not used here: the Nix endpoint for this port
+(overby.me `nix/lib/buck2`) interprets the Starlark itself in Nix and cannot eat
+the prelude, and Darling's linking (MIG, reexport, `install_name`, the firstpass
+umbrella) needs custom rules regardless. See `plan/buck2-port.md`.
+
+Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
+
+```console
+scripts/buck-src.sh          # materialize the pinned upstream trees we compile
+buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape
+scripts/buck-test.sh         # regression test for everything ported so far
+```
+
+## Layout
+
+| Path | What |
+|---|---|
+| `.buckconfig`, `.buckroot` | project root, cells (`root`, `toolchains`), file watcher |
+| `.watchmanconfig` | watchman ignores (`.jj`, `buck-out`, ...) |
+| `buck/toolchains/` | `native_cc_toolchain`: the HOST (Linux/ELF) C toolchain |
+| `buck/rules/cc.bzl` | `cc_header_root`, `cc_objects`, `cc_static_lib`, `cc_library`, `cc_binary`, `cc_lib_dir` |
+| `buck/rules/codegen.bzl` | `bison_gen`, `flex_gen`, `mig_gen`, `host_gen`, `script_gen` |
+| `buck/rules/files.bzl` | `export_file` |
+| `buck-src/` | pinned upstream trees, materialized (gitignored) + the BUCK file over them |
+
+## The two ideas that matter
+
+**One action per source file.** The point of the port is a fast edit/rebuild
+loop, which needs per-object granularity. (Upstream's `no_prelude` example
+compiles a whole target in one `clang` call; that would be a regression from
+ninja.)
+
+**Headers are staged, never globbed onto `-I`.** Every include root becomes a
+`symlinked_dir` holding exactly the declared headers, and consumers get
+`-I<that staged dir>`. Three things fall out of this:
+
+- A compile can only see headers someone declared for it, so a source-tree
+  `endian.h` cannot shadow the SDK's system header (nix-ninja's "wall #1").
+- Overlapping roots stay separate. duct-tape puts both `xnu` and `xnu/osfmk` on
+  the path, and MIG re-emits a `mach/notify.h` that also exists as a hand-written
+  source header; separate ordered roots resolve both exactly the way cmake's
+  include order does, with no merge and no fixup.
+- A host tool gets only the Darwin headers the reference build gives it, instead
+  of all of Darwin's `sys/*.h` shadowing glibc's.
+
+## Rules
+
+`cc_header_root(name, headers, root, header_map, exported_flags, deps)`
+: Stage one include root. `root` is a package-relative prefix stripped from each
+  header's path; `header_map` gives `{include path: header}` explicitly, for
+  roots that are not a prefix strip (the Darwin SDK namespaces, whose maps come
+  from `scripts/gen-sdk-header-roots.py`). With no headers it is a pure
+  flags-and-deps bundle: `dt_env` carries duct-tape's 108 defines plus all its
+  include roots, so everything that compiles duct-tape depends on one target.
+
+`cc_objects(name, srcs, gen_srcs, headers, compiler_flags, deps)`
+: A group of objects sharing one set of flags. `gen_srcs` names codegen targets
+  whose generated sources this target compiles (and whose generated headers it
+  sees). Exists so one archive can hold object groups compiled differently:
+  duct-tape's `pthread/kern_synch.c` needs its own `-I`.
+
+`cc_static_lib(name, objs, lib_name, exported_headers, deps)`
+: Archive object groups into one `.a`. `lib_name` covers targets whose artifact
+  name differs from the target name (`liblibsimple_darlingserver.a`).
+
+`cc_library` / `cc_binary`
+: Compile + archive, and compile + link, for the common cases.
+
+`cc_lib_dir(name, deps)`
+: Collect a dep graph's archives into one directory, which is the shape
+  `DUCT_TAPE_LIB` wants (see `//linux/server:duct_tape_lib`).
+
+`mig_gen(name, defs, out_base, *_suffix, compile_srcs, mig_sh, migcom, deps)`
+: Run one MIG definition. Invokes Darling's own `mig.sh` (through `bash`: its
+  `#!/bin/bash` shebang does not resolve on NixOS) with `-cc`/`-migcom`, so no
+  `build-mig` wrapper has to be generated, and feeds it the same defines and
+  include roots as the compiles that consume its output. Output is ONE directory
+  per definition, because which of the five files MIG writes depends on the
+  definition. Generated sources are exported for a consumer to compile, not
+  compiled here: a generated stub reaches hand-written xnu headers that include
+  OTHER definitions' generated headers.
+
+`bison_gen` / `flex_gen` / `host_gen` / `script_gen`
+: Parser/scanner generation; run a just-built host tool that writes a file
+  (`rtsig`); run a checked-in generator script (the RPC wrappers). Each stages
+  its generated headers as an include root, so consumers reach them by
+  depending on the target.
+
+## Conventions
+
+- Flags come from the reference build's configured `build.ninja`
+  (`nix build .#darling-graph`), not from reading `CMakeLists.txt`. The
+  CMakeLists does not contain what a target inherits from parent scopes.
+- Where a target's lists are large and upstream-owned, the BUCK file is
+  GENERATED (`scripts/gen-duct-tape-buck.py`) and the generator is committed.
+  Hand-authored BUCK is for the code we iterate on.
+- New pinned upstream tree to compile? Add it to `scripts/buck-src.sh` and give
+  it targets in `buck-src/BUCK`.
