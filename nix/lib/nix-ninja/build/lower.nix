@@ -1083,14 +1083,26 @@ in {
         then null
         else pkgs.runCommand "darling-src-headers" { nativeBuildInputs = [ pkgs.cpio ]; } ''
           mkdir -p "$out"
-          cd ${builtins.head rewriteRoots}
-          {
-            find . -type d
-            find . -type l
-            find . -type f \( ${findNames hdrExts} \)
-            find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
-            find . -type f \( ${findNames srcExts} \) | LC_ALL=C grep -vxF -f ${compiledList} || true
-          } | LC_ALL=C sort -u | cpio -pdm --quiet "$out"
+          # Cover BOTH rewrite roots: the source tree (cmakeSrcStore) for source
+          # headers/sources/assembly + the shim maze, AND the configured build dir
+          # (ninjaRoot) for cmake-generated headers (darling-config.h etc.). Keep every
+          # dir + symlink + header + ALL sources (.c/.s/...) + extensionless
+          # include/Headers files; drop only the large framework binaries/data. Size is
+          # irrelevant per group -- groups mount this lazily as directory symlinks and
+          # never copy it -- and the compiled-vs-included distinction buys no isolation
+          # here (this derivation is already input-addressed by the source tree), so
+          # keeping all sources also covers compiled sources that live under symlink
+          # dirs (e.g. libsyscall/mach/mach_traps.S) which per-file staging cannot reach.
+          for root in ${lib.concatStringsSep " " (map toString rewriteRoots)}; do
+            [ -d "$root" ] || continue
+            cd "$root"
+            {
+              find . -type d
+              find . -type l
+              find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "asm" ])} \)
+              find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
+            } | LC_ALL=C sort -u | cpio -pdmu --quiet "$out" 2>/dev/null || true
+          done
         '';
       mkGroup = g: let
         myIds = idsInGroup.${g};
