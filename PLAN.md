@@ -315,3 +315,45 @@ Gotchas or Open work. The known standing limitations are already tracked above �
 portset deadlock (#47, bypassed by `DARLING_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
 (#44, retryable), and the nix-ninja full-graph `migHeaderIncsFor` blocker. Nothing else is
 currently un-tracked.
+
+## Grouped build: eval speed (done) vs incremental rebuild (open) — task #80
+
+The grouped lowering (task #78) built every ninja edge's command + staging script as a Nix
+string DURING EVAL, so whole-Darling eval was ~15-40 min, paid on every build (the graph-json
+IFD busts Nix's eval cache). Fixed by **build-time lowering** (`nix/lib/nix-ninja/build/lower_group.py`,
+flag `buildTimeLowering`): Nix eval now computes only each group's `{edge list, external-group
+drvs}`; the tool reads the shared `graph.json` in the sandbox and does the rewrite/stage/run.
+Measured: `darling-full-group-bt` eval **~58 s** (was ~35 min); migcom + libSystem green through
+it. `darling-{group-test3,libsystem-group,full-group}-bt` exercise it; the legacy eval-time
+`mkGroup` path is untouched behind the flag.
+
+**Incremental rebuild is a separate, still-open problem, and it is NOT just source staging.**
+A small source edit currently triggers a ~full recompile, because of a chain of store-path
+couplings that all rehash on any source change:
+- `cmakeSrcStore` (whole source tree) rehashes → CMake **re-configures** (~min) →
+- `build.ninja` bakes absolute `cmake-src` / `cmake-ninja-configured` paths → the **graph-json
+  (`graphDrv`) rehashes** (confirmed: `graphDrv` contains those store paths) →
+- every bt group derivation reads `graphDrv` (and mounts the rewrite roots) → **all ~900 groups
+  rebuild**.
+
+So per-component source staging alone cannot deliver incrementality — `graphDrv` is the dominant
+blocker. The full fix is three pieces, in order:
+1. **Relativise the graph** so `graphDrv` is content-stable across source edits (strip the
+   rewrite-root prefixes in the graph-json derivation; make it content-addressed so a re-config
+   that yields byte-identical relative content keeps the same store path). This is the key
+   enabler — without it (2)/(3) are moot.
+2. **Per-component source subtrees** (`builtins.path` slice of `cmakeSrcStore/<component>`,
+   content-addressed): a group depends only on its component's subtree, so editing one `.c`
+   re-keys just that component. Keeps eval fast (no per-file `indivOf`/`readDir` in eval).
+3. **Configure decoupling**: feed the configure derivation only CMake-relevant files so a
+   `.c`-content edit does not re-run cmake at all.
+
+Honest architectural note: this is exactly where the nix-ninja + IFD approach hits its
+structural ceiling. Even done perfectly, it re-evaluates every build (~58 s) and its
+incrementality is per-*derivation* (whole component recompiles), never per-*action* (one `.o` +
+relink). **Buck2's persistent daemon avoids all of these store-path-rehash couplings by design**
+(no configure/eval per build, per-action deps) — so the fast edit->rebuild inner loop is the
+genuine case FOR a Buck2 port, distinct from the eval-speed problem (which was a fixable Nix
+issue, now fixed). Recommendation: finish the full-green grind (#2) + implement (1)-(3) to get a
+~1-3 min component-incremental loop with no port; treat Buck2 as the deliberate next step only if
+that loop proves too slow for how Darling actually gets developed.

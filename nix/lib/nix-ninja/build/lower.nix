@@ -1156,6 +1156,10 @@ in {
       # input isolation, now without any scan. Header edits (rarer) rehash it, as they
       # should. Built once and shared, so its ~300MB is paid a single time.
       hdrExts = [ "h" "hpp" "hh" "hxx" "h++" "inc" "def" "defs" "modulemap" "apinotes" "tbd" "pch"
+                  # libcxx inline-include fragments: exception.cpp/typeinfo.cpp `#include`
+                  # "support/runtime/*.ipp" (and support/atomic/*.ipp). Never compiled
+                  # directly, so they belong in the shared header base, not per-group srcs.
+                  "ipp"
                   # export-list templates (security/OSX preprocesses Security.exp-in, which
                   # #includes Security/SecExports.exp-in -> Security/SecPolicy.list): put the
                   # .exp / .list export-list source family in the base.
