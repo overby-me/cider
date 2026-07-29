@@ -185,6 +185,7 @@
         passthru = {
           inherit graphDrv;
           ninja = lowered;
+          groupStats = if grouping != null then groupedLowered.groupStats else null;
         };
       } ''
         ${lib.concatMapStringsSep "\n" (o: ''

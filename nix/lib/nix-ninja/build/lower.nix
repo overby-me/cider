@@ -123,16 +123,18 @@ in {
 
     # Resolve an input to the set of *real* (command-bearing) producer edge
     # indices it depends on, flattening no-op aliases/ordering edges.
-    realProducers = p:
-      if !(isProduced p)
-      then []
-      else let
-        i = producerOf.${p};
-        e = elemAt edges i;
-      in
-        if isNoOp e
-        then lib.unique (concatMap realProducers (edgeInputs e))
-        else [i];
+    # MEMOISED per produced path. Unmemoised this recurses through no-op alias/order chains
+    # with a per-level lib.unique AND is recomputed at each of its ~dozen call sites; summed
+    # over the ~17e3-edge whole-Darling graph it dominated eval (rawGroupDeps alone did not
+    # finish in 500s). mapAttrs over producerOf gives one cached thunk per produced path, and
+    # the recursion reads those cached values -- linear in the graph instead of superlinear.
+    realProducersMemo = builtins.mapAttrs (_p: i:
+      let e = elemAt edges i;
+      in if isNoOp e
+         then lib.unique (concatMap (inp: realProducersMemo.${inp} or []) (edgeInputs e))
+         else [ i ])
+      producerOf;
+    realProducers = p: realProducersMemo.${p} or [];
 
     # Relative source inputs to stage, flattening through no-op edges.
     realSources = p:
@@ -1028,11 +1030,12 @@ in {
       # Raw per-edge grouping from the caller's groupOf.
       rawGidOf = listToAttrs (map (i: {name = toString i; value = groupOf (elemAt edges i);}) realIds);
       rawGid = i: rawGidOf.${toString i};
-      rawGroupIds = lib.unique (map rawGid realIds);
-      rawIdsInGroup = listToAttrs (map (g: {
-          name = g;
-          value = filter (i: rawGid i == g) realIds;
-        }) rawGroupIds);
+      # Single-pass O(edges) grouping via builtins.groupBy -- NOT O(groups*edges)
+      # filter-per-group nor O(edges*distinct) lib.unique. At whole-Darling scale
+      # (~1e3 groups * ~38e3 edges) the quadratic forms dominated eval (tens of minutes);
+      # groupBy is one linear pass. rawGroupIds is then just the residency keys.
+      rawIdsInGroup = builtins.groupBy rawGid realIds;
+      rawGroupIds = builtins.attrNames rawIdsInGroup;
       # SCC CONDENSATION. A group derivation depends on its external dependency groups'
       # derivations, so the group graph MUST be acyclic or Nix eval infinitely recurses
       # (group A -> B -> A). A path-based grouping (componentGrouping) can produce cyclic
@@ -1043,47 +1046,85 @@ in {
       # Cross-cutting generated headers (e.g. darlingserver/rpc.h) are #include <...>d by
       # many groups via a literal -I but with NO declared ninja dependency, so a consumer's
       # realProducers never names them and extProducerIds misses them. Make EVERY group
-      # depend on every generated-header producer's group, so those headers are always
-      # materialised in $out for their literal -I to resolve. The producers are
-      # codegen/build-tool-like (no component deps) so this adds no real cycle; routing it
-      # through rawGroupDeps lets the SCC condensation absorb any it does introduce.
-      rawHeaderProducerGroups = lib.unique (map rawGid
-        (filter (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+      # depend on every such producer's group, so those headers are always materialised in
+      # $out for their literal -I to resolve.
+      #
+      # Restrict to PURE GENERATORS (!dependsOnCompileMemo): python/awk codegen that reads
+      # only sources (the rpc.h generator), whose outputs are exactly the undeclared headers
+      # no scan can otherwise reach. This is deliberately NOT "every header producer":
+      #  - mig/compile-derived headers already resolve through their declared producer, so
+      #    they need no dense staging; and
+      #  - a pure generator has NO compile in its dependency closure, so no compile group can
+      #    be in its reach -- staging it into every group therefore cannot form a cycle, and
+      #    its closure stays tiny, so the reach fixpoint below stays cheap. Including compile-
+      #    dependent producers would instead drag whole libraries (via e.g. migcom) into one
+      #    giant SCC and make eval pathological. Routed through rawGroupDeps anyway so the SCC
+      #    condensation still absorbs any accidental cycle from a mixed group.
+      # O(n) dedup via groupBy (identity key), NOT lib.unique's O(n*distinct) elem-scan.
+      # rawGroupDeps builds one dep list per group whose pre-dedup length is the group's
+      # (edges * inputs); at whole-Darling scale a big library's list is huge and lib.unique
+      # on it is quadratic. groupBy-dedup is one linear pass. Order within the result is not
+      # semantically meaningful here (dep sets, reach sets), so losing insertion order is fine.
+      fastUniq = xs: builtins.attrNames (builtins.groupBy (x: x) xs);
+      rawHeaderProducerGroups = fastUniq (map rawGid
+        (filter (i: !(isNoOp (elemAt edges i))
+                    && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
           (indices edges)));
       rawGroupDeps = listToAttrs (map (g: {
         name = g;
-        value = lib.unique (filter (h: h != g)
-          ((map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
+        value = filter (h: h != g)
+          (fastUniq ((map rawGid (concatMap (i: concatMap realProducers (edgeInputs (elemAt edges i)))
             rawIdsInGroup.${g})) ++ rawHeaderProducerGroups));
       }) rawGroupIds);
-      # Transitive closure reach.${g} = every group reachable from g (fixpoint expand).
-      # normalise (sorted unique) so list equality is order-independent -- otherwise
-      # the fixpoint's `acc' == acc` may never hold (unique keeps insertion order,
-      # which oscillates) and the closure loops forever.
-      reach = let
-        norm = xs: builtins.sort (a: b: a < b) (lib.unique xs);
-        expand = acc: let
-          acc' = lib.mapAttrs (_g: rs: norm (rs ++ concatMap (h: acc.${h} or []) rs)) acc;
-        in if acc' == acc then acc else expand acc';
-      in expand (lib.mapAttrs (_g: norm) rawGroupDeps);
-      # g and h are one SCC iff each reaches the other; the canonical merged id is the
-      # lexicographically smallest member. Memoise per raw group (sccRepOf is consulted
-      # once per edge via gid, so recomputing the O(groups) scan each time would be
-      # O(edges * groups)).
-      sccRep = listToAttrs (map (g: {
-        name = g;
-        value = builtins.head (builtins.sort (a: b: a < b)
-          ([g] ++ filter (h: h != g && elem h (reach.${g} or []) && elem g (reach.${h} or []))
-            rawGroupIds));
-      }) rawGroupIds);
+      # SCC condensation, cycle-core optimised. Only a group that lies ON A CYCLE can merge
+      # with another; every acyclic group is its own SCC. Full all-pairs reachability over the
+      # ~1e3 whole-Darling groups is O(G * reachSize^2). So first PEEL the DAG fringes:
+      # iteratively drop any live group with no live successor OR no live predecessor (it
+      # cannot sit on a cycle) to a fixpoint; the residual `cyclic` is exactly the union of
+      # all non-trivial SCCs. Lifted out of sccRep so its size is measurable (groupStats) and
+      # sccRep can reuse it. Keep g iff it has a live successor AND is some live node's
+      # successor (a live predecessor) -- derive the latter from the live nodes' successor
+      # lists, no predecessor map. alive' is a subset each round, so a length match is a valid
+      # fixpoint test.
+      cyclicSet = let
+        toSet = xs: listToAttrs (map (x: { name = x; value = true; }) xs);
+        anyIn = set: xs: lib.any (x: set ? ${x}) xs;
+        succ = rawGroupDeps;
+        peel = aliveSet: let
+          alive = builtins.attrNames aliveSet;
+          liveTargetSet = toSet (concatMap (g: filter (h: aliveSet ? ${h}) (succ.${g} or [])) alive);
+          alive' = filter (g: (liveTargetSet ? ${g}) && anyIn aliveSet (succ.${g} or [])) alive;
+        in if length alive' == length alive then aliveSet else peel (toSet alive');
+      in peel (toSet rawGroupIds);
+      cyclic = builtins.attrNames cyclicSet;
+      # Reachability within the residual only (successors restricted to cyclic). Any mutual-
+      # reachability path between two SCC members stays inside the residual (a peeled
+      # intermediate is acyclic, so cannot close a cycle), so this is exact for them. norm =
+      # sorted-unique so list equality is order-independent (else the fixpoint oscillates).
+      sccRep = let
+        norm = xs: builtins.sort (a: b: a < b) (fastUniq xs);
+        succ = rawGroupDeps;
+        reachC = let
+          seed = listToAttrs (map (g: {
+            name = g; value = norm (filter (h: cyclicSet ? ${h}) (succ.${g} or []));
+          }) cyclic);
+          expand = acc: let
+            acc' = lib.mapAttrs (_g: rs: norm (rs ++ concatMap (h: acc.${h} or []) rs)) acc;
+          in if acc' == acc then acc else expand acc';
+        in expand seed;
+        repOf = g:
+          if !(cyclicSet ? ${g}) then g
+          else builtins.head (builtins.sort (a: b: a < b)
+            ([g] ++ filter (h: h != g && elem h (reachC.${g} or []) && elem g (reachC.${h} or [])) cyclic));
+      in listToAttrs (map (g: { name = g; value = repOf g; }) rawGroupIds);
       # Effective grouping = raw grouping condensed through SCC representatives.
       gid = i: sccRep.${rawGid i};
-      groupIds = lib.unique (builtins.attrValues sccRep);
-      idsInGroup = listToAttrs (map (g: {
-          name = g;
-          value = filter (i: gid i == g) realIds;
-        })
-        groupIds);
+      # Single-pass O(edges) grouping (see rawIdsInGroup) -- keys are exactly groupIds.
+      idsInGroup = builtins.groupBy gid realIds;
+      groupIds = builtins.attrNames idsInGroup;
+      # Condensed groups that produce cross-cutting generated headers (rpc.h etc.), staged
+      # into EVERY group. Group-independent, so computed once here -- not per mkGroup call.
+      headerProducerReps = fastUniq (map (h: sccRep.${h}) rawHeaderProducerGroups);
       groupOfOutput = p: let ids = realProducers p; in
         if ids == [] then null else gid (builtins.head ids);
       shebangSedG = p: ''
@@ -1182,21 +1223,22 @@ in {
         myIds = idsInGroup.${g};
         mySet = listToAttrs (map (i: {name = toString i; value = true;}) myIds);
         allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
-        extProducerIds = lib.unique (filter (i: !(mySet ? ${toString i}))
-          (concatMap realProducers allIns));
-        extGroupDrvs = lib.unique (
-          (map (i: groupDrvs.${gid i}) extProducerIds)
-          # plus every generated-header producer group (cross-cutting headers like rpc.h),
-          # condensed through SCC and minus this group itself.
-          ++ (map (h: groupDrvs.${h})
-               (filter (h: h != g) (lib.unique (map (h: sccRep.${h}) rawHeaderProducerGroups)))));
-        relSrcs = lib.unique (filter (r: safeNotSymlink (src + "/${r}"))
+        # External dependency GROUPS: producers of this group's inputs that live in another
+        # condensed group, plus the cross-cutting header-producer groups. Dedup at the GROUP
+        # level (fastUniq of gids) -- NOT lib.unique on the raw producer-EDGE list, whose
+        # length is this group's total inputs; lib.unique is O(n^2) and for libSystem-scale
+        # groups that dominated eval. Mapping producers to gid collapses same-group producers
+        # to g, which the `h != g` filter then drops (subsuming the old per-edge mySet filter).
+        extGids = filter (h: h != g)
+          (fastUniq ((map gid (concatMap realProducers allIns)) ++ headerProducerReps));
+        extGroupDrvs = map (h: groupDrvs.${h}) extGids;
+        relSrcs = fastUniq (filter (r: safeNotSymlink (src + "/${r}"))
           (concatMap (i: concatMap realSources (edgeInputs (elemAt edges i))) myIds));
         # #79: no per-edge scan. Headers come from the mounted srcHeaders base at
         # build time; here stage only each edge's DECLARED under-root inputs (the .c
         # source and any explicitly-listed files) plus under-root files named in the
         # command (a linker's alias list, a custom command's template, ...).
-        rootSrcs = lib.unique (concatMap (i: let e = elemAt edges i; in
+        rootSrcs = fastUniq (concatMap (i: let e = elemAt edges i; in
             (filter (p: underAnyRoot p && safeNotSymlink p) (edgeInputs e))
             ++ (filter (p: underAnyRoot p && safeRegular p)
                  (concatMap (lib.splitString ",") (lib.splitString " " e.command))))
@@ -1205,10 +1247,10 @@ in {
         # scan (rootSrcs) for exact headers; staging their -I dirs would cp -rsf the
         # shim symlinks over the scan's real headers (mkEdge sets rootIncs=[] for
         # useScan edges for exactly this reason).
-        rootIncs = lib.unique (filter safeNotSymlink
+        rootIncs = fastUniq (filter safeNotSymlink
           (concatMap (i: let e = elemAt edges i; in
             if depfilePrecise && isCompile e then [] else incAbsDirs e.command) myIds));
-        symlinkTargets = lib.unique (filter
+        symlinkTargets = fastUniq (filter
           (p: underAnyRoot p && hasSymlinkComponent p && builtins.pathExists p)
           (concatMap (i: let e = elemAt edges i; in
             incAbsDirs e.command ++ edgeInputs e
@@ -1252,16 +1294,25 @@ in {
         # group is acyclic (SCC-condensed), so this terminates; the ready==[] arm
         # is a defensive residue-dump, not expected.
         topo = let
-          go = remaining: done: order:
-            if remaining == [] then order
+          # Intra-group producer deps per edge, computed ONCE. The old code recomputed this
+          # (concatMap realProducers over every still-remaining edge) on EVERY layer.
+          intDepsOf = listToAttrs (map (i: {
+            name = toString i;
+            value = filter (j: mySet ? ${toString j})
+              (concatMap realProducers (edgeInputs (elemAt edges i)));
+          }) myIds);
+          # Kahn by layers. remaining shrinks each round; the residue filter uses attrset
+          # membership (O(1)/edge) rather than `lib.elem i batch` (O(batch)) -- the latter made
+          # the whole sort O(edges^2), the dominant per-group eval cost at libSystem scale.
+          # Accumulate layers and concat once (not `order ++ batch` per round).
+          go = remaining: doneSet: acc:
+            if remaining == [] then acc
             else let
-              intDeps = i: filter (j: mySet ? ${toString j})
-                (concatMap realProducers (edgeInputs (elemAt edges i)));
-              ready = filter (i: lib.all (d: done ? ${toString d}) (intDeps i)) remaining;
+              ready = filter (i: lib.all (d: doneSet ? ${toString d}) intDepsOf.${toString i}) remaining;
               batch = if ready == [] then remaining else ready;
-              nd = done // listToAttrs (map (i: {name = toString i; value = true;}) batch);
-            in go (filter (i: !(lib.elem i batch)) remaining) nd (order ++ batch);
-        in go myIds {} [];
+              batchSet = listToAttrs (map (i: {name = toString i; value = true;}) batch);
+            in go (filter (i: !(batchSet ? ${toString i})) remaining) (doneSet // batchSet) (acc ++ [ batch ]);
+        in lib.concatLists (go myIds {} []);
         relOf = o: if underAnyRoot o then relUnder o else o;
         # Run one internal edge DIRECTLY (not via ninja): stripRoots gives
         # $out-absolute paths (cd-immune, and $out is the shell env var here --
@@ -1360,7 +1411,16 @@ in {
         lib.concatMap
           (i: map (o: {path = o; drv = groupDrvForOutput o;}) (edgeOutputs (elemAt edges i)))
           (realProducers p);
-    in {inherit groupDrvs groupDrvForOutput idsInGroup realOutputsForTargetG;};
+      # DEBUG: forces the whole SCC condensation (peel + reachC) but NOT the per-group
+      # derivation construction, to isolate where eval time goes.
+      groupStats = {
+        nEdges = length realIds;
+        nRaw = length rawGroupIds;
+        nDepEdges = lib.foldl' (a: g: a + length (rawGroupDeps.${g} or [])) 0 rawGroupIds;
+        nCyclic = length cyclic;
+        nGroups = length groupIds;
+      };
+    in {inherit groupDrvs groupDrvForOutput idsInGroup realOutputsForTargetG groupStats;};
   in {
     inherit producerOf edgeDrvs drvForOutput edges;
     inherit isPhonyTarget realOutputsForTarget lowerGroupsBy;
