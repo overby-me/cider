@@ -74,6 +74,38 @@ Progress:
   `result-*` symlinks into the nix store and dies on a mode-000 dir inside a
   built prefix. Fixed with `[buck2] file_watcher = fs_hash_crawler`, which honors
   the ignore list (and, being content-hashing, also ignores pure `touch`es).
+- **Parity check passed**: the buck2-built `liblibsimple_darlingserver.a` is
+  **byte-identical** to the one the reference nix/cmake build produces.
+- **MIG toolchain DONE** (`buck2 build //buck-src:migcom`, runs, reports 1.0).
+  bison + flex + 14 compiles + link, ~1 s incremental. `mig.sh` is used as-is
+  (it accepts `-cc`/`-migcom`), so the cmake build's awk-generated `build-mig`
+  wrapper is not needed.
+
+Two structural findings, both about source availability rather than Buck2:
+
+1. **The working copy is not a complete source tree.** 147 upstream trees are nix
+   pins with no checkout, so a direct `buck2 build` cannot see them.
+   `scripts/buck-src.sh` materializes the ones we need into `buck-src/<name>/`
+   (gitignored, same pinned rev+hash nix uses, `patches/<name>/*.patch` applied
+   the same way `darling-src.nix` does). `buck-src` and `buck-out` are excluded
+   from `darling-src.nix`'s source filter, or every nix build would rehash on
+   hundreds of MB of buck2 scratch.
+2. **The SDK symlink farm cannot be reused as-is, and should not be.**
+   `darwin/Developer/.../MacOSX.sdk/usr/include` is ~1900 committed relative
+   symlinks into `src/external/<pin>/...`; in the working copy 1909 of them
+   dangle. They are also not reproducible by any prefix rule, because the SDK
+   MERGES trees (`i386/` = xnu/bsd/i386 + xnu/osfmk/i386; `libkern/` = xnu +
+   libplatform + libc). So `scripts/gen-sdk-header-roots.py` reads that farm (it
+   is the authority on the layout) and emits explicit `{include path -> source
+   file}` maps, consumed by `cc_header_root(header_map = ...)`. 613 mappings so
+   far (mach, i386, machine, libkern, sys). This scales to the guest tier by
+   generating more namespaces, with no hand-derivation and no giant
+   materialization.
+
+   Note this is also where wall #1 dies for real: the SDK namespaces are staged
+   as their own roots, so a project source dir is never on the same `-I` path,
+   and a host tool only gets the four `sys/` entries the reference gives it
+   rather than all of Darwin's `sys/*.h` shadowing glibc's.
 
 ## Phase 0 — Buck2 stands up, builds one real library, directly (no Nix)
 

@@ -36,6 +36,12 @@ CcLibInfo = provider(fields = [
 # Object files, so an archive can be assembled from several compile groups.
 CcObjectsInfo = provider(fields = ["objects"])
 
+# What a codegen target produces: generated .c files a consumer must COMPILE
+# (`gen_srcs`), separate from generated headers, which a consumer sees through
+# the codegen target's CcLibInfo include root like any other dependency. Lives
+# here rather than in codegen.bzl so cc.bzl needs no import from it.
+GeneratedSourcesInfo = provider(fields = ["sources", "headers"])
+
 _CXX_EXTS = [".cpp", ".cc", ".cxx", ".C"]
 
 def _is_cxx(src):
@@ -44,7 +50,7 @@ def _is_cxx(src):
             return True
     return False
 
-def _merge_dep_libs(deps):
+def merge_dep_libs(deps):
     """Transitively collect CcLibInfo from deps, preserving order, deduped."""
     include_dirs = []
     exported_flags = []
@@ -71,12 +77,18 @@ def _merge_dep_libs(deps):
         linker_flags = linker_flags,
     )
 
-def _stage_include_root(ctx, name, root, headers):
+def stage_include_root(ctx, name, root, headers, header_map = {}):
     """Symlink `headers` into a fresh dir, rooted at `root`.
 
     A header at package path `include/libsimple/lock.h` with root `include` is
     staged as `libsimple/lock.h`, so `#include <libsimple/lock.h>` resolves and
     nothing else in the source tree does.
+
+    `header_map` gives the include path for a header explicitly, which is what
+    Darwin SDK namespaces need: the SDK's `i386/` is a MERGE of xnu/bsd/i386 and
+    xnu/osfmk/i386, and `mach/` keeps subdirectories, so no single prefix-strip
+    reproduces the layout. scripts/gen-sdk-header-roots.py derives these maps
+    from the repo's committed SDK symlink farm, which is the authority on it.
     """
     prefix = root + "/" if root else ""
     mapping = {}
@@ -85,9 +97,11 @@ def _stage_include_root(ctx, name, root, headers):
         if prefix and rel.startswith(prefix):
             rel = rel[len(prefix):]
         mapping[rel] = h
+    for staged, h in header_map.items():
+        mapping[staged] = h
     return ctx.actions.symlinked_dir(name, mapping)
 
-def _compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix):
+def compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix):
     """One compile action per source; returns the list of object artifacts."""
     objects = []
     for src in srcs:
@@ -119,12 +133,13 @@ def _archive(ctx, tc, name, objects):
 # ---------------------------------------------------------------------------
 
 def _cc_header_root_impl(ctx):
-    merged = _merge_dep_libs(ctx.attrs.deps)
-    staged = _stage_include_root(
+    merged = merge_dep_libs(ctx.attrs.deps)
+    staged = stage_include_root(
         ctx,
         ctx.label.name + "__include",
         ctx.attrs.root,
         ctx.attrs.headers,
+        ctx.attrs.header_map,
     )
     return [
         DefaultInfo(default_output = staged),
@@ -141,6 +156,9 @@ cc_header_root = rule(
     attrs = {
         "deps": attrs.list(attrs.dep(), default = []),
         "exported_flags": attrs.list(attrs.string(), default = []),
+        # {include path -> header file}, for roots whose layout is not a plain
+        # prefix strip (the Darwin SDK namespaces).
+        "header_map": attrs.dict(attrs.string(), attrs.source(), default = {}),
         "headers": attrs.list(attrs.source(), default = []),
         # Package-relative dir the headers are exposed relative to ("" = the
         # package itself).
@@ -152,13 +170,22 @@ cc_header_root = rule(
 # cc_objects: a group of objects sharing one set of flags.
 # ---------------------------------------------------------------------------
 
+def gen_sources(gen_deps):
+    """Generated .c files contributed by codegen targets listed in `gen_srcs`."""
+    srcs = []
+    for g in gen_deps:
+        srcs.extend(g[GeneratedSourcesInfo].sources)
+    return srcs
+
 def _cc_objects_impl(ctx):
     tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
-    merged = _merge_dep_libs(ctx.attrs.deps)
+    # A codegen target in `gen_srcs` contributes BOTH its generated sources and
+    # its generated-header include root, so it never has to be listed twice.
+    merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
     include_dirs = []
     if ctx.attrs.headers:
-        include_dirs.append(_stage_include_root(
+        include_dirs.append(stage_include_root(
             ctx,
             ctx.label.name + "__private_include",
             ctx.attrs.include_root,
@@ -167,7 +194,8 @@ def _cc_objects_impl(ctx):
     include_dirs.extend(merged.include_dirs)
 
     flags = merged.exported_flags + ctx.attrs.compiler_flags
-    objects = _compile_objects(ctx, tc, ctx.attrs.srcs, include_dirs, flags, "__objs")
+    srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
+    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
 
     return [
         DefaultInfo(default_outputs = objects),
@@ -183,6 +211,8 @@ def _cc_objects_impl(ctx):
 _cc_objects_attrs = {
     "compiler_flags": attrs.list(attrs.string(), default = []),
     "deps": attrs.list(attrs.dep(), default = []),
+    # Codegen targets whose generated sources this target compiles.
+    "gen_srcs": attrs.list(attrs.dep(), default = []),
     # Private headers: visible to this target's own compiles only.
     "headers": attrs.list(attrs.source(), default = []),
     "include_root": attrs.string(default = ""),
@@ -202,7 +232,7 @@ cc_objects = rule(
 
 def _cc_static_lib_impl(ctx):
     tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
-    merged = _merge_dep_libs(ctx.attrs.deps)
+    merged = merge_dep_libs(ctx.attrs.deps)
 
     objects = []
     for group in ctx.attrs.objs:
@@ -211,7 +241,7 @@ def _cc_static_lib_impl(ctx):
 
     exported_include_dirs = []
     if ctx.attrs.exported_headers:
-        exported_include_dirs.append(_stage_include_root(
+        exported_include_dirs.append(stage_include_root(
             ctx,
             ctx.label.name + "__include",
             ctx.attrs.include_root,
@@ -252,11 +282,11 @@ cc_static_lib = rule(
 
 def _cc_library_impl(ctx):
     tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
-    merged = _merge_dep_libs(ctx.attrs.deps)
+    merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
     exported_include_dirs = []
     if ctx.attrs.exported_headers:
-        exported_include_dirs.append(_stage_include_root(
+        exported_include_dirs.append(stage_include_root(
             ctx,
             ctx.label.name + "__include",
             ctx.attrs.include_root,
@@ -265,7 +295,7 @@ def _cc_library_impl(ctx):
 
     private_include_dirs = []
     if ctx.attrs.headers:
-        private_include_dirs.append(_stage_include_root(
+        private_include_dirs.append(stage_include_root(
             ctx,
             ctx.label.name + "__private_include",
             ctx.attrs.private_include_root,
@@ -276,7 +306,8 @@ def _cc_library_impl(ctx):
     include_dirs = private_include_dirs + exported_include_dirs + merged.include_dirs
     flags = merged.exported_flags + ctx.attrs.exported_flags + ctx.attrs.compiler_flags
 
-    objects = _compile_objects(ctx, tc, ctx.attrs.srcs, include_dirs, flags, "__objs")
+    srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
+    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
     lib = _archive(ctx, tc, ctx.attrs.lib_name or ctx.label.name, objects)
 
     return [
@@ -297,6 +328,7 @@ cc_library = rule(
         "deps": attrs.list(attrs.dep(), default = []),
         "exported_flags": attrs.list(attrs.string(), default = []),
         "exported_headers": attrs.list(attrs.source(), default = []),
+        "gen_srcs": attrs.list(attrs.dep(), default = []),
         "headers": attrs.list(attrs.source(), default = []),
         "include_root": attrs.string(default = ""),
         "lib_name": attrs.string(default = ""),
@@ -313,11 +345,11 @@ cc_library = rule(
 
 def _cc_binary_impl(ctx):
     tc = ctx.attrs._cc_toolchain[NativeCcToolchainInfo]
-    merged = _merge_dep_libs(ctx.attrs.deps)
+    merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
     include_dirs = []
     if ctx.attrs.headers:
-        include_dirs.append(_stage_include_root(
+        include_dirs.append(stage_include_root(
             ctx,
             ctx.label.name + "__private_include",
             ctx.attrs.include_root,
@@ -326,7 +358,8 @@ def _cc_binary_impl(ctx):
     include_dirs.extend(merged.include_dirs)
 
     flags = merged.exported_flags + ctx.attrs.compiler_flags
-    objects = _compile_objects(ctx, tc, ctx.attrs.srcs, include_dirs, flags, "__objs")
+    srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
+    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
     for group in ctx.attrs.objs:
         objects.extend(group[CcObjectsInfo].objects)
 
@@ -351,6 +384,7 @@ cc_binary = rule(
         "compiler_flags": attrs.list(attrs.string(), default = []),
         "deps": attrs.list(attrs.dep(), default = []),
         "exe_name": attrs.string(default = ""),
+        "gen_srcs": attrs.list(attrs.dep(), default = []),
         "headers": attrs.list(attrs.source(), default = []),
         "include_root": attrs.string(default = ""),
         "link_cxx": attrs.bool(default = False),

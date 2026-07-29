@@ -1,0 +1,24 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+
+# The "basic headers" every Darling compile sees (the top-level CMakeLists puts
+# this dir on the global include path): Availability*, TargetConditionals,
+# MacTypes, ConditionalMacros, AssertMacros.
+#
+# AvailabilityVersions.h and architecture/ are NOT here: in the working tree they
+# are relative symlinks into src/external pins, which only resolve after nix
+# assembles the tree. The Buck2 port stages those from the materialized pins
+# instead (//buck-src:sdk_basic_headers_pins), so this root holds only the files
+# that are really committed here.
+cc_header_root(
+    name = "basic_headers",
+    headers = [
+        "AssertMacros.h",
+        "Availability.h",
+        "AvailabilityInternal.h",
+        "AvailabilityMacros.h",
+        "ConditionalMacros.h",
+        "MacTypes.h",
+        "TargetConditionals.h",
+    ],
+    visibility = ["PUBLIC"],
+)

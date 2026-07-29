@@ -54,6 +54,14 @@ let
         "CONTRIBUTORS.md"
         ".git"
         ".jj"
+        # Buck2 port scratch (plan/buck2-port.md): `buck-src` holds pinned
+        # upstream trees materialized for a direct `buck2 build` (the same pins
+        # this file fetches, so they are redundant here), and `buck-out` is
+        # buck2's output tree. Both are gitignored, machine-local, and hundreds
+        # of MB -- without this they would land in the store and rehash
+        # darling-src (and therefore every darling build) on every buck2 run.
+        "buck-src"
+        "buck-out"
       ]);
   };
 

@@ -1,0 +1,154 @@
+load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root")
+load(":sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_SYS")
+load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the nix-pinned upstream trees materialized by
+# scripts/buck-src.sh. The trees themselves are gitignored (content is pinned in
+# nix/submodules.json); this file is committed. A buck2 package owns its
+# subdirectories, so one BUCK file here covers every materialized tree without
+# putting a BUCK file inside any of them (which would be gitignored too).
+#
+# Run `scripts/buck-src.sh` before building anything here.
+
+# ---------------------------------------------------------------------------
+# bootstrap_cmds: migcom + mig.sh, the MIG toolchain every codegen edge runs.
+# Mirrors buck-src/bootstrap_cmds/CMakeLists.txt; flags are the reference
+# build's exact DEFINES/FLAGS (from the configured build.ninja, not guessed).
+# ---------------------------------------------------------------------------
+
+MIGCOM_FLAGS = [
+    # From the top-level CMakeLists (inherited by every Darling target).
+    "-Wno-error=implicit-function-declaration",
+    "-Wno-nullability-completeness",
+    "-Wno-deprecated-declarations",
+    "-Wno-availability",
+    "-Wno-expansion-to-defined",
+    "-Wno-elaborated-enum-base",
+    "-Wno-undef-prefix",
+    # bootstrap_cmds' own.
+    "-std=c99",
+    "-Wno-dangling-else",
+    "-Wno-implicit-function-declaration",
+    "-DDARLING",
+    "-DMIG_VERSION=\"1.0\"",
+    "-Du_int=unsigned",
+    "-D__int64_t=int64_t",
+    "-D__int32_t=int32_t",
+    "-D__darwin_natural_t=unsigned",
+    "-D__uint32_t=uint32_t",
+    "-D__uint16_t=uint16_t",
+    "-D__uint64_t=uint64_t",
+    "-D_BSD_I386__TYPES_H_",
+]
+
+cc_header_root(
+    name = "migcom_headers",
+    headers = glob(["bootstrap_cmds/migcom.tproj/*.h"]),
+    root = "bootstrap_cmds/migcom.tproj",
+)
+
+# migcom's own sources include Darwin headers (<mach/boolean.h>, ...). The
+# reference build reaches them through bootstrap_cmds/darling/include/{mach,i386,
+# machine,libkern,sys}, a farm of relative symlinks into the repo's SDK tree that
+# only resolves once nix has assembled all 147 pins. The port stages the same
+# namespaces explicitly, from maps generated out of that farm
+# (scripts/gen-sdk-header-roots.py), so the search path holds exactly the SDK
+# headers under exactly the SDK names -- and nothing else.
+#
+# Only these FOUR sys/ entries are exposed, matching what bootstrap_cmds'
+# darling/include/sys actually contains. Putting all of Darwin's sys/*.h on a
+# HOST tool's include path would shadow glibc's and is the same class of bug as
+# wall #1, just pointing the other way.
+SDK_SYS_FOR_MIGCOM = {
+    k: v
+    for k, v in SDK_SYS.items()
+    if k == "sys/appleapiopts.h" or k == "sys/_types.h" or k.startswith("sys/_types/") or k.startswith("sys/_pthread/")
+}
+
+# The two entries darwin/basic-headers reaches by symlink into pinned trees.
+cc_header_root(
+    name = "sdk_basic_headers_pins",
+    header_map = {
+        "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
+    } | {
+        "architecture/" + h.split("/")[-1]: h
+        for h in glob(["architecture/*.h"])
+    } | {
+        "architecture/i386/" + h.split("/")[-1]: h
+        for h in glob(["architecture/i386/*.h"])
+    },
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "sdk_darling_include",
+    header_map = SDK_MACH | SDK_I386 | SDK_MACHINE | SDK_LIBKERN | SDK_SYS_FOR_MIGCOM,
+    visibility = ["PUBLIC"],
+)
+
+# The reference build also puts darling/include/mach itself on the path, so
+# migcom can include mach headers unqualified (<boolean.h>).
+cc_header_root(
+    name = "sdk_darling_include_mach",
+    header_map = {k[len("mach/"):]: v for k, v in SDK_MACH.items()},
+    visibility = ["PUBLIC"],
+)
+
+bison_gen(
+    name = "mig_parser",
+    src = "bootstrap_cmds/migcom.tproj/parser.y",
+    # `bison -d`, i.e. emit the token header next to the parser.
+    out_c = "parser.c",
+    out_h = "parser.h",
+)
+
+flex_gen(
+    name = "mig_lexer",
+    src = "bootstrap_cmds/migcom.tproj/lexxer.l",
+    out_c = "lexer.c",
+)
+
+cc_binary(
+    name = "migcom",
+    srcs = [
+        "bootstrap_cmds/migcom.tproj/error.c",
+        "bootstrap_cmds/migcom.tproj/global.c",
+        "bootstrap_cmds/migcom.tproj/header.c",
+        "bootstrap_cmds/migcom.tproj/mig.c",
+        "bootstrap_cmds/migcom.tproj/routine.c",
+        "bootstrap_cmds/migcom.tproj/server.c",
+        "bootstrap_cmds/migcom.tproj/statement.c",
+        "bootstrap_cmds/migcom.tproj/string.c",
+        "bootstrap_cmds/migcom.tproj/type.c",
+        "bootstrap_cmds/migcom.tproj/user.c",
+        "bootstrap_cmds/migcom.tproj/utils.c",
+        "bootstrap_cmds/darling/src/xtracemig.c",
+    ],
+    compiler_flags = MIGCOM_FLAGS,
+    # Reference include order: the SDK namespaces, then mach unqualified, then
+    # migcom's own headers last (cmake puts migcom.tproj at the end).
+    deps = [
+        "//darwin/basic-headers:basic_headers",
+        ":sdk_basic_headers_pins",
+        ":sdk_darling_include",
+        ":sdk_darling_include_mach",
+        ":migcom_headers",
+    ],
+    # parser.c / lexer.c are compiled here, and the generated parser.h reaches
+    # the lexer through the bison target's staged include root.
+    gen_srcs = [
+        ":mig_parser",
+        ":mig_lexer",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# mig.sh itself is data, not a build product: the mig rule invokes it with
+# `bash` and passes -migcom/-cc, so nothing has to be generated from it (the
+# cmake build instead awk-rewrites it into a `build-mig` wrapper).
+export_file(
+    name = "mig.sh",
+    src = "bootstrap_cmds/migcom.tproj/mig.sh",
+    visibility = ["PUBLIC"],
+)
