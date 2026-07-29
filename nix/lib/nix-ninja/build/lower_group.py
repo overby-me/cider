@@ -181,14 +181,57 @@ def topo(group_ids, g):
                 for j in dir_to_gens.get(d, ()):
                     if j != i:
                         intdeps[i].add(j)
-    order, done, remaining = [], set(), list(group_ids)
-    while remaining:
-        ready = [i for i in remaining if intdeps[i] <= done]
-        batch = ready if ready else remaining  # defensive: dump residue
-        order.extend(batch)
-        done.update(batch)
-        bs = set(batch)
-        remaining = [i for i in remaining if i not in bs]
+    # Order producers before consumers. The group may be a real SCC (cycles), so condense the
+    # intra-group dep graph into strongly-connected components with Tarjan and emit them in the
+    # algorithm's natural post-order (dependencies first). Acyclic producer->consumer pairs that
+    # merely RIDE ON a cycle stay correctly ordered; only a genuine cycle is emitted as an
+    # (internally arbitrary) block. A plain Kahn with a list-order or min-dep fallback mis-orders
+    # such pairs -- e.g. libc's dylib link (edge index 2054) precedes the notify_firstpass dylib
+    # it links (edge index 4162) by index order while both ride the libSystem-umbrella SCC.
+    deps_list = {i: list(intdeps[i]) for i in group_ids}
+    idx = {}
+    low = {}
+    on_stack = set()
+    tstack = []
+    order = []
+    ctr = 0
+    for start in group_ids:
+        if start in idx:
+            continue
+        work = [(start, 0)]
+        while work:
+            node, ci = work[-1]
+            if ci == 0:
+                idx[node] = low[node] = ctr
+                ctr += 1
+                tstack.append(node)
+                on_stack.add(node)
+            recurse = False
+            children = deps_list[node]
+            k = ci
+            while k < len(children):
+                w = children[k]
+                if w not in idx:
+                    work[-1] = (node, k + 1)
+                    work.append((w, 0))
+                    recurse = True
+                    break
+                if w in on_stack:
+                    low[node] = min(low[node], idx[w])
+                k += 1
+            if recurse:
+                continue
+            if low[node] == idx[node]:
+                while True:
+                    w = tstack.pop()
+                    on_stack.discard(w)
+                    order.append(w)
+                    if w == node:
+                        break
+            work.pop()
+            if work:
+                p = work[-1][0]
+                low[p] = min(low[p], low[node])
     return order
 
 
