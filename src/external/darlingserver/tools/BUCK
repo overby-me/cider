@@ -1,0 +1,27 @@
+load("//buck/rules:cc.bzl", "cc_binary", "cc_library")
+
+# dserverdbg: the darlingserver debug client. Mirrors tools/CMakeLists.txt.
+#
+# Small, but it exercises two things the rest of the port needs: compiling a
+# GENERATED source that belongs to another package (the RPC library source, via
+# gen_srcs across the package boundary), and a force-included header (-include),
+# which several Darling targets rely on.
+
+cc_library(
+    name = "dserverdbg_dserver_rpc",
+    # The generated darlingserver RPC library source, compiled here with the
+    # debug tool's own RPC definitions forced in.
+    gen_srcs = ["//src/external/darlingserver:dserver_rpc"],
+    prefix_headers = ["dserverdbg-rpc-defs.h"],
+    deps = [
+        "//src/external/darlingserver:dserver_headers",
+        "//src/startup:rtsig_header",
+    ],
+)
+
+cc_binary(
+    name = "dserverdbg",
+    srcs = ["dserverdbg.c"],
+    deps = [":dserverdbg_dserver_rpc"],
+    visibility = ["PUBLIC"],
+)

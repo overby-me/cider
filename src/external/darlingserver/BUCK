@@ -21,8 +21,13 @@ cc_header_root(
 # <darlingserver/rpc.h> and <darlingserver/rpc.internal.h> identically -- there
 # is no name collision to keep them apart for.
 #
-# The fourth argument is interpolated verbatim into an #include line by the
-# generator, so the literal quotes are part of the value.
+# The fourth argument is interpolated verbatim into the generated library
+# source's `#include {}` line. cmake passes a quoted RELATIVE path
+# ("../include/darlingserver/rpc.h") because in its layout the generated rpc.c
+# and rpc.h land in sibling binary dirs. Here they share one staged root, so the
+# angle-bracket form is passed instead and resolves through -I like any other
+# declared header. Same header either way; the argument exists precisely so the
+# caller can choose how the generated source refers to it.
 script_gen(
     name = "dserver_rpc",
     outs = [
@@ -30,7 +35,7 @@ script_gen(
         "darlingserver/rpc.internal.h",
         "src/rpc.c",
     ],
-    args = ["\"../include/darlingserver/rpc.h\""],
+    args = ["<darlingserver/rpc.h>"],
     script = "scripts/generate-rpc-wrappers.py",
     visibility = ["PUBLIC"],
 )

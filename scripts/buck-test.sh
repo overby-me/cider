@@ -51,6 +51,7 @@ targets=(
 	//src/startup:rtsig_header
 	//src/external/darlingserver:dserver_rpc
 	//src/external/darlingserver/duct-tape:darlingserver_duct_tape
+	//src/external/darlingserver/tools:dserverdbg
 	//linux/server:duct_tape_lib
 )
 if [ -n "$verbose" ]; then
@@ -112,6 +113,17 @@ if has_sym mach_port_server; then
 else
 	bad "missing MIG-generated mach_port_server"
 fi
+
+say "== dserverdbg (generated RPC source + a forced -include) =="
+dbg=$(out_of //src/external/darlingserver/tools:dserverdbg)
+[ -x "$dbg" ] && ok "dserverdbg is executable" || bad "dserverdbg missing"
+# It refuses to run without setuid, which is exactly the message we expect: the
+# binary links and its RPC surface initialized enough to reach that check.
+msg=$("$dbg" 2>&1 | head -1 || true)
+case "$msg" in
+*"not setuid root"*) ok "dserverdbg runs (reports the expected setuid requirement)" ;;
+*) bad "dserverdbg said: $msg" ;;
+esac
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

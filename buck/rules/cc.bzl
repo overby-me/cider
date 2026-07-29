@@ -101,7 +101,7 @@ def stage_include_root(ctx, name, root, headers, header_map = {}):
         mapping[staged] = h
     return ctx.actions.symlinked_dir(name, mapping)
 
-def compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix):
+def compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix, prefix_headers = []):
     """One compile action per source; returns the list of object artifacts."""
     objects = []
     for src in srcs:
@@ -112,6 +112,10 @@ def compile_objects(ctx, tc, srcs, include_dirs, flags, out_prefix):
         cmd.add(flags)
         for inc in include_dirs:
             cmd.add(cmd_args(inc, format = "-I{}"))
+        # Force-included headers travel as artifacts, not as bare path strings,
+        # so they are declared inputs of the compile.
+        for ph in prefix_headers:
+            cmd.add(["-include", ph])
         cmd.add(["-c", src, "-o", obj.as_output()])
         ctx.actions.run(
             cmd,
@@ -195,7 +199,9 @@ def _cc_objects_impl(ctx):
 
     flags = merged.exported_flags + ctx.attrs.compiler_flags
     srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
-    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
+    objects = compile_objects(
+        ctx, tc, srcs, include_dirs, flags, "__objs", ctx.attrs.prefix_headers,
+    )
 
     return [
         DefaultInfo(default_outputs = objects),
@@ -216,6 +222,8 @@ _cc_objects_attrs = {
     # Private headers: visible to this target's own compiles only.
     "headers": attrs.list(attrs.source(), default = []),
     "include_root": attrs.string(default = ""),
+    # Headers force-included into every source (-include).
+    "prefix_headers": attrs.list(attrs.source(), default = []),
     "srcs": attrs.list(attrs.source(), default = []),
     "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
 }
@@ -307,7 +315,9 @@ def _cc_library_impl(ctx):
     flags = merged.exported_flags + ctx.attrs.exported_flags + ctx.attrs.compiler_flags
 
     srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
-    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
+    objects = compile_objects(
+        ctx, tc, srcs, include_dirs, flags, "__objs", ctx.attrs.prefix_headers,
+    )
     lib = _archive(ctx, tc, ctx.attrs.lib_name or ctx.label.name, objects)
 
     return [
@@ -333,6 +343,7 @@ cc_library = rule(
         "include_root": attrs.string(default = ""),
         "lib_name": attrs.string(default = ""),
         "linker_flags": attrs.list(attrs.string(), default = []),
+        "prefix_headers": attrs.list(attrs.source(), default = []),
         "private_include_root": attrs.string(default = ""),
         "srcs": attrs.list(attrs.source(), default = []),
         "_cc_toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
@@ -359,7 +370,9 @@ def _cc_binary_impl(ctx):
 
     flags = merged.exported_flags + ctx.attrs.compiler_flags
     srcs = ctx.attrs.srcs + gen_sources(ctx.attrs.gen_srcs)
-    objects = compile_objects(ctx, tc, srcs, include_dirs, flags, "__objs")
+    objects = compile_objects(
+        ctx, tc, srcs, include_dirs, flags, "__objs", ctx.attrs.prefix_headers,
+    )
     for group in ctx.attrs.objs:
         objects.extend(group[CcObjectsInfo].objects)
 
@@ -388,6 +401,7 @@ cc_binary = rule(
         "headers": attrs.list(attrs.source(), default = []),
         "include_root": attrs.string(default = ""),
         "link_cxx": attrs.bool(default = False),
+        "prefix_headers": attrs.list(attrs.source(), default = []),
         "linker_flags": attrs.list(attrs.string(), default = []),
         "objs": attrs.list(attrs.dep(), default = []),
         "srcs": attrs.list(attrs.source(), default = []),

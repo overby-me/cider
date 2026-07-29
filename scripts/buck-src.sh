@@ -14,7 +14,15 @@
 #
 # Usage:  scripts/buck-src.sh [<submodule-path> ...]
 #         scripts/buck-src.sh                      # the port's current needs
+#         scripts/buck-src.sh --all                # every pinned tree (~3.8 GB)
 #         FORCE=1 scripts/buck-src.sh <path>       # re-fetch even if present
+#
+# --all copies out of the nix-ASSEMBLED tree (`nix build .#darling-src`) rather
+# than fetching 147 pins one at a time: one derivation, and its patches and
+# symlink fixups are already applied. It is what the guest tier needs, because a
+# Darwin compile's include path is the SDK tree
+# (darwin/Developer/.../MacOSX.sdk/usr/include), ~1900 committed symlinks into
+# these trees -- with them absent, 1909 of those links dangle.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -29,12 +37,51 @@ dest_root="$repo_root/buck-src"
 #    roots it needs directly from the source trees instead.
 default_paths=(src/external/bootstrap_cmds src/external/xnu)
 
+mkdir -p "$dest_root"
+
+if [ "${1:-}" = "--all" ]; then
+	echo "buck-src: realizing the assembled tree (nix build .#darling-src) ..."
+	assembled="$(nix build "$repo_root#darling-src" --no-link --print-out-paths)"
+	echo "buck-src: assembled at $assembled"
+
+	mapfile -t all_paths < <(
+		python3 - "$manifest" <<-'PY'
+			import json, sys
+			for e in json.load(open(sys.argv[1])):
+			    if e.get("hash"):
+			        print(e["path"])
+		PY
+	)
+	echo "buck-src: copying ${#all_paths[@]} pinned trees ..."
+	for sub in "${all_paths[@]}"; do
+		name="$(basename "$sub")"
+		dest="$dest_root/$name"
+		src="$assembled/$sub"
+		[ -d "$src" ] || {
+			echo "buck-src: WARNING $sub missing from the assembled tree"
+			continue
+		}
+		if [ -z "${FORCE:-}" ] && [ -f "$dest/.buck-src-assembled" ] &&
+			[ "$(cat "$dest/.buck-src-assembled")" = "$assembled" ]; then
+			continue
+		fi
+		rm -rf "$dest"
+		# Plain copy, NOT hardlinks: hardlinked store files share the store's
+		# inode, so any later chmod/write would mutate the nix store itself.
+		# Left read-only; nothing here is edited, only compiled.
+		cp -a --no-preserve=ownership "$src" "$dest"
+		mkdir -p "$dest"
+		echo "$assembled" >"$dest/.buck-src-assembled" 2>/dev/null ||
+			{ chmod u+w "$dest" && echo "$assembled" >"$dest/.buck-src-assembled"; }
+	done
+	echo "buck-src: done ($(du -sh "$dest_root" | cut -f1))"
+	exit 0
+fi
+
 paths=("$@")
 if [ ${#paths[@]} -eq 0 ]; then
 	paths=("${default_paths[@]}")
 fi
-
-mkdir -p "$dest_root"
 
 for sub in "${paths[@]}"; do
 	name="$(basename "$sub")"
