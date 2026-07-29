@@ -1215,25 +1215,42 @@ in {
               [ -z "$comp" ] && continue
               if [ -z "$cur" ]; then cur="$comp"; else cur="$cur/$comp"; fi
               if [ -L "$cur" ]; then
+                # Lazy one-level de-symlink: replace the dir symlink with a real dir
+                # whose entries are symlinks to the target's DIRECT children (not a deep
+                # cp of the whole subtree). Writing deeper just recurses this, so a group
+                # only ever materialises real dirs along the exact paths it writes.
                 tgt="$(readlink -f "$cur" 2>/dev/null || true)"; rm -f "$cur"; mkdir -p "$cur"
-                if [ -n "$tgt" ] && [ -d "$tgt" ]; then cp -rsf --no-preserve=mode "$tgt"/. "$cur"/ 2>/dev/null || true; fi
+                if [ -n "$tgt" ] && [ -d "$tgt" ]; then
+                  find "$tgt" -mindepth 1 -maxdepth 1 2>/dev/null | while IFS= read -r e; do
+                    if [ ! -e "$cur/''${e##*/}" ]; then ln -s "$e" "$cur/''${e##*/}" 2>/dev/null || true; fi
+                  done
+                fi
               else mkdir -p "$cur"; fi
             done
           }
-          # #79: mount the shared source-header namespace (headers + the shim maze) so
-          # this group's compiles resolve includes at build time -- no per-edge scan.
-          # cp -rs, so it is symlinks into the content-addressed base (no data copy).
-          ${lib.optionalString (srcHeaders != null)
-            "cp -rsf --no-preserve=mode ${srcHeaders}/. ./ 2>/dev/null || true"}
-          ${lib.concatMapStringsSep "\n" (d: "cp -rsf --no-preserve=mode ${d}/. ./ 2>/dev/null || true") extGroupDrvs}
+          # #79 fast mount: the shared source-header namespace (headers + the shim maze)
+          # goes in as a handful of TOP-LEVEL directory symlinks, NOT a 1.3GB deep cp -rs.
+          # A compile's `-I $out/src/.../include` resolves straight through the top-level
+          # symlink into the content-addressed base; realize_writable lazily materialises
+          # real dirs only along paths this group writes. No per-group bulk copy.
+          ${lib.optionalString (srcHeaders != null) ''
+            find ${srcHeaders} -mindepth 1 -maxdepth 1 2>/dev/null | while IFS= read -r e; do
+              if [ ! -e "''${e##*/}" ]; then ln -s "$e" "''${e##*/}" 2>/dev/null || true; fi
+            done''}
+          ${lib.concatMapStringsSep "\n" (d: ''
+            (cd ${d} && find . -mindepth 1 -type d 2>/dev/null) | while IFS= read -r sub; do
+              s=''${sub#./}
+              if [ -L "$s" ] || { [ -e "$s" ] && [ ! -d "$s" ]; }; then realize_writable "$s"; fi
+            done
+            cp -rsf --no-preserve=mode ${d}/. ./ 2>/dev/null || true'') extGroupDrvs}
           ${lib.concatMapStringsSep "\n" (s: ''
             if [ ! -e ${esc s} ] || [ -L ${esc s} ]; then realize_writable "$(dirname ${esc s})"; rm -f ${esc s}; install -Dm644 ${srcStorePath s} ${esc s}; if [ -x ${srcStorePath s} ]; then chmod +x ${esc s}; ${shebangSedG (esc s)} fi; fi'') relSrcs}
           ${lib.concatMapStringsSep "\n" (p: ''
             if [ ! -e ${esc (relUnder p)} ] || [ -L ${esc (relUnder p)} ]; then realize_writable "$(dirname ${esc (relUnder p)})"; rm -f ${esc (relUnder p)}; install -Dm644 ${indivOf p} ${esc (relUnder p)}; if [ -x ${indivOf p} ]; then chmod +x ${esc (relUnder p)}; ${shebangSedG (esc (relUnder p))} fi; fi'') rootSrcs}
-          ${stageIncs}
-          find . -xtype l -delete 2>/dev/null || true
-          ${stageIfaceDeref}
-          ${stageSymlinkTargets}
+          # (stageIncs / stageIfaceDeref / stageSymlinkTargets and the broken-symlink
+          # prune are gone: srcHeaders already provides every source header + the intact
+          # shim maze via the lazy symlink tree, so the old per-edge -I staging is both
+          # redundant and unsafe against the top-level directory symlinks.)
           ${lib.concatMapStringsSep "\n" runEdge topo}
         '';
       groupDrvs = listToAttrs (map (g: {name = g; value = mkGroup g;}) groupIds);
