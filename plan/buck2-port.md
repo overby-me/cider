@@ -108,6 +108,31 @@ Progress:
   generate).
 - `//linux/server:duct_tape_lib` stages both archives into the single directory
   the Rust daemon's `build.rs` expects in `DUCT_TAPE_LIB`.
+- **END-TO-END VERIFIED BY EXECUTION.** With `DUCT_TAPE_LIB` pointed at that
+  staged dir, `cargo build` links `darlingserverd` (4.3 MB, 105 `dtape_*` symbols,
+  plus XNU's `ipc_kmsg_send` and `libsimple_lock_lock`), and the crate's
+  `dtape-link-proof` bin RUNS the buck2-built duct-tape: it walks the whole init
+  path (`ipc_init`, `waitq_bootstrap`, `mig_init` with 281 kobjects, `clock_init`,
+  `turnstiles_init`, `thread_call_initialize`) and prints
+  `STAGE0_OK: linked real duct-tape and ran dtape_init via the sched lib`,
+  exit 0. (The "Trying to lock mutex without an active thread!" lines are
+  expected: phase 1 of duct-tape's two-phase init runs off a kernel microthread.)
+
+**The loop, measured** (this is what the port is for):
+
+| Action | buck2 | commands run |
+|---|---|---|
+| no-op | 2.9 s | 0 |
+| edit one `.c` (1 of 93 objects) | **2.6 s** | 1 |
+| edit `duct-tape.h` (full fan-out) | **4.8 s** | 128 |
+
+Today's equivalent inner loop is the coarse `packages.darlingserver` nix build at
+~5-6 minutes for any edit. So a one-file change goes from minutes to ~2.6 s.
+
+Note the no-op floor rose from ~1.0 s to ~2.9 s once `buck-src` held 107 MB of
+materialized pins: `fs_hash_crawler` re-hashes the tree every command. Those
+sources cannot be `[project] ignore`d (they are real inputs), so the fix is
+watchman as the file watcher. Open item.
 
 Two structural findings, both about source availability rather than Buck2:
 
