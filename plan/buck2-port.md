@@ -120,19 +120,28 @@ Progress:
 
 **The loop, measured** (this is what the port is for):
 
-| Action | buck2 | commands run |
-|---|---|---|
-| no-op | 2.9 s | 0 |
-| edit one `.c` (1 of 93 objects) | **2.6 s** | 1 |
-| edit `duct-tape.h` (full fan-out) | **4.8 s** | 128 |
+| Action | fs_hash_crawler | **watchman** | commands run |
+|---|---|---|---|
+| no-op | 2.9 s | **0.01 s** | 0 |
+| edit one `.c` (1 of 93 objects) | 2.6 s | **0.32 s** | 1 |
+| edit `duct-tape.h` (full fan-out) | 4.8 s | **2.59 s** | 128 |
 
 Today's equivalent inner loop is the coarse `packages.darlingserver` nix build at
-~5-6 minutes for any edit. So a one-file change goes from minutes to ~2.6 s.
+~5-6 minutes for any edit. So a one-file change goes from minutes to **0.32 s**.
 
-Note the no-op floor rose from ~1.0 s to ~2.9 s once `buck-src` held 107 MB of
-materialized pins: `fs_hash_crawler` re-hashes the tree every command. Those
-sources cannot be `[project] ignore`d (they are real inputs), so the fix is
-watchman as the file watcher. Open item.
+The file watcher turned out to matter as much as the build graph. All three
+backends were tried: `notify` (buck2's default) cannot even start here, because
+it registers one recursive watch on the project root before `[project] ignore`
+applies and walks the `result-*` symlinks into the nix store (EACCES on a
+mode-000 dir inside a built prefix); `fs_hash_crawler` works but re-hashes the
+tree every command, which cost ~2.9 s once `buck-src` held 107 MB of materialized
+pins (real build inputs, so they cannot be ignored); watchman does not descend
+into symlinks and keeps state between commands. See `.watchmanconfig`.
+
+Also worth recording: a comment-only edit to migcom's `utils.c` re-ran exactly
+ONE action. The recompile produced a byte-identical `.o`, so buck2's
+content-based dependencies correctly did not re-link migcom, re-run any of the 35
+MIG codegens, or recompile the 26 generated sources.
 
 Two structural findings, both about source availability rather than Buck2:
 

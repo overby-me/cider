@@ -12,8 +12,11 @@ pkgs: {
     ninja
     # Buck2 for the gradual port (plan/buck2-port.md). Same binary the Nix
     # endpoint would use, so the toolchain is pinned from day 1 even while we
-    # iterate outside a derivation.
+    # iterate outside a derivation. watchman is buck2's file watcher here: the
+    # default `notify` backend cannot start in this tree (it walks the result-*
+    # store symlinks) and fs_hash_crawler re-hashes buck-src on every command.
     buck2
+    watchman
     pkg-config
     bison
     flex

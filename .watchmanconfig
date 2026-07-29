@@ -1,0 +1,10 @@
+{
+  "ignore_dirs": [
+    ".jj",
+    ".git",
+    ".direnv",
+    ".claude",
+    "buck-out",
+    "build"
+  ]
+}
