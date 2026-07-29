@@ -39,11 +39,11 @@
     "overby": {
       "flake": false,
       "locked": {
-        "lastModified": 1784811540,
-        "narHash": "sha256-VpO600z2qdYiknAPnyL0MAJSsdT8Wjyp1Umds3oU0nE=",
+        "lastModified": 1785356988,
+        "narHash": "sha256-7okIFTEKTnxhO/VLYwT+AwDjk+dATSPVJpOIqqFDfso=",
         "ref": "main",
-        "rev": "205668b89874b0d2b25f88da0f13a487f0952b24",
-        "revCount": 6767,
+        "rev": "bc895a2db65ad9844e52973bc47b88b9fc258f00",
+        "revCount": 6961,
         "type": "git",
         "url": "https://tangled.org/overby.me/overby.me"
       },

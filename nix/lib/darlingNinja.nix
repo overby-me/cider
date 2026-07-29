@@ -33,13 +33,14 @@ let
   # package.nix's exact configure inputs (single source of truth).
   di = pkgs.callPackage ../darlingBuildInputs.nix { };
 
-  # nix-ninja's entry point. VENDORED into this repo (nix/lib/nix-ninja/) rather
-  # than pulled from the overby source, so its lowering can be fixed here (e.g. the
-  # mig generated-header collision fix) and to reduce the external dependency — a
-  # step toward this repo being self-contained. Evaluated against *this* flake's
-  # pkgs (nixpkgs 26.05).
+  # nix-ninja's entry point, consumed from the overby source tree (its canonical
+  # home, nix/lib/ninja) via the `overby` flake input. The lowering developed here
+  # (grouping, build-time lowering, the mig generated-header + firstpass machinery)
+  # was upstreamed to overby, so this repo no longer vendors a copy. Evaluated
+  # against *this* flake's pkgs (nixpkgs 26.05); the caller supplies grouping via
+  # componentGrouping below, so the overby lib stays generic.
   buildNinjaProject =
-    import ./nix-ninja/build/buildNinjaProject.nix { inherit pkgs; };
+    import "${overby}/nix/lib/ninja/build/buildNinjaProject.nix" { inherit pkgs; };
 
   # The Ninja-graph extraction tool. A standalone single-crate binary (only dep:
   # libc), built here so we need overby as source, not as an evaluated flake.
