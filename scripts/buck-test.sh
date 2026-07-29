@@ -58,6 +58,7 @@ targets=(
 	//tests/buck2/firstpass:a
 	//tests/buck2/firstpass:b
 	//tests/buck2/firstpass:umbrella
+	//buck-src:system_blocks_firstpass
 )
 if [ -n "$verbose" ]; then
 	buck2 build "${targets[@]}"
@@ -179,6 +180,26 @@ case "$(file -b "$umb")" in
 *NOUNDEFS*) ok "umbrella has no undefined symbols" ;;
 *) bad "umbrella still has undefined symbols" ;;
 esac
+
+say "== libsystem_blocks: the first real libSystem sublibrary =="
+blocks=$(out_of //buck-src:system_blocks_firstpass)
+bid=$(llvm-objdump --macho --dylib-id "$blocks" 2>/dev/null | tail -1)
+[ "$bid" = "/usr/lib/system/libsystem_blocks.dylib" ] &&
+	ok "install_name is $bid" || bad "install_name is '$bid'"
+blocks_syms=$(llvm-nm --defined-only --extern-only "$blocks" 2>/dev/null | awk '{print $3}')
+for sym in __Block_copy __Block_release __Block_object_assign __Block_object_dispose; do
+	if printf '%s\n' "$blocks_syms" | grep -qx "$sym"; then
+		ok "exports $sym"
+	else
+		bad "missing $sym"
+	fi
+done
+# A firstpass resolves nothing, so its siblings' symbols must still be undefined.
+if llvm-nm --undefined-only "$blocks" 2>/dev/null | grep -qx "_free"; then
+	ok "leaves sibling symbols undefined (as a firstpass must)"
+else
+	bad "expected _free to be undefined in a firstpass dylib"
+fi
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

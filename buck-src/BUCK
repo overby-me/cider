@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen")
 load("//buck/rules:files.bzl", "export_file")
@@ -182,5 +183,68 @@ cc_header_root(
     name = "configd_dnsinfo",
     headers = glob(["configd/dnsinfo/*.h"]),
     root = "configd/dnsinfo",
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------
+# libsystem_blocks (libclosure): the Block runtime, and the first real libSystem
+# sublibrary in the port. Mirrors libclosure/CMakeLists.txt, whose add_circular
+# call declares system_kernel / system_malloc / system_pthread / system_c as
+# siblings.
+#
+# Only the FIRSTPASS dylib is built, and that is not a shortcut: a firstpass link
+# resolves nothing by design (-flat_namespace -undefined suppress), so it is
+# precisely the pass that CAN be built before its siblings exist. The final pass
+# lands when those four are ported.
+#
+# NOTE these targets live in THIS file rather than a BUCK file inside
+# libclosure/. A BUCK file there would take that subtree out of the buck-src
+# package, and the generated SDK header map points into these trees -- so its
+# entries would stop resolving. Everything over the materialized pins belongs to
+# this one package.
+# ---------------------------------------------------------------------------
+
+# libclosure's own directory is on its include path (Block_private.h).
+cc_header_root(
+    name = "blocks_headers",
+    headers = glob(["libclosure/*.h"]),
+    root = "libclosure",
+    visibility = ["PUBLIC"],
+)
+
+# From the reference build's build.ninja, not from reading the CMakeLists:
+# -nostdinc (so the SDK roots must supply everything) and
+# -D_LIBC_NO_FEATURE_VERIFICATION, which is inherited from a parent scope.
+BLOCKS_FLAGS = [
+    "-nostdinc",
+    "-DHAVE_STDINT_H=1",
+    "-D_LIBC_NO_FEATURE_VERIFICATION",
+]
+
+cc_objects(
+    name = "system_blocks_obj",
+    srcs = [
+        "libclosure/data.c",
+        # Objective-C and C++ in one library; the rules pick the driver from the
+        # file extension.
+        "libclosure/data.m",
+        "libclosure/runtime.cpp",
+    ],
+    compiler_flags = BLOCKS_FLAGS,
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":blocks_headers",
+        "//darwin:sdk_env",
+    ],
+)
+
+darwin_dylib(
+    name = "system_blocks_firstpass",
+    dylib_name = "libsystem_blocks_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_blocks.dylib",
+    objs = [":system_blocks_obj"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
