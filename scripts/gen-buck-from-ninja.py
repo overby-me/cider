@@ -502,8 +502,14 @@ def main(argv: list[str]) -> int:
             print(f'    install_name = "{install_name}",')
             print("    objs = [")
             for lib in libs:
+                # Each cmake object library can be SEVERAL targets here, one per
+                # flag group. Naming only the first silently drops objects: the
+                # dylib still links, but symbols defined in the other groups come
+                # out undefined (which is how libsystem_pthread ended up with an
+                # illegal text reloc to a symbol its own pthread.c defines).
                 print(f"        # {lib}")
-                print(f'        ":{lib if lib.endswith("_obj") else lib + "_obj"}",')
+                base = lib if lib.endswith("_obj") else lib + "_obj"
+                print(f'        ":{base}",  # plus :{base}2.. if it has more flag groups')
             print("    ],")
             print('    toolchain = "toolchains//:darwin_cc",')
             print('    deps = ["//darwin:sdk_env"],')

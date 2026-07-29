@@ -61,6 +61,7 @@ targets=(
 	//buck-src:system_blocks_firstpass
 	//buck-src:keymgr_firstpass
 	//buck-src:system_malloc_firstpass
+	//buck-src:system_pthread_firstpass
 	//buck-src:system_c_firstpass
 	//buck-src:system_asl_firstpass
 	//buck-src:system_coretls_firstpass
@@ -217,6 +218,7 @@ for pair in \
 	"//buck-src:system_blocks_firstpass:/usr/lib/system/libsystem_blocks.dylib" \
 	"//buck-src:keymgr_firstpass:/usr/lib/system/libkeymgr.dylib" \
 	"//buck-src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib" \
+	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
 	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
 	"//buck-src:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
 	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
@@ -234,15 +236,18 @@ for pair in \
 	[ "$got" = "$want" ] && ok "${t##*:} -> $got" || bad "$t install_name is '$got', want '$want'"
 done
 
-# libsystem_pthread: its 13 object groups compile (checked here), but the dylib
-# link is a KNOWN FAILURE -- an illegal text reloc in _pthread_key_delete, see
-# plan/buck2-port.md. Asserting the objects rather than the dylib keeps this
-# honest instead of asserting something that does not hold.
-if buck2 build //buck-src:system_pthread_obj >/dev/null 2>&1; then
-	ok "libsystem_pthread objects compile (dylib link is a known failure)"
-else
-	bad "libsystem_pthread objects do not compile"
-fi
+# libsystem_pthread is split across SEVEN flag groups and has hand-written
+# assembly. _pthread_create comes from one group and __pthread_list_lock from
+# another, so this also guards against a dylib that names only some groups (which
+# links, but leaves symbols undefined).
+pth=$(out_of //buck-src:system_pthread_firstpass)
+# Collect first: piping straight into `grep -q` fails under pipefail, because grep
+# exits on the first match and llvm-nm dies on SIGPIPE.
+pth_syms=$(llvm-nm --defined-only "$pth" 2>/dev/null | awk '{print $3}')
+for sym in _pthread_create __pthread_list_lock; do
+	printf '%s\n' "$pth_syms" | grep -qx "$sym" &&
+		ok "libsystem_pthread defines $sym" || bad "libsystem_pthread is missing $sym"
+done
 
 # libsystem_c is the big one: 641 objects from 43 cmake object libraries, each of
 # which can be several flag groups. Spot-check that the C library is really in

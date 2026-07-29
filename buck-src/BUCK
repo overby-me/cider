@@ -283,13 +283,19 @@ darwin_dylib(
     dylib_name = "libsystem_pthread_firstpass.dylib",
     firstpass = True,
     install_name = "/usr/lib/system/libsystem_pthread.dylib",
-    # KNOWN FAILURE, see plan/buck2-port.md: this link hits an illegal text reloc
-    # in _pthread_key_delete -> __pthread_list_lock. It appeared when the generator
-    # started honoring the reference's PER-SOURCE flags, and the reference does not
-    # hit it despite identical compile and link flags. -Wl,-read_only_relocs is not
-    # available on x86_64, so it needs a compile-time answer. The 13 object groups
-    # all compile; only this dylib link fails.
-    objs = [":system_pthread_obj"],
+    # All SEVEN flag groups, not just the first. Naming one group silently drops
+    # objects: the dylib still links, but symbols defined in the others come out
+    # undefined -- which is how this target produced an illegal text reloc to
+    # __pthread_list_lock, a symbol its own pthread.c defines.
+    objs = [
+        ":system_pthread_obj",
+        ":system_pthread_obj2",
+        ":system_pthread_obj3",
+        ":system_pthread_obj4",
+        ":system_pthread_obj5",
+        ":system_pthread_obj6",
+        ":system_pthread_obj7",
+    ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -300,7 +306,10 @@ darwin_dylib(
     dylib_name = "libsystem_malloc_firstpass.dylib",
     firstpass = True,
     install_name = "/usr/lib/system/libsystem_malloc.dylib",
-    objs = [":system_malloc_obj"],
+    objs = [
+        ":system_malloc_obj",
+        ":system_malloc_obj2",
+    ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],

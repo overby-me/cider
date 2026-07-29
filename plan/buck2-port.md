@@ -299,15 +299,20 @@ targets, all of which generate.
   `stack_logging_internal.h`, `CoreFoundation/CoreFoundation.h`), i.e. the same
   demand-driven "declare what this target includes" work, not a new class.
 
-**KNOWN FAILURE: `libsystem_pthread`'s firstpass dylib no longer links.** Its 13
-object groups all compile, but the link hits `illegal text reloc in
-'_pthread_key_delete' to '__pthread_list_lock'`. This appeared when the generator
-started honoring the reference's PER-SOURCE flags -- previously every source got
-the first edge's flags, which is wrong but happened to avoid it. The reference does
-not hit it despite identical compile AND link flags, so its objects differ in a way
-not yet understood, and `-Wl,-read_only_relocs,suppress` is not available on
-x86_64. Recorded rather than papered over: the test suite asserts the objects
-compile and does not assert the dylib links.
+**The pthread "text reloc" was my own bug, and it was hiding a worse one.**
+`libsystem_pthread`'s dylib failed with `illegal text reloc in
+'_pthread_key_delete' to '__pthread_list_lock'`. The symbol is defined by the
+target's own `pthread.c` -- but per-source flag grouping had split the cmake object
+library into SEVEN buck targets, and the dylib named only the first. So the object
+defining the symbol was never linked in.
+
+The failure mode worth remembering: naming one group **still links**. `libsystem_c`
+was fine only because its object list was expanded deliberately;
+`libsystem_malloc`'s dylib had been linking all along while silently missing a
+group's symbols (99 exports after the fix). A dylib that links is not evidence that
+its objects are all there, so the generator now expands each cmake object library
+into all of its flag-group targets, and the suite asserts symbols from more than one
+group (`_pthread_create` and `__pthread_list_lock` come from different groups).
 
 Open: `libkqueue` (the 44th object library libsystem_c links) does not compile.
 Its XNU-emulation headers need an include ordering this port has not worked out
