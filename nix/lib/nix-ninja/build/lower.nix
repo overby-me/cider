@@ -1138,6 +1138,9 @@ in {
             find . -type f \( ${findNames (hdrExts ++ srcExts ++ [ "s" "asm" ])} \)
             find . -type f ! -name "*.*" \( -path "*/include/*" -o -path "*/Headers/*" \)
           } | LC_ALL=C sort -u | cpio -pdm --quiet "$out" 2>/dev/null || true
+          # cpio preserves the read-only store mode on the copied dirs; make them
+          # writable so the per-file ninjaRoot pass below can add generated headers.
+          chmod -R u+w "$out" 2>/dev/null || true
           # 2. Configured build dir (ninjaRoot): cmake-generated headers (darling-config.h
           # from configure_file, mig/rpc outputs). These overlay onto dirs the source pass
           # may have created as SYMLINKS (darling has symlink dirs like src/include), which
