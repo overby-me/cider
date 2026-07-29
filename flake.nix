@@ -247,6 +247,23 @@
           grouping = dn.componentGrouping;
         };
 
+      # Task #80: same migcom grouping, but the per-edge lowering runs at BUILD time
+      # (lower_group.py) instead of in Nix eval. Proof target for the fast-eval refactor.
+      #   nix build .#darling-group-test3-bt
+      packages.darling-group-test3-bt =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          target = "src/external/bootstrap_cmds/migcom";
+          grouping = dn.componentGrouping;
+          buildTimeLowering = true;
+        };
+
       # #78 core milestone: build libSystem.B.dylib (the core umbrella: ~13 core
       # components with real cross-group deps + heavy Mach/kernel header staging) via
       # per-component grouping. The first grouped build that exercises libSystem-scale
@@ -265,6 +282,21 @@
           grouping = dn.componentGrouping;
         };
 
+      # Task #80: libSystem via build-time lowering (correctness gate at umbrella scale).
+      packages.darling-libsystem-group-bt =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          target = "src/external/libsystem/libSystem.B.dylib";
+          grouping = dn.componentGrouping;
+          buildTimeLowering = true;
+        };
+
       # #78 GOAL: the full darling built via per-component grouping. No explicit
       # target -> the manifest's `default` (the `all` phony) -> every final artifact,
       # each materialized from its component group derivation (dependency groups built
@@ -280,6 +312,22 @@
         in
         dn.buildTarget {
           grouping = dn.componentGrouping;
+        };
+
+      # Task #80: the full grouped build via build-time lowering. The eval-speed target
+      # (~1-2min eval vs the eval-time path's ~15-40min).
+      #   nix build .#darling-full-group-bt
+      packages.darling-full-group-bt =
+        pkgs:
+        let
+          dn = import ./nix/lib/darlingNinja.nix {
+            inherit pkgs;
+            overby = inputs.overby;
+          };
+        in
+        dn.buildTarget {
+          grouping = dn.componentGrouping;
+          buildTimeLowering = true;
         };
 
       # ── The darling host-side daemon (Rust) ──────────────────────────

@@ -42,6 +42,9 @@
   # run via an emitted mini build.ninja) instead of one per edge -- far fewer
   # derivations, still input-isolated. null keeps the per-edge behaviour.
   grouping ? null,
+  # Task #80: run each group's per-edge lowering (rewrite/stage/run) at BUILD time via
+  # lower_group.py instead of in Nix eval, so eval only computes the group dep graph.
+  buildTimeLowering ? false,
   # Packages on PATH for every edge command (CMake bakes absolute tool paths;
   # hand-written manifests calling `cc`/`ar`/... need a toolchain here).
   toolchain ? [pkgs.stdenv.cc pkgs.coreutils],
@@ -161,7 +164,7 @@
 
   lowered =
     (import ./lower.nix {
-      inherit pkgs rewriteRoots extraInputs subs scanMounts;
+      inherit pkgs rewriteRoots extraInputs subs scanMounts graphDrv buildTimeLowering;
       src = ninjaRoot;
       toolchain = edgeToolchain;
     }).lowerGraph

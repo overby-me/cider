@@ -147,6 +147,8 @@ in
       # Per-component grouping (task #26/#78): edgeIndex -> groupId, or null for
       # the per-edge lowering.
       grouping ? null,
+      # Task #80: build-time grouped lowering (lower_group.py) -> fast eval.
+      buildTimeLowering ? false,
       # Bake CMAKE_INSTALL_PREFIX so a nix-ninja-built launcher's compiled-in
       # INSTALL_PREFIX (it execs `INSTALL_PREFIX/bin/darlingserver`) points at an
       # existing monolithic `result` runtime — enabling seconds-fast launcher
@@ -169,6 +171,7 @@ in
         targets
         perFileIncremental
         grouping
+        buildTimeLowering
         rustNinja
         ;
 

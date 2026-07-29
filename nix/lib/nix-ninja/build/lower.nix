@@ -48,6 +48,15 @@
   # `-I` cannot express), and only those individual files are staged. Requires
   # `rewriteRoots` to cover the same trees. Empty = the include-dir heuristic.
   scanMounts ? [],
+  # The graph-json derivation (the shared build graph as a file). Required by the
+  # build-time grouped lowerer (task #80): each group derivation reads it to
+  # reconstruct + run its edges, instead of Nix eval building every edge's command.
+  graphDrv ? null,
+  # Task #80: when true, a group's derivation is produced by invoking lower_group.py
+  # at BUILD time (reads graphDrv, rewrites/stages/runs its edges) so Nix eval only
+  # computes the group dependency graph (~1-2min vs ~15-40min). false keeps the
+  # legacy eval-time mkGroup (every edge's command built as a Nix string).
+  buildTimeLowering ? false,
 }: let
   inherit (pkgs) lib;
   inherit (builtins) filter concatMap listToAttrs elemAt length genList elem;
@@ -1400,7 +1409,36 @@ in {
           # redundant and unsafe against the top-level directory symlinks.)
           ${lib.concatMapStringsSep "\n" runEdge topo}
         '';
-      groupDrvs = listToAttrs (map (g: {name = g; value = mkGroup g;}) groupIds);
+      # Task #80: build-time variant. Nix eval computes only this group's edge list +
+      # external-group drvs; lower_group.py (run in the sandbox) reads graphDrv and does the
+      # per-edge rewrite/stage/run that mkGroup used to build as Nix strings. Same dep wiring
+      # (rewriteRoots, srcHeaders, extGroupDrvs all referenced -> Nix mounts/builds them).
+      mkGroupViaTool = g: let
+        myIds = idsInGroup.${g};
+        allIns = concatMap (i: edgeInputs (elemAt edges i)) myIds;
+        extGids = filter (h: h != g)
+          (fastUniq ((map gid (concatMap realProducers allIns)) ++ headerProducerReps));
+        extGroupDrvs = map (h: groupDrvs.${h}) extGids;
+      in
+        pkgs.runCommand "ninja-group-${lib.strings.sanitizeDerivationName g}" {
+          nativeBuildInputs = toolchain ++ extraInputs ++ [ pkgs.python3 ];
+          preferLocalBuild = true;
+          passthru = { groupId = g; edgeIndices = myIds; };
+        } ''
+          ${pkgs.python3}/bin/python3 ${./lower_group.py} \
+            --graph ${graphDrv} \
+            --edges ${esc (lib.concatStringsSep "," (map toString myIds))} \
+            --out $out \
+            --bash-path ${pkgs.bash}/bin/bash --env-path ${pkgs.coreutils}/bin/env \
+            ${lib.concatMapStringsSep " " (r: "--rewrite-root ${r}") rewriteRoots} \
+            ${lib.optionalString (srcHeaders != null) "--src-headers ${srcHeaders}"} \
+            ${lib.concatMapStringsSep " " (d: "--ext-dir ${d}") extGroupDrvs} \
+            ${lib.concatMapStringsSep " " (s: "--toolsub ${esc s.from}=${esc s.to}") toolPathSubs}
+        '';
+      groupDrvs = listToAttrs (map (g: {
+        name = g;
+        value = (if buildTimeLowering then mkGroupViaTool else mkGroup) g;
+      }) groupIds);
       groupDrvForOutput = p: groupDrvs.${groupOfOutput p};
       # Group-aware realOutputsForTarget: every real output of the edges a (possibly
       # phony) target resolves to, paired with the GROUP derivation that produces it.
