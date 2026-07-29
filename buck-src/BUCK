@@ -283,6 +283,12 @@ darwin_dylib(
     dylib_name = "libsystem_pthread_firstpass.dylib",
     firstpass = True,
     install_name = "/usr/lib/system/libsystem_pthread.dylib",
+    # KNOWN FAILURE, see plan/buck2-port.md: this link hits an illegal text reloc
+    # in _pthread_key_delete -> __pthread_list_lock. It appeared when the generator
+    # started honoring the reference's PER-SOURCE flags, and the reference does not
+    # hit it despite identical compile and link flags. -Wl,-read_only_relocs is not
+    # available on x86_64, so it needs a compile-time answer. The 13 object groups
+    # all compile; only this dylib link fails.
     objs = [":system_pthread_obj"],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -316,7 +322,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        ":system_asl_inc",
+        ":system_asl_inc_libsystem_asl_tproj_include",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -328,7 +334,7 @@ mig_gen(
 # cmake target: system_asl_obj  ->  src/external/syslog/libsystem_asl.tproj/system_asl_obj
 
 cc_header_root(
-    name = "system_asl_inc",
+    name = "system_asl_inc_libsystem_asl_tproj_include",
     headers = glob(["syslog/libsystem_asl.tproj/include/**/*.h"]),
     root = "syslog/libsystem_asl.tproj/include",
 )
@@ -358,9 +364,9 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_asl_inc",
-        ":asl_ipc_mig",
         "//darwin:sdk_env",
+        ":asl_ipc_mig",
+        ":system_asl_inc_libsystem_asl_tproj_include",
     ],
 )
 # END generated: system_asl_obj
@@ -374,7 +380,7 @@ cc_objects(
 # cmake target: system_coretls_obj  ->  src/external/coretls/system_coretls_obj
 
 cc_header_root(
-    name = "system_coretls_inc",
+    name = "system_coretls_inc_lib",
     headers = glob(["coretls/lib/**/*.h"]),
     root = "coretls/lib",
 )
@@ -382,36 +388,36 @@ cc_header_root(
 cc_objects(
     name = "system_coretls_obj",
     srcs = [
-        "coretls/lib/tls_cache.c",
         "coretls/lib/appleSession.c",
-        "coretls/lib/tls_ciphersuites.c",
-        "coretls/lib/tls_record_crypto.c",
-        "coretls/lib/tls_record.c",
-        "coretls/lib/sslRc4Cipher.c",
-        "coretls/lib/sslMemory.c",
-        "coretls/lib/sslUtils.c",
-        "coretls/lib/symCipherParams.c",
-        "coretls/lib/sslNullCipher.c",
-        "coretls/lib/symCipher.c",
-        "coretls/lib/tls_digest.c",
-        "coretls/lib/tls_hmac.c",
+        "coretls/lib/ssl3Callouts.c",
         "coretls/lib/sslAesGcmCipher.c",
-        "coretls/lib/sslDecode.c",
-        "coretls/lib/sslSession.c",
-        "coretls/lib/sslCipherSpecs.c",
-        "coretls/lib/sslDigests.c",
-        "coretls/lib/sslCrypto.c",
-        "coretls/lib/sslChangeCipher.c",
-        "coretls/lib/sslCert.c",
-        "coretls/lib/tls_metrics.c",
-        "coretls/lib/sslKeyExchange.c",
         "coretls/lib/sslAlertMessage.c",
+        "coretls/lib/sslCert.c",
+        "coretls/lib/sslChangeCipher.c",
+        "coretls/lib/sslCipherSpecs.c",
+        "coretls/lib/sslCrypto.c",
+        "coretls/lib/sslDecode.c",
+        "coretls/lib/sslDigests.c",
         "coretls/lib/sslHandshake.c",
         "coretls/lib/sslHandshakeFinish.c",
-        "coretls/lib/tls1Callouts.c",
         "coretls/lib/sslHandshakeHello.c",
+        "coretls/lib/sslKeyExchange.c",
+        "coretls/lib/sslMemory.c",
+        "coretls/lib/sslNullCipher.c",
+        "coretls/lib/sslRc4Cipher.c",
+        "coretls/lib/sslSession.c",
+        "coretls/lib/sslUtils.c",
+        "coretls/lib/symCipher.c",
+        "coretls/lib/symCipherParams.c",
+        "coretls/lib/tls1Callouts.c",
+        "coretls/lib/tls_cache.c",
+        "coretls/lib/tls_ciphersuites.c",
+        "coretls/lib/tls_digest.c",
         "coretls/lib/tls_handshake.c",
-        "coretls/lib/ssl3Callouts.c",
+        "coretls/lib/tls_hmac.c",
+        "coretls/lib/tls_metrics.c",
+        "coretls/lib/tls_record.c",
+        "coretls/lib/tls_record_crypto.c",
         "coretls/lib/tls_stream_parser.c",
     ],
     compiler_flags = [
@@ -424,10 +430,10 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_coretls_inc",
+        "//darwin:sdk_env",
         ":fw_Security",
         ":fw_CoreFoundation",
-        "//darwin:sdk_env",
+        ":system_coretls_inc_lib",
     ],
 )
 # END generated: system_coretls_obj
@@ -465,27 +471,29 @@ load("//buck/generated:sdk_framework_private_buck_src.bzl", FRAMEWORKS1 = "FRAME
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py system_malloc_obj   -- review before committing.
 # cmake target: system_malloc_obj  ->  src/external/libmalloc/system_malloc_obj
+# 19 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
 
 cc_header_root(
-    name = "system_malloc_inc",
+    name = "system_malloc_inc_include_malloc",
     headers = glob(["libmalloc/include/malloc/**/*.h"]),
     root = "libmalloc/include/malloc",
 )
 
 cc_header_root(
-    name = "system_malloc_inc1",
+    name = "system_malloc_inc_private",
     headers = glob(["libmalloc/private/**/*.h"]),
     root = "libmalloc/private",
 )
 
 cc_header_root(
-    name = "system_malloc_inc2",
+    name = "system_malloc_inc_include",
     headers = glob(["libmalloc/include/**/*.h"]),
     root = "libmalloc/include",
 )
 
 cc_header_root(
-    name = "system_malloc_inc3",
+    name = "system_malloc_inc_resolver",
     headers = glob(["libmalloc/resolver/**/*.h"]),
     root = "libmalloc/resolver",
 )
@@ -498,19 +506,18 @@ cc_objects(
         "libmalloc/src/legacy_malloc.c",
         "libmalloc/src/magazine_large.c",
         "libmalloc/src/magazine_malloc.c",
+        "libmalloc/src/magazine_medium.c",
+        "libmalloc/src/magazine_rack.c",
         "libmalloc/src/magazine_small.c",
         "libmalloc/src/magazine_tiny.c",
         "libmalloc/src/malloc.c",
-        "libmalloc/src/nano_malloc.c",
-        "libmalloc/src/pguard_malloc.c",
-        "libmalloc/src/purgeable_malloc.c",
-        "libmalloc/src/magazine_medium.c",
-        "libmalloc/src/magazine_rack.c",
         "libmalloc/src/malloc_common.c",
         "libmalloc/src/malloc_printf.c",
         "libmalloc/src/msl_lite_support.c",
+        "libmalloc/src/nano_malloc.c",
         "libmalloc/src/nano_malloc_common.c",
-        "libmalloc/src/nanov2_malloc.c",
+        "libmalloc/src/pguard_malloc.c",
+        "libmalloc/src/purgeable_malloc.c",
         "libmalloc/src/vm.c",
     ],
     compiler_flags = [
@@ -522,11 +529,35 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_malloc_inc",
-        ":system_malloc_inc1",
-        ":system_malloc_inc2",
-        ":system_malloc_inc3",
         "//darwin:sdk_env",
+        ":system_malloc_inc_include_malloc",
+        ":system_malloc_inc_private",
+        ":system_malloc_inc_include",
+        ":system_malloc_inc_resolver",
+    ],
+)
+
+cc_objects(
+    name = "system_malloc_obj2",
+    srcs = [
+        "libmalloc/src/nanov2_malloc.c",
+    ],
+    compiler_flags = [
+        "-DOS_UNFAIR_LOCK_INLINE=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-nostdinc",
+        "-DOS_VARIANT_NOTRESOLVED=1",
+        "-DOS_VARIANT_RESOLVED=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_malloc_inc_include_malloc",
+        ":system_malloc_inc_private",
+        ":system_malloc_inc_include",
+        ":system_malloc_inc_resolver",
     ],
 )
 # END generated: system_malloc_obj
@@ -558,27 +589,29 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py system_pthread_obj   -- review before committing.
 # cmake target: system_pthread_obj  ->  src/external/libpthread/src/system_pthread_obj
+# 13 sources in 7 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
 
 cc_header_root(
-    name = "system_pthread_inc",
+    name = "system_pthread_inc_src",
     headers = glob(["libpthread/src/**/*.h"]),
     root = "libpthread/src",
 )
 
 cc_header_root(
-    name = "system_pthread_inc1",
+    name = "system_pthread_inc_src_resolver",
     headers = glob(["libpthread/src/resolver/**/*.h"]),
     root = "libpthread/src/resolver",
 )
 
 cc_header_root(
-    name = "system_pthread_inc2",
+    name = "system_pthread_inc_private",
     headers = glob(["libpthread/private/**/*.h"]),
     root = "libpthread/private",
 )
 
 cc_header_root(
-    name = "system_pthread_inc3",
+    name = "system_pthread_inc_libpthread",
     headers = glob(["libpthread/**/*.h"]),
     root = "libpthread",
 )
@@ -587,17 +620,11 @@ cc_objects(
     name = "system_pthread_obj",
     srcs = [
         "libpthread/src/pthread_atfork.c",
-        "libpthread/src/pthread.c",
-        "libpthread/src/pthread_cond.c",
         "libpthread/src/pthread_cwd.c",
         "libpthread/src/pthread_dependency.c",
-        "libpthread/src/pthread_mutex.c",
-        "libpthread/src/pthread_rwlock.c",
         "libpthread/src/pthread_tsd.c",
-        "libpthread/src/pthread_cancelable.c",
         "libpthread/src/qos.c",
         "libpthread/src/resolver/resolver.c",
-        "libpthread/src/pthread_asm.S",
         "libpthread/src/variants/pthread_cancelable_cancel.c",
     ],
     compiler_flags = [
@@ -617,11 +644,222 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_pthread_inc",
-        ":system_pthread_inc1",
-        ":system_pthread_inc2",
-        ":system_pthread_inc3",
         "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj2",
+    srcs = [
+        "libpthread/src/pthread.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_CANCEL",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELSTATE",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELTYPE",
+        "-DLIBC_ALIAS_PTHREAD_SIGMASK",
+        "-DLIBC_ALIAS_PTHREAD_TESTCANCEL",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj3",
+    srcs = [
+        "libpthread/src/pthread_asm.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj4",
+    srcs = [
+        "libpthread/src/pthread_cancelable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+        "-DLIBC_ALIAS_PTHREAD_JOIN",
+        "-DLIBC_ALIAS_SIGWAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj5",
+    srcs = [
+        "libpthread/src/pthread_cond.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_INIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj6",
+    srcs = [
+        "libpthread/src/pthread_mutex.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+)
+
+cc_objects(
+    name = "system_pthread_obj7",
+    srcs = [
+        "libpthread/src/pthread_rwlock.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_INIT",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_WRLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_RDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_UNLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_DESTROY",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYRDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYWRLOCK",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
     ],
 )
 # END generated: system_pthread_obj
@@ -761,6 +999,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -769,7 +1008,6 @@ cc_objects(
         ":libc-compat_inc_locale_FreeBSD",
         ":libc-compat_inc_include_NetBSD",
         ":libc-compat_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -816,6 +1054,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -824,7 +1063,6 @@ cc_objects(
         ":libc-compat_inc_locale_FreeBSD",
         ":libc-compat_inc_include_NetBSD",
         ":libc-compat_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -871,6 +1109,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -879,7 +1118,6 @@ cc_objects(
         ":libc-compat_inc_locale_FreeBSD",
         ":libc-compat_inc_include_NetBSD",
         ":libc-compat_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -926,6 +1164,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -934,7 +1173,6 @@ cc_objects(
         ":libc-compat_inc_locale_FreeBSD",
         ":libc-compat_inc_include_NetBSD",
         ":libc-compat_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -981,6 +1219,7 @@ cc_objects(
     deps = [
         ":libc-compat_inc_generated_private_include",
         ":libc-compat_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_inc_fbsdcompat",
         ":libc-compat_inc_darwin",
         ":libc-compat_inc_generated_derived",
@@ -989,7 +1228,6 @@ cc_objects(
         ":libc-compat_inc_locale_FreeBSD",
         ":libc-compat_inc_include_NetBSD",
         ":libc-compat_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-compat
@@ -1112,6 +1350,7 @@ cc_objects(
     deps = [
         ":libc-compat_cancelable_inc_generated_private_include",
         ":libc-compat_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_cancelable_inc_fbsdcompat",
         ":libc-compat_cancelable_inc_darwin",
         ":libc-compat_cancelable_inc_generated_derived",
@@ -1120,7 +1359,6 @@ cc_objects(
         ":libc-compat_cancelable_inc_locale_FreeBSD",
         ":libc-compat_cancelable_inc_include_NetBSD",
         ":libc-compat_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -1171,6 +1409,7 @@ cc_objects(
     deps = [
         ":libc-compat_cancelable_inc_generated_private_include",
         ":libc-compat_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_cancelable_inc_fbsdcompat",
         ":libc-compat_cancelable_inc_darwin",
         ":libc-compat_cancelable_inc_generated_derived",
@@ -1179,7 +1418,6 @@ cc_objects(
         ":libc-compat_cancelable_inc_locale_FreeBSD",
         ":libc-compat_cancelable_inc_include_NetBSD",
         ":libc-compat_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-compat_cancelable
@@ -1287,6 +1525,7 @@ cc_objects(
     deps = [
         ":libc-compat_legacy_inc_generated_private_include",
         ":libc-compat_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-compat_legacy_inc_fbsdcompat",
         ":libc-compat_legacy_inc_darwin",
         ":libc-compat_legacy_inc_generated_derived",
@@ -1295,7 +1534,6 @@ cc_objects(
         ":libc-compat_legacy_inc_locale_FreeBSD",
         ":libc-compat_legacy_inc_include_NetBSD",
         ":libc-compat_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-compat_legacy
@@ -1408,6 +1646,7 @@ cc_objects(
     deps = [
         ":libc-darwin_inc_generated_private_include",
         ":libc-darwin_inc_include",
+        "//darwin:sdk_env",
         ":libc-darwin_inc_fbsdcompat",
         ":libc-darwin_inc_darwin",
         ":libc-darwin_inc_generated_derived",
@@ -1416,7 +1655,6 @@ cc_objects(
         ":libc-darwin_inc_locale_FreeBSD",
         ":libc-darwin_inc_include_NetBSD",
         ":libc-darwin_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-darwin
@@ -1556,6 +1794,7 @@ cc_objects(
     deps = [
         ":libc-db_inc_generated_private_include",
         ":libc-db_inc_include",
+        "//darwin:sdk_env",
         ":libc-db_inc_fbsdcompat",
         ":libc-db_inc_darwin",
         ":libc-db_inc_generated_derived",
@@ -1564,7 +1803,6 @@ cc_objects(
         ":libc-db_inc_locale_FreeBSD",
         ":libc-db_inc_include_NetBSD",
         ":libc-db_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-db
@@ -1679,6 +1917,7 @@ cc_objects(
     deps = [
         ":libc-emulated_inc_generated_private_include",
         ":libc-emulated_inc_include",
+        "//darwin:sdk_env",
         ":libc-emulated_inc_fbsdcompat",
         ":libc-emulated_inc_darwin",
         ":libc-emulated_inc_generated_derived",
@@ -1687,7 +1926,6 @@ cc_objects(
         ":libc-emulated_inc_locale_FreeBSD",
         ":libc-emulated_inc_include_NetBSD",
         ":libc-emulated_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-emulated
@@ -1823,6 +2061,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_inc_generated_private_include",
         ":libc-gdtoa_inc_include",
+        "//darwin:sdk_env",
         ":libc-gdtoa_inc_fbsdcompat",
         ":libc-gdtoa_inc_darwin",
         ":libc-gdtoa_inc_generated_derived",
@@ -1832,7 +2071,6 @@ cc_objects(
         ":libc-gdtoa_inc_include_NetBSD",
         ":libc-gdtoa_inc_stdtime_FreeBSD",
         ":libc-gdtoa_inc_gdtoa",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gdtoa
@@ -1969,6 +2207,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_dyld_inc_generated_private_include",
         ":libc-gdtoa_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gdtoa_dyld_inc_fbsdcompat",
         ":libc-gdtoa_dyld_inc_darwin",
         ":libc-gdtoa_dyld_inc_generated_derived",
@@ -1978,7 +2217,6 @@ cc_objects(
         ":libc-gdtoa_dyld_inc_include_NetBSD",
         ":libc-gdtoa_dyld_inc_stdtime_FreeBSD",
         ":libc-gdtoa_dyld_inc_gdtoa",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gdtoa_dyld
@@ -2086,6 +2324,7 @@ cc_objects(
     deps = [
         ":libc-gdtoa_legacy_inc_generated_private_include",
         ":libc-gdtoa_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-gdtoa_legacy_inc_fbsdcompat",
         ":libc-gdtoa_legacy_inc_darwin",
         ":libc-gdtoa_legacy_inc_generated_derived",
@@ -2094,7 +2333,6 @@ cc_objects(
         ":libc-gdtoa_legacy_inc_locale_FreeBSD",
         ":libc-gdtoa_legacy_inc_include_NetBSD",
         ":libc-gdtoa_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gdtoa_legacy
@@ -2291,6 +2529,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2299,7 +2538,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2350,6 +2588,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2358,7 +2597,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2411,6 +2649,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2419,7 +2658,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2470,6 +2708,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2478,7 +2717,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2529,6 +2767,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2537,7 +2776,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2588,6 +2826,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2596,7 +2835,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2647,6 +2885,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2655,7 +2894,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2706,6 +2944,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2714,7 +2953,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2768,6 +3006,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2776,7 +3015,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2827,6 +3065,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2835,7 +3074,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2889,6 +3127,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2897,7 +3136,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -2949,6 +3187,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -2957,7 +3196,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3010,6 +3248,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3018,7 +3257,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3071,6 +3309,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3079,7 +3318,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3130,6 +3368,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3138,7 +3377,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3189,6 +3427,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3197,7 +3436,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3251,6 +3489,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3259,7 +3498,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3310,6 +3548,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3318,7 +3557,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3369,6 +3607,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3377,7 +3616,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3428,6 +3666,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3436,7 +3675,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3487,6 +3725,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3495,7 +3734,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3546,6 +3784,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3554,7 +3793,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3605,6 +3843,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3613,7 +3852,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3664,6 +3902,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3672,7 +3911,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3723,6 +3961,7 @@ cc_objects(
     deps = [
         ":libc-gen_inc_generated_private_include",
         ":libc-gen_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_inc_fbsdcompat",
         ":libc-gen_inc_darwin",
         ":libc-gen_inc_generated_derived",
@@ -3731,7 +3970,6 @@ cc_objects(
         ":libc-gen_inc_locale_FreeBSD",
         ":libc-gen_inc_include_NetBSD",
         ":libc-gen_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen
@@ -3857,6 +4095,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3865,7 +4104,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3919,6 +4157,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3927,7 +4166,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -3981,6 +4219,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -3989,7 +4228,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4043,6 +4281,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -4051,7 +4290,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4105,6 +4343,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -4113,7 +4352,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4167,6 +4405,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -4175,7 +4414,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4229,6 +4467,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -4237,7 +4476,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4291,6 +4529,7 @@ cc_objects(
     deps = [
         ":libc-gen_cancelable_inc_generated_private_include",
         ":libc-gen_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_cancelable_inc_fbsdcompat",
         ":libc-gen_cancelable_inc_darwin",
         ":libc-gen_cancelable_inc_generated_derived",
@@ -4299,7 +4538,6 @@ cc_objects(
         ":libc-gen_cancelable_inc_locale_FreeBSD",
         ":libc-gen_cancelable_inc_include_NetBSD",
         ":libc-gen_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_cancelable
@@ -4430,6 +4668,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4438,7 +4677,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4496,6 +4734,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4504,7 +4743,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4563,6 +4801,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4571,7 +4810,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4628,6 +4866,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4636,7 +4875,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4695,6 +4933,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4703,7 +4942,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4759,6 +4997,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4767,7 +5006,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4823,6 +5061,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4831,7 +5070,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -4887,6 +5125,7 @@ cc_objects(
     deps = [
         ":libc-gen_dyld_inc_generated_private_include",
         ":libc-gen_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_dyld_inc_fbsdcompat",
         ":libc-gen_dyld_inc_darwin",
         ":libc-gen_dyld_inc_generated_derived",
@@ -4895,7 +5134,6 @@ cc_objects(
         ":libc-gen_dyld_inc_locale_FreeBSD",
         ":libc-gen_dyld_inc_include_NetBSD",
         ":libc-gen_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_dyld
@@ -5022,6 +5260,7 @@ cc_objects(
     deps = [
         ":libc-gen_extsn_inc_generated_private_include",
         ":libc-gen_extsn_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_extsn_inc_fbsdcompat",
         ":libc-gen_extsn_inc_darwin",
         ":libc-gen_extsn_inc_generated_derived",
@@ -5030,7 +5269,6 @@ cc_objects(
         ":libc-gen_extsn_inc_locale_FreeBSD",
         ":libc-gen_extsn_inc_include_NetBSD",
         ":libc-gen_extsn_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_extsn
@@ -5138,6 +5376,7 @@ cc_objects(
     deps = [
         ":libc-gen_legacy_inc_generated_private_include",
         ":libc-gen_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_legacy_inc_fbsdcompat",
         ":libc-gen_legacy_inc_darwin",
         ":libc-gen_legacy_inc_generated_derived",
@@ -5146,7 +5385,6 @@ cc_objects(
         ":libc-gen_legacy_inc_locale_FreeBSD",
         ":libc-gen_legacy_inc_include_NetBSD",
         ":libc-gen_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_legacy
@@ -5268,6 +5506,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5276,7 +5515,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5332,6 +5570,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5340,7 +5579,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5399,6 +5637,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5407,7 +5646,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5464,6 +5702,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5472,7 +5711,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5530,6 +5768,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5538,7 +5777,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5596,6 +5834,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5604,7 +5843,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -5663,6 +5901,7 @@ cc_objects(
     deps = [
         ":libc-gen_noinode64_inc_generated_private_include",
         ":libc-gen_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_noinode64_inc_fbsdcompat",
         ":libc-gen_noinode64_inc_darwin",
         ":libc-gen_noinode64_inc_generated_derived",
@@ -5671,7 +5910,6 @@ cc_objects(
         ":libc-gen_noinode64_inc_locale_FreeBSD",
         ":libc-gen_noinode64_inc_include_NetBSD",
         ":libc-gen_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_noinode64
@@ -5796,6 +6034,7 @@ cc_objects(
     deps = [
         ":libc-gen_pre1050_inc_generated_private_include",
         ":libc-gen_pre1050_inc_include",
+        "//darwin:sdk_env",
         ":libc-gen_pre1050_inc_fbsdcompat",
         ":libc-gen_pre1050_inc_darwin",
         ":libc-gen_pre1050_inc_generated_derived",
@@ -5804,7 +6043,6 @@ cc_objects(
         ":libc-gen_pre1050_inc_locale_FreeBSD",
         ":libc-gen_pre1050_inc_include_NetBSD",
         ":libc-gen_pre1050_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gen_pre1050
@@ -5913,6 +6151,7 @@ cc_objects(
     deps = [
         ":libc-gmon_inc_generated_private_include",
         ":libc-gmon_inc_include",
+        "//darwin:sdk_env",
         ":libc-gmon_inc_fbsdcompat",
         ":libc-gmon_inc_darwin",
         ":libc-gmon_inc_generated_derived",
@@ -5921,7 +6160,6 @@ cc_objects(
         ":libc-gmon_inc_locale_FreeBSD",
         ":libc-gmon_inc_include_NetBSD",
         ":libc-gmon_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-gmon
@@ -6022,6 +6260,7 @@ cc_objects(
     deps = [
         ":libc-hwplat_dyld_inc_generated_private_include",
         ":libc-hwplat_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-hwplat_dyld_inc_fbsdcompat",
         ":libc-hwplat_dyld_inc_darwin",
         ":libc-hwplat_dyld_inc_generated_derived",
@@ -6030,7 +6269,6 @@ cc_objects(
         ":libc-hwplat_dyld_inc_locale_FreeBSD",
         ":libc-hwplat_dyld_inc_include_NetBSD",
         ":libc-hwplat_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-hwplat_dyld
@@ -6138,6 +6376,7 @@ cc_objects(
     deps = [
         ":libc-i386_inc_generated_private_include",
         ":libc-i386_inc_include",
+        "//darwin:sdk_env",
         ":libc-i386_inc_fbsdcompat",
         ":libc-i386_inc_darwin",
         ":libc-i386_inc_generated_derived",
@@ -6146,7 +6385,6 @@ cc_objects(
         ":libc-i386_inc_locale_FreeBSD",
         ":libc-i386_inc_include_NetBSD",
         ":libc-i386_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-i386
@@ -6319,6 +6557,7 @@ cc_objects(
     deps = [
         ":libc-locale_inc_generated_private_include",
         ":libc-locale_inc_include",
+        "//darwin:sdk_env",
         ":libc-locale_inc_fbsdcompat",
         ":libc-locale_inc_darwin",
         ":libc-locale_inc_generated_derived",
@@ -6327,7 +6566,6 @@ cc_objects(
         ":libc-locale_inc_locale_FreeBSD",
         ":libc-locale_inc_include_NetBSD",
         ":libc-locale_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -6373,6 +6611,7 @@ cc_objects(
     deps = [
         ":libc-locale_inc_generated_private_include",
         ":libc-locale_inc_include",
+        "//darwin:sdk_env",
         ":libc-locale_inc_fbsdcompat",
         ":libc-locale_inc_darwin",
         ":libc-locale_inc_generated_derived",
@@ -6381,7 +6620,6 @@ cc_objects(
         ":libc-locale_inc_locale_FreeBSD",
         ":libc-locale_inc_include_NetBSD",
         ":libc-locale_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-locale
@@ -6489,6 +6727,7 @@ cc_objects(
     deps = [
         ":libc-locale_legacy_inc_generated_private_include",
         ":libc-locale_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-locale_legacy_inc_fbsdcompat",
         ":libc-locale_legacy_inc_darwin",
         ":libc-locale_legacy_inc_generated_derived",
@@ -6497,7 +6736,6 @@ cc_objects(
         ":libc-locale_legacy_inc_locale_FreeBSD",
         ":libc-locale_legacy_inc_include_NetBSD",
         ":libc-locale_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-locale_legacy
@@ -6626,6 +6864,7 @@ cc_objects(
     deps = [
         ":libc-net_inc_generated_private_include",
         ":libc-net_inc_include",
+        "//darwin:sdk_env",
         ":libc-net_inc_fbsdcompat",
         ":libc-net_inc_darwin",
         ":libc-net_inc_generated_derived",
@@ -6634,7 +6873,6 @@ cc_objects(
         ":libc-net_inc_locale_FreeBSD",
         ":libc-net_inc_include_NetBSD",
         ":libc-net_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-net
@@ -6750,6 +6988,7 @@ cc_objects(
     deps = [
         ":libc-net_cancelable_inc_generated_private_include",
         ":libc-net_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-net_cancelable_inc_fbsdcompat",
         ":libc-net_cancelable_inc_darwin",
         ":libc-net_cancelable_inc_generated_derived",
@@ -6758,7 +6997,6 @@ cc_objects(
         ":libc-net_cancelable_inc_locale_FreeBSD",
         ":libc-net_cancelable_inc_include_NetBSD",
         ":libc-net_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-net_cancelable
@@ -6866,6 +7104,7 @@ cc_objects(
     deps = [
         ":libc-net_legacy_inc_generated_private_include",
         ":libc-net_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-net_legacy_inc_fbsdcompat",
         ":libc-net_legacy_inc_darwin",
         ":libc-net_legacy_inc_generated_derived",
@@ -6874,7 +7113,6 @@ cc_objects(
         ":libc-net_legacy_inc_locale_FreeBSD",
         ":libc-net_legacy_inc_include_NetBSD",
         ":libc-net_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-net_legacy
@@ -6988,6 +7226,7 @@ cc_objects(
     deps = [
         ":libc-nls_inc_generated_private_include",
         ":libc-nls_inc_include",
+        "//darwin:sdk_env",
         ":libc-nls_inc_fbsdcompat",
         ":libc-nls_inc_darwin",
         ":libc-nls_inc_generated_derived",
@@ -6997,7 +7236,6 @@ cc_objects(
         ":libc-nls_inc_include_NetBSD",
         ":libc-nls_inc_stdtime_FreeBSD",
         ":libc-nls_inc_include_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-nls
@@ -7112,6 +7350,7 @@ cc_objects(
     deps = [
         ":libc-os_inc_generated_private_include",
         ":libc-os_inc_include",
+        "//darwin:sdk_env",
         ":libc-os_inc_fbsdcompat",
         ":libc-os_inc_darwin",
         ":libc-os_inc_generated_derived",
@@ -7121,7 +7360,6 @@ cc_objects(
         ":libc-os_inc_include_NetBSD",
         ":libc-os_inc_stdtime_FreeBSD",
         ":libc-os_inc_libc",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-os
@@ -7234,6 +7472,7 @@ cc_objects(
     deps = [
         ":libc-posix1e_inc_generated_private_include",
         ":libc-posix1e_inc_include",
+        "//darwin:sdk_env",
         ":libc-posix1e_inc_fbsdcompat",
         ":libc-posix1e_inc_darwin",
         ":libc-posix1e_inc_generated_derived",
@@ -7242,7 +7481,6 @@ cc_objects(
         ":libc-posix1e_inc_locale_FreeBSD",
         ":libc-posix1e_inc_include_NetBSD",
         ":libc-posix1e_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-posix1e
@@ -7377,6 +7615,7 @@ cc_objects(
     deps = [
         ":libc-regex_inc_generated_private_include",
         ":libc-regex_inc_include",
+        "//darwin:sdk_env",
         ":libc-regex_inc_fbsdcompat",
         ":libc-regex_inc_darwin",
         ":libc-regex_inc_generated_derived",
@@ -7387,7 +7626,6 @@ cc_objects(
         ":libc-regex_inc_stdtime_FreeBSD",
         ":libc-regex_inc_regex_TRE",
         ":libc-regex_inc_regex_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -7441,6 +7679,7 @@ cc_objects(
     deps = [
         ":libc-regex_inc_generated_private_include",
         ":libc-regex_inc_include",
+        "//darwin:sdk_env",
         ":libc-regex_inc_fbsdcompat",
         ":libc-regex_inc_darwin",
         ":libc-regex_inc_generated_derived",
@@ -7451,7 +7690,6 @@ cc_objects(
         ":libc-regex_inc_stdtime_FreeBSD",
         ":libc-regex_inc_regex_TRE",
         ":libc-regex_inc_regex_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-regex
@@ -7559,6 +7797,7 @@ cc_objects(
     deps = [
         ":libc-regex_legacy_inc_generated_private_include",
         ":libc-regex_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-regex_legacy_inc_fbsdcompat",
         ":libc-regex_legacy_inc_darwin",
         ":libc-regex_legacy_inc_generated_derived",
@@ -7567,7 +7806,6 @@ cc_objects(
         ":libc-regex_legacy_inc_locale_FreeBSD",
         ":libc-regex_legacy_inc_include_NetBSD",
         ":libc-regex_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-regex_legacy
@@ -7707,6 +7945,7 @@ cc_objects(
     deps = [
         ":libc-secure_inc_generated_private_include",
         ":libc-secure_inc_include",
+        "//darwin:sdk_env",
         ":libc-secure_inc_fbsdcompat",
         ":libc-secure_inc_darwin",
         ":libc-secure_inc_generated_derived",
@@ -7717,7 +7956,6 @@ cc_objects(
         ":libc-secure_inc_stdtime_FreeBSD",
         ":libc-secure_inc_gdtoa_FreeBSD",
         ":libc-secure_inc_gdtoa",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-secure
@@ -7963,6 +8201,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -7975,7 +8214,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8030,6 +8268,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8042,7 +8281,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8097,6 +8335,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8109,7 +8348,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8164,6 +8402,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8176,7 +8415,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8231,6 +8469,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8243,7 +8482,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8298,6 +8536,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8310,7 +8549,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8365,6 +8603,7 @@ cc_objects(
     deps = [
         ":libc-stdio_inc_generated_private_include",
         ":libc-stdio_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_inc_fbsdcompat",
         ":libc-stdio_inc_darwin",
         ":libc-stdio_inc_generated_derived",
@@ -8377,7 +8616,6 @@ cc_objects(
         ":libc-stdio_inc_gdtoa",
         ":libc-stdio_inc_stdio_FreeBSD",
         ":libc-stdio_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdio
@@ -8530,6 +8768,7 @@ cc_objects(
     deps = [
         ":libc-stdio_extsn_inc_generated_private_include",
         ":libc-stdio_extsn_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_extsn_inc_fbsdcompat",
         ":libc-stdio_extsn_inc_darwin",
         ":libc-stdio_extsn_inc_generated_derived",
@@ -8542,7 +8781,6 @@ cc_objects(
         ":libc-stdio_extsn_inc_gdtoa",
         ":libc-stdio_extsn_inc_stdio_FreeBSD",
         ":libc-stdio_extsn_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8599,6 +8837,7 @@ cc_objects(
     deps = [
         ":libc-stdio_extsn_inc_generated_private_include",
         ":libc-stdio_extsn_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_extsn_inc_fbsdcompat",
         ":libc-stdio_extsn_inc_darwin",
         ":libc-stdio_extsn_inc_generated_derived",
@@ -8611,7 +8850,6 @@ cc_objects(
         ":libc-stdio_extsn_inc_gdtoa",
         ":libc-stdio_extsn_inc_stdio_FreeBSD",
         ":libc-stdio_extsn_inc_stdio",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdio_extsn
@@ -8719,6 +8957,7 @@ cc_objects(
     deps = [
         ":libc-stdio_legacy_inc_generated_private_include",
         ":libc-stdio_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdio_legacy_inc_fbsdcompat",
         ":libc-stdio_legacy_inc_darwin",
         ":libc-stdio_legacy_inc_generated_derived",
@@ -8727,7 +8966,6 @@ cc_objects(
         ":libc-stdio_legacy_inc_locale_FreeBSD",
         ":libc-stdio_legacy_inc_include_NetBSD",
         ":libc-stdio_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdio_legacy
@@ -8896,6 +9134,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8904,7 +9143,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -8953,6 +9191,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -8961,7 +9200,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9010,6 +9248,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9018,7 +9257,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9067,6 +9305,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9075,7 +9314,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9124,6 +9362,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9132,7 +9371,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9181,6 +9419,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9189,7 +9428,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9239,6 +9477,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9247,7 +9486,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9296,6 +9534,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_inc_generated_private_include",
         ":libc-stdlib_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_inc_fbsdcompat",
         ":libc-stdlib_inc_darwin",
         ":libc-stdlib_inc_generated_derived",
@@ -9304,7 +9543,6 @@ cc_objects(
         ":libc-stdlib_inc_locale_FreeBSD",
         ":libc-stdlib_inc_include_NetBSD",
         ":libc-stdlib_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdlib
@@ -9425,6 +9663,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_cancelable_inc_generated_private_include",
         ":libc-stdlib_cancelable_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_cancelable_inc_fbsdcompat",
         ":libc-stdlib_cancelable_inc_darwin",
         ":libc-stdlib_cancelable_inc_generated_derived",
@@ -9433,7 +9672,6 @@ cc_objects(
         ":libc-stdlib_cancelable_inc_locale_FreeBSD",
         ":libc-stdlib_cancelable_inc_include_NetBSD",
         ":libc-stdlib_cancelable_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdlib_cancelable
@@ -9559,6 +9797,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_dyld_inc_generated_private_include",
         ":libc-stdlib_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_dyld_inc_fbsdcompat",
         ":libc-stdlib_dyld_inc_darwin",
         ":libc-stdlib_dyld_inc_generated_derived",
@@ -9567,7 +9806,6 @@ cc_objects(
         ":libc-stdlib_dyld_inc_locale_FreeBSD",
         ":libc-stdlib_dyld_inc_include_NetBSD",
         ":libc-stdlib_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -9620,6 +9858,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_dyld_inc_generated_private_include",
         ":libc-stdlib_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_dyld_inc_fbsdcompat",
         ":libc-stdlib_dyld_inc_darwin",
         ":libc-stdlib_dyld_inc_generated_derived",
@@ -9628,7 +9867,6 @@ cc_objects(
         ":libc-stdlib_dyld_inc_locale_FreeBSD",
         ":libc-stdlib_dyld_inc_include_NetBSD",
         ":libc-stdlib_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdlib_dyld
@@ -9749,6 +9987,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_extsn_inc_generated_private_include",
         ":libc-stdlib_extsn_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_extsn_inc_fbsdcompat",
         ":libc-stdlib_extsn_inc_darwin",
         ":libc-stdlib_extsn_inc_generated_derived",
@@ -9757,7 +9996,6 @@ cc_objects(
         ":libc-stdlib_extsn_inc_locale_FreeBSD",
         ":libc-stdlib_extsn_inc_include_NetBSD",
         ":libc-stdlib_extsn_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdlib_extsn
@@ -9865,6 +10103,7 @@ cc_objects(
     deps = [
         ":libc-stdlib_legacy_inc_generated_private_include",
         ":libc-stdlib_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdlib_legacy_inc_fbsdcompat",
         ":libc-stdlib_legacy_inc_darwin",
         ":libc-stdlib_legacy_inc_generated_derived",
@@ -9873,7 +10112,6 @@ cc_objects(
         ":libc-stdlib_legacy_inc_locale_FreeBSD",
         ":libc-stdlib_legacy_inc_include_NetBSD",
         ":libc-stdlib_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdlib_legacy
@@ -9993,6 +10231,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10001,7 +10240,6 @@ cc_objects(
         ":libc-stdtime_inc_locale_FreeBSD",
         ":libc-stdtime_inc_include_NetBSD",
         ":libc-stdtime_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -10052,6 +10290,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10060,7 +10299,6 @@ cc_objects(
         ":libc-stdtime_inc_locale_FreeBSD",
         ":libc-stdtime_inc_include_NetBSD",
         ":libc-stdtime_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -10112,6 +10350,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10120,7 +10359,6 @@ cc_objects(
         ":libc-stdtime_inc_locale_FreeBSD",
         ":libc-stdtime_inc_include_NetBSD",
         ":libc-stdtime_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -10172,6 +10410,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_inc_generated_private_include",
         ":libc-stdtime_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdtime_inc_fbsdcompat",
         ":libc-stdtime_inc_darwin",
         ":libc-stdtime_inc_generated_derived",
@@ -10180,7 +10419,6 @@ cc_objects(
         ":libc-stdtime_inc_locale_FreeBSD",
         ":libc-stdtime_inc_include_NetBSD",
         ":libc-stdtime_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdtime
@@ -10288,6 +10526,7 @@ cc_objects(
     deps = [
         ":libc-stdtime_legacy_inc_generated_private_include",
         ":libc-stdtime_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-stdtime_legacy_inc_fbsdcompat",
         ":libc-stdtime_legacy_inc_darwin",
         ":libc-stdtime_legacy_inc_generated_derived",
@@ -10296,7 +10535,6 @@ cc_objects(
         ":libc-stdtime_legacy_inc_locale_FreeBSD",
         ":libc-stdtime_legacy_inc_include_NetBSD",
         ":libc-stdtime_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-stdtime_legacy
@@ -10465,6 +10703,7 @@ cc_objects(
     deps = [
         ":libc-string_inc_generated_private_include",
         ":libc-string_inc_include",
+        "//darwin:sdk_env",
         ":libc-string_inc_fbsdcompat",
         ":libc-string_inc_darwin",
         ":libc-string_inc_generated_derived",
@@ -10473,7 +10712,6 @@ cc_objects(
         ":libc-string_inc_locale_FreeBSD",
         ":libc-string_inc_include_NetBSD",
         ":libc-string_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -10523,6 +10761,7 @@ cc_objects(
     deps = [
         ":libc-string_inc_generated_private_include",
         ":libc-string_inc_include",
+        "//darwin:sdk_env",
         ":libc-string_inc_fbsdcompat",
         ":libc-string_inc_darwin",
         ":libc-string_inc_generated_derived",
@@ -10531,7 +10770,6 @@ cc_objects(
         ":libc-string_inc_locale_FreeBSD",
         ":libc-string_inc_include_NetBSD",
         ":libc-string_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-string
@@ -10657,6 +10895,7 @@ cc_objects(
     deps = [
         ":libc-string_dyld_inc_generated_private_include",
         ":libc-string_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-string_dyld_inc_fbsdcompat",
         ":libc-string_dyld_inc_darwin",
         ":libc-string_dyld_inc_generated_derived",
@@ -10665,7 +10904,6 @@ cc_objects(
         ":libc-string_dyld_inc_locale_FreeBSD",
         ":libc-string_dyld_inc_include_NetBSD",
         ":libc-string_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -10719,6 +10957,7 @@ cc_objects(
     deps = [
         ":libc-string_dyld_inc_generated_private_include",
         ":libc-string_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-string_dyld_inc_fbsdcompat",
         ":libc-string_dyld_inc_darwin",
         ":libc-string_dyld_inc_generated_derived",
@@ -10727,7 +10966,6 @@ cc_objects(
         ":libc-string_dyld_inc_locale_FreeBSD",
         ":libc-string_dyld_inc_include_NetBSD",
         ":libc-string_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-string_dyld
@@ -10835,6 +11073,7 @@ cc_objects(
     deps = [
         ":libc-string_legacy_inc_generated_private_include",
         ":libc-string_legacy_inc_include",
+        "//darwin:sdk_env",
         ":libc-string_legacy_inc_fbsdcompat",
         ":libc-string_legacy_inc_darwin",
         ":libc-string_legacy_inc_generated_derived",
@@ -10843,7 +11082,6 @@ cc_objects(
         ":libc-string_legacy_inc_locale_FreeBSD",
         ":libc-string_legacy_inc_include_NetBSD",
         ":libc-string_legacy_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-string_legacy
@@ -10968,6 +11206,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -10976,7 +11215,6 @@ cc_objects(
         ":libc-sys_inc_locale_FreeBSD",
         ":libc-sys_inc_include_NetBSD",
         ":libc-sys_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -11022,6 +11260,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11030,7 +11269,6 @@ cc_objects(
         ":libc-sys_inc_locale_FreeBSD",
         ":libc-sys_inc_include_NetBSD",
         ":libc-sys_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -11080,6 +11318,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11088,7 +11327,6 @@ cc_objects(
         ":libc-sys_inc_locale_FreeBSD",
         ":libc-sys_inc_include_NetBSD",
         ":libc-sys_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -11138,6 +11376,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11146,7 +11385,6 @@ cc_objects(
         ":libc-sys_inc_locale_FreeBSD",
         ":libc-sys_inc_include_NetBSD",
         ":libc-sys_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 
@@ -11196,6 +11434,7 @@ cc_objects(
     deps = [
         ":libc-sys_inc_generated_private_include",
         ":libc-sys_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_inc_fbsdcompat",
         ":libc-sys_inc_darwin",
         ":libc-sys_inc_generated_derived",
@@ -11204,7 +11443,6 @@ cc_objects(
         ":libc-sys_inc_locale_FreeBSD",
         ":libc-sys_inc_include_NetBSD",
         ":libc-sys_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-sys
@@ -11319,6 +11557,7 @@ cc_objects(
     deps = [
         ":libc-sys_dyld_inc_generated_private_include",
         ":libc-sys_dyld_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_dyld_inc_fbsdcompat",
         ":libc-sys_dyld_inc_darwin",
         ":libc-sys_dyld_inc_generated_derived",
@@ -11327,7 +11566,6 @@ cc_objects(
         ":libc-sys_dyld_inc_locale_FreeBSD",
         ":libc-sys_dyld_inc_include_NetBSD",
         ":libc-sys_dyld_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-sys_dyld
@@ -11441,6 +11679,7 @@ cc_objects(
     deps = [
         ":libc-sys_noinode64_inc_generated_private_include",
         ":libc-sys_noinode64_inc_include",
+        "//darwin:sdk_env",
         ":libc-sys_noinode64_inc_fbsdcompat",
         ":libc-sys_noinode64_inc_darwin",
         ":libc-sys_noinode64_inc_generated_derived",
@@ -11449,7 +11688,6 @@ cc_objects(
         ":libc-sys_noinode64_inc_locale_FreeBSD",
         ":libc-sys_noinode64_inc_include_NetBSD",
         ":libc-sys_noinode64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-sys_noinode64
@@ -11565,6 +11803,7 @@ cc_objects(
     deps = [
         ":libc-util_inc_generated_private_include",
         ":libc-util_inc_include",
+        "//darwin:sdk_env",
         ":libc-util_inc_fbsdcompat",
         ":libc-util_inc_darwin",
         ":libc-util_inc_generated_derived",
@@ -11573,7 +11812,6 @@ cc_objects(
         ":libc-util_inc_locale_FreeBSD",
         ":libc-util_inc_include_NetBSD",
         ":libc-util_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-util
@@ -11697,6 +11935,7 @@ cc_objects(
     deps = [
         ":libc-uuid_inc_generated_private_include",
         ":libc-uuid_inc_include",
+        "//darwin:sdk_env",
         ":libc-uuid_inc_fbsdcompat",
         ":libc-uuid_inc_darwin",
         ":libc-uuid_inc_generated_derived",
@@ -11706,7 +11945,6 @@ cc_objects(
         ":libc-uuid_inc_include_NetBSD",
         ":libc-uuid_inc_stdtime_FreeBSD",
         ":libc-uuid_inc_uuid",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-uuid
@@ -11806,6 +12044,7 @@ cc_objects(
     deps = [
         ":libc-x86_64_inc_generated_private_include",
         ":libc-x86_64_inc_include",
+        "//darwin:sdk_env",
         ":libc-x86_64_inc_fbsdcompat",
         ":libc-x86_64_inc_darwin",
         ":libc-x86_64_inc_generated_derived",
@@ -11814,7 +12053,6 @@ cc_objects(
         ":libc-x86_64_inc_locale_FreeBSD",
         ":libc-x86_64_inc_include_NetBSD",
         ":libc-x86_64_inc_stdtime_FreeBSD",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: libc-x86_64
@@ -12150,3 +12388,2227 @@ darwin_dylib(
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: libsyscall
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libsyscall   -- review before committing.
+# cmake target: libsyscall  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall
+# 562 sources in 5 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+
+cc_header_root(
+    name = "libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/wrappers/spawn/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/spawn",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/wrappers/libproc/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/libproc",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/os/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/os",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/mach/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/mach",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+    headers = glob(["xnu/darling/src/libsystem_kernel/libsyscall/wrappers/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel/libsyscall/wrappers",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_osfmk",
+    headers = glob(["xnu/osfmk/**/*.h"]),
+    root = "xnu/osfmk",
+)
+
+cc_header_root(
+    name = "libsyscall_inc_external_darlingserver_include",
+    headers = glob(["src/external/darlingserver/include/**/*.h"]),
+    root = "src/external/darlingserver/include",
+)
+
+cc_objects(
+    name = "libsyscall_obj",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_____old_semwait_signal_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_____sigwait_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___abort_with_payload.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___accept.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___accept_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___access_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___aio_suspend_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___bind.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___bsdthread_create.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___bsdthread_ctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___bsdthread_register.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___bsdthread_terminate.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___chmod.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___chmod_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___close_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___coalition.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___coalition_info.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___coalition_ledger.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___connect.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___connect_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___copyfile.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___csrctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___delete.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___disable_threadsignal.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___exit.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fchmod.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fchmod_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fcntl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fcntl_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fork.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fs_snapshot.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fstat64_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fstat_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___fsync_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getattrlist.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getdirentries64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___gethostuuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getlogin.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getpeername.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getpid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getrlimit.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getsgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getsockname.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___gettid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___gettimeofday.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___getwgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___guarded_open_dprotected_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___guarded_open_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___identitysvc.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___initgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___ioctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___iopolicysys.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kdebug_trace.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kdebug_trace64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kdebug_trace_string.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kdebug_typefilter.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kill.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___kqueue_workloop_ctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___lchown.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___listen.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___log_data.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___lseek.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___lstat64_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___lstat_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_execve.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_fd.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_file.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_link.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_mount.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_pid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_get_proc.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_getfsstat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_mount.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_set_fd.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_set_file.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_set_link.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_set_proc.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mac_syscall.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mach_bridge_remote_time.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mach_eventlink_signal.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mach_eventlink_signal_wait_until.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mach_eventlink_wait_until.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___memorystatus_available_memory.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___microstackshot.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mkdir_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mkfifo_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mmap.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___mprotect.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msgctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msgrcv_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msgsnd_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msgsys.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msync.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___msync_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___munmap.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___old_semwait_signal.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___open_dprotected_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___open_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___open_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___openat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___openat_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___persona.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pipe.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___poll_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___posix_spawn.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pread_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___preadv_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___proc_info.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___proc_info_extended_id.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___process_policy.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pselect.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pselect_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_cvbroad.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_cvclrprepost.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_cvsignal.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_cvwait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_mutexdrop.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_mutexwait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_downgrade.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_longrdlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_rdlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_unlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_unlock2.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_upgrade.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_wrlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___psynch_rw_yieldwrlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_canceled.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_chdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_fchdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_kill.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_markcancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pthread_sigmask.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___ptrace.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pwrite_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___pwritev_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___read_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___readv_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___reboot.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___recvfrom.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___recvfrom_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___recvmsg.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___recvmsg_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___rename.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___renameat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___renameatx_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___rmdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___select.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___select_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sem_open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sem_wait_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___semctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___semsys.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___semwait_signal.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___semwait_signal_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sendmsg.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sendmsg_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sendto.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sendto_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setattrlist.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setlogin.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setpriority.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setregid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setreuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setrlimit.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setsgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___settid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___settid_with_pid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___settimeofday.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___setwgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sfi_ctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sfi_pidctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shared_region_check_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shared_region_map_and_slide_2_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shared_region_map_and_slide_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shm_open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shmctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___shmsys.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigaction.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigaltstack.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigreturn.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigsuspend.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigsuspend_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sigwait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___socketpair.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___stack_snapshot_with_config.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___stat64_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___stat_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___syscall.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sysctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___sysctlbyname.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___telemetry.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___terminate_with_payload.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___thread_selfid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___thread_selfusage.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___ulock_wait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___ulock_wait2.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___ulock_wake.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___umask_extended.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___unlink.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___unlinkat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___vfork.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___wait4.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___wait4_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___waitid_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___work_interval_ctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___workq_kernreturn.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___workq_open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___write_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/___writev_nocancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_access.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_acct.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_adjtime.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_cancel.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_error.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_fsync.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_read.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_return.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_suspend.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_aio_write.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_audit.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_audit_session_join.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_audit_session_port.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_audit_session_self.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_auditctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_auditon.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_change_fdguard_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_chdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_chflags.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_chown.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_chroot.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_clonefileat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_close.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_connectx.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_csops.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_csops_audittoken.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_disconnectx.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_dup.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_dup2.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_exchangedata.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_execve.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_faccessat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fchdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fchflags.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fchmodat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fchown.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fchownat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fclonefileat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fdatasync.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_ffsctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fgetattrlist.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fgetxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fhopen.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fileport_makefd.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fileport_makeport.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_flistxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_flock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fmount.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fpathconf.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fremovexattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsetattrlist.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsetxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsgetpath.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsgetpath_ext.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstat64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstatat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstatat64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstatfs.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fstatfs64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_fsync.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_ftruncate.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_futimes.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getattrlistat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getattrlistbulk.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getaudit_addr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getauid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getdirentries.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getdirentriesattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getdtablesize.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getegid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getentropy.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_geteuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getfh.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getfsstat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getfsstat64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getgid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getitimer.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getpgid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getpgrp.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getppid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getpriority.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getrusage.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getsid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getsockopt.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_getxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_grab_pgo_data.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_guarded_close_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_guarded_kqueue_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_guarded_pwrite_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_guarded_write_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_guarded_writev_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_issetugid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kas_info.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kevent.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kevent64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kevent_id.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kevent_qos.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_kqueue.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_ledger.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_link.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_linkat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_lio_listio.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_listxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_lstat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_lstat64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_madvise.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_memorystatus_control.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_memorystatus_get_level.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mincore.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_minherit.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mkdir.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mkdirat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mkfifo.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mkfifoat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mknod.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mknodat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mlockall.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mount.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_mremap_encrypted.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_msgget.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_msgrcv.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_msgsnd.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_munlock.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_munlockall.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_necp_client_action.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_necp_match_policy.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_necp_open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_necp_session_action.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_necp_session_open.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_net_qos_guideline.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_netagent_trigger.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_nfsclnt.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_nfssvc.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_ntp_adjtime.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_ntp_gettime.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_openbyid_np.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_os_fault_with_payload.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pathconf.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_peeloff.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pid_hibernate.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pid_resume.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pid_shutdown_sockets.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pid_suspend.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pivot_root.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_poll.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pread.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_preadv.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_proc_rlimit_control.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_proc_trace_log.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_proc_uuid_policy.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pwrite.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_pwritev.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_quotactl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_read.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_readlink.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_readlinkat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_readv.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_recvmsg_x.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_removexattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_revoke.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_searchfs.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sem_close.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sem_post.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sem_trywait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sem_unlink.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sem_wait.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_semget.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_semop.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sendfile.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sendmsg_x.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setattrlistat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setaudit_addr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setauid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setegid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_seteuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setgid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setgroups.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setitimer.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setpgid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setprivexec.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setsid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setsockopt.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setuid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_setxattr.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_shm_unlink.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_shmat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_shmdt.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_shmget.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_shutdown.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sigpending.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sigprocmask.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_socket.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_socket_delegate.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_stat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_stat64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_statfs.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_statfs64.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_swapon.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_symlink.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_symlinkat.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_sync.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_system_override.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_task_inspect_for_pid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_task_read_for_pid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_thread_selfcounts.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_truncate.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_umask.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_undelete.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_unmount.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_usrctl.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_utimes.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_vfs_purge.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_vm_pressure_monitor.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_waitid.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_write.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/_writev.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/bsdsyscalls/custom.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_traps.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/__get_cpu_capabilities.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_approximate_time.S",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/varargs_wrappers.S",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+        ":libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+        ":libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+        ":libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        ":ksmig_mach_clock",
+        ":ksmig_mach_clock_priv",
+        ":ksmig_mach_clock_reply",
+        ":ksmig_mach_exc",
+        ":ksmig_mach_host_priv",
+        ":ksmig_mach_host_security",
+        ":ksmig_mach_lock_set",
+        ":ksmig_mach_mach_host",
+        ":ksmig_mach_mach_port",
+        ":ksmig_mach_mach_port_internal",
+        ":ksmig_mach_mach_vm",
+        ":ksmig_mach_mach_vm_internal",
+        ":ksmig_mach_mach_voucher",
+        ":ksmig_mach_memory_entry",
+        ":ksmig_mach_processor",
+        ":ksmig_mach_processor_set",
+        ":ksmig_mach_servers_netname",
+        ":ksmig_mach_task",
+        ":ksmig_mach_thread_act",
+        ":ksmig_mach_thread_act_internal",
+        ":ksmig_mach_vm_map",
+        ":ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        ":libsyscall_inc_external_darlingserver_include",
+    ],
+    gen_srcs = [
+        ":ksmig_mach_clock_priv_x86_64",
+        ":ksmig_mach_clock_reply_x86_64",
+        ":ksmig_mach_clock_x86_64",
+        ":ksmig_mach_exc_x86_64",
+        ":ksmig_mach_host_priv_x86_64",
+        ":ksmig_mach_host_security_x86_64",
+        ":ksmig_mach_lock_set_x86_64",
+        ":ksmig_mach_mach_host_x86_64",
+        ":ksmig_mach_mach_port_x86_64",
+        ":ksmig_mach_mach_vm_x86_64",
+        ":ksmig_mach_mach_voucher_x86_64",
+        ":ksmig_mach_memory_entry_x86_64",
+        ":ksmig_mach_processor_set_x86_64",
+        ":ksmig_mach_processor_x86_64",
+        ":ksmig_mach_task_x86_64",
+        ":ksmig_mach_thread_act_x86_64",
+        ":ksmig_mach_vm_map_x86_64",
+    ],
+)
+
+cc_objects(
+    name = "libsyscall_obj2",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/custom/dummy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/custom/errno.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_sleep.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/error_codes.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc_catcher.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc_catcher_state.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc_catcher_state_identity.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/fprintf_stderr.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/host.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_error.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_error_string.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_eventlink.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_init.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_legacy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_msg.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_port.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_right.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vm.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mig_allocate.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mig_deallocate.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mig_reply_port.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mig_reply_setup.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/mig_strncpy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/ms_thread_switch.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/panic.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/port_descriptions.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/port_obj.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/semaphore.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/slot_name.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/string.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/task.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_act.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/os/alloc_once.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/os/log_data.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/__commpage_gettimeofday.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/fcntl-cancel.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/fcntl.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/open.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/pselect-darwinext-cancel.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/pselect-darwinext.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/sigsuspend-cancel.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/sigsuspend.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/carbon_delete.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/clonefile.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/coalition.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/csr.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/fs_snapshot.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/gethostuuid.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/getiopolicy_np.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/guarded_open_dprotected_np.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/guarded_open_np.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/init_cpu_capabilities.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/ioctl.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/kdebug_trace.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/kill.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/libproc/libproc.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/libproc/proc_listpidspath.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_approximate_time.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_boottime.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_bridge_remote_time.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_continuous_time.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_get_times.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/mach_timebase_info.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/open-base.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/open_dprotected_np.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/persona.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/pid_shutdown_networking.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/posix_sem_obsolete.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/proc.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/quota_obsolete.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/reboot.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/remove-counter.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/rename.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/renameat.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/renamex.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/rmdir.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/setpriority.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/sfi.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/spawn/posix_spawn.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/stackshot.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/index.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/memcpy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/memset.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/strcmp.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/strcpy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/strlcpy.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/strlen.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/string/strsep.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/system-version-compat-support.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/system-version-compat.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/terminate_with_reason.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/thread_register_state.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/chmod.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/fchmod.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/getrlimit.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/mmap.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/munmap.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unix03/setrlimit.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unlink.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/unlinkat.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/utimensat.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/work_interval.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+        ":libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+        ":libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+        ":libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        ":ksmig_mach_clock",
+        ":ksmig_mach_clock_priv",
+        ":ksmig_mach_clock_reply",
+        ":ksmig_mach_exc",
+        ":ksmig_mach_host_priv",
+        ":ksmig_mach_host_security",
+        ":ksmig_mach_lock_set",
+        ":ksmig_mach_mach_host",
+        ":ksmig_mach_mach_port",
+        ":ksmig_mach_mach_port_internal",
+        ":ksmig_mach_mach_vm",
+        ":ksmig_mach_mach_vm_internal",
+        ":ksmig_mach_mach_voucher",
+        ":ksmig_mach_memory_entry",
+        ":ksmig_mach_processor",
+        ":ksmig_mach_processor_set",
+        ":ksmig_mach_servers_netname",
+        ":ksmig_mach_task",
+        ":ksmig_mach_thread_act",
+        ":ksmig_mach_thread_act_internal",
+        ":ksmig_mach_vm_map",
+        ":ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        ":libsyscall_inc_external_darlingserver_include",
+    ],
+)
+
+cc_objects(
+    name = "libsyscall_obj3",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/accept.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/bind.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/connect.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/getattrlist.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/getaudit.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/getpeername.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/getsockname.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/kill.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/lchown.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/listen.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/mprotect.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/msync.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/munmap.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/recvfrom.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/recvmsg.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/select.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/sendmsg.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/sendto.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/setattrlist.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/sigsuspend.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/socketpair.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-U_DARWIN_C_SOURCE",
+        "-U_POSIX_C_SOURCE",
+        "-U__DARWIN_UNIX03",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_C_LEVEL",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+        ":libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+        ":libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+        ":libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        ":ksmig_mach_clock",
+        ":ksmig_mach_clock_priv",
+        ":ksmig_mach_clock_reply",
+        ":ksmig_mach_exc",
+        ":ksmig_mach_host_priv",
+        ":ksmig_mach_host_security",
+        ":ksmig_mach_lock_set",
+        ":ksmig_mach_mach_host",
+        ":ksmig_mach_mach_port",
+        ":ksmig_mach_mach_port_internal",
+        ":ksmig_mach_mach_vm",
+        ":ksmig_mach_mach_vm_internal",
+        ":ksmig_mach_mach_voucher",
+        ":ksmig_mach_memory_entry",
+        ":ksmig_mach_processor",
+        ":ksmig_mach_processor_set",
+        ":ksmig_mach_servers_netname",
+        ":ksmig_mach_task",
+        ":ksmig_mach_thread_act",
+        ":ksmig_mach_thread_act_internal",
+        ":ksmig_mach_vm_map",
+        ":ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        ":libsyscall_inc_external_darlingserver_include",
+    ],
+)
+
+cc_objects(
+    name = "libsyscall_obj4",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/select-cancel.c",
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/cancelable/select.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-U_DARWIN_C_SOURCE",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+        ":libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+        ":libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+        ":libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        ":ksmig_mach_clock",
+        ":ksmig_mach_clock_priv",
+        ":ksmig_mach_clock_reply",
+        ":ksmig_mach_exc",
+        ":ksmig_mach_host_priv",
+        ":ksmig_mach_host_security",
+        ":ksmig_mach_lock_set",
+        ":ksmig_mach_mach_host",
+        ":ksmig_mach_mach_port",
+        ":ksmig_mach_mach_port_internal",
+        ":ksmig_mach_mach_vm",
+        ":ksmig_mach_mach_vm_internal",
+        ":ksmig_mach_mach_voucher",
+        ":ksmig_mach_memory_entry",
+        ":ksmig_mach_processor",
+        ":ksmig_mach_processor_set",
+        ":ksmig_mach_servers_netname",
+        ":ksmig_mach_task",
+        ":ksmig_mach_thread_act",
+        ":ksmig_mach_thread_act_internal",
+        ":ksmig_mach_vm_map",
+        ":ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        ":libsyscall_inc_external_darlingserver_include",
+    ],
+)
+
+cc_objects(
+    name = "libsyscall_obj5",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/wrappers/legacy/select-pre1050.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-U_DARWIN_C_SOURCE",
+        "-DSYSCALL_PRE1050",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/libsyscall/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_system_kernel_libsyscall_wrappers_string",
+        ":libsyscall_inc_bsystem_kernel_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_ystem_kernel_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_rling_src_libsystem_kernel_libsyscall_os",
+        ":libsyscall_inc_ing_src_libsystem_kernel_libsyscall_mach",
+        ":libsyscall_inc_src_libsystem_kernel_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        ":ksmig_mach_clock",
+        ":ksmig_mach_clock_priv",
+        ":ksmig_mach_clock_reply",
+        ":ksmig_mach_exc",
+        ":ksmig_mach_host_priv",
+        ":ksmig_mach_host_security",
+        ":ksmig_mach_lock_set",
+        ":ksmig_mach_mach_host",
+        ":ksmig_mach_mach_port",
+        ":ksmig_mach_mach_port_internal",
+        ":ksmig_mach_mach_vm",
+        ":ksmig_mach_mach_vm_internal",
+        ":ksmig_mach_mach_voucher",
+        ":ksmig_mach_memory_entry",
+        ":ksmig_mach_processor",
+        ":ksmig_mach_processor_set",
+        ":ksmig_mach_servers_netname",
+        ":ksmig_mach_task",
+        ":ksmig_mach_thread_act",
+        ":ksmig_mach_thread_act_internal",
+        ":ksmig_mach_vm_map",
+        ":ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        ":libsyscall_inc_external_darlingserver_include",
+    ],
+)
+# END generated: libsyscall
+
+# BEGIN generated-mig: libsyscall
+# GENERATED by scripts/gen-mig-from-ninja.py -- review before committing.
+#
+# One mig_gen per (definition, pass): the same definitions are run through
+# mig several times with different suffix sets. Multiarch rides in the
+# suffix (-x86_64-User.c), so the rule needs no arch concept of its own.
+
+mig_gen(
+    name = "ksmig_mach_clock",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_priv",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_reply",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_reply.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_priv",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_security",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_security.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_lock_set",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_host",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_host.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_port",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_port.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_voucher",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucher.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_memory_entry",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entry.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor_set",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_task",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/task.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_thread_act",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_act.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_vm_map",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_map.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_vm",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vm.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_servers_netname",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/servers/netname.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_exc",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_user.c",
+    header_suffix = ".h",
+    server_suffix = "_unused_server.c",
+    sheader_suffix = "_unused_server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_port_internal",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_port.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_internal_user.c",
+    header_suffix = "_internal.h",
+    server_suffix = "_unused_internal_server.c",
+    sheader_suffix = "_unused_internal_server.h",
+    xtrace_suffix = "_unused_xtrace2.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_vm_internal",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vm.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_internal_user.c",
+    header_suffix = "_internal.h",
+    server_suffix = "_unused_internal_server.c",
+    sheader_suffix = "_unused_internal_server.h",
+    xtrace_suffix = "_unused_xtrace2.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_thread_act_internal",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_act.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_internal_user.c",
+    header_suffix = "_internal.h",
+    server_suffix = "_unused_internal_server.c",
+    sheader_suffix = "_unused_internal_server.h",
+    xtrace_suffix = "_unused_xtrace2.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_vm_map_internal",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_map.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "_unused_internal_user.c",
+    header_suffix = "_internal.h",
+    server_suffix = "_unused_internal_server.c",
+    sheader_suffix = "_unused_internal_server.h",
+    xtrace_suffix = "_unused_xtrace2.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/clock-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_priv_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/clock_priv-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_reply_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_reply.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/clock_reply-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_exc_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/exc-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_priv_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/host_priv-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_security_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_security.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/host_security-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_lock_set_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/lock_set-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_host_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_host.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/mach_host-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_port_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_port.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/mach_port-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_voucher_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucher.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/mach_voucher-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_memory_entry_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entry.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/memory_entry-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/processor-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor_set_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/processor_set-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_task_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/task.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/task-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_thread_act_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_act.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/thread_act-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_vm_map_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_map.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/vm_map-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_vm_i386",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vm.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-i386-User.c",
+    header_suffix = "-i386-_unused_user.h",
+    server_suffix = "-i386-Server.c",
+    sheader_suffix = "-i386-Server.h",
+    xtrace_suffix = "-i386-_unused_xtrace1.c",
+    arch = "i386",
+    compile_srcs = [
+        "mach/mach_vm-i386-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/clock-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_priv_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/clock_priv-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_clock_reply_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_reply.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/clock_reply-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_exc_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/exc.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/exc-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_priv_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_priv.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/host_priv-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_host_security_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/host_security.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/host_security-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_lock_set_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/lock_set-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_host_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_host.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/mach_host-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_port_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_port.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/mach_port-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_voucher_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucher.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/mach_voucher-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_memory_entry_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entry.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/memory_entry-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/processor-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_processor_set_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_set.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/processor_set-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_task_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/task.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/task-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_thread_act_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_act.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/thread_act-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_vm_map_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_map.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/vm_map-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "ksmig_mach_mach_vm_x86_64",
+    defs = "xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vm.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/libsyscall",
+    user_suffix = "-x86_64-User.c",
+    header_suffix = "-x86_64-_unused_user.h",
+    server_suffix = "-x86_64-Server.c",
+    sheader_suffix = "-x86_64-Server.h",
+    xtrace_suffix = "-x86_64-_unused_xtrace1.c",
+    arch = "x86_64",
+    compile_srcs = [
+        "mach/mach_vm-x86_64-User.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated-mig: libsyscall

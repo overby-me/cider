@@ -273,6 +273,42 @@ wrong library rather than a build error:**
    symbols**. The reference link edge is the authority on the subset, and the
    generator now resolves a dylib's object libraries from it.
 
+### libsystem_kernel (libsyscall): 548 of 562 sources compile
+
+The last member gating a FINAL pass. 562 sources in 5 flag groups, and 56 MIG
+targets, all of which generate.
+
+- **MIG here runs the same definitions THREE times** with different suffix sets
+  (headers, then per-arch sources, then `_internal.h` headers), and pass 2 is
+  MULTIARCH (`i386` + `x86_64`). That needed no rule support at all: the arch
+  infix rides in the suffix (`-x86_64-User.c`), so `mig_gen` expresses it as-is.
+  `scripts/gen-mig-from-ninja.py` derives all 56 from the reference's own edges by
+  subtracting the stem from each output name, rather than re-deriving the three
+  passes from the CMakeLists.
+- **The include ORDER finding, which matters for every target.** The reference does
+  NOT put a target's own include dirs first. It interleaves: some come BEFORE the
+  shared environment (SDK, basic-headers, frameworks) and others AFTER it.
+  libsyscall proves why that is load-bearing: `xnu/osfmk` sits after the SDK there,
+  so `<mach/mach.h>` resolves to the SDK's GUEST copy. Hoisting all own roots above
+  the env -- which is what the rules did -- picked up XNU's KERNEL
+  `mach_interface.h`, which includes `<mach/clock_reply_server.h>`, a header only
+  the kernel-side (duct-tape) MIG produces. That single ordering fix took libsyscall
+  from 68 failures to 14, and it changes header precedence for every generated
+  target (the whole suite was re-verified after it).
+- Remaining 14 failures are three missing include roots (`tsd.h`,
+  `stack_logging_internal.h`, `CoreFoundation/CoreFoundation.h`), i.e. the same
+  demand-driven "declare what this target includes" work, not a new class.
+
+**KNOWN FAILURE: `libsystem_pthread`'s firstpass dylib no longer links.** Its 13
+object groups all compile, but the link hits `illegal text reloc in
+'_pthread_key_delete' to '__pthread_list_lock'`. This appeared when the generator
+started honoring the reference's PER-SOURCE flags -- previously every source got
+the first edge's flags, which is wrong but happened to avoid it. The reference does
+not hit it despite identical compile AND link flags, so its objects differ in a way
+not yet understood, and `-Wl,-read_only_relocs,suppress` is not available on
+x86_64. Recorded rather than papered over: the test suite asserts the objects
+compile and does not assert the dylib links.
+
 Open: `libkqueue` (the 44th object library libsystem_c links) does not compile.
 Its XNU-emulation headers need an include ordering this port has not worked out
 (`struct kevent64_s` comes out incomplete, `uint16_t` undeclared). libsystem_c is

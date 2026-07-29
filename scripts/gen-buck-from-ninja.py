@@ -251,16 +251,36 @@ def own_flags_of(unit):
 
 
 def includes_of(unit):
-    """(own include roots, generated include dirs) for one compile."""
-    own, gen = [], []
+    """Ordered include roots for one compile, plus the generated dirs.
+
+    The order is significant and is NOT "own roots first". The reference
+    interleaves: some of a target's own dirs come BEFORE the shared environment
+    (the SDK, basic-headers, frameworks) and others come AFTER it. libsyscall is
+    the case that proves it -- `xnu/osfmk` sits after the SDK there, so
+    <mach/mach.h> resolves to the SDK's GUEST copy; hoisting osfmk above the SDK
+    instead picks up XNU's KERNEL mach_interface.h, which includes a header only
+    the kernel-side MIG produces.
+
+    So this returns a list of ("own", path) entries and a single ("env", None)
+    marker at the position the environment block occupies.
+    """
+    ordered, gen, seen_env = [], [], False
     for i in unit["includes"]:
         if not i.startswith("-I"):
             continue
         if orig_repo_rel(i[2:]) in ENV_INCLUDES:
+            if not seen_env:
+                ordered.append(("env", None))
+                seen_env = True
             continue
         kind, p = repo_path(i[2:])
-        (gen if kind == "generated" else own).append(p)
-    return own, gen
+        if kind == "generated":
+            gen.append(p)
+        else:
+            ordered.append(("own", p))
+    if not seen_env:
+        ordered.append(("env", None))
+    return ordered, gen
 
 
 def extra_deps(target: str) -> list[str]:
@@ -276,6 +296,12 @@ def extra_deps(target: str) -> list[str]:
     with open(f) as fh:
         data = json.load(fh)
     return [d for d in data.get(target, []) if isinstance(d, str)]
+
+
+# Prefixes understood in extra-deps.json entries:
+#   (none)     a normal dep
+#   gen:       a codegen target whose generated sources this target compiles
+#   ldflag:    a linker flag for this target's dylib
 
 
 def sanitize(path: str) -> str:
@@ -296,10 +322,10 @@ def generate(target: str, edges):
             gen_srcs.append(srcp)
             continue
         flags, prefix = own_flags_of(unit)
-        own_inc, gi = includes_of(unit)
+        ordered_inc, gi = includes_of(unit)
         gen_includes.extend(gi)
-        key = (tuple(flags), tuple(prefix), tuple(own_inc))
-        groups.setdefault(key, {"flags": flags, "prefix": prefix, "inc": own_inc, "srcs": []})
+        key = (tuple(flags), tuple(prefix), tuple(ordered_inc))
+        groups.setdefault(key, {"flags": flags, "prefix": prefix, "inc": ordered_inc, "srcs": []})
         groups[key]["srcs"].append((kind, srcp))
     if not groups:
         return None
@@ -325,8 +351,8 @@ def generate(target: str, edges):
     # One header root per distinct include dir, shared across groups.
     root_name: dict[str, str] = {}
     for g in groups.values():
-        for p in g["inc"]:
-            if p in root_name:
+        for kind, p in g["inc"]:
+            if kind != "own" or p in root_name:
                 continue
             name = target.removesuffix("_obj") + "_inc_" + sanitize(p.split("/", 1)[-1])[-40:]
             root_name[p] = name
@@ -361,12 +387,26 @@ def generate(target: str, edges):
             w("    ],")
         w('    toolchain = "toolchains//:darwin_cc",')
         w("    deps = [")
-        for p in g["inc"]:
-            w(f'        ":{root_name[p]}",')
-        for d in extra_deps(target):
-            w(f'        "{d}",')
-        w('        "//darwin:sdk_env",')
+        # Dep ORDER is the include order, and the environment sits where the
+        # reference puts it -- not first, not last.
+        for kind, p in g["inc"]:
+            if kind == "env":
+                w('        "//darwin:sdk_env",')
+                for d in extra_deps(target):
+                    # gen: and ldflag: entries are not deps.
+                    if not d.startswith(("gen:", "ldflag:")):
+                        w(f'        "{d}",')
+            else:
+                w(f'        ":{root_name[p]}",')
         w("    ],")
+        gen = [d[len("gen:"):] for d in extra_deps(target) if d.startswith("gen:")]
+        if gen and idx == 0:
+            # Generated sources this target compiles. Only the first flag group
+            # takes them: they are one set of files, not one per group.
+            w("    gen_srcs = [")
+            for d in gen:
+                w(f'        "{d}",')
+            w("    ],")
         w(")")
         w("")
 
@@ -375,6 +415,7 @@ def generate(target: str, edges):
         m = re.search(r"-Wl,-dylib_install_name,(\S+)", link[1].get("LINK_FLAGS", ""))
         install_name = m.group(1) if m else ""
         is_dylib = link[0].endswith(".dylib")
+    ldflags = [d[len("ldflag:"):] for d in extra_deps(target) if d.startswith("ldflag:")]
     if is_dylib:
         w("darwin_dylib(")
         w(f'    name = "{target}_firstpass",')
@@ -385,6 +426,11 @@ def generate(target: str, edges):
         for n in obj_names:
             w(f'        ":{n}",')
         w("    ],")
+        if ldflags:
+            w("    linker_flags = [")
+            for f in ldflags:
+                w(f'        "{f}",')
+            w("    ],")
         w('    toolchain = "toolchains//:darwin_cc",')
         w('    deps = ["//darwin:sdk_env"],')
         w('    visibility = ["PUBLIC"],')
@@ -430,7 +476,7 @@ def main(argv: list[str]) -> int:
                     print(f"          -include {list(prefix)}")
             if units:
                 own, gen = includes_of(units[0])
-                print("  own include roots:", own)
+                print("  ordered include roots:", own)
                 print("  generated include dirs:", gen)
             if link:
                 print("  link out:", link[0])
@@ -484,8 +530,10 @@ def main(argv: list[str]) -> int:
             text = text.replace('"' + pkg + "/", '"')
 
         f = os.path.join(REPO, pkg, "BUCK")
-        begin, end = f"# BEGIN generated: {target}", f"# END generated: {target}"
-        block = begin + "\n" + text.rstrip() + "\n" + end + "\n"
+        # Whole-line markers: a target name can be a PREFIX of another block's
+        # name, and matching on the bare text splices into the wrong block.
+        begin, end = f"# BEGIN generated: {target}\n", f"# END generated: {target}\n"
+        block = begin + text.rstrip() + "\n" + end
         existing = open(f).read() if os.path.exists(f) else ""
         if begin in existing:
             pre, rest = existing.split(begin, 1)

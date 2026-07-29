@@ -7,7 +7,8 @@
     "Almost all of these are frameworks and codegen. The reference build puts all",
     "141 frameworks on every Darwin compile's include path; this port makes each",
     "target name the ones it actually includes, so a target cannot silently start",
-    "depending on a framework it never declared."
+    "depending on a framework it never declared.",
+    ""
   ],
   "system_asl_obj": [
     ":asl_ipc_mig"
@@ -23,5 +24,48 @@
   "kqueue": [
     "//src/external/darlingserver:dserver_headers",
     "//src/external/darlingserver:dserver_rpc"
+  ],
+  "libsyscall": [
+    "//src/external/darlingserver:dserver_rpc",
+    "//src/external/darlingserver:dserver_headers",
+    ":ksmig_mach_clock",
+    ":ksmig_mach_clock_priv",
+    ":ksmig_mach_clock_reply",
+    ":ksmig_mach_exc",
+    ":ksmig_mach_host_priv",
+    ":ksmig_mach_host_security",
+    ":ksmig_mach_lock_set",
+    ":ksmig_mach_mach_host",
+    ":ksmig_mach_mach_port",
+    ":ksmig_mach_mach_port_internal",
+    ":ksmig_mach_mach_vm",
+    ":ksmig_mach_mach_vm_internal",
+    ":ksmig_mach_mach_voucher",
+    ":ksmig_mach_memory_entry",
+    ":ksmig_mach_processor",
+    ":ksmig_mach_processor_set",
+    ":ksmig_mach_servers_netname",
+    ":ksmig_mach_task",
+    ":ksmig_mach_thread_act",
+    ":ksmig_mach_thread_act_internal",
+    ":ksmig_mach_vm_map",
+    ":ksmig_mach_vm_map_internal",
+    "gen::ksmig_mach_clock_priv_x86_64",
+    "gen::ksmig_mach_clock_reply_x86_64",
+    "gen::ksmig_mach_clock_x86_64",
+    "gen::ksmig_mach_exc_x86_64",
+    "gen::ksmig_mach_host_priv_x86_64",
+    "gen::ksmig_mach_host_security_x86_64",
+    "gen::ksmig_mach_lock_set_x86_64",
+    "gen::ksmig_mach_mach_host_x86_64",
+    "gen::ksmig_mach_mach_port_x86_64",
+    "gen::ksmig_mach_mach_vm_x86_64",
+    "gen::ksmig_mach_mach_voucher_x86_64",
+    "gen::ksmig_mach_memory_entry_x86_64",
+    "gen::ksmig_mach_processor_set_x86_64",
+    "gen::ksmig_mach_processor_x86_64",
+    "gen::ksmig_mach_task_x86_64",
+    "gen::ksmig_mach_thread_act_x86_64",
+    "gen::ksmig_mach_vm_map_x86_64"
   ]
 }
