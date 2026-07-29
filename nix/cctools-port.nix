@@ -61,6 +61,14 @@ stdenv.mkDerivation {
       --replace-quiet '/bin/mkdir' 'mkdir'
 
     substituteInPlace src/external/basic_cmds/CMakeLists.txt --replace SETGID ""
+
+    # task #68: libnotify (reached as a dependency of the ld64 subgraph) hardcodes
+    # the PRE-move SDK path for its `-include` of sys/fileport.h; repoint it at
+    # darwin/Developer. package.nix and duct-tape.nix already do this; without it
+    # here, `nix build .#darling-ld64` fails compiling libnotify's
+    # notify_ipcUser.c with a `-include` of a path that no longer exists.
+    substituteInPlace src/external/libnotify/CMakeLists.txt \
+      --replace 'SOURCE_DIR}/Developer/Platforms' 'SOURCE_DIR}/darwin/Developer/Platforms'
   '';
 
   inherit nativeBuildInputs buildInputs;
