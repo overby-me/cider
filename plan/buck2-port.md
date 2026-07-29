@@ -42,6 +42,39 @@ points it at Darling.
 
 ---
 
+## Status log
+
+Decisions taken 2026-07-29 (branch `buck2-port`):
+
+- **Own rules, no prelude.** `buck/rules/cc.bzl` + `buck/toolchains/native.bzl`
+  define everything. Meta's `buck2-prelude` is rejected because (a) the Nix
+  endpoint (overby.me `nix/lib/buck2`) interprets the Starlark itself in Nix and
+  lists the full prelude as an explicit non-goal, and (b) MIG / reexport /
+  install_name / firstpass need custom rules regardless.
+- **Direct `buck2` first, Nix integration deferred.** Phase 3 is not being built
+  yet; the rules stay inside the surface overby's interpreter can grow to support
+  (`run`/`write`/`copy`/`symlinked_dir`, no `select()`), so it stays reachable.
+- **Host tier before guest tier.** The first real port is duct-tape/XNU (native
+  ELF, no cross-compiler, no Mach-O, no firstpass), which yields
+  `libdarlingserver_duct_tape.a` + `liblibsimple_darlingserver.a`, exactly what
+  the Rust daemon consumes via `DUCT_TAPE_LIB`. This re-orders Phase 1/2 (the MIG
+  spike still comes first, since duct-tape needs 45 `.defs` generated) but defers
+  reexport/install_name/firstpass until the guest tier.
+
+Progress:
+
+- **Phase 0 DONE** (`buck2 build //src/libsimple:libsimple_darlingserver`).
+  Produces `liblibsimple_darlingserver.a` (14 exported symbols) in ~1 s, from
+  source, via one `clang -c` per file plus `ar`. Header-scoping model verified on
+  the real command line: the only `-I` is the target's staged include dir, so no
+  source directory is on the search path and wall #1 cannot happen by
+  construction.
+- Gotcha found: buck2's default `notify` file watcher registers one recursive
+  watch on the project root BEFORE `[project] ignore` applies, so it walks the
+  `result-*` symlinks into the nix store and dies on a mode-000 dir inside a
+  built prefix. Fixed with `[buck2] file_watcher = fs_hash_crawler`, which honors
+  the ignore list (and, being content-hashing, also ignores pure `touch`es).
+
 ## Phase 0 — Buck2 stands up, builds one real library, directly (no Nix)
 
 Goal: prove the toolchain end-to-end on one leaf, fast, outside Nix.

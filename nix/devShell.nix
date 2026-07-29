@@ -10,6 +10,10 @@ pkgs: {
     # ── Build dependencies ──────────────────────────────────────
     cmake
     ninja
+    # Buck2 for the gradual port (plan/buck2-port.md). Same binary the Nix
+    # endpoint would use, so the toolchain is pinned from day 1 even while we
+    # iterate outside a derivation.
+    buck2
     pkg-config
     bison
     flex

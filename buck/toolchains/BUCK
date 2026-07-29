@@ -1,0 +1,18 @@
+load(":native.bzl", "native_cc_toolchain")
+
+# The default host toolchain. `cc`/`ar` are command names resolved from PATH
+# (the devShell's clang 21 + binutils); override with absolute paths in
+# .buckconfig.local via [darling] cc = /nix/store/.../clang if PATH ever gets
+# scrubbed. The Nix endpoint maps these command strings to packages instead.
+native_cc_toolchain(
+    name = "native_cc",
+    cc = read_root_config("darling", "cc", "clang"),
+    cxx = read_root_config("darling", "cxx", "clang++"),
+    ar = read_root_config("darling", "ar", "ar"),
+    # -g and -O are deliberately NOT here: they belong to the build mode, and
+    # the cmake build compiles duct-tape with neither by default (cmakeBuildType
+    # is blank in nix/darlingBuildInputs.nix).
+    cflags = [],
+    cxxflags = [],
+    visibility = ["PUBLIC"],
+)

@@ -1,0 +1,25 @@
+load("//buck/rules:cc.bzl", "cc_library")
+
+# The Phase-0 leaf (plan/buck2-port.md): the smallest REAL Darling artifact on
+# the host tier. One source file, two headers, no codegen, and it is one of the
+# two archives the Rust daemon links via DUCT_TAPE_LIB, so getting it green is
+# both the toolchain go/no-go gate and actual progress.
+#
+# Mirrors src/libsimple/CMakeLists.txt's `libsimple_darlingserver` target:
+#   add_library(libsimple_darlingserver STATIC src/lock.c)
+#   target_include_directories(... PUBLIC include)
+#   target_compile_definitions(... PRIVATE LIBSIMPLE_LINUX=1)
+cc_library(
+    name = "libsimple_darlingserver",
+    srcs = ["src/lock.c"],
+    exported_headers = [
+        "include/libsimple/base.h",
+        "include/libsimple/lock.h",
+    ],
+    # Consumers write `#include <libsimple/lock.h>`, so the staged include root
+    # is `include/`, not the package.
+    include_root = "include",
+    compiler_flags = ["-DLIBSIMPLE_LINUX=1"],
+    lib_name = "libsimple_darlingserver",
+    visibility = ["PUBLIC"],
+)

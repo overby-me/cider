@@ -94,6 +94,11 @@ cmake-build-*
 result
 result-*
 
+# Buck2 (plan/buck2-port.md): daemon state + build outputs, and the local
+# config override (absolute toolchain paths, per-machine settings).
+buck-out/
+.buckconfig.local
+
 # Python bytecode cache (nix-ninja build helpers)
 __pycache__/
 *.pyc
