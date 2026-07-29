@@ -385,15 +385,18 @@ duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f2
 
 Remaining `darling-full-group-bt` failures (18, taxonomised), in priority order:
 
-1. **libcxx `<cstddef>` `-I` precedence (WALL #1, ~14 failures, dominant).** C/ObjC compiles across
-   `security/*` pull libcxx's C++-only `include/cstddef` (`unknown type name 'using'`) because the
-   merged `$out` puts libcxx's include dir ahead of the SDK's C-compatible headers. SAME root cause
-   as notify.h: **`-I` precedence is lost when the source tree and configured build dir merge into a
-   single `$out`.** The real fix is **source/build root-separation** -- give each rewrite-root its own
-   `$out` subtree so per-edge `-I` order (and quote-vs-angle include resolution) is preserved. This is
-   a deliberate architectural change to `lower_group.py`'s staging model; it also fixes the notify.h
-   class properly (retiring the source-restore workaround) and benefits any ninja/CMake project, so it
-   is the right pre-upstream investment.
+1. **libcxx C++ headers leak into C compiles (WALL #1, ~14 failures, dominant).** C/ObjC compiles
+   across `security/*` (e.g. `SecLogging.c`, `-std=gnu99`, **no `-isysroot`**) pull libcxx's C++-only
+   `include/cstddef` (`unknown type name 'using'`). Confirmed via the raw command: `-I src/external/
+   libcxxabi/include -I src/external/libcxx/include` sit FIRST on the `-I` list, ahead of the SDK
+   (`.../MacOSX.sdk/usr/include`), and there is no `-isysroot`, so libcxx's header wrappers shadow the
+   SDK's C-compatible ones for a C compile. This is NOT the notify.h/root-separation class (both dirs
+   live in the SOURCE root; separating source-vs-build roots would not reorder them). Candidate fixes,
+   cheapest first: (a) strip `-I .../libcxx*/include` from NON-C++ (`is_compile && not -x c++/obj-c++`)
+   commands in `lower_group.py` -- libcxx is C++-only, a C/ObjC compile should never see it; (b) add
+   `-isysroot <SDK>` so the SDK sysroot wins; (c) find why the reference toolchain does not hit this
+   (Apple clang vs the nix cc-wrapper default C++ stdlib search). Start with (a) and gate on the
+   `libSystem-group-bt` regression check. UNVERIFIED which fix is correct -- needs one build to test.
 2. **libbsm cross-group `libSystem.B.dylib` staging (1 failure, foundational).** `libbsm` links the
    final umbrella `libSystem.B.dylib`; at BUILD time it is missing from libbsm's group sandbox. Ground
    truth (instrumented): libbsm's group ran but did NOT contain the libSystem.B producer edge, and the
