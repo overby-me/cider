@@ -10,10 +10,14 @@ umbrella) needs custom rules regardless. See `plan/buck2-port.md`.
 Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
-scripts/buck-src.sh          # materialize the pinned upstream trees we compile
+scripts/buck-setup.sh        # pinned sources + the absolute ld64 path
 buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape
 scripts/buck-test.sh         # regression test for everything ported so far
 ```
+
+`scripts/buck-setup.sh --all` materializes ALL 147 pinned trees (~3.8 GB), which
+the guest (Darwin) tier needs: its include path is the SDK tree, ~1987 symlinks
+into those trees.
 
 ## Layout
 
@@ -21,10 +25,13 @@ scripts/buck-test.sh         # regression test for everything ported so far
 |---|---|
 | `.buckconfig`, `.buckroot` | project root, cells (`root`, `toolchains`), file watcher |
 | `.watchmanconfig` | watchman ignores (`.jj`, `buck-out`, ...) |
-| `buck/toolchains/` | `native_cc_toolchain`: the HOST (Linux/ELF) C toolchain |
+| `buck/toolchains/` | `cc_toolchain`, instantiated as `native_cc` (host/ELF) and `darwin_cc` (guest/Mach-O) |
 | `buck/rules/cc.bzl` | `cc_header_root`, `cc_objects`, `cc_static_lib`, `cc_library`, `cc_binary`, `cc_lib_dir` |
 | `buck/rules/codegen.bzl` | `bison_gen`, `flex_gen`, `mig_gen`, `host_gen`, `script_gen` |
+| `buck/rules/darwin.bzl` | `darwin_dylib`, `darwin_binary` (install_name, reexport, firstpass) |
 | `buck/rules/files.bzl` | `export_file` |
+| `buck/generated/` | header maps derived from the SDK symlink farm |
+| `tests/buck2/firstpass` | the two-mutually-dependent-dylibs fixture |
 | `buck-src/` | pinned upstream trees, materialized (gitignored) + the BUCK file over them |
 
 ## The two ideas that matter
@@ -83,6 +90,15 @@ ninja.)
   definition. Generated sources are exported for a consumer to compile, not
   compiled here: a generated stub reaches hand-written xnu headers that include
   OTHER definitions' generated headers.
+
+`darwin_dylib(name, srcs|objs, install_name, firstpass, siblings, upward, reexport, ...)`
+: A Mach-O dylib. `firstpass = True` links with `-flat_namespace
+  -undefined suppress`, resolving nothing, which is how Darling breaks the
+  libSystem cycle: each circular library is built twice from the same objects, and
+  the final pass links its siblings' FIRSTPASS dylibs. A circular library is
+  therefore two targets, not one -- one rule emitting both passes would make the
+  target graph cyclic. `DarwinDylibInfo` carries `(install_name, artifact)` pairs
+  transitively, rendered as `-Wl,-dylib_file` on a consumer's link line.
 
 `bison_gen` / `flex_gen` / `host_gen` / `script_gen`
 : Parser/scanner generation; run a just-built host tool that writes a file
