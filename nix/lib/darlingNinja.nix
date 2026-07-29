@@ -125,13 +125,21 @@ let
           parts = lib.splitString "/" o;
         in
         if lib.length parts >= 3 then lib.concatStringsSep "/" (lib.take 3 parts) else builtins.head parts;
+      g =
+        if fromOut != null then fromOut
+        else if fromIn != null then fromIn
+        else subprojOf;
+      # cctools tools (ar, ranlib, lipo, ...) exec each other at RUNTIME from a path baked at
+      # build time, co-located in cctools/<sub>/. ranlib in particular is LINKED from the
+      # misc/stuff objects but its BINARY outputs next to ar in cctools/ar/, so grouping by the
+      # .o CMakeFiles dir (fromIn) puts ar and ranlib in different $outs and ar can never find
+      # ranlib. Group every cctools edge by its OUTPUT tool directory so co-located sibling
+      # tools share one $out and ar's baked ranlib path resolves.
+      cctoolsOut =
+        if outs == [] then null
+        else builtins.match ".*(src/external/cctools-port/cctools/[^/]+)/.*" (builtins.head outs);
     in
-    if fromOut != null then
-      fromOut
-    else if fromIn != null then
-      fromIn
-    else
-      subprojOf;
+    if cctoolsOut != null then builtins.head cctoolsOut else g;
 in
 {
   inherit rustNinja buildNinjaProject componentGrouping;

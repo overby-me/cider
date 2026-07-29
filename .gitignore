@@ -93,3 +93,7 @@ cmake-build-*
 .direnv/
 result
 result-*
+
+# Python bytecode cache (nix-ninja build helpers)
+__pycache__/
+*.pyc

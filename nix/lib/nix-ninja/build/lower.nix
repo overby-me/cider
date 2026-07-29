@@ -157,8 +157,12 @@ in {
                      "-unexported_symbols_list" "-order_file" ];
     cmdProducersOf = i: let
       e = elemAt edges i;
+      # split on '=' too: a produced tool path can be a flag ARGUMENT, e.g. cctools' ar bakes
+      # `-DRANLIB=<...>/ranlib` (ranlib is a SEPARATE group), so ar must depend on + stage
+      # ranlib's group for its baked absolute path to resolve when ar runs elsewhere.
       toks = filter (t: t != "-Xlinker" && t != "-Wl")
-        (concatMap (lib.splitString ",") (lib.splitString " " (e.command or "")));
+        (concatMap (lib.splitString "=")
+          (concatMap (lib.splitString ",") (lib.splitString " " (e.command or ""))));
       kept = lib.imap0 (idx: t:
         let prev = if idx == 0 then "" else elemAt toks (idx - 1); in
         lib.optionals (underAnyRoot t && isProduced t && !(elem prev cmdMetaFlags)) (realProducers t))

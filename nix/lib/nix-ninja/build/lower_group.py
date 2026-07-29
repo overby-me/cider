@@ -308,18 +308,30 @@ def main():
             if not os.path.lexists(entry):
                 os.symlink(os.path.join(a.src_headers, entry), entry)
 
-    # 2) external dependency group outputs (their produced dylibs/objects/headers).
-    #    A cp -rsf can't merge a real subdir onto a srcHeaders top-level symlink, so first
-    #    de-symlink any $out path shadowing a real subdir of the ext group (mirrors mkGroup).
+    # 2) external dependency groups: symlink their REAL produced files (dylibs / objects /
+    #    generated headers) into $out. Skip their srcHeaders / shim SYMLINKS -- those are
+    #    redundant here (we mount srcHeaders ourselves) and a blind cp -rsf of them collides
+    #    with our realized dirs ("cannot overwrite directory with non-directory"). os.walk
+    #    with followlinks=False won't descend the ext group's srcHeaders symlink dirs, so it
+    #    yields exactly the paths that group actually wrote.
     for d in a.ext_dir:
-        for root, dirs, _files in os.walk(d):
+        for root, _dirs, files in os.walk(d):
             rel = os.path.relpath(root, d)
-            if rel == "." or not rel:
-                continue
-            if os.path.islink(rel) or (os.path.lexists(rel) and not os.path.isdir(rel)):
-                realize_writable(rel)
-        subprocess.run(["cp", "-rsf", "--no-preserve=mode", d + "/.", "./"],
-                       check=False)
+            rel = "" if rel == "." else rel
+            for name in files:
+                src = os.path.join(root, name)
+                if os.path.islink(src):
+                    continue
+                dst = os.path.join(rel, name) if rel else name
+                realize_writable(os.path.dirname(dst))
+                if os.path.lexists(dst):
+                    if os.path.isdir(dst) and not os.path.islink(dst):
+                        continue  # never clobber a real dir with a file
+                    os.remove(dst)
+                try:
+                    os.symlink(src, dst)
+                except OSError:
+                    pass
 
     # 3) this group's under-root source inputs -- both declared edge inputs AND under-root
     #    files NAMED IN THE COMMAND (mig.awk, a linker alias list, a codegen template) that
