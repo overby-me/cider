@@ -392,6 +392,30 @@ in {
           && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
         (indices edges)));
 
+    # GROUP variant of generatedHeaderIncs + migHeaderIncs: $out-relative -I flags for
+    # EVERY generated-header directory in the graph (mig and non-mig alike). In a group
+    # all generated headers are materialised in $out (internal topo order + external
+    # dependency groups staged via extGroupDrvs), so a compile that reaches a generated
+    # header through a cmake target-include -- not a literal -I and not a declared input
+    # (e.g. syslog's asl.c -> <asl_ipc.h> generated in aslcommon) -- can still resolve
+    # it. Unlike the per-edge `-I<producerDrv>` form these carry NO derivation reference,
+    # so there is no edgeDrvs eval cycle and the whole set is safe on every compile
+    # unconditionally (no per-producer closure filter needed; clang ignores absent -I).
+    genIncsOut = lib.unique (concatMap (
+        i:
+        concatMap (
+          o: let
+            rel = if underAnyRoot o then relUnder o else o;
+            dirs = lib.init (filter (x: x != "") (lib.splitString "/" rel));
+            ancestors = lib.genList (n: builtins.concatStringsSep "/" (lib.take n dirs)) (length dirs + 1);
+          in
+          map (a: "-I$out" + lib.optionalString (a != "") "/${a}") ancestors
+        ) (filter isHeaderPath (edgeOutputs (elemAt edges i)))
+      )
+      (filter
+        (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+        (indices edges)));
+
     # A generated mig header may be `#include <...>`d by a compile in the same
     # source module without the ninja graph declaring the dependency, and (unlike
     # rpc.h) without the compile even carrying a literal `-I` to the mig output dir
@@ -1196,7 +1220,11 @@ in {
           cmd = let
             stripped = if rewriteRoots == [] then e.command else stripRoots e.command;
             withSubs = builtins.replaceStrings (map (s: s.from) subs) (map (s: s.to) subs) stripped;
-          in builtins.replaceStrings (map (s: s.from) toolPathSubs) (map (s: s.to) toolPathSubs) withSubs;
+            base = builtins.replaceStrings (map (s: s.from) toolPathSubs) (map (s: s.to) toolPathSubs) withSubs;
+          # Append the $out-relative generated-header -I dirs to compile commands so a
+          # `<generated.h>` reached via a cmake target-include (not a literal -I / declared
+          # input) resolves from where topo/external staging materialised it in $out.
+          in base + lib.optionalString (isCompile e) (" " + lib.concatStringsSep " " genIncsOut);
         in ''
           # Subshell resetting to $out: edges run sequentially in one shell, and a
           # compile command that `cd`s into its WORKING_DIRECTORY (and does not
