@@ -11,9 +11,13 @@ Get the graph with:
     nix build .#darling-graph -o result-graph-ref
 
 Usage:
-    scripts/gen-buck-from-ninja.py <cmake-target> [<cmake-target> ...]
+    scripts/gen-buck-from-ninja.py <cmake-target> [...]          # print
+    scripts/gen-buck-from-ninja.py --write <cmake-target> [...]  # into its package
     scripts/gen-buck-from-ninja.py --list [<substring>]     # what targets exist
     scripts/gen-buck-from-ninja.py --explain <cmake-target> # flags/includes as-is
+
+--write appends the block to the BUCK file of the package that owns the sources,
+between BEGIN/END markers so re-running replaces rather than duplicates.
 
 What it cannot do, and says so instead of guessing: a source or include dir that
 lives in the cmake BINARY dir is generated, and needs a codegen target (mig_gen,
@@ -198,7 +202,13 @@ def main(argv: list[str]) -> int:
     if not args:
         sys.exit(__doc__)
 
+    write = "--write" in argv
     for target in args:
+        out_lines: list[str] = []
+
+        def emit(line: str = ""):
+            out_lines.append(line)
+
         srcs, defines, flags, includes, link = collect(target, edges)
         if not srcs:
             print(f"# no object edges found for cmake target {target}", file=sys.stderr)
@@ -267,60 +277,98 @@ def main(argv: list[str]) -> int:
                 install_name = m.group(1)
             is_dylib = link[0].endswith(".dylib")
 
-        print(f"# GENERATED from the reference build.ninja by")
-        print(f"# scripts/gen-buck-from-ninja.py {target}   -- review before committing.")
-        print(f"# cmake target: {target}" + (f"  ->  {link[0]}" if link else ""))
+        emit(f"# GENERATED from the reference build.ninja by")
+        emit(f"# scripts/gen-buck-from-ninja.py {target}   -- review before committing.")
+        emit(f"# cmake target: {target}" + (f"  ->  {link[0]}" if link else ""))
         if gen_srcs:
-            print("# TODO these sources are GENERATED; wire a codegen target for each:")
+            emit("# TODO these sources are GENERATED; wire a codegen target for each:")
             for g in gen_srcs:
-                print(f"#   {g}")
+                emit(f"#   {g}")
         if gen_includes:
-            print("# TODO these include dirs are GENERATED (codegen output):")
+            emit("# TODO these include dirs are GENERATED (codegen output):")
             for g in gen_includes:
-                print(f"#   {g}")
-        print()
+                emit(f"#   {g}")
+        emit()
 
         for idx, (kind, p) in enumerate(own_includes):
             name = target + "_inc" + ("" if idx == 0 else str(idx))
-            print("cc_header_root(")
-            print(f'    name = "{name}",')
-            print(f'    headers = glob(["{p}/**/*.h"]),')
-            print(f'    root = "{p}",')
-            print(")")
-            print()
+            emit("cc_header_root(")
+            emit(f'    name = "{name}",')
+            emit(f'    headers = glob(["{p}/**/*.h"]),')
+            emit(f'    root = "{p}",')
+            emit(")")
+            emit()
 
-        print("cc_objects(")
-        print(f'    name = "{target}_obj",')
-        print("    srcs = [")
+        emit("cc_objects(")
+        emit(f'    name = "{target}_obj",')
+        emit("    srcs = [")
         for kind, p in src_paths:
-            print(f'        "{p}",')
-        print("    ],")
+            emit(f'        "{p}",')
+        emit("    ],")
         if own_flags:
-            print("    compiler_flags = [")
+            emit("    compiler_flags = [")
             for f in own_flags:
-                print(f'        "{f}",')
-            print("    ],")
-        print('    toolchain = "toolchains//:darwin_cc",')
-        print("    deps = [")
+                emit(f'        "{f}",')
+            emit("    ],")
+        emit('    toolchain = "toolchains//:darwin_cc",')
+        emit("    deps = [")
         for idx in range(len(own_includes)):
-            print(f'        ":{target}_inc{"" if idx == 0 else idx}",')
-        print('        "//darwin:sdk_env",')
-        print("    ],")
-        print(")")
-        print()
+            emit(f'        ":{target}_inc{"" if idx == 0 else idx}",')
+        emit('        "//darwin:sdk_env",')
+        emit("    ],")
+        emit(")")
+        emit()
 
         if is_dylib:
-            print("darwin_dylib(")
-            print(f'    name = "{target}_firstpass",')
-            print(f'    dylib_name = "lib{target.replace("system_", "system_")}_firstpass.dylib",')
-            print("    firstpass = True,")
-            print(f'    install_name = "{install_name}",')
-            print(f'    objs = [":{target}_obj"],')
-            print('    toolchain = "toolchains//:darwin_cc",')
-            print('    deps = ["//darwin:sdk_env"],')
-            print('    visibility = ["PUBLIC"],')
-            print(")")
-            print()
+            emit("darwin_dylib(")
+            emit(f'    name = "{target}_firstpass",')
+            emit(f'    dylib_name = "lib{target.replace("system_", "system_")}_firstpass.dylib",')
+            emit("    firstpass = True,")
+            emit(f'    install_name = "{install_name}",')
+            emit(f'    objs = [":{target}_obj"],')
+            emit('    toolchain = "toolchains//:darwin_cc",')
+            emit('    deps = ["//darwin:sdk_env"],')
+            emit('    visibility = ["PUBLIC"],')
+            emit(")")
+            emit()
+        text = "\n".join(out_lines)
+        if not write:
+            print(text)
+            continue
+
+        # Which package owns this target? The one holding its sources: buck-src for
+        # materialized pins, otherwise the committed tree they live in.
+        kinds = {k for k, _ in src_paths}
+        if kinds == {"buck-src"}:
+            pkg = "buck-src"
+        else:
+            repo_srcs = [p for k, p in src_paths if k == "src"]
+            depth = 3 if repo_srcs and repo_srcs[0].startswith("src/external/") else 2
+            pkg = "/".join(repo_srcs[0].split("/")[:depth])
+        # Sources and roots are emitted repo-relative, but a BUCK file addresses
+        # its own package, so rebase onto it.
+        if pkg != "buck-src":
+            text = text.replace('"' + pkg + "/", '"')
+        f = os.path.join(REPO, pkg, "BUCK")
+        begin, end = f"# BEGIN generated: {target}", f"# END generated: {target}"
+        block = begin + "\n" + text.rstrip() + "\n" + end + "\n"
+        existing = ""
+        if os.path.exists(f):
+            existing = open(f).read()
+        if begin in existing:
+            pre, rest = existing.split(begin, 1)
+            _, post = rest.split(end, 1)
+            new = pre + block + post
+        else:
+            loads = ""
+            if "load(\"//buck/rules:cc.bzl\"" not in existing:
+                loads += 'load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")\n'
+            if "darwin_dylib" in text and "load(\"//buck/rules:darwin.bzl\"" not in existing:
+                loads += 'load("//buck/rules:darwin.bzl", "darwin_dylib")\n'
+            new = (loads + existing).rstrip() + "\n\n" + block
+        with open(f, "w") as fh:
+            fh.write(new)
+        print(f"wrote {pkg}/BUCK: {target} ({len(src_paths)} srcs)", file=sys.stderr)
     return 0
 
 

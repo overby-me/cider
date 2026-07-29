@@ -1,5 +1,4 @@
 load(":cc.bzl", "cc_toolchain")
-
 # The HOST (Linux/ELF) toolchain: duct-tape, the XNU emulation glue, libsimple,
 # migcom. `cc`/`ar` are command names resolved from PATH (the devShell's clang 21
 # + binutils); override with absolute paths via .buckconfig.local's [darling]

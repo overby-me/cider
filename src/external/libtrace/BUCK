@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -12,3 +12,42 @@ cc_header_root(
     },
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: system_trace_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_trace_obj   -- review before committing.
+# cmake target: system_trace_obj  ->  src/external/libtrace/system_trace_obj
+
+cc_header_root(
+    name = "system_trace_obj_inc",
+    headers = glob(["libsbuf/**/*.h"]),
+    root = "libsbuf",
+)
+
+cc_header_root(
+    name = "system_trace_obj_inc1",
+    headers = glob(["include/**/*.h"]),
+    root = "include",
+)
+
+cc_objects(
+    name = "system_trace_obj_obj",
+    srcs = [
+        "libsystem_trace/libtrace_assert.c",
+        "libsystem_trace/os_log.c",
+        "libsystem_trace/os_activity.m",
+        "libsystem_trace/stubs.c",
+        "libsystem_trace/unpack_buffer.m",
+        "libsystem_trace/classes.m",
+        "libsystem_trace/init.c",
+        "libsbuf/libsbuf.c",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_trace_obj_inc",
+        ":system_trace_obj_inc1",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: system_trace_obj
+

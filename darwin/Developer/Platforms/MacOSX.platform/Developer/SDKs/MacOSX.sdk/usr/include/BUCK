@@ -1,5 +1,6 @@
-load("//buck/generated:sdk_headers.bzl", "SDK_REPO_HEADERS")
 load("//buck/rules:cc.bzl", "cc_header_root")
+
+load("//buck/generated:sdk_headers.bzl", "SDK_REPO_HEADERS")
 
 # The handful of SDK headers that are REAL FILES committed here rather than
 # symlinks into a pinned upstream tree (sys/_symbol_aliasing.h,

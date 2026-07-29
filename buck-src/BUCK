@@ -1,8 +1,9 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
-load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
+
+load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
 # Targets over the nix-pinned upstream trees materialized by
 # scripts/buck-src.sh. The trees themselves are gitignored (content is pinned in
@@ -463,3 +464,121 @@ darwin_dylib(
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: system_asl_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_asl_obj   -- review before committing.
+# cmake target: system_asl_obj  ->  src/external/syslog/libsystem_asl.tproj/system_asl_obj
+
+cc_header_root(
+    name = "system_asl_obj_inc",
+    headers = glob(["libcxx/include/**/*.h"]),
+    root = "libcxx/include",
+)
+
+cc_header_root(
+    name = "system_asl_obj_inc1",
+    headers = glob(["syslog/libsystem_asl.tproj/include/**/*.h"]),
+    root = "syslog/libsystem_asl.tproj/include",
+)
+
+cc_objects(
+    name = "system_asl_obj_obj",
+    srcs = [
+        "syslog/libsystem_asl.tproj/src/asl.c",
+        "syslog/libsystem_asl.tproj/src/asl_client.c",
+        "syslog/libsystem_asl.tproj/src/asl_core.c",
+        "syslog/libsystem_asl.tproj/src/asl_fd.c",
+        "syslog/libsystem_asl.tproj/src/asl_file.c",
+        "syslog/libsystem_asl.tproj/src/asl_legacy1.c",
+        "syslog/libsystem_asl.tproj/src/asl_msg.c",
+        "syslog/libsystem_asl.tproj/src/asl_msg_list.c",
+        "syslog/libsystem_asl.tproj/src/asl_mt_shim.c",
+        "syslog/libsystem_asl.tproj/src/asl_object.c",
+        "syslog/libsystem_asl.tproj/src/asl_store.c",
+        "syslog/libsystem_asl.tproj/src/asl_string.c",
+        "syslog/libsystem_asl.tproj/src/asl_util.c",
+        "syslog/libsystem_asl.tproj/src/syslog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_asl_obj_inc",
+        ":system_asl_obj_inc1",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: system_asl_obj
+
+# BEGIN generated: system_coretls_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_coretls_obj   -- review before committing.
+# cmake target: system_coretls_obj  ->  src/external/coretls/system_coretls_obj
+
+cc_header_root(
+    name = "system_coretls_obj_inc",
+    headers = glob(["libcxx/include/**/*.h"]),
+    root = "libcxx/include",
+)
+
+cc_header_root(
+    name = "system_coretls_obj_inc1",
+    headers = glob(["coretls/lib/**/*.h"]),
+    root = "coretls/lib",
+)
+
+cc_objects(
+    name = "system_coretls_obj_obj",
+    srcs = [
+        "coretls/lib/tls_cache.c",
+        "coretls/lib/appleSession.c",
+        "coretls/lib/tls_ciphersuites.c",
+        "coretls/lib/tls_record_crypto.c",
+        "coretls/lib/tls_record.c",
+        "coretls/lib/sslRc4Cipher.c",
+        "coretls/lib/sslMemory.c",
+        "coretls/lib/sslUtils.c",
+        "coretls/lib/symCipherParams.c",
+        "coretls/lib/sslNullCipher.c",
+        "coretls/lib/symCipher.c",
+        "coretls/lib/tls_digest.c",
+        "coretls/lib/tls_hmac.c",
+        "coretls/lib/sslAesGcmCipher.c",
+        "coretls/lib/sslDecode.c",
+        "coretls/lib/sslSession.c",
+        "coretls/lib/sslCipherSpecs.c",
+        "coretls/lib/sslDigests.c",
+        "coretls/lib/sslCrypto.c",
+        "coretls/lib/sslChangeCipher.c",
+        "coretls/lib/sslCert.c",
+        "coretls/lib/tls_metrics.c",
+        "coretls/lib/sslKeyExchange.c",
+        "coretls/lib/sslAlertMessage.c",
+        "coretls/lib/sslHandshake.c",
+        "coretls/lib/sslHandshakeFinish.c",
+        "coretls/lib/tls1Callouts.c",
+        "coretls/lib/sslHandshakeHello.c",
+        "coretls/lib/tls_handshake.c",
+        "coretls/lib/ssl3Callouts.c",
+        "coretls/lib/tls_stream_parser.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_coretls_obj_inc",
+        ":system_coretls_obj_inc1",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: system_coretls_obj

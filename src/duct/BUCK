@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -9,5 +10,58 @@ cc_header_root(
         "CrashReporterClient.h": "include/CrashReporterClient.h",
         "magmallocProvider.h": "include/magmallocProvider.h",
     },
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: system_duct_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_duct_obj   -- review before committing.
+# cmake target: system_duct_obj  ->  src/duct/src/system_duct_obj
+
+cc_header_root(
+    name = "system_duct_obj_inc",
+    headers = glob(["libcxx/include/**/*.h"]),
+    root = "libcxx/include",
+)
+
+cc_objects(
+    name = "system_duct_obj_obj",
+    srcs = [
+        "src/commpage.c",
+        "src/libnotify.c",
+        "src/numcpus.c",
+        "src/CRGetCrashLogMessage.c",
+        "src/acl.c",
+        "src/dns_sd.c",
+        "src/sa_dst_compare.c",
+        "src/os_log.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_duct_obj_inc",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: system_duct_obj
+
+# The firstpass dylib. install_name is the one the reference build's -dylib_file
+# map uses.
+darwin_dylib(
+    name = "system_duct_firstpass",
+    dylib_name = "libsystem_duct_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_duct.dylib",
+    objs = [":system_duct_obj_obj"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )

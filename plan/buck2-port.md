@@ -215,6 +215,48 @@ Three concrete things that had to be learned by running it:
    fixture supplies its own with an asm label. `-Wl,-bind_at_load` does NOT avoid
    the need for it.
 
+### Phase 2 under way: the libSystem tier
+
+`scripts/gen-buck-from-ninja.py` emits Buck2 targets for a cmake target straight
+out of the reference `build.ninja` (exact sources, defines, flags, include roots,
+link command, including everything inherited from parent cmake scopes), with
+`--write` placing each block in the package that owns its sources. That is what
+makes the tier tractable: 286 cmake targets exist, and transcribing them by hand
+is not a plan. It reports what it cannot know rather than guessing -- sources and
+include dirs that live in the cmake BINARY dir are generated and come out as TODO
+comments.
+
+Ported so far as **firstpass** dylibs, each verified as a Mach-O dylib carrying
+the reference `install_name`:
+
+| Member | Sources | Note |
+|---|---|---|
+| `libsystem_blocks` | 3 | first one; C + Objective-C + C++ in one library |
+| `libkeymgr` | 1 | |
+| `libsystem_pthread` | 13 | includes hand-written assembly; 191 exports |
+| `libsystem_malloc` | 19 | |
+| `libsystem_duct` | 8 | |
+| `libsystem_coreservices` | 3 | |
+
+Only firstpass, and that is not a shortcut: a firstpass link resolves nothing by
+design, so it is exactly the pass that can be built before its siblings exist.
+A FINAL pass needs `libsystem_c` and `libsystem_kernel`, which are the two big
+ones (libc is ~hundreds of sources; libsystem_kernel needs MIG plus syscall-stub
+generation).
+
+Three failures worth recording, because each is a real gap rather than a
+transcription slip:
+
+1. `libsystem_trace` needs `Foundation/NSString.h`: the FRAMEWORK header roots
+   (`darwin/framework-include`, ~141 symlinks) are not staged yet. They are
+   two-hop links into the SDK tree, which the generator can now follow.
+2. `libsystem_asl` fails inside the SDK's `dispatch/data.h` with "function cannot
+   return function type", which is what a block declaration looks like without
+   `-fblocks`. Check the reference's flags for that target.
+3. `libsystem_coretls` fails inside the SDK's `corecrypto/cc.h` with `uint8_t`
+   undeclared. That is the same corecrypto include chain that produced nix-ninja's
+   wall #1, so it is worth understanding rather than patching around.
+
 **The loop, measured** (this is what the port is for):
 
 | Action | fs_hash_crawler | **watchman** | commands run |
