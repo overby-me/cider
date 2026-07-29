@@ -408,7 +408,12 @@ in {
           acc2: o: let
             rel = if underAnyRoot o then relUnder o else o;
             mod = moduleKey rel;
-          in acc2 // { ${mod} = lib.unique ((acc2.${mod} or [ ]) ++ [ (builtins.dirOf rel) ]); }
+            # ALL ancestor dirs of the header, not just its immediate dir: a
+            # `<darlingserver/rpc.h>` produced at src/external/darlingserver/rpc.h needs
+            # -I src/external (the parent), which only an ancestor supplies.
+            dirs = lib.init (filter (x: x != "") (lib.splitString "/" rel));
+            anc = lib.genList (n: builtins.concatStringsSep "/" (lib.take n dirs)) (length dirs + 1);
+          in acc2 // { ${mod} = lib.unique ((acc2.${mod} or [ ]) ++ anc); }
         ) acc (filter isHeaderPath (edgeOutputs (elemAt edges i)))
       ) { }
       (filter (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
@@ -424,7 +429,10 @@ in {
         # implicit + order-only) -- covers CROSS-module generated headers the graph DOES
         # declare a dependency on, without pulling in unrelated dirs that could shadow.
         prodDirs = concatMap (j:
-          map (o: builtins.dirOf (if underAnyRoot o then relUnder o else o))
+          concatMap (o: let
+              rel = if underAnyRoot o then relUnder o else o;
+              dirs = lib.init (filter (x: x != "") (lib.splitString "/" rel));
+            in lib.genList (n: builtins.concatStringsSep "/" (lib.take n dirs)) (length dirs + 1))
             (filter isHeaderPath (edgeOutputs (elemAt edges j))))
           (lib.unique (concatMap realProducers (edgeInputs e)));
       in map (d: "-I$out" + lib.optionalString (d != "" && d != ".") "/${d}") (lib.unique (moduleDirs ++ prodDirs));
