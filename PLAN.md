@@ -390,3 +390,25 @@ Status: the eval floor -- the actual thing that made this unusable -- is fixed a
 full-green completion is gated on the two design decisions above, which I did not force-fix
 unsupervised. `main` is green on the default (eval-time) path and on `darling-{group-test3,
 libsystem-group}-bt`; `darling-full-group-bt` is green up to the keychain/libcxx tier.
+
+### Wall #2 update: mega-group UNWOUND (branch `wip-mega-group-unwind`)
+
+Cracked the structural half of wall #2. Root cause: dense header-producer routing added every
+header producer to every group's rawGroupDeps, and since header producers mutually depend under
+that rule they collapsed into one giant `build-mig` SCC. A measurement showed the *actual*
+undeclared cross-component deps are FEW (~2-3 real: libnotify, Foundation, Security_firstpass --
+the rest were false-positive command words). Fix: **pure-generator header routing** (kills the
+mega-merge) + **`cmdProducersOf` restricted to under-root ABSOLUTE produced paths** with metadata-
+flag args excluded (handles the few real link deps without the spurious merges that broke earlier
+cmdProducers attempts). Result: **989 groups** (was dense's 734), eval still ~39s, failures now
+isolate per component. Plus tool fixes: rewrite host tool paths in generated script BODIES (mig
+`build-mig`'s `/bin/rmdir`), toolsubs applied to the body not the rewritten nix shebang.
+
+NOT on `main` yet because fine grouping REGRESSES libSystem-bt by surfacing what dense masked:
+**undeclared TRANSITIVE TOOL deps.** Darling builds its own cctools (`ar`, `ranlib`, `lipo`); the
+`ar` binary execs `ranlib` at a baked group-output path, which is not built under fine grouping
+(dense built everything). This is the undeclared-dep problem one level deeper (a runtime tool dep
+baked into a binary, not visible in any command). The remaining full-green work is: (a) a shared
+built-tools story / declaring cctools' inter-tool deps, and (b) wall #1 (srcHeaders header
+precedence for the ObjC/libcxx `<cstddef>` case). Both are the "declare the deps / scope the
+namespace" theme -- the deep-but-known tail.
