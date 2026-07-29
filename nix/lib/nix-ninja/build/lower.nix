@@ -1155,7 +1155,10 @@ in {
       # the header base, so only that component's group rebuilds -- component-level
       # input isolation, now without any scan. Header edits (rarer) rehash it, as they
       # should. Built once and shared, so its ~300MB is paid a single time.
-      hdrExts = [ "h" "hpp" "hh" "hxx" "h++" "inc" "def" "defs" "modulemap" "apinotes" "tbd" "pch" ];
+      hdrExts = [ "h" "hpp" "hh" "hxx" "h++" "inc" "def" "defs" "modulemap" "apinotes" "tbd" "pch"
+                  # export-list templates (security/OSX preprocesses Security.exp-in, which
+                  # #includes Security/SecExports.exp-in): put the .exp family in the base.
+                  "exp" "exp-in" ];
       srcExts = [ "c" "cc" "cpp" "cxx" "c++" "m" "mm" ];
       extOf = p: let b = baseNameOf p; in if lib.hasInfix "." b then lib.toLower (lib.last (lib.splitString "." b)) else "";
       # Sources that ARE compiled by some edge. These are staged per-group individually

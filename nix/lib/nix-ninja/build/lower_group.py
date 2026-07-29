@@ -37,6 +37,23 @@ def is_noop(e):
     return e.get("rule") == "phony" or c in ("", ":", "true")
 
 
+CMAKE_HOUSEKEEPING_RE = re.compile(
+    r"cmake_install\.cmake|--regenerate-during-build|--check-build-system"
+    r"|cmake_check_build_system|-E cmake_echo_color|(^|\s)(ctest|cpack)(\s|$)")
+
+
+def is_cmake_housekeeping(e):
+    """CMake's built-in utility targets (rebuild_cache, edit_cache, install, test,
+    package, ...) re-run cmake / run cmake_install.cmake / ctest / cpack against paths
+    absent in the per-group sandbox and are not real build steps. componentGrouping can
+    pull them into a real group; skip them. First-party custom targets (build-mig, the
+    codegen) run real commands and are kept."""
+    for o in edge_outputs(e):
+        if re.search(r"CMakeFiles/(rebuild_cache|edit_cache)", o):
+            return True
+    return bool(CMAKE_HOUSEKEEPING_RE.search(e.get("command") or ""))
+
+
 HDR_EXTS = {"h", "hpp", "hh", "hxx", "h++", "inc", "def", "defs", "modulemap",
             "apinotes", "tbd", "pch"}
 
@@ -271,6 +288,7 @@ def main():
     graph = json.load(open(a.graph))
     g = Graph(graph["edges"], a.rewrite_root)
     ids = [int(x) for x in a.edges.split(",") if x != ""]
+    ids = [i for i in ids if not is_cmake_housekeeping(g.edges[i])]
     toolsubs = [s.split("=", 1) for s in a.toolsub]
 
     out = a.out
