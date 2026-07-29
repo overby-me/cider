@@ -357,3 +357,36 @@ genuine case FOR a Buck2 port, distinct from the eval-speed problem (which was a
 issue, now fixed). Recommendation: finish the full-green grind (#2) + implement (1)-(3) to get a
 ~1-3 min component-incremental loop with no port; treat Buck2 as the deliberate next step only if
 that loop proves too slow for how Darling actually gets developed.
+
+### Full-green grind (#2): where it stands + the two design walls
+
+The build-time path (`darling-full-group-bt`) grinds green through migcom -> libSystem -> Security
+export lists -> and reaches the `security/keychain` / libcxx / Foundation tier. Mechanical gaps
+fixed along the way (all committed): skip CMake housekeeping targets (rebuild_cache/edit_cache/
+install/test/package), shebang rewrites on staged sources AND generated script outputs, rspfiles,
+ext-dir de-symlink before cp, command-referenced source staging, and srcHeaders extensions for
+non-header include-chain data (`.exp`, `.exp-in`, `.list`, `.ipp`).
+
+Then it hits TWO genuine design walls (not tool/staging gaps — both would bite the eval-time
+`mkGroup` path too; it just never got far enough to see them):
+
+1. **srcHeaders header precedence.** srcHeaders mounts the WHOLE source-header namespace as one
+   flat base. An Objective-C compile of `security/keychain/ckks/CKKSLogging.m` picks up libcxx's
+   C++-only `include/cstddef` (`using ::size_t _LIBCPP_USING_IF_EXISTS;` -> "unknown type name
+   'using'") because it shadows the SDK's C-compatible `<cstddef>`. Fix needs deliberate header-
+   search-path scoping (source-tree headers must not shadow toolchain/SDK headers for compiles
+   that did not ask for them) -- akin to the module-scoping already done for generated `-I` dirs.
+2. **Dense-staging mega-groups.** `CKKSLogging.m.o` builds inside a group whose SCC rep is
+   `build-mig`, which has absorbed edges from system_cmds, libcxx, and security. Dense header-
+   producer staging (routed through rawGroupDeps so cycles condense) merges header-producer
+   subprojects with their consumers into a few large SCCs at whole-graph scale -- so one deep
+   compile failure blocks a whole swath (curl, CoreServices, launchservicesd cascade off it). The
+   pure-generator restriction avoids this but drops undeclared compile-dependent link deps (e.g.
+   libnotify) and breaks libSystem; the command-parse "targeted" alternative breaks on the
+   libSystem umbrella's positional cross-refs. Needs a proper undeclared-dep story (declare them
+   in Darling's CMake, or a content-addressed shared-lib overlay) rather than dense staging.
+
+Status: the eval floor -- the actual thing that made this unusable -- is fixed and committed. The
+full-green completion is gated on the two design decisions above, which I did not force-fix
+unsupervised. `main` is green on the default (eval-time) path and on `darling-{group-test3,
+libsystem-group}-bt`; `darling-full-group-bt` is green up to the keychain/libcxx tier.
