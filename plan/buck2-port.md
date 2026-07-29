@@ -46,9 +46,12 @@ points it at Darling.
 
 Goal: prove the toolchain end-to-end on one leaf, fast, outside Nix.
 
-1. **Pin buck2 + prelude.** Vendor a buck2 binary + a minimal prelude (or fork
-   the prelude's cxx rules). Keep it out of Nix for now — a plain `buck2` on
-   PATH, `.buckconfig` at repo root, iterate with `buck2 build`.
+1. **Get buck2 + a prelude.** Use `buck2` from nixpkgs (`pkgs.buck2`) via a
+   devshell so it is on `PATH` — no need to vendor a binary. Add a minimal
+   prelude (or fork the prelude's cxx rules), a `.buckconfig` at the repo root,
+   and iterate with `buck2 build` directly. The nixpkgs binary is the same
+   `buck2` Phase 3 reuses under Nix, so the toolchain is reproducible from day 1
+   even while we iterate outside a derivation.
 2. **Define the Darling toolchain as Buck2 rules.** This is where wall #1 dies.
    - the cross clang targeting `x86_64-apple-darwin20`, with the darwin SDK as an
      explicit `--sysroot`/`-isysroot` (NOT a globbed `-I`), so system `<endian.h>`
