@@ -392,29 +392,31 @@ in {
           && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
         (indices edges)));
 
-    # GROUP variant of generatedHeaderIncs + migHeaderIncs: $out-relative -I flags for
-    # EVERY generated-header directory in the graph (mig and non-mig alike). In a group
-    # all generated headers are materialised in $out (internal topo order + external
-    # dependency groups staged via extGroupDrvs), so a compile that reaches a generated
-    # header through a cmake target-include -- not a literal -I and not a declared input
-    # (e.g. syslog's asl.c -> <asl_ipc.h> generated in aslcommon) -- can still resolve
-    # it. Unlike the per-edge `-I<producerDrv>` form these carry NO derivation reference,
-    # so there is no edgeDrvs eval cycle and the whole set is safe on every compile
-    # unconditionally (no per-producer closure filter needed; clang ignores absent -I).
-    genIncsOut = lib.unique (concatMap (
-        i:
-        concatMap (
-          o: let
+    # GROUP variant of migHeaderIncs, MODULE-SCOPED. A group compile takes the
+    # $out-relative -I dirs of generated headers produced in ITS OWN source module only.
+    # Graph-wide would pollute the search path with unrelated generated dirs that shadow
+    # standard headers (libsyscall/mach/string.h shadowing <string.h> for migcom). In a
+    # group these headers are materialised in $out (internal topo order + external groups
+    # staged via extGroupDrvs through cmake order-only deps), and -I$out carries NO
+    # derivation reference so there is no edgeDrvs eval cycle -- no per-producer closure
+    # filter needed. Covers mig AND non-mig generated headers (migHeadersByModule is
+    # mig-only), so build a fresh module map over every header-producing edge. moduleKey
+    # is defined further down; the recursive let makes the forward reference fine.
+    genHeaderDirsByModule = lib.foldl' (
+        acc: i:
+        lib.foldl' (
+          acc2: o: let
             rel = if underAnyRoot o then relUnder o else o;
-            dirs = lib.init (filter (x: x != "") (lib.splitString "/" rel));
-            ancestors = lib.genList (n: builtins.concatStringsSep "/" (lib.take n dirs)) (length dirs + 1);
-          in
-          map (a: "-I$out" + lib.optionalString (a != "") "/${a}") ancestors
-        ) (filter isHeaderPath (edgeOutputs (elemAt edges i)))
-      )
-      (filter
-        (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
-        (indices edges)));
+            mod = moduleKey rel;
+          in acc2 // { ${mod} = lib.unique ((acc2.${mod} or [ ]) ++ [ (builtins.dirOf rel) ]); }
+        ) acc (filter isHeaderPath (edgeOutputs (elemAt edges i)))
+      ) { }
+      (filter (i: !(isNoOp (elemAt edges i)) && lib.any isHeaderPath (edgeOutputs (elemAt edges i)))
+        (indices edges));
+    genIncsOutFor = i: let
+        outs = edgeOutputs (elemAt edges i);
+        mod = if outs == [ ] then "" else moduleKey (let o = builtins.head outs; in if underAnyRoot o then relUnder o else o);
+      in map (d: "-I$out" + lib.optionalString (d != "" && d != ".") "/${d}") (genHeaderDirsByModule.${mod} or [ ]);
 
     # A generated mig header may be `#include <...>`d by a compile in the same
     # source module without the ninja graph declaring the dependency, and (unlike
@@ -1221,10 +1223,11 @@ in {
             stripped = if rewriteRoots == [] then e.command else stripRoots e.command;
             withSubs = builtins.replaceStrings (map (s: s.from) subs) (map (s: s.to) subs) stripped;
             base = builtins.replaceStrings (map (s: s.from) toolPathSubs) (map (s: s.to) toolPathSubs) withSubs;
-          # Append the $out-relative generated-header -I dirs to compile commands so a
+          # Append this compile's OWN-MODULE $out-relative generated-header -I dirs so a
           # `<generated.h>` reached via a cmake target-include (not a literal -I / declared
-          # input) resolves from where topo/external staging materialised it in $out.
-          in base + lib.optionalString (isCompile e) (" " + lib.concatStringsSep " " genIncsOut);
+          # input) resolves from where topo/external staging materialised it in $out --
+          # module-scoped so unrelated generated dirs cannot shadow standard headers.
+          in base + lib.optionalString (isCompile e) (" " + lib.concatStringsSep " " (genIncsOutFor i));
         in ''
           # Subshell resetting to $out: edges run sequentially in one shell, and a
           # compile command that `cd`s into its WORKING_DIRECTORY (and does not
