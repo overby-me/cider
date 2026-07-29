@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""Emit Buck2 targets for a cmake target, read out of the reference build.ninja.
+
+plan/buck2-port.md phase 2.1: bootstrap targets from the real build graph, then
+hand-refine the ones we own. The configured build.ninja is the best source
+available -- it holds the EXACT sources, defines, flags, include paths and link
+command ninja passes, including everything a target inherits from parent cmake
+scopes (which reading a CMakeLists cannot tell you).
+
+Get the graph with:
+    nix build .#darling-graph -o result-graph-ref
+
+Usage:
+    scripts/gen-buck-from-ninja.py <cmake-target> [<cmake-target> ...]
+    scripts/gen-buck-from-ninja.py --list [<substring>]     # what targets exist
+    scripts/gen-buck-from-ninja.py --explain <cmake-target> # flags/includes as-is
+
+What it cannot do, and says so instead of guessing: a source or include dir that
+lives in the cmake BINARY dir is generated, and needs a codegen target (mig_gen,
+script_gen, ...) wired by hand. Those are reported as TODO comments.
+"""
+from __future__ import annotations
+
+import os
+import re
+import sys
+from collections import OrderedDict
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
+BUCK_SRC = "buck-src"
+
+# The nix build's source and binary dirs, as they appear in build.ninja.
+SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-darling-cmake-src")
+BIN_DIR = "/build/build"
+
+# Flags and include roots //darwin:sdk_env already supplies, so a generated target
+# does not repeat them. Keep in sync with darwin/BUCK.
+ENV_FLAGS = {
+    "-Wno-error=implicit-function-declaration",
+    "-Wno-nullability-completeness",
+    "-Wno-deprecated-declarations",
+    "-Wno-availability",
+    "-Wno-expansion-to-defined",
+    "-Wno-elaborated-enum-base",
+    "-Wno-undef-prefix",
+    "-DDARLING",
+    "-DDARWIN",
+    "-DPLATFORM_MacOSX",
+    "-DTARGET_OS_MAC=1",
+    "-D_DARWIN_C_SOURCE",
+    "-D_POSIX_C_SOURCE",
+    "-D__APPLE__",
+    "-D__DYNAMIC__",
+    "-D__MACH__",
+}
+# Flags the toolchain itself passes (buck/toolchains/BUCK).
+TOOLCHAIN_FLAGS = {
+    "-target",
+    "x86_64-apple-darwin20",
+    "-arch",
+    "x86_64",
+    "-mmacosx-version-min=11.0",
+    "-isystem",
+}
+# Include dirs //darwin:sdk_env covers, relative to the repo root.
+ENV_INCLUDES = {
+    "src/include",
+    "darwin/basic-headers",
+    "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
+    "darwin/framework-include",
+    "darwin/framework-private-include",
+    "src/external/lkm/include",
+    "src/libDiagnosticMessagesClient/include",
+    "src/libMobileGestalt/include",
+    "src/lib/include",
+    "src/external/configd/dnsinfo",
+    "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libxml2",
+}
+
+
+def read_edges():
+    """Parse build.ninja into [(outputs, rule, inputs, vars)]."""
+    with open(GRAPH) as f:
+        text = f.read()
+    edges = []
+    cur = None
+    for line in text.split("\n"):
+        if line.startswith("build "):
+            body = line[len("build "):]
+            head, _, rest = body.partition(": ")
+            rule, _, inputs = rest.partition(" ")
+            outs = head.split(" | ")[0].split()
+            cur = (outs, rule, inputs.split(), {})
+            edges.append(cur)
+        elif cur is not None and line.startswith("  ") and " = " in line:
+            k, _, v = line.strip().partition(" = ")
+            cur[3][k] = v
+        elif line.strip() == "":
+            cur = None
+    return edges
+
+
+def orig_repo_rel(p: str) -> str:
+    """The path as it is relative to the repo root, whatever tree it lives in."""
+    return SRC_STORE_RE.sub("", p).replace(BIN_DIR, "").lstrip("/")
+
+
+def repo_path(p: str):
+    """Map a build.ninja path to (kind, path).
+
+    kind is "src" for a repo-relative source path, "buck-src" for one that has
+    been rewritten into the materialized pins, or "generated" for anything in the
+    cmake binary dir.
+    """
+    p = SRC_STORE_RE.sub("", p)
+    if p.startswith(BIN_DIR):
+        return ("generated", os.path.normpath(p[len(BIN_DIR):].lstrip("/")))
+    p = os.path.normpath(p.lstrip("/"))
+    if p.startswith("src/external/"):
+        rel = p[len("src/external/"):]
+        if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
+            return ("buck-src", rel)
+    if os.path.exists(os.path.join(REPO, p)):
+        return ("src", p)
+    return ("generated", p)
+
+
+def split_flags(s: str) -> list[str]:
+    """Split a ninja flag string, honoring the single quotes cmake emits."""
+    out, cur, quote = [], "", None
+    for ch in s:
+        if quote:
+            if ch == quote:
+                quote = None
+            else:
+                cur += ch
+        elif ch in "'\"":
+            quote = ch
+        elif ch.isspace():
+            if cur:
+                out.append(cur)
+                cur = ""
+        else:
+            cur += ch
+    if cur:
+        out.append(cur)
+    return out
+
+
+def collect(target: str, edges):
+    """Everything build.ninja says about one cmake target."""
+    obj_re = re.compile(r"CMakeFiles/" + re.escape(target) + r"\.dir/")
+    srcs, defines, flags, includes = [], [], [], []
+    link = None
+    for outs, rule, inputs, vars in edges:
+        if any(obj_re.search(o) for o in outs) and any(o.endswith(".o") for o in outs):
+            for i in inputs:
+                if i.startswith("|") or i.startswith("||"):
+                    break
+                if re.search(r"\.(c|cc|cpp|cxx|m|mm|S|s)$", i):
+                    srcs.append(i)
+            if not defines and "DEFINES" in vars:
+                defines = split_flags(vars["DEFINES"])
+            if not flags and "FLAGS" in vars:
+                flags = split_flags(vars["FLAGS"])
+            if not includes and "INCLUDES" in vars:
+                includes = split_flags(vars["INCLUDES"])
+        elif link is None:
+            for o in outs:
+                base = os.path.basename(o)
+                if base in (target, "lib" + target + ".a", "lib" + target + ".dylib") or (
+                    base.startswith("lib" + target) and base.endswith(".dylib")
+                ):
+                    link = (o, vars)
+                    break
+    return srcs, defines, flags, includes, link
+
+
+def main(argv: list[str]) -> int:
+    if not os.path.exists(GRAPH):
+        sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#darling-graph -o result-graph-ref")
+    args = [a for a in argv[1:] if not a.startswith("--")]
+    edges = read_edges()
+
+    if "--list" in argv:
+        seen = set()
+        pat = args[0] if args else ""
+        for outs, _, _, _ in edges:
+            for o in outs:
+                m = re.search(r"CMakeFiles/([^/]+)\.dir/", o)
+                if m and pat in m.group(1):
+                    seen.add(m.group(1))
+        for t in sorted(seen):
+            print(t)
+        return 0
+
+    if not args:
+        sys.exit(__doc__)
+
+    for target in args:
+        srcs, defines, flags, includes, link = collect(target, edges)
+        if not srcs:
+            print(f"# no object edges found for cmake target {target}", file=sys.stderr)
+            continue
+
+        if "--explain" in argv:
+            print(f"=== {target}")
+            print("  srcs:", len(srcs))
+            print("  defines:", " ".join(defines))
+            print("  flags:", " ".join(flags))
+            print("  includes:")
+            for i in includes:
+                if i in ("-isystem",):
+                    continue
+                print("   ", repo_path(i.removeprefix("-I")))
+            if link:
+                print("  link out:", link[0])
+                print("  link flags:", link[1].get("LINK_FLAGS", "")[:400])
+            continue
+
+        # Sources, split by where they live.
+        src_paths, gen_srcs, pkg_dirs = [], [], OrderedDict()
+        for s in srcs:
+            kind, p = repo_path(s)
+            if kind == "generated":
+                gen_srcs.append(p)
+            else:
+                src_paths.append((kind, p))
+                pkg_dirs[os.path.dirname(p)] = True
+
+        # The include dirs this target adds beyond the shared environment.
+        own_includes, gen_includes = [], []
+        for i in includes:
+            if not i.startswith("-I"):
+                continue
+            if orig_repo_rel(i[2:]) in ENV_INCLUDES:
+                continue
+            kind, p = repo_path(i[2:])
+            if kind == "generated":
+                gen_includes.append(p)
+            else:
+                own_includes.append((kind, p))
+
+        # -B and -isystem take a following argument, so both tokens have to go:
+        # -B is a link concern and the resource dir comes from the toolchain.
+        own_flags, skip_next = [], False
+        for f in defines + flags:
+            if skip_next:
+                skip_next = False
+                continue
+            if f in ("-B", "-isystem"):
+                skip_next = True
+                continue
+            if f in ENV_FLAGS or f in TOOLCHAIN_FLAGS:
+                continue
+            if "resource-root" in f:
+                continue
+            own_flags.append(f)
+
+        install_name = ""
+        is_dylib = False
+        if link:
+            lf = link[1].get("LINK_FLAGS", "")
+            m = re.search(r"-Wl,-dylib_install_name,(\S+)", lf)
+            if m:
+                install_name = m.group(1)
+            is_dylib = link[0].endswith(".dylib")
+
+        print(f"# GENERATED from the reference build.ninja by")
+        print(f"# scripts/gen-buck-from-ninja.py {target}   -- review before committing.")
+        print(f"# cmake target: {target}" + (f"  ->  {link[0]}" if link else ""))
+        if gen_srcs:
+            print("# TODO these sources are GENERATED; wire a codegen target for each:")
+            for g in gen_srcs:
+                print(f"#   {g}")
+        if gen_includes:
+            print("# TODO these include dirs are GENERATED (codegen output):")
+            for g in gen_includes:
+                print(f"#   {g}")
+        print()
+
+        for idx, (kind, p) in enumerate(own_includes):
+            name = target + "_inc" + ("" if idx == 0 else str(idx))
+            print("cc_header_root(")
+            print(f'    name = "{name}",')
+            print(f'    headers = glob(["{p}/**/*.h"]),')
+            print(f'    root = "{p}",')
+            print(")")
+            print()
+
+        print("cc_objects(")
+        print(f'    name = "{target}_obj",')
+        print("    srcs = [")
+        for kind, p in src_paths:
+            print(f'        "{p}",')
+        print("    ],")
+        if own_flags:
+            print("    compiler_flags = [")
+            for f in own_flags:
+                print(f'        "{f}",')
+            print("    ],")
+        print('    toolchain = "toolchains//:darwin_cc",')
+        print("    deps = [")
+        for idx in range(len(own_includes)):
+            print(f'        ":{target}_inc{"" if idx == 0 else idx}",')
+        print('        "//darwin:sdk_env",')
+        print("    ],")
+        print(")")
+        print()
+
+        if is_dylib:
+            print("darwin_dylib(")
+            print(f'    name = "{target}_firstpass",')
+            print(f'    dylib_name = "lib{target.replace("system_", "system_")}_firstpass.dylib",')
+            print("    firstpass = True,")
+            print(f'    install_name = "{install_name}",')
+            print(f'    objs = [":{target}_obj"],')
+            print('    toolchain = "toolchains//:darwin_cc",')
+            print('    deps = ["//darwin:sdk_env"],')
+            print('    visibility = ["PUBLIC"],')
+            print(")")
+            print()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))

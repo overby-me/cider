@@ -59,6 +59,9 @@ targets=(
 	//tests/buck2/firstpass:b
 	//tests/buck2/firstpass:umbrella
 	//buck-src:system_blocks_firstpass
+	//buck-src:keymgr_firstpass
+	//buck-src:system_pthread_firstpass
+	//buck-src:system_malloc_firstpass
 )
 if [ -n "$verbose" ]; then
 	buck2 build "${targets[@]}"
@@ -199,6 +202,33 @@ if llvm-nm --undefined-only "$blocks" 2>/dev/null | grep -qx "_free"; then
 	ok "leaves sibling symbols undefined (as a firstpass must)"
 else
 	bad "expected _free to be undefined in a firstpass dylib"
+fi
+
+say "== more libSystem members (firstpass dylibs) =="
+# name:install_name pairs, from the reference build's -dylib_file map.
+for pair in \
+	"keymgr_firstpass:/usr/lib/system/libkeymgr.dylib" \
+	"system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
+	"system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib"; do
+	t=${pair%%:*}
+	want=${pair#*:}
+	art=$(out_of "//buck-src:$t")
+	case "$(file -b "$art")" in
+	*"Mach-O 64-bit x86_64 dynamically linked shared library"*) ;;
+	*) bad "$t is not a Mach-O dylib"; continue ;;
+	esac
+	got=$(llvm-objdump --macho --dylib-id "$art" 2>/dev/null | tail -1)
+	[ "$got" = "$want" ] && ok "$t -> $got" || bad "$t install_name is '$got', want '$want'"
+done
+# libsystem_pthread is the one with hand-written assembly in it.
+pth=$(out_of //buck-src:system_pthread_firstpass)
+# Collect first: piping straight into `grep -q` fails under pipefail, because
+# grep exits on the first match and llvm-nm dies on SIGPIPE.
+pth_syms=$(llvm-nm --defined-only --extern-only "$pth" 2>/dev/null | awk '{print $3}')
+if printf '%s\n' "$pth_syms" | grep -qx "_pthread_create"; then
+	ok "libsystem_pthread exports _pthread_create"
+else
+	bad "libsystem_pthread does not export _pthread_create"
 fi
 
 say "== DUCT_TAPE_LIB staging =="
