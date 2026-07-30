@@ -381,8 +381,32 @@ The smoke target is deliberately the smallest real one (one C source, one includ
 one archive action). Scaling it up is the next step, and the guest tier will need the
 Darwin toolchain's store paths to reach the lowered actions.
 
-**Next up:** more targets through the Nix path (the duct-tape archive, then a guest
-dylib), and `nix flake check` coverage once overby's support lands on main.
+**Scaling it up hit an evaluator wall, and finding it took four fixes.** Anything that
+loads the generated SDK maps (a 4178-entry dict) or lives in the 32k-line `buck-src/BUCK`
+overflowed the Nix stack, because the interpreter ran one Nix function call per element
+and Nix has no tail-call elimination. Now iterative, on overby's `nix-lib-buck2`:
+
+  * the lexer's driver (one step per token) runs in bounded chunks;
+  * the parser's dict-entry and statement-list loops use the same chunked iterator;
+  * the evaluator's list, keyword-argument and dict literals use `foldl'`;
+  * dict LOOKUP carried a recursive linear scan -- a dict now has a lazy index of its
+    string keys, so repeated lookups are O(1) and recurse not at all.
+
+Parsing and evaluating the 4300-line SDK map works after that. A target that pulls the
+whole `//darwin:sdk_env` closure still does not, and the remaining suspect is the
+O(n^2) list-append representation used while accumulating tokens and entries -- forcing
+that chain is what overflows now, with no trace to name it. `nix build
+.#darling-buck2-libsimple` is the target that works end to end today.
+
+**A caution for the next iteration:** run these evaluations under a memory cap
+(`systemd-run --user --scope -p MemoryMax=8G nix build ...`). An unbounded one was
+OOM-killed twice here, which also takes the buck2 daemon with it -- and the daemon comes
+back with whatever PATH restarted it, so `clang`/`bison`/`flex` must be on it (the dev
+shell's PATH) or every action fails with "Failed to spawn a process".
+
+**Next up:** chunked accumulation in the interpreter (kill the O(n^2)), or -- the more
+useful change for both build paths -- split the generated `buck-src/BUCK` into per-library
+packages, which shrinks the reparse unit for the daemon too.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

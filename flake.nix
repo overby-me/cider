@@ -148,6 +148,59 @@
         }).buildTarget
           { target = "//src/libsimple:libsimple_darlingserver"; };
 
+      # The host tier through the same Nix-lowered path: darlingserver's duct-tape
+      # archive (real XNU osfmk/bsd sources plus mig codegen, and the artifact the
+      # Rust daemon consumes via DUCT_TAPE_LIB). Bigger than the libsimple smoke
+      # target by two orders of magnitude, and it exercises a generator TOOL built
+      # by the same graph (migcom):
+      #   nix build .#darling-buck2-duct-tape
+      packages.darling-buck2-duct-tape =
+        pkgs:
+        (import ./nix/lib/darlingBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//src/external/darlingserver/duct-tape:darlingserver_duct_tape"; };
+
+      # A mid-size probe for the Nix-lowered path: src/duct's static archive is 8
+      # sources in a 165-line BUCK file, between libsimple (80 lines) and duct-tape
+      # (1044). Which of size or feature-set the interpreter runs out of road on is
+      # what this answers:
+      #   nix build .#darling-buck2-duct-static
+      packages.darling-buck2-duct-static =
+        pkgs:
+        (import ./nix/lib/darlingBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//src/duct:system_duct_static"; };
+
+      # Two probes for where the Nix-lowered path runs out of road. Both are
+      # trivial targets; what differs is the FILE the interpreter has to read:
+      # darwin/BUCK loads the generated SDK maps (4178 entries), buck-src/BUCK is
+      # 32k lines. If a trivial target in a big file overflows, the wall is parsing,
+      # not the target -- which is how the interpreter's recursive loops were found.
+      #
+      # CAP THE MEMORY when running these: an evaluation that runs away takes the
+      # machine down otherwise (it did, twice).
+      #   systemd-run --user --scope -p MemoryMax=8G \
+      #     nix build .#darling-buck2-probe-sdkenv
+      packages.darling-buck2-probe-sdkenv =
+        pkgs:
+        (import ./nix/lib/darlingBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//darwin:sdk_env"; };
+
+      packages.darling-buck2-probe-bigfile =
+        pkgs:
+        (import ./nix/lib/darlingBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//buck-src:mig.sh"; };
+
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
       # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in
