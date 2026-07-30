@@ -1,6 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen", "mig_gen")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
 load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
@@ -19362,3 +19362,431 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: system_copyfile dylibs
+
+# BEGIN generated: system_loader
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_loader   -- review before committing.
+# cmake target: system_loader  ->  system_loader
+# 36 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dyld/launch-cache
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "system_loader_inc_dyld",
+    headers = glob([
+        "dyld/src/*.h",
+        "dyld/src/**/*.h",
+        "dyld/dyld3/*.h",
+        "dyld/dyld3/**/*.h",
+        "dyld/include/*.h",
+        "dyld/include/**/*.h",
+    ]),
+    root = "dyld",
+    include_subdirs = [
+        "src",
+        "dyld3",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_dyld3_shared_cache",
+    headers = glob(["dyld/dyld3/shared-cache/*.h", "dyld/dyld3/shared-cache/**/*.h"]),
+    root = "dyld/dyld3/shared-cache",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_include_mach_o",
+    headers = glob(["dyld/include/mach-o/*.h", "dyld/include/mach-o/**/*.h"]),
+    root = "dyld/include/mach-o",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_2",
+    headers = glob(["dyld/*.h", "dyld/**/*.h"]),
+    root = "dyld",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_loader_obj",
+    srcs = [
+        "dyld/dyld3/BootArgs.cpp",
+        "dyld/dyld3/Closure.cpp",
+        "dyld/dyld3/ClosureBuilder.cpp",
+        "dyld/dyld3/ClosureFileSystemNull.cpp",
+        "dyld/dyld3/ClosureFileSystemPhysical.cpp",
+        "dyld/dyld3/ClosureWriter.cpp",
+        "dyld/dyld3/Diagnostics.cpp",
+        "dyld/dyld3/Loading.cpp",
+        "dyld/dyld3/MachOAnalyzer.cpp",
+        "dyld/dyld3/MachOAnalyzerSet.cpp",
+        "dyld/dyld3/MachOFile.cpp",
+        "dyld/dyld3/MachOLoaded.cpp",
+        "dyld/dyld3/PathOverrides.cpp",
+        "dyld/dyld3/RootsChecker.cpp",
+        "dyld/dyld3/SharedCacheRuntime.cpp",
+        "dyld/dyld3/Tracing.cpp",
+        "dyld/dyld3/shared-cache/DyldSharedCache.cpp",
+        "dyld/src/ImageLoader.cpp",
+        "dyld/src/ImageLoaderMachO.cpp",
+        "dyld/src/ImageLoaderMachOClassic.cpp",
+        "dyld/src/ImageLoaderMachOCompressed.cpp",
+        "dyld/src/ImageLoaderMegaDylib.cpp",
+        "dyld/src/dyld2.cpp",
+        "dyld/src/dyldAPIs.cpp",
+        "dyld/src/dyldInitialization.cpp",
+        "dyld/src/dyldLock.cpp",
+        "dyld/src/dyldNew.cpp",
+        "dyld/src/dyld_debugger.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-DBUILDING_DYLD=1",
+        "-DPRIVATE=1",
+        "-gfull",
+        "-fPIC",
+        "-fno-stack-check",
+    ],
+    prefix_headers = [
+        "//src/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_loader_inc_dyld",
+        ":system_loader_inc_dyld_dyld3_shared_cache",
+        ":system_loader_inc_dyld_include_mach_o",
+        "//darwin:sdk_env",
+        ":system_loader_inc_dyld_2",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_loader_obj2",
+    srcs = [
+        "dyld/darling/src/hell.c",
+        "dyld/darling/src/sandbox-dummy.c",
+        "dyld/src/dyldExceptions.c",
+        "dyld/src/dyldStartup.S",
+        "dyld/src/glue.c",
+        "dyld/src/start_glue.S",
+        "dyld/src/stub_binding_helper.S",
+        "dyld/version.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-DBUILDING_DYLD=1",
+        "-DPRIVATE=1",
+        "-gfull",
+        "-fPIC",
+        "-fno-stack-check",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_loader_inc_dyld",
+        ":system_loader_inc_dyld_dyld3_shared_cache",
+        ":system_loader_inc_dyld_include_mach_o",
+        "//darwin:sdk_env",
+        ":system_loader_inc_dyld_2",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_loader
+
+# BEGIN generated: notifyutil
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py notifyutil   -- review before committing.
+# cmake target: notifyutil  ->  src/external/libnotify/notifyutil
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libnotify
+
+cc_header_root(
+    name = "notifyutil_inc_libnotify",
+    headers = glob(["libnotify/*.h", "libnotify/**/*.h"]),
+    root = "libnotify",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "notifyutil_obj",
+    srcs = [
+        "libnotify/notifyutil/notifyutil.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-w",
+    ],
+    prefix_headers = [
+        "xnu/bsd/sys/fileport.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":notifyutil_inc_libnotify",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notifyutil
+
+# BEGIN generated: plconvert
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py plconvert   -- review before committing.
+# cmake target: plconvert  ->  src/external/corefoundation/plconvert
+
+cc_header_root(
+    name = "plconvert_inc_corefoundation",
+    headers = glob(["corefoundation/*.h", "corefoundation/**/*.h"]),
+    root = "corefoundation",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "plconvert_inc_foundation_src",
+    headers = glob(["foundation/src/*.h", "foundation/src/**/*.h"]),
+    root = "foundation/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "plconvert_obj",
+    srcs = [
+        "corefoundation/plconvert.c",
+    ],
+    compiler_flags = [
+        "-DCF_BUILDING_CF",
+        "-DDEPLOYMENT_TARGET_MACOSX=1",
+        "-DDISPATCH_SUPPORT=1",
+        "-DINCLUDE_OBJC",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=1",
+        "-DU_SHOW_CPLUSPLUS_API=0",
+        "-DU_SHOW_DRAFT_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__CONSTANT_CFSTRINGS__=1",
+        "-D__CONSTANT_STRINGS__=1",
+        "-fblocks",
+        "-fconstant-cfstrings",
+        "-fexceptions",
+        "-Wno-bridge-cast",
+        "-mmacosx-version-min=10.10",
+        "-w",
+        "-nostdinc",
+    ],
+    prefix_headers = [
+        "corefoundation/CoreFoundation_Prefix.h",
+        "corefoundation/macros.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//darwin/frameworks:fw_AE",
+        "//buck-src:fw_CFNetwork",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_IOKit",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//buck-src:fw_Onyx2D",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_SearchKit",
+        "//buck-src:fw_Security",
+        ":plconvert_inc_corefoundation",
+        ":plconvert_inc_foundation_src",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: plconvert
+
+# BEGIN generated: opendirectoryd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py opendirectoryd   -- review before committing.
+# cmake target: opendirectoryd  ->  src/external/OpenDirectory/opendirectoryd/opendirectoryd
+
+cc_header_root(
+    name = "opendirectoryd_inc_OpenDirectory_opendirectoryd_include",
+    headers = glob(["OpenDirectory/opendirectoryd/include/*.h", "OpenDirectory/opendirectoryd/include/**/*.h"]),
+    root = "OpenDirectory/opendirectoryd/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "opendirectoryd_obj",
+    srcs = [
+        "OpenDirectory/opendirectoryd/src/main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":opendirectoryd_inc_OpenDirectory_opendirectoryd_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: opendirectoryd
+
+# BEGIN generated: dyld binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dyld   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dyld",
+    objs = [
+        # system_loader
+        ":system_loader_obj",
+        ":system_loader_obj2",
+    ],
+    linker_flags = [
+        "-Wl,-dylinker",
+        "-Wl,-dead_strip",
+        "-Wl,-data_const",
+        "-Wl,-e,__dyld_start",
+        "-Wl,-fixup_chains",
+        "-Wl,-image_base,0x1fe00000",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "dyld/src/dyld.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dyld binary
+
+# BEGIN generated: notifyutil binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries notifyutil   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "notifyutil",
+    objs = [
+        # notifyutil
+        ":notifyutil_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notifyutil binary
+
+# BEGIN generated: plconvert binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries plconvert   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "plconvert",
+    objs = [
+        # plconvert
+        ":plconvert_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: plconvert binary
+
+# BEGIN generated: opendirectoryd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries opendirectoryd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "opendirectoryd",
+    objs = [
+        # opendirectoryd
+        ":opendirectoryd_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: opendirectoryd binary
+
+# BEGIN generated: crt1.10.6
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1.10.6   -- review before committing.
+# cmake target: crt1.10.6  ->  src/external/csu/libcrt1.10.6.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1.10.6_obj",
+    srcs = [
+        "csu/crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1.10.6_obj2",
+    srcs = [
+        "csu/start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1.10.6

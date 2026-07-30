@@ -1,6 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "mig_gen")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -171,3 +171,87 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: launch dylibs
+
+# BEGIN generated: launchproxy
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py launchproxy   -- review before committing.
+# cmake target: launchproxy  ->  src/launchd/support/launchproxy
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+# TODO these include dirs are GENERATED (codegen output):
+#   src/launchd/support
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "launchproxy_inc_src_launchd",
+    headers = glob([
+        "src/*.h",
+        "src/**/*.h",
+        "liblaunch/*.h",
+        "liblaunch/**/*.h",
+    ]),
+    root = "src/launchd",
+    include_subdirs = [
+        "src",
+        "liblaunch",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "launchproxy_inc_src_launchd_support",
+    headers = glob(["support/*.h", "support/**/*.h"]),
+    root = "support",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "launchproxy_obj",
+    srcs = [
+        "support/launchproxy.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":launchproxy_inc_src_launchd",
+        ":launchproxy_inc_src_launchd_support",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchproxy
+
+# BEGIN generated: launchproxy binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries launchproxy   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "launchproxy",
+    objs = [
+        # launchproxy
+        ":launchproxy_obj",
+        # crt1.10.6
+        "//buck-src:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src:xpc_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchproxy binary

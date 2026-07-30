@@ -117,10 +117,42 @@ the real one (an alias list) under a hundred framework mappings.
 
 83 checks pass.
 
-**Next up:** binaries and the rest of the guest tree. The dylib layer is done, so the
-remaining Phase 2 work is executables (`darling`, `launchd`, `dyld`, the CLI tools)
-and the frameworks, which need `darwin_binary` at scale rather than new link
-machinery.
+### 2026-07-30 (later still) -- the first guest EXECUTABLES
+
+`--binaries` generates a `darwin_binary` from an executable link edge the same way
+`--dylibs` does a pair. Four link and are real Mach-O x86_64 `EXECUTE` images with
+`NOUNDEFS`: **vchroot, notifyutil, launchproxy, opendirectoryd**.
+
+Two things an executable needs that a dylib does not:
+
+  * **csu's `start.S.o`, named directly on the link line.** It is passed in the
+    reference's LINK_FLAGS, not among the edge inputs, and it is ONE source out of
+    crt1.10.6's two flag groups -- so the generator resolves an explicitly-passed
+    object to the group that actually contains that source (`obj_groups` exposes the
+    per-group source lists for exactly this).
+  * **`-nostdlib`**, for the same reason the dylib link needs it: clang's Darwin
+    driver would otherwise reach for an `-lSystem` that no `-L` holds. The executable
+    does need libSystem, and gets it as an explicit artifact through `dylibs`.
+
+Two more infrastructure fixes, both silent-wrongness class:
+
+  * buck2 refuses a symlink whose target has a `.` component ("path contains
+    platform-specific path separator"), and corefoundation ships them
+    (`CFArray.h -> include/CoreFoundation/./CFArray.h`). `scripts/buck-src.sh` now
+    normalises those targets when materialising, and the existing trees were fixed.
+  * A merged sibling include root projects one subdir per member, and buck2 errors on
+    a projection that does not exist -- which is what an include dir holding no
+    headers produces (launchd's `support`). Those are dropped from the merge now.
+
+**Blocked, and only these two:** `dyld` links 17 `*_static*.a` archives (a whole
+parallel static tier: libc_static, libsystem_kernel_static64, libcxx_static, ...),
+and `plconvert` needs the CoreFoundation dylib. Both are asserted as still-blocked.
+
+89 checks pass.
+
+**Next up:** the static tier (`*_static*.a` via `cc_static_lib`), which is what dyld
+needs and what the rest of the CLI tools will need too; then the remaining ~45
+executables and the frameworks.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

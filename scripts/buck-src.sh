@@ -143,6 +143,30 @@ for sub in "${paths[@]}"; do
 		done
 	fi
 
+	# buck2 refuses a symlink whose target has a "." component ("path contains
+	# platform-specific path separator"), and corefoundation ships 101 of them
+	# (CFArray.h -> include/CoreFoundation/./CFArray.h). Normalising the target
+	# keeps the same destination and makes the tree crawlable.
+	python3 - "$dest" <<'NORMALISE'
+import os, sys
+root = sys.argv[1]
+fixed = 0
+for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
+    for n in dirnames + filenames:
+        path = os.path.join(dirpath, n)
+        if not os.path.islink(path):
+            continue
+        target = os.readlink(path)
+        parts = [c for c in target.split("/") if c != "."]
+        if len(parts) == len(target.split("/")):
+            continue
+        os.remove(path)
+        os.symlink("/".join(parts), path)
+        fixed += 1
+if fixed:
+    print(f"buck-src:   normalised {fixed} symlink target(s) with a '.' component")
+NORMALISE
+
 	echo "$rev" >"$stamp"
 	echo "buck-src: $name -> $dest"
 done

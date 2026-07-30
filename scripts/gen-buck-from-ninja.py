@@ -14,6 +14,7 @@ Usage:
     scripts/gen-buck-from-ninja.py <cmake-target> [...]          # print
     scripts/gen-buck-from-ninja.py --write <cmake-target> [...]  # into its package
     scripts/gen-buck-from-ninja.py --dylibs <cmake-target> [...]  # firstpass+final pair
+    scripts/gen-buck-from-ninja.py --binaries <exe-name> [...]    # darwin_binary
     scripts/gen-buck-from-ninja.py --list [<substring>]     # what targets exist
     scripts/gen-buck-from-ninja.py --explain <cmake-target> # flags/includes as-is
 
@@ -424,10 +425,26 @@ def generate(target: str, edges):
         for kind, p in g["inc"]:
             if kind == "own" and p not in own_roots and p not in CROSS_PACKAGE_ROOTS:
                 own_roots.append(p)
+    def has_headers(rel: str) -> bool:
+        """Whether an include dir actually holds headers in this tree.
+
+        A merged root projects one subdir per member, and buck2 errors out on a
+        projection that does not exist -- which is what an include dir with no
+        headers of its own produces (launchd's `support` is on the include path but
+        holds only sources).
+        """
+        base = os.path.join(REPO, rel)
+        if not os.path.isdir(base):
+            return False
+        for dirpath, _dirs, files in os.walk(base):
+            if any(f.endswith((".h", ".hpp", ".hh", ".inc", ".defs")) for f in files):
+                return True
+        return False
+
     by_parent: dict[str, list[str]] = {}
     for p in own_roots:
         parent = os.path.dirname(p)
-        if parent:
+        if parent and has_headers(p):
             by_parent.setdefault(parent, []).append(p)
     merged_parent = {p: parent for parent, ps in by_parent.items() if len(ps) > 1 for p in ps}
 
@@ -655,26 +672,60 @@ def objlibs_of(edge) -> list[str]:
     return names
 
 
-def obj_targets(lib: str, edges):
-    """(buck target names, owning package) for one cmake object library.
+def obj_groups(lib: str, edges):
+    """[(target name, [source paths])] for one cmake object library, and its package.
 
-    One name per FLAG GROUP, because that is how generate() splits it. Naming only
-    the first would drop objects from the link: the dylib still builds, but symbols
-    defined by the other groups come out undefined.
+    One entry per FLAG GROUP, in the SAME order generate() emits them, so the names
+    line up with the targets that actually exist. Naming only the first would drop
+    objects from a link: the library still builds, but symbols defined by the other
+    groups come out undefined.
     """
     units, _ = collect(lib, edges)
-    groups, srcs = set(), []
+    groups: dict[tuple, list] = {}
+    srcs = []
     for unit in units:
         kind, srcp = repo_path(unit["src"])
         if kind == "generated":
             continue
         flags, prefix = own_flags_of(unit)
         inc, _gi = includes_of(unit)
-        groups.add((tuple(flags), tuple(prefix), tuple(inc)))
+        groups.setdefault((tuple(flags), tuple(prefix), tuple(inc)), []).append((kind, srcp))
         srcs.append((kind, srcp))
     base = lib if lib.endswith("_obj") else lib + "_obj"
-    names = [base if i == 0 else f"{base}{i + 1}" for i in range(max(len(groups), 1))]
-    return names, package_of(srcs)
+    ordered = sorted(groups.values(), key=lambda g: (-len(g), sorted(g)[0][1]))
+    out = [(base if i == 0 else f"{base}{i + 1}", [p for _k, p in g])
+           for i, g in enumerate(ordered)]
+    if not out:
+        out = [(base, [])]
+    return out, package_of(srcs)
+
+
+def obj_targets(lib: str, edges):
+    """(buck target names, owning package) for one cmake object library."""
+    groups, pkg = obj_groups(lib, edges)
+    return [name for name, _srcs in groups], pkg
+
+
+def explicit_objects(edge, edges):
+    """Objects passed ON THE LINK LINE rather than as edge inputs.
+
+    Every Darwin executable is linked with csu's start.S.o named directly in
+    LINK_FLAGS (the rest of crt1.10.6 stays in its archive), so the object has to be
+    resolved to the flag group that holds that one source -- not to the library's
+    first group, which is a different object entirely.
+    """
+    found = []
+    for tok in edge[2].get("LINK_FLAGS", "").split():
+        m = re.search(r"CMakeFiles/([^/]+)\.dir/(.+)\.o$", tok)
+        if not m:
+            continue
+        lib, src = m.group(1), m.group(2)
+        groups, pkg = obj_groups(lib, edges)
+        for name, srcs in groups:
+            if any(p.endswith(src) for p in srcs):
+                found.append((pkg, name, lib))
+                break
+    return found
 
 
 def firstpass_registry() -> dict:
@@ -1010,6 +1061,118 @@ def generate_dylibs(target: str, edges, only: str = ""):
     return "\n".join(out).rstrip() + "\n", pkg
 
 
+def exe_edge(target: str, edges):
+    """The executable link edge that produces `target`.
+
+    An executable has no extension and no -dylib_install_name, and it links object
+    files; that is enough to tell it from the dylib and utility edges.
+    """
+    for outs, _rule, inputs, vars in edges:
+        lf = vars.get("LINK_FLAGS", "")
+        if not lf or "dylib_install_name" in lf:
+            continue
+        for o in outs:
+            if "/" not in o or os.path.basename(o) != target or "." in os.path.basename(o):
+                continue
+            if any(i.endswith(".o") for i in inputs):
+                return (o, inputs, vars)
+    return None
+
+
+def generate_binary(target: str, edges):
+    """A darwin_binary for one executable, and its package.
+
+    The object libraries and the libraries it links both come from the edge, the same
+    way the dylib pair does -- an executable is just a link with no install_name.
+    """
+    edge = exe_edge(target, edges)
+    if edge is None:
+        return None
+    libs = objlibs_of(edge)
+    if not libs:
+        return None
+
+    objs, pkgs, aliased = [], {}, []
+    for lib in libs:
+        if lib in OBJLIB_ALIASES:
+            for label in OBJLIB_ALIASES[lib]:
+                objs.append((None, label, lib))
+            aliased.append(lib)
+            continue
+        names, pkg = obj_targets(lib, edges)
+        pkgs[pkg] = pkgs.get(pkg, 0) + len(names)
+        for n in names:
+            objs.append((pkg, n, lib))
+    for op, on, lib in explicit_objects(edge, edges):
+        pkgs[op] = pkgs.get(op, 0) + 1
+        if (op, on, lib) not in objs:
+            objs.append((op, on, lib))
+    if not pkgs:
+        return None
+    pkg = max(pkgs, key=lambda k: pkgs[k])
+
+    reg, final_reg = firstpass_registry(), final_registry()
+    dylibs, missing = siblings_of(edge, reg, final_reg)
+    flags, _ = semantic_link_flags(edge[2])
+    files, elsewhere = link_flag_files(edge[2], pkg)
+    extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
+    extra_dylib_deps = [d[len("dep:"):] for d in extra_deps(target) if d.startswith("dep:")]
+
+    out = []
+    w = out.append
+    w("# GENERATED from the reference build.ninja by")
+    w(f"# scripts/gen-buck-from-ninja.py --binaries {target}   -- review before committing.")
+    w(f"# Links {len(libs)} cmake object library/ies, {len(objs)} flag groups in total.")
+    if aliased:
+        w("# Object libraries whose sources are compiled elsewhere in this port, so they")
+        w("# contribute no target here: " + ", ".join(aliased))
+    if missing:
+        w("# TODO it also links these libraries, not ported yet:")
+        for t in missing:
+            w(f"#   {t}")
+    if elsewhere:
+        w("# TODO file-bearing link flags whose file is not a source of this package:")
+        for f in sorted(set(elsewhere)):
+            w(f"#   {f}")
+    w("")
+    w("darwin_binary(")
+    w(f'    name = "{target}",')
+    w("    objs = [")
+    last = None
+    for op, on, lib in objs:
+        if lib != last:
+            w(f"        # {lib}")
+            last = lib
+        w(f'        "{on if op is None else (":" + on if op == pkg else "//" + op + ":" + on)}",')
+    for extra in extra_objs:
+        w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
+    w("    ],")
+    if dylibs:
+        w("    dylibs = [")
+        for d in dylibs:
+            w(f'        "{d}",')
+        w("    ],")
+    if flags:
+        w("    linker_flags = [")
+        for f in flags:
+            w(f"        {starlark_str(f)},")
+        w("    ],")
+    if files:
+        w("    link_flag_files = {")
+        for flag, rel in sorted(files.items()):
+            w(f'        "{flag}": "{rel}",')
+        w("    },")
+    w('    toolchain = "toolchains//:darwin_cc",')
+    w("    deps = [")
+    w('        "//darwin:sdk_env",')
+    for d in extra_dylib_deps:
+        w(f'        "{d}",')
+    w("    ],")
+    w('    visibility = ["PUBLIC"],')
+    w(")")
+    return "\n".join(out).rstrip() + "\n", pkg
+
+
 def write_block(pkg: str, marker: str, text: str) -> None:
     """Splice a generated block into a package's BUCK file, replacing any old one."""
     f = os.path.join(REPO, pkg, "BUCK")
@@ -1065,6 +1228,19 @@ def main(argv: list[str]) -> int:
                 print("  generated include dirs:", gen)
             if link:
                 print("  link out:", link[0])
+            continue
+
+        if "--binaries" in argv:
+            pair = generate_binary(target, edges)
+            if pair is None:
+                print(f"# no executable link edge for {target}", file=sys.stderr)
+                continue
+            text, pkg = pair
+            if "--write" not in argv:
+                print(text)
+                continue
+            write_block(pkg, target + " binary", text)
+            print(f"wrote {pkg}/BUCK: {target} binary", file=sys.stderr)
             continue
 
         if "--dylibs" in argv:

@@ -237,7 +237,10 @@ def _darwin_binary_impl(ctx):
     link_libs.extend(merged.linker_flags)
     dylib_files = _merge_dylib_files(ctx.attrs.dylibs + ctx.attrs.deps)
 
-    bin_flags = list(ctx.attrs.linker_flags)
+    # -nostdlib for the same reason the dylib link needs it: clang's Darwin driver
+    # would otherwise add -lSystem, and there is no -L holding one. The executable
+    # DOES need libSystem, and gets it as an explicit artifact through `dylibs`.
+    bin_flags = ["-nostdlib"] + list(ctx.attrs.linker_flags)
     for flag, art in ctx.attrs.link_flag_files.items():
         bin_flags.append(cmd_args(art, format = flag + ",{}"))
     _darwin_link(ctx, tc, out, objects, bin_flags, link_libs, dylib_files)

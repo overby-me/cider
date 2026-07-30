@@ -397,6 +397,32 @@ printf '%s\n' "$(llvm-nm --defined-only --extern-only "$oc" 2>/dev/null | awk '{
 	grep -qx "_objc_msgSend" && ok "libobjc defines _objc_msgSend" ||
 	bad "libobjc does not define _objc_msgSend"
 
+say "== guest EXECUTABLES =="
+# The dylib layer is not the whole guest: an executable also needs csu's start.S.o
+# named directly on the link line and -nostdlib, or clang's driver reaches for an
+# -lSystem that no -L holds. NOUNDEFS is the real assertion -- it says the loader
+# will not have to resolve anything that is missing.
+for t in //src/vchroot:vchroot //buck-src:notifyutil \
+	//src/launchd:launchproxy //buck-src:opendirectoryd; do
+	f=$(out_of "$t" || true)
+	hdr=$(llvm-objdump --macho --private-headers "$f" 2>/dev/null | grep -m1 MH_MAGIC || true)
+	case "$hdr" in
+	*EXECUTE*NOUNDEFS*) ok "${t##*:} is a Mach-O executable with nothing undefined" ;;
+	*EXECUTE*) bad "${t##*:} links but leaves symbols undefined" ;;
+	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
+	esac
+done
+# dyld and plconvert are generated but cannot link yet, and only those two:
+#   dyld      -- links 17 *_static*.a archives (a whole parallel static tier)
+#   plconvert -- needs the CoreFoundation dylib, not ported
+for t in //buck-src:dyld //buck-src:plconvert; do
+	if buck2 build "$t" >/dev/null 2>&1; then
+		bad "${t##*:} links now -- drop it from the blocked list"
+	else
+		ok "${t##*:} still blocked on unported targets (expected)"
+	fi
+done
+
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do
