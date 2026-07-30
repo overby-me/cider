@@ -88,6 +88,17 @@ What had to become generator features, each one a class of silent wrongness:
 
 84 checks pass.
 
+**Next up, in order:** the layer OUTSIDE the circular cluster, which is what the two
+remaining finals and the umbrella's reexport TODO both point at:
+
+  1. `libc++abi` and `libc++` -> unblocks `objc_final`.
+  2. `libsystem_dnssd` and `libsystem_configuration` -> unblocks `resolv-darwin_final`.
+  3. `libquarantine`, `libremovefile`, `libcopyfile`, `libsystem_networkextension`
+     -> the rest of what libSystem.B.dylib reexports (the block lists them as TODO).
+
+Each is `scripts/gen-buck-from-ninja.py --write <objlib>` then
+`scripts/regen-dylibs.py`, which picks new members up from the graph automatically.
+
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
 
