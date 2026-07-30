@@ -468,8 +468,29 @@ checked out here.
 compiles the `-i386-User.c` mig stubs, and this port targets x86_64 only. The coverage
 tool counts it separately with that reason, so "what is left" stays honest.
 
-**Left:** `libstdc++.6` (needs GCC's own libstdc++ header layout, including its generated
-config headers) and `zsh` (its `zsh.mdh` codegen chain).
+### 2026-07-30 (midday) -- 100% of the in-scope link edges
+
+**206 of 206.** zsh links, and the two that do not are out of scope with the reason
+recorded in `scripts/buck-coverage.py`:
+
+  * `libstdc++.6.dylib` -- GCC 4.2.1's vendored headers do not compile against this SDK
+    with clang at the `-std=c++14` the reference itself passes (const-correctness of
+    memchr/strchr, conflicting using-declarations). Nothing links the result: only the
+    aggregate `all` target names it.
+  * `libsystem_kernel_static32.a` -- the i386 slice; its `libsyscall_32` compiles the
+    `-i386-User.c` mig stubs and this port targets x86_64.
+
+zsh needed no codegen after all: darling pre-generates `zsh.mdh` and friends into the pin
+(`zsh/gen/Src`), so what was missing was STAGING, and it turned out to be two gaps in how
+include roots are staged, both now detected rather than listed:
+
+  * **Headers whose extension no fixed pattern would guess** (`.mdh`, `.pro`, `.epro`,
+    `.tcc`) or that have NO extension at all (the C++ standard library's `vector`,
+    `ext/rope`): such a root is staged whole.
+  * **An ancestor root and a root inside it must share ONE staged tree.** zsh's
+    `Src` headers reach `../config.h` in the tree above them, which only resolves if both
+    live in the same staged copy -- the same rule that already applied to siblings.
+    `include_subdirs` takes `"."` for the ancestor itself now.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

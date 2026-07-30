@@ -433,8 +433,8 @@ for t in $all_exes; do
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-[ "$n_exe" -ge 49 ] && ok "$n_exe guest executables link with nothing undefined" ||
-	bad "expected >= 49 executables, got $n_exe"
+[ "$n_exe" -ge 50 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 50 executables, got $n_exe"
 # launchd is PID 1 in the container and notifyd is the notification daemon: both are
 # MIG servers, and which generated stub each protocol contributes is not guessable --
 # launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
@@ -530,7 +530,7 @@ say "== coverage against the reference graph =="
 # means a regression that drops targets cannot pass unnoticed.
 cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
 tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
-[ "${cov:-0}" -ge 205 ] && ok "$cov of the reference's ${tot:-207} in-scope link edges are ported" ||
+[ "${cov:-0}" -ge 206 ] && ok "$cov of the reference's ${tot:-206} in-scope link edges are ported" ||
 	bad "coverage dropped to ${cov:-0} of ${tot:-207}"
 
 say "== DUCT_TAPE_LIB staging =="

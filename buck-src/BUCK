@@ -26261,31 +26261,39 @@ cc_objects(
 # scripts/gen-buck-from-ninja.py zsh   -- review before committing.
 # cmake target: zsh  ->  src/external/zsh/zsh
 
-cc_header_root(
-    name = "zsh_inc_zsh_zsh_Src_Zle",
-    headers = glob(["zsh/zsh/Src/Zle/*.h", "zsh/zsh/Src/Zle/**/*.h", "zsh/zsh/Src/Zle/*.c"]),
-    root = "zsh/zsh/Src/Zle",
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "zsh_inc_zsh_zsh_Src",
-    headers = glob(["zsh/zsh/Src/*.h", "zsh/zsh/Src/**/*.h", "zsh/zsh/Src/*.c"]),
-    root = "zsh/zsh/Src",
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "zsh_inc_zsh_gen_Src",
-    headers = glob(["zsh/gen/Src/*.h", "zsh/gen/Src/**/*.h", "zsh/gen/Src/*.c"]),
-    root = "zsh/gen/Src",
-    visibility = ["PUBLIC"],
-)
-
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
 cc_header_root(
     name = "zsh_inc_zsh_gen",
-    headers = glob(["zsh/gen/*.h", "zsh/gen/**/*.h", "zsh/gen/*.c"]),
+    headers = glob([
+        "zsh/gen/**/*",
+        "zsh/gen/Src/**/*",
+    ]),
     root = "zsh/gen",
+    include_subdirs = [
+        ".",
+        "Src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zsh_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/zsh/Src/**/*",
+        "zsh/zsh/Src/Zle/*.h",
+        "zsh/zsh/Src/Zle/**/*.h",
+        "zsh/zsh/Src/Zle/*.c",
+    ]),
+    root = "zsh/zsh/Src",
+    include_subdirs = [
+        ".",
+        "Zle",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -26334,9 +26342,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":zsh_inc_zsh_zsh_Src_Zle",
         ":zsh_inc_zsh_zsh_Src",
-        ":zsh_inc_zsh_gen_Src",
         ":zsh_inc_zsh_gen",
         "//darwin:sdk_env",
     ],
@@ -31506,14 +31512,14 @@ cc_objects(
 
 cc_header_root(
     name = "stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
-    headers = glob(["libstdcxx/include/c++/4.2.1/backward/*.h", "libstdcxx/include/c++/4.2.1/backward/**/*.h", "libstdcxx/include/c++/4.2.1/backward/*.c"]),
+    headers = glob(["libstdcxx/include/c++/4.2.1/backward/**/*"]),
     root = "libstdcxx/include/c++/4.2.1/backward",
     visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "stdcxx_inc_libstdcxx_include_c_4_2_1",
-    headers = glob(["libstdcxx/include/c++/4.2.1/*.h", "libstdcxx/include/c++/4.2.1/**/*.h", "libstdcxx/include/c++/4.2.1/*.c"]),
+    headers = glob(["libstdcxx/include/c++/4.2.1/**/*"]),
     root = "libstdcxx/include/c++/4.2.1",
     visibility = ["PUBLIC"],
 )
@@ -33126,3 +33132,30 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: notify_xtrace_mig dylibs
+
+# BEGIN generated: zsh binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries zsh   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zsh",
+    objs = [
+        # zsh
+        ":zsh_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:iconv_dylib",
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zsh binary

@@ -443,6 +443,42 @@ def generate(target: str, edges):
         for kind, p in g["inc"]:
             if kind == "own" and p not in own_roots and p not in CROSS_PACKAGE_ROOTS:
                 own_roots.append(p)
+    def root_dir(rel: str) -> str:
+        """Where an include root actually lives: pin roots are buck-src-relative."""
+        direct = os.path.join(REPO, rel)
+        if os.path.isdir(direct):
+            return direct
+        return os.path.join(REPO, BUCK_SRC, rel)
+
+    def extensionless_headers(rel: str) -> bool:
+        """Whether a root's headers have NO extension.
+
+        The C++ standard library's are exactly that shape (`vector`, `ext/rope`), so a
+        root globbing only *.h stages nothing they need -- and the failure reads as a
+        missing file rather than a missing pattern. Detected rather than listed, because
+        any tree with the same shape needs the same treatment.
+        """
+        base = root_dir(rel)
+        if not os.path.isdir(base):
+            return False
+        for _dirpath, _dirs, files in os.walk(base):
+            for f in files:
+                if "." not in f and not f.startswith("."):
+                    return True
+        return False
+
+    # Extensions that are unmistakably headers-by-another-name in this tree.
+    UNUSUAL_HEADER_EXTS = (".mdh", ".mdhi", ".mdhs", ".pro", ".epro", ".tcc")
+
+    def unusual_header_exts(rel: str) -> bool:
+        base = root_dir(rel)
+        if not os.path.isdir(base):
+            return False
+        for _dirpath, _dirs, files in os.walk(base):
+            if any(f.endswith(UNUSUAL_HEADER_EXTS) for f in files):
+                return True
+        return False
+
     def has_headers(rel: str) -> bool:
         """Whether an include dir actually holds headers in this tree.
 
@@ -451,19 +487,34 @@ def generate(target: str, edges):
         headers of its own produces (launchd's `support` is on the include path but
         holds only sources).
         """
-        base = os.path.join(REPO, rel)
+        base = root_dir(rel)
         if not os.path.isdir(base):
             return False
-        for dirpath, _dirs, files in os.walk(base):
+        for _dirpath, _dirs, files in os.walk(base):
             if any(f.endswith((".h", ".hpp", ".hh", ".inc", ".defs")) for f in files):
                 return True
         return False
 
+    # Group roots that must share ONE staged tree: siblings (a header reaching its
+    # neighbour with ../other/x.h) and ancestor/descendant pairs (zsh's Src headers
+    # reaching ../config.h in the tree above them). Either way the escape only resolves
+    # if both live in the same staged copy.
     by_parent: dict[str, list[str]] = {}
     for p in own_roots:
+        if not has_headers(p):
+            continue
+        ancestor = next((q for q in own_roots
+                         if q != p and p.startswith(q + "/") and has_headers(q)), None)
+        if ancestor:
+            by_parent.setdefault(ancestor, []).append(p)
+            continue
         parent = os.path.dirname(p)
-        if parent and has_headers(p):
+        if parent:
             by_parent.setdefault(parent, []).append(p)
+    # A group keyed by an actual root must include that root itself.
+    for anc in list(by_parent):
+        if anc in own_roots and anc not in by_parent[anc]:
+            by_parent[anc].insert(0, anc)
     merged_parent = {p: parent for parent, ps in by_parent.items() if len(ps) > 1 for p in ps}
 
     root_name: dict[str, str] = {}
@@ -474,6 +525,7 @@ def generate(target: str, edges):
         n = 2
         while name in root_name.values():
             name, n = f"{name}_{n}", n + 1
+        # "." is the staged tree itself, which is what an ancestor root becomes.
         subs = [os.path.relpath(p, parent) for p in ps]
         for p in ps:
             root_name[p] = name
@@ -484,9 +536,14 @@ def generate(target: str, edges):
         w(f'    name = "{name}",')
         w("    headers = glob([")
         for p in ps:
-            w(f'        "{p}/*.h",')
-            w(f'        "{p}/**/*.h",')
-            w(f'        "{p}/*.c",')
+            # Same detection as an individual root: a tree whose headers carry no
+            # extension, or one no fixed pattern would guess, is staged whole.
+            if extensionless_headers(p) or unusual_header_exts(p):
+                w(f'        "{p}/**/*",')
+            else:
+                w(f'        "{p}/*.h",')
+                w(f'        "{p}/**/*.h",')
+                w(f'        "{p}/*.c",')
         w("    ]),")
         w(f'    root = "{parent}",')
         w("    include_subdirs = [")
@@ -517,10 +574,15 @@ def generate(target: str, edges):
             w(f'    name = "{name}",')
             # BOTH patterns: buck2's "dir/**/*.h" does not match dir/x.h, so a
             # root whose headers sit directly in it would stage EMPTY.
-            # *.c at the root level too: some sources are #included rather than
-            # compiled (ncurses' capdefaults.c, libedit's history.c), and they resolve
-            # through an -I of the source dir like any header.
-            w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]),')
+            if extensionless_headers(p) or unusual_header_exts(p):
+                # Everything: the headers here carry no extension (libstdc++) or an
+                # extension no fixed pattern would guess (zsh's .mdh/.pro).
+                w(f'    headers = glob(["{p}/**/*"]),')
+            else:
+                # *.c at the root level too: some sources are #included rather than
+                # compiled (ncurses' capdefaults.c, libedit's history.c), and they
+                # resolve through an -I of the source dir like any header.
+                w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]),')
             w(f'    root = "{p}",')
             w('    visibility = ["PUBLIC"],')
             w(")")

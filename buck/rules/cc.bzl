@@ -149,7 +149,10 @@ def _cc_header_root_impl(ctx):
     # inside it. A header staged alone cannot satisfy its own `#include "../lib/x.h"`
     # -- a quoted include resolves relative to the INCLUDING FILE, which is the
     # staged copy, so the sibling has to be present in the same tree.
-    dirs = [staged.project(s) for s in ctx.attrs.include_subdirs] or [staged]
+    dirs = [
+        staged if s == "." else staged.project(s)
+        for s in ctx.attrs.include_subdirs
+    ] or [staged]
     return [
         DefaultInfo(default_output = staged),
         CcLibInfo(
