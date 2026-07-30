@@ -404,9 +404,32 @@ OOM-killed twice here, which also takes the buck2 daemon with it -- and the daem
 back with whatever PATH restarted it, so `clang`/`bison`/`flex` must be on it (the dev
 shell's PATH) or every action fails with "Failed to spawn a process".
 
-**Next up:** chunked accumulation in the interpreter (kill the O(n^2)), or -- the more
-useful change for both build paths -- split the generated `buck-src/BUCK` into per-library
-packages, which shrinks the reparse unit for the daemon too.
+### 2026-07-30 (later) -- what the Nix path actually needs, measured
+
+Chunked token accumulation in the lexer landed (a growing `tokens ++ [tok]` is O(n^2) in
+time and memory; tokens now accumulate per chunk and are joined once). It was not enough:
+under an 8 GB cap, a 4.3k-line file evaluates comfortably and the 32k-line
+`buck-src/BUCK` still does not. The AST of a 1.2 MB source file simply does not fit in
+Nix values at that size.
+
+So the fix is to stop asking it to: split the pins into one package each. That was tried
+here and REVERTED, because it exposed the actual prerequisite --
+
+  **a subpackage takes ownership of its files.** The moment `buck-src/ncurses/BUCK`
+  exists, every file under `buck-src/ncurses/` belongs to that package, and the SDK
+  header maps in `buck-src/BUCK` -- which name thousands of headers across every pin --
+  can no longer reference them. They stop coercing, and with them every target that
+  depends on `//darwin:sdk_env`.
+
+`scripts/buck-split-pins.py` does the mechanical part (regenerate a pin's targets into
+`buck-src/<pin>` and drop what is left behind), and `SPLIT_PINS` in the generator is the
+switch, off until the prerequisite is met. Sizes, for planning: libc 11k lines, xnu 5.1k,
+toolchains 4.3k, everything else under 1.2k.
+
+**Next up, in order:** teach `scripts/gen-sdk-header-roots.py` to emit a per-PIN header
+root (it already does exactly this for committed trees via `--repo-roots`), point
+`//darwin:sdk_env` at those instead of the monolithic maps, then flip `SPLIT_PINS` and
+migrate pin by pin with the suite as the net.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

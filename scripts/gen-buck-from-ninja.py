@@ -618,13 +618,27 @@ def generate(target: str, edges):
     return "\n".join(out), all_srcs
 
 
+# Splitting the materialized pins into one package PER PIN would shrink what the
+# Nix-lowered path has to parse (a 32k-line BUCK file costs more memory than the
+# machine has; 4.3k lines is fine). It is OFF because a subpackage takes OWNERSHIP of
+# its files: the moment buck-src/ncurses/BUCK exists, the SDK header maps in
+# buck-src/BUCK -- which name thousands of headers across every pin -- can no longer
+# reference anything under it, and they stop coercing. Splitting those maps per pin
+# is the prerequisite, and scripts/gen-sdk-header-roots.py already knows how to emit
+# per-package roots (--repo-roots does it for the committed trees).
+SPLIT_PINS = False
+
+
 def package_of(src_paths) -> str:
     """The BUCK package that owns a target: the one holding its sources."""
     repo_srcs = [q for k, q in src_paths if k == "src"]
-    if not repo_srcs:
-        return BUCK_SRC
-    depth = 3 if repo_srcs[0].startswith("src/external/") else 2
-    return "/".join(repo_srcs[0].split("/")[:depth])
+    if repo_srcs:
+        depth = 3 if repo_srcs[0].startswith("src/external/") else 2
+        return "/".join(repo_srcs[0].split("/")[:depth])
+    pin_srcs = [q for k, q in src_paths if k == "buck-src"]
+    if SPLIT_PINS and pin_srcs:
+        return BUCK_SRC + "/" + pin_srcs[0].split("/")[0]
+    return BUCK_SRC
 
 
 def dylib_edges(target: str, edges):
@@ -1488,8 +1502,12 @@ def main(argv: list[str]) -> int:
         # Which package owns this target? The one holding its sources: buck-src for
         # materialized pins, otherwise the committed tree they live in.
         pkg = package_of(src_paths)
-        # Paths are emitted repo-relative; a BUCK file addresses its own package.
-        if pkg != BUCK_SRC:
+        # Paths are emitted repo-relative; a BUCK file addresses its own package. A
+        # pin package's sources are already pin-relative (libc/gen/x.c), so what has
+        # to come off is the pin name, not the whole package path.
+        if pkg.startswith(BUCK_SRC + "/"):
+            text = text.replace('"' + pkg[len(BUCK_SRC) + 1:] + "/", '"')
+        elif pkg != BUCK_SRC:
             text = text.replace('"' + pkg + "/", '"')
 
         # Whole-line markers: a target name can be a PREFIX of another block's
