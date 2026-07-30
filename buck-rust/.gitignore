@@ -1,0 +1,6 @@
+# Materialized Rust crate sources (scripts/buck-rust-vendor.sh). Content is pinned by the
+# three Cargo.lock files and unpacked by nix/devShell.nix, so it is reproducible and never
+# committed. Only this file and the BUCK file that builds those crates are tracked.
+*
+!/.gitignore
+!/BUCK

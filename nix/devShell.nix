@@ -3,7 +3,25 @@
 # Provides all build dependencies, debugging tools, and editor
 # integration (clangd, nil, nixfmt) so that `nix develop` or
 # direnv gives a fully-equipped environment.
-pkgs: {
+pkgs: let
+  # Every third-party crate the three Rust crates lock, unpacked into one directory.
+  #
+  # The buck2 port drives rustc directly, with no cargo anywhere in the build graph, so a
+  # rule cannot fetch a dependency: the sources have to be on disk before the build starts,
+  # exactly like the pinned upstream trees under buck-src. importCargoLock takes one lock
+  # file, so the three are merged crate by crate rather than with symlinkJoin, which would
+  # collide on the Cargo.lock each of them ships.
+  rustVendor = pkgs.runCommand "darling-rust-vendor" { } ''
+    mkdir -p $out
+    for d in ${pkgs.rustPlatform.importCargoLock { lockFile = ../linux/server/Cargo.lock; }} \
+             ${pkgs.rustPlatform.importCargoLock { lockFile = ../linux/launcher/Cargo.lock; }} \
+             ${pkgs.rustPlatform.importCargoLock { lockFile = ../darwin/loader/Cargo.lock; }}; do
+      for c in "$d"/*/; do
+        ln -sfn "$c" "$out/$(basename "$c")"
+      done
+    done
+  '';
+in {
   stdenv = pkgs.clangStdenv;
 
   packages = with pkgs; [
@@ -46,6 +64,11 @@ pkgs: {
     openssl
     xdg-user-dirs
 
+    # ── Rust, for the buck2 port of the daemon, launcher and loader ──
+    # rustc only: buck2 invokes it directly and the crate sources come from
+    # rustVendor above, so there is nothing for cargo to do in the build graph.
+    rustc
+
     # ── Debugging & analysis ────────────────────────────────────
     gdb
     strace
@@ -68,6 +91,8 @@ pkgs: {
   env = {
     # Make cmake produce compile_commands.json so clangd works.
     CMAKE_EXPORT_COMPILE_COMMANDS = "1";
+    # Where scripts/buck-rust-vendor.sh materializes the crate sources from.
+    DARLING_RUST_VENDOR = "${rustVendor}";
   };
 
   shellHook = ''
