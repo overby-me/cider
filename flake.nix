@@ -125,6 +125,29 @@
         }).buildTarget
           { };
 
+      # ── Nix-lowered Buck2 (plan/buck2-port.md phase 3) ───────────────
+      #
+      # The same BUCK definitions the buck2 daemon builds, lowered to one Nix
+      # derivation per ACTION by overby's nix/lib/buck2 -- no daemon, no IFD,
+      # cacheable and shareable. This smoke target is the smallest real one in the
+      # port (libsimple's host-tier archive: one C source, one include root, one
+      # archive action), so it exercises load/rule/provider/glob and three action
+      # kinds without pulling the guest toolchain in:
+      #   nix build .#darling-buck2-libsimple
+      #
+      # Needs the overby-side support this port added (read_root_config,
+      # symlinked_dir, copy, ar), which lives on that repo's `nix-lib-buck2`
+      # bookmark until it lands on main:
+      #   nix build .#darling-buck2-libsimple \
+      #     --override-input overby 'git+https://tangled.org/overby.me/overby.me?ref=nix-lib-buck2'
+      packages.darling-buck2-libsimple =
+        pkgs:
+        (import ./nix/lib/darlingBuck2.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+        }).buildTarget
+          { target = "//src/libsimple:libsimple_darlingserver"; };
+
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
       # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in

@@ -354,8 +354,35 @@ libsystem_kernel_static32 (the i386 data-model variant; this port is x86_64-only
 
 96 checks pass.
 
-**Next up:** Phase 3 -- wiring the port into Nix (`nix/lib/buck2` from overby.me), which is
-the endpoint the rules were written to stay reachable from.
+### 2026-07-30 (afternoon) -- PHASE 3 starts: a Darling target built through Nix
+
+`nix build .#darling-buck2-libsimple` produces `liblibsimple_darlingserver.a` with real
+symbols, built by overby's `nix/lib/buck2`: the BUCK files are evaluated at Nix
+evaluation time and every Buck2 ACTION becomes its own derivation. No buck2 daemon, no
+import-from-derivation. This is the endpoint the port's hand-written, prelude-free rules
+were kept reachable from, and the first proof it actually is.
+
+Three gaps in overby's interpreter, found by lowering a real target rather than by
+reading its code (pushed on that repo's `nix-lib-buck2` bookmark):
+
+  * `read_root_config` / `read_config` were not defined at all. The port uses them for
+    the toolchain's machine-local paths, so `.buckconfig` sections are threaded from
+    analyze.nix through the loader to the globals, with `.buckconfig.local` layered on
+    top the way buck2 layers it.
+  * `ctx.actions.symlinked_dir` was missing, which is the action the whole header-staging
+    design rests on.
+  * `ctx.actions.copy_file` was serialized but never lowered, so it threw at build time.
+
+Plus the archivers: a `cc_library`'s archive step runs bare `ar`, which is not the C
+compiler and so was not in the toolchain map. overby's own four no_prelude checks still
+pass.
+
+The smoke target is deliberately the smallest real one (one C source, one include root,
+one archive action). Scaling it up is the next step, and the guest tier will need the
+Darwin toolchain's store paths to reach the lowered actions.
+
+**Next up:** more targets through the Nix path (the duct-tape archive, then a guest
+dylib), and `nix flake check` coverage once overby's support lands on main.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
