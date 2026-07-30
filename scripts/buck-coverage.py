@@ -47,6 +47,7 @@ def main(argv: list[str]) -> int:
     reg, final_reg, arch_reg = g.firstpass_registry(), g.final_registry(), g.archive_registry()
 
     # Buck target names, so executables can be looked up by name.
+    module_names = set()
     exe_names = set()
     for dirpath, dirnames, filenames in os.walk(REPO):
         dirnames[:] = [d for d in dirnames
@@ -56,8 +57,10 @@ def main(argv: list[str]) -> int:
         text = open(os.path.join(dirpath, "BUCK")).read()
         for m in re.finditer(r'darwin_binary\(\s*\n\s*name = "([A-Za-z0-9_.-]+)"', text):
             exe_names.add(m.group(1))
+        for m in re.finditer(r'dylib_name = "([A-Za-z0-9_.+-]+\.so)"', text):
+            module_names.add(m.group(1))
 
-    kinds = {"dylib": [], "exe": [], "archive": []}
+    kinds = {"dylib": [], "exe": [], "archive": [], "module": []}
     for outs, _rule, inputs, vars in edges:
         lf = vars.get("LINK_FLAGS", "")
         if not any(i.endswith(".o") for i in inputs):
@@ -68,6 +71,13 @@ def main(argv: list[str]) -> int:
             base = os.path.basename(o)
             if base.endswith(".a"):
                 kinds["archive"].append((base, base in arch_reg))
+            elif base.endswith(".so"):
+                # Loadable MODULES (zsh's 32, and others): -shared, but no
+                # -dylib_install_name, so the dylib test below misses them and the
+                # executable test rejects them for containing a dot. They were silently
+                # counted in NO category until this, which made the total understate the
+                # graph by 70 edges -- a metric with a blind spot is worse than no metric.
+                kinds["module"].append((base, base in module_names))
             elif base.endswith(".dylib") or "-dylib_install_name" in lf:
                 ported = base in final_reg or base.removeprefix("lib").removesuffix(
                     ".dylib").removesuffix("_firstpass") in reg
@@ -77,7 +87,7 @@ def main(argv: list[str]) -> int:
             break
 
     total = done = 0
-    for kind in ("dylib", "exe", "archive"):
+    for kind in ("dylib", "exe", "archive", "module"):
         items = {}
         for name, ported in kinds[kind]:
             items[name] = items.get(name, False) or ported

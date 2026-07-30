@@ -62,6 +62,18 @@ let
         # darling-src (and therefore every darling build) on every buck2 run.
         "buck-src"
         "buck-out"
+        # The Buck2 port's own definitions and tooling, which the cmake/ninja build
+        # never reads: the rules and toolchains under buck/, the generators and the
+        # suite under scripts/, the port's log under plan/, and buck2's configs. They
+        # change constantly while the port is being worked on, and without this every
+        # one of those edits re-assembles this 4 GB tree before anything can build.
+        "buck"
+        "scripts"
+        "plan"
+        "tests"
+        ".buckconfig"
+        ".buckconfig.local"
+        ".buckroot"
       ]);
   };
 

@@ -1,0 +1,381 @@
+# Lower a dumped buck2 action graph to one Nix derivation per TARGET.
+#
+# The second half of "graph then lower" (plan/buck2-port.md phase 3). The first half
+# (nix/lib/darlingBuck2Graph.nix) runs real buck2 in a pure derivation and writes
+# graph.json; reading that file HERE is the one opt-in import-from-derivation, the same
+# shape overby's nix/lib/cargo uses for crate metadata.
+#
+# PER TARGET, not per action. One derivation per action is the finer cache and was tried
+# first, but the port has on the order of 15,000 actions, and Nix's per-derivation overhead
+# -- an instantiation, a sandbox and a store round trip each -- is too much at that count.
+# Targets number a couple of hundred, which Nix handles comfortably, and a target is the
+# unit a person reasons about anyway. The trade is granularity: touching one source
+# rebuilds its whole target rather than a single object file. That trade is cheap here,
+# because the great majority of these targets are pinned upstream trees nobody edits.
+#
+# Every action arrives as the argv buck2 actually ran, so nothing about the port's flags,
+# link order or MIG plumbing is re-derived. A target derivation only has to put the inputs
+# where the argv expects them -- at their buck-out paths, relative to the working directory
+# -- and run that target's actions in the order buck2 ran them.
+{
+  pkgs,
+  graph,
+  # The project, for the SOURCE paths an argv names (src/libsimple/src/lock.c and such).
+  src ? ../..,
+  # The pins, exactly as the graph derivation staged them: an argv that names
+  # buck-src/<pin>/... has to find it here too.
+  darlingSrc ? null,
+  allPins ? false,
+  pins ? [],
+  # OPT-IN content addressing, the way nix/lib/cargo treats its one IFD exception: off by
+  # default, because it needs `experimental-features = ca-derivations` on every machine that
+  # builds OR substitutes these, and a binary cache that serves CA outputs -- and a cache
+  # that cannot is fatal to the point of this endpoint, which is other people not rebuilding.
+  #
+  # What it buys, when it is on: early cutoff BETWEEN targets. A header edit that leaves a
+  # target's output bit-identical stops propagating to that target's dependents, instead of
+  # relinking the world. That is independent of how the graph itself is consumed.
+  #
+  # What it does NOT do on its own: make a source edit cheap. That needs the GRAPH
+  # derivation to be content-addressed too, which is the CA-plus-IFD pairing of NixOS/nix
+  # issue 5805 -- closed, but still tracked under the ca-derivations stabilisation milestone,
+  # which sat at 65% in March 2026. `graphContentAddressed` is separate for that reason: take
+  # the safe half without the experimental pairing.
+  contentAddressed ? false,
+  # Tools an argv names by ABSOLUTE store path -- Darling's own ld64, above all. The path
+  # travels through graph.json as plain text, so its string context is gone and Nix cannot
+  # see the dependency: it has to be declared, or the sandbox will not have it.
+  extraTools ? [],
+  # Darling's ld64, needed here by PATH as well as by name: the graph records it as a
+  # placeholder, and this is what fills it back in.
+  ld64 ? null,
+}: let
+  inherit (pkgs) lib;
+
+  # The graph is portable, so the store paths an argv needs are named rather than baked in
+  # (see scripts/buck2-graph-dump.py). Filling them back in is the consumer's job, from
+  # ITS own inputs -- which is what lets one graph serve any machine.
+  placeholders =
+    {
+      "@CLANG@" = "${pkgs.llvmPackages.clang-unwrapped}";
+      "@RESOURCE_DIR@" = "${pkgs.clang}/resource-root";
+    }
+    // lib.optionalAttrs (ld64 != null) {"@LD64@" = "${ld64}";};
+
+  fill = str: lib.replaceStrings (lib.attrNames placeholders) (lib.attrValues placeholders) str;
+
+  # The context has to come off before parsing: an argv names its tools by absolute store
+  # path, so the file's text refers to store paths, and fromJSON refuses a string that
+  # does. Nothing is lost -- the dependency is re-declared as nativeBuildInputs below.
+  g = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph}/graph.json")
+  );
+
+  manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
+  wantedPins =
+    if allPins
+    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
+    else pins;
+
+  # ---- the graph, grouped the way this lowers it -------------------------
+
+  # "root//buck-src:migcom (<unspecified>) (c_compile foo.c)" -> "root//buck-src:migcom"
+  targetOf = a: lib.head (lib.splitString " (" a.identity);
+
+  targets = lib.groupBy targetOf g.actions;
+
+  # Which target writes which artifact.
+  producerTarget = lib.listToAttrs (lib.concatMap (a:
+    map (o: {
+      name = o;
+      value = targetOf a;
+    })
+    a.outputs)
+  g.actions);
+
+  known = producerTarget // (g.staged or {}) // (g.stagedTrees or {});
+
+  # Recreating a staged farm, from the map the dump recorded instead of a copy of what the
+  # links pointed at. The link VALUES are verbatim from buck2, so they resolve here exactly
+  # as they did there: the directory sits at the same place in this working tree.
+  stagedTreeScript = path: links:
+    pkgs.writeShellScript "buck2-stage-tree" (''
+        mkdir -p ${lib.escapeShellArg path}
+      ''
+      + lib.concatStrings (lib.mapAttrsToList (rel: target: ''
+          mkdir -p "$(dirname ${lib.escapeShellArg (path + "/" + rel)})"
+          ln -sfn ${lib.escapeShellArg target} ${lib.escapeShellArg (path + "/" + rel)}
+        '')
+        links));
+
+  # By walking the path's own prefixes, NOT by scanning every known artifact: an action's
+  # output is often a DIRECTORY (mig writes a whole tree of generated sources) and a
+  # consumer names a file inside it, so the owner is the longest known prefix. Scanning
+  # every artifact per input is quadratic, which is the class of evaluation cost this
+  # whole design exists to get away from.
+  ownerOf = path: let
+    segs = lib.splitString "/" path;
+    prefixes =
+      map (n: lib.concatStringsSep "/" (lib.take n segs))
+      (lib.reverseList (lib.range 1 (lib.length segs)));
+    hits = lib.filter (p: known ? ${p}) prefixes;
+  in
+    if hits == []
+    then null
+    else lib.head hits;
+
+  # Every artifact the graph says exists, so a consumer that stops ASKING for one is caught.
+  # Moving the staged farms from copies to link maps produced no error and no work: the
+  # selector still tested the old field, so nothing was staged and a header simply went
+  # missing at compile time. A gap of that shape should fail loudly at evaluation.
+  unstageable = lib.filter (o:
+    !((g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o} || producerTarget ? ${o}))
+  (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
+
+  # Where a staged farm's links POINT. Dereferencing used to hide this: a link can aim at
+  # another buck2 output (rtsig_header's gen_include holds rtsig.h -> ../rtsig.h, and that
+  # file is written by a command in another target), and recreating the link without staging
+  # what it aims at leaves it dangling, which surfaces as a header not found.
+  linkTargets = path: links:
+    lib.filter (x: x != null) (lib.mapAttrsToList (rel: target: let
+      dir = builtins.dirOf (path + "/" + rel);
+      resolved = lib.removePrefix "/" (builtins.toString (
+        # Normalise dir/target by hand: Nix has no realpath, and the link values are
+        # relative with plenty of "..".
+        let
+          segs = lib.filter (x: x != "" && x != ".") (lib.splitString "/" (dir + "/" + target));
+          step = acc: seg:
+            if seg == ".."
+            then lib.init acc
+            else acc ++ [seg];
+        in
+          lib.concatStringsSep "/" (lib.foldl' step [] segs)));
+    in
+      if lib.hasPrefix "buck-out/" resolved
+      then resolved
+      else null)
+    links);
+
+  # What a target consumes from OUTSIDE itself.
+  needsOf = label: let
+    ins = lib.unique (lib.concatMap (a: a.inputs) targets.${label});
+    directOwners = lib.unique (lib.filter (o: o != null) (map ownerOf ins));
+    # Anything those farms link to, one level of indirection out.
+    viaLinks = lib.unique (lib.concatMap (o: let
+      links = (g.stagedTrees or {}).${o} or {};
+    in
+      map ownerOf (linkTargets o links))
+    directOwners);
+    owners = lib.unique (directOwners ++ lib.filter (x: x != null) viaLinks);
+  in {
+    fromTargets =
+      lib.unique (lib.filter (t: t != null && t != label)
+        (map (o: producerTarget.${o} or null) owners));
+    # Either kind: a farm recorded as a link MAP, or content buck2 generated and the dump
+    # copied out. Filtering on `staged` alone silently produced no farms at all once the
+    # maps replaced the copies.
+    fromStaged =
+      lib.filter (o: (g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o}) owners;
+  };
+
+  # ---- the working tree an action runs in --------------------------------
+
+  # As SYMLINKS, and as a SHARED script: an action only reads project files, and copying
+  # the repo (let alone 4 GB of pins) into every derivation would cost more than the build
+  # being replaced. The script assumes the builder has already entered the working tree.
+  stageProject = pkgs.writeShellScript "buck2-stage-project" ''
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+        ln -s ${lib.escapeShellArg "${src}/${name}"} ${lib.escapeShellArg name}
+      '') (lib.filterAttrs (name: _: name != "buck-src" && name != "buck-out" && name != "src")
+        (builtins.readDir src)))}
+
+    # src/ and src/external/ are REAL directories here, not symlinks into the store: the
+    # pins get planted at src/external/<pin> so the SDK's symlink farm resolves, and
+    # planting anything inside a store path is a permission error.
+    mkdir -p src/external
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+        ln -s ${lib.escapeShellArg "${src}/src/${name}"} ${lib.escapeShellArg "src/${name}"}
+      '') (lib.filterAttrs (name: _: name != "external") (builtins.readDir (src + "/src"))))}
+    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+        ln -s ${lib.escapeShellArg "${src}/src/external/${name}"} ${lib.escapeShellArg "src/external/${name}"}
+      '') (builtins.readDir (src + "/src/external")))}
+    ${lib.optionalString (builtins.pathExists (src + "/buck-src")) ''
+      mkdir -p buck-src
+      ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+          ln -s ${lib.escapeShellArg "${src}/buck-src/${name}"} ${lib.escapeShellArg "buck-src/${name}"}
+        '') (builtins.readDir (src + "/buck-src")))}
+    ''}
+    ${lib.concatMapStrings (p: ''
+      ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
+      mkdir -p ${builtins.dirOf p}
+      rm -f ${p}
+      ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg p}
+    '') wantedPins}
+  '';
+
+  # ---- one derivation per target -----------------------------------------
+
+  drvName = label:
+    "buck2-" + lib.strings.sanitizeDerivationName (lib.last (lib.splitString ":" label));
+
+  drvs = lib.mapAttrs (label: actions: let
+    needs = needsOf label;
+    outs = lib.unique (lib.concatMap (a: a.outputs) actions);
+  in
+    pkgs.runCommand (drvName label) {
+      nativeBuildInputs =
+        [
+          pkgs.clang
+          # The guest compiler the graph derivation selected, named by absolute path in the
+          # argv: its store path has no string context by the time it arrives here, so the
+          # dependency has to be declared or the sandbox will not have it.
+          pkgs.llvmPackages.clang-unwrapped
+          pkgs.llvmPackages.bintools
+          pkgs.python3
+          pkgs.bison
+          pkgs.flex
+          pkgs.coreutils
+          pkgs.bash
+        ]
+        ++ extraTools
+        ++ lib.optional (ld64 != null) ld64;
+      # Same reason as the graph derivation: the argv is buck2's, and the wrapper's
+      # hardening flags are not in it. -D_FORTIFY_SOURCE alone turns libc's own sprintf
+      # into a macro over its own definition.
+      hardeningDisable = ["all"];
+      # Content addressing is per derivation, so it is one attribute here rather than a
+      # different lowering.
+      __contentAddressed = contentAddressed;
+      outputHashMode =
+        if contentAddressed
+        then "recursive"
+        else null;
+      outputHashAlgo =
+        if contentAddressed
+        then "sha256"
+        else null;
+      passthru = {
+        inherit label outs;
+        deps = needs.fromTargets;
+        actionCount = lib.length actions;
+      };
+    } ''
+      mkdir -p work && cd work
+      ${stageProject}
+
+      # What other targets built, at the paths this target's argv expects. Modes are
+      # PRESERVED: a dependency can be a TOOL -- migcom is, and the port's every codegen
+      # edge runs it -- and dropping the executable bit turns into "Permission denied"
+      # inside mig.sh, a long way from here. Writability is restored afterwards instead,
+      # because the store copy is read-only and later actions write next to it.
+      ${lib.concatMapStrings (dep: ''
+        cp -a ${drvs.${dep}}/. .
+        # After EACH one, not at the end: the copy reproduces the store's read-only
+        # directories, and two dependencies share parent directories under buck-out, so
+        # the second copy cannot write into what the first one just created.
+        find . -type d ! -perm -u+w -exec chmod u+w {} +
+      '')
+      needs.fromTargets}
+
+      # And the artifacts buck2 made in-process rather than by running a command. A staged
+      # include root is rebuilt from its link map; anything buck2 GENERATED rather than
+      # linked was copied out and is restored from there.
+      ${lib.concatMapStrings (o: let
+        links = (g.stagedTrees or {}).${o} or null;
+        data = (g.staged or {}).${o} or null;
+      in
+        lib.optionalString (links != null && links != {}) ''
+          ${stagedTreeScript o links}
+        ''
+        + lib.optionalString (data != null) (
+          if links != null && links != {}
+          then ''
+            # MERGED, not replaced: a tree can hold both links into the project and files
+            # buck2 generated (rtsig.h is one), and copying over the farm with -T destroys
+            # the links that were just made.
+            cp -a ${graph}/${data}/. ${lib.escapeShellArg o}/
+            chmod -R u+w ${lib.escapeShellArg o}
+          ''
+          else ''
+            mkdir -p "$(dirname ${lib.escapeShellArg o})"
+            cp -aT ${graph}/${data} ${lib.escapeShellArg o}
+            chmod -R u+w ${lib.escapeShellArg o}
+          ''
+        ))
+      needs.fromStaged}
+
+      for _v in $(env | sed -n 's/^\(NIX_\(CFLAGS\|LDFLAGS\)[A-Za-z0-9_]*\)=.*/\1/p'); do
+        unset "$_v"
+      done
+      export TMPDIR="$NIX_BUILD_TOP/tmp" BUCK_SCRATCH_PATH="$NIX_BUILD_TOP/scratch"
+      mkdir -p "$TMPDIR" "$BUCK_SCRATCH_PATH"
+
+      # This target's own actions, in the order buck2 ran them, which is a topological one:
+      # buck2 only runs an action once its inputs exist.
+      ${lib.concatMapStrings (a: ''
+        ${lib.concatMapStrings (o: ''
+          mkdir -p "$(dirname ${lib.escapeShellArg o})"
+        '')
+        a.outputs}
+        echo "  ${a.identity}"
+        ${lib.concatStringsSep " " (map (x: lib.escapeShellArg (fill x)) a.argv)}
+      '')
+      actions}
+
+      # Everything this target produced, at the SAME relative paths, so a consumer can
+      # stage it exactly where its own argv expects it.
+      ${lib.concatMapStrings (o: ''
+        mkdir -p "$out/$(dirname ${lib.escapeShellArg o})"
+        cp -aT ${lib.escapeShellArg o} "$out/${o}"
+      '')
+      outs}
+    '')
+  targets;
+
+  # A target's DEFAULT outputs under their own names, which is what a person wants: the
+  # derivations above keep everything at buck-out paths, which is what a consumer needs.
+  named = lib.mapAttrs (label: outs:
+    pkgs.runCommand "${drvName label}-out" {passthru = {inherit label outs;};} (''
+        mkdir -p "$out"
+      ''
+      + lib.concatMapStrings (o: let
+        # The same resolution the rest of the lowering uses. A target's DEFAULT output is
+        # not always written by a command: some are produced in-process by buck2 (a staged
+        # lib directory, say), and some are a file inside a directory another action wrote.
+        owner = ownerOf o;
+        prod =
+          if owner == null
+          then null
+          else producerTarget.${owner} or null;
+        st =
+          if owner == null
+          then null
+          else (g.staged or {}).${owner} or null;
+      in
+        if prod != null
+        then ''
+          cp -a ${drvs.${prod}}/${o} "$out/${builtins.baseNameOf o}"
+        ''
+        else if st != null
+        then ''
+          cp -aT ${graph}/${st} "$out/${builtins.baseNameOf o}"
+        ''
+        else if owner != null && (g.stagedTrees or {}) ? ${owner}
+        then ''
+          ${stagedTreeScript (builtins.baseNameOf o) (g.stagedTrees.${owner})}
+        ''
+        else throw "buck2 lower: nothing produces ${label}'s output ${o}")
+      outs))
+  (g.targetOutputs or {});
+in
+  assert unstageable == [] || throw "buck2 lower: unstageable artifacts: ${toString unstageable}"; {
+  inherit drvs named g;
+
+  # The single target's output, for the common case of asking for one thing.
+  final = let
+    all = lib.attrValues named;
+  in
+    if all != []
+    then lib.head all
+    else throw "buck2 lower: the graph names no target outputs";
+}

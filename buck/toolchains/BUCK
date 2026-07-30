@@ -65,8 +65,12 @@ cc_toolchain(
         "-Wl,-Z",
         "-Wl,-sdk_version,11.0",
     ],
-    cc = read_root_config("darling", "cc", "clang"),
-    cxx = read_root_config("darling", "cxx", "clang++"),
+    # The GUEST compiler may differ from the host one, and under Nix it has to: nixpkgs
+    # wraps clang so that a link picks up this platform's crt files and
+    # -dynamic-linker=<glibc>, which Darling's ld64 rejects outright. A host tool still
+    # wants that wrapper, so the two are separate keys rather than one.
+    cc = read_root_config("darling", "darwin_cc", read_root_config("darling", "cc", "clang")),
+    cxx = read_root_config("darling", "darwin_cxx", read_root_config("darling", "cxx", "clang++")),
     cflags = _DARWIN_FLAGS,
     cxxflags = _DARWIN_FLAGS,
     visibility = ["PUBLIC"],

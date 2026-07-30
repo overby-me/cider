@@ -201,6 +201,139 @@
         }).buildTarget
           { target = "//buck-src:mig.sh"; };
 
+      # The port's action graph, dumped by real buck2 in a pure derivation, for the
+      # "graph then lower" endpoint (plan/buck2-port.md phase 3). One opt-in IFD: this
+      # derivation writes what-ran.json, Nix reads that single file, and each action then
+      # becomes its own derivation. Interpreting the Starlark in Nix is what this replaces.
+      #
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-graph
+      packages.darling-buck2-graph =
+        pkgs:
+        import ./nix/lib/darlingBuck2Graph.nix {
+          inherit pkgs;
+          targets = [ "//src/libsimple:libsimple_darlingserver" ];
+        };
+
+      # The same graph, LOWERED: one Nix derivation per buck2 action, from the single
+      # IFD of graph.json. This is the endpoint the port is aiming at -- per-action
+      # caching a binary cache can serve, with buck2 as the definition authority.
+      #
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-lowered
+      packages.darling-buck2-lowered =
+        pkgs:
+        (import ./nix/lib/darlingBuck2Lower.nix {
+          inherit pkgs;
+          graph = import ./nix/lib/darlingBuck2Graph.nix {
+            inherit pkgs;
+            targets = [ "//src/libsimple:libsimple_darlingserver" ];
+          };
+        }).final;
+
+      # The same endpoint on a target that needs the PINS: migcom is the MIG compiler
+      # the port's every codegen edge runs, and it lives in buck-src -- so loading its
+      # package coerces the SDK maps and all 147 pinned trees have to be there.
+      #
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-migcom
+      packages.darling-buck2-migcom =
+        pkgs:
+        (
+          let
+            darlingSrc = import ./nix/lib/darling-src.nix {
+              inherit pkgs;
+              baseSrc = ./.;
+            };
+          in
+          import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc;
+            allPins = true;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc;
+              allPins = true;
+              targets = [ "//buck-src:migcom" ];
+            };
+          }
+        ).final;
+
+      # The endpoint on a GUEST-tier dylib: libsystem_blocks is small, but its link runs
+      # Darling's own ld64 and goes through the firstpass/final pair, which is the shape
+      # every one of the port's 132 dylibs has.
+      #
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-blocks
+      packages.darling-buck2-blocks =
+        pkgs:
+        (
+          let
+            darlingSrc = import ./nix/lib/darling-src.nix {
+              inherit pkgs;
+              baseSrc = ./.;
+            };
+            ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          in
+          import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = [ "//buck-src:system_blocks_final" ];
+            };
+          }
+        ).final;
+
+      # The whole port through the endpoint, for the scale question: how big the graph
+      # gets, how long the dump takes, and how many target derivations come out. The list
+      # is the suite's, which spans host tier, guest tier, MIG and the firstpass/final
+      # pair, so it exercises everything the endpoint has to handle.
+      #
+      # And the same graph LOWERED: every target as its own Nix derivation, collected by
+      # name. This is the scale test for the endpoint -- 259 target derivations out of
+      # 2,066 actions, which is the ratio that made per-target the right unit.
+      #
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all
+      packages.darling-buck2-all =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets.nix;
+            };
+          };
+        in
+        pkgs.linkFarm "darling-buck2-all" (
+          pkgs.lib.mapAttrsToList (label: drv: {
+            name = pkgs.lib.strings.sanitizeDerivationName (pkgs.lib.last (pkgs.lib.splitString ":" label));
+            path = drv;
+          }) lowered.named
+        );
+
+      #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all-graph
+      packages.darling-buck2-all-graph =
+        pkgs:
+        import ./nix/lib/darlingBuck2Graph.nix {
+          inherit pkgs;
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix {
+            src = import ./nix/lib/darling-src.nix {
+              inherit pkgs;
+              baseSrc = ./.;
+            };
+          };
+          allPins = true;
+          targets = import ./nix/lib/buck2-targets.nix;
+        };
+
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
       # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in
@@ -497,6 +630,33 @@
           # Ensure the package builds successfully.  This is redundant with
           # `packages.default` but makes `nix flake check` self-contained.
           darling-build = darling;
+
+          # ── The Buck2 Nix endpoint ─────────────────────────────────────
+          # scripts/buck-test.sh gates the buck2 DAEMON path; nothing gated the
+          # Nix one until this. Deliberately the cheap end of it: libsimple needs
+          # no pins, so its graph derivation is a small buck2 build rather than
+          # the 4 GB pin materialization a guest target pulls in. It still
+          # exercises the whole pipeline -- buck2 in a pure derivation, the graph
+          # dump, the placeholder round trip, and one derivation per target.
+          #   nix build .#checks.x86_64-linux.buck2-endpoint -L
+          buck2-endpoint =
+            pkgs.runCommand "buck2-endpoint-check"
+              { }
+              ''
+                lib=${
+                  (import ./nix/lib/darlingBuck2Lower.nix {
+                    inherit pkgs;
+                    graph = import ./nix/lib/darlingBuck2Graph.nix {
+                      inherit pkgs;
+                      targets = [ "//src/libsimple:libsimple_darlingserver" ];
+                    };
+                  }).final
+                }/liblibsimple_darlingserver.a
+                test -f "$lib" || { echo "no archive at $lib" >&2; exit 1; }
+                ${pkgs.llvmPackages.bintools}/bin/nm "$lib" | grep -q libsimple_lock_lock \
+                  || { echo "archive has no libsimple symbols" >&2; exit 1; }
+                echo ok > $out
+              '';
 
           # ── Rust darling daemon: build + run its demos ─────────────────
           # Builds `server` (the Rust host-side daemon) and runs its proof/demo

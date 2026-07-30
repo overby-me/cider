@@ -1,0 +1,39 @@
+# What BXL exposes about an ACTION, and so where the Nix endpoint gets an argv from.
+#
+# The endpoint needs each action's argv as a LIST (plan/buck2-port.md phase 3), and this
+# probe is how the three candidates were settled:
+#
+#   * `buck2 aquery --output-all-attributes --json` renders the command as a Rust debug
+#     string, "[ar, rcsD, <path>]". Lossy for any argument holding a comma or a space, and
+#     this port passes plenty of both (-Wl,-alias_list,<file>, quoted defines).
+#   * BXL is no better in this buck2: an ActionQueryNode exposes only
+#     ["action", "analysis", "attrs", "rule_type"], its `attrs` carry the same debug-string
+#     `cmd`, and `.action` is an opaque handle whose dir() is empty. That is what running
+#     this prints.
+#   * `buck2 log what-ran --format json` gives the REAL argv and env per action, keyed by
+#     target plus category plus identifier. That is the one to read -- with the caveat that
+#     what-ran reports what EXECUTED, so producing the graph means running a build.
+#
+# Run:
+#   buck2 bxl //buck/bxl/probe.bxl:probe -- --target //src/libsimple:libsimple_darlingserver
+
+def _impl(ctx):
+    actions = ctx.aquery().all_actions(ctx.cli_args.target)
+    n = 0
+    for a in actions:
+        n += 1
+        if n > 2:
+            continue
+        ctx.output.print("---- %s" % a)
+        ctx.output.print("dir: %s" % dir(a))
+        ctx.output.print("kind: %s  identifier: %s" % (a.attrs.kind.value(), a.attrs.identifier.value() if hasattr(a.attrs, "identifier") else "?"))
+        act = a.action
+        ctx.output.print("action dir: %s" % dir(act))
+    ctx.output.print("action nodes: %s" % n)
+
+probe = bxl_main(
+    impl = _impl,
+    cli_args = {
+        "target": cli_args.target_label(),
+    },
+)

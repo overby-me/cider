@@ -1,0 +1,54 @@
+# Materialize the artifacts the Nix endpoint has to carry as DATA.
+#
+# The graph dump (scripts/buck2-graph-dump.py) reads every command from aquery, at analysis
+# time, so nothing has to be compiled to learn what the build would run. But some artifacts
+# are not produced by a command at all -- buck2 makes them in-process (a staged include
+# root, a generated header) -- and no recorded argv can recreate them. Those have to be
+# built once and travel with the graph.
+#
+# `buck2 build <target>` cannot be used for that: it produces a target's DEFAULT output and
+# nothing else, and these artifacts hang off other providers. darling-config.h is the case
+# that proved it -- produced by action id 2 of //src/include:darling_config, reachable
+# through no subtarget, and simply absent when a consumer came to include it.
+#
+# So this asks for them by PROVIDER, which works because the port's rules are its own:
+# CcLibInfo carries the include dirs, and ensuring those materializes exactly the trees the
+# recorded commands will point -I at, without running a single compile.
+#
+#   buck2 bxl //buck/bxl/materialize.bxl:main -- --targets //buck-src:system_blocks_final
+
+load("//buck/rules:cc.bzl", "CcLibInfo")
+
+def _impl(ctx):
+    # The whole closure, since an include root is usually owned by a dependency rather than
+    # by the target that was asked for.
+    # Configured first: cquery works on the configured graph, and a label straight off the
+    # command line is unconfigured.
+    configured = ctx.configured_targets(ctx.cli_args.targets)
+    universe = ctx.cquery().deps(configured)
+
+    wanted = []
+    for node in universe:
+        analysis = ctx.analysis(node.label)
+        if analysis == None:
+            continue
+        providers = analysis.providers()
+        info = providers.get(CcLibInfo)
+        if info != None:
+            wanted += info.include_dirs
+
+        # The default output too: a target whose result IS an in-process artifact (a staged
+        # lib directory) has nothing else to hand over.
+        default = providers.get(DefaultInfo)
+        if default != None:
+            wanted += default.default_outputs
+
+    ctx.output.print("ensuring %s artifact(s)" % len(wanted))
+    ctx.output.ensure_multiple(wanted)
+
+main = bxl_main(
+    impl = _impl,
+    cli_args = {
+        "targets": cli_args.list(cli_args.target_label()),
+    },
+)

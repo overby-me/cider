@@ -545,6 +545,8 @@ per-pin roots, the key transformations, and the sdk_env repointing all at once.
 `buck-src/BUCK`: **33,161 lines -> 8,924**, with 172 blocks and 49 hand-written targets in
 **42 pin packages** (libc 12.4k lines, xnu 4.1k, the rest under 1.2k). Suite green at 96
 checks, coverage unchanged at 206/206 in-scope link edges.
+(Corrected later: that denominator was wrong, and it was wrong every time it was
+quoted. See "The coverage metric had a blind spot" at the end of this file.)
 
 It MOVES blocks rather than regenerating them, and that was the pivotal decision: the
 committed tree is **not a fixpoint of its own generator** -- regenerating every block
@@ -603,6 +605,253 @@ both ways, libarchive/icu, corefoundation/foundation) could move once their fore
 becomes a dep on a root in the owning pin; and the generator should learn to emit a
 cross-pin include root as a separate target in the owning package, so regenerating a
 migrated pin's block does not undo the split.
+
+### 2026-07-30 (evening) -- phase 3 changes course: ONE opt-in IFD
+
+Measured, since it decides the architecture (`NIX_SHOW_STATS`, `MemoryMax=8G`, IFD off):
+
+| target | evaluator CPU | values | calls | GC heap reported |
+| --- | --- | --- | --- | --- |
+| `//src/libsimple:libsimple_darlingserver` (3 actions) | 8.7s | 1.9M | 1.4M | 0.40 GB |
+| `//src/duct:system_duct_static` (+ `//darwin:sdk_env`, 4,178 map entries) | 82.5s | 47.7M | 69.5M | 18.2 GB |
+
+25x the values and 50x the calls for one step up in size, and `//darwin:sdk_env` dominates
+both. The port has 206 in-scope link edges and thousands of actions, so interpreting the
+Starlark IN NIX does not extrapolate: it is not the memory ceiling any more (the split
+fixed that), it is the cost per target and a steady supply of fresh walls in the
+interpreter. Three were fixed today alone -- a `for` statement and a comprehension each
+recursed once per iteration (`max-call-depth`, not slowness), and `foldl'` alone does not
+help until each step also forces the accumulated list and env, or the same overflow
+reappears one step later inside `dict.items()`.
+
+**So the decision changes: use ONE opt-in import-from-derivation, the way overby's
+`nix/lib/cargo` does it.** That library is strictly IFD-free by default with a single
+documented exception -- a pure derivation extracts the metadata and Nix reads it -- which
+is exactly the shape this needs:
+
+1. a pure derivation runs REAL buck2 over the hermetic source (`nix/lib/darling-src.nix`
+   already assembles all 147 pins, which also settles the gitignored-pins wall the pure
+   path hit) and dumps the ACTION GRAPH as JSON;
+2. Nix reads that one file (the IFD) and lowers each action to its own derivation, exactly
+   as today -- overby's `build/lower.nix` already consumes a graph attrset, so the half
+   that carries the value is kept;
+3. the pure-Nix Starlark interpreter leaves the evaluation path. It stays useful as a
+   checked, IFD-free mode for small targets, and the walls found through it were real
+   interpreter bugs worth fixing upstream regardless.
+
+Where the argv comes from, settled by probing all three (`buck/bxl/probe.bxl` records it):
+
+- `buck2 aquery --output-all-attributes --json` renders `cmd` as a Rust debug string
+  (`"[ar, rcsD, <path>]"`), lossy for any argument holding a comma or a space -- and this
+  port passes plenty (`-Wl,-alias_list,<file>`, quoted defines). Unusable as-is.
+- **BXL is no better in this buck2.** An `ActionQueryNode` exposes only
+  `["action", "analysis", "attrs", "rule_type"]`; `attrs` carries the same debug-string
+  `cmd`, and `.action` is an opaque handle whose `dir()` is empty. So a BXL dumper would
+  have to re-derive the commands, which means duplicating every rule's `cmd_args`.
+- **`buck2 log what-ran --format json` gives the real thing**: per action, the identity
+  (target + category + identifier) and a reproducer holding `command` as a LIST and the
+  full `env`. Faithful, and no rule changes.
+
+The catch AS IT STOOD THEN, since the aquery entry below removes it: what-ran reports what EXECUTED, so a graph dumped this
+way costs a full build inside the derivation, and the per-action derivations then redo that
+work once each. Two shapes follow from it:
+
+1. **Graph then lower** (the cargo analogue). One derivation builds and dumps what-ran; Nix
+   reads it and gives every action its own derivation. Pays a double build whenever the
+   graph changes, and buys per-action caching and sharing through a binary cache -- which is
+   the reason for the Nix endpoint in the first place.
+2. **One derivation, no IFD at all.** It runs buck2 over the hermetic pinned source and
+   installs the outputs. A fraction of the work, and the usual shape for a build system
+   inside Nix, but the graph is opaque to Nix: no per-action caching, and a one-line change
+   rebuilds everything.
+
+Either way `buck2 log what-ran` is the interface, and the hand-written prelude-free rules
+and the daemon path do not change: the same BUCK files stay the single definition, and
+`scripts/buck-test.sh` stays the gate.
+
+**Shape 1 is what got built, and it works end to end.** `nix build .#darling-buck2-lowered`
+produces `liblibsimple_darlingserver.a` **byte-identical** to the one the buck2 daemon
+builds, through: a pure derivation that runs buck2 (`nix/lib/darlingBuck2Graph.nix`), one
+`builtins.fromJSON` of its `graph.json`, and one derivation per action
+(`nix/lib/darlingBuck2Lower.nix`). No Starlark is interpreted in Nix.
+
+Three buck2 interfaces are needed, and `scripts/buck2-graph-dump.py` is the one place that
+joins them, because no single one answers everything:
+
+- `log what-ran --format json` gives the faithful argv and env, but only for actions that
+  RAN a command -- it is silent about the ones buck2 performs in-process, and the port's
+  header staging is exactly those (`symlinked_dir`).
+- `audit output <path>` says which action produced a buck-out path. That is what separates
+  an action's own OUTPUTS from what it consumes, which no argv makes explicit: a target's
+  compile and its archive both name the object file, and only one writes it.
+- `aquery` carries every action's kind AND both naming schemes, so it is what joins
+  what-ran's `T (category identifier)` to audit's `(target: T, id: N)`.
+
+In-process artifacts are copied out DEREFERENCED, because a staged include root is a farm
+of relative symlinks into the project and those mean nothing once the tree is a store path.
+
+Two things buck2 needs before it will start inside a build sandbox, both surprises:
+it builds an HTTP client while starting its daemon and dies without a CA bundle even though
+nothing is fetched, and it insists on watchman unless the config says
+`file_watcher = notify`.
+
+### 2026-07-30 (evening) -- the endpoint on a target that needs the pins
+
+`nix build .#darling-buck2-migcom` builds **migcom**, the MIG compiler every codegen edge in
+the port runs: 12 compiles plus bison plus flex plus the link, each its own Nix derivation,
+from one graph dump. It runs (`migcom -h` prints migcom's own error), and it needs the pins,
+which is what makes it the real test.
+
+Three things that took finding:
+
+- **A target's outputs come from the build report**, not from what-ran or aquery: those talk
+  about actions, and an action's outputs carry no note of which target asked for them.
+  `--build-report=<path>` gives `results.<label>.outputs.DEFAULT`, so the lowerer can offer
+  `byTarget.<label>` with the artifact under its own name.
+- **Any buck-src target needs ALL the pins.** Loading that package coerces the SDK maps,
+  3,591 source paths across 70 pins, so there is no partial materialization: the graph
+  derivation takes `allPins = true` and reads the list from `nix/submodules.json` (a source
+  file, so no second import-from-derivation). Copying them costs ~80s with `--reflink=auto`.
+- **The per-pin split changed how the pins have to be copied.** `buck-src/<pin>/BUCK` is
+  committed now, so the destination directory already exists and `cp -a src dest` nests the
+  whole tree one level down as `buck-src/<pin>/<pin>`. It copies CONTENTS instead.
+
+The action derivations stage the project as SYMLINKS rather than copying it: an action only
+reads project files, and copying the repo plus 4 GB of pins into each of hundreds of action
+derivations would cost far more than the build it replaces. The pin symlinks deliberately
+overwrite the ones pointing at the committed `buck-src/<pin>/BUCK`, because an action needs
+sources, not BUCK files.
+
+**The double-build cost, measured on migcom**: the graph derivation takes ~50s (pin
+materialization plus buck2's own build of the target) and lowering the same graph takes ~35s,
+so the endpoint costs roughly 1.7x a plain buck2 build the first time and nothing after, as
+long as the graph does not change. libsimple's archive comes out byte-identical to the
+daemon's; migcom's binary does not, and that is the link embedding different absolute paths,
+not a difference in what was compiled.
+
+Neither the hand-written prelude-free rules nor the daemon path changes: the same BUCK
+files stay the single definition, and `scripts/buck-test.sh` stays the gate.
+
+### 2026-07-30 (night) -- the endpoint lowers per TARGET, and what is left
+
+Decided after asking what the lowering actually buys: **one derivation per TARGET, not per
+action.** Per-action is the finer cache and it is what got built first, but the port has on
+the order of 15,000 actions, and Nix pays an instantiation, a sandbox and a store round trip
+for each -- too much at that count, and the per-derivation overhead is exactly the sort of
+cost this course change existed to escape. Targets are a couple of hundred, which Nix is
+comfortable with, and a target is the unit a person reasons about.
+
+The granularity that costs is cheap here for a second reason: **most of these targets are
+pinned upstream trees nobody edits**, so their derivations stay cached indefinitely and the
+coarser rebuild only ever hits the handful of first-party targets under active work.
+
+An honest note on what the endpoint is FOR, because it decides everything above. Running
+buck2 in a single derivation would be far less machinery, and for an unchanged tree it caches
+just as well. The per-target split earns its keep only on CHANGE: a contributor who edits one
+target pulls every other target from the binary cache instead of rebuilding the world. That
+is also why the graph has to become reusable across edits -- see below -- or the endpoint
+pays for a full buck2 build on every source change and the split buys nothing.
+
+Remaining work, in the order it should be done:
+
+1. ~~**Prove the target-level path**~~ DONE. All three probes build per target: libsimple's
+   archive, migcom (which runs), and libsystem_blocks.dylib -- a real Mach-O with the
+   install_name /usr/lib/system/libsystem_blocks.dylib and the Block runtime's symbols.
+   Three bugs stood in the way, all one shape: buck2 assumes a mutable buck-out, and Nix
+   hands back read-only store outputs. `compgen` is a bash builtin that runCommand's shell
+   does not have; `cp --no-preserve=mode` stripped migcom's executable bit, which surfaced
+   two layers away as a clang backend crash on a broken pipe; and a store copy reproduces
+   read-only DIRECTORIES, so the second dependency staged could not write into parents the
+   first had created -- directories are made writable after each copy now, not at the end.
+2. **Key the graph on the build DEFINITION, not on file contents.** An action's argv depends
+   on file names and flags, never on what is inside a file. Half done:
+
+   * The graph is now MACHINE-INDEPENDENT, which is the prerequisite. Measured rather than
+     assumed: across 1,669 actions exactly three store paths appear -- clang (1,606
+     references), the wrapper's resource root (1,606) and Darling's ld64 (12) -- so the dump
+     replaces each with a named placeholder and the consumer fills it from its own inputs.
+     Zero store paths survive, and the dumper reports any that would, since a silent one is
+     a machine dependency nobody notices until the cache misses.
+   * What remains is to stop the graph derivation depending on source CONTENTS. The clean
+     form, and the one that matches this port's conventions, is to COMMIT graph.json the way
+     sdk_headers.bzl, extra-deps.json and the export lists are committed, and regenerate it
+     with a script when the build definition changes. That removes the IFD entirely, and
+     editing code becomes a cache hit rather than a full buck2 build. It is also exactly
+     what nix/lib/cargo does: a committed snapshot by default, IFD as the opt-in exception.
+3. ~~**Filter `darling-src`'s baseSrc**~~ DONE, and the claim it rests on was too broad:
+   `nix/`, `docs/` and the buck2 trees were already excluded, so editing the Nix never
+   re-assembled anything. Editing the port's own definitions did, though -- so `buck/`,
+   `scripts/`, `plan/`, `tests/` and the buck2 configs are excluded too, none of which the
+   cmake build reads. The graph derivation's own source is filtered the same way, so
+   editing the plan or the Nix that CONSUMES the graph no longer invalidates the graph and
+   costs a full buck2 build to rediscover commands that did not change.
+4. ~~**Scale to the whole graph**~~ DONE for the suite's target set, which is the one already
+   known to build and spans host tier, guest tier, MIG and the firstpass/final pair.
+   `nix build .#darling-buck2-all` asks for 29 targets and gets 29 named artifacts, lowered
+   from **259 target derivations over 2,066 actions** -- the ratio that makes per-target the
+   right unit, since 2,066 derivations would not have been comfortable. libsystem_kernel and
+   libsystem_blocks come out as Mach-O dylibs with their install_names, dserverdbg as a host
+   ELF executable.
+
+   The measurements that bound the design: graph.json is 33.9 MB and the staged artifacts
+   196 MB for those 29 targets (26.4 MB and 147 MB for a single dylib). Widening to all 206
+   in-scope link edges is a matter of the target list, but expect the graph output to grow
+   in proportion -- it is firmly a derivation output, never a committed file.
+5. ~~**Gate it**~~ DONE: `checks.buck2-endpoint` builds libsimple through the whole pipeline
+   -- buck2 in a pure derivation, the graph dump, the placeholder round trip, one derivation
+   per target -- and asserts the archive really carries libsimple's symbols. Deliberately the
+   pin-free end: a guest target would drag in the 4 GB pin materialization and stop being a
+   gate anyone runs.
+6. **How it sits next to the existing paths.** DECIDED, and the comparison is not flattering
+   in one respect worth stating plainly.
+
+   `nix/lib/darlingNinja.nix` (nix-ninja) solves the SAME problem from the cmake side: one
+   Nix derivation per ninja EDGE, cached independently, shareable through Cachix. It is
+   finer-grained than this endpoint and it has a structural advantage that cannot be
+   matched here: **ninja publishes its graph as a FILE**. `build.ninja` exists after a cheap
+   cmake configure, without compiling anything, so nix-ninja pays no double build and a code
+   edit does not invalidate the graph. buck2 has no such artifact -- aquery and BXL render
+   commands as a lossy debug string, and `log what-ran` only reports what executed -- so
+   this endpoint has to run a build to learn the commands. That is the whole reason it costs
+   a double build and cannot be incremental locally.
+
+   That is one axis, and taken alone it flatters nix-ninja. On the axis that decides whether
+   a fine-grained cache is SOUND, it goes the other way, and this repo documents it in its
+   own words. A ninja edge carries a command, not a complete dependency statement: header
+   dependencies are discovered from depfiles AFTER compiling, and every target compiles
+   against one global include set, so nothing stops an edge reading a header nobody declared
+   it needs. `nix/lib/darlingNinja.nix` pays for that twice over -- it re-provides every
+   configure buildInput in EVERY edge's sandbox because the graph does not say which edges
+   need them, and it patches compile definitions into the duct-tape because "nix-ninja's
+   merged tree does not always deliver those kernel mach headers to a mig user-stub's
+   per-edge compile", which produced a link failure rather than a cache miss.
+
+   buck2 declares and ENFORCES inputs. A rule's sources, its deps and its staged include
+   roots are explicit -- 573 to 638 staged roots in these graphs, first-class artifacts
+   rather than a shared -I set -- so a target derivation here receives exactly what the
+   target is allowed to read, and nothing had to be over-provided or patched to make the
+   endpoint work. That is also what made the per-pin split meaningful: the boundaries are
+   real, and buck2 rejects a package that reaches across one.
+
+   So the trade is graph availability against soundness. Ninja hands over its graph for
+   free but understates dependencies, which a cache can only compensate for by hashing too
+   much (killing reuse) or too little (wrong hits). Buck2 makes the graph expensive to
+   extract but states dependencies completely, which is what a cache actually needs. For
+   publishing, where a wrong hit is worse than a slow build, that argues for this endpoint
+   despite the double build -- and the choice still follows the build definition: nix-ninja
+   while cmake is the authority, this endpoint for the buck2 tree.
+
+   `darling-base` is orthogonal and stays: it is a COMPONENT-scope cache (toolchain, SDK
+   staging, core libSystem as one derivation) for the cmake build, not a per-unit one.
+
+   What this endpoint is FOR, stated once: reproducible, cacheable, shareable builds of the
+   buck2 tree -- CI and publishing, where a contributor pulls every target they did not
+   touch from a binary cache. The inner loop stays on the buck2 daemon, which is what
+   `scripts/buck-test.sh` gates.
+
+Two pieces of port-side debt stay on the list, independent of the endpoint: the generator is
+not a fixpoint of the committed tree (216 of 367 blocks regenerate differently, some of them
+not compiling), and 44 blocks still glob a sibling pin instead of depending on a root in it.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
@@ -1159,3 +1408,121 @@ The **firstpass two-pass link** (Phase 1.3). It is the one Darling idiom that is
 genuinely awkward in any explicit build system. Spike it before committing to the
 port; if it resists a clean Buck2 expression, draw the Buck2/nix-ninja boundary
 *above* libSystem and port only the tiers that iterate.
+
+
+### 2026-07-30 (night) -- the double build is GONE: the graph comes from analysis
+
+The graph derivation no longer compiles anything to learn what the commands are. Verified on
+the exact graph the whole-port build consumed: **2,066 command actions recorded, zero
+compiles inside the derivation**, no missing artifacts, and all 29 targets build from it.
+
+This started as "how big a task is it to patch buck2 to emit structured commands". The patch
+is one line: `aquery_attributes` already resolves the real argv into a `Vec<String>` with
+paths mapped, then destroys it with `format!("[{}]", join(", "))`. Shipping it is the
+expensive half, because nixpkgs ships buck2 as a prebuilt binary on purpose -- "the upstream
+codebase extensively uses unstable rustc nightly features, and as a result can't be built
+upstream in any sane manner" -- so a patch means owning a from-source buck2 on a pinned
+nightly forever, for one line.
+
+So the cheaper question got asked first: is that join lossy IN PRACTICE here? No, and it is
+measured rather than assumed. Reversing it reproduces what-ran's argv **exactly for 2,066 of
+2,066 actions**, and **no argument anywhere contains the separator** -- the flags that carry
+commas (-Wl,-alias_list,<file>) never carry comma-space. `buck2-graph-dump.py
+--check-against-what-ran` re-runs that comparison and fails the dump if it ever stops
+holding, so it stays a checked assumption rather than a hopeful one.
+
+The dump is analysis-first now:
+
+- `aquery --output-all-attributes` gives every action's command line without executing it.
+- `targets --show-full-output` names each target's output, where the build report needed
+  exactly the build being avoided.
+- The artifacts buck2 makes IN-PROCESS are materialized by PROVIDER, through
+  `buck/bxl/materialize.bxl`. Building their targets was the first attempt and it has a
+  structural hole: **`buck2 build <target>` produces a target's DEFAULT output and nothing
+  else.** darling-config.h is action id 2 of //src/include:darling_config, reachable through
+  no subtarget and not on the default output's path, so it was absent when a consumer came
+  to include it, and three targets failed a long way from the cause. Asking by provider
+  works because the port's rules are its own: CcLibInfo carries the include dirs. That
+  ensures 14,593 artifacts on the whole-port graph, against the 638 the target-building
+  version reached, and still compiles nothing.
+- Nothing is lost by dropping what-ran's env: the only keys buck2 set were TMPDIR and
+  BUCK_SCRATCH_PATH, which each target derivation makes in its own sandbox anyway.
+
+Two diagnostic lessons, both of which cost time here. A Nix log that ends without an error
+means the builder was KILLED, not that the build was fine -- an 8 GB cap over hundreds of
+parallel clang processes does that, and the cap that protects EVALUATION is the wrong cap
+for a build. And the `MISSING artifact` line the dumper prints is what finally located the
+darling-config.h hole, which argues for putting the diagnostic in before it is needed.
+
+This also revises the nix-ninja comparison above. The double build was the main cost this
+endpoint carried against it, and it is gone; ninja still publishes its graph for free, but
+buck2 can now be asked for one at analysis time too, and buck2's graph remains the sounder
+of the two because its inputs are declared and enforced rather than discovered from depfiles.
+
+Upstream is still worth a report -- aquery's `cmd` is lossy by construction and its
+inputs/outputs come back empty (facebook/buck2 issue 475, closed without a documented
+resolution), where Bazel emits argv, inputs and outputs structurally. This port no longer
+waits on it.
+
+
+### 2026-07-30 (night) -- content addressing, as an OPT-IN
+
+`darlingBuck2Lower.nix` takes `contentAddressed ? false`, the same shape nix/lib/cargo uses
+for its one IFD exception: off by default, available to anyone whose Nix and cache support
+it. Verified working -- with it on, Nix reports "resolved derivation" and the target builds
+normally.
+
+What it buys: early cutoff BETWEEN targets. A header edit that leaves a target's output
+bit-identical stops propagating to that target's dependents rather than relinking the world.
+That holds regardless of how the graph is consumed.
+
+What it does not buy on its own: a cheap source edit. That needs the GRAPH derivation to be
+content-addressed as well, which is the CA-plus-IFD pairing of NixOS/nix issue 5805 --
+closed, but still tracked under the ca-derivations stabilisation milestone, which stood at
+65% (56 closed, 29 open) in March 2026, with only FIXED content addressing stable and the
+floating kind still experimental. Keeping the two separate lets the safe half be taken alone.
+
+Why it is off by default, and why the endpoint should not depend on it:
+
+- it needs `experimental-features = ca-derivations` on every machine that builds OR
+  substitutes, and dynamic-derivations additionally requires ca-derivations, so the newer
+  feature rests on the less-finished one;
+- the binary cache is the crux. This endpoint exists so other people do not rebuild what
+  they did not touch; a cache that cannot serve CA outputs removes the entire payoff, and
+  that is the one thing to verify before relying on it;
+- the benefit vanishes silently if outputs are not bit-reproducible, with no error to say so.
+
+The route to a cheap source edit that needs NO experimental feature is still the better
+default: record staged artifacts as symlink MAPS rather than dereferenced copies (they are
+pure symlink farms -- 3,591 links and zero real files in the SDK root), after which nothing
+in the dump reads a source byte, and the graph derivation can run on a names-only skeleton.
+Content addressing then becomes an optimisation rather than the mechanism.
+
+
+## The coverage metric had a blind spot: 206/241, not 206/206
+
+Every progress report in this file, and several commit messages, quoted coverage against a
+denominator the script computed for itself. It classified each link edge by its output:
+`.dylib` or a `-dylib_install_name` flag meant a dylib, `.a` an archive, and no dot in the
+basename an executable. A loadable MODULE matches none of those: zsh's are `-shared` with no
+install name, and their basename contains a dot, so the executable test rejects them too.
+They fell through every branch and were counted in NO category, which quietly removed them
+from the denominator as well as the numerator.
+
+There are 70 such link edges in the reference, 35 distinct modules, all of them zsh's
+(`complete.so`, `zle.so`, `curses.so`, `computil.so`, ...). None is ported. True coverage:
+
+    dylibs      119 / 119   (1 out of scope)
+    exes         51 /  51
+    archives     36 /  36   (1 out of scope)
+    modules       0 /  35
+    total       206 / 241   (85%)
+
+The build work claimed is real -- 206 edges are ported and the suite is green on them. What
+was wrong is the completeness claim on top of it, and the failure mode is worth naming: a
+metric that skips what it cannot classify reads as 100% precisely when it is blindest, and
+nothing in the output said 35 edges had been dropped. scripts/buck-coverage.py now has a
+`module` category, so these are visible whether or not they are ported.
+
+The gap does not block the bash milestone -- it is entirely zsh, a component bash does not
+need -- but it is the honest picture of where the port stands. Tracked as its own task.

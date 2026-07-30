@@ -65,6 +65,20 @@ pkgs.runCommand "darling-ninja-graph-${components}"
     cmake -S ${cmakeSrcStore} -B build -G Ninja ${lib.escapeShellArgs cmakeFlags} > $out/configure.log 2>&1 \
       || { echo "configure FAILED"; tail -40 $out/configure.log; exit 1; }
     cp build/build.ninja $out/build.ninja
+
+    # The INSTALL manifests too. cmake writes one cmake_install.cmake per directory during
+    # configure, and together they are the authoritative statement of what a Darling prefix
+    # contains and where each artifact goes -- which build.ninja does not say, since install
+    # is a single opaque edge that shells out to cmake -P. The Buck2 port needs it to
+    # generate install rules the way it generates everything else, from the reference rather
+    # than by hand (plan/buck2-port.md, and the bash milestone).
+    ( cd build && find . -name cmake_install.cmake -print0 |
+        while IFS= read -r -d "" f; do
+          d="$out/install-manifests/$(dirname "$f")"
+          mkdir -p "$d"
+          cp "$f" "$d/"
+        done )
+    echo "install manifests: $(find $out/install-manifests -name cmake_install.cmake | wc -l)"
     echo "extracting ninja graph (no compilation) ..."
     ( cd build && ${rustNinja}/bin/ninja -f build.ninja -t graph-json ) > $out/graph.json
     echo "graph.json bytes: $(wc -c < $out/graph.json)"
