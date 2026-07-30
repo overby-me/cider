@@ -29,12 +29,14 @@ cc_header_root(
     name = "system_m_inc_libm_Source",
     headers = glob(["Source/*.h", "Source/**/*.h"]),
     root = "Source",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "system_m_inc_libm_Source_Intel",
     headers = glob(["Source/Intel/*.h", "Source/Intel/**/*.h"]),
     root = "Source/Intel",
+    visibility = ["PUBLIC"],
 )
 
 cc_objects(
@@ -136,6 +138,7 @@ cc_objects(
         ":system_m_inc_libm_Source",
         ":system_m_inc_libm_Source_Intel",
     ],
+    visibility = ["PUBLIC"],
 )
 
 cc_objects(
@@ -198,5 +201,6 @@ cc_objects(
         ":system_m_inc_libm_Source",
         ":system_m_inc_libm_Source_Intel",
     ],
+    visibility = ["PUBLIC"],
 )
 # END generated: system_m_obj

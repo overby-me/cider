@@ -325,6 +325,24 @@ printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
 	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
 	bad "kernel final is missing _dserver_rpc_checkin"
 
+say "== newly ported libSystem members (firstpass dylibs) =="
+# Each is a Mach-O dylib carrying the install_name its FINAL pass siblings will
+# look it up by; a firstpass with the wrong id makes every sibling's final pass
+# record a name dyld cannot resolve.
+for spec in \
+	"//buck-src:corecrypto_firstpass=/usr/lib/system/libcorecrypto.dylib" \
+	"//buck-src:libdispatch_shared_firstpass=/usr/lib/system/libdispatch.dylib" \
+	"//src/launchd:launch_firstpass=/usr/lib/system/liblaunch.dylib" \
+	"//buck-src:macho_firstpass=/usr/lib/system/libmacho.dylib" \
+	"//buck-src:system_notify_firstpass=/usr/lib/system/libsystem_notify.dylib" \
+	"//buck-src:xpc_firstpass=/usr/lib/system/libxpc.dylib"; do
+	t=${spec%%=*}
+	want=${spec#*=}
+	f=$(out_of "$t")
+	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1)
+	[ "$id" = "$want" ] && ok "${t##*:} id is $id" || bad "${t##*:} id is '$id', want $want"
+done
+
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do

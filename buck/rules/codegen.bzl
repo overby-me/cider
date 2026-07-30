@@ -189,6 +189,8 @@ def _mig_gen_impl(ctx):
     cmd.add(merged.exported_flags)
     for inc in merged.include_dirs:
         cmd.add(cmd_args(inc, format = "-I{}"))
+    for extra in ctx.attrs.extra_defs:
+        cmd.add(cmd_args(extra, parent = 1, format = "-I{}"))
     cmd.add(ctx.attrs.mig_flags)
     ctx.actions.run(cmd, category = "mig", identifier = stem)
 
@@ -226,6 +228,10 @@ mig_gen = rule(
         "compile_srcs": attrs.list(attrs.string(), default = []),
         "defs": attrs.source(),
         "deps": attrs.list(attrs.dep(), default = []),
+        # Definitions the main defs #includes. mig resolves those through the C
+        # preprocessor, so each one's directory is added to the include path --
+        # and declaring them here is what makes buck2 rebuild when they change.
+        "extra_defs": attrs.list(attrs.source(), default = []),
         "header_suffix": attrs.string(default = ".h"),
         "mig_flags": attrs.list(attrs.string(), default = []),
         "mig_sh": attrs.source(),

@@ -15728,3 +15728,744 @@ cc_objects(
         "//src/libsimple:libsimple_headers",
     ],
 )
+
+# BEGIN generated: libdispatch_shared_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libdispatch_shared_obj   -- review before committing.
+# cmake target: libdispatch_shared_obj  ->  src/external/libdispatch/libdispatch_shared_obj
+# 32 sources in 3 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libdispatch/src/protocolServer.c
+#   src/external/libdispatch/src/protocolUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libdispatch/src
+#   src/external/libdispatch/src/firehose
+
+cc_header_root(
+    name = "libdispatch_shared_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libdispatch_shared_inc_libdispatch",
+    headers = glob(["libdispatch/*.h", "libdispatch/**/*.h"]),
+    root = "libdispatch",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libdispatch_shared_inc_libdispatch_private",
+    headers = glob(["libdispatch/private/*.h", "libdispatch/private/**/*.h"]),
+    root = "libdispatch/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libdispatch_shared_inc_libdispatch_src",
+    headers = glob(["libdispatch/src/*.h", "libdispatch/src/**/*.h"]),
+    root = "libdispatch/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libdispatch_shared_obj",
+    srcs = [
+        "libdispatch/resolver/resolver.c",
+        "libdispatch/src/allocator.c",
+        "libdispatch/src/apply.c",
+        "libdispatch/src/benchmark.c",
+        "libdispatch/src/data.c",
+        "libdispatch/src/data.m",
+        "libdispatch/src/event/event.c",
+        "libdispatch/src/event/event_epoll.c",
+        "libdispatch/src/event/event_kevent.c",
+        "libdispatch/src/event/event_windows.c",
+        "libdispatch/src/event/workqueue.c",
+        "libdispatch/src/eventlink.c",
+        "libdispatch/src/init.c",
+        "libdispatch/src/introspection.c",
+        "libdispatch/src/io.c",
+        "libdispatch/src/mach.c",
+        "libdispatch/src/object.c",
+        "libdispatch/src/once.c",
+        "libdispatch/src/queue.c",
+        "libdispatch/src/semaphore.c",
+        "libdispatch/src/shims.c",
+        "libdispatch/src/shims/lock.c",
+        "libdispatch/src/shims/yield.c",
+        "libdispatch/src/source.c",
+        "libdispatch/src/time.c",
+        "libdispatch/src/transform.c",
+        "libdispatch/src/voucher.c",
+        "libdispatch/src/workgroup.c",
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dtypeof=__typeof__",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libdispatch_shared_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:dispatchmig_protocol",
+        ":libdispatch_shared_inc_libdispatch",
+        ":libdispatch_shared_inc_libdispatch_private",
+        ":libdispatch_shared_inc_libdispatch_src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libdispatch_shared_obj2",
+    srcs = [
+        "libdispatch/src/block.cpp",
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dtypeof=__typeof__",
+        "-fno-exceptions",
+        "-std=c++11",
+        "-fPIC",
+        "-nostdinc",
+        "-D_Bool=bool",
+        "-ggdb",
+        "-O0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libdispatch_shared_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:dispatchmig_protocol",
+        ":libdispatch_shared_inc_libdispatch",
+        ":libdispatch_shared_inc_libdispatch_private",
+        ":libdispatch_shared_inc_libdispatch_src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libdispatch_shared_obj3",
+    srcs = [
+        "libdispatch/src/object.m",
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dtypeof=__typeof__",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-return-type",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libdispatch_shared_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:dispatchmig_protocol",
+        ":libdispatch_shared_inc_libdispatch",
+        ":libdispatch_shared_inc_libdispatch_private",
+        ":libdispatch_shared_inc_libdispatch_src",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libdispatch_shared_obj
+
+# BEGIN generated: macho_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py macho_obj   -- review before committing.
+# cmake target: macho_obj  ->  src/external/cctools/libmacho/macho_obj
+
+cc_header_root(
+    name = "macho_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "macho_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "macho_obj",
+    srcs = [
+        "cctools/libmacho/arch.c",
+        "cctools/libmacho/get_end.c",
+        "cctools/libmacho/getsecbyname.c",
+        "cctools/libmacho/getsegbyname.c",
+        "cctools/libmacho/hppa_swap.c",
+        "cctools/libmacho/i386_swap.c",
+        "cctools/libmacho/i860_swap.c",
+        "cctools/libmacho/m68k_swap.c",
+        "cctools/libmacho/m88k_swap.c",
+        "cctools/libmacho/ppc_swap.c",
+        "cctools/libmacho/slot_name.c",
+        "cctools/libmacho/sparc_swap.c",
+        "cctools/libmacho/swap.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":macho_inc_cctools_include",
+        ":macho_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: macho_obj
+
+# BEGIN generated: xpc_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xpc_obj   -- review before committing.
+# cmake target: xpc_obj  ->  src/external/libxpc/xpc_obj
+
+cc_header_root(
+    name = "xpc_inc_libxpc_include",
+    headers = glob(["libxpc/include/*.h", "libxpc/include/**/*.h"]),
+    root = "libxpc/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xpc_inc_libxpc_internal_include",
+    headers = glob(["libxpc/internal-include/*.h", "libxpc/internal-include/**/*.h"]),
+    root = "libxpc/internal-include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xpc_obj",
+    srcs = [
+        "libxpc/src/activity.m",
+        "libxpc/src/array.m",
+        "libxpc/src/base.m",
+        "libxpc/src/bool.m",
+        "libxpc/src/bsm_wrappers.c",
+        "libxpc/src/bundle.m",
+        "libxpc/src/coalition.m",
+        "libxpc/src/connection.m",
+        "libxpc/src/data.m",
+        "libxpc/src/date.m",
+        "libxpc/src/dictionary.m",
+        "libxpc/src/double.m",
+        "libxpc/src/endpoint.m",
+        "libxpc/src/error.m",
+        "libxpc/src/event.m",
+        "libxpc/src/fd.m",
+        "libxpc/src/file_transfer.m",
+        "libxpc/src/init.c",
+        "libxpc/src/int64.m",
+        "libxpc/src/launchd.m",
+        "libxpc/src/mach_recv.m",
+        "libxpc/src/mach_send.m",
+        "libxpc/src/misc.m",
+        "libxpc/src/null.m",
+        "libxpc/src/pipe.m",
+        "libxpc/src/plist.m",
+        "libxpc/src/pointer.m",
+        "libxpc/src/reboot3.c",
+        "libxpc/src/runtime.m",
+        "libxpc/src/serialization.m",
+        "libxpc/src/service.m",
+        "libxpc/src/service_instance.m",
+        "libxpc/src/shmem.m",
+        "libxpc/src/string.m",
+        "libxpc/src/transaction.m",
+        "libxpc/src/type.m",
+        "libxpc/src/uint64.m",
+        "libxpc/src/util.m",
+        "libxpc/src/uuid.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__XPC_BUILDING_XPC__",
+        "-D__XPC_PROJECT_BUILD__",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-nostdinc",
+        "-fblocks",
+        "-fvisibility=hidden",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-Wno-extern-initializer",
+        "-Wno-gnu-folding-constant",
+    ],
+    prefix_headers = [
+        "libxpc/internal-include/xpc/prefix.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//buck-src:fw_AppKit",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//buck-src:fw_CFNetwork",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//darwin/frameworks:fw_CoreServices",
+        "//buck-src:fw_CoreText",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//buck-src:fw_Foundation",
+        "//darwin/frameworks:fw_HIServices",
+        "//buck-src:fw_IOKit",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//buck-src:fw_Metal",
+        "//buck-src:fw_Onyx2D",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//buck-src:fw_QuartzCore",
+        "//darwin/frameworks:fw_SearchKit",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":xpc_inc_libxpc_include",
+        ":xpc_inc_libxpc_internal_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xpc_obj
+
+# BEGIN generated: corecrypto_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py corecrypto_obj   -- review before committing.
+# cmake target: corecrypto_obj  ->  src/external/corecrypto/corecrypto_obj
+
+cc_header_root(
+    name = "corecrypto_inc_corecrypto_include",
+    headers = glob(["corecrypto/include/*.h", "corecrypto/include/**/*.h"]),
+    root = "corecrypto/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "corecrypto_obj",
+    srcs = [
+        "corecrypto/src/cc.c",
+        "corecrypto/src/cc_priv.c",
+        "corecrypto/src/ccaes.c",
+        "corecrypto/src/ccansikdf.c",
+        "corecrypto/src/ccblowfish.c",
+        "corecrypto/src/cccast.c",
+        "corecrypto/src/cccbc.c",
+        "corecrypto/src/ccccm.c",
+        "corecrypto/src/cccfb.c",
+        "corecrypto/src/cccfb8.c",
+        "corecrypto/src/ccchacha20poly1305.c",
+        "corecrypto/src/ccckg.c",
+        "corecrypto/src/cccmac.c",
+        "corecrypto/src/ccctr.c",
+        "corecrypto/src/ccder.c",
+        "corecrypto/src/ccdes.c",
+        "corecrypto/src/ccdh.c",
+        "corecrypto/src/ccdh_gp.c",
+        "corecrypto/src/ccdigest.c",
+        "corecrypto/src/ccec.c",
+        "corecrypto/src/ccec25519.c",
+        "corecrypto/src/ccec_points.c",
+        "corecrypto/src/ccec_projective_point.c",
+        "corecrypto/src/ccecies.c",
+        "corecrypto/src/ccgcm.c",
+        "corecrypto/src/cch2c.c",
+        "corecrypto/src/cchkdf.c",
+        "corecrypto/src/cchmac.c",
+        "corecrypto/src/ccmd2.c",
+        "corecrypto/src/ccmd4.c",
+        "corecrypto/src/ccmd5.c",
+        "corecrypto/src/ccmode.c",
+        "corecrypto/src/ccn.c",
+        "corecrypto/src/ccn_extra.c",
+        "corecrypto/src/ccnistkdf.c",
+        "corecrypto/src/ccofb.c",
+        "corecrypto/src/ccpad.c",
+        "corecrypto/src/ccpbkdf2.c",
+        "corecrypto/src/ccrc2.c",
+        "corecrypto/src/ccrc4.c",
+        "corecrypto/src/ccripemd.c",
+        "corecrypto/src/ccrng.c",
+        "corecrypto/src/ccrng_pbkdf2.c",
+        "corecrypto/src/ccrng_system.c",
+        "corecrypto/src/ccrsa.c",
+        "corecrypto/src/ccrsa_priv.c",
+        "corecrypto/src/ccsha1.c",
+        "corecrypto/src/ccsha2xx.c",
+        "corecrypto/src/ccsha3xx.c",
+        "corecrypto/src/ccsrp.c",
+        "corecrypto/src/ccwrap_priv.c",
+        "corecrypto/src/ccxts.c",
+        "corecrypto/src/ccz.c",
+        "corecrypto/src/cczp.c",
+        "corecrypto/src/cczp_extra.c",
+    ],
+    compiler_flags = [
+        "-DDEBUG",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-return-type",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":corecrypto_inc_corecrypto_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: corecrypto_obj
+
+# BEGIN generated: system_notify_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_notify_obj   -- review before committing.
+# cmake target: system_notify_obj  ->  src/external/libnotify/system_notify_obj
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libnotify/notify_ipcUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libnotify
+
+cc_header_root(
+    name = "system_notify_inc_libnotify",
+    headers = glob(["libnotify/*.h", "libnotify/**/*.h"]),
+    root = "libnotify",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_notify_obj",
+    srcs = [
+        "libnotify/libnotify.c",
+        "libnotify/notify_client.c",
+        "libnotify/table.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-w",
+    ],
+    prefix_headers = [
+        "xnu/bsd/sys/fileport.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:notifymig_notify_ipc",
+        ":system_notify_inc_libnotify",
+    ],
+    gen_srcs = [
+        "//buck-src:notifymig_notify_ipc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_notify_obj
+
+# libdispatch's mach protocol definitions. Its generated protocol.h is included
+# bare by both libdispatch itself and launchd's liblaunch.
+mig_gen(
+    name = "dispatchmig_protocol",
+    defs = "libdispatch/src/protocol.defs",
+    out_base = "libdispatch/src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: corecrypto dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs corecrypto   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "corecrypto_firstpass",
+    dylib_name = "libcorecrypto_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libcorecrypto.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # corecrypto_obj
+        ":corecrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "corecrypto_final",
+    dylib_name = "libcorecrypto.dylib",
+    install_name = "/usr/lib/system/libcorecrypto.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # corecrypto_obj
+        ":corecrypto_obj",
+    ],
+    siblings = [
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:macho_firstpass",
+        "//buck-src:libdispatch_shared_firstpass",
+        "//buck-src:platform_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: corecrypto dylibs
+
+# BEGIN generated: libdispatch_shared dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs libdispatch_shared   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+
+darwin_dylib(
+    name = "libdispatch_shared_firstpass",
+    dylib_name = "liblibdispatch_shared_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libdispatch.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libdispatch_shared_obj
+        ":libdispatch_shared_obj",
+        ":libdispatch_shared_obj2",
+        ":libdispatch_shared_obj3",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: libdispatch_shared dylibs
+
+# BEGIN generated: macho dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs macho   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "macho_firstpass",
+    dylib_name = "libmacho_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libmacho.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # macho_obj
+        ":macho_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "macho_final",
+    dylib_name = "libmacho.dylib",
+    install_name = "/usr/lib/system/libmacho.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # macho_obj
+        ":macho_obj",
+    ],
+    siblings = [
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_malloc_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: macho dylibs
+
+# BEGIN generated: system_notify dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system_notify   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "system_notify_firstpass",
+    dylib_name = "libsystem_notify_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_notify.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # system_notify_obj
+        ":system_notify_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_notify_final",
+    dylib_name = "libsystem_notify.dylib",
+    install_name = "/usr/lib/system/libsystem_notify.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # system_notify_obj
+        ":system_notify_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_notify dylibs
+
+# BEGIN generated: xpc dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs xpc   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   libsystem_info_firstpass.dylib
+#   libunwind_firstpass.dylib
+#   libobjc_firstpass.dylib
+
+darwin_dylib(
+    name = "xpc_firstpass",
+    dylib_name = "libxpc_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libxpc.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # xpc_obj
+        ":xpc_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "xpc_final",
+    dylib_name = "libxpc.dylib",
+    install_name = "/usr/lib/system/libxpc.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # xpc_obj
+        ":xpc_obj",
+    ],
+    siblings = [
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:libdispatch_shared_firstpass",
+        "//buck-src:platform_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//src/launchd:launch_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//src/external/libtrace:system_trace_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: xpc dylibs
+
+# libnotify's IPC protocol: libsystem_notify compiles the generated User.c and
+# includes the generated notify_ipc.h bare.
+mig_gen(
+    name = "notifymig_notify_ipc",
+    defs = "libnotify/notify_ipc.defs",
+    out_base = "libnotify",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "notify_ipcUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)

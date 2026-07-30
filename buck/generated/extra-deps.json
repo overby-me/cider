@@ -78,5 +78,51 @@
   "libsyscall_dynamic": [
     "//src/external/darlingserver:dserver_rpc",
     "//src/startup:rtsig_header"
+  ],
+  "xpc_obj": [
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_ATS",
+    "//buck-src:fw_AppKit",
+    "//darwin/frameworks:fw_ApplicationServices",
+    "//buck-src:fw_CFNetwork",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_ColorSync",
+    "//darwin/frameworks:fw_ColorSyncLegacy",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//darwin/frameworks:fw_CoreServices",
+    "//buck-src:fw_CoreText",
+    "//darwin/frameworks:fw_CoreVideo",
+    "//darwin/frameworks:fw_FSEvents",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_HIServices",
+    "//buck-src:fw_IOKit",
+    "//darwin/frameworks:fw_ImageIO",
+    "//darwin/frameworks:fw_LangAnalysis",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//buck-src:fw_Metal",
+    "//buck-src:fw_Onyx2D",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_PrintCore",
+    "//darwin/frameworks:fw_QD",
+    "//buck-src:fw_QuartzCore",
+    "//darwin/frameworks:fw_SearchKit",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "libdispatch_shared_obj": [
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:dispatchmig_protocol"
+  ],
+  "system_notify_obj": [
+    "//buck-src:notifymig_notify_ipc",
+    "gen://buck-src:notifymig_notify_ipc"
+  ],
+  "launch_obj": [
+    "//buck-src:dispatchmig_protocol",
+    ":launchmig_job",
+    ":launchmig_helper"
   ]
 }

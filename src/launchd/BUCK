@@ -1,4 +1,6 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:codegen.bzl", "mig_gen")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -30,3 +32,124 @@ cc_header_root(
     },
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: launch_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py launch_obj   -- review before committing.
+# cmake target: launch_obj  ->  src/launchd/liblaunch/launch_obj
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/liblaunch/helperServer.c
+#   src/launchd/liblaunch/jobUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/launchd/liblaunch
+
+cc_header_root(
+    name = "launch_inc_src_launchd_src",
+    headers = glob(["src/*.h", "src/**/*.h"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "launch_obj",
+    srcs = [
+        "liblaunch/libbootstrap.c",
+        "liblaunch/liblaunch.c",
+        "liblaunch/libvproc.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dispatchmig_protocol",
+        ":launchmig_job",
+        ":launchmig_helper",
+        ":launch_inc_src_launchd_src",
+        ":launch_inc_src_launchd_src",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launch_obj
+
+# liblaunch's job protocol: launch_obj includes the generated job.h bare.
+mig_gen(
+    name = "launchmig_job",
+    defs = "liblaunch/job.defs",
+    extra_defs = ["src/job_types.defs"],
+    out_base = "liblaunch",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# liblaunch's helper protocol, generated the same way as the job one.
+mig_gen(
+    name = "launchmig_helper",
+    defs = "liblaunch/helper.defs",
+    out_base = "liblaunch",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: launch dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs launch   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "launch_firstpass",
+    dylib_name = "liblaunch_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/liblaunch.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # launch_obj
+        ":launch_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "launch_final",
+    dylib_name = "liblaunch.dylib",
+    install_name = "/usr/lib/system/liblaunch.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # launch_obj
+        ":launch_obj",
+    ],
+    siblings = [
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_dyld_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: launch dylibs

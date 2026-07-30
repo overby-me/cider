@@ -13,6 +13,7 @@ Get the graph with:
 Usage:
     scripts/gen-buck-from-ninja.py <cmake-target> [...]          # print
     scripts/gen-buck-from-ninja.py --write <cmake-target> [...]  # into its package
+    scripts/gen-buck-from-ninja.py --dylibs <cmake-target> [...]  # firstpass+final pair
     scripts/gen-buck-from-ninja.py --list [<substring>]     # what targets exist
     scripts/gen-buck-from-ninja.py --explain <cmake-target> # flags/includes as-is
 
@@ -157,6 +158,22 @@ def repo_path(p: str):
     if p.startswith(BIN_DIR):
         return ("generated", os.path.normpath(p[len(BIN_DIR):].lstrip("/")))
     p = os.path.normpath(p.lstrip("/"))
+    # Task #68 moved the guest trees under darwin/. The reference graph predates
+    # the nix substitution that rewrites them, so a pre-reorg path still shows up
+    # (libnotify force-includes Developer/.../sys/fileport.h that way).
+    if not os.path.exists(os.path.join(REPO, p)) and \
+            p.split("/", 1)[0] in ("Developer", "framework-include", "framework-private-include",
+                                   "basic-headers"):
+        cand = os.path.join(REPO, "darwin", p)
+        if os.path.lexists(cand):
+            p = "darwin/" + p
+            # The SDK tree is symlinks into the submodules, which are not checked
+            # out here -- the pins are. Follow the link textually and let the
+            # buck-src branch below place it.
+            if os.path.islink(cand):
+                tgt = os.path.normpath(os.path.join(os.path.dirname(p), os.readlink(cand)))
+                if tgt.startswith("src/external/"):
+                    p = tgt
     if p.startswith("src/external/"):
         rel = p[len("src/external/"):]
         if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
@@ -244,6 +261,9 @@ def collect(target: str, edges):
     return units, link
 
 
+UNRESOLVED_PREFIX: set = set()
+
+
 def own_flags_of(unit):
     """Flags beyond the shared environment, and the -include headers, for one compile.
 
@@ -273,6 +293,10 @@ def own_flags_of(unit):
                     # through the include path (libc/gen, a declared root), so it
                     # stays a flag rather than becoming an artifact.
                     flags.extend(["-include", arg])
+                else:
+                    # Dropping a force-included header silently changes what the
+                    # source compiles to, so record it for the block's TODO list.
+                    UNRESOLVED_PREFIX.add(orig_repo_rel(arg))
             continue
         if f in ("-B", "-isystem"):
             skip = True
@@ -347,6 +371,7 @@ def sanitize(path: str) -> str:
 
 
 def generate(target: str, edges):
+    UNRESOLVED_PREFIX.clear()
     units, link = collect(target, edges)
     if not units:
         return None
@@ -380,6 +405,11 @@ def generate(target: str, edges):
         w("# TODO these sources are GENERATED; wire a codegen target for each:")
         for g in sorted(set(gen_srcs)):
             w(f"#   {g}")
+    if UNRESOLVED_PREFIX:
+        w("# TODO these headers are FORCE-INCLUDED (-include) but could not be")
+        w("# resolved to a file in this tree; the sources need them:")
+        for g in sorted(UNRESOLVED_PREFIX):
+            w(f"#   {g}")
     if gen_includes:
         w("# TODO these include dirs are GENERATED (codegen output):")
         for g in sorted(set(gen_includes)):
@@ -395,7 +425,14 @@ def generate(target: str, edges):
             if p in CROSS_PACKAGE_ROOTS:
                 root_name[p] = CROSS_PACKAGE_ROOTS[p]
                 continue
-            name = target.removesuffix("_obj") + "_inc_" + sanitize(p.split("/", 1)[-1])[-40:]
+            # Name from the FULL path, and disambiguate: dropping the first
+            # component collapsed cctools/include and cctools-port/include onto one
+            # name, which buck2 rejects as a duplicate target.
+            base = target.removesuffix("_obj") + "_inc_" + sanitize(p)[-48:]
+            name, n = base, 2
+            while name in root_name.values():
+                name = f"{base}_{n}"
+                n += 1
             root_name[p] = name
             w("cc_header_root(")
             w(f'    name = "{name}",')
@@ -403,6 +440,7 @@ def generate(target: str, edges):
             # root whose headers sit directly in it would stage EMPTY.
             w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h"]),')
             w(f'    root = "{p}",')
+            w('    visibility = ["PUBLIC"],')
             w(")")
             w("")
 
@@ -451,6 +489,9 @@ def generate(target: str, edges):
             for d in gen:
                 w(f'        "{d}",')
             w("    ],")
+        # Object groups are linked by dylib targets in OTHER packages (a dylib in
+        # buck-src links libm's objects), so they have to be visible.
+        w('    visibility = ["PUBLIC"],')
         w(")")
         w("")
 
@@ -483,6 +524,216 @@ def generate(target: str, edges):
 
     all_srcs = [s for g in groups.values() for s in g["srcs"]]
     return "\n".join(out), all_srcs
+
+
+def package_of(src_paths) -> str:
+    """The BUCK package that owns a target: the one holding its sources."""
+    repo_srcs = [q for k, q in src_paths if k == "src"]
+    if not repo_srcs:
+        return BUCK_SRC
+    depth = 3 if repo_srcs[0].startswith("src/external/") else 2
+    return "/".join(repo_srcs[0].split("/")[:depth])
+
+
+def dylib_edges(target: str, edges):
+    """The (final, firstpass) link edges of a cmake dylib target.
+
+    By EXACT output name, not a prefix match: lib<t>_firstpass.dylib also starts
+    with lib<t>, so a prefix match picks whichever edge ninja happens to emit
+    first and can hand back the firstpass edge as if it were the final one.
+    The top-level alias edges (bare libxpc.dylib, no flags) are skipped.
+    """
+    final = first = None
+    for outs, _rule, inputs, vars in edges:
+        for o in outs:
+            base = os.path.basename(o)
+            if "/" not in o:
+                continue
+            if base == f"lib{target}.dylib" and final is None:
+                final = (o, inputs, vars)
+            elif base == f"lib{target}_firstpass.dylib" and first is None:
+                first = (o, inputs, vars)
+    return final, first
+
+
+def objlibs_of(edge) -> list[str]:
+    """The cmake object libraries a link edge consumes, from its object inputs."""
+    names = []
+    for i in edge[1]:
+        m = re.search(r"CMakeFiles/([^/]+)\.dir/", i)
+        if m and m.group(1) not in names:
+            names.append(m.group(1))
+    return names
+
+
+def obj_targets(lib: str, edges):
+    """(buck target names, owning package) for one cmake object library.
+
+    One name per FLAG GROUP, because that is how generate() splits it. Naming only
+    the first would drop objects from the link: the dylib still builds, but symbols
+    defined by the other groups come out undefined.
+    """
+    units, _ = collect(lib, edges)
+    groups, srcs = set(), []
+    for unit in units:
+        kind, srcp = repo_path(unit["src"])
+        if kind == "generated":
+            continue
+        flags, prefix = own_flags_of(unit)
+        inc, _gi = includes_of(unit)
+        groups.add((tuple(flags), tuple(prefix), tuple(inc)))
+        srcs.append((kind, srcp))
+    base = lib if lib.endswith("_obj") else lib + "_obj"
+    names = [base if i == 0 else f"{base}{i + 1}" for i in range(max(len(groups), 1))]
+    return names, package_of(srcs)
+
+
+def firstpass_registry() -> dict:
+    """cmake target -> buck label, for every firstpass dylib already declared.
+
+    Read out of the committed BUCK files rather than assumed: a sibling can only be
+    named if its target exists, and pretending otherwise produces a block that does
+    not parse.
+    """
+    reg = {}
+    for dirpath, dirnames, filenames in os.walk(REPO):
+        dirnames[:] = [d for d in dirnames
+                       if d not in ("buck-out", ".git", ".jj", ".direnv", "build")]
+        if "BUCK" not in filenames:
+            continue
+        pkg = os.path.relpath(dirpath, REPO)
+        with open(os.path.join(dirpath, "BUCK")) as fh:
+            for m in re.finditer(r'name = "([A-Za-z0-9_]+)_firstpass"', fh.read()):
+                reg[m.group(1)] = f"//{pkg}:{m.group(1)}_firstpass"
+    return reg
+
+
+def siblings_of(edge, reg):
+    """(sibling labels, unported names) from a final link edge's dylib inputs."""
+    sibs, missing = [], []
+    for i in edge[1]:
+        m = re.match(r"lib([A-Za-z0-9_]+)_firstpass\.dylib$", os.path.basename(i))
+        if not m:
+            continue
+        t = m.group(1)
+        if t in reg:
+            if reg[t] not in sibs:
+                sibs.append(reg[t])
+        elif t not in missing:
+            missing.append(t)
+    return sibs, missing
+
+
+def generate_dylibs(target: str, edges):
+    """The firstpass/final dylib pair for a cmake target, and its package.
+
+    Darling links every circular library twice from the same objects (see
+    cmake/darling_lib.cmake add_circular): once with undefined symbols suppressed,
+    then again against the siblings' firstpass dylibs. Both edges are in the graph,
+    so both the object set and the sibling set are read rather than guessed.
+    """
+    final, first = dylib_edges(target, edges)
+    if final is None and first is None:
+        return None
+    ref = first or final
+    libs = objlibs_of(ref)
+    if not libs:
+        return None
+
+    objs, pkgs = [], {}
+    for lib in libs:
+        names, pkg = obj_targets(lib, edges)
+        pkgs[pkg] = pkgs.get(pkg, 0) + len(names)
+        for n in names:
+            objs.append((pkg, n, lib))
+    pkg = max(pkgs, key=lambda k: pkgs[k])
+
+    def label(op, on):
+        return f":{on}" if op == pkg else f"//{op}:{on}"
+
+    install_name = ""
+    versions = {}
+    for edge in (final, first):
+        if not edge:
+            continue
+        lf = edge[2].get("LINK_FLAGS", "")
+        m = re.search(r"-Wl,-dylib_install_name,(\S+)", lf)
+        if m and not install_name:
+            install_name = m.group(1)
+        for key in ("current_version", "compatibility_version"):
+            m = re.search(r"-Wl,-" + key + r",(\S+)", lf)
+            if m:
+                versions.setdefault(key, m.group(1))
+
+    reg = firstpass_registry()
+    sibs, missing = siblings_of(final, reg) if final else ([], [])
+    ldflags = [d[len("ldflag:"):] for d in extra_deps(target) if d.startswith("ldflag:")]
+
+    out = []
+    w = out.append
+    w("# GENERATED from the reference build.ninja by")
+    w(f"# scripts/gen-buck-from-ninja.py --dylibs {target}   -- review before committing.")
+    w(f"# Links {len(libs)} cmake object library/ies, {len(objs)} flag groups in total.")
+    if missing:
+        w("# TODO the final pass also links these siblings, not ported yet:")
+        for t in missing:
+            w(f"#   lib{t}_firstpass.dylib")
+    w("")
+
+    for kind in ("firstpass", "final"):
+        if kind == "firstpass" and first is None:
+            continue
+        if kind == "final" and final is None:
+            continue
+        w("darwin_dylib(")
+        w(f'    name = "{target}_{kind}",')
+        w('    dylib_name = "lib' + target + ("_firstpass" if kind == "firstpass" else "") + '.dylib",')
+        if kind == "firstpass":
+            w("    firstpass = True,")
+        w(f'    install_name = "{install_name}",')
+        for key, val in sorted(versions.items()):
+            w(f'    {key} = "{val}",')
+        w("    objs = [")
+        last = None
+        for op, on, lib in objs:
+            if lib != last:
+                w(f"        # {lib}")
+                last = lib
+            w(f'        "{label(op, on)}",')
+        w("    ],")
+        if kind == "final" and sibs:
+            w("    siblings = [")
+            for sl in sibs:
+                w(f'        "{sl}",')
+            w("    ],")
+        if ldflags:
+            w("    linker_flags = [")
+            for f in ldflags:
+                w(f"        {starlark_str(f)},")
+            w("    ],")
+        w('    toolchain = "toolchains//:darwin_cc",')
+        w('    deps = ["//darwin:sdk_env"],')
+        w('    visibility = ["PUBLIC"],')
+        w(")")
+        w("")
+
+    return "\n".join(out).rstrip() + "\n", pkg
+
+
+def write_block(pkg: str, marker: str, text: str) -> None:
+    """Splice a generated block into a package's BUCK file, replacing any old one."""
+    f = os.path.join(REPO, pkg, "BUCK")
+    begin, end = f"# BEGIN generated: {marker}\n", f"# END generated: {marker}\n"
+    block = begin + text.rstrip() + "\n" + end
+    existing = open(f).read() if os.path.exists(f) else ""
+    if begin in existing:
+        pre, rest = existing.split(begin, 1)
+        _, post = rest.split(end, 1)
+        new = pre + block + post
+    else:
+        new = existing.rstrip() + ("\n\n" if existing.strip() else "") + block
+    with open(f, "w") as fh:
+        fh.write(new)
 
 
 def main(argv: list[str]) -> int:
@@ -526,39 +777,23 @@ def main(argv: list[str]) -> int:
                 print("  link out:", link[0])
             continue
 
+        if "--dylibs" in argv:
+            pair = generate_dylibs(target, edges)
+            if pair is None:
+                print(f"# no dylib link edge for cmake target {target}", file=sys.stderr)
+                continue
+            text, pkg = pair
+            if "--write" not in argv:
+                print(text)
+                continue
+            write_block(pkg, target + " dylibs", text)
+            print(f"wrote {pkg}/BUCK: {target} dylibs", file=sys.stderr)
+            continue
+
         result = generate(target, edges)
         if result is None:
-            libs, link = link_object_libraries(target, edges)
-            if not libs:
-                print(f"# no object or link edges found for cmake target {target}", file=sys.stderr)
-                continue
-            m = re.search(r"-Wl,-dylib_install_name,(\S+)", link[1].get("LINK_FLAGS", ""))
-            install_name = m.group(1) if m else ""
-            print("# GENERATED from the reference build.ninja by")
-            print(f"# scripts/gen-buck-from-ninja.py {target}   -- review before committing.")
-            print(f"# Links {len(libs)} cmake object libraries, exactly the set the reference")
-            print("# link edge names (libc ships alternates of the same sources, so the subset")
-            print("# matters: linking all of them yields ~190 duplicate symbols).")
-            print("darwin_dylib(")
-            print(f'    name = "{target}",')
-            print(f'    dylib_name = "lib{target}.dylib",')
-            print(f'    firstpass = {"True" if "firstpass" in target else "False"},')
-            print(f'    install_name = "{install_name}",')
-            print("    objs = [")
-            for lib in libs:
-                # Each cmake object library can be SEVERAL targets here, one per
-                # flag group. Naming only the first silently drops objects: the
-                # dylib still links, but symbols defined in the other groups come
-                # out undefined (which is how libsystem_pthread ended up with an
-                # illegal text reloc to a symbol its own pthread.c defines).
-                print(f"        # {lib}")
-                base = lib if lib.endswith("_obj") else lib + "_obj"
-                print(f'        ":{base}",  # plus :{base}2.. if it has more flag groups')
-            print("    ],")
-            print('    toolchain = "toolchains//:darwin_cc",')
-            print('    deps = ["//darwin:sdk_env"],')
-            print('    visibility = ["PUBLIC"],')
-            print(")")
+            print(f"# no object edges for cmake target {target}; "
+                  f"try --dylibs if it is a link-only target", file=sys.stderr)
             continue
         text, src_paths = result
 
@@ -568,31 +803,14 @@ def main(argv: list[str]) -> int:
 
         # Which package owns this target? The one holding its sources: buck-src for
         # materialized pins, otherwise the committed tree they live in.
-        kinds = {k for k, _ in src_paths}
-        if kinds == {"buck-src"}:
-            pkg = BUCK_SRC
-        else:
-            repo_srcs = [p for k, p in src_paths if k == "src"]
-            depth = 3 if repo_srcs and repo_srcs[0].startswith("src/external/") else 2
-            pkg = "/".join(repo_srcs[0].split("/")[:depth])
+        pkg = package_of(src_paths)
         # Paths are emitted repo-relative; a BUCK file addresses its own package.
         if pkg != BUCK_SRC:
             text = text.replace('"' + pkg + "/", '"')
 
-        f = os.path.join(REPO, pkg, "BUCK")
         # Whole-line markers: a target name can be a PREFIX of another block's
         # name, and matching on the bare text splices into the wrong block.
-        begin, end = f"# BEGIN generated: {target}\n", f"# END generated: {target}\n"
-        block = begin + text.rstrip() + "\n" + end
-        existing = open(f).read() if os.path.exists(f) else ""
-        if begin in existing:
-            pre, rest = existing.split(begin, 1)
-            _, post = rest.split(end, 1)
-            new = pre + block + post
-        else:
-            new = existing.rstrip() + ("\n\n" if existing.strip() else "") + block
-        with open(f, "w") as fh:
-            fh.write(new)
+        write_block(pkg, target, text)
         print(f"wrote {pkg}/BUCK: {target} ({len(src_paths)} srcs)", file=sys.stderr)
     return 0
 
