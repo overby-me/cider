@@ -16469,3 +16469,1474 @@ mig_gen(
     ],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: unwind_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py unwind_obj   -- review before committing.
+# cmake target: unwind_obj  ->  src/external/libunwind/unwind_obj
+# 9 sources in 3 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "unwind_inc_libunwind_libunwind",
+    headers = glob([
+        "libunwind/libunwind/src/*.h",
+        "libunwind/libunwind/src/**/*.h",
+        "libunwind/libunwind/include/*.h",
+        "libunwind/libunwind/include/**/*.h",
+    ]),
+    root = "libunwind/libunwind",
+    include_subdirs = [
+        "src",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj",
+    srcs = [
+        "libunwind/libunwind/src/Unwind-EHABI.cpp",
+        "libunwind/libunwind/src/Unwind-seh.cpp",
+        "libunwind/libunwind/src/Unwind_AppleExtras.cpp",
+        "libunwind/libunwind/src/libunwind.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_LIBUNWIND_IS_NATIVE_ONLY",
+        "-nostdinc",
+        "-nostdinc++",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj2",
+    srcs = [
+        "libunwind/libunwind/src/Unwind-sjlj.c",
+        "libunwind/libunwind/src/UnwindLevel1-gcc-ext.c",
+        "libunwind/libunwind/src/UnwindLevel1.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-fno-rtti",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_obj3",
+    srcs = [
+        "libunwind/libunwind/src/UnwindRegistersRestore.S",
+        "libunwind/libunwind/src/UnwindRegistersSave.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_inc_libunwind_libunwind",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: unwind_obj
+
+# BEGIN generated: system_darwin_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_darwin_obj   -- review before committing.
+# cmake target: system_darwin_obj  ->  src/external/libc/libdarwin/system_darwin_obj
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libmalloc/private
+#   src/external/external/libmalloc/src
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "system_darwin_inc_libc",
+    headers = glob([
+        "libc/include/*.h",
+        "libc/include/**/*.h",
+        "libc/fbsdcompat/*.h",
+        "libc/fbsdcompat/**/*.h",
+        "libc/darwin/*.h",
+        "libc/darwin/**/*.h",
+        "libc/locale/*.h",
+        "libc/locale/**/*.h",
+        "libc/gen/*.h",
+        "libc/gen/**/*.h",
+        "libc/libdarwin/*.h",
+        "libc/libdarwin/**/*.h",
+    ]),
+    root = "libc",
+    include_subdirs = [
+        "include",
+        "fbsdcompat",
+        "darwin",
+        "locale",
+        "gen",
+        "libdarwin",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "system_darwin_inc_libc_generated",
+    headers = glob([
+        "libc/generated/private-include/*.h",
+        "libc/generated/private-include/**/*.h",
+        "libc/generated/derived/*.h",
+        "libc/generated/derived/**/*.h",
+    ]),
+    root = "libc/generated",
+    include_subdirs = [
+        "private-include",
+        "derived",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_darwin_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_darwin_inc_libc_include_NetBSD",
+    headers = glob(["libc/include/NetBSD/*.h", "libc/include/NetBSD/**/*.h"]),
+    root = "libc/include/NetBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_darwin_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_darwin_inc_libc_libdarwin_h",
+    headers = glob(["libc/libdarwin/h/*.h", "libc/libdarwin/h/**/*.h"]),
+    root = "libc/libdarwin/h",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_darwin_obj",
+    srcs = [
+        "libc/libdarwin/bsd.c",
+        "libc/libdarwin/ctl.c",
+        "libc/libdarwin/dirstat.c",
+        "libc/libdarwin/dirstat_collection.c",
+        "libc/libdarwin/err.c",
+        "libc/libdarwin/exception.c",
+        "libc/libdarwin/init.c",
+        "libc/libdarwin/mach.c",
+        "libc/libdarwin/stdio.c",
+        "libc/libdarwin/stdlib.c",
+        "libc/libdarwin/string.c",
+        "libc/libdarwin/variant.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_LIBC",
+        "-DDARWIN_BUILDING_LIBSYSTEM_DARWIN=1",
+        "-DHAVE_STDINT_H=1",
+        "-DOS_CRASH_ENABLE_EXPERIMENTAL_LIBTRACE",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION=1",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-nostdinc",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-std=gnu11",
+        "-D__warn_references(name,warning)=",
+        "-Wno-gnu-include-next",
+        "-Wno-undef",
+        "-Wno-conversion",
+        "-Wno-unused-parameter",
+        "-Wno-sign-conversion",
+        "-Wno-macro-redefined",
+    ],
+    prefix_headers = [
+        "libc/darling/include/weak_reference.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_darwin_inc_libc_generated",
+        ":system_darwin_inc_libc",
+        "//darwin:sdk_env",
+        ":system_darwin_inc_libc_locale_FreeBSD",
+        ":system_darwin_inc_libc_include_NetBSD",
+        ":system_darwin_inc_libc_stdtime_FreeBSD",
+        ":system_darwin_inc_libc_libdarwin_h",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_darwin_obj
+
+# BEGIN generated: system_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_obj   -- review before committing.
+# cmake target: system_obj  ->  src/external/libsystem/system_obj
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "system_obj",
+    srcs = [
+        "libsystem/CompatibilityHacks.c",
+        "libsystem/darling/src/dummy.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_SYSTEM_CORESERVICES",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_obj2",
+    srcs = [
+        "libsystem/init.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_SYSTEM_CORESERVICES",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+        "-DPRIVATE=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_obj
+
+# BEGIN generated: objc_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py objc_obj   -- review before committing.
+# cmake target: objc_obj  ->  src/external/objc4/runtime/objc_obj
+# 43 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "objc_inc_objc4_runtime",
+    headers = glob(["objc4/runtime/*.h", "objc4/runtime/**/*.h"]),
+    root = "objc4/runtime",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "objc_obj",
+    srcs = [
+        "objc4/runtime/NSObject.mm",
+        "objc4/runtime/Object.mm",
+        "objc4/runtime/Protocol.mm",
+        "objc4/runtime/hashtable2.mm",
+        "objc4/runtime/maptable.mm",
+        "objc4/runtime/objc-accessors.mm",
+        "objc4/runtime/objc-auto.mm",
+        "objc4/runtime/objc-block-trampolines.mm",
+        "objc4/runtime/objc-cache-old.mm",
+        "objc4/runtime/objc-cache.mm",
+        "objc4/runtime/objc-class-old.mm",
+        "objc4/runtime/objc-class.mm",
+        "objc4/runtime/objc-errors.mm",
+        "objc4/runtime/objc-exception.mm",
+        "objc4/runtime/objc-file-old.mm",
+        "objc4/runtime/objc-file.mm",
+        "objc4/runtime/objc-initialize.mm",
+        "objc4/runtime/objc-layout.mm",
+        "objc4/runtime/objc-load.mm",
+        "objc4/runtime/objc-loadmethod.mm",
+        "objc4/runtime/objc-lockdebug.mm",
+        "objc4/runtime/objc-opt.mm",
+        "objc4/runtime/objc-os.mm",
+        "objc4/runtime/objc-references.mm",
+        "objc4/runtime/objc-runtime-new.mm",
+        "objc4/runtime/objc-runtime-old.mm",
+        "objc4/runtime/objc-runtime.mm",
+        "objc4/runtime/objc-sel-old.mm",
+        "objc4/runtime/objc-sel-set.mm",
+        "objc4/runtime/objc-sel.mm",
+        "objc4/runtime/objc-sync.mm",
+        "objc4/runtime/objc-typeencoding.mm",
+        "objc4/runtime/objc-weak.mm",
+        "objc4/runtime/objc-zalloc.mm",
+    ],
+    compiler_flags = [
+        "-DOBJC_IS_DEBUG_BUILD=1",
+        "-DOBJC_NO_GC",
+        "-DOS_OBJECT_USE_OBJC=0",
+        "-DTARGET_OS_IPHONE=0",
+        "-D_LIBCPP_VISIBLE=\"\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__STDC_NO_ATOMICS__",
+        "-nostdinc",
+        "-nostdinc++",
+        "-O2",
+        "-std=gnu++14",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fblocks",
+        "-fobjc-legacy-dispatch",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-Wno-c++11-narrowing",
+        "-fvisibility-inlines-hidden",
+        "-Wno-invalid-offsetof",
+        "-Wno-deprecated-objc-isa-usage",
+        "-Wno-cast-of-sel-type",
+        "-Wstrict-aliasing=2",
+        "-Wstrict-overflow=4",
+        "-fstrict-aliasing",
+        "-fno-delete-null-pointer-checks",
+        "-Wno-unused-command-line-argument",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":objc_inc_objc4_runtime",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "objc_obj2",
+    srcs = [
+        "objc4/runtime/Messengers.subproj/objc-msg-arm.S",
+        "objc4/runtime/Messengers.subproj/objc-msg-arm64.S",
+        "objc4/runtime/Messengers.subproj/objc-msg-i386.S",
+        "objc4/runtime/Messengers.subproj/objc-msg-x86_64.S",
+        "objc4/runtime/objc-blocktramps-arm.S",
+        "objc4/runtime/objc-blocktramps-arm64.S",
+        "objc4/runtime/objc-blocktramps-i386.S",
+        "objc4/runtime/objc-blocktramps-x86_64.S",
+        "objc4/runtime/objc-sel-table.S",
+    ],
+    compiler_flags = [
+        "-DOBJC_IS_DEBUG_BUILD=1",
+        "-DOBJC_NO_GC",
+        "-DOS_OBJECT_USE_OBJC=0",
+        "-DTARGET_OS_IPHONE=0",
+        "-D_LIBCPP_VISIBLE=\"\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__STDC_NO_ATOMICS__",
+        "-Wno-unused-command-line-argument",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":objc_inc_objc4_runtime",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: objc_obj
+
+# BEGIN generated: commonCrypto_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py commonCrypto_obj   -- review before committing.
+# cmake target: commonCrypto_obj  ->  src/external/commoncrypto/commonCrypto_obj
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "commonCrypto_inc_commoncrypto",
+    headers = glob([
+        "commoncrypto/include/*.h",
+        "commoncrypto/include/**/*.h",
+        "commoncrypto/libcn/*.h",
+        "commoncrypto/libcn/**/*.h",
+        "commoncrypto/lib/*.h",
+        "commoncrypto/lib/**/*.h",
+    ]),
+    root = "commoncrypto",
+    include_subdirs = [
+        "include",
+        "libcn",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "commonCrypto_obj",
+    srcs = [
+        "commoncrypto/lib/CommonBigNum.c",
+        "commoncrypto/lib/CommonCMAC.c",
+        "commoncrypto/lib/CommonCollabKeyGen.c",
+        "commoncrypto/lib/CommonCryptor.c",
+        "commoncrypto/lib/CommonCryptorChaCha20.c",
+        "commoncrypto/lib/CommonCryptorChaCha20Poly1305.c",
+        "commoncrypto/lib/CommonCryptorDES.c",
+        "commoncrypto/lib/CommonCryptorGCM.c",
+        "commoncrypto/lib/CommonDH.c",
+        "commoncrypto/lib/CommonDigest.c",
+        "commoncrypto/lib/CommonECCryptor.c",
+        "commoncrypto/lib/CommonHMAC.c",
+        "commoncrypto/lib/CommonKeyDerivation.c",
+        "commoncrypto/lib/CommonKeyDerivationSPI.c",
+        "commoncrypto/lib/CommonRSACryptor.c",
+        "commoncrypto/lib/CommonRandom.c",
+        "commoncrypto/lib/CommonSymmetricKeywrap.c",
+        "commoncrypto/lib/ccDispatch.c",
+        "commoncrypto/lib/ccGlobals.c",
+        "commoncrypto/lib/corecryptoSymmetricBridge.c",
+        "commoncrypto/libcn/CommonBaseXX.c",
+        "commoncrypto/libcn/CommonBuffering.c",
+        "commoncrypto/libcn/CommonCRC.c",
+        "commoncrypto/libcn/adler32.c",
+        "commoncrypto/libcn/crc16-a.c",
+        "commoncrypto/libcn/crc16-b.c",
+        "commoncrypto/libcn/crc16-ccitt-false.c",
+        "commoncrypto/libcn/crc16-ccitt-true.c",
+        "commoncrypto/libcn/crc16-dect-r.c",
+        "commoncrypto/libcn/crc16-dect-x.c",
+        "commoncrypto/libcn/crc16-icode.c",
+        "commoncrypto/libcn/crc16-usb.c",
+        "commoncrypto/libcn/crc16-verifone.c",
+        "commoncrypto/libcn/crc16-xmodem.c",
+        "commoncrypto/libcn/crc16.c",
+        "commoncrypto/libcn/crc32-bzip2.c",
+        "commoncrypto/libcn/crc32-castagnoli.c",
+        "commoncrypto/libcn/crc32-mpeg-2.c",
+        "commoncrypto/libcn/crc32-posix.c",
+        "commoncrypto/libcn/crc32-xfer.c",
+        "commoncrypto/libcn/crc32.c",
+        "commoncrypto/libcn/crc64-ecma-182.c",
+        "commoncrypto/libcn/crc8-icode.c",
+        "commoncrypto/libcn/crc8-itu.c",
+        "commoncrypto/libcn/crc8-rohc.c",
+        "commoncrypto/libcn/crc8-wcdma.c",
+        "commoncrypto/libcn/crc8.c",
+        "commoncrypto/libcn/gen_std_crc_table.c",
+        "commoncrypto/libcn/normal_crc.c",
+        "commoncrypto/libcn/reflect.c",
+        "commoncrypto/libcn/reverse_crc.c",
+        "commoncrypto/libcn/reverse_poly.c",
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-DNDEBUG",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-Wno-unused-command-line-argument",
+        "-Wl,-exported_symbols_list,/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/commoncrypto/exports.exp-in",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":commonCrypto_inc_commoncrypto",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: commonCrypto_obj
+
+# BEGIN generated: info-util
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-util   -- review before committing.
+# cmake target: info-util  ->  src/external/Libinfo/util.subproj/info-util
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libc/pthreads
+
+cc_header_root(
+    name = "info-util_inc_Libinfo_Libinfo",
+    headers = glob(["Libinfo/Libinfo/*.h", "Libinfo/Libinfo/**/*.h"]),
+    root = "Libinfo/Libinfo",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-util_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-util_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-util_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-util_obj",
+    srcs = [
+        "Libinfo/util.subproj/hton.c",
+        "Libinfo/util.subproj/rcmd.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-util_inc_Libinfo_Libinfo",
+        ":info-util_inc_libc_locale",
+        ":info-util_inc_libc_locale_FreeBSD",
+        ":info-util_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-util
+
+# BEGIN generated: info-dns
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-dns   -- review before committing.
+# cmake target: info-dns  ->  src/external/Libinfo/dns.subproj/info-dns
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/libc/pthreads
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-dns_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/lookup.subproj/*.h",
+        "Libinfo/lookup.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-dns_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-dns_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-dns_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-dns_obj",
+    srcs = [
+        "Libinfo/dns.subproj/herror.c",
+        "Libinfo/dns.subproj/res_comp.c",
+        "Libinfo/dns.subproj/res_query.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-dns_inc_Libinfo",
+        ":info-dns_inc_libc_locale",
+        ":info-dns_inc_libc_locale_FreeBSD",
+        ":info-dns_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-dns
+
+# BEGIN generated: info-gen
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-gen   -- review before committing.
+# cmake target: info-gen  ->  src/external/Libinfo/gen.subproj/info-gen
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/libc/pthreads
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-gen_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/lookup.subproj/*.h",
+        "Libinfo/lookup.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-gen_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-gen_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-gen_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-gen_obj",
+    srcs = [
+        "Libinfo/gen.subproj/configuration_profile.c",
+        "Libinfo/gen.subproj/ether_addr.c",
+        "Libinfo/gen.subproj/getifaddrs.c",
+        "Libinfo/gen.subproj/getifmaddrs.c",
+        "Libinfo/gen.subproj/if_indextoname.c",
+        "Libinfo/gen.subproj/if_nameindex.c",
+        "Libinfo/gen.subproj/if_nametoindex.c",
+        "Libinfo/gen.subproj/ip6opt.c",
+        "Libinfo/gen.subproj/map_v4v6.c",
+        "Libinfo/gen.subproj/rthdr.c",
+        "Libinfo/gen.subproj/vars.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-gen_inc_Libinfo",
+        ":info-gen_inc_libc_locale",
+        ":info-gen_inc_libc_locale_FreeBSD",
+        ":info-gen_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-gen
+
+# BEGIN generated: info-nis
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-nis   -- review before committing.
+# cmake target: info-nis  ->  src/external/Libinfo/nis.subproj/info-nis
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/external/libdispatch/private
+#   src/external/libc/pthreads
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-nis_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/nis.subproj/*.h",
+        "Libinfo/nis.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "nis.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-nis_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-nis_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-nis_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-nis_obj",
+    srcs = [
+        "Libinfo/nis.subproj/getdomainname.c",
+        "Libinfo/nis.subproj/innetgr.c",
+        "Libinfo/nis.subproj/setdomainname.c",
+        "Libinfo/nis.subproj/xdr_domainname.c",
+        "Libinfo/nis.subproj/xdr_keydat.c",
+        "Libinfo/nis.subproj/xdr_mapname.c",
+        "Libinfo/nis.subproj/xdr_peername.c",
+        "Libinfo/nis.subproj/xdr_valdat.c",
+        "Libinfo/nis.subproj/xdr_ypbind_binding.c",
+        "Libinfo/nis.subproj/xdr_ypbind_resp.c",
+        "Libinfo/nis.subproj/xdr_ypbind_resptype.c",
+        "Libinfo/nis.subproj/xdr_ypbind_setdom.c",
+        "Libinfo/nis.subproj/xdr_ypmaplist.c",
+        "Libinfo/nis.subproj/xdr_ypreq_key.c",
+        "Libinfo/nis.subproj/xdr_ypreq_nokey.c",
+        "Libinfo/nis.subproj/xdr_ypresp_all.c",
+        "Libinfo/nis.subproj/xdr_ypresp_key_val.c",
+        "Libinfo/nis.subproj/xdr_ypresp_maplist.c",
+        "Libinfo/nis.subproj/xdr_ypresp_master.c",
+        "Libinfo/nis.subproj/xdr_ypresp_order.c",
+        "Libinfo/nis.subproj/xdr_ypresp_val.c",
+        "Libinfo/nis.subproj/xdr_ypstat.c",
+        "Libinfo/nis.subproj/yp_all.c",
+        "Libinfo/nis.subproj/yp_bind.c",
+        "Libinfo/nis.subproj/yp_first.c",
+        "Libinfo/nis.subproj/yp_get_default_domain.c",
+        "Libinfo/nis.subproj/yp_maplist.c",
+        "Libinfo/nis.subproj/yp_master.c",
+        "Libinfo/nis.subproj/yp_order.c",
+        "Libinfo/nis.subproj/yperr_string.c",
+        "Libinfo/nis.subproj/ypmatch_cache.c",
+        "Libinfo/nis.subproj/yppasswdd_xdr.c",
+        "Libinfo/nis.subproj/ypprot_err.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-nis_inc_Libinfo",
+        ":info-nis_inc_libc_locale",
+        ":info-nis_inc_libc_locale_FreeBSD",
+        ":info-nis_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-nis
+
+# BEGIN generated: info-rpc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-rpc   -- review before committing.
+# cmake target: info-rpc  ->  src/external/Libinfo/rpc.subproj/info-rpc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-rpc_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/rpc.subproj/*.h",
+        "Libinfo/rpc.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "rpc.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-rpc_obj",
+    srcs = [
+        "Libinfo/rpc.subproj/auth_none.c",
+        "Libinfo/rpc.subproj/auth_unix.c",
+        "Libinfo/rpc.subproj/authunix_prot.c",
+        "Libinfo/rpc.subproj/bindresvport.c",
+        "Libinfo/rpc.subproj/clnt_generic.c",
+        "Libinfo/rpc.subproj/clnt_perror.c",
+        "Libinfo/rpc.subproj/clnt_raw.c",
+        "Libinfo/rpc.subproj/clnt_simple.c",
+        "Libinfo/rpc.subproj/clnt_tcp.c",
+        "Libinfo/rpc.subproj/clnt_udp.c",
+        "Libinfo/rpc.subproj/get_myaddress.c",
+        "Libinfo/rpc.subproj/getrpcent.c",
+        "Libinfo/rpc.subproj/getrpcport.c",
+        "Libinfo/rpc.subproj/pmap_clnt.c",
+        "Libinfo/rpc.subproj/pmap_getmaps.c",
+        "Libinfo/rpc.subproj/pmap_getport.c",
+        "Libinfo/rpc.subproj/pmap_prot.c",
+        "Libinfo/rpc.subproj/pmap_prot2.c",
+        "Libinfo/rpc.subproj/pmap_rmt.c",
+        "Libinfo/rpc.subproj/pmap_wakeup.c",
+        "Libinfo/rpc.subproj/rpc_callmsg.c",
+        "Libinfo/rpc.subproj/rpc_commondata.c",
+        "Libinfo/rpc.subproj/rpc_dtablesize.c",
+        "Libinfo/rpc.subproj/rpc_prot.c",
+        "Libinfo/rpc.subproj/svc.c",
+        "Libinfo/rpc.subproj/svc_auth.c",
+        "Libinfo/rpc.subproj/svc_auth_unix.c",
+        "Libinfo/rpc.subproj/svc_raw.c",
+        "Libinfo/rpc.subproj/svc_run.c",
+        "Libinfo/rpc.subproj/svc_simple.c",
+        "Libinfo/rpc.subproj/svc_tcp.c",
+        "Libinfo/rpc.subproj/svc_udp.c",
+        "Libinfo/rpc.subproj/xdr.c",
+        "Libinfo/rpc.subproj/xdr_array.c",
+        "Libinfo/rpc.subproj/xdr_float.c",
+        "Libinfo/rpc.subproj/xdr_mem.c",
+        "Libinfo/rpc.subproj/xdr_rec.c",
+        "Libinfo/rpc.subproj/xdr_reference.c",
+        "Libinfo/rpc.subproj/xdr_sizeof.c",
+        "Libinfo/rpc.subproj/xdr_stdio.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-rpc_inc_Libinfo",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-rpc
+
+# BEGIN generated: info-lookup
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-lookup   -- review before committing.
+# cmake target: info-lookup  ->  src/external/Libinfo/lookup.subproj/info-lookup
+# 15 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/external/libdispatch/private
+#   src/external/libc/pthreads
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-lookup_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/lookup.subproj/*.h",
+        "Libinfo/lookup.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-lookup_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-lookup_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-lookup_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-lookup_obj",
+    srcs = [
+        "Libinfo/lookup.subproj/cache_module.c",
+        "Libinfo/lookup.subproj/ds_module.c",
+        "Libinfo/lookup.subproj/file_module.c",
+        "Libinfo/lookup.subproj/getnameinfo_link.c",
+        "Libinfo/lookup.subproj/ils.c",
+        "Libinfo/lookup.subproj/kvbuf.c",
+        "Libinfo/lookup.subproj/libinfo.c",
+        "Libinfo/lookup.subproj/mdns_module.c",
+        "Libinfo/lookup.subproj/muser_module.c",
+        "Libinfo/lookup.subproj/search_module.c",
+        "Libinfo/lookup.subproj/si_data.c",
+        "Libinfo/lookup.subproj/si_module.c",
+        "Libinfo/lookup.subproj/thread_data.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-lookup_inc_Libinfo",
+        ":info-lookup_inc_libc_locale",
+        ":info-lookup_inc_libc_locale_FreeBSD",
+        ":info-lookup_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-lookup_obj2",
+    srcs = [
+        "Libinfo/lookup.subproj/si_compare.c",
+        "Libinfo/lookup.subproj/si_getaddrinfo.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+        "-DPRIVATE",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-lookup_inc_Libinfo",
+        ":info-lookup_inc_libc_locale",
+        ":info-lookup_inc_libc_locale_FreeBSD",
+        ":info-lookup_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-lookup
+
+# BEGIN generated: info-membership
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-membership   -- review before committing.
+# cmake target: info-membership  ->  src/external/Libinfo/membership.subproj/info-membership
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/libc/pthreads
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-membership_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/lookup.subproj/*.h",
+        "Libinfo/lookup.subproj/**/*.h",
+        "Libinfo/membership.subproj/*.h",
+        "Libinfo/membership.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+        "membership.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-membership_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    root = "libc/locale",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-membership_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "info-membership_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-membership_obj",
+    srcs = [
+        "Libinfo/membership.subproj/membership.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-membership_inc_Libinfo",
+        ":info-membership_inc_libc_locale",
+        ":info-membership_inc_libc_locale_FreeBSD",
+        ":info-membership_inc_libc_stdtime_FreeBSD",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-membership
+
+# BEGIN generated: darling-resolver
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py darling-resolver   -- review before committing.
+# cmake target: darling-resolver  ->  src/external/Libinfo/darling-resolver/darling-resolver
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "darling-resolver_inc_Libinfo",
+    headers = glob([
+        "Libinfo/Libinfo/*.h",
+        "Libinfo/Libinfo/**/*.h",
+        "Libinfo/lookup.subproj/*.h",
+        "Libinfo/lookup.subproj/**/*.h",
+    ]),
+    root = "Libinfo",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "darling-resolver_obj",
+    srcs = [
+        "Libinfo/darling-resolver/resolver.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":darling-resolver_inc_Libinfo",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: darling-resolver
+
+# BEGIN generated: unwind dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs unwind   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+
+darwin_dylib(
+    name = "unwind_firstpass",
+    dylib_name = "libunwind_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libunwind.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # unwind_obj
+        ":unwind_obj",
+        ":unwind_obj2",
+        ":unwind_obj3",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "unwind_final",
+    dylib_name = "libunwind.dylib",
+    install_name = "/usr/lib/system/libunwind.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # unwind_obj
+        ":unwind_obj",
+        ":unwind_obj2",
+        ":unwind_obj3",
+    ],
+    siblings = [
+        "//buck-src:system_c_firstpass",
+        "//buck-src:keymgr_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: unwind dylibs
+
+# BEGIN generated: system_darwin dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system_darwin   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "system_darwin_firstpass",
+    dylib_name = "libsystem_darwin_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_darwin.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # system_darwin_obj
+        ":system_darwin_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_darwin_final",
+    dylib_name = "libsystem_darwin.dylib",
+    install_name = "/usr/lib/system/libsystem_darwin.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # system_darwin_obj
+        ":system_darwin_obj",
+    ],
+    siblings = [
+        "//buck-src:macho_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_m_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:system_c_firstpass",
+        "//buck-src:libdispatch_shared_firstpass",
+        "//buck-src:xpc_firstpass",
+        "//src/external/libtrace:system_trace_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//src/launchd:launch_firstpass",
+        "//buck-src:platform_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_darwin dylibs
+
+# BEGIN generated: objc dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs objc   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "objc_firstpass",
+    dylib_name = "libobjc_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libobjc.A.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "228.0.0",
+    objs = [
+        # objc_obj
+        ":objc_obj",
+        ":objc_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: objc dylibs
+
+# BEGIN generated: commonCrypto dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs commonCrypto   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "commonCrypto_firstpass",
+    dylib_name = "libcommonCrypto_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libcommonCrypto.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "60092.50.5",
+    objs = [
+        # commonCrypto_obj
+        ":commonCrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "commonCrypto_final",
+    dylib_name = "libcommonCrypto.dylib",
+    install_name = "/usr/lib/system/libcommonCrypto.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "60092.50.5",
+    objs = [
+        # commonCrypto_obj
+        ":commonCrypto_obj",
+    ],
+    siblings = [
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:macho_firstpass",
+        "//buck-src:libdispatch_shared_firstpass",
+        "//buck-src:corecrypto_firstpass",
+        "//src/external/libtrace:system_trace_firstpass",
+        "//buck-src:platform_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: commonCrypto dylibs
+
+# BEGIN generated: system_info dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system_info   -- review before committing.
+# Links 8 cmake object library/ies, 9 flag groups in total.
+
+darwin_dylib(
+    name = "system_info_firstpass",
+    dylib_name = "libsystem_info_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_info.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # info-util
+        ":info-util_obj",
+        # info-dns
+        ":info-dns_obj",
+        # info-gen
+        ":info-gen_obj",
+        # info-nis
+        ":info-nis_obj",
+        # info-rpc
+        ":info-rpc_obj",
+        # info-lookup
+        ":info-lookup_obj",
+        ":info-lookup_obj2",
+        # info-membership
+        ":info-membership_obj",
+        # darling-resolver
+        ":darling-resolver_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_info_final",
+    dylib_name = "libsystem_info.dylib",
+    install_name = "/usr/lib/system/libsystem_info.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # info-util
+        ":info-util_obj",
+        # info-dns
+        ":info-dns_obj",
+        # info-gen
+        ":info-gen_obj",
+        # info-nis
+        ":info-nis_obj",
+        # info-rpc
+        ":info-rpc_obj",
+        # info-lookup
+        ":info-lookup_obj",
+        ":info-lookup_obj2",
+        # info-membership
+        ":info-membership_obj",
+        # darling-resolver
+        ":darling-resolver_obj",
+    ],
+    siblings = [
+        "//buck-src:system_c_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//src/duct:system_duct_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:libdispatch_shared_firstpass",
+        "//buck-src:system_notify_firstpass",
+        "//buck-src:system_asl_firstpass",
+        "//buck-src:platform_firstpass",
+        "//buck-src:xpc_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//src/launchd:launch_firstpass",
+        "//src/external/libtrace:system_trace_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_info dylibs
+
+# BEGIN generated: system dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+
+darwin_dylib(
+    name = "system_firstpass",
+    dylib_name = "libsystem_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libSystem.B.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1281.0.0",
+    objs = [
+        # kqueue
+        ":kqueue_obj",
+        # system_obj
+        ":system_obj",
+        ":system_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system dylibs

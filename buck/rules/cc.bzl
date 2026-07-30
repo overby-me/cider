@@ -145,10 +145,15 @@ def _cc_header_root_impl(ctx):
         ctx.attrs.headers,
         ctx.attrs.header_map,
     )
+    # Sibling include dirs staged as ONE tree, with -I pointing at each subdir
+    # inside it. A header staged alone cannot satisfy its own `#include "../lib/x.h"`
+    # -- a quoted include resolves relative to the INCLUDING FILE, which is the
+    # staged copy, so the sibling has to be present in the same tree.
+    dirs = [staged.project(s) for s in ctx.attrs.include_subdirs] or [staged]
     return [
         DefaultInfo(default_output = staged),
         CcLibInfo(
-            include_dirs = [staged] + merged.include_dirs,
+            include_dirs = dirs + merged.include_dirs,
             exported_flags = ctx.attrs.exported_flags + merged.exported_flags,
             static_libs = merged.static_libs,
             linker_flags = merged.linker_flags,
@@ -164,6 +169,9 @@ cc_header_root = rule(
         # prefix strip (the Darwin SDK namespaces).
         "header_map": attrs.dict(attrs.string(), attrs.source(), default = {}),
         "headers": attrs.list(attrs.source(), default = []),
+        # Subdirectories of the staged tree to put on the include path, instead of
+        # the tree itself. Used when sibling dirs must stay siblings (see above).
+        "include_subdirs": attrs.list(attrs.string(), default = []),
         # Package-relative dir the headers are exposed relative to ("" = the
         # package itself).
         "root": attrs.string(default = ""),

@@ -6,7 +6,7 @@
 # Regenerate after materializing more pins:
 #   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys > buck-src/sdk_headers.bzl
 
-# ./: 3565 headers
+# ./: 3590 headers
 SDK_ROOT = {
     "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
     "BerkeleyDB/db.h": "BerkeleyDB/db/build_unix/db.h",
@@ -376,6 +376,7 @@ SDK_ROOT = {
     "IOKit/usb/IOUSBUserClient.h": "IOKitUser/darling/include/IOKit/usb/IOUSBUserClient.h",
     "IOKit/usb/USB.h": "IOKitUser/darling/include/IOKit/usb/USB.h",
     "IOKit/usb/USBSpec.h": "IOKitUser/darling/include/IOKit/usb/USBSpec.h",
+    "SoftLinking/WeakLinking.h": "WTF/darling/include/wtf/darwin/WeakLinking.h",
     "System/IODataQueueDispatchSourceShared.h": "xnu/iokit/System/IODataQueueDispatchSourceShared.h",
     "System/arm/cpu_capabilities.h": "xnu/osfmk/arm/cpu_capabilities.h",
     "System/i386/cpu_capabilities.h": "xnu/osfmk/i386/cpu_capabilities.h",
@@ -396,6 +397,7 @@ SDK_ROOT = {
     "System/netinet/ip.h": "xnu/bsd/netinet/ip.h",
     "System/netinet/ip6.h": "xnu/bsd/netinet/ip6.h",
     "System/os/reason_private.h": "xnu/libkern/os/reason_private.h",
+    "System/pthread_machdep.h": "libpthread/private/pthread/private.h",
     "System/sys/codesign.h": "xnu/bsd/sys/codesign.h",
     "System/sys/content_protection.h": "xnu/bsd/sys/content_protection.h",
     "System/sys/csr.h": "xnu/bsd/sys/csr.h",
@@ -2207,6 +2209,29 @@ SDK_ROOT = {
     "objc/objc.h": "objc4/runtime/objc.h",
     "objc/objcrt.h": "objc4/runtime/objcrt.h",
     "objc/runtime.h": "objc4/runtime/runtime.h",
+    "opendirectory/CAuditUtils.h": "DirectoryService/include/CAuditUtils.h",
+    "opendirectory/CHandlers.h": "DirectoryService/include/CHandlers.h",
+    "opendirectory/CInternalDispatch.h": "DirectoryService/include/CInternalDispatch.h",
+    "opendirectory/CLauncher.h": "DirectoryService/include/CLauncher.h",
+    "opendirectory/CNodeList.h": "DirectoryService/include/CNodeList.h",
+    "opendirectory/CPlugInList.h": "DirectoryService/include/CPlugInList.h",
+    "opendirectory/CPluginConfig.h": "DirectoryService/include/CPluginConfig.h",
+    "opendirectory/CPluginHandler.h": "DirectoryService/include/CPluginHandler.h",
+    "opendirectory/CRefTable.h": "DirectoryService/include/CRefTable.h",
+    "opendirectory/CServerPlugin.h": "DirectoryService/include/CServerPlugin.h",
+    "opendirectory/CSrvrMessaging.h": "DirectoryService/include/CSrvrMessaging.h",
+    "opendirectory/DSMachEndian.h": "DirectoryService/include/DSMachEndian.h",
+    "opendirectory/DSSwapUtils.h": "DirectoryService/include/DSSwapUtils.h",
+    "opendirectory/DSlibinfoMIG_types.h": "DirectoryService/include/DSlibinfoMIG_types.h",
+    "opendirectory/DSmemberdMIG_types.h": "DirectoryService/include/DSmemberdMIG_types.h",
+    "opendirectory/DirServiceMain.h": "DirectoryService/include/DirServiceMain.h",
+    "opendirectory/Mbrd_Cache.h": "DirectoryService/include/Mbrd_Cache.h",
+    "opendirectory/Mbrd_HashTable.h": "DirectoryService/include/Mbrd_HashTable.h",
+    "opendirectory/Mbrd_MembershipResolver.h": "DirectoryService/include/Mbrd_MembershipResolver.h",
+    "opendirectory/Mbrd_UserGroup.h": "DirectoryService/include/Mbrd_UserGroup.h",
+    "opendirectory/ServerControl.h": "DirectoryService/include/ServerControl.h",
+    "opendirectory/od_passthru.h": "DirectoryService/include/od_passthru.h",
+    "opendirectory/rb.h": "DirectoryService/include/rb.h",
     "openssl/aes.h": "libressl-2.8.3/include/openssl/aes.h",
     "openssl/asn1.h": "libressl-2.8.3/include/openssl/asn1.h",
     "openssl/asn1_mac.h": "libressl-2.8.3/include/openssl/asn1_mac.h",
@@ -4259,14 +4284,19 @@ SDK_REPO_HEADERS = [
 #     21 under src/launchd/
 #      3 under src/libDiagnosticMessagesClient/
 #      1 under src/libMobileGestalt/
+#      6 under src/libaccessibility/
 #      3 under src/libacm/
 #      3 under src/libaks/
 #      1 under src/libcompression/
 #      6 under src/libm/
 #      2 under src/libpmenergy/
+#      1 under src/libquit/
+#      5 under src/libsysmon/
 #      1 under src/libsystem_coreservices/
 #      2 under src/networkextension/
+#      3 under src/opendirectory_internal/
 #      1 under src/quarantine/
 #      5 under src/sandbox/
+#      1 under src/softlinking/
 #      4 under src/startup/
 #      1 under src/xcselect/

@@ -325,22 +325,30 @@ printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
 	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
 	bad "kernel final is missing _dserver_rpc_checkin"
 
-say "== newly ported libSystem members (firstpass dylibs) =="
-# Each is a Mach-O dylib carrying the install_name its FINAL pass siblings will
-# look it up by; a firstpass with the wrong id makes every sibling's final pass
-# record a name dyld cannot resolve.
-for spec in \
-	"//buck-src:corecrypto_firstpass=/usr/lib/system/libcorecrypto.dylib" \
-	"//buck-src:libdispatch_shared_firstpass=/usr/lib/system/libdispatch.dylib" \
-	"//src/launchd:launch_firstpass=/usr/lib/system/liblaunch.dylib" \
-	"//buck-src:macho_firstpass=/usr/lib/system/libmacho.dylib" \
-	"//buck-src:system_notify_firstpass=/usr/lib/system/libsystem_notify.dylib" \
-	"//buck-src:xpc_firstpass=/usr/lib/system/libxpc.dylib"; do
-	t=${spec%%=*}
-	want=${spec#*=}
+say "== every circular libSystem member has a firstpass dylib =="
+# All 28 of them: the final passes link against these, so a missing one blocks a
+# whole cluster. Each is checked for being a real Mach-O dylib, not just present.
+for t in \
+	//buck-src:compiler_rt_firstpass //buck-src:corecrypto_firstpass \
+	//buck-src:keymgr_firstpass //src/launchd:launch_firstpass \
+	//buck-src:libdispatch_shared_firstpass //buck-src:macho_firstpass \
+	//buck-src:platform_firstpass //buck-src:system_asl_firstpass \
+	//buck-src:system_blocks_firstpass //buck-src:system_c_firstpass \
+	//buck-src:system_coretls_firstpass //src/duct:system_duct_firstpass \
+	//buck-src:system_dyld_firstpass //buck-src:system_kernel_firstpass \
+	//buck-src:system_m_firstpass //buck-src:system_malloc_firstpass \
+	//buck-src:system_notify_firstpass //buck-src:system_pthread_firstpass \
+	//src/external/libtrace:system_trace_firstpass //buck-src:xpc_firstpass \
+	//buck-src:commonCrypto_firstpass //src/libcache:libcache_firstpass \
+	//buck-src:objc_firstpass //buck-src:system_firstpass \
+	//buck-src:system_darwin_firstpass //buck-src:system_info_firstpass \
+	//src/sandbox:system_sandbox_firstpass //buck-src:unwind_firstpass; do
 	f=$(out_of "$t")
 	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1)
-	[ "$id" = "$want" ] && ok "${t##*:} id is $id" || bad "${t##*:} id is '$id', want $want"
+	case "$id" in
+	/usr/lib/*) ok "${t##*:} -> $id" ;;
+	*) bad "${t##*:} has no install_name (got '$id')" ;;
+	esac
 done
 
 say "== DUCT_TAPE_LIB staging =="

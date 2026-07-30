@@ -416,8 +416,51 @@ def generate(target: str, edges):
             w(f"#   {g}")
     w("")
 
-    # One header root per distinct include dir, shared across groups.
+    # One header root per distinct include dir, shared across groups -- except that
+    # SIBLING dirs are staged as one tree (see below), because a staged header's
+    # own `#include "../sibling/x.h"` resolves relative to the staged copy.
+    own_roots: list[str] = []
+    for g in groups.values():
+        for kind, p in g["inc"]:
+            if kind == "own" and p not in own_roots and p not in CROSS_PACKAGE_ROOTS:
+                own_roots.append(p)
+    by_parent: dict[str, list[str]] = {}
+    for p in own_roots:
+        parent = os.path.dirname(p)
+        if parent:
+            by_parent.setdefault(parent, []).append(p)
+    merged_parent = {p: parent for parent, ps in by_parent.items() if len(ps) > 1 for p in ps}
+
     root_name: dict[str, str] = {}
+    for parent, ps in sorted(by_parent.items()):
+        if len(ps) < 2:
+            continue
+        name = target.removesuffix("_obj") + "_inc_" + sanitize(parent)[-44:]
+        n = 2
+        while name in root_name.values():
+            name, n = f"{name}_{n}", n + 1
+        subs = [os.path.relpath(p, parent) for p in ps]
+        for p in ps:
+            root_name[p] = name
+        w("# Sibling include dirs, staged as ONE tree with -I into each: headers here")
+        w('# reach each other with `#include "../<dir>/x.h"`, which only resolves if')
+        w("# the sibling is in the same staged tree.")
+        w("cc_header_root(")
+        w(f'    name = "{name}",')
+        w("    headers = glob([")
+        for p in ps:
+            w(f'        "{p}/*.h",')
+            w(f'        "{p}/**/*.h",')
+        w("    ]),")
+        w(f'    root = "{parent}",')
+        w("    include_subdirs = [")
+        for sub in subs:
+            w(f'        "{sub}",')
+        w("    ],")
+        w('    visibility = ["PUBLIC"],')
+        w(")")
+        w("")
+
     for g in groups.values():
         for kind, p in g["inc"]:
             if kind != "own" or p in root_name:
@@ -470,15 +513,22 @@ def generate(target: str, edges):
         w("    deps = [")
         # Dep ORDER is the include order, and the environment sits where the
         # reference puts it -- not first, not last.
+        seen_dep = set()
         for kind, p in g["inc"]:
             if kind == "env":
                 w('        "//darwin:sdk_env",')
                 for d in extra_deps(target):
                     # gen: and ldflag: entries are not deps.
-                    if not d.startswith(("gen:", "ldflag:")):
+                    if not d.startswith(("gen:", "ldflag:")) and d not in seen_dep:
+                        seen_dep.add(d)
                         w(f'        "{d}",')
             else:
+                # Merged sibling roots share one target, so the same label can come
+                # up more than once.
                 name = root_name[p]
+                if name in seen_dep:
+                    continue
+                seen_dep.add(name)
                 w(f'        "{name}",' if name.startswith("//") else f'        ":{name}",')
         w("    ],")
         gen = [d[len("gen:"):] for d in extra_deps(target) if d.startswith("gen:")]
