@@ -426,10 +426,21 @@ here and REVERTED, because it exposed the actual prerequisite --
 switch, off until the prerequisite is met. Sizes, for planning: libc 11k lines, xnu 5.1k,
 toolchains 4.3k, everything else under 1.2k.
 
-**Next up, in order:** teach `scripts/gen-sdk-header-roots.py` to emit a per-PIN header
-root (it already does exactly this for committed trees via `--repo-roots`), point
-`//darwin:sdk_env` at those instead of the monolithic maps, then flip `SPLIT_PINS` and
-migrate pin by pin with the suite as the net.
+`--pin-roots` does the first of those now: one `cc_header_root` per pin, declared inside
+`buck-src/<pin>`, covering that pin's share of the SDK surface. 70 pins carry SDK headers
+(xnu alone has 1289). `--apply` writes them; nothing is wired yet, because pointing
+`//darwin:sdk_env` at 70 roots instead of the three monolithic maps changes the include
+ORDER, which several targets depend on.
+
+`scripts/buck-env.sh` is the other thing this needed: the buck2 daemon inherits the PATH
+of whatever starts it, and a daemon that came back from an OOM without clang/bison/flex
+fails every action with "Failed to spawn a process", which reads like a build error.
+Source it before any buck2 command.
+
+**Next up, in order:** apply `--pin-roots`, repoint `//darwin:sdk_env` (watching include
+order), then flip `SPLIT_PINS` and migrate pin by pin with `scripts/buck-split-pins.py`,
+the suite as the net after each pin. Then the last six targets: libstdc++.6, zsh, the
+firehose/notify xtrace stubs and libsystem_kernel_static32.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
