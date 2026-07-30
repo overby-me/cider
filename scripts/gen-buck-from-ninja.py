@@ -412,6 +412,11 @@ def generate(target: str, edges):
     if not groups:
         return None
 
+    # Which package this block will be written into, needed BEFORE emitting: a file
+    # attribute has to be package-relative when this package owns the file and a label
+    # when another one does.
+    pkg_for_files = package_of([sp for g in groups.values() for sp in g["srcs"]])
+
     out: list[str] = []
     w = out.append
     w("# GENERATED from the reference build.ninja by")
@@ -611,7 +616,7 @@ def generate(target: str, edges):
         if g["prefix"]:
             w("    prefix_headers = [")
             for _, hp in g["prefix"]:
-                w(f'        "{CROSS_PACKAGE_FILES.get(hp, hp)}",')
+                w(f'        "{file_label(hp, pkg_for_files)}",')
             w("    ],")
         w('    toolchain = "toolchains//:darwin_cc",')
         w("    deps = [")
@@ -689,6 +694,50 @@ def generate(target: str, edges):
 # is the prerequisite, and scripts/gen-sdk-header-roots.py already knows how to emit
 # per-package roots (--repo-roots does it for the committed trees).
 SPLIT_PINS = False
+
+
+def migrated_pins() -> set:
+    """Pins that already have their own package (scripts/buck-split-pins.py keeps this).
+
+    A file's owner is buck-src/<pin> only once that package exists; until then the pin's
+    files still belong to the one big buck-src package, and naming a label into a
+    non-existent package is just a broken reference.
+    """
+    f = os.path.join(REPO, "buck", "generated", "split-pins.txt")
+    if not os.path.exists(f):
+        return set()
+    return {l.strip() for l in open(f) if l.strip() and not l.startswith("#")}
+
+
+def export_target_name(rel_in_pkg: str) -> str:
+    """The export_file target name for a file, flattened: bsd/sys/fileport.h -> that
+    path with separators replaced, so the label is unambiguous and slash-free."""
+    return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel_in_pkg)
+
+
+def file_label(path: str, pkg: str) -> str:
+    """How `pkg` refers to a file: package-relative when it owns it, else a label.
+
+    Files are addressed relative to the package that declares them, so a pin package can
+    only name its own. Anything else has to come through an export_file in the owning
+    package -- the shape CROSS_PACKAGE_FILES already encodes by hand.
+    """
+    if path in CROSS_PACKAGE_FILES:
+        return CROSS_PACKAGE_FILES[path]
+    if path.startswith("src/"):
+        owner = package_of([("src", path)])
+    else:
+        pin = path.split("/")[0]
+        owner = BUCK_SRC + "/" + pin if pin in migrated_pins() else BUCK_SRC
+    if owner == pkg:
+        return path
+    if owner.startswith(BUCK_SRC + "/"):
+        rel = path[len(owner) - len(BUCK_SRC) :].lstrip("/")
+        return f"//{owner}:{export_target_name(rel)}"
+    if owner == BUCK_SRC:
+        return path if pkg == BUCK_SRC else f"//{BUCK_SRC}:{export_target_name(path)}"
+    rel = path[len(owner) + 1:] if path.startswith(owner + "/") else path
+    return f"//{owner}:{export_target_name(rel)}"
 
 
 def package_of(src_paths) -> str:

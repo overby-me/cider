@@ -114,6 +114,83 @@ def move_handwritten(pin: str) -> None:
     print(f"moved {len(moved_names)} hand-written block(s): {' '.join(moved_names)}")
 
 
+HEADER_EXTS = (".h", ".hpp", ".hh", ".inc", ".defs", ".tcc", ".c", ".cpp", ".mdh")
+
+
+def ensure_exports(pin: str) -> None:
+    """Add an export_file for every cross-package FILE the migrated pin now names.
+
+    A file attribute (a force-included header, say) must be a source of the declaring
+    package. libsystem_notify force-includes xnu's sys/fileport.h; once libnotify is its
+    own package that file belongs to another one, so it has to arrive as a label backed by
+    an export_file in the owner.
+    """
+    dest = os.path.join(REPO, "buck-src", pin, "BUCK")
+    if not os.path.exists(dest):
+        return
+    text = open(dest).read()
+    wanted: dict[str, set] = {}
+    for m in re.finditer(r'"//(buck-src(?:/[A-Za-z0-9_.+-]+)?):([A-Za-z0-9_.+-]+)"', text):
+        owner, name = m.group(1), m.group(2)
+        if not name.endswith(HEADER_EXTS):
+            continue
+        wanted.setdefault(owner, set()).add(name)
+    for owner, names in wanted.items():
+        f = os.path.join(REPO, owner, "BUCK")
+        if not os.path.exists(f):
+            continue
+        otext = open(f).read()
+        add = []
+        for name in sorted(names):
+            if f'name = "{name}"' in otext:
+                continue
+            # The flattened name maps back to the path by restoring separators; only one
+            # candidate can exist, since the flattening is injective for real paths.
+            cand = name.replace("_", "/")
+            path = None
+            for guess in (name, cand):
+                if os.path.exists(os.path.join(REPO, owner, guess)):
+                    path = guess
+                    break
+            if path is None:
+                print(f"  WARNING: cannot place export for {owner}:{name}", file=sys.stderr)
+                continue
+            add.append(f'export_file(\n    name = "{name}",\n    src = "{path}",\n'
+                       f'    visibility = ["PUBLIC"],\n)\n')
+        if add:
+            head = ("# Files other packages name by label: a file attribute has to be a "
+                    "source of\n# the declaring package, so a cross-package one arrives "
+                    "through an export_file.\n")
+            open(f, "w").write(otext.rstrip("\n") + "\n\n" + head + "\n".join(add))
+            print(f"added {len(add)} export_file target(s) to {owner}/BUCK")
+
+
+def drop_duplicates() -> None:
+    """Remove blocks from buck-src/BUCK whose target now lives in a pin package."""
+    elsewhere = {}
+    for dirpath, dirnames, filenames in os.walk(os.path.join(REPO, "buck-src")):
+        dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
+        if "BUCK" not in filenames or dirpath == os.path.join(REPO, "buck-src"):
+            continue
+        pkg = os.path.relpath(dirpath, REPO)
+        for m in re.finditer(r'name = "([A-Za-z0-9_.+-]+)"', open(os.path.join(dirpath, "BUCK")).read()):
+            elsewhere[m.group(1)] = pkg
+    text = open(BUCK_SRC).read()
+    keep, last, dropped = [], 0, []
+    for marker, a, b in blocks(text):
+        names = re.findall(r'name = "([A-Za-z0-9_.+-]+)"', text[a:b])
+        if names and all(n in elsewhere for n in names):
+            keep.append(text[last:a])
+            last = b
+            dropped.append(marker)
+    if not dropped:
+        return
+    keep.append(text[last:])
+    open(BUCK_SRC, "w").write("".join(keep))
+    print(f"dropped {len(dropped)} duplicated block(s) from buck-src/BUCK: "
+          + ", ".join(dropped))
+
+
 def main(argv: list[str]) -> int:
     text = open(BUCK_SRC).read()
     found = blocks(text)
@@ -184,6 +261,13 @@ def main(argv: list[str]) -> int:
         subprocess.run([gen, "--dylibs", "--write"] + pairs, cwd=REPO, check=False)
 
     move_handwritten(pin)
+    ensure_exports(pin)
+
+    # A dylib/archive/binary block names only LABELS, so it carries no pin path to
+    # recognise it by -- yet its objects just moved. Regenerating them puts each one in
+    # the package its objects now live in; the stale copies are dropped below.
+    subprocess.run([os.path.join(REPO, "scripts", "regen-dylibs.py")], cwd=REPO, check=False)
+    drop_duplicates()
 
     # Drop whatever is still in buck-src/BUCK for those markers: the regeneration wrote
     # the block into the pin package, it did not remove the old copy.

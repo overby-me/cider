@@ -492,6 +492,25 @@ include roots are staged, both now detected rather than listed:
     live in the same staged copy -- the same rule that already applied to siblings.
     `include_subdirs` takes `"."` for the ancestor itself now.
 
+### 2026-07-30 (early afternoon) -- the split needs a big bang, not a pin at a time
+
+Cross-package FILE references are handled now: `file_label()` decides whether a file
+attribute is package-relative or a label, consulting `buck/generated/split-pins.txt` so a
+label never points at a package that does not exist yet, and `buck-split-pins.py` creates
+the backing `export_file` in the owning package (verified: libnotify's migration produced
+`//buck-src:xnu_bsd_sys_fileport.h` for the header libsystem_notify force-includes).
+
+But migrating **one pin at a time does not work**, and this is the finding: a
+dylib/archive/binary block names only LABELS, so it carries no path to recognise its pin
+by -- and regenerating those blocks is GLOBAL. Running it after moving one pin moved all
+47 dylib blocks into pin packages while their object blocks were still in buck-src, which
+leaves every label dangling. Reverted; 96 checks pass.
+
+So the split has to be a BIG BANG: flip `SPLIT_PINS`, regenerate every block, emit all 70
+per-pin SDK roots, repoint `//darwin:sdk_env`, create every `export_file`, and drop what
+moved -- all in one commit, iterating until the suite is green. That belongs in a
+scratch WORKTREE rather than the live tree, since intermediate states do not build.
+
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
 
