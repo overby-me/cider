@@ -353,10 +353,10 @@ say "== every ported dylib links =="
 # Nothing is expected to fail any more: the layer outside the circular cluster
 # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
 # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-dylib_pkgs="//buck-src: //src/duct: //src/libm: //src/libcache: //src/sandbox: //src/launchd: //src/external/libtrace: //src/libsystem_coreservices: //src/lib: //src/quarantine: //src/networkextension:"
-# shellcheck disable=SC2086
-all_dylibs=$(buck2 targets $dylib_pkgs 2>/dev/null |
-	grep -E ":[A-Za-z0-9_.-]+_(final|firstpass|dylib)$" || true)
+dylib_pkgs="//buck-src: + //src/duct: + //src/libm: + //src/libcache: + //src/sandbox: + //src/launchd: + //src/external/libtrace: + //src/libsystem_coreservices: + //src/lib: + //src/quarantine: + //src/networkextension:"
+# By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
+# and a name match swept it in here.
+all_dylibs=$(buck2 uquery "kind('darwin_dylib', $dylib_pkgs)" 2>/dev/null || true)
 n_first=0
 n_linked=0
 for t in $all_dylibs; do
@@ -402,25 +402,42 @@ say "== guest EXECUTABLES =="
 # named directly on the link line and -nostdlib, or clang's driver reaches for an
 # -lSystem that no -L holds. NOUNDEFS is the real assertion -- it says the loader
 # will not have to resolve anything that is missing.
-for t in //src/vchroot:vchroot //buck-src:notifyutil \
-	//src/launchd:launchproxy //buck-src:opendirectoryd; do
+#
+# Discovered from the graph, like the dylibs: every executable target that exists.
+exe_pkgs="//buck-src: + //src/shellspawn: + //src/vchroot: + //src/launchd:"
+# dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
+exe_skip="memberd plconvert dyld"
+exe_blocked="memberd plconvert"
+all_exes=$(buck2 uquery "kind('darwin_binary', $exe_pkgs)" 2>/dev/null || true)
+n_exe=0
+for t in $all_exes; do
+	name=${t##*:}
+	case " $exe_skip " in
+	*" $name "*) continue ;;
+	esac
 	f=$(out_of "$t" || true)
 	hdr=$(llvm-objdump --macho --private-headers "$f" 2>/dev/null | grep -m1 MH_MAGIC || true)
 	case "$hdr" in
-	*EXECUTE*NOUNDEFS*) ok "${t##*:} is a Mach-O executable with nothing undefined" ;;
+	*EXECUTE*NOUNDEFS*) n_exe=$((n_exe + 1)) ;;
 	*EXECUTE*) bad "${t##*:} links but leaves symbols undefined" ;;
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-# plconvert is generated but cannot link yet, and only it: it needs the
-# CoreFoundation dylib, which is not ported.
-for t in //buck-src:plconvert; do
-	if buck2 build "$t" >/dev/null 2>&1; then
-		bad "${t##*:} links now -- drop it from the blocked list"
+[ "$n_exe" -ge 29 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 29 executables, got $n_exe"
+# Two are generated but cannot link, and only these two: both need a FRAMEWORK BINARY
+# that is not ported (DirectoryService for memberd, CoreFoundation for plconvert).
+for name in $exe_blocked; do
+	if buck2 build "//buck-src:$name" >/dev/null 2>&1; then
+		bad "$name links now -- drop it from the blocked list"
 	else
-		ok "${t##*:} still blocked on unported targets (expected)"
+		ok "$name still blocked on an unported framework binary (expected)"
 	fi
 done
+# cctools' tools are the ones that prove the static archive path: they link
+# liblibstuff.a, and strings without libstuff would silently be a stub.
+st_syms=$(llvm-nm --defined-only "$(out_of //buck-src:strip)" 2>/dev/null | awk '{print $3}' | sort -u)
+grep -qxF "_main" <<<"$st_syms" && ok "strip defines _main" || bad "strip has no _main"
 
 say "== the STATIC tier, and dyld =="
 # dyld is not linked against dylibs at all: it links 17 static archives, because the

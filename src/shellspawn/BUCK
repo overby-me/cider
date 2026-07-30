@@ -1,17 +1,19 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
 
-# BEGIN generated: vchroot
+# BEGIN generated: shellspawn
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py vchroot   -- review before committing.
-# cmake target: vchroot  ->  src/vchroot/vchroot
+# scripts/gen-buck-from-ninja.py shellspawn   -- review before committing.
+# cmake target: shellspawn  ->  src/shellspawn/shellspawn
 
 cc_objects(
-    name = "vchroot_obj",
+    name = "shellspawn_obj",
     srcs = [
-        "vchroot.c",
+        "duct_signals.c",
+        "shellspawn.c",
     ],
     compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-nostdinc",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -20,20 +22,20 @@ cc_objects(
     ],
     visibility = ["PUBLIC"],
 )
-# END generated: vchroot
+# END generated: shellspawn
 
-# BEGIN generated: vchroot binary
+# BEGIN generated: shellspawn binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries vchroot   -- review before committing.
+# scripts/gen-buck-from-ninja.py --binaries shellspawn   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a
 
 darwin_binary(
-    name = "vchroot",
+    name = "shellspawn",
     objs = [
-        # vchroot
-        ":vchroot_obj",
+        # shellspawn
+        ":shellspawn_obj",
         # crt1.10.6
         "//buck-src:crt1.10.6_obj2",
     ],
@@ -46,4 +48,4 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
-# END generated: vchroot binary
+# END generated: shellspawn binary

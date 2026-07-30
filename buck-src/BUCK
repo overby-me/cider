@@ -19372,25 +19372,17 @@ darwin_dylib(
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/dyld/launch-cache
 
-# Sibling include dirs, staged as ONE tree with -I into each: headers here
-# reach each other with `#include "../<dir>/x.h"`, which only resolves if
-# the sibling is in the same staged tree.
 cc_header_root(
-    name = "system_loader_inc_dyld",
-    headers = glob([
-        "dyld/src/*.h",
-        "dyld/src/**/*.h",
-        "dyld/dyld3/*.h",
-        "dyld/dyld3/**/*.h",
-        "dyld/include/*.h",
-        "dyld/include/**/*.h",
-    ]),
-    root = "dyld",
-    include_subdirs = [
-        "src",
-        "dyld3",
-        "include",
-    ],
+    name = "system_loader_inc_dyld_src",
+    headers = glob(["dyld/src/*.h", "dyld/src/**/*.h"]),
+    root = "dyld/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld_dyld3",
+    headers = glob(["dyld/dyld3/*.h", "dyld/dyld3/**/*.h"]),
+    root = "dyld/dyld3",
     visibility = ["PUBLIC"],
 )
 
@@ -19409,7 +19401,14 @@ cc_header_root(
 )
 
 cc_header_root(
-    name = "system_loader_inc_dyld_2",
+    name = "system_loader_inc_dyld_include",
+    headers = glob(["dyld/include/*.h", "dyld/include/**/*.h"]),
+    root = "dyld/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_loader_inc_dyld",
     headers = glob(["dyld/*.h", "dyld/**/*.h"]),
     root = "dyld",
     visibility = ["PUBLIC"],
@@ -19464,11 +19463,13 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_loader_inc_dyld",
+        ":system_loader_inc_dyld_src",
+        ":system_loader_inc_dyld_dyld3",
         ":system_loader_inc_dyld_dyld3_shared_cache",
         ":system_loader_inc_dyld_include_mach_o",
+        ":system_loader_inc_dyld_include",
         "//darwin:sdk_env",
-        ":system_loader_inc_dyld_2",
+        ":system_loader_inc_dyld",
     ],
     visibility = ["PUBLIC"],
 )
@@ -19498,11 +19499,13 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":system_loader_inc_dyld",
+        ":system_loader_inc_dyld_src",
+        ":system_loader_inc_dyld_dyld3",
         ":system_loader_inc_dyld_dyld3_shared_cache",
         ":system_loader_inc_dyld_include_mach_o",
+        ":system_loader_inc_dyld_include",
         "//darwin:sdk_env",
-        ":system_loader_inc_dyld_2",
+        ":system_loader_inc_dyld",
     ],
     visibility = ["PUBLIC"],
 )
@@ -19699,6 +19702,8 @@ darwin_binary(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries notifyutil   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
 
 darwin_binary(
     name = "notifyutil",
@@ -19723,6 +19728,8 @@ darwin_binary(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries plconvert   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
 
 darwin_binary(
     name = "plconvert",
@@ -19747,6 +19754,8 @@ darwin_binary(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries opendirectoryd   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
 
 darwin_binary(
     name = "opendirectoryd",
@@ -21190,3 +21199,1701 @@ cc_objects(
     ],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: memberd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py memberd   -- review before committing.
+# cmake target: memberd  ->  src/external/OpenDirectory/memberd-21.1/memberd
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/OpenDirectory/memberd-21.1/memberdServer.c
+#   src/external/OpenDirectory/memberd-21.1/memberdUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/OpenDirectory/memberd-21.1
+
+cc_header_root(
+    name = "memberd_inc_OpenDirectory_memberd_21_1",
+    headers = glob(["OpenDirectory/memberd-21.1/*.h", "OpenDirectory/memberd-21.1/**/*.h"]),
+    root = "OpenDirectory/memberd-21.1",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memberd_obj",
+    srcs = [
+        "OpenDirectory/memberd-21.1/HashTable.c",
+        "OpenDirectory/memberd-21.1/Listener.c",
+        "OpenDirectory/memberd-21.1/MembershipResolver.c",
+        "OpenDirectory/memberd-21.1/UDaemonHelpers.c",
+        "OpenDirectory/memberd-21.1/UserGroup.c",
+        "OpenDirectory/memberd-21.1/main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-includestdio.h",
+        "-includeobjc/objc.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":odmig_memberd",
+        "//darwin/frameworks:fw_AE",
+        "//buck-src:fw_CFNetwork",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//darwin/frameworks:fw_CoreServices",
+        "//buck-src:fw_DirectoryService",
+        "//darwin/frameworks:fw_FSEvents",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_IOKit",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//buck-src:fw_Onyx2D",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_SearchKit",
+        "//buck-src:fw_Security",
+        ":memberd_inc_OpenDirectory_memberd_21_1",
+    ],
+    gen_srcs = [
+        ":odmig_memberd",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd
+
+# BEGIN generated: newsyslog
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py newsyslog   -- review before committing.
+# cmake target: newsyslog  ->  src/external/crontabs/newsyslog/newsyslog
+
+cc_objects(
+    name = "newsyslog_obj",
+    srcs = [
+        "crontabs/newsyslog/newsyslog.c",
+        "crontabs/newsyslog/ptimes.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: newsyslog
+
+# BEGIN generated: periodic-wrapper
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py periodic-wrapper   -- review before committing.
+# cmake target: periodic-wrapper  ->  src/external/crontabs/periodic/periodic-wrapper
+
+cc_objects(
+    name = "periodic-wrapper_obj",
+    srcs = [
+        "crontabs/periodic/periodic-wrapper.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: periodic-wrapper
+
+# BEGIN generated: syslog
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py syslog   -- review before committing.
+# cmake target: syslog  ->  src/external/syslog/util.tproj/syslog
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/syslog/aslcommon
+
+cc_header_root(
+    name = "syslog_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h"]),
+    root = "syslog/libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "syslog_inc_syslog_aslcommon",
+    headers = glob(["syslog/aslcommon/*.h", "syslog/aslcommon/**/*.h"]),
+    root = "syslog/aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "syslog_obj",
+    srcs = [
+        "syslog/util.tproj/syslog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-Wno-error=incompatible-function-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":asl_ipc_mig",
+        ":syslog_inc_syslog_libsystem_asl_tproj_include",
+        ":syslog_inc_syslog_aslcommon",
+    ],
+    gen_srcs = [
+        ":asl_ipc_mig",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslog
+
+# BEGIN generated: vtool_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py vtool_cctools_misc   -- review before committing.
+# cmake target: vtool_cctools_misc  ->  vtool_cctools_misc
+
+cc_header_root(
+    name = "vtool_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vtool_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "vtool_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/vtool.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":vtool_cctools_misc_inc_cctools_include",
+        ":vtool_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vtool_cctools_misc
+
+# memberd's membership protocol: it compiles both generated stubs and
+# includes the generated memberdServer.h bare.
+mig_gen(
+    name = "odmig_memberd",
+    defs = "OpenDirectory/memberd-21.1/memberd.defs",
+    out_base = "OpenDirectory/memberd-21.1",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "memberdServer.c",
+        "memberdUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: memberd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries memberd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "memberd",
+    objs = [
+        # memberd
+        ":memberd_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd binary
+
+# BEGIN generated: newsyslog binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries newsyslog   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "newsyslog",
+    objs = [
+        # newsyslog
+        ":newsyslog_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: newsyslog binary
+
+# BEGIN generated: periodic-wrapper binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries periodic-wrapper   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "periodic-wrapper",
+    objs = [
+        # periodic-wrapper
+        ":periodic-wrapper_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: periodic-wrapper binary
+
+# BEGIN generated: syslog binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries syslog   -- review before committing.
+# Links 3 cmake object library/ies, 3 flag groups in total.
+# Object libraries whose sources are compiled elsewhere in this port, so they
+# contribute no target here: asl_ipc_user
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "syslog",
+    objs = [
+        # aslcommon
+        ":aslcommon_obj",
+        # syslog
+        ":syslog_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslog binary
+
+# BEGIN generated: vtool binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries vtool   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "vtool",
+    objs = [
+        # vtool_cctools_misc
+        ":vtool_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vtool binary
+
+# BEGIN generated: libstuff
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libstuff   -- review before committing.
+# cmake target: libstuff  ->  src/external/cctools/libstuff/liblibstuff.a
+
+cc_header_root(
+    name = "libstuff_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libstuff_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libstuff_obj",
+    srcs = [
+        "cctools/libstuff/SymLoc.c",
+        "cctools/libstuff/allocate.c",
+        "cctools/libstuff/apple_version.c",
+        "cctools/libstuff/arch.c",
+        "cctools/libstuff/arch_usage.c",
+        "cctools/libstuff/args.c",
+        "cctools/libstuff/best_arch.c",
+        "cctools/libstuff/breakout.c",
+        "cctools/libstuff/bytesex.c",
+        "cctools/libstuff/checkout.c",
+        "cctools/libstuff/coff_bytesex.c",
+        "cctools/libstuff/crc32.c",
+        "cctools/libstuff/dylib_roots.c",
+        "cctools/libstuff/dylib_table.c",
+        "cctools/libstuff/errors.c",
+        "cctools/libstuff/execute.c",
+        "cctools/libstuff/fatal_arch.c",
+        "cctools/libstuff/fatals.c",
+        "cctools/libstuff/get_arch_from_host.c",
+        "cctools/libstuff/get_toc_byte_sex.c",
+        "cctools/libstuff/guess_short_name.c",
+        "cctools/libstuff/hash_string.c",
+        "cctools/libstuff/hppa.c",
+        "cctools/libstuff/llvm.c",
+        "cctools/libstuff/lto.c",
+        "cctools/libstuff/macosx_deployment_target.c",
+        "cctools/libstuff/ofile.c",
+        "cctools/libstuff/ofile_error.c",
+        "cctools/libstuff/ofile_get_word.c",
+        "cctools/libstuff/print.c",
+        "cctools/libstuff/reloc.c",
+        "cctools/libstuff/rnd.c",
+        "cctools/libstuff/seg_addr_table.c",
+        "cctools/libstuff/set_arch_flag_name.c",
+        "cctools/libstuff/swap_headers.c",
+        "cctools/libstuff/symbol_list.c",
+        "cctools/libstuff/unix_standard_mode.c",
+        "cctools/libstuff/version_number.c",
+        "cctools/libstuff/vm_flush_cache.c",
+        "cctools/libstuff/write64.c",
+        "cctools/libstuff/writeout.c",
+    ],
+    compiler_flags = [
+        "-DCURRENT_PROJECT_VERSION=\"\\\"cctools-949.0.1\\\"\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libstuff_inc_cctools_include",
+        ":libstuff_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libstuff
+
+# BEGIN generated: liblibstuff.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibstuff.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "libstuff",
+    lib_name = "liblibstuff.a",
+    objs = [
+        # libstuff
+        ":libstuff_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibstuff.a archive
+
+# BEGIN generated: bitcode_strip_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bitcode_strip_cctools_misc   -- review before committing.
+# cmake target: bitcode_strip_cctools_misc  ->  bitcode_strip_cctools_misc
+
+cc_header_root(
+    name = "bitcode_strip_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bitcode_strip_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bitcode_strip_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/bitcode_strip.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bitcode_strip_cctools_misc_inc_cctools_include",
+        ":bitcode_strip_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bitcode_strip_cctools_misc
+
+# BEGIN generated: check_dylib_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py check_dylib_cctools_misc   -- review before committing.
+# cmake target: check_dylib_cctools_misc  ->  check_dylib_cctools_misc
+
+cc_header_root(
+    name = "check_dylib_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "check_dylib_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "check_dylib_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/check_dylib.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":check_dylib_cctools_misc_inc_cctools_include",
+        ":check_dylib_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: check_dylib_cctools_misc
+
+# BEGIN generated: checksyms_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py checksyms_cctools_misc   -- review before committing.
+# cmake target: checksyms_cctools_misc  ->  checksyms_cctools_misc
+
+cc_header_root(
+    name = "checksyms_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "checksyms_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "checksyms_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/checksyms.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":checksyms_cctools_misc_inc_cctools_include",
+        ":checksyms_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: checksyms_cctools_misc
+
+# BEGIN generated: cmpdylib_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cmpdylib_cctools_misc   -- review before committing.
+# cmake target: cmpdylib_cctools_misc  ->  cmpdylib_cctools_misc
+
+cc_header_root(
+    name = "cmpdylib_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "cmpdylib_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cmpdylib_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/cmpdylib.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":cmpdylib_cctools_misc_inc_cctools_include",
+        ":cmpdylib_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cmpdylib_cctools_misc
+
+# BEGIN generated: codesign_allocate_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py codesign_allocate_cctools_misc   -- review before committing.
+# cmake target: codesign_allocate_cctools_misc  ->  codesign_allocate_cctools_misc
+
+cc_header_root(
+    name = "codesign_allocate_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "codesign_allocate_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "codesign_allocate_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/codesign_allocate.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":codesign_allocate_cctools_misc_inc_cctools_include",
+        ":codesign_allocate_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: codesign_allocate_cctools_misc
+
+# BEGIN generated: ctf_insert_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ctf_insert_cctools_misc   -- review before committing.
+# cmake target: ctf_insert_cctools_misc  ->  ctf_insert_cctools_misc
+
+cc_header_root(
+    name = "ctf_insert_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ctf_insert_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ctf_insert_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/ctf_insert.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":ctf_insert_cctools_misc_inc_cctools_include",
+        ":ctf_insert_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ctf_insert_cctools_misc
+
+# BEGIN generated: indr_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py indr_cctools_misc   -- review before committing.
+# cmake target: indr_cctools_misc  ->  indr_cctools_misc
+
+cc_header_root(
+    name = "indr_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "indr_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "indr_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/indr.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":indr_cctools_misc_inc_cctools_include",
+        ":indr_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: indr_cctools_misc
+
+# BEGIN generated: install_name_tool_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py install_name_tool_cctools_misc   -- review before committing.
+# cmake target: install_name_tool_cctools_misc  ->  install_name_tool_cctools_misc
+
+cc_header_root(
+    name = "install_name_tool_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "install_name_tool_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "install_name_tool_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/install_name_tool.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":install_name_tool_cctools_misc_inc_cctools_include",
+        ":install_name_tool_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: install_name_tool_cctools_misc
+
+# BEGIN generated: libtool_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libtool_cctools_misc   -- review before committing.
+# cmake target: libtool_cctools_misc  ->  libtool_cctools_misc
+
+cc_header_root(
+    name = "libtool_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libtool_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libtool_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/libtool.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libtool_cctools_misc_inc_cctools_include",
+        ":libtool_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libtool_cctools_misc
+
+# BEGIN generated: lipo_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lipo_cctools_misc   -- review before committing.
+# cmake target: lipo_cctools_misc  ->  lipo_cctools_misc
+
+cc_header_root(
+    name = "lipo_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lipo_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lipo_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/lipo.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lipo_cctools_misc_inc_cctools_include",
+        ":lipo_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lipo_cctools_misc
+
+# BEGIN generated: nm_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py nm_cctools_misc   -- review before committing.
+# cmake target: nm_cctools_misc  ->  nm_cctools_misc
+
+cc_header_root(
+    name = "nm_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nm_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "nm_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/nm.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":nm_cctools_misc_inc_cctools_include",
+        ":nm_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nm_cctools_misc
+
+# BEGIN generated: otool
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py otool   -- review before committing.
+# cmake target: otool  ->  src/external/cctools/otool/otool
+
+cc_header_root(
+    name = "otool_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "otool_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "otool_obj",
+    srcs = [
+        "cctools/otool/arm64_disasm.c",
+        "cctools/otool/arm_disasm.c",
+        "cctools/otool/coff_print.c",
+        "cctools/otool/dyld_bind_info.c",
+        "cctools/otool/hppa_disasm.c",
+        "cctools/otool/i386_disasm.c",
+        "cctools/otool/i860_disasm.c",
+        "cctools/otool/m68k_disasm.c",
+        "cctools/otool/m88k_disasm.c",
+        "cctools/otool/main.c",
+        "cctools/otool/ofile_print.c",
+        "cctools/otool/ppc_disasm.c",
+        "cctools/otool/print_bitcode.c",
+        "cctools/otool/print_objc.c",
+        "cctools/otool/print_objc2_32bit.c",
+        "cctools/otool/print_objc2_64bit.c",
+        "cctools/otool/sparc_disasm.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":otool_inc_cctools_include",
+        ":otool_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: otool
+
+# BEGIN generated: pagestuff_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pagestuff_cctools_misc   -- review before committing.
+# cmake target: pagestuff_cctools_misc  ->  pagestuff_cctools_misc
+
+cc_header_root(
+    name = "pagestuff_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pagestuff_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pagestuff_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/pagestuff.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pagestuff_cctools_misc_inc_cctools_include",
+        ":pagestuff_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pagestuff_cctools_misc
+
+# BEGIN generated: redo_prebinding_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py redo_prebinding_cctools_misc   -- review before committing.
+# cmake target: redo_prebinding_cctools_misc  ->  redo_prebinding_cctools_misc
+
+cc_header_root(
+    name = "redo_prebinding_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "redo_prebinding_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "redo_prebinding_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/redo_prebinding.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":redo_prebinding_cctools_misc_inc_cctools_include",
+        ":redo_prebinding_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: redo_prebinding_cctools_misc
+
+# BEGIN generated: seg_addr_table_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py seg_addr_table_cctools_misc   -- review before committing.
+# cmake target: seg_addr_table_cctools_misc  ->  seg_addr_table_cctools_misc
+
+cc_header_root(
+    name = "seg_addr_table_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "seg_addr_table_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "seg_addr_table_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/seg_addr_table.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":seg_addr_table_cctools_misc_inc_cctools_include",
+        ":seg_addr_table_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seg_addr_table_cctools_misc
+
+# BEGIN generated: seg_hack_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py seg_hack_cctools_misc   -- review before committing.
+# cmake target: seg_hack_cctools_misc  ->  seg_hack_cctools_misc
+
+cc_header_root(
+    name = "seg_hack_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "seg_hack_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "seg_hack_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/seg_hack.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":seg_hack_cctools_misc_inc_cctools_include",
+        ":seg_hack_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seg_hack_cctools_misc
+
+# BEGIN generated: segedit_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py segedit_cctools_misc   -- review before committing.
+# cmake target: segedit_cctools_misc  ->  segedit_cctools_misc
+
+cc_header_root(
+    name = "segedit_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "segedit_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "segedit_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/segedit.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":segedit_cctools_misc_inc_cctools_include",
+        ":segedit_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: segedit_cctools_misc
+
+# BEGIN generated: size_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py size_cctools_misc   -- review before committing.
+# cmake target: size_cctools_misc  ->  size_cctools_misc
+
+cc_header_root(
+    name = "size_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "size_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "size_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/size.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":size_cctools_misc_inc_cctools_include",
+        ":size_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: size_cctools_misc
+
+# BEGIN generated: strings_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py strings_cctools_misc   -- review before committing.
+# cmake target: strings_cctools_misc  ->  strings_cctools_misc
+
+cc_header_root(
+    name = "strings_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "strings_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "strings_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/strings.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":strings_cctools_misc_inc_cctools_include",
+        ":strings_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: strings_cctools_misc
+
+# BEGIN generated: strip_cctools_misc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py strip_cctools_misc   -- review before committing.
+# cmake target: strip_cctools_misc  ->  strip_cctools_misc
+
+cc_header_root(
+    name = "strip_cctools_misc_inc_cctools_include",
+    headers = glob(["cctools/include/*.h", "cctools/include/**/*.h"]),
+    root = "cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "strip_cctools_misc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "strip_cctools_misc_obj",
+    srcs = [
+        "cctools/misc/strip.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":strip_cctools_misc_inc_cctools_include",
+        ":strip_cctools_misc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: strip_cctools_misc
+
+# BEGIN generated: bitcode_strip binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries bitcode_strip   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "bitcode_strip",
+    objs = [
+        # bitcode_strip_cctools_misc
+        ":bitcode_strip_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bitcode_strip binary
+
+# BEGIN generated: check_dylib binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries check_dylib   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "check_dylib",
+    objs = [
+        # check_dylib_cctools_misc
+        ":check_dylib_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: check_dylib binary
+
+# BEGIN generated: checksyms binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries checksyms   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "checksyms",
+    objs = [
+        # checksyms_cctools_misc
+        ":checksyms_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: checksyms binary
+
+# BEGIN generated: cmpdylib binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cmpdylib   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cmpdylib",
+    objs = [
+        # cmpdylib_cctools_misc
+        ":cmpdylib_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cmpdylib binary
+
+# BEGIN generated: codesign_allocate binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries codesign_allocate   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "codesign_allocate",
+    objs = [
+        # codesign_allocate_cctools_misc
+        ":codesign_allocate_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: codesign_allocate binary
+
+# BEGIN generated: ctf_insert binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ctf_insert   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ctf_insert",
+    objs = [
+        # ctf_insert_cctools_misc
+        ":ctf_insert_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ctf_insert binary
+
+# BEGIN generated: indr binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries indr   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "indr",
+    objs = [
+        # indr_cctools_misc
+        ":indr_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: indr binary
+
+# BEGIN generated: install_name_tool binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries install_name_tool   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "install_name_tool",
+    objs = [
+        # install_name_tool_cctools_misc
+        ":install_name_tool_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: install_name_tool binary
+
+# BEGIN generated: libtool binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries libtool   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "libtool",
+    objs = [
+        # libtool_cctools_misc
+        ":libtool_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libtool binary
+
+# BEGIN generated: lipo binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lipo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "lipo",
+    objs = [
+        # lipo_cctools_misc
+        ":lipo_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lipo binary
+
+# BEGIN generated: nm binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries nm   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "nm",
+    objs = [
+        # nm_cctools_misc
+        ":nm_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nm binary
+
+# BEGIN generated: otool binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries otool   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "otool",
+    objs = [
+        # otool
+        ":otool_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:objc_final",
+        "//buck-src:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:cxxabi_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: otool binary
+
+# BEGIN generated: pagestuff binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries pagestuff   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "pagestuff",
+    objs = [
+        # pagestuff_cctools_misc
+        ":pagestuff_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pagestuff binary
+
+# BEGIN generated: redo_prebinding binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries redo_prebinding   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "redo_prebinding",
+    objs = [
+        # redo_prebinding_cctools_misc
+        ":redo_prebinding_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: redo_prebinding binary
+
+# BEGIN generated: seg_addr_table binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries seg_addr_table   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "seg_addr_table",
+    objs = [
+        # seg_addr_table_cctools_misc
+        ":seg_addr_table_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seg_addr_table binary
+
+# BEGIN generated: seg_hack binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries seg_hack   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "seg_hack",
+    objs = [
+        # seg_hack_cctools_misc
+        ":seg_hack_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seg_hack binary
+
+# BEGIN generated: segedit binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries segedit   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "segedit",
+    objs = [
+        # segedit_cctools_misc
+        ":segedit_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: segedit binary
+
+# BEGIN generated: size binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries size   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "size",
+    objs = [
+        # size_cctools_misc
+        ":size_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: size binary
+
+# BEGIN generated: strings binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries strings   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "strings",
+    objs = [
+        # strings_cctools_misc
+        ":strings_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: strings binary
+
+# BEGIN generated: strip binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries strip   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "strip",
+    objs = [
+        # strip_cctools_misc
+        ":strip_cctools_misc_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libstuff",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: strip binary

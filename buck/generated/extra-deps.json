@@ -159,5 +159,32 @@
   ],
   "libsystem_kernel_static64.a": [
     "objs::emulation_dyld_rpc_obj"
+  ],
+  "memberd": [
+    ":odmig_memberd",
+    "gen::odmig_memberd",
+    "//darwin/frameworks:fw_AE",
+    "//buck-src:fw_CFNetwork",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//darwin/frameworks:fw_CoreServices",
+    "//buck-src:fw_DirectoryService",
+    "//darwin/frameworks:fw_FSEvents",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_IOKit",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//buck-src:fw_Onyx2D",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_SearchKit",
+    "//buck-src:fw_Security"
+  ],
+  "syslog": [
+    ":asl_ipc_mig",
+    "gen::asl_ipc_mig"
+  ],
+  "otool": [
+    "dylib://buck-src:cxxabi_dylib"
   ]
 }

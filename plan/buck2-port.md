@@ -176,8 +176,35 @@ Every such check is a herestring now.
 
 92 checks pass.
 
-**Next up:** the remaining ~45 executables (launchctl needs libedit; most need only
-what is already ported), then the frameworks.
+### 2026-07-30 (dawn) -- 29 executables, and the cctools suite
+
+**29 guest executables link with nothing undefined**, plus dyld. The unlock was one
+archive: `liblibstuff.a` (cctools' libstuff, 41 sources) alone blocked 20 of them, so
+porting it turned 12 ready executables into 32. What links now includes the whole
+cctools tool suite -- `strip`, `nm`, `otool`, `lipo`, `install_name_tool`, `libtool`,
+`size`, `strings`, `segedit`, `pagestuff`, `redo_prebinding`, ... -- plus `syslog`,
+`newsyslog`, `shellspawn`, `periodic-wrapper`, `vtool`.
+
+  * memberd needed its own MIG (memberd.defs, both stubs compiled) and the
+    DirectoryService header closure.
+  * otool needed libc++abi named explicitly: `__cxa_demangle` lives there and the
+    reference reaches it as an INDIRECT dylib through libc++'s load command alone. A
+    `dylib:` entry in extra-deps.json says so out loud rather than relying on it.
+
+**Blocked, and only these two:** memberd and plconvert, both on a FRAMEWORK BINARY
+that is not ported (DirectoryService, CoreFoundation).
+
+The suite's sweeps are by RULE KIND now (`kind('darwin_dylib', ...)`,
+`kind('darwin_binary', ...)`) rather than by target name: `check_dylib` is an
+executable whose name ends in `_dylib`, and the name match swept it into the dylib
+checks. Kind queries also mean a new target of either shape is covered the moment it
+exists.
+
+91 checks pass.
+
+**Next up:** the frameworks (CoreFoundation first -- it unblocks plconvert and is what
+every higher-level framework needs), then the remaining executables behind
+libncurses/libiconv/libz.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

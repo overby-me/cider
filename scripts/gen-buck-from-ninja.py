@@ -1237,6 +1237,12 @@ def generate_binary(target: str, edges):
     files, elsewhere = link_flag_files(edge[2], pkg)
     extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
     extra_dylib_deps = [d[len("dep:"):] for d in extra_deps(target) if d.startswith("dep:")]
+    # Libraries this port has to name explicitly where the reference relies on ld64
+    # finding them as an INDIRECT dylib (otool's __cxa_demangle lives in libc++abi,
+    # which the reference reaches through libc++'s load command alone).
+    for d in extra_deps(target):
+        if d.startswith("dylib:") and d[len("dylib:"):] not in dylibs:
+            dylibs.append(d[len("dylib:"):])
 
     out = []
     w = out.append
