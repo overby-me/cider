@@ -1,0 +1,77 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the corefoundation pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: CoreFoundation_obj dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreFoundation_obj   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+#   CoreFoundation_obj
+
+darwin_dylib(
+    name = "CoreFoundation_dylib",
+    dylib_name = "CoreFoundation_x86_64",
+    install_name = "/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation",
+    compatibility_version = "1.0.0",
+    current_version = "1153.18",
+    objs = [
+        # CoreFoundation_obj
+        "//buck-src:CoreFoundation_obj",
+        "//buck-src:CoreFoundation_obj2",
+        "//buck-src:CoreFoundation_obj3",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:icucore_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-init,___CFInitialize",
+        "-Wl,-segprot,__UNICODE,r,r",
+        "-Wl,-alias,_OBJC_CLASS_$___NSCFConstantString,___CFConstantStringClassReference",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "SymbolAliases",
+        "-Wl,-reexported_symbols_list": "reexport_x86_64.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreFoundation_obj dylibs
+
+cc_header_root(
+    name = "plconvert_inc_corefoundation",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "CoreFoundation_inc_corefoundation",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_corefoundation.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

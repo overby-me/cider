@@ -161,10 +161,10 @@ darwin_dylib(
     siblings = [
         "//buck-src:system_pthread_final",
         "//buck-src:system_malloc_final",
-        "//buck-src:platform_final",
-        "//buck-src:libdispatch_shared_final",
+        "//buck-src/libplatform:platform_final",
+        "//buck-src/libdispatch:libdispatch_shared_final",
         "//buck-src:compiler_rt_final",
-        "//buck-src:system_c_firstpass",
+        "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_kernel_firstpass",
         "//buck-src:system_dyld_firstpass",
     ],
@@ -246,11 +246,11 @@ darwin_binary(
         # launchproxy
         ":launchproxy_obj",
         # crt1.10.6
-        "//buck-src:crt1.10.6_obj2",
+        "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//buck-src:system_final",
-        "//buck-src:xpc_final",
+        "//buck-src/libxpc:xpc_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -541,13 +541,13 @@ darwin_binary(
         # launchctl
         ":launchctl_obj",
         # crt1.10.6
-        "//buck-src:crt1.10.6_obj2",
+        "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//buck-src:xpc_final",
+        "//buck-src/libxpc:xpc_final",
         "//buck-src:edit_dylib",
         "//buck-src:system_final",
-        "//buck-src:CoreFoundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -570,7 +570,7 @@ darwin_binary(
         # launchd
         ":launchd_obj",
         # crt1.10.6
-        "//buck-src:crt1.10.6_obj2",
+        "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//buck-src:bsm.0_dylib",

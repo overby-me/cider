@@ -2,5 +2,12 @@
 # pinned in nix/submodules.json, so it is reproducible and never committed.
 # Only this file and the BUCK file that builds those trees are tracked.
 *
-!.gitignore
-!BUCK
+# Anchored: the pins bring their own .gitignore files, and an unanchored exception
+# un-ignores every one of them the moment the pin directories are un-ignored below.
+!/.gitignore
+!/BUCK
+# The per-pin packages (plan/buck2-port.md phase 3): buck-src/<pin>/BUCK is committed
+# too. A directory has to be un-ignored before a file inside it can be, and the pattern
+# is anchored to ONE level so nothing walks the pins' contents looking for more.
+!/*/
+!/*/BUCK

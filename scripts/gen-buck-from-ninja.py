@@ -627,10 +627,13 @@ def generate(target: str, edges):
             if kind == "env":
                 w('        "//darwin:sdk_env",')
                 for d in extra_deps(target):
-                    # gen: and ldflag: entries are not deps.
-                    if not d.startswith(("gen:", "ldflag:")) and d not in seen_dep:
-                        seen_dep.add(d)
-                        w(f'        "{d}",')
+                    # Only a LABEL is a dep here. The other entries are typed
+                    # instructions for the LINK blocks -- gen: sources, ldflag:, objs:,
+                    # dep:, dylib: -- and buck2 reads a `dylib:` prefix as a cell alias.
+                    if not d.startswith(("//", ":")) or d in seen_dep:
+                        continue
+                    seen_dep.add(d)
+                    w(f'        "{d}",')
             else:
                 # Merged sibling roots share one target, so the same label can come
                 # up more than once.
@@ -685,17 +688,13 @@ def generate(target: str, edges):
     return "\n".join(out), all_srcs
 
 
-# Splitting the materialized pins into one package PER PIN would shrink what the
-# Nix-lowered path has to parse (a 32k-line BUCK file costs more memory than the
-# machine has; 4.3k lines is fine). It is OFF because a subpackage takes OWNERSHIP of
-# its files: the moment buck-src/ncurses/BUCK exists, the SDK header maps in
-# buck-src/BUCK -- which name thousands of headers across every pin -- can no longer
-# reference anything under it, and they stop coercing. Splitting those maps per pin
-# is the prerequisite, and scripts/gen-sdk-header-roots.py already knows how to emit
-# per-package roots (--repo-roots does it for the committed trees).
-SPLIT_PINS = False
-
-
+# Splitting the materialized pins into one package PER PIN shrinks what the Nix-lowered
+# path has to parse: a 32k-line BUCK file costs more memory than the machine has, while
+# a 13.5k-line one is comfortable. There is no flag for it -- buck/generated/split-pins.txt
+# IS the switch, one pin at a time, so a pin's blocks land in its own package exactly when
+# that package exists. A subpackage takes OWNERSHIP of its files, so everything outside it
+# (the SDK header maps in buck-src/BUCK, another pin's force-included header) must name
+# those files by LABEL; scripts/buck-exports.py backs every such label with an export_file.
 def migrated_pins() -> set:
     """Pins that already have their own package (scripts/buck-split-pins.py keeps this).
 
@@ -747,7 +746,7 @@ def package_of(src_paths) -> str:
         depth = 3 if repo_srcs[0].startswith("src/external/") else 2
         return "/".join(repo_srcs[0].split("/")[:depth])
     pin_srcs = [q for k, q in src_paths if k == "buck-src"]
-    if SPLIT_PINS and pin_srcs:
+    if pin_srcs and pin_srcs[0].split("/")[0] in migrated_pins():
         return BUCK_SRC + "/" + pin_srcs[0].split("/")[0]
     return BUCK_SRC
 
@@ -1617,7 +1616,13 @@ def main(argv: list[str]) -> int:
         # pin package's sources are already pin-relative (libc/gen/x.c), so what has
         # to come off is the pin name, not the whole package path.
         if pkg.startswith(BUCK_SRC + "/"):
-            text = text.replace('"' + pkg[len(BUCK_SRC) + 1:] + "/", '"')
+            pin = pkg[len(BUCK_SRC) + 1:]
+            text = text.replace('"' + pin + "/", '"')
+            # The pin DIRECTORY itself, which the trailing-slash form cannot match: an
+            # include root or a mig out_base can be exactly the pin, and package-relative
+            # that is the package itself.
+            text = re.sub(r'^(\s*(?:root|out_base) = )"' + re.escape(pin) + '"',
+                          r'\1""', text, flags=re.M)
         elif pkg != BUCK_SRC:
             text = text.replace('"' + pkg + "/", '"')
 

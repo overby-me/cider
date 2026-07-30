@@ -1,0 +1,46 @@
+# Pins that have their own package, buck-src/<pin>/BUCK.
+# THIS FILE IS THE SWITCH: the SDK maps name a listed pin's headers by
+# label instead of by path, and gen-buck-from-ninja.py writes a listed
+# pin's blocks into its own package. scripts/buck-split-pins.py keeps it.
+Libinfo
+OpenDirectory
+bash
+bsm
+bzip2
+commoncrypto
+compiler-rt
+configd
+copyfile
+corecrypto
+corefoundation
+coretls
+crontabs
+csu
+dyld
+icu
+keymgr
+libc
+libclosure
+libcxx
+libdispatch
+libedit
+libiconv
+liblzma
+libmalloc
+libnotify
+libplatform
+libpthread
+libresolv
+libressl-2.8.3
+libstdcxx
+libsystem
+libunwind
+libxpc
+ncurses
+objc4
+removefile
+syslog
+tcsh
+xnu
+zlib
+zsh

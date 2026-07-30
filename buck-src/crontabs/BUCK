@@ -1,0 +1,49 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+
+# Targets over the crontabs pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: newsyslog
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py newsyslog   -- review before committing.
+# cmake target: newsyslog  ->  src/external/crontabs/newsyslog/newsyslog
+
+cc_objects(
+    name = "newsyslog_obj",
+    srcs = [
+        "newsyslog/newsyslog.c",
+        "newsyslog/ptimes.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: newsyslog
+
+# BEGIN generated: periodic-wrapper
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py periodic-wrapper   -- review before committing.
+# cmake target: periodic-wrapper  ->  src/external/crontabs/periodic/periodic-wrapper
+
+cc_objects(
+    name = "periodic-wrapper_obj",
+    srcs = [
+        "periodic/periodic-wrapper.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: periodic-wrapper

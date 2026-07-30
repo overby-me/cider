@@ -1,0 +1,156 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the corecrypto pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: corecrypto_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py corecrypto_obj   -- review before committing.
+# cmake target: corecrypto_obj  ->  src/external/corecrypto/corecrypto_obj
+
+cc_header_root(
+    name = "corecrypto_inc_corecrypto_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "corecrypto_obj",
+    srcs = [
+        "src/cc.c",
+        "src/cc_priv.c",
+        "src/ccaes.c",
+        "src/ccansikdf.c",
+        "src/ccblowfish.c",
+        "src/cccast.c",
+        "src/cccbc.c",
+        "src/ccccm.c",
+        "src/cccfb.c",
+        "src/cccfb8.c",
+        "src/ccchacha20poly1305.c",
+        "src/ccckg.c",
+        "src/cccmac.c",
+        "src/ccctr.c",
+        "src/ccder.c",
+        "src/ccdes.c",
+        "src/ccdh.c",
+        "src/ccdh_gp.c",
+        "src/ccdigest.c",
+        "src/ccec.c",
+        "src/ccec25519.c",
+        "src/ccec_points.c",
+        "src/ccec_projective_point.c",
+        "src/ccecies.c",
+        "src/ccgcm.c",
+        "src/cch2c.c",
+        "src/cchkdf.c",
+        "src/cchmac.c",
+        "src/ccmd2.c",
+        "src/ccmd4.c",
+        "src/ccmd5.c",
+        "src/ccmode.c",
+        "src/ccn.c",
+        "src/ccn_extra.c",
+        "src/ccnistkdf.c",
+        "src/ccofb.c",
+        "src/ccpad.c",
+        "src/ccpbkdf2.c",
+        "src/ccrc2.c",
+        "src/ccrc4.c",
+        "src/ccripemd.c",
+        "src/ccrng.c",
+        "src/ccrng_pbkdf2.c",
+        "src/ccrng_system.c",
+        "src/ccrsa.c",
+        "src/ccrsa_priv.c",
+        "src/ccsha1.c",
+        "src/ccsha2xx.c",
+        "src/ccsha3xx.c",
+        "src/ccsrp.c",
+        "src/ccwrap_priv.c",
+        "src/ccxts.c",
+        "src/ccz.c",
+        "src/cczp.c",
+        "src/cczp_extra.c",
+    ],
+    compiler_flags = [
+        "-DDEBUG",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-return-type",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":corecrypto_inc_corecrypto_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: corecrypto_obj
+
+# BEGIN generated: corecrypto dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs corecrypto   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "corecrypto_firstpass",
+    dylib_name = "libcorecrypto_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libcorecrypto.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # corecrypto_obj
+        ":corecrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "corecrypto_final",
+    dylib_name = "libcorecrypto.dylib",
+    install_name = "/usr/lib/system/libcorecrypto.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # corecrypto_obj
+        ":corecrypto_obj",
+    ],
+    siblings = [
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//buck-src/libc:system_c_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:macho_firstpass",
+        "//buck-src/libdispatch:libdispatch_shared_firstpass",
+        "//buck-src/libplatform:platform_firstpass",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "scripts/exported-symbols.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: corecrypto dylibs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_corecrypto.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

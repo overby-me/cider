@@ -1,0 +1,611 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libpthread pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_pthread_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_pthread_obj   -- review before committing.
+# cmake target: system_pthread_obj  ->  src/external/libpthread/src/system_pthread_obj
+# 13 sources in 7 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "system_pthread_inc_src",
+    headers = glob(["src/*.h", "src/**/*.h"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_pthread_inc_src_resolver",
+    headers = glob(["src/resolver/*.h", "src/resolver/**/*.h"]),
+    root = "src/resolver",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_pthread_inc_private",
+    headers = glob(["private/*.h", "private/**/*.h"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "system_pthread_inc_libpthread",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj",
+    srcs = [
+        "src/pthread_atfork.c",
+        "src/pthread_cwd.c",
+        "src/pthread_dependency.c",
+        "src/pthread_tsd.c",
+        "src/qos.c",
+        "src/resolver/resolver.c",
+        "src/variants/pthread_cancelable_cancel.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj2",
+    srcs = [
+        "src/pthread.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_CANCEL",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELSTATE",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELTYPE",
+        "-DLIBC_ALIAS_PTHREAD_SIGMASK",
+        "-DLIBC_ALIAS_PTHREAD_TESTCANCEL",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj3",
+    srcs = [
+        "src/pthread_asm.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj4",
+    srcs = [
+        "src/pthread_cancelable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+        "-DLIBC_ALIAS_PTHREAD_JOIN",
+        "-DLIBC_ALIAS_SIGWAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj5",
+    srcs = [
+        "src/pthread_cond.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_INIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj6",
+    srcs = [
+        "src/pthread_mutex.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_pthread_obj7",
+    srcs = [
+        "src/pthread_rwlock.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_INIT",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_WRLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_RDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_UNLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_DESTROY",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYRDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYWRLOCK",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_pthread_inc_src",
+        ":system_pthread_inc_src_resolver",
+        ":system_pthread_inc_private",
+        ":system_pthread_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_pthread_obj
+
+# BEGIN generated: pthread_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pthread_static   -- review before committing.
+# cmake target: pthread_static  ->  src/external/libpthread/src/libpthread_static.a
+# 12 sources in 7 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_src",
+    headers = glob(["src/*.h", "src/**/*.h"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_src_resolver",
+    headers = glob(["src/resolver/*.h", "src/resolver/**/*.h"]),
+    root = "src/resolver",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_private",
+    headers = glob(["private/*.h", "private/**/*.h"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj",
+    srcs = [
+        "src/pthread_atfork.c",
+        "src/pthread_cwd.c",
+        "src/pthread_dependency.c",
+        "src/pthread_tsd.c",
+        "src/qos.c",
+        "src/resolver/resolver.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj2",
+    srcs = [
+        "src/pthread.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_CANCEL",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELSTATE",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELTYPE",
+        "-DLIBC_ALIAS_PTHREAD_SIGMASK",
+        "-DLIBC_ALIAS_PTHREAD_TESTCANCEL",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj3",
+    srcs = [
+        "src/pthread_asm.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj4",
+    srcs = [
+        "src/pthread_cancelable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+        "-DLIBC_ALIAS_PTHREAD_JOIN",
+        "-DLIBC_ALIAS_SIGWAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj5",
+    srcs = [
+        "src/pthread_cond.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_INIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj6",
+    srcs = [
+        "src/pthread_mutex.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj7",
+    srcs = [
+        "src/pthread_rwlock.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_INIT",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_WRLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_RDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_UNLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_DESTROY",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYRDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYWRLOCK",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pthread_static
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libpthread.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

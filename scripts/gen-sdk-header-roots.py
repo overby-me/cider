@@ -161,10 +161,13 @@ def to_buck_src(repo_rel: str) -> str | None:
 # /usr/include/System/<x>.h. Darling's symlink farm carries only one spelling, so
 # the other one is added here: objc4 includes <System/pthread_machdep.h>, and the
 # reference build has no rule that would create it either.
-# Pins already migrated to their own package (buck-src/<pin>/BUCK). Their headers come
-# from that package's own root, so they must NOT appear in the monolithic maps: once
-# buck-src/<pin>/BUCK exists, a header_map in buck-src/BUCK cannot name a file under it.
-# scripts/buck-split-pins.py maintains this list.
+# Pins already migrated to their own package (buck-src/<pin>/BUCK). Once that package
+# exists, a header_map in buck-src/BUCK cannot name a file under it by PATH -- a
+# subpackage owns its files. It can still name it by LABEL, which is what these maps do:
+# a `header_map` value is an attrs.source(), and a source coerces from a label just as
+# well as from a path. So the SDK stays ONE staged tree with one include order, and only
+# the spelling of the value changes. scripts/buck-split-pins.py maintains this list, and
+# scripts/buck-exports.py gives every label an export_file in the owning pin.
 SPLIT_PINS_FILE = os.path.join(REPO, "buck", "generated", "split-pins.txt")
 
 
@@ -172,6 +175,15 @@ def split_pins() -> set:
     if not os.path.exists(SPLIT_PINS_FILE):
         return set()
     return {l.strip() for l in open(SPLIT_PINS_FILE) if l.strip() and not l.startswith("#")}
+
+
+def pin_value(buck_rel: str, moved: set) -> str:
+    """How a map refers to a pinned header: a path, or a label once the pin has split."""
+    pin = buck_rel.split("/")[0]
+    if pin not in moved:
+        return buck_rel
+    rel = buck_rel[len(pin) + 1:]
+    return f"//{BUCK_SRC}/{pin}:" + re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel)
 
 
 ALIASES = {
@@ -208,9 +220,7 @@ def main(argv: list[str]) -> int:
                 key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("src/external/") else 2])
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
-            if buck_rel.split("/")[0] in moved:
-                continue
-            entries.append((include_path, buck_rel))
+            entries.append((include_path, pin_value(buck_rel, moved)))
         by_path = dict(entries)
         for alias, real in ALIASES.items():
             if real in by_path and alias not in by_path:
@@ -251,6 +261,8 @@ def main(argv: list[str]) -> int:
                         sub = os.path.relpath(os.path.join(dirpath, f), src_dir)
                         include_path = os.path.normpath(os.path.join(name, sub))
                         value = os.path.relpath(os.path.join(dirpath, f), os.path.join(REPO, pkg))
+                        if pkg == BUCK_SRC:
+                            value = pin_value(value, split_pins())
                         by_pkg.setdefault(pkg, []).append((include_path, value))
             # One dict per FRAMEWORK, not one giant map: a target then declares the
             # frameworks it actually includes, instead of getting all 17k headers on

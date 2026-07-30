@@ -72,7 +72,7 @@ darwin_dylib(
         ":system_sandbox_obj",
     ],
     siblings = [
-        "//buck-src:system_c_final",
+        "//buck-src/libc:system_c_final",
         "//buck-src:system_kernel_final",
         "//buck-src:system_malloc_final",
         "//buck-src:system_dyld_firstpass",

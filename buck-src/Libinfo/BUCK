@@ -1,0 +1,262 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the Libinfo pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: info-rpc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py info-rpc   -- review before committing.
+# cmake target: info-rpc  ->  src/external/Libinfo/rpc.subproj/info-rpc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-rpc_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "rpc.subproj/*.h",
+        "rpc.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "rpc.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "info-rpc_obj",
+    srcs = [
+        "rpc.subproj/auth_none.c",
+        "rpc.subproj/auth_unix.c",
+        "rpc.subproj/authunix_prot.c",
+        "rpc.subproj/bindresvport.c",
+        "rpc.subproj/clnt_generic.c",
+        "rpc.subproj/clnt_perror.c",
+        "rpc.subproj/clnt_raw.c",
+        "rpc.subproj/clnt_simple.c",
+        "rpc.subproj/clnt_tcp.c",
+        "rpc.subproj/clnt_udp.c",
+        "rpc.subproj/get_myaddress.c",
+        "rpc.subproj/getrpcent.c",
+        "rpc.subproj/getrpcport.c",
+        "rpc.subproj/pmap_clnt.c",
+        "rpc.subproj/pmap_getmaps.c",
+        "rpc.subproj/pmap_getport.c",
+        "rpc.subproj/pmap_prot.c",
+        "rpc.subproj/pmap_prot2.c",
+        "rpc.subproj/pmap_rmt.c",
+        "rpc.subproj/pmap_wakeup.c",
+        "rpc.subproj/rpc_callmsg.c",
+        "rpc.subproj/rpc_commondata.c",
+        "rpc.subproj/rpc_dtablesize.c",
+        "rpc.subproj/rpc_prot.c",
+        "rpc.subproj/svc.c",
+        "rpc.subproj/svc_auth.c",
+        "rpc.subproj/svc_auth_unix.c",
+        "rpc.subproj/svc_raw.c",
+        "rpc.subproj/svc_run.c",
+        "rpc.subproj/svc_simple.c",
+        "rpc.subproj/svc_tcp.c",
+        "rpc.subproj/svc_udp.c",
+        "rpc.subproj/xdr.c",
+        "rpc.subproj/xdr_array.c",
+        "rpc.subproj/xdr_float.c",
+        "rpc.subproj/xdr_mem.c",
+        "rpc.subproj/xdr_rec.c",
+        "rpc.subproj/xdr_reference.c",
+        "rpc.subproj/xdr_sizeof.c",
+        "rpc.subproj/xdr_stdio.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":info-rpc_inc_Libinfo",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: info-rpc
+
+# BEGIN generated: darling-resolver
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py darling-resolver   -- review before committing.
+# cmake target: darling-resolver  ->  src/external/Libinfo/darling-resolver/darling-resolver
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "darling-resolver_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "lookup.subproj/*.h",
+        "lookup.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "darling-resolver_obj",
+    srcs = [
+        "darling-resolver/resolver.c",
+    ],
+    compiler_flags = [
+        "-DDS_AVAILABLE",
+        "-DHAVE_STDINT_H=1",
+        "-DTARGET_CPU_X86_64=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":darling-resolver_inc_Libinfo",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: darling-resolver
+
+cc_header_root(
+    name = "info-util_inc_Libinfo_Libinfo",
+    headers = glob(["Libinfo/*.h", "Libinfo/**/*.h"]),
+    root = "Libinfo",
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-dns_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "lookup.subproj/*.h",
+        "lookup.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-gen_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "lookup.subproj/*.h",
+        "lookup.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-nis_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "nis.subproj/*.h",
+        "nis.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "nis.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-lookup_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "lookup.subproj/*.h",
+        "lookup.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "info-membership_inc_Libinfo",
+    headers = glob([
+        "Libinfo/*.h",
+        "Libinfo/**/*.h",
+        "lookup.subproj/*.h",
+        "lookup.subproj/**/*.h",
+        "membership.subproj/*.h",
+        "membership.subproj/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "Libinfo",
+        "lookup.subproj",
+        "membership.subproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_Libinfo.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

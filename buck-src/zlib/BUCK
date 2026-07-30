@@ -1,0 +1,111 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the zlib pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: z
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py z   -- review before committing.
+# cmake target: z  ->  src/external/zlib/libz.1.dylib
+# 15 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "z_obj",
+    srcs = [
+        "zlib/adler32.c",
+        "zlib/compress.c",
+        "zlib/crc32.c",
+        "zlib/deflate.c",
+        "zlib/gzclose.c",
+        "zlib/gzlib.c",
+        "zlib/gzread.c",
+        "zlib/gzwrite.c",
+        "zlib/infback.c",
+        "zlib/inffast.c",
+        "zlib/inflate.c",
+        "zlib/inftrees.c",
+        "zlib/trees.c",
+        "zlib/uncompr.c",
+    ],
+    compiler_flags = [
+        "-DUSE_MMAP",
+        "-DVEC_OPTIMIZE",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dz_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "z_obj2",
+    srcs = [
+        "zlib/zutil.c",
+    ],
+    compiler_flags = [
+        "-DUSE_MMAP",
+        "-DVEC_OPTIMIZE",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dz_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+        "-Dfdopen=fdopen",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "z_firstpass",
+    dylib_name = "libz_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libz.1.dylib",
+    objs = [
+        ":z_obj",
+        ":z_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: z
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_zlib.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

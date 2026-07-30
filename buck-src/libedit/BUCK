@@ -1,0 +1,111 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libedit pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: edit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py edit   -- review before committing.
+# cmake target: edit  ->  src/external/libedit/libedit.3.dylib
+
+cc_header_root(
+    name = "edit_inc_libedit_src",
+    headers = glob(["src/*.h", "src/**/*.h", "src/*.c"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "edit_inc_libedit_local",
+    headers = glob(["local/*.h", "local/**/*.h", "local/*.c"]),
+    root = "local",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "edit_inc_libedit",
+    headers = glob(["*.h", "**/*.h", "*.c"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "edit_obj",
+    srcs = [
+        "local/fcns.c",
+        "local/help.c",
+        "local/historyn.c",
+        "local/tokenizern.c",
+        "src/chared.c",
+        "src/chartype.c",
+        "src/common.c",
+        "src/el.c",
+        "src/eln.c",
+        "src/emacs.c",
+        "src/filecomplete.c",
+        "src/hist.c",
+        "src/history.c",
+        "src/keymacro.c",
+        "src/map.c",
+        "src/parse.c",
+        "src/prompt.c",
+        "src/read.c",
+        "src/readline.c",
+        "src/refresh.c",
+        "src/search.c",
+        "src/sig.c",
+        "src/terminal.c",
+        "src/tokenizer.c",
+        "src/tty.c",
+        "src/unvis.c",
+        "src/vi.c",
+        "src/vis.c",
+        "src/wcsdup.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dedit_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":edit_inc_libedit_src",
+        "//darwin:sdk_env",
+        ":edit_inc_libedit_local",
+        ":edit_inc_libedit",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "edit_firstpass",
+    dylib_name = "libedit_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libedit.3.dylib",
+    objs = [
+        ":edit_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: edit
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libedit.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

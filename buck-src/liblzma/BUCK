@@ -1,0 +1,350 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the liblzma pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: lzma
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lzma   -- review before committing.
+# cmake target: lzma  ->  src/external/liblzma/liblzma.5.dylib
+
+cc_header_root(
+    name = "lzma_inc_liblzma",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_api",
+    headers = glob(["src/liblzma/api/*.h", "src/liblzma/api/**/*.h"]),
+    root = "src/liblzma/api",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_check",
+    headers = glob(["src/liblzma/check/*.h", "src/liblzma/check/**/*.h"]),
+    root = "src/liblzma/check",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_common",
+    headers = glob(["src/liblzma/common/*.h", "src/liblzma/common/**/*.h"]),
+    root = "src/liblzma/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_lzma",
+    headers = glob(["src/liblzma/lzma/*.h", "src/liblzma/lzma/**/*.h"]),
+    root = "src/liblzma/lzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_lz",
+    headers = glob(["src/liblzma/lz/*.h", "src/liblzma/lz/**/*.h"]),
+    root = "src/liblzma/lz",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_simple",
+    headers = glob(["src/liblzma/simple/*.h", "src/liblzma/simple/**/*.h"]),
+    root = "src/liblzma/simple",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_delta",
+    headers = glob(["src/liblzma/delta/*.h", "src/liblzma/delta/**/*.h"]),
+    root = "src/liblzma/delta",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_rangecoder",
+    headers = glob(["src/liblzma/rangecoder/*.h", "src/liblzma/rangecoder/**/*.h"]),
+    root = "src/liblzma/rangecoder",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_common",
+    headers = glob(["src/common/*.h", "src/common/**/*.h"]),
+    root = "src/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lzma_obj",
+    srcs = [
+        "src/common/tuklib_cpucores.c",
+        "src/common/tuklib_exit.c",
+        "src/common/tuklib_mbstr_fw.c",
+        "src/common/tuklib_mbstr_width.c",
+        "src/common/tuklib_open_stdxxx.c",
+        "src/common/tuklib_physmem.c",
+        "src/common/tuklib_progname.c",
+        "src/liblzma/check/check.c",
+        "src/liblzma/check/crc32_fast.c",
+        "src/liblzma/check/crc32_table.c",
+        "src/liblzma/check/crc64_fast.c",
+        "src/liblzma/check/crc64_table.c",
+        "src/liblzma/check/sha256.c",
+        "src/liblzma/common/alone_decoder.c",
+        "src/liblzma/common/alone_encoder.c",
+        "src/liblzma/common/auto_decoder.c",
+        "src/liblzma/common/block_buffer_decoder.c",
+        "src/liblzma/common/block_buffer_encoder.c",
+        "src/liblzma/common/block_decoder.c",
+        "src/liblzma/common/block_encoder.c",
+        "src/liblzma/common/block_header_decoder.c",
+        "src/liblzma/common/block_header_encoder.c",
+        "src/liblzma/common/block_util.c",
+        "src/liblzma/common/common.c",
+        "src/liblzma/common/easy_buffer_encoder.c",
+        "src/liblzma/common/easy_decoder_memusage.c",
+        "src/liblzma/common/easy_encoder.c",
+        "src/liblzma/common/easy_encoder_memusage.c",
+        "src/liblzma/common/easy_preset.c",
+        "src/liblzma/common/filter_buffer_decoder.c",
+        "src/liblzma/common/filter_buffer_encoder.c",
+        "src/liblzma/common/filter_common.c",
+        "src/liblzma/common/filter_decoder.c",
+        "src/liblzma/common/filter_encoder.c",
+        "src/liblzma/common/filter_flags_decoder.c",
+        "src/liblzma/common/filter_flags_encoder.c",
+        "src/liblzma/common/hardware_cputhreads.c",
+        "src/liblzma/common/hardware_physmem.c",
+        "src/liblzma/common/index.c",
+        "src/liblzma/common/index_decoder.c",
+        "src/liblzma/common/index_encoder.c",
+        "src/liblzma/common/index_hash.c",
+        "src/liblzma/common/outqueue.c",
+        "src/liblzma/common/stream_buffer_decoder.c",
+        "src/liblzma/common/stream_buffer_encoder.c",
+        "src/liblzma/common/stream_decoder.c",
+        "src/liblzma/common/stream_encoder.c",
+        "src/liblzma/common/stream_encoder_mt.c",
+        "src/liblzma/common/stream_flags_common.c",
+        "src/liblzma/common/stream_flags_decoder.c",
+        "src/liblzma/common/stream_flags_encoder.c",
+        "src/liblzma/common/vli_decoder.c",
+        "src/liblzma/common/vli_encoder.c",
+        "src/liblzma/common/vli_size.c",
+        "src/liblzma/delta/delta_common.c",
+        "src/liblzma/delta/delta_decoder.c",
+        "src/liblzma/delta/delta_encoder.c",
+        "src/liblzma/lz/lz_decoder.c",
+        "src/liblzma/lz/lz_encoder.c",
+        "src/liblzma/lz/lz_encoder_mf.c",
+        "src/liblzma/lzma/fastpos_table.c",
+        "src/liblzma/lzma/lzma2_decoder.c",
+        "src/liblzma/lzma/lzma2_encoder.c",
+        "src/liblzma/lzma/lzma_decoder.c",
+        "src/liblzma/lzma/lzma_encoder.c",
+        "src/liblzma/lzma/lzma_encoder_optimum_fast.c",
+        "src/liblzma/lzma/lzma_encoder_optimum_normal.c",
+        "src/liblzma/lzma/lzma_encoder_presets.c",
+        "src/liblzma/rangecoder/price_table.c",
+        "src/liblzma/simple/arm.c",
+        "src/liblzma/simple/armthumb.c",
+        "src/liblzma/simple/ia64.c",
+        "src/liblzma/simple/powerpc.c",
+        "src/liblzma/simple/simple_coder.c",
+        "src/liblzma/simple/simple_decoder.c",
+        "src/liblzma/simple/simple_encoder.c",
+        "src/liblzma/simple/sparc.c",
+        "src/liblzma/simple/x86.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H=1",
+        "-DMYTHREAD_POSIX=1",
+        "-DTUKLIB_CPUCORES_SYSCTL=1",
+        "-DTUKLIB_PHYSMEM_SYSCTL=1",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dlzma_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":lzma_inc_liblzma",
+        ":lzma_inc_liblzma_src_liblzma_api",
+        ":lzma_inc_liblzma_src_liblzma_check",
+        ":lzma_inc_liblzma_src_liblzma_common",
+        ":lzma_inc_liblzma_src_liblzma_lzma",
+        ":lzma_inc_liblzma_src_liblzma_lz",
+        ":lzma_inc_liblzma_src_liblzma_simple",
+        ":lzma_inc_liblzma_src_liblzma_delta",
+        ":lzma_inc_liblzma_src_liblzma_rangecoder",
+        ":lzma_inc_liblzma_src_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "lzma_firstpass",
+    dylib_name = "liblzma_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/liblzma.5.dylib",
+    objs = [
+        ":lzma_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: lzma
+
+# BEGIN generated: xz
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xz   -- review before committing.
+# cmake target: xz  ->  src/external/liblzma/xz
+
+cc_header_root(
+    name = "xz_inc_liblzma",
+    headers = glob(["*.h", "**/*.h", "*.c"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_api",
+    headers = glob(["src/liblzma/api/*.h", "src/liblzma/api/**/*.h", "src/liblzma/api/*.c"]),
+    root = "src/liblzma/api",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_check",
+    headers = glob(["src/liblzma/check/*.h", "src/liblzma/check/**/*.h", "src/liblzma/check/*.c"]),
+    root = "src/liblzma/check",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_common",
+    headers = glob(["src/liblzma/common/*.h", "src/liblzma/common/**/*.h", "src/liblzma/common/*.c"]),
+    root = "src/liblzma/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_lzma",
+    headers = glob(["src/liblzma/lzma/*.h", "src/liblzma/lzma/**/*.h", "src/liblzma/lzma/*.c"]),
+    root = "src/liblzma/lzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_lz",
+    headers = glob(["src/liblzma/lz/*.h", "src/liblzma/lz/**/*.h", "src/liblzma/lz/*.c"]),
+    root = "src/liblzma/lz",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_simple",
+    headers = glob(["src/liblzma/simple/*.h", "src/liblzma/simple/**/*.h", "src/liblzma/simple/*.c"]),
+    root = "src/liblzma/simple",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_delta",
+    headers = glob(["src/liblzma/delta/*.h", "src/liblzma/delta/**/*.h", "src/liblzma/delta/*.c"]),
+    root = "src/liblzma/delta",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_rangecoder",
+    headers = glob(["src/liblzma/rangecoder/*.h", "src/liblzma/rangecoder/**/*.h", "src/liblzma/rangecoder/*.c"]),
+    root = "src/liblzma/rangecoder",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_common",
+    headers = glob(["src/common/*.h", "src/common/**/*.h", "src/common/*.c"]),
+    root = "src/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xz_obj",
+    srcs = [
+        "src/xz/args.c",
+        "src/xz/coder.c",
+        "src/xz/file_io.c",
+        "src/xz/hardware.c",
+        "src/xz/list.c",
+        "src/xz/main.c",
+        "src/xz/message.c",
+        "src/xz/mytime.c",
+        "src/xz/options.c",
+        "src/xz/signals.c",
+        "src/xz/suffix.c",
+        "src/xz/util.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H=1",
+        "-DMYTHREAD_POSIX=1",
+        "-DTUKLIB_CPUCORES_SYSCTL=1",
+        "-DTUKLIB_PHYSMEM_SYSCTL=1",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":xz_inc_liblzma",
+        ":xz_inc_liblzma_src_liblzma_api",
+        ":xz_inc_liblzma_src_liblzma_check",
+        ":xz_inc_liblzma_src_liblzma_common",
+        ":xz_inc_liblzma_src_liblzma_lzma",
+        ":xz_inc_liblzma_src_liblzma_lz",
+        ":xz_inc_liblzma_src_liblzma_simple",
+        ":xz_inc_liblzma_src_liblzma_delta",
+        ":xz_inc_liblzma_src_liblzma_rangecoder",
+        ":xz_inc_liblzma_src_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xz
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_liblzma.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

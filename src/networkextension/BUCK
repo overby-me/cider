@@ -78,7 +78,7 @@ darwin_dylib(
         ":system_networkextension_obj",
     ],
     siblings = [
-        "//buck-src:system_c_final",
+        "//buck-src/libc:system_c_final",
         "//buck-src:system_dyld_final",
     ],
     toolchain = "toolchains//:darwin_cc",

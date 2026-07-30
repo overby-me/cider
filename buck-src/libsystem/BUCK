@@ -1,0 +1,68 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libsystem pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_obj   -- review before committing.
+# cmake target: system_obj  ->  src/external/libsystem/system_obj
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "system_obj",
+    srcs = [
+        "CompatibilityHacks.c",
+        "darling/src/dummy.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_SYSTEM_CORESERVICES",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_obj2",
+    srcs = [
+        "init.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_SYSTEM_CORESERVICES",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-ggdb",
+        "-w",
+        "-nostdinc",
+        "-DPRIVATE=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_obj
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libsystem.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

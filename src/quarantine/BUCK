@@ -60,7 +60,7 @@ darwin_dylib(
         ":system_quarantine_obj",
     ],
     siblings = [
-        "//buck-src:system_c_final",
+        "//buck-src/libc:system_c_final",
         "//buck-src:system_dyld_final",
         "//buck-src:system_malloc_final",
     ],

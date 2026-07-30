@@ -62,11 +62,11 @@ targets=(
 	//buck-src:keymgr_firstpass
 	//buck-src:system_malloc_firstpass
 	//buck-src:system_pthread_firstpass
-	//buck-src:system_c_firstpass
+	//buck-src/libc:system_c_firstpass
 	//buck-src:system_kernel_firstpass
 	//buck-src:system_blocks_final
 	//buck-src:system_kernel_final
-	//buck-src:platform_firstpass
+	//buck-src/libplatform:platform_firstpass
 	//buck-src:compiler_rt_firstpass
 	//buck-src:system_dyld_firstpass
 	//buck-src:system_asl_firstpass
@@ -226,7 +226,7 @@ for pair in \
 	"//buck-src:system_malloc_firstpass:/usr/lib/system/libsystem_malloc.dylib" \
 	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
 	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
-	"//buck-src:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
+	"//buck-src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
 	"//buck-src:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib" \
 	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
 	"//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib" \
@@ -259,7 +259,7 @@ done
 # libsystem_c is the big one: 641 objects from 43 cmake object libraries, each of
 # which can be several flag groups. Spot-check that the C library is really in
 # there rather than an empty shell that happened to link.
-libc_dylib=$(out_of //buck-src:system_c_firstpass)
+libc_dylib=$(out_of //buck-src/libc:system_c_firstpass)
 libc_syms=$(llvm-nm --defined-only --extern-only "$libc_dylib" 2>/dev/null | awk '{print $3}')
 libc_count=$(printf '%s\n' "$libc_syms" | wc -l)
 [ "$libc_count" -ge 1300 ] && ok "libsystem_c exports $libc_count symbols" ||
@@ -353,7 +353,7 @@ say "== every ported dylib links =="
 # Nothing is expected to fail any more: the layer outside the circular cluster
 # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
 # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-dylib_pkgs="//buck-src: + //src/duct: + //src/libm: + //src/libcache: + //src/sandbox: + //src/launchd: + //src/external/libtrace: + //src/libsystem_coreservices: + //src/lib: + //src/quarantine: + //src/networkextension:"
+dylib_pkgs="//buck-src/... + //src/duct: + //src/libm: + //src/libcache: + //src/sandbox: + //src/launchd: + //src/external/libtrace: + //src/libsystem_coreservices: + //src/lib: + //src/quarantine: + //src/networkextension:"
 # By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
 # and a name match swept it in here.
 all_dylibs=$(buck2 uquery "kind('darwin_dylib', $dylib_pkgs)" 2>/dev/null || true)
@@ -402,7 +402,7 @@ reex=$(llvm-objdump --macho --private-headers "$su" 2>/dev/null |
 # The Objective-C runtime is the deepest consumer of that umbrella: it links only
 # against libSystem.B.dylib plus libc++/libc++abi, so its message dispatch entry
 # point being defined means the reexport chain actually resolves.
-oc=$(out_of //buck-src:objc_final)
+oc=$(out_of //buck-src/objc4:objc_final)
 printf '%s\n' "$(llvm-nm --defined-only --extern-only "$oc" 2>/dev/null | awk '{print $3}')" |
 	grep -qx "_objc_msgSend" && ok "libobjc defines _objc_msgSend" ||
 	bad "libobjc does not define _objc_msgSend"
@@ -414,7 +414,7 @@ say "== guest EXECUTABLES =="
 # will not have to resolve anything that is missing.
 #
 # Discovered from the graph, like the dylibs: every executable target that exists.
-exe_pkgs="//buck-src: + //src/shellspawn: + //src/vchroot: + //src/launchd:"
+exe_pkgs="//buck-src/... + //src/shellspawn: + //src/vchroot: + //src/launchd:"
 # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
 exe_skip="dyld"
 exe_blocked=""
@@ -463,7 +463,7 @@ say "== FRAMEWORK binaries =="
 # reference aliases _OBJC_CLASS_$___NSCFConstantString to
 # ___CFConstantStringClassReference on the link line.
 for spec in \
-	"//buck-src:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation" \
+	"//buck-src/corefoundation:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation" \
 	"//darwin/frameworks:DirectoryService_dylib=/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService" \
 	"//buck-src:icucore_dylib=/usr/lib/libicucore.A.dylib"; do
 	t=${spec%%=*}
@@ -471,7 +471,7 @@ for spec in \
 	id=$(llvm-objdump --macho --dylib-id "$(out_of "$t")" 2>/dev/null | tail -1 || true)
 	[ "$id" = "$want" ] && ok "${t##*:} id is $id" || bad "${t##*:} id is '$id', want $want"
 done
-cf_syms=$(llvm-nm --defined-only "$(out_of //buck-src:CoreFoundation_dylib)" 2>/dev/null |
+cf_syms=$(llvm-nm --defined-only "$(out_of //buck-src/corefoundation:CoreFoundation_dylib)" 2>/dev/null |
 	awk '{print $3}' | sort -u)
 grep -qxF "___CFConstantStringClassReference" <<<"$cf_syms" &&
 	ok "CoreFoundation defines ___CFConstantStringClassReference (the -Wl,-alias took)" ||
@@ -513,7 +513,7 @@ grep -qxF "_dserver_rpc_tid_for_thread" <<<"$ka_syms" &&
 	ok "the static kernel defines _dserver_rpc_tid_for_thread" ||
 	bad "the static kernel is missing the generated rpc.c"
 
-dy=$(out_of //buck-src:dyld)
+dy=$(out_of //buck-src/dyld:dyld)
 dhdr=$(llvm-objdump --macho --private-headers "$dy" 2>/dev/null | grep -m1 MH_MAGIC || true)
 case "$dhdr" in
 *DYLINKER*NOUNDEFS*) ok "dyld is a Mach-O DYLINKER with nothing undefined" ;;

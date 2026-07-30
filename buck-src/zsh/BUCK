@@ -1,0 +1,100 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+
+# Targets over the zsh pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: zsh
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py zsh   -- review before committing.
+# cmake target: zsh  ->  src/external/zsh/zsh
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zsh_inc_zsh_gen",
+    headers = glob([
+        "gen/**/*",
+        "gen/Src/**/*",
+    ]),
+    root = "gen",
+    include_subdirs = [
+        ".",
+        "Src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "zsh_inc_zsh_zsh_Src",
+    headers = glob([
+        "zsh/Src/**/*",
+        "zsh/Src/Zle/*.h",
+        "zsh/Src/Zle/**/*.h",
+        "zsh/Src/Zle/*.c",
+    ]),
+    root = "zsh/Src",
+    include_subdirs = [
+        ".",
+        "Zle",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zsh_obj",
+    srcs = [
+        "gen/Src/signames.c",
+        "zsh/Src/builtin.c",
+        "zsh/Src/compat.c",
+        "zsh/Src/cond.c",
+        "zsh/Src/context.c",
+        "zsh/Src/exec.c",
+        "zsh/Src/glob.c",
+        "zsh/Src/hashnameddir.c",
+        "zsh/Src/hashtable.c",
+        "zsh/Src/hist.c",
+        "zsh/Src/init.c",
+        "zsh/Src/input.c",
+        "zsh/Src/jobs.c",
+        "zsh/Src/lex.c",
+        "zsh/Src/linklist.c",
+        "zsh/Src/loop.c",
+        "zsh/Src/main.c",
+        "zsh/Src/math.c",
+        "zsh/Src/mem.c",
+        "zsh/Src/module.c",
+        "zsh/Src/options.c",
+        "zsh/Src/params.c",
+        "zsh/Src/parse.c",
+        "zsh/Src/pattern.c",
+        "zsh/Src/prompt.c",
+        "zsh/Src/signals.c",
+        "zsh/Src/sort.c",
+        "zsh/Src/string.c",
+        "zsh/Src/subst.c",
+        "zsh/Src/text.c",
+        "zsh/Src/utils.c",
+        "zsh/Src/watch.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-no-cpp-precomp",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zsh_inc_zsh_zsh_Src",
+        ":zsh_inc_zsh_gen",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zsh

@@ -1,0 +1,296 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+
+# Targets over the csu pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: crt1.10.6
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1.10.6   -- review before committing.
+# cmake target: crt1.10.6  ->  src/external/csu/libcrt1.10.6.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1.10.6_obj",
+    srcs = [
+        "crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1.10.6_obj2",
+    srcs = [
+        "start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1.10.6
+
+# BEGIN generated: bundle1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bundle1   -- review before committing.
+# cmake target: bundle1  ->  src/external/csu/libbundle1.a
+
+cc_objects(
+    name = "bundle1_obj",
+    srcs = [
+        "dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bundle1
+
+# BEGIN generated: crt0
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt0   -- review before committing.
+# cmake target: crt0  ->  src/external/csu/libcrt0.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt0_obj",
+    srcs = [
+        "crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt0_obj2",
+    srcs = [
+        "start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt0
+
+# BEGIN generated: crt1.10.5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1.10.5   -- review before committing.
+# cmake target: crt1.10.5  ->  src/external/csu/libcrt1.10.5.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1.10.5_obj",
+    srcs = [
+        "dyld_glue.S",
+        "start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1.10.5_obj2",
+    srcs = [
+        "crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1.10.5
+
+# BEGIN generated: crt1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1   -- review before committing.
+# cmake target: crt1  ->  src/external/csu/libcrt1.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1_obj",
+    srcs = [
+        "dyld_glue.S",
+        "start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1_obj2",
+    srcs = [
+        "crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1
+
+# BEGIN generated: dylib1.10.5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dylib1.10.5   -- review before committing.
+# cmake target: dylib1.10.5  ->  src/external/csu/libdylib1.10.5.a
+
+cc_objects(
+    name = "dylib1.10.5_obj",
+    srcs = [
+        "dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dylib1.10.5
+
+# BEGIN generated: dylib1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dylib1   -- review before committing.
+# cmake target: dylib1  ->  src/external/csu/libdylib1.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "dylib1_obj",
+    srcs = [
+        "dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "dylib1_obj2",
+    srcs = [
+        "icplusplus.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dylib1
+
+# BEGIN generated: lazydylib1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lazydylib1   -- review before committing.
+# cmake target: lazydylib1  ->  src/external/csu/liblazydylib1.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "lazydylib1_obj",
+    srcs = [
+        "lazy_dylib_helper.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lazydylib1_obj2",
+    srcs = [
+        "lazy_dylib_loader.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lazydylib1

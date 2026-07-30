@@ -1,0 +1,168 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libdispatch pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: libdispatch_shared dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs libdispatch_shared   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+
+darwin_dylib(
+    name = "libdispatch_shared_firstpass",
+    dylib_name = "liblibdispatch_shared_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libdispatch.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libdispatch_shared_obj
+        "//buck-src:libdispatch_shared_obj",
+        "//buck-src:libdispatch_shared_obj2",
+        "//buck-src:libdispatch_shared_obj3",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "xcodeconfig/libdispatch.aliases",
+        "-Wl,-order_file": "xcodeconfig/libdispatch.order",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "libdispatch_shared_final",
+    dylib_name = "libdispatch.dylib",
+    install_name = "/usr/lib/system/libdispatch.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libdispatch_shared_obj
+        "//buck-src:libdispatch_shared_obj",
+        "//buck-src:libdispatch_shared_obj2",
+        "//buck-src:libdispatch_shared_obj3",
+    ],
+    siblings = [
+        "//buck-src/libc:system_c_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//src/duct:system_duct_firstpass",
+        "//buck-src:unwind_firstpass",
+        "//buck-src/libplatform:platform_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src/objc4:objc_firstpass",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "xcodeconfig/libdispatch.aliases",
+        "-Wl,-order_file": "xcodeconfig/libdispatch.order",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: libdispatch_shared dylibs
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "libdispatch_shared_inc_libdispatch",
+    headers = glob([
+        "private/*.h",
+        "private/**/*.h",
+        "src/*.h",
+        "src/**/*.h",
+    ]),
+    root = "",
+    include_subdirs = [
+        "private",
+        "src",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libdispatch_shared_inc_libdispatch_2",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch",
+    headers = glob(["*.h", "**/*.h", "*.c"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["private/*.h", "private/**/*.h", "private/*.c"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["src/*.h", "src/**/*.h", "src/*.c"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch",
+    headers = glob(["*.h", "**/*.h", "*.c"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["private/*.h", "private/**/*.h", "private/*.c"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["src/*.h", "src/**/*.h", "src/*.c"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch",
+    headers = glob(["*.h", "**/*.h", "*.c"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["private/*.h", "private/**/*.h", "private/*.c"]),
+    root = "private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["src/*.h", "src/**/*.h", "src/*.c"]),
+    root = "src",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libdispatch.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

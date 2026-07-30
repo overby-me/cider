@@ -1,0 +1,120 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the coretls pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: system_coretls_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_coretls_obj   -- review before committing.
+# cmake target: system_coretls_obj  ->  src/external/coretls/system_coretls_obj
+
+cc_header_root(
+    name = "system_coretls_inc_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_coretls_obj",
+    srcs = [
+        "lib/appleSession.c",
+        "lib/ssl3Callouts.c",
+        "lib/sslAesGcmCipher.c",
+        "lib/sslAlertMessage.c",
+        "lib/sslCert.c",
+        "lib/sslChangeCipher.c",
+        "lib/sslCipherSpecs.c",
+        "lib/sslCrypto.c",
+        "lib/sslDecode.c",
+        "lib/sslDigests.c",
+        "lib/sslHandshake.c",
+        "lib/sslHandshakeFinish.c",
+        "lib/sslHandshakeHello.c",
+        "lib/sslKeyExchange.c",
+        "lib/sslMemory.c",
+        "lib/sslNullCipher.c",
+        "lib/sslRc4Cipher.c",
+        "lib/sslSession.c",
+        "lib/sslUtils.c",
+        "lib/symCipher.c",
+        "lib/symCipherParams.c",
+        "lib/tls1Callouts.c",
+        "lib/tls_cache.c",
+        "lib/tls_ciphersuites.c",
+        "lib/tls_digest.c",
+        "lib/tls_handshake.c",
+        "lib/tls_hmac.c",
+        "lib/tls_metrics.c",
+        "lib/tls_record.c",
+        "lib/tls_record_crypto.c",
+        "lib/tls_stream_parser.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_CoreFoundation",
+        ":system_coretls_inc_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_coretls_obj
+
+# BEGIN generated: coretls
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py coretls   -- review before committing.
+# cmake target: coretls  ->  src/external/coretls/libcoretls.dylib
+
+cc_header_root(
+    name = "coretls_inc_coretls_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h", "lib/*.c"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "coretls_obj",
+    srcs = [
+        "dummy.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcoretls_EXPORTS",
+        "-std=gnu99",
+        "-fPIC",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":coretls_inc_coretls_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_coretls.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

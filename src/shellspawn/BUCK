@@ -37,7 +37,7 @@ darwin_binary(
         # shellspawn
         ":shellspawn_obj",
         # crt1.10.6
-        "//buck-src:crt1.10.6_obj2",
+        "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
         "//buck-src:system_final",

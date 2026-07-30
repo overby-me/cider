@@ -1,0 +1,4062 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the xnu pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: libsyscall
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libsyscall   -- review before committing.
+# cmake target: libsyscall  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall
+# 562 sources in 5 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_inc_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_obj",
+    srcs = [
+        "gen/bsdsyscalls/_____old_semwait_signal_nocancel.S",
+        "gen/bsdsyscalls/_____sigwait_nocancel.S",
+        "gen/bsdsyscalls/___abort_with_payload.S",
+        "gen/bsdsyscalls/___accept.S",
+        "gen/bsdsyscalls/___accept_nocancel.S",
+        "gen/bsdsyscalls/___access_extended.S",
+        "gen/bsdsyscalls/___aio_suspend_nocancel.S",
+        "gen/bsdsyscalls/___bind.S",
+        "gen/bsdsyscalls/___bsdthread_create.S",
+        "gen/bsdsyscalls/___bsdthread_ctl.S",
+        "gen/bsdsyscalls/___bsdthread_register.S",
+        "gen/bsdsyscalls/___bsdthread_terminate.S",
+        "gen/bsdsyscalls/___chmod.S",
+        "gen/bsdsyscalls/___chmod_extended.S",
+        "gen/bsdsyscalls/___close_nocancel.S",
+        "gen/bsdsyscalls/___coalition.S",
+        "gen/bsdsyscalls/___coalition_info.S",
+        "gen/bsdsyscalls/___coalition_ledger.S",
+        "gen/bsdsyscalls/___connect.S",
+        "gen/bsdsyscalls/___connect_nocancel.S",
+        "gen/bsdsyscalls/___copyfile.S",
+        "gen/bsdsyscalls/___csrctl.S",
+        "gen/bsdsyscalls/___delete.S",
+        "gen/bsdsyscalls/___disable_threadsignal.S",
+        "gen/bsdsyscalls/___exit.S",
+        "gen/bsdsyscalls/___fchmod.S",
+        "gen/bsdsyscalls/___fchmod_extended.S",
+        "gen/bsdsyscalls/___fcntl.S",
+        "gen/bsdsyscalls/___fcntl_nocancel.S",
+        "gen/bsdsyscalls/___fork.S",
+        "gen/bsdsyscalls/___fs_snapshot.S",
+        "gen/bsdsyscalls/___fstat64_extended.S",
+        "gen/bsdsyscalls/___fstat_extended.S",
+        "gen/bsdsyscalls/___fsync_nocancel.S",
+        "gen/bsdsyscalls/___getattrlist.S",
+        "gen/bsdsyscalls/___getdirentries64.S",
+        "gen/bsdsyscalls/___gethostuuid.S",
+        "gen/bsdsyscalls/___getlogin.S",
+        "gen/bsdsyscalls/___getpeername.S",
+        "gen/bsdsyscalls/___getpid.S",
+        "gen/bsdsyscalls/___getrlimit.S",
+        "gen/bsdsyscalls/___getsgroups.S",
+        "gen/bsdsyscalls/___getsockname.S",
+        "gen/bsdsyscalls/___gettid.S",
+        "gen/bsdsyscalls/___gettimeofday.S",
+        "gen/bsdsyscalls/___getwgroups.S",
+        "gen/bsdsyscalls/___guarded_open_dprotected_np.S",
+        "gen/bsdsyscalls/___guarded_open_np.S",
+        "gen/bsdsyscalls/___identitysvc.S",
+        "gen/bsdsyscalls/___initgroups.S",
+        "gen/bsdsyscalls/___ioctl.S",
+        "gen/bsdsyscalls/___iopolicysys.S",
+        "gen/bsdsyscalls/___kdebug_trace.S",
+        "gen/bsdsyscalls/___kdebug_trace64.S",
+        "gen/bsdsyscalls/___kdebug_trace_string.S",
+        "gen/bsdsyscalls/___kdebug_typefilter.S",
+        "gen/bsdsyscalls/___kill.S",
+        "gen/bsdsyscalls/___kqueue_workloop_ctl.S",
+        "gen/bsdsyscalls/___lchown.S",
+        "gen/bsdsyscalls/___listen.S",
+        "gen/bsdsyscalls/___log_data.S",
+        "gen/bsdsyscalls/___lseek.S",
+        "gen/bsdsyscalls/___lstat64_extended.S",
+        "gen/bsdsyscalls/___lstat_extended.S",
+        "gen/bsdsyscalls/___mac_execve.S",
+        "gen/bsdsyscalls/___mac_get_fd.S",
+        "gen/bsdsyscalls/___mac_get_file.S",
+        "gen/bsdsyscalls/___mac_get_link.S",
+        "gen/bsdsyscalls/___mac_get_mount.S",
+        "gen/bsdsyscalls/___mac_get_pid.S",
+        "gen/bsdsyscalls/___mac_get_proc.S",
+        "gen/bsdsyscalls/___mac_getfsstat.S",
+        "gen/bsdsyscalls/___mac_mount.S",
+        "gen/bsdsyscalls/___mac_set_fd.S",
+        "gen/bsdsyscalls/___mac_set_file.S",
+        "gen/bsdsyscalls/___mac_set_link.S",
+        "gen/bsdsyscalls/___mac_set_proc.S",
+        "gen/bsdsyscalls/___mac_syscall.S",
+        "gen/bsdsyscalls/___mach_bridge_remote_time.S",
+        "gen/bsdsyscalls/___mach_eventlink_signal.S",
+        "gen/bsdsyscalls/___mach_eventlink_signal_wait_until.S",
+        "gen/bsdsyscalls/___mach_eventlink_wait_until.S",
+        "gen/bsdsyscalls/___memorystatus_available_memory.S",
+        "gen/bsdsyscalls/___microstackshot.S",
+        "gen/bsdsyscalls/___mkdir_extended.S",
+        "gen/bsdsyscalls/___mkfifo_extended.S",
+        "gen/bsdsyscalls/___mmap.S",
+        "gen/bsdsyscalls/___mprotect.S",
+        "gen/bsdsyscalls/___msgctl.S",
+        "gen/bsdsyscalls/___msgrcv_nocancel.S",
+        "gen/bsdsyscalls/___msgsnd_nocancel.S",
+        "gen/bsdsyscalls/___msgsys.S",
+        "gen/bsdsyscalls/___msync.S",
+        "gen/bsdsyscalls/___msync_nocancel.S",
+        "gen/bsdsyscalls/___munmap.S",
+        "gen/bsdsyscalls/___old_semwait_signal.S",
+        "gen/bsdsyscalls/___open.S",
+        "gen/bsdsyscalls/___open_dprotected_np.S",
+        "gen/bsdsyscalls/___open_extended.S",
+        "gen/bsdsyscalls/___open_nocancel.S",
+        "gen/bsdsyscalls/___openat.S",
+        "gen/bsdsyscalls/___openat_nocancel.S",
+        "gen/bsdsyscalls/___persona.S",
+        "gen/bsdsyscalls/___pipe.S",
+        "gen/bsdsyscalls/___poll_nocancel.S",
+        "gen/bsdsyscalls/___posix_spawn.S",
+        "gen/bsdsyscalls/___pread_nocancel.S",
+        "gen/bsdsyscalls/___preadv_nocancel.S",
+        "gen/bsdsyscalls/___proc_info.S",
+        "gen/bsdsyscalls/___proc_info_extended_id.S",
+        "gen/bsdsyscalls/___process_policy.S",
+        "gen/bsdsyscalls/___pselect.S",
+        "gen/bsdsyscalls/___pselect_nocancel.S",
+        "gen/bsdsyscalls/___psynch_cvbroad.S",
+        "gen/bsdsyscalls/___psynch_cvclrprepost.S",
+        "gen/bsdsyscalls/___psynch_cvsignal.S",
+        "gen/bsdsyscalls/___psynch_cvwait.S",
+        "gen/bsdsyscalls/___psynch_mutexdrop.S",
+        "gen/bsdsyscalls/___psynch_mutexwait.S",
+        "gen/bsdsyscalls/___psynch_rw_downgrade.S",
+        "gen/bsdsyscalls/___psynch_rw_longrdlock.S",
+        "gen/bsdsyscalls/___psynch_rw_rdlock.S",
+        "gen/bsdsyscalls/___psynch_rw_unlock.S",
+        "gen/bsdsyscalls/___psynch_rw_unlock2.S",
+        "gen/bsdsyscalls/___psynch_rw_upgrade.S",
+        "gen/bsdsyscalls/___psynch_rw_wrlock.S",
+        "gen/bsdsyscalls/___psynch_rw_yieldwrlock.S",
+        "gen/bsdsyscalls/___pthread_canceled.S",
+        "gen/bsdsyscalls/___pthread_chdir.S",
+        "gen/bsdsyscalls/___pthread_fchdir.S",
+        "gen/bsdsyscalls/___pthread_kill.S",
+        "gen/bsdsyscalls/___pthread_markcancel.S",
+        "gen/bsdsyscalls/___pthread_sigmask.S",
+        "gen/bsdsyscalls/___ptrace.S",
+        "gen/bsdsyscalls/___pwrite_nocancel.S",
+        "gen/bsdsyscalls/___pwritev_nocancel.S",
+        "gen/bsdsyscalls/___read_nocancel.S",
+        "gen/bsdsyscalls/___readv_nocancel.S",
+        "gen/bsdsyscalls/___reboot.S",
+        "gen/bsdsyscalls/___recvfrom.S",
+        "gen/bsdsyscalls/___recvfrom_nocancel.S",
+        "gen/bsdsyscalls/___recvmsg.S",
+        "gen/bsdsyscalls/___recvmsg_nocancel.S",
+        "gen/bsdsyscalls/___rename.S",
+        "gen/bsdsyscalls/___renameat.S",
+        "gen/bsdsyscalls/___renameatx_np.S",
+        "gen/bsdsyscalls/___rmdir.S",
+        "gen/bsdsyscalls/___select.S",
+        "gen/bsdsyscalls/___select_nocancel.S",
+        "gen/bsdsyscalls/___sem_open.S",
+        "gen/bsdsyscalls/___sem_wait_nocancel.S",
+        "gen/bsdsyscalls/___semctl.S",
+        "gen/bsdsyscalls/___semsys.S",
+        "gen/bsdsyscalls/___semwait_signal.S",
+        "gen/bsdsyscalls/___semwait_signal_nocancel.S",
+        "gen/bsdsyscalls/___sendmsg.S",
+        "gen/bsdsyscalls/___sendmsg_nocancel.S",
+        "gen/bsdsyscalls/___sendto.S",
+        "gen/bsdsyscalls/___sendto_nocancel.S",
+        "gen/bsdsyscalls/___setattrlist.S",
+        "gen/bsdsyscalls/___setlogin.S",
+        "gen/bsdsyscalls/___setpriority.S",
+        "gen/bsdsyscalls/___setregid.S",
+        "gen/bsdsyscalls/___setreuid.S",
+        "gen/bsdsyscalls/___setrlimit.S",
+        "gen/bsdsyscalls/___setsgroups.S",
+        "gen/bsdsyscalls/___settid.S",
+        "gen/bsdsyscalls/___settid_with_pid.S",
+        "gen/bsdsyscalls/___settimeofday.S",
+        "gen/bsdsyscalls/___setwgroups.S",
+        "gen/bsdsyscalls/___sfi_ctl.S",
+        "gen/bsdsyscalls/___sfi_pidctl.S",
+        "gen/bsdsyscalls/___shared_region_check_np.S",
+        "gen/bsdsyscalls/___shared_region_map_and_slide_2_np.S",
+        "gen/bsdsyscalls/___shared_region_map_and_slide_np.S",
+        "gen/bsdsyscalls/___shm_open.S",
+        "gen/bsdsyscalls/___shmctl.S",
+        "gen/bsdsyscalls/___shmsys.S",
+        "gen/bsdsyscalls/___sigaction.S",
+        "gen/bsdsyscalls/___sigaltstack.S",
+        "gen/bsdsyscalls/___sigreturn.S",
+        "gen/bsdsyscalls/___sigsuspend.S",
+        "gen/bsdsyscalls/___sigsuspend_nocancel.S",
+        "gen/bsdsyscalls/___sigwait.S",
+        "gen/bsdsyscalls/___socketpair.S",
+        "gen/bsdsyscalls/___stack_snapshot_with_config.S",
+        "gen/bsdsyscalls/___stat64_extended.S",
+        "gen/bsdsyscalls/___stat_extended.S",
+        "gen/bsdsyscalls/___syscall.S",
+        "gen/bsdsyscalls/___sysctl.S",
+        "gen/bsdsyscalls/___sysctlbyname.S",
+        "gen/bsdsyscalls/___telemetry.S",
+        "gen/bsdsyscalls/___terminate_with_payload.S",
+        "gen/bsdsyscalls/___thread_selfid.S",
+        "gen/bsdsyscalls/___thread_selfusage.S",
+        "gen/bsdsyscalls/___ulock_wait.S",
+        "gen/bsdsyscalls/___ulock_wait2.S",
+        "gen/bsdsyscalls/___ulock_wake.S",
+        "gen/bsdsyscalls/___umask_extended.S",
+        "gen/bsdsyscalls/___unlink.S",
+        "gen/bsdsyscalls/___unlinkat.S",
+        "gen/bsdsyscalls/___vfork.S",
+        "gen/bsdsyscalls/___wait4.S",
+        "gen/bsdsyscalls/___wait4_nocancel.S",
+        "gen/bsdsyscalls/___waitid_nocancel.S",
+        "gen/bsdsyscalls/___work_interval_ctl.S",
+        "gen/bsdsyscalls/___workq_kernreturn.S",
+        "gen/bsdsyscalls/___workq_open.S",
+        "gen/bsdsyscalls/___write_nocancel.S",
+        "gen/bsdsyscalls/___writev_nocancel.S",
+        "gen/bsdsyscalls/_access.S",
+        "gen/bsdsyscalls/_acct.S",
+        "gen/bsdsyscalls/_adjtime.S",
+        "gen/bsdsyscalls/_aio_cancel.S",
+        "gen/bsdsyscalls/_aio_error.S",
+        "gen/bsdsyscalls/_aio_fsync.S",
+        "gen/bsdsyscalls/_aio_read.S",
+        "gen/bsdsyscalls/_aio_return.S",
+        "gen/bsdsyscalls/_aio_suspend.S",
+        "gen/bsdsyscalls/_aio_write.S",
+        "gen/bsdsyscalls/_audit.S",
+        "gen/bsdsyscalls/_audit_session_join.S",
+        "gen/bsdsyscalls/_audit_session_port.S",
+        "gen/bsdsyscalls/_audit_session_self.S",
+        "gen/bsdsyscalls/_auditctl.S",
+        "gen/bsdsyscalls/_auditon.S",
+        "gen/bsdsyscalls/_change_fdguard_np.S",
+        "gen/bsdsyscalls/_chdir.S",
+        "gen/bsdsyscalls/_chflags.S",
+        "gen/bsdsyscalls/_chown.S",
+        "gen/bsdsyscalls/_chroot.S",
+        "gen/bsdsyscalls/_clonefileat.S",
+        "gen/bsdsyscalls/_close.S",
+        "gen/bsdsyscalls/_connectx.S",
+        "gen/bsdsyscalls/_csops.S",
+        "gen/bsdsyscalls/_csops_audittoken.S",
+        "gen/bsdsyscalls/_disconnectx.S",
+        "gen/bsdsyscalls/_dup.S",
+        "gen/bsdsyscalls/_dup2.S",
+        "gen/bsdsyscalls/_exchangedata.S",
+        "gen/bsdsyscalls/_execve.S",
+        "gen/bsdsyscalls/_faccessat.S",
+        "gen/bsdsyscalls/_fchdir.S",
+        "gen/bsdsyscalls/_fchflags.S",
+        "gen/bsdsyscalls/_fchmodat.S",
+        "gen/bsdsyscalls/_fchown.S",
+        "gen/bsdsyscalls/_fchownat.S",
+        "gen/bsdsyscalls/_fclonefileat.S",
+        "gen/bsdsyscalls/_fdatasync.S",
+        "gen/bsdsyscalls/_ffsctl.S",
+        "gen/bsdsyscalls/_fgetattrlist.S",
+        "gen/bsdsyscalls/_fgetxattr.S",
+        "gen/bsdsyscalls/_fhopen.S",
+        "gen/bsdsyscalls/_fileport_makefd.S",
+        "gen/bsdsyscalls/_fileport_makeport.S",
+        "gen/bsdsyscalls/_flistxattr.S",
+        "gen/bsdsyscalls/_flock.S",
+        "gen/bsdsyscalls/_fmount.S",
+        "gen/bsdsyscalls/_fpathconf.S",
+        "gen/bsdsyscalls/_fremovexattr.S",
+        "gen/bsdsyscalls/_fsctl.S",
+        "gen/bsdsyscalls/_fsetattrlist.S",
+        "gen/bsdsyscalls/_fsetxattr.S",
+        "gen/bsdsyscalls/_fsgetpath.S",
+        "gen/bsdsyscalls/_fsgetpath_ext.S",
+        "gen/bsdsyscalls/_fstat.S",
+        "gen/bsdsyscalls/_fstat64.S",
+        "gen/bsdsyscalls/_fstatat.S",
+        "gen/bsdsyscalls/_fstatat64.S",
+        "gen/bsdsyscalls/_fstatfs.S",
+        "gen/bsdsyscalls/_fstatfs64.S",
+        "gen/bsdsyscalls/_fsync.S",
+        "gen/bsdsyscalls/_ftruncate.S",
+        "gen/bsdsyscalls/_futimes.S",
+        "gen/bsdsyscalls/_getattrlistat.S",
+        "gen/bsdsyscalls/_getattrlistbulk.S",
+        "gen/bsdsyscalls/_getaudit_addr.S",
+        "gen/bsdsyscalls/_getauid.S",
+        "gen/bsdsyscalls/_getdirentries.S",
+        "gen/bsdsyscalls/_getdirentriesattr.S",
+        "gen/bsdsyscalls/_getdtablesize.S",
+        "gen/bsdsyscalls/_getegid.S",
+        "gen/bsdsyscalls/_getentropy.S",
+        "gen/bsdsyscalls/_geteuid.S",
+        "gen/bsdsyscalls/_getfh.S",
+        "gen/bsdsyscalls/_getfsstat.S",
+        "gen/bsdsyscalls/_getfsstat64.S",
+        "gen/bsdsyscalls/_getgid.S",
+        "gen/bsdsyscalls/_getgroups.S",
+        "gen/bsdsyscalls/_getitimer.S",
+        "gen/bsdsyscalls/_getpgid.S",
+        "gen/bsdsyscalls/_getpgrp.S",
+        "gen/bsdsyscalls/_getppid.S",
+        "gen/bsdsyscalls/_getpriority.S",
+        "gen/bsdsyscalls/_getrusage.S",
+        "gen/bsdsyscalls/_getsid.S",
+        "gen/bsdsyscalls/_getsockopt.S",
+        "gen/bsdsyscalls/_getuid.S",
+        "gen/bsdsyscalls/_getxattr.S",
+        "gen/bsdsyscalls/_grab_pgo_data.S",
+        "gen/bsdsyscalls/_guarded_close_np.S",
+        "gen/bsdsyscalls/_guarded_kqueue_np.S",
+        "gen/bsdsyscalls/_guarded_pwrite_np.S",
+        "gen/bsdsyscalls/_guarded_write_np.S",
+        "gen/bsdsyscalls/_guarded_writev_np.S",
+        "gen/bsdsyscalls/_issetugid.S",
+        "gen/bsdsyscalls/_kas_info.S",
+        "gen/bsdsyscalls/_kevent.S",
+        "gen/bsdsyscalls/_kevent64.S",
+        "gen/bsdsyscalls/_kevent_id.S",
+        "gen/bsdsyscalls/_kevent_qos.S",
+        "gen/bsdsyscalls/_kqueue.S",
+        "gen/bsdsyscalls/_ledger.S",
+        "gen/bsdsyscalls/_link.S",
+        "gen/bsdsyscalls/_linkat.S",
+        "gen/bsdsyscalls/_lio_listio.S",
+        "gen/bsdsyscalls/_listxattr.S",
+        "gen/bsdsyscalls/_lstat.S",
+        "gen/bsdsyscalls/_lstat64.S",
+        "gen/bsdsyscalls/_madvise.S",
+        "gen/bsdsyscalls/_memorystatus_control.S",
+        "gen/bsdsyscalls/_memorystatus_get_level.S",
+        "gen/bsdsyscalls/_mincore.S",
+        "gen/bsdsyscalls/_minherit.S",
+        "gen/bsdsyscalls/_mkdir.S",
+        "gen/bsdsyscalls/_mkdirat.S",
+        "gen/bsdsyscalls/_mkfifo.S",
+        "gen/bsdsyscalls/_mkfifoat.S",
+        "gen/bsdsyscalls/_mknod.S",
+        "gen/bsdsyscalls/_mknodat.S",
+        "gen/bsdsyscalls/_mlock.S",
+        "gen/bsdsyscalls/_mlockall.S",
+        "gen/bsdsyscalls/_mount.S",
+        "gen/bsdsyscalls/_mremap_encrypted.S",
+        "gen/bsdsyscalls/_msgget.S",
+        "gen/bsdsyscalls/_msgrcv.S",
+        "gen/bsdsyscalls/_msgsnd.S",
+        "gen/bsdsyscalls/_munlock.S",
+        "gen/bsdsyscalls/_munlockall.S",
+        "gen/bsdsyscalls/_necp_client_action.S",
+        "gen/bsdsyscalls/_necp_match_policy.S",
+        "gen/bsdsyscalls/_necp_open.S",
+        "gen/bsdsyscalls/_necp_session_action.S",
+        "gen/bsdsyscalls/_necp_session_open.S",
+        "gen/bsdsyscalls/_net_qos_guideline.S",
+        "gen/bsdsyscalls/_netagent_trigger.S",
+        "gen/bsdsyscalls/_nfsclnt.S",
+        "gen/bsdsyscalls/_nfssvc.S",
+        "gen/bsdsyscalls/_ntp_adjtime.S",
+        "gen/bsdsyscalls/_ntp_gettime.S",
+        "gen/bsdsyscalls/_openbyid_np.S",
+        "gen/bsdsyscalls/_os_fault_with_payload.S",
+        "gen/bsdsyscalls/_pathconf.S",
+        "gen/bsdsyscalls/_peeloff.S",
+        "gen/bsdsyscalls/_pid_hibernate.S",
+        "gen/bsdsyscalls/_pid_resume.S",
+        "gen/bsdsyscalls/_pid_shutdown_sockets.S",
+        "gen/bsdsyscalls/_pid_suspend.S",
+        "gen/bsdsyscalls/_pivot_root.S",
+        "gen/bsdsyscalls/_poll.S",
+        "gen/bsdsyscalls/_pread.S",
+        "gen/bsdsyscalls/_preadv.S",
+        "gen/bsdsyscalls/_proc_rlimit_control.S",
+        "gen/bsdsyscalls/_proc_trace_log.S",
+        "gen/bsdsyscalls/_proc_uuid_policy.S",
+        "gen/bsdsyscalls/_pwrite.S",
+        "gen/bsdsyscalls/_pwritev.S",
+        "gen/bsdsyscalls/_quotactl.S",
+        "gen/bsdsyscalls/_read.S",
+        "gen/bsdsyscalls/_readlink.S",
+        "gen/bsdsyscalls/_readlinkat.S",
+        "gen/bsdsyscalls/_readv.S",
+        "gen/bsdsyscalls/_recvmsg_x.S",
+        "gen/bsdsyscalls/_removexattr.S",
+        "gen/bsdsyscalls/_revoke.S",
+        "gen/bsdsyscalls/_searchfs.S",
+        "gen/bsdsyscalls/_sem_close.S",
+        "gen/bsdsyscalls/_sem_post.S",
+        "gen/bsdsyscalls/_sem_trywait.S",
+        "gen/bsdsyscalls/_sem_unlink.S",
+        "gen/bsdsyscalls/_sem_wait.S",
+        "gen/bsdsyscalls/_semget.S",
+        "gen/bsdsyscalls/_semop.S",
+        "gen/bsdsyscalls/_sendfile.S",
+        "gen/bsdsyscalls/_sendmsg_x.S",
+        "gen/bsdsyscalls/_setattrlistat.S",
+        "gen/bsdsyscalls/_setaudit_addr.S",
+        "gen/bsdsyscalls/_setauid.S",
+        "gen/bsdsyscalls/_setegid.S",
+        "gen/bsdsyscalls/_seteuid.S",
+        "gen/bsdsyscalls/_setgid.S",
+        "gen/bsdsyscalls/_setgroups.S",
+        "gen/bsdsyscalls/_setitimer.S",
+        "gen/bsdsyscalls/_setpgid.S",
+        "gen/bsdsyscalls/_setprivexec.S",
+        "gen/bsdsyscalls/_setsid.S",
+        "gen/bsdsyscalls/_setsockopt.S",
+        "gen/bsdsyscalls/_setuid.S",
+        "gen/bsdsyscalls/_setxattr.S",
+        "gen/bsdsyscalls/_shm_unlink.S",
+        "gen/bsdsyscalls/_shmat.S",
+        "gen/bsdsyscalls/_shmdt.S",
+        "gen/bsdsyscalls/_shmget.S",
+        "gen/bsdsyscalls/_shutdown.S",
+        "gen/bsdsyscalls/_sigpending.S",
+        "gen/bsdsyscalls/_sigprocmask.S",
+        "gen/bsdsyscalls/_socket.S",
+        "gen/bsdsyscalls/_socket_delegate.S",
+        "gen/bsdsyscalls/_stat.S",
+        "gen/bsdsyscalls/_stat64.S",
+        "gen/bsdsyscalls/_statfs.S",
+        "gen/bsdsyscalls/_statfs64.S",
+        "gen/bsdsyscalls/_swapon.S",
+        "gen/bsdsyscalls/_symlink.S",
+        "gen/bsdsyscalls/_symlinkat.S",
+        "gen/bsdsyscalls/_sync.S",
+        "gen/bsdsyscalls/_system_override.S",
+        "gen/bsdsyscalls/_task_inspect_for_pid.S",
+        "gen/bsdsyscalls/_task_read_for_pid.S",
+        "gen/bsdsyscalls/_thread_selfcounts.S",
+        "gen/bsdsyscalls/_truncate.S",
+        "gen/bsdsyscalls/_umask.S",
+        "gen/bsdsyscalls/_undelete.S",
+        "gen/bsdsyscalls/_unmount.S",
+        "gen/bsdsyscalls/_usrctl.S",
+        "gen/bsdsyscalls/_utimes.S",
+        "gen/bsdsyscalls/_vfs_purge.S",
+        "gen/bsdsyscalls/_vm_pressure_monitor.S",
+        "gen/bsdsyscalls/_waitid.S",
+        "gen/bsdsyscalls/_write.S",
+        "gen/bsdsyscalls/_writev.S",
+        "gen/bsdsyscalls/custom.S",
+        "libsyscall/mach/mach_traps.S",
+        "libsyscall/wrappers/__get_cpu_capabilities.S",
+        "libsyscall/wrappers/mach_approximate_time.S",
+        "libsyscall/wrappers/varargs_wrappers.S",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_libsyscall_wrappers_string",
+        ":libsyscall_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_libsyscall_os",
+        ":libsyscall_inc_libsyscall_mach",
+        ":libsyscall_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//buck-src:ksmig_mach_clock",
+        "//buck-src:ksmig_mach_clock_priv",
+        "//buck-src:ksmig_mach_clock_reply",
+        "//buck-src:ksmig_mach_exc",
+        "//buck-src:ksmig_mach_host_priv",
+        "//buck-src:ksmig_mach_host_security",
+        "//buck-src:ksmig_mach_lock_set",
+        "//buck-src:ksmig_mach_mach_host",
+        "//buck-src:ksmig_mach_mach_port",
+        "//buck-src:ksmig_mach_mach_port_internal",
+        "//buck-src:ksmig_mach_mach_vm",
+        "//buck-src:ksmig_mach_mach_vm_internal",
+        "//buck-src:ksmig_mach_mach_voucher",
+        "//buck-src:ksmig_mach_memory_entry",
+        "//buck-src:ksmig_mach_processor",
+        "//buck-src:ksmig_mach_processor_set",
+        "//buck-src:ksmig_mach_servers_netname",
+        "//buck-src:ksmig_mach_task",
+        "//buck-src:ksmig_mach_thread_act",
+        "//buck-src:ksmig_mach_thread_act_internal",
+        "//buck-src:ksmig_mach_vm_map",
+        "//buck-src:ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock_priv_x86_64",
+        "//buck-src:ksmig_mach_clock_reply_x86_64",
+        "//buck-src:ksmig_mach_clock_x86_64",
+        "//buck-src:ksmig_mach_exc_x86_64",
+        "//buck-src:ksmig_mach_host_priv_x86_64",
+        "//buck-src:ksmig_mach_host_security_x86_64",
+        "//buck-src:ksmig_mach_lock_set_x86_64",
+        "//buck-src:ksmig_mach_mach_host_x86_64",
+        "//buck-src:ksmig_mach_mach_port_x86_64",
+        "//buck-src:ksmig_mach_mach_vm_x86_64",
+        "//buck-src:ksmig_mach_mach_voucher_x86_64",
+        "//buck-src:ksmig_mach_memory_entry_x86_64",
+        "//buck-src:ksmig_mach_processor_set_x86_64",
+        "//buck-src:ksmig_mach_processor_x86_64",
+        "//buck-src:ksmig_mach_task_x86_64",
+        "//buck-src:ksmig_mach_thread_act_x86_64",
+        "//buck-src:ksmig_mach_vm_map_x86_64",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_obj2",
+    srcs = [
+        "libsyscall/custom/dummy.c",
+        "libsyscall/custom/errno.c",
+        "libsyscall/mach/clock_sleep.c",
+        "libsyscall/mach/error_codes.c",
+        "libsyscall/mach/exc_catcher.c",
+        "libsyscall/mach/exc_catcher_state.c",
+        "libsyscall/mach/exc_catcher_state_identity.c",
+        "libsyscall/mach/fprintf_stderr.c",
+        "libsyscall/mach/host.c",
+        "libsyscall/mach/mach_error.c",
+        "libsyscall/mach/mach_error_string.c",
+        "libsyscall/mach/mach_eventlink.c",
+        "libsyscall/mach/mach_init.c",
+        "libsyscall/mach/mach_legacy.c",
+        "libsyscall/mach/mach_msg.c",
+        "libsyscall/mach/mach_port.c",
+        "libsyscall/mach/mach_right.c",
+        "libsyscall/mach/mach_vm.c",
+        "libsyscall/mach/mig_allocate.c",
+        "libsyscall/mach/mig_deallocate.c",
+        "libsyscall/mach/mig_reply_port.c",
+        "libsyscall/mach/mig_reply_setup.c",
+        "libsyscall/mach/mig_strncpy.c",
+        "libsyscall/mach/ms_thread_switch.c",
+        "libsyscall/mach/panic.c",
+        "libsyscall/mach/port_descriptions.c",
+        "libsyscall/mach/port_obj.c",
+        "libsyscall/mach/semaphore.c",
+        "libsyscall/mach/slot_name.c",
+        "libsyscall/mach/string.c",
+        "libsyscall/mach/task.c",
+        "libsyscall/mach/thread_act.c",
+        "libsyscall/os/alloc_once.c",
+        "libsyscall/os/log_data.c",
+        "libsyscall/wrappers/__commpage_gettimeofday.c",
+        "libsyscall/wrappers/cancelable/fcntl-cancel.c",
+        "libsyscall/wrappers/cancelable/fcntl.c",
+        "libsyscall/wrappers/cancelable/open.c",
+        "libsyscall/wrappers/cancelable/pselect-darwinext-cancel.c",
+        "libsyscall/wrappers/cancelable/pselect-darwinext.c",
+        "libsyscall/wrappers/cancelable/sigsuspend-cancel.c",
+        "libsyscall/wrappers/cancelable/sigsuspend.c",
+        "libsyscall/wrappers/carbon_delete.c",
+        "libsyscall/wrappers/clonefile.c",
+        "libsyscall/wrappers/coalition.c",
+        "libsyscall/wrappers/csr.c",
+        "libsyscall/wrappers/fs_snapshot.c",
+        "libsyscall/wrappers/gethostuuid.c",
+        "libsyscall/wrappers/getiopolicy_np.c",
+        "libsyscall/wrappers/guarded_open_dprotected_np.c",
+        "libsyscall/wrappers/guarded_open_np.c",
+        "libsyscall/wrappers/init_cpu_capabilities.c",
+        "libsyscall/wrappers/ioctl.c",
+        "libsyscall/wrappers/kdebug_trace.c",
+        "libsyscall/wrappers/kill.c",
+        "libsyscall/wrappers/libproc/libproc.c",
+        "libsyscall/wrappers/libproc/proc_listpidspath.c",
+        "libsyscall/wrappers/mach_approximate_time.c",
+        "libsyscall/wrappers/mach_boottime.c",
+        "libsyscall/wrappers/mach_bridge_remote_time.c",
+        "libsyscall/wrappers/mach_continuous_time.c",
+        "libsyscall/wrappers/mach_get_times.c",
+        "libsyscall/wrappers/mach_timebase_info.c",
+        "libsyscall/wrappers/open-base.c",
+        "libsyscall/wrappers/open_dprotected_np.c",
+        "libsyscall/wrappers/persona.c",
+        "libsyscall/wrappers/pid_shutdown_networking.c",
+        "libsyscall/wrappers/posix_sem_obsolete.c",
+        "libsyscall/wrappers/proc.c",
+        "libsyscall/wrappers/quota_obsolete.c",
+        "libsyscall/wrappers/reboot.c",
+        "libsyscall/wrappers/remove-counter.c",
+        "libsyscall/wrappers/rename.c",
+        "libsyscall/wrappers/renameat.c",
+        "libsyscall/wrappers/renamex.c",
+        "libsyscall/wrappers/rmdir.c",
+        "libsyscall/wrappers/setpriority.c",
+        "libsyscall/wrappers/sfi.c",
+        "libsyscall/wrappers/spawn/posix_spawn.c",
+        "libsyscall/wrappers/stackshot.c",
+        "libsyscall/wrappers/string/index.c",
+        "libsyscall/wrappers/string/memcpy.c",
+        "libsyscall/wrappers/string/memset.c",
+        "libsyscall/wrappers/string/strcmp.c",
+        "libsyscall/wrappers/string/strcpy.c",
+        "libsyscall/wrappers/string/strlcpy.c",
+        "libsyscall/wrappers/string/strlen.c",
+        "libsyscall/wrappers/string/strsep.c",
+        "libsyscall/wrappers/system-version-compat-support.c",
+        "libsyscall/wrappers/system-version-compat.c",
+        "libsyscall/wrappers/terminate_with_reason.c",
+        "libsyscall/wrappers/thread_register_state.c",
+        "libsyscall/wrappers/unix03/chmod.c",
+        "libsyscall/wrappers/unix03/fchmod.c",
+        "libsyscall/wrappers/unix03/getrlimit.c",
+        "libsyscall/wrappers/unix03/mmap.c",
+        "libsyscall/wrappers/unix03/munmap.c",
+        "libsyscall/wrappers/unix03/setrlimit.c",
+        "libsyscall/wrappers/unlink.c",
+        "libsyscall/wrappers/unlinkat.c",
+        "libsyscall/wrappers/utimensat.c",
+        "libsyscall/wrappers/work_interval.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_libsyscall_wrappers_string",
+        ":libsyscall_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_libsyscall_os",
+        ":libsyscall_inc_libsyscall_mach",
+        ":libsyscall_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//buck-src:ksmig_mach_clock",
+        "//buck-src:ksmig_mach_clock_priv",
+        "//buck-src:ksmig_mach_clock_reply",
+        "//buck-src:ksmig_mach_exc",
+        "//buck-src:ksmig_mach_host_priv",
+        "//buck-src:ksmig_mach_host_security",
+        "//buck-src:ksmig_mach_lock_set",
+        "//buck-src:ksmig_mach_mach_host",
+        "//buck-src:ksmig_mach_mach_port",
+        "//buck-src:ksmig_mach_mach_port_internal",
+        "//buck-src:ksmig_mach_mach_vm",
+        "//buck-src:ksmig_mach_mach_vm_internal",
+        "//buck-src:ksmig_mach_mach_voucher",
+        "//buck-src:ksmig_mach_memory_entry",
+        "//buck-src:ksmig_mach_processor",
+        "//buck-src:ksmig_mach_processor_set",
+        "//buck-src:ksmig_mach_servers_netname",
+        "//buck-src:ksmig_mach_task",
+        "//buck-src:ksmig_mach_thread_act",
+        "//buck-src:ksmig_mach_thread_act_internal",
+        "//buck-src:ksmig_mach_vm_map",
+        "//buck-src:ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_obj3",
+    srcs = [
+        "libsyscall/wrappers/legacy/accept.c",
+        "libsyscall/wrappers/legacy/bind.c",
+        "libsyscall/wrappers/legacy/connect.c",
+        "libsyscall/wrappers/legacy/getattrlist.c",
+        "libsyscall/wrappers/legacy/getaudit.c",
+        "libsyscall/wrappers/legacy/getpeername.c",
+        "libsyscall/wrappers/legacy/getsockname.c",
+        "libsyscall/wrappers/legacy/kill.c",
+        "libsyscall/wrappers/legacy/lchown.c",
+        "libsyscall/wrappers/legacy/listen.c",
+        "libsyscall/wrappers/legacy/mprotect.c",
+        "libsyscall/wrappers/legacy/msync.c",
+        "libsyscall/wrappers/legacy/munmap.c",
+        "libsyscall/wrappers/legacy/recvfrom.c",
+        "libsyscall/wrappers/legacy/recvmsg.c",
+        "libsyscall/wrappers/legacy/select.c",
+        "libsyscall/wrappers/legacy/sendmsg.c",
+        "libsyscall/wrappers/legacy/sendto.c",
+        "libsyscall/wrappers/legacy/setattrlist.c",
+        "libsyscall/wrappers/legacy/sigsuspend.c",
+        "libsyscall/wrappers/legacy/socketpair.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-U_DARWIN_C_SOURCE",
+        "-U_POSIX_C_SOURCE",
+        "-U__DARWIN_UNIX03",
+        "-D__DARWIN_UNIX03=0",
+        "-U__DARWIN_C_LEVEL",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_libsyscall_wrappers_string",
+        ":libsyscall_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_libsyscall_os",
+        ":libsyscall_inc_libsyscall_mach",
+        ":libsyscall_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//buck-src:ksmig_mach_clock",
+        "//buck-src:ksmig_mach_clock_priv",
+        "//buck-src:ksmig_mach_clock_reply",
+        "//buck-src:ksmig_mach_exc",
+        "//buck-src:ksmig_mach_host_priv",
+        "//buck-src:ksmig_mach_host_security",
+        "//buck-src:ksmig_mach_lock_set",
+        "//buck-src:ksmig_mach_mach_host",
+        "//buck-src:ksmig_mach_mach_port",
+        "//buck-src:ksmig_mach_mach_port_internal",
+        "//buck-src:ksmig_mach_mach_vm",
+        "//buck-src:ksmig_mach_mach_vm_internal",
+        "//buck-src:ksmig_mach_mach_voucher",
+        "//buck-src:ksmig_mach_memory_entry",
+        "//buck-src:ksmig_mach_processor",
+        "//buck-src:ksmig_mach_processor_set",
+        "//buck-src:ksmig_mach_servers_netname",
+        "//buck-src:ksmig_mach_task",
+        "//buck-src:ksmig_mach_thread_act",
+        "//buck-src:ksmig_mach_thread_act_internal",
+        "//buck-src:ksmig_mach_vm_map",
+        "//buck-src:ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_obj4",
+    srcs = [
+        "libsyscall/wrappers/cancelable/select-cancel.c",
+        "libsyscall/wrappers/cancelable/select.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-U_DARWIN_C_SOURCE",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_libsyscall_wrappers_string",
+        ":libsyscall_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_libsyscall_os",
+        ":libsyscall_inc_libsyscall_mach",
+        ":libsyscall_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//buck-src:ksmig_mach_clock",
+        "//buck-src:ksmig_mach_clock_priv",
+        "//buck-src:ksmig_mach_clock_reply",
+        "//buck-src:ksmig_mach_exc",
+        "//buck-src:ksmig_mach_host_priv",
+        "//buck-src:ksmig_mach_host_security",
+        "//buck-src:ksmig_mach_lock_set",
+        "//buck-src:ksmig_mach_mach_host",
+        "//buck-src:ksmig_mach_mach_port",
+        "//buck-src:ksmig_mach_mach_port_internal",
+        "//buck-src:ksmig_mach_mach_vm",
+        "//buck-src:ksmig_mach_mach_vm_internal",
+        "//buck-src:ksmig_mach_mach_voucher",
+        "//buck-src:ksmig_mach_memory_entry",
+        "//buck-src:ksmig_mach_processor",
+        "//buck-src:ksmig_mach_processor_set",
+        "//buck-src:ksmig_mach_servers_netname",
+        "//buck-src:ksmig_mach_task",
+        "//buck-src:ksmig_mach_thread_act",
+        "//buck-src:ksmig_mach_thread_act_internal",
+        "//buck-src:ksmig_mach_vm_map",
+        "//buck-src:ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_obj5",
+    srcs = [
+        "libsyscall/wrappers/legacy/select-pre1050.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+        "-U_DARWIN_C_SOURCE",
+        "-DSYSCALL_PRE1050",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_inc_libsyscall_wrappers_string",
+        ":libsyscall_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_inc_libsyscall_os",
+        ":libsyscall_inc_libsyscall_mach",
+        ":libsyscall_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/darlingserver:dserver_headers",
+        "//buck-src:ksmig_mach_clock",
+        "//buck-src:ksmig_mach_clock_priv",
+        "//buck-src:ksmig_mach_clock_reply",
+        "//buck-src:ksmig_mach_exc",
+        "//buck-src:ksmig_mach_host_priv",
+        "//buck-src:ksmig_mach_host_security",
+        "//buck-src:ksmig_mach_lock_set",
+        "//buck-src:ksmig_mach_mach_host",
+        "//buck-src:ksmig_mach_mach_port",
+        "//buck-src:ksmig_mach_mach_port_internal",
+        "//buck-src:ksmig_mach_mach_vm",
+        "//buck-src:ksmig_mach_mach_vm_internal",
+        "//buck-src:ksmig_mach_mach_voucher",
+        "//buck-src:ksmig_mach_memory_entry",
+        "//buck-src:ksmig_mach_processor",
+        "//buck-src:ksmig_mach_processor_set",
+        "//buck-src:ksmig_mach_servers_netname",
+        "//buck-src:ksmig_mach_task",
+        "//buck-src:ksmig_mach_thread_act",
+        "//buck-src:ksmig_mach_thread_act_internal",
+        "//buck-src:ksmig_mach_vm_map",
+        "//buck-src:ksmig_mach_vm_map_internal",
+        ":libsyscall_inc_darling_src_libsystem_kernel",
+        ":libsyscall_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libsyscall
+
+# BEGIN generated: libsyscall_dynamic
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libsyscall_dynamic   -- review before committing.
+# cmake target: libsyscall_dynamic  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall_dynamic
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libsyscall_dynamic_obj",
+    srcs = [
+        "libsyscall/wrappers/_libc_funcptr.c",
+        "libsyscall/wrappers/_libkernel_init.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_string",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_dynamic_inc_libsyscall_os",
+        ":libsyscall_dynamic_inc_libsyscall_mach",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/startup:rtsig_header",
+        ":libsyscall_dynamic_inc_darling_src_libsystem_kernel",
+        ":libsyscall_dynamic_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libsyscall_dynamic
+
+# BEGIN generated: emulation
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py emulation   -- review before committing.
+# cmake target: emulation  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation
+# 295 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/darlingserver/src/rpc.c
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+#   src/startup
+
+cc_header_root(
+    name = "emulation_inc_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_obj",
+    srcs = [
+        "darling/src/libsystem_kernel/emulation/src/common/base.c",
+        "darling/src/libsystem_kernel/emulation/src/common/guarded/table.c",
+        "darling/src/libsystem_kernel/emulation/src/common/simple.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/errno.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/fcntl/open.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/duct.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/getsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/recvmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/process/wait4.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/signal/duct_signals.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/elfcalls_wrapper.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_gettime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_nanosleep.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create1.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_ctl.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_read.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_write.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/fanotify.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libelfloader.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-xtrace.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/futex.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_add_watch.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init1.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_rm_watch.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/mremap.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/nanosleep.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sched_yield.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/signalfd.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sysinfo.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/syslog.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_create.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_gettime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_settime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/uname.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/misc/ioctl.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c",
+        "darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/socket.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/termios.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/common_at.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/fdpath.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/readline.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_machdep.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_proc.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_sysctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_unspec.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_vm.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_addr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_join.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_port.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_self.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_terminate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/disable_threadsignal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_canceled.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_chdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_fchdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_kill.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_markcancel.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/fpathconf.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/pathconf.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/dirent/getdirentries.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/openat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_close_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_kqueue_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_open_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/hfs/stub.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/ioctl/ioctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent64.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent_qos.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kqueue.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/abort_with_payload.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csops.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csrctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makefd.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makeport.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fsgetpath.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getentropy.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/gethostuuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getlogin.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrlimit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrusage.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/iopolicysys.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/ptrace.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setlogin.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setrlimit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/shared_region_check_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/syscall.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/sysctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/thread_selfid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/madvise.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/msync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mount/unmount.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/accept.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/bind.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/connect.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/listen.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendto.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/setsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/shutdown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socket.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socketpair.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/getpriority.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/setpriority.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/vfork.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/wait4.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/waitid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvbroad.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvclrprepost.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvsignal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexdrop.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_rdlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_unlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_wrlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wake.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/pselect.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/select.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/kill.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaltstack.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigpending.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigprocmask.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigreturn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigsuspend.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatfs.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/getfsstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdirat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifo.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/statfs.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/synch/semwait_signal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semget.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semop.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/futimes.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/getitimer.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/gettimeofday.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/setitimer.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/utimes.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/access.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chroot.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/exit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/faccessat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmodat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchownat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fdatasync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/flock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fsync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/ftruncate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getdtablesize.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getegid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/geteuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgrp.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getppid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getsid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/gettid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/initgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/issetugid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lchown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/link.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/linkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lseek.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pread.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pwrite.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/read.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readv.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/rename.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setegid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/seteuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setpgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setsid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/settid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/sync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/truncate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/umask.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/write.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/writev.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_close.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_post.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_trywait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistbulk.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlistat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_time.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall_table.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall_table.c",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_mach_exc",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_obj2",
+    srcs = [
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: emulation
+
+# BEGIN generated: emulation_dyld
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py emulation_dyld   -- review before committing.
+# cmake target: emulation_dyld  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation_dyld
+# 295 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/darlingserver/src/rpc.c
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+#   src/startup
+
+cc_header_root(
+    name = "emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_dyld_obj",
+    srcs = [
+        "darling/src/libsystem_kernel/emulation/src/common/base.c",
+        "darling/src/libsystem_kernel/emulation/src/common/guarded/table.c",
+        "darling/src/libsystem_kernel/emulation/src/common/simple.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/errno.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/fcntl/open.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/duct.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/getsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/network/recvmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/process/wait4.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/signal/duct_signals.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c",
+        "darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/elfcalls_wrapper.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_gettime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_nanosleep.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create1.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_ctl.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_read.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_write.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/fanotify.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libelfloader.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-xtrace.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/futex.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_add_watch.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init1.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_rm_watch.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/mremap.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/nanosleep.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sched_yield.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/signalfd.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sysinfo.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/syslog.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_create.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_gettime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_settime.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/uname.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/misc/ioctl.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c",
+        "darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/socket.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/termios.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/common_at.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/fdpath.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/readline.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_machdep.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_proc.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_sysctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_unspec.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_vm.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_addr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_join.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_port.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_self.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_terminate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/disable_threadsignal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_canceled.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_chdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_fchdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_kill.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_markcancel.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/fpathconf.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/pathconf.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/dirent/getdirentries.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/openat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_close_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_kqueue_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_open_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/hfs/stub.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/ioctl/ioctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent64.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent_qos.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kqueue.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/abort_with_payload.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csops.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csrctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makefd.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makeport.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fsgetpath.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getentropy.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/gethostuuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getlogin.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrlimit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrusage.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/iopolicysys.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/ptrace.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setlogin.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setrlimit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/shared_region_check_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/syscall.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/sysctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/thread_selfid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/madvise.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/msync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mount/unmount.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/accept.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/bind.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/connect.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/listen.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendmsg.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendto.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/setsockopt.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/shutdown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socket.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socketpair.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/getpriority.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/setpriority.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/vfork.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/wait4.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/waitid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvbroad.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvclrprepost.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvsignal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexdrop.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_rdlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_unlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_wrlock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wake.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/pselect.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/select.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/kill.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaltstack.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigpending.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigprocmask.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigreturn.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigsuspend.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigwait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatfs.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/getfsstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdirat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifo.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat64_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/statfs.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/synch/semwait_signal.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semctl.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semget.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semop.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/futimes.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/getitimer.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/gettimeofday.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/setitimer.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/utimes.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/access.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chroot.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/exit.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/faccessat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchdir.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod_extended.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmodat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchownat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fdatasync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/flock.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fsync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/ftruncate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getdtablesize.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getegid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/geteuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgrp.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getppid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getsid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/gettid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/initgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/issetugid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lchown.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/link.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/linkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lseek.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknod.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pread.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pwrite.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/read.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readv.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/rename.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setegid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/seteuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgroups.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setpgid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setsid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/settid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setuid.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/sync.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/truncate.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/umask.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/write.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/writev.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_close.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_post.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_trywait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_wait.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_open.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_unlink.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistbulk.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlist.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlistat.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setxattr.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_time.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall_table.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall_table.c",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-ffunction-sections",
+        "-DVARIANT_DYLD",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/external/darlingserver:dserver_headers",
+        ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_mach_exc",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_dyld_obj2",
+    srcs = [
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S",
+        "darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-ffunction-sections",
+        "-DVARIANT_DYLD",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/external/darlingserver:dserver_headers",
+        ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: emulation_dyld
+
+# BEGIN generated: clock_priv_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_priv_xtrace_mig   -- review before committing.
+# cmake target: clock_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_priv_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_privXtraceMig.c
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_priv_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_priv_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_priv_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock_priv[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_priv_xtrace_mig
+
+# BEGIN generated: clock_reply_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_reply_xtrace_mig   -- review before committing.
+# cmake target: clock_reply_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_reply_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_replyXtraceMig.c
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_reply_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_reply_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_reply_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_reply_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock_reply[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_reply_xtrace_mig
+
+# BEGIN generated: clock_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_xtrace_mig   -- review before committing.
+# cmake target: clock_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clockXtraceMig.c
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_xtrace_mig
+
+# BEGIN generated: exc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py exc_xtrace_mig   -- review before committing.
+# cmake target: exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libexc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/excXtraceMig.c
+
+cc_header_root(
+    name = "exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "exc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-Dexc_xtrace_mig_EXPORTS",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-fPIC",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_exc[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: exc_xtrace_mig
+
+# BEGIN generated: host_priv_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py host_priv_xtrace_mig   -- review before committing.
+# cmake target: host_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_priv_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_privXtraceMig.c
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "host_priv_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dhost_priv_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_os",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":host_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":host_priv_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_host_priv[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_priv_xtrace_mig
+
+# BEGIN generated: host_security_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py host_security_xtrace_mig   -- review before committing.
+# cmake target: host_security_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_security_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_securityXtraceMig.c
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "host_security_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dhost_security_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_os",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":host_security_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":host_security_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_host_security[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_security_xtrace_mig
+
+# BEGIN generated: lock_set_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lock_set_xtrace_mig   -- review before committing.
+# cmake target: lock_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/liblock_set_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_setXtraceMig.c
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lock_set_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dlock_set_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_os",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":lock_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":lock_set_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_lock_set[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lock_set_xtrace_mig
+
+# BEGIN generated: mach_exc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_exc_xtrace_mig   -- review before committing.
+# cmake target: mach_exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libmach_exc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excXtraceMig.c
+
+cc_header_root(
+    name = "mach_exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_exc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-Dmach_exc_xtrace_mig_EXPORTS",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-fPIC",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_mach_exc[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_exc_xtrace_mig
+
+# BEGIN generated: mach_host_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_host_xtrace_mig   -- review before committing.
+# cmake target: mach_host_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_host_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_hostXtraceMig.c
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_host_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_host_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_host_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_host_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_host[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_host_xtrace_mig
+
+# BEGIN generated: mach_port_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_port_xtrace_mig   -- review before committing.
+# cmake target: mach_port_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_port_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_portXtraceMig.c
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_port_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_port_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_port_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_port_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_port[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_port_xtrace_mig
+
+# BEGIN generated: mach_vm_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_vm_xtrace_mig   -- review before committing.
+# cmake target: mach_vm_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_vm_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vmXtraceMig.c
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_vm_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_vm_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_vm_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_vm_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_vm[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_vm_xtrace_mig
+
+# BEGIN generated: mach_voucher_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_voucher_xtrace_mig   -- review before committing.
+# cmake target: mach_voucher_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_voucher_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucherXtraceMig.c
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_voucher_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_voucher_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_voucher_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_voucher_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_voucher[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_voucher_xtrace_mig
+
+# BEGIN generated: memory_entry_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py memory_entry_xtrace_mig   -- review before committing.
+# cmake target: memory_entry_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmemory_entry_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entryXtraceMig.c
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memory_entry_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmemory_entry_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_os",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":memory_entry_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":memory_entry_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_memory_entry[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memory_entry_xtrace_mig
+
+# BEGIN generated: netname_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py netname_xtrace_mig   -- review before committing.
+# cmake target: netname_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libnetname_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/servers/netnameXtraceMig.c
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "netname_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dnetname_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_os",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":netname_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":netname_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_servers_netname[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: netname_xtrace_mig
+
+# BEGIN generated: processor_set_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py processor_set_xtrace_mig   -- review before committing.
+# cmake target: processor_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_set_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_setXtraceMig.c
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "processor_set_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dprocessor_set_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_os",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":processor_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":processor_set_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_processor_set[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_set_xtrace_mig
+
+# BEGIN generated: processor_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py processor_xtrace_mig   -- review before committing.
+# cmake target: processor_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processorXtraceMig.c
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "processor_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dprocessor_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_os",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":processor_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":processor_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_processor[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_xtrace_mig
+
+# BEGIN generated: task_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py task_xtrace_mig   -- review before committing.
+# cmake target: task_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libtask_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/taskXtraceMig.c
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "task_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dtask_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":task_xtrace_mig_inc_xnu_libsyscall_os",
+        ":task_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":task_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":task_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_task[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: task_xtrace_mig
+
+# BEGIN generated: thread_act_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py thread_act_xtrace_mig   -- review before committing.
+# cmake target: thread_act_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libthread_act_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_actXtraceMig.c
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "thread_act_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dthread_act_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_os",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":thread_act_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":thread_act_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_thread_act[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: thread_act_xtrace_mig
+
+# BEGIN generated: vm_map_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py vm_map_xtrace_mig   -- review before committing.
+# cmake target: vm_map_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libvm_map_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_mapXtraceMig.c
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["libsyscall/wrappers/string/*.h", "libsyscall/wrappers/string/**/*.h", "libsyscall/wrappers/string/*.c"]),
+    root = "libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["libsyscall/wrappers/spawn/*.h", "libsyscall/wrappers/spawn/**/*.h", "libsyscall/wrappers/spawn/*.c"]),
+    root = "libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["libsyscall/wrappers/libproc/*.h", "libsyscall/wrappers/libproc/**/*.h", "libsyscall/wrappers/libproc/*.c"]),
+    root = "libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["libsyscall/os/*.h", "libsyscall/os/**/*.h", "libsyscall/os/*.c"]),
+    root = "libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["libsyscall/mach/*.h", "libsyscall/mach/**/*.h", "libsyscall/mach/*.c"]),
+    root = "libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["libsyscall/wrappers/*.h", "libsyscall/wrappers/**/*.h", "libsyscall/wrappers/*.c"]),
+    root = "libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h", "darling/src/libsystem_kernel/*.c"]),
+    root = "darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["osfmk/*.h", "osfmk/**/*.h", "osfmk/*.c"]),
+    root = "osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "vm_map_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dvm_map_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_os",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":vm_map_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":vm_map_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_vm_map[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_map_xtrace_mig
+
+cc_header_root(
+    name = "kqueue_inc_xnu",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "kqueue_inc_emulation_include_linux_premigration_ext",
+    headers = glob(["darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/*.h", "darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/**/*.h"]),
+    root = "darling/src/libsystem_kernel/emulation/include/linux_premigration/ext",
+    visibility = ["PUBLIC"],
+)
+
+# Darling's syscall emulation layer #INCLUDES .c files (helper/xattr/*_generic.c
+# and friends), so the root staging its tree has to carry sources as well as
+# headers. A headers-only root leaves those includes unresolved.
+cc_header_root(
+    name = "emulation_included_sources",
+    headers = glob([
+        "darling/src/libsystem_kernel/emulation/include/*.h",
+        "darling/src/libsystem_kernel/emulation/include/**/*.h",
+        "darling/src/libsystem_kernel/emulation/src/**/*.c",
+        "darling/src/libsystem_kernel/emulation/src/**/*.h",
+    ]),
+    root = "darling/src/libsystem_kernel/emulation/include",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_xnu.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

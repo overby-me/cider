@@ -1,0 +1,193 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libxpc pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: xpc_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xpc_obj   -- review before committing.
+# cmake target: xpc_obj  ->  src/external/libxpc/xpc_obj
+
+cc_header_root(
+    name = "xpc_inc_libxpc_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xpc_inc_libxpc_internal_include",
+    headers = glob(["internal-include/*.h", "internal-include/**/*.h"]),
+    root = "internal-include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xpc_obj",
+    srcs = [
+        "src/activity.m",
+        "src/array.m",
+        "src/base.m",
+        "src/bool.m",
+        "src/bsm_wrappers.c",
+        "src/bundle.m",
+        "src/coalition.m",
+        "src/connection.m",
+        "src/data.m",
+        "src/date.m",
+        "src/dictionary.m",
+        "src/double.m",
+        "src/endpoint.m",
+        "src/error.m",
+        "src/event.m",
+        "src/fd.m",
+        "src/file_transfer.m",
+        "src/init.c",
+        "src/int64.m",
+        "src/launchd.m",
+        "src/mach_recv.m",
+        "src/mach_send.m",
+        "src/misc.m",
+        "src/null.m",
+        "src/pipe.m",
+        "src/plist.m",
+        "src/pointer.m",
+        "src/reboot3.c",
+        "src/runtime.m",
+        "src/serialization.m",
+        "src/service.m",
+        "src/service_instance.m",
+        "src/shmem.m",
+        "src/string.m",
+        "src/transaction.m",
+        "src/type.m",
+        "src/uint64.m",
+        "src/util.m",
+        "src/uuid.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__XPC_BUILDING_XPC__",
+        "-D__XPC_PROJECT_BUILD__",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-nostdinc",
+        "-fblocks",
+        "-fvisibility=hidden",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-Wno-extern-initializer",
+        "-Wno-gnu-folding-constant",
+    ],
+    prefix_headers = [
+        "internal-include/xpc/prefix.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//buck-src:fw_AppKit",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//buck-src:fw_CFNetwork",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//darwin/frameworks:fw_CoreServices",
+        "//buck-src:fw_CoreText",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//buck-src:fw_Foundation",
+        "//darwin/frameworks:fw_HIServices",
+        "//buck-src:fw_IOKit",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//buck-src:fw_Metal",
+        "//buck-src:fw_Onyx2D",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//buck-src:fw_QuartzCore",
+        "//darwin/frameworks:fw_SearchKit",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":xpc_inc_libxpc_include",
+        ":xpc_inc_libxpc_internal_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xpc_obj
+
+# BEGIN generated: xpc dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs xpc   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "xpc_firstpass",
+    dylib_name = "libxpc_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libxpc.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # xpc_obj
+        ":xpc_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "xpc_final",
+    dylib_name = "libxpc.dylib",
+    install_name = "/usr/lib/system/libxpc.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # xpc_obj
+        ":xpc_obj",
+    ],
+    siblings = [
+        "//buck-src/libc:system_c_firstpass",
+        "//buck-src:system_kernel_firstpass",
+        "//buck-src:system_blocks_firstpass",
+        "//buck-src/libdispatch:libdispatch_shared_firstpass",
+        "//buck-src/libplatform:platform_firstpass",
+        "//buck-src:system_malloc_firstpass",
+        "//src/launchd:launch_firstpass",
+        "//buck-src:system_info_firstpass",
+        "//buck-src:system_dyld_firstpass",
+        "//buck-src:unwind_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_pthread_firstpass",
+        "//src/external/libtrace:system_trace_firstpass",
+        "//buck-src/objc4:objc_firstpass",
+    ],
+    link_flag_files = {
+        "-Wl,-reexported_symbols_list": "scripts/reexported-symbols.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: xpc dylibs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libxpc.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

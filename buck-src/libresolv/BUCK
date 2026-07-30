@@ -1,0 +1,83 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libresolv pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: resolv-darwin_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py resolv-darwin_obj   -- review before committing.
+# cmake target: resolv-darwin_obj  ->  src/external/libresolv/resolv-darwin_obj
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/external/libdispatch
+#   src/external/external/libdispatch/private
+#   src/external/libresolv/dnsinfo
+
+cc_header_root(
+    name = "resolv-darwin_inc_libresolv",
+    headers = glob(["*.h", "**/*.h"]),
+    root = "",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "resolv-darwin_obj",
+    srcs = [
+        "base64.c",
+        "dns.c",
+        "dns_async.c",
+        "dns_util.c",
+        "dst_api.c",
+        "dst_hmac_link.c",
+        "dst_support.c",
+        "ns_date.c",
+        "ns_name.c",
+        "ns_netint.c",
+        "ns_parse.c",
+        "ns_print.c",
+        "ns_samedomain.c",
+        "ns_sign.c",
+        "ns_ttl.c",
+        "ns_verify.c",
+        "res_comp.c",
+        "res_data.c",
+        "res_debug.c",
+        "res_findzonecut.c",
+        "res_init.c",
+        "res_mkquery.c",
+        "res_mkupdate.c",
+        "res_query.c",
+        "res_send.c",
+        "res_sendsigned.c",
+        "res_update.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-nostdinc",
+        "-DUSE__RES_9",
+        "-Wno-tautological-pointer-compare",
+        "-Wno-absolute-value",
+        "-Wno-private-extern",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":resolv-darwin_inc_libresolv",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: resolv-darwin_obj
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libresolv.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

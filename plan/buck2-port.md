@@ -28,13 +28,13 @@ points it at Darling.
 ## Guiding constraints (learned from the nix-ninja grind)
 
 - The whole graph already builds green on the dense path, so there are **no
-  source bugs to find** — only build-definition work. A Buck2 port is about
+  source bugs to find** -- only build-definition work. A Buck2 port is about
   expressing Darling's build *correctly and explicitly*, not fixing Darling.
 - The genuinely hard parts to express in ANY system are: (1) MIG codegen, (2) the
   firstpass two-pass link that breaks the libSystem umbrella cycle, (3)
   reexport / `install_name` machinery, (4) the darwin SDK sysroot + cross-arch
   (`x86_64-apple-darwin20`) toolchain, (5) the darling header shims. Spike these
-  before mass porting (Phase 1) — they decide feasibility.
+  before mass porting (Phase 1) -- they decide feasibility.
 - Hand-written BUCK for upstream code **drifts** on every Darling bump. Mitigate
   with a CMake/ninja -> BUCK *generator* (reuse `rust-ninja -t graph-json`) to
   bootstrap targets, then hand-refine the ones we own. Generated where it drifts,
@@ -511,6 +511,99 @@ per-pin SDK roots, repoint `//darwin:sdk_env`, create every `export_file`, and d
 moved -- all in one commit, iterating until the suite is green. That belongs in a
 scratch WORKTREE rather than the live tree, since intermediate states do not build.
 
+### 2026-07-30 (afternoon) -- the big bang, in flight
+
+Measured first, because it decides whether the split achieves anything: **a 12k-line
+package parses and evaluates inside 8 GB**, while the 32k-line `buck-src/BUCK` does not.
+libc's package would be ~13.5k, the largest. So per-pin packages do fit.
+
+Running in a jj workspace at `../darling-split` (its own 3.8 GB copy of the pins -- they
+are gitignored, so a workspace does not get them, and hardlinks are refused because the
+pins are read-only and the kernel has protected_hardlinks). It needs `.buckconfig.local`
+and a `result-graph-ref` symlink copied in, both gitignored.
+
+`scripts/buck-split-pins.py --all` moves **450 blocks into 81 pin packages** (libc 13.5k
+lines, xnu 4.7k, everything else under 1.4k). One package still fails to parse, and the
+cause is the same class each time: a **monolithic header map in buck-src/BUCK naming files
+that now belong to a subpackage**. Four remain -- `sdk_basic_headers_pins`,
+`sdk_darling_include`, `sdk_darling_include_mach`, and the framework roots.
+
+The facade the split was waiting on turned out to be unnecessary. **A `header_map` value is
+an `attrs.source()`, and a source coerces from a LABEL as readily as from a path.** So the
+maps stay whole, stay in `buck-src/BUCK`, and keep staging ONE SDK tree in one include
+order; only the spelling of a migrated pin's value changes:
+
+    "stdio.h": "libc/include/stdio.h"
+    "stdio.h": "//buck-src/libc:include_stdio.h"
+
+Proved on a scratch package before anything moved (`cc_header_root` with a single
+cross-package label value builds and stages a symlink to the real file). That kills the
+per-pin roots, the key transformations, and the sdk_env repointing all at once.
+
+### 2026-07-30 (evening) -- the split, landed
+
+`buck-src/BUCK`: **33,161 lines -> 8,924**, with 172 blocks and 49 hand-written targets in
+**42 pin packages** (libc 12.4k lines, xnu 4.1k, the rest under 1.2k). Suite green at 96
+checks, coverage unchanged at 206/206 in-scope link edges.
+
+It MOVES blocks rather than regenerating them, and that was the pivotal decision: the
+committed tree is **not a fixpoint of its own generator** -- regenerating every block
+rewrites 216 of 367, because they were written by older versions of it. Some of those
+rewrites do not compile (libc's separate include roots come back merged into one staged
+tree with `.` on the path, and `libc-features.h` then fails its own feature check). Mixing
+that with the split would have made a bad diff worse, so each block travels verbatim with
+only the rewrites a package change forces. Making the tree a fixpoint again is real work,
+and it is now written down as such rather than discovered mid-migration.
+
+What the move has to get right, each learned from a failure:
+
+- **Escaped quotes.** `"([^"]+)"` desynchronises on the first `\"`, and the flag lists are
+  full of them (`-DMIG_VERSION=\"1.0\"`); after that its "strings" are the text BETWEEN
+  strings. 4,976 quoted strings scanned down to 4 candidate paths, so almost nothing was
+  seen as a path. Every scanner here now uses one escape-aware `STRING` regex.
+- **Which pin owns a block** is the DOMINANT pin among its paths, not the first one seen:
+  an xtrace stub compiles nothing from the tree, and its eight include roots all point into
+  xnu. First-seen put those blocks in whichever pin sorted first.
+- **Globs cannot cross a package**, so a block that globs a sibling pin stays behind (44
+  do), and a header root inside one that globs a MIGRATED pin travels alone as a target
+  (49 do). Individual FILE references are not blocking: those become labels.
+- **`root` and `out_base` are not sources.** Labelling a directory turned libcxx's root
+  into `root = "//buck-src/libcxx:include"`, which stages nothing and silently takes the
+  C++ standard library off the search path. And the exact-pin rewrite has to run BEFORE the
+  prefix strip, or a pin holding a directory of its own name loses it (libunwind's root is
+  `libunwind/libunwind`).
+- **mig names its outputs from `defs.short_path` minus `out_base`**, and a source's
+  short_path is relative to the package that DECLARES it. Once `defs` is a label into a
+  pin, `out_base` has to lose the same prefix, or every output keeps a directory no
+  consumer names (`asl_ipcUser.c` became `libsystem_asl.tproj/asl_ipcUser.c`).
+- **Visibility cuts both ways**: a moved target needs `PUBLIC` to stay reachable from
+  buck-src, and a target that stayed needs it the moment a pin package names it.
+- **The suite holds labels too**, unquoted, so the repointer rewrites `scripts/buck-test.sh`
+  as well -- a stale label there reads as a regression rather than as a rename. Its
+  kind-sweeps became recursive (`//buck-src/...`), or they miss every moved dylib.
+- **A label needs an export_file in the owner.** `scripts/buck-exports.py` keeps those
+  lists: one line per file in `buck/generated/exports_<pin>.bzl`, declared by a
+  comprehension in the pin's BUCK. One 5-line `export_file` block per file would have added
+  ~30k lines and put the biggest pins back over the evaluator's budget. Resolving a name
+  back to its file has to follow symlinked DIRECTORIES (libunwind reaches part of its own
+  tree that way) with a BRANCH-local loop guard, since a pin reaches the same files under
+  two names and a label minted from either spelling has to resolve. buck-src itself cannot
+  be indexed by walking it, so whoever mints a label into it records the path in
+  `buck/generated/export-hints.json`.
+- `buck-src/.gitignore` had to un-ignore `/*/` and `/*/BUCK`, anchored -- unanchored, the
+  `!.gitignore` exception swept in all 59 of the pins' own ignore files.
+
+Found on the way, NOT caused by the split and left alone: `//darwin/Developer:` has never
+parsed. Its `fw_*` roots name files that are symlinks into `src/libacm` and friends, and
+buck2 rejects a source whose symlink leaves the package. Nothing depends on those targets,
+which is why the suite is green without them.
+
+Still to do here: 44 blocks that glob a sibling pin (cctools/libcxxabi, libcxx/libcxxabi
+both ways, libarchive/icu, corefoundation/foundation) could move once their foreign glob
+becomes a dep on a root in the owning pin; and the generator should learn to emit a
+cross-pin include root as a separate target in the owning package, so regenerating a
+migrated pin's block does not undo the split.
+
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
 
@@ -945,12 +1038,12 @@ Two structural findings, both about source availability rather than Buck2:
    and a host tool only gets the four `sys/` entries the reference gives it
    rather than all of Darwin's `sys/*.h` shadowing glibc's.
 
-## Phase 0 — Buck2 stands up, builds one real library, directly (no Nix)
+## Phase 0 -- Buck2 stands up, builds one real library, directly (no Nix)
 
 Goal: prove the toolchain end-to-end on one leaf, fast, outside Nix.
 
 1. **Get buck2 + a prelude.** Use `buck2` from nixpkgs (`pkgs.buck2`) via a
-   devshell so it is on `PATH` — no need to vendor a binary. Add a minimal
+   devshell so it is on `PATH` -- no need to vendor a binary. Add a minimal
    prelude (or fork the prelude's cxx rules), a `.buckconfig` at the repo root,
    and iterate with `buck2 build` directly. The nixpkgs binary is the same
    `buck2` Phase 3 reuses under Nix, so the toolchain is reproducible from day 1
@@ -970,7 +1063,7 @@ Goal: prove the toolchain end-to-end on one leaf, fast, outside Nix.
 Deliverable: `buck2 build` produces one real Darling artifact from source, and
 the toolchain + header-scoping model is proven. This is the go/no-go gate.
 
-## Phase 1 — Spike the hard machinery (feasibility before scale)
+## Phase 1 -- Spike the hard machinery (feasibility before scale)
 
 Each is a focused, throwaway-ok spike proving Buck2 can express the pattern.
 Do them in this order (increasing risk):
@@ -979,7 +1072,7 @@ Do them in this order (increasing risk):
    `.defs` to emit `*_user.c`/`*_server.c`/headers; wire the outputs as `srcs` +
    `exported_headers` of the consuming library. Verify a duct-tape-style consumer
    compiles against the generated `mach/notify.h` (note: keep the hand-written
-   source `notify.h` and the mig user header at DISTINCT header roots — Buck2's
+   source `notify.h` and the mig user header at DISTINCT header roots -- Buck2's
    per-target header maps make this natural, unlike nix-ninja's merged `$out`).
 2. **Reexport / install_name.** Prove `-reexport_library`, `-install_name`,
    `-umbrella` flow through `cxx_library` linker_flags (or a thin linker
@@ -988,7 +1081,7 @@ Do them in this order (increasing risk):
    express `X_firstpass.dylib` stubs (link with stubbed/`-undefined
    dynamic_lookup` symbols), the umbrella `libSystem.B.dylib` reexporting all
    firstpass libs, and final `X.dylib` linking the umbrella. This is a real DAG
-   once firstpass != final are distinct targets, so Buck2 should handle it — but
+   once firstpass != final are distinct targets, so Buck2 should handle it -- but
    it is the thing most likely to need a custom rule. Spike with libSystem +
    2-3 sub-libs (libc, libnotify) before trusting the pattern.
 4. **Cross-arch + SDK.** Confirm the toolchain select builds `x86_64` (and later
@@ -998,7 +1091,7 @@ Deliverable: a documented Buck2 idiom for each of MIG, reexport, firstpass, and
 cross-arch. If firstpass cannot be expressed cleanly, that is the signal to keep
 libSystem on nix-ninja and start Buck2 above it.
 
-## Phase 2 — Gradual project porting, iterating with Buck2 directly
+## Phase 2 -- Gradual project porting, iterating with Buck2 directly
 
 Port demand-first, dependency-order within each demand.
 
@@ -1016,14 +1109,14 @@ Port demand-first, dependency-order within each demand.
    prebuilt dylibs as `prebuilt_cxx_library` at the boundary). This is what makes
    the port gradual instead of all-or-nothing.
 4. **Fast loop:** `buck2 build` with the daemon; edit a `.c`, rebuild only its
-   action + dependents. This is the payoff — validate it feels fast on the
+   action + dependents. This is the payoff -- validate it feels fast on the
    first-party subtree before widening.
 
 Deliverable: the actively-developed subtree (first-party + libSystem) builds and
 rebuilds fast under a direct `buck2` daemon; the boundary to the cached dense
 build is a set of `prebuilt_cxx_library` targets.
 
-## Phase 3 — Integrate with Nix
+## Phase 3 -- Integrate with Nix
 
 Now make the Buck2 build reproducible/cacheable without giving up the daemon.
 

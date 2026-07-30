@@ -1,0 +1,205 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+
+# Targets over the libiconv pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate (plan/buck2-port.md phase 3).
+
+# BEGIN generated: iconv
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py iconv   -- review before committing.
+# cmake target: iconv  ->  src/external/libiconv/libiconv.2.dylib
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv",
+    headers = glob(["libiconv/*.h", "libiconv/**/*.h"]),
+    root = "libiconv",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_lib",
+    headers = glob(["libiconv/lib/*.h", "libiconv/lib/**/*.h"]),
+    root = "libiconv/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_srclib",
+    headers = glob(["libiconv/srclib/*.h", "libiconv/srclib/**/*.h"]),
+    root = "libiconv/srclib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_include",
+    headers = glob(["libiconv/include/*.h", "libiconv/include/**/*.h"]),
+    root = "libiconv/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_libcharset_include",
+    headers = glob(["libiconv/libcharset/include/*.h", "libiconv/libcharset/include/**/*.h"]),
+    root = "libiconv/libcharset/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "iconv_obj",
+    srcs = [
+        "libiconv/lib/iconv.c",
+        "libiconv/libcharset/lib/relocatable.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_DLL",
+        "-DBUILDING_LIBICONV",
+        "-DENABLE_RELOCATABLE",
+        "-DHAVE_CONFIG_H",
+        "-DHAVE_STDINT_H=1",
+        "-DIN_LIBRARY",
+        "-DNO_XMALLOC",
+        "-DPIC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Diconv_EXPORTS",
+        "-Drelocate=libiconv_relocate",
+        "-Dset_relocation_prefix=libiconv_set_relocation_prefix",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-O0",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":iconv_inc_libiconv_libiconv",
+        ":iconv_inc_libiconv_libiconv_lib",
+        ":iconv_inc_libiconv_libiconv_srclib",
+        ":iconv_inc_libiconv_libiconv_include",
+        ":iconv_inc_libiconv_libiconv_libcharset_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "iconv_firstpass",
+    dylib_name = "libiconv_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libiconv.2.dylib",
+    objs = [
+        ":iconv_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: iconv
+
+# BEGIN generated: charset
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py charset   -- review before committing.
+# cmake target: charset  ->  src/external/libiconv/libcharset.1.dylib
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv",
+    headers = glob(["libiconv/*.h", "libiconv/**/*.h", "libiconv/*.c"]),
+    root = "libiconv",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_lib",
+    headers = glob(["libiconv/lib/*.h", "libiconv/lib/**/*.h", "libiconv/lib/*.c"]),
+    root = "libiconv/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_srclib",
+    headers = glob(["libiconv/srclib/*.h", "libiconv/srclib/**/*.h", "libiconv/srclib/*.c"]),
+    root = "libiconv/srclib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_include",
+    headers = glob(["libiconv/include/*.h", "libiconv/include/**/*.h", "libiconv/include/*.c"]),
+    root = "libiconv/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_libcharset_include",
+    headers = glob(["libiconv/libcharset/include/*.h", "libiconv/libcharset/include/**/*.h", "libiconv/libcharset/include/*.c"]),
+    root = "libiconv/libcharset/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "charset_obj",
+    srcs = [
+        "libiconv/libcharset/lib/localcharset.c",
+        "libiconv/libcharset/lib/relocatable.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_DLL",
+        "-DBUILDING_LIBCHARSET",
+        "-DENABLE_RELOCATABLE",
+        "-DHAVE_CONFIG_H",
+        "-DHAVE_STDINT_H=1",
+        "-DIN_LIBRARY",
+        "-DNO_XMALLOC",
+        "-DPIC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcharset_EXPORTS",
+        "-Drelocate=libcharset_relocate",
+        "-Dset_relocation_prefix=libcharset_set_relocation_prefix",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-O0",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":charset_inc_libiconv_libiconv",
+        ":charset_inc_libiconv_libiconv_lib",
+        ":charset_inc_libiconv_libiconv_srclib",
+        ":charset_inc_libiconv_libiconv_include",
+        ":charset_inc_libiconv_libiconv_libcharset_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "charset_firstpass",
+    dylib_name = "libcharset_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libcharset.1.dylib",
+    objs = [
+        ":charset_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: charset
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_libiconv.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

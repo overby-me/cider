@@ -62,10 +62,10 @@ darwin_dylib(
         ":libcache_obj",
     ],
     siblings = [
-        "//buck-src:system_c_firstpass",
+        "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_malloc_firstpass",
-        "//buck-src:platform_firstpass",
+        "//buck-src/libplatform:platform_firstpass",
         "//buck-src:system_kernel_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
