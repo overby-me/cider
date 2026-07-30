@@ -1,0 +1,12 @@
+load("//buck/rules:cc.bzl", "cc_header_root")
+
+# xtrace's public headers, staged with the package structure INTACT: the per-protocol
+# XtraceMig stubs include <xtrace/xtrace-mig-types.h>, and that header reaches back out
+# with #include "../../base.h" -- which only resolves if the staged copy has the same
+# shape, so the tree is staged from the package root with -I pointing at include/.
+cc_header_root(
+    name = "xtrace_headers",
+    headers = glob(["*.h", "include/xtrace/*.h"]),
+    include_subdirs = ["include"],
+    visibility = ["PUBLIC"],
+)

@@ -291,8 +291,40 @@ buck-src.sh calls), together with the "." -component case.
 
 95 checks pass.
 
-**Next up:** the higher-level frameworks now that CoreFoundation is up, and zsh's own
-codegen chain (`zsh.mdh`) -- the last two executables.
+### 2026-07-30 (late morning) -- 83% of the reference's link edges, measured
+
+`scripts/buck-coverage.py` counts every LINK EDGE in the reference build.ninja and reports
+which ones have a buck2 target, so progress is measured against the graph rather than a
+hand-kept list: **107/120 dylibs, 48/51 executables, 18/37 archives -- 173/208 (83%)**.
+
+The 28 xtrace stub dylibs were the bulk of the dylib gap. Each compiles exactly one
+generated `<stem>XtraceMig.c` into its own little dylib that xtrace dlopens to decode
+that protocol's messages, which needed three things:
+
+  * **An [xtrace] SUBTARGET on mig_gen.** The stub source cannot go in `compile_srcs`,
+    because that set is handed to the protocol's real consumer, which must not compile it.
+  * **All-generated object libraries.** `generate()` used to give up when every source of
+    a target was generated; it now keeps the reference's flags and include roots and takes
+    the sources from a `gen:` entry. That is exactly the shape of an xtrace stub.
+  * **Matching each stub to the right mig INSTANCE.** The same .defs is run by several
+    targets (libsyscall runs mach/task.defs three times, duct-tape once for the kernel
+    side), so only the output path identifies which one produces the stub -- and the name
+    is relative to that target's output dir, keeping the protocol's own subdirectory
+    (`mach/clockXtraceMig.c`). scripts/gen-xtrace-mig.py does that mapping; 28 of 31
+    matched, and the 3 that did not need mig targets that do not exist yet (libdispatch's
+    firehose pair and launchd's notify.defs instance).
+
+Two smaller corrections: the legacy object-library path emitted a `_firstpass` dylib for
+any target with a dylib edge, which for a single-pass library is a second link of the same
+objects under a name nothing uses (it is emitted only when the reference HAS a firstpass
+edge now); and these stubs have NO install_name at all in the reference, so the suite
+asserts the Mach-O type for them instead.
+
+95 checks pass, 121 dylibs and 47 executables link.
+
+**Next up:** the archives (18/37 -- the remaining ones are mostly the `*_static*` variants
+of libraries already ported), then libressl/openssl, zsh's codegen chain and the ncurses
+add-ons (form, menu, panel).
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

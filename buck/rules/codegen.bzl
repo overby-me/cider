@@ -203,8 +203,25 @@ def _mig_gen_impl(ctx):
     # consumer collects the roots through its gen_srcs deps.
     exported_srcs = [outdir.project(s) for s in ctx.attrs.compile_srcs]
 
+    # The xtrace stub is exported through a SUBTARGET rather than alongside the
+    # rest: each protocol's <stem>XtraceMig.c is compiled into its own little
+    # dylib that xtrace loads at runtime, and adding it to compile_srcs would also
+    # hand it to the protocol's real consumer, which must not have it.
+    xtrace_srcs = [outdir.project(s) for s in ctx.attrs.xtrace_srcs]
+
     return [
-        DefaultInfo(default_output = outdir),
+        DefaultInfo(default_output = outdir, sub_targets = {
+            "xtrace": [
+                DefaultInfo(default_outputs = xtrace_srcs),
+                GeneratedSourcesInfo(sources = xtrace_srcs, headers = []),
+                CcLibInfo(
+                    include_dirs = merged.include_dirs + [outdir],
+                    exported_flags = merged.exported_flags,
+                    static_libs = [],
+                    linker_flags = [],
+                ),
+            ],
+        }),
         GeneratedSourcesInfo(sources = exported_srcs, headers = []),
         # The generated dir is an include root for consumers, and it comes
         # BEFORE nothing: it is appended after the dep roots, so a hand-written
@@ -243,6 +260,8 @@ mig_gen = rule(
         "sheader_suffix": attrs.string(default = "Server.h"),
         "target": attrs.string(default = "x86_64-apple-darwin20"),
         "user_suffix": attrs.string(default = "User.c"),
+        # Generated files exported through the [xtrace] subtarget (see above).
+        "xtrace_srcs": attrs.list(attrs.string(), default = []),
         "xtrace_suffix": attrs.string(default = "XtraceMig.c"),
         "toolchain": attrs.toolchain_dep(default = "toolchains//:native_cc"),
     },

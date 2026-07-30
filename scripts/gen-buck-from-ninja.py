@@ -80,6 +80,11 @@ TOOLCHAIN_FLAGS = {
 CROSS_PACKAGE_ROOTS = {
     "src/libsimple/include": "//src/libsimple:libsimple_headers",
     "src/external/darlingserver/include": "//src/external/darlingserver:dserver_headers",
+    # launchd's own headers, needed by targets in OTHER packages: xtrace's per-protocol
+    # stub for liblaunch's job.defs compiles a generated source whose imports reach
+    # launchd's core.h. The root staged there covers src/ and liblaunch/ both.
+    "src/launchd/src": "//src/launchd:launchd_inc_src_launchd",
+    "src/launchd/liblaunch": "//src/launchd:launchd_inc_src_launchd",
 }
 
 # Force-included headers (-include) owned by another package, mapped to the target
@@ -397,6 +402,13 @@ def generate(target: str, edges):
         key = (tuple(flags), tuple(prefix), tuple(ordered_inc))
         groups.setdefault(key, {"flags": flags, "prefix": prefix, "inc": ordered_inc, "srcs": []})
         groups[key]["srcs"].append((kind, srcp))
+    if not groups and gen_srcs:
+        # EVERY source is generated (xtrace's per-protocol stubs are one generated
+        # XtraceMig.c and nothing else). The flags and include roots still come from
+        # the reference; only the sources come from a gen: entry in extra-deps.json.
+        flags, prefix = own_flags_of(units[0])
+        ordered_inc, _gi = includes_of(units[0])
+        groups[("gen",)] = {"flags": flags, "prefix": prefix, "inc": ordered_inc, "srcs": []}
     if not groups:
         return None
 
@@ -516,7 +528,10 @@ def generate(target: str, edges):
 
     base = target if target.endswith("_obj") else target + "_obj"
     obj_names = []
-    ordered = sorted(groups.values(), key=lambda g: (-len(g["srcs"]), g["srcs"][0][1]))
+    # A group can legitimately have NO srcs of its own (every source generated), so the
+    # sort key cannot index into it.
+    ordered = sorted(groups.values(),
+                     key=lambda g: (-len(g["srcs"]), g["srcs"][0][1] if g["srcs"] else ""))
     for idx, g in enumerate(ordered):
         name = base if idx == 0 else f"{base}{idx + 1}"
         obj_names.append(name)
@@ -578,7 +593,7 @@ def generate(target: str, edges):
         install_name = m.group(1) if m else ""
         is_dylib = link[0].endswith(".dylib")
     ldflags = [d[len("ldflag:"):] for d in extra_deps(target) if d.startswith("ldflag:")]
-    if is_dylib:
+    if is_dylib and dylib_edges(target, edges)[1] is not None:
         w("darwin_dylib(")
         w(f'    name = "{target}_firstpass",')
         w(f'    dylib_name = "lib{target}_firstpass.dylib",')

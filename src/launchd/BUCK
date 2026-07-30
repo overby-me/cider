@@ -100,6 +100,7 @@ mig_gen(
     server_suffix = "Server.c",
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["jobXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -119,6 +120,7 @@ mig_gen(
     server_suffix = "Server.c",
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["helperXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -433,6 +435,7 @@ mig_gen(
         "internalServer.c",
         "internalUser.c",
     ],
+    xtrace_srcs = ["internalXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -453,6 +456,7 @@ mig_gen(
     compile_srcs = [
         "job_forwardUser.c",
     ],
+    xtrace_srcs = ["job_forwardXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -473,6 +477,7 @@ mig_gen(
     compile_srcs = [
         "job_replyUser.c",
     ],
+    xtrace_srcs = ["job_replyXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -578,3 +583,5 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: launchd binary
+
+

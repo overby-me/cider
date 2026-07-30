@@ -13084,6 +13084,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/clockXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13103,6 +13104,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/clock_privXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13122,6 +13124,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/clock_replyXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13141,6 +13144,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/host_privXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13160,6 +13164,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/host_securityXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13179,6 +13184,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/lock_setXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13198,6 +13204,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/mach_hostXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13217,6 +13224,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/mach_portXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13236,6 +13244,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/mach_voucherXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13255,6 +13264,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/memory_entryXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13274,6 +13284,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/processorXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13293,6 +13304,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/processor_setXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13312,6 +13324,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/taskXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13331,6 +13344,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/thread_actXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13350,6 +13364,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/vm_mapXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13369,6 +13384,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/mach_vmXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -13388,6 +13404,7 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["mach/servers/netnameXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -14842,6 +14859,7 @@ mig_gen(
     defs = "syslog/aslcommon/asl_ipc.defs",
     out_base = "syslog/aslcommon",
     compile_srcs = ["asl_ipcUser.c"],
+    xtrace_srcs = ["asl_ipcXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -15252,6 +15270,7 @@ mig_gen(
     server_suffix = "Server.c",
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["signal/mach_excXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -15271,6 +15290,7 @@ mig_gen(
     server_suffix = "Server.c",
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["signal/excXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -15841,6 +15861,7 @@ mig_gen(
     server_suffix = "Server.c",
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["protocolXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -16122,6 +16143,7 @@ mig_gen(
     compile_srcs = [
         "notify_ipcUser.c",
     ],
+    xtrace_srcs = ["notify_ipcXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -21407,6 +21429,7 @@ mig_gen(
         "memberdServer.c",
         "memberdUser.c",
     ],
+    xtrace_srcs = ["memberdXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -26772,3 +26795,3081 @@ mig_gen(
     ],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: job_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py job_xtrace_mig   -- review before committing.
+# cmake target: job_xtrace_mig  ->  src/launchd/liblaunch/libjob_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/liblaunch/jobXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "job_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Djob_xtrace_mig_EXPORTS",
+        "-fblocks",
+        "-ggdb",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//src/launchd:launchmig_job[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_xtrace_mig
+
+# BEGIN generated: job_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs job_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "job_xtrace_mig_dylib",
+    dylib_name = "libjob_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # job_xtrace_mig
+        ":job_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_xtrace_mig dylibs
+
+# BEGIN generated: asl_ipc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py asl_ipc_xtrace_mig   -- review before committing.
+# cmake target: asl_ipc_xtrace_mig  ->  src/external/syslog/libasl_ipc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/syslog/aslcommon/asl_ipcXtraceMig.c
+
+cc_header_root(
+    name = "asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h", "syslog/libsystem_asl.tproj/include/*.c"]),
+    root = "syslog/libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "asl_ipc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dasl_ipc_xtrace_mig_EXPORTS",
+        "-fPIC",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
+    ],
+    gen_srcs = [
+        "//buck-src:asl_ipc_mig[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: asl_ipc_xtrace_mig
+
+# BEGIN generated: clock_priv_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_priv_xtrace_mig   -- review before committing.
+# cmake target: clock_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_priv_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_privXtraceMig.c
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_priv_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_priv_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_priv_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_priv_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock_priv[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_priv_xtrace_mig
+
+# BEGIN generated: clock_reply_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_reply_xtrace_mig   -- review before committing.
+# cmake target: clock_reply_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_reply_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_replyXtraceMig.c
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_reply_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_reply_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_reply_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_reply_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_reply_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_reply_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock_reply[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_reply_xtrace_mig
+
+# BEGIN generated: clock_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clock_xtrace_mig   -- review before committing.
+# cmake target: clock_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clockXtraceMig.c
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clock_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clock_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dclock_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_os",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":clock_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":clock_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":clock_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_clock[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_xtrace_mig
+
+# BEGIN generated: exc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py exc_xtrace_mig   -- review before committing.
+# cmake target: exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libexc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/excXtraceMig.c
+
+cc_header_root(
+    name = "exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "exc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-Dexc_xtrace_mig_EXPORTS",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-fPIC",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_exc[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: exc_xtrace_mig
+
+# BEGIN generated: helper_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py helper_xtrace_mig   -- review before committing.
+# cmake target: helper_xtrace_mig  ->  src/launchd/liblaunch/libhelper_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/liblaunch/helperXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "helper_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dhelper_xtrace_mig_EXPORTS",
+        "-fblocks",
+        "-ggdb",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//src/launchd:launchmig_helper[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: helper_xtrace_mig
+
+# BEGIN generated: host_priv_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py host_priv_xtrace_mig   -- review before committing.
+# cmake target: host_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_priv_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_privXtraceMig.c
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_priv_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "host_priv_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dhost_priv_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_os",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":host_priv_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":host_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":host_priv_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_host_priv[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_priv_xtrace_mig
+
+# BEGIN generated: host_security_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py host_security_xtrace_mig   -- review before committing.
+# cmake target: host_security_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_security_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_securityXtraceMig.c
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "host_security_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "host_security_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dhost_security_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_os",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":host_security_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":host_security_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":host_security_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_host_security[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_security_xtrace_mig
+
+# BEGIN generated: internal_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py internal_xtrace_mig   -- review before committing.
+# cmake target: internal_xtrace_mig  ->  src/launchd/src/libinternal_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/src/internalXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "internal_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dinternal_xtrace_mig_EXPORTS",
+        "-Dxpc_domain_server=job_server",
+        "-fblocks",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//src/launchd:launchdmig_internal[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: internal_xtrace_mig
+
+# BEGIN generated: job_forward_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py job_forward_xtrace_mig   -- review before committing.
+# cmake target: job_forward_xtrace_mig  ->  src/launchd/src/libjob_forward_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/src/job_forwardXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "job_forward_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Djob_forward_xtrace_mig_EXPORTS",
+        "-Dxpc_domain_server=job_server",
+        "-fblocks",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//src/launchd:launchdmig_job_forward[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_forward_xtrace_mig
+
+# BEGIN generated: job_reply_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py job_reply_xtrace_mig   -- review before committing.
+# cmake target: job_reply_xtrace_mig  ->  src/launchd/src/libjob_reply_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/src/job_replyXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "job_reply_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Djob_reply_xtrace_mig_EXPORTS",
+        "-Dxpc_domain_server=job_server",
+        "-fblocks",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//src/launchd:launchdmig_job_reply[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_reply_xtrace_mig
+
+# BEGIN generated: lock_set_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lock_set_xtrace_mig   -- review before committing.
+# cmake target: lock_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/liblock_set_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_setXtraceMig.c
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lock_set_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lock_set_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dlock_set_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_os",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":lock_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":lock_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":lock_set_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_lock_set[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lock_set_xtrace_mig
+
+# BEGIN generated: mach_exc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_exc_xtrace_mig   -- review before committing.
+# cmake target: mach_exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libmach_exc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excXtraceMig.c
+
+cc_header_root(
+    name = "mach_exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_exc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-Dmach_exc_xtrace_mig_EXPORTS",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-fPIC",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:emmig_signal_mach_exc[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_exc_xtrace_mig
+
+# BEGIN generated: mach_host_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_host_xtrace_mig   -- review before committing.
+# cmake target: mach_host_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_host_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_hostXtraceMig.c
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_host_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_host_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_host_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_host_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_host_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_host_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_host[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_host_xtrace_mig
+
+# BEGIN generated: mach_port_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_port_xtrace_mig   -- review before committing.
+# cmake target: mach_port_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_port_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_portXtraceMig.c
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_port_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_port_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_port_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_port_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_port_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_port_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_port[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_port_xtrace_mig
+
+# BEGIN generated: mach_vm_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_vm_xtrace_mig   -- review before committing.
+# cmake target: mach_vm_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_vm_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vmXtraceMig.c
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_vm_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_vm_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_vm_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_vm_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_vm_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_vm_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_vm[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_vm_xtrace_mig
+
+# BEGIN generated: mach_voucher_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mach_voucher_xtrace_mig   -- review before committing.
+# cmake target: mach_voucher_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_voucher_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucherXtraceMig.c
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "mach_voucher_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mach_voucher_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmach_voucher_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_os",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":mach_voucher_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":mach_voucher_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":mach_voucher_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_mach_voucher[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_voucher_xtrace_mig
+
+# BEGIN generated: memberd_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py memberd_xtrace_mig   -- review before committing.
+# cmake target: memberd_xtrace_mig  ->  src/external/OpenDirectory/memberd-21.1/libmemberd_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/OpenDirectory/memberd-21.1/memberdXtraceMig.c
+
+cc_header_root(
+    name = "memberd_xtrace_mig_inc_OpenDirectory_memberd_21_1",
+    headers = glob(["OpenDirectory/memberd-21.1/*.h", "OpenDirectory/memberd-21.1/**/*.h", "OpenDirectory/memberd-21.1/*.c"]),
+    root = "OpenDirectory/memberd-21.1",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memberd_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dmemberd_xtrace_mig_EXPORTS",
+        "-fPIC",
+        "-includestdio.h",
+        "-includeobjc/objc.h",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":memberd_xtrace_mig_inc_OpenDirectory_memberd_21_1",
+    ],
+    gen_srcs = [
+        "//buck-src:odmig_memberd[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd_xtrace_mig
+
+# BEGIN generated: memory_entry_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py memory_entry_xtrace_mig   -- review before committing.
+# cmake target: memory_entry_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmemory_entry_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entryXtraceMig.c
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "memory_entry_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "memory_entry_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dmemory_entry_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_os",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":memory_entry_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":memory_entry_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":memory_entry_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_memory_entry[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: memory_entry_xtrace_mig
+
+# BEGIN generated: netname_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py netname_xtrace_mig   -- review before committing.
+# cmake target: netname_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libnetname_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/servers/netnameXtraceMig.c
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "netname_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "netname_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dnetname_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_os",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":netname_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":netname_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":netname_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_servers_netname[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: netname_xtrace_mig
+
+# BEGIN generated: notify_ipc_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py notify_ipc_xtrace_mig   -- review before committing.
+# cmake target: notify_ipc_xtrace_mig  ->  src/external/libnotify/libnotify_ipc_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libnotify/notify_ipcXtraceMig.c
+
+cc_header_root(
+    name = "notify_ipc_xtrace_mig_inc_libnotify",
+    headers = glob(["libnotify/*.h", "libnotify/**/*.h", "libnotify/*.c"]),
+    root = "libnotify",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "notify_ipc_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dnotify_ipc_xtrace_mig_EXPORTS",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-nostdinc",
+        "-w",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/bsd/sys/fileport.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":notify_ipc_xtrace_mig_inc_libnotify",
+    ],
+    gen_srcs = [
+        "//buck-src:notifymig_notify_ipc[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notify_ipc_xtrace_mig
+
+# BEGIN generated: processor_set_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py processor_set_xtrace_mig   -- review before committing.
+# cmake target: processor_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_set_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_setXtraceMig.c
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_set_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "processor_set_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dprocessor_set_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_os",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":processor_set_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":processor_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":processor_set_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_processor_set[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_set_xtrace_mig
+
+# BEGIN generated: processor_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py processor_xtrace_mig   -- review before committing.
+# cmake target: processor_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processorXtraceMig.c
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "processor_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "processor_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dprocessor_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_os",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":processor_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":processor_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":processor_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_processor[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_xtrace_mig
+
+# BEGIN generated: protocol_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py protocol_xtrace_mig   -- review before committing.
+# cmake target: protocol_xtrace_mig  ->  src/external/libdispatch/libprotocol_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libdispatch/src/protocolXtraceMig.c
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch",
+    headers = glob(["libdispatch/*.h", "libdispatch/**/*.h", "libdispatch/*.c"]),
+    root = "libdispatch",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["libdispatch/private/*.h", "libdispatch/private/**/*.h", "libdispatch/private/*.c"]),
+    root = "libdispatch/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "protocol_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["libdispatch/src/*.h", "libdispatch/src/**/*.h", "libdispatch/src/*.c"]),
+    root = "libdispatch/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "protocol_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dprotocol_xtrace_mig_EXPORTS",
+        "-Dtypeof=__typeof__",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":protocol_xtrace_mig_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":protocol_xtrace_mig_inc_libdispatch",
+        ":protocol_xtrace_mig_inc_libdispatch_private",
+        ":protocol_xtrace_mig_inc_libdispatch_src",
+    ],
+    gen_srcs = [
+        "//buck-src:dispatchmig_protocol[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: protocol_xtrace_mig
+
+# BEGIN generated: task_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py task_xtrace_mig   -- review before committing.
+# cmake target: task_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libtask_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/taskXtraceMig.c
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "task_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "task_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dtask_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":task_xtrace_mig_inc_xnu_libsyscall_os",
+        ":task_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":task_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":task_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":task_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_task[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: task_xtrace_mig
+
+# BEGIN generated: thread_act_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py thread_act_xtrace_mig   -- review before committing.
+# cmake target: thread_act_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libthread_act_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_actXtraceMig.c
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "thread_act_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "thread_act_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dthread_act_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_os",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":thread_act_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":thread_act_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":thread_act_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_thread_act[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: thread_act_xtrace_mig
+
+# BEGIN generated: vm_map_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py vm_map_xtrace_mig   -- review before committing.
+# cmake target: vm_map_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libvm_map_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_mapXtraceMig.c
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h", "xnu/libsyscall/wrappers/string/*.c"]),
+    root = "xnu/libsyscall/wrappers/string",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h", "xnu/libsyscall/wrappers/spawn/*.c"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h", "xnu/libsyscall/wrappers/libproc/*.c"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h", "xnu/libsyscall/os/*.c"]),
+    root = "xnu/libsyscall/os",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h", "xnu/libsyscall/mach/*.c"]),
+    root = "xnu/libsyscall/mach",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h", "xnu/libsyscall/wrappers/*.c"]),
+    root = "xnu/libsyscall/wrappers",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h", "xnu/darling/src/libsystem_kernel/*.c"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "vm_map_xtrace_mig_inc_xnu_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h", "xnu/osfmk/*.c"]),
+    root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "vm_map_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-Dvm_map_xtrace_mig_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_string",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_spawn",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers_libproc",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_os",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_mach",
+        ":vm_map_xtrace_mig_inc_xnu_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":vm_map_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
+        ":vm_map_xtrace_mig_inc_xnu_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:ksmig_mach_vm_map[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_map_xtrace_mig
+
+# BEGIN generated: asl_ipc_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs asl_ipc_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "asl_ipc_xtrace_mig_dylib",
+    dylib_name = "libasl_ipc_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # asl_ipc_xtrace_mig
+        ":asl_ipc_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: asl_ipc_xtrace_mig dylibs
+
+# BEGIN generated: clock_priv_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs clock_priv_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "clock_priv_xtrace_mig_dylib",
+    dylib_name = "libclock_priv_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # clock_priv_xtrace_mig
+        ":clock_priv_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_priv_xtrace_mig dylibs
+
+# BEGIN generated: clock_reply_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs clock_reply_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "clock_reply_xtrace_mig_dylib",
+    dylib_name = "libclock_reply_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # clock_reply_xtrace_mig
+        ":clock_reply_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_reply_xtrace_mig dylibs
+
+# BEGIN generated: clock_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs clock_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "clock_xtrace_mig_dylib",
+    dylib_name = "libclock_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # clock_xtrace_mig
+        ":clock_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: clock_xtrace_mig dylibs
+
+# BEGIN generated: exc_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs exc_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "exc_xtrace_mig_dylib",
+    dylib_name = "libexc_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # exc_xtrace_mig
+        ":exc_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: exc_xtrace_mig dylibs
+
+# BEGIN generated: helper_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs helper_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "helper_xtrace_mig_dylib",
+    dylib_name = "libhelper_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # helper_xtrace_mig
+        ":helper_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: helper_xtrace_mig dylibs
+
+# BEGIN generated: host_priv_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs host_priv_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "host_priv_xtrace_mig_dylib",
+    dylib_name = "libhost_priv_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # host_priv_xtrace_mig
+        ":host_priv_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_priv_xtrace_mig dylibs
+
+# BEGIN generated: host_security_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs host_security_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "host_security_xtrace_mig_dylib",
+    dylib_name = "libhost_security_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # host_security_xtrace_mig
+        ":host_security_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: host_security_xtrace_mig dylibs
+
+# BEGIN generated: internal_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs internal_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "internal_xtrace_mig_dylib",
+    dylib_name = "libinternal_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # internal_xtrace_mig
+        ":internal_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: internal_xtrace_mig dylibs
+
+# BEGIN generated: job_forward_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs job_forward_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "job_forward_xtrace_mig_dylib",
+    dylib_name = "libjob_forward_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # job_forward_xtrace_mig
+        ":job_forward_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_forward_xtrace_mig dylibs
+
+# BEGIN generated: job_reply_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs job_reply_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "job_reply_xtrace_mig_dylib",
+    dylib_name = "libjob_reply_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # job_reply_xtrace_mig
+        ":job_reply_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: job_reply_xtrace_mig dylibs
+
+# BEGIN generated: lock_set_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs lock_set_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "lock_set_xtrace_mig_dylib",
+    dylib_name = "liblock_set_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # lock_set_xtrace_mig
+        ":lock_set_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: lock_set_xtrace_mig dylibs
+
+# BEGIN generated: mach_exc_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_exc_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_exc_xtrace_mig_dylib",
+    dylib_name = "libmach_exc_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_exc_xtrace_mig
+        ":mach_exc_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_exc_xtrace_mig dylibs
+
+# BEGIN generated: mach_host_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_host_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_host_xtrace_mig_dylib",
+    dylib_name = "libmach_host_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_host_xtrace_mig
+        ":mach_host_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_host_xtrace_mig dylibs
+
+# BEGIN generated: mach_port_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_port_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_port_xtrace_mig_dylib",
+    dylib_name = "libmach_port_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_port_xtrace_mig
+        ":mach_port_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_port_xtrace_mig dylibs
+
+# BEGIN generated: mach_vm_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_vm_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_vm_xtrace_mig_dylib",
+    dylib_name = "libmach_vm_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_vm_xtrace_mig
+        ":mach_vm_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_vm_xtrace_mig dylibs
+
+# BEGIN generated: mach_voucher_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_voucher_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_voucher_xtrace_mig_dylib",
+    dylib_name = "libmach_voucher_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_voucher_xtrace_mig
+        ":mach_voucher_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_voucher_xtrace_mig dylibs
+
+# BEGIN generated: memberd_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs memberd_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "memberd_xtrace_mig_dylib",
+    dylib_name = "libmemberd_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # memberd_xtrace_mig
+        ":memberd_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: memberd_xtrace_mig dylibs
+
+# BEGIN generated: memory_entry_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs memory_entry_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "memory_entry_xtrace_mig_dylib",
+    dylib_name = "libmemory_entry_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # memory_entry_xtrace_mig
+        ":memory_entry_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: memory_entry_xtrace_mig dylibs
+
+# BEGIN generated: netname_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs netname_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "netname_xtrace_mig_dylib",
+    dylib_name = "libnetname_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # netname_xtrace_mig
+        ":netname_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: netname_xtrace_mig dylibs
+
+# BEGIN generated: notify_ipc_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs notify_ipc_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "notify_ipc_xtrace_mig_dylib",
+    dylib_name = "libnotify_ipc_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # notify_ipc_xtrace_mig
+        ":notify_ipc_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: notify_ipc_xtrace_mig dylibs
+
+# BEGIN generated: processor_set_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs processor_set_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "processor_set_xtrace_mig_dylib",
+    dylib_name = "libprocessor_set_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # processor_set_xtrace_mig
+        ":processor_set_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_set_xtrace_mig dylibs
+
+# BEGIN generated: processor_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs processor_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "processor_xtrace_mig_dylib",
+    dylib_name = "libprocessor_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # processor_xtrace_mig
+        ":processor_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: processor_xtrace_mig dylibs
+
+# BEGIN generated: protocol_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs protocol_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "protocol_xtrace_mig_dylib",
+    dylib_name = "libprotocol_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # protocol_xtrace_mig
+        ":protocol_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: protocol_xtrace_mig dylibs
+
+# BEGIN generated: task_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs task_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "task_xtrace_mig_dylib",
+    dylib_name = "libtask_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # task_xtrace_mig
+        ":task_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: task_xtrace_mig dylibs
+
+# BEGIN generated: thread_act_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs thread_act_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "thread_act_xtrace_mig_dylib",
+    dylib_name = "libthread_act_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # thread_act_xtrace_mig
+        ":thread_act_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: thread_act_xtrace_mig dylibs
+
+# BEGIN generated: vm_map_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs vm_map_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "vm_map_xtrace_mig_dylib",
+    dylib_name = "libvm_map_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # vm_map_xtrace_mig
+        ":vm_map_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: vm_map_xtrace_mig dylibs

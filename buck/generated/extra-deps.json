@@ -253,5 +253,117 @@
     "//darwin/frameworks:fw_OpenGL",
     "//darwin/frameworks:fw_SearchKit",
     "//buck-src:fw_Security"
+  ],
+  "job_xtrace_mig": [
+    "gen://src/launchd:launchmig_job[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "asl_ipc_xtrace_mig": [
+    "gen://buck-src:asl_ipc_mig[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "clock_priv_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_clock_priv[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "clock_reply_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_clock_reply[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "clock_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_clock[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "exc_xtrace_mig": [
+    "gen://buck-src:emmig_signal_exc[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "helper_xtrace_mig": [
+    "gen://src/launchd:launchmig_helper[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "host_priv_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_host_priv[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "host_security_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_host_security[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "internal_xtrace_mig": [
+    "gen://src/launchd:launchdmig_internal[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "job_forward_xtrace_mig": [
+    "gen://src/launchd:launchdmig_job_forward[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "job_reply_xtrace_mig": [
+    "gen://src/launchd:launchdmig_job_reply[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "lock_set_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_lock_set[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "mach_exc_xtrace_mig": [
+    "gen://buck-src:emmig_signal_mach_exc[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "mach_host_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_mach_host[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "mach_port_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_mach_port[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "mach_vm_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_mach_vm[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "mach_voucher_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_mach_voucher[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "memberd_xtrace_mig": [
+    "gen://buck-src:odmig_memberd[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "memory_entry_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_memory_entry[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "netname_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_servers_netname[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "notify_ipc_xtrace_mig": [
+    "gen://buck-src:notifymig_notify_ipc[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "processor_set_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_processor_set[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "processor_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_processor[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "protocol_xtrace_mig": [
+    "gen://buck-src:dispatchmig_protocol[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "task_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_task[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "thread_act_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_thread_act[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "vm_map_xtrace_mig": [
+    "gen://buck-src:ksmig_mach_vm_map[xtrace]",
+    "//src/xtrace:xtrace_headers"
   ]
 }

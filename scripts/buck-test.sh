@@ -367,7 +367,16 @@ for t in $all_dylibs; do
 	# like the run stopping for no reason.
 	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1 || true)
 	case "$id" in
-	# A framework binary's id lives under /System/Library, not /usr/lib.
+	# A framework binary's id lives under /System/Library, not /usr/lib. xtrace's
+	# per-protocol stubs have NO install_name at all in the reference -- xtrace
+	# dlopens them by path -- so for those the assertion is the Mach-O type.
+	*_xtrace_mig.dylib | "")
+		ft=$(llvm-objdump --macho --private-headers "$f" 2>/dev/null | grep -m1 MH_MAGIC || true)
+		case "$ft" in
+		*DYLIB*) n_linked=$((n_linked + 1)) ;;
+		*) bad "$name is not a Mach-O dylib ($ft)" ;;
+		esac
+		;;
 	/usr/lib/* | /System/Library/*)
 		n_linked=$((n_linked + 1))
 		case "$name" in
