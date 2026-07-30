@@ -620,6 +620,18 @@ def dylib_edges(target: str, edges):
             if set(objlibs_of(cand)) == want:
                 final = cand
                 break
+    if final is None and first is None:
+        # A library OUTSIDE the circular cluster has no firstpass at all, and its
+        # dylib is often named nothing like its cmake target (system_copyfile builds
+        # libcopyfile.dylib, cxxabi_obj builds libc++abi.dylib). Match on the object
+        # library instead, which is the one name that is always shared.
+        want = {target, target.removesuffix("_obj"), target + "_obj"}
+        for cand in dylibs:
+            if "_firstpass" in os.path.basename(cand[0]):
+                continue
+            if want & set(objlibs_of(cand)):
+                final = cand
+                break
     return final, first
 
 
@@ -701,8 +713,10 @@ def final_registry() -> dict:
             continue
         pkg = os.path.relpath(dirpath, REPO)
         text = open(os.path.join(dirpath, "BUCK")).read()
-        for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_final",\s*\n\s*dylib_name = "([^"]+)"', text):
-            reg[m.group(2)] = f"//{pkg}:{m.group(1)}_final"
+        for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_(final|dylib)",\s*\n\s*dylib_name = "([^"]+)"', text):
+            # Keep the suffix the target actually uses: a single-pass library is
+            # <base>_dylib, and naming it <base>_final does not resolve.
+            reg[m.group(3)] = f"//{pkg}:{m.group(1)}_{m.group(2)}"
     return reg
 
 
@@ -725,6 +739,11 @@ def link_flag_files(link_vars, pkg) -> tuple:
     """
     files, elsewhere = {}, []
     for tok in link_vars.get("LINK_FLAGS", "").split():
+        # -dylib_file and friends carry paths too, but the rule derives those from
+        # its own deps; listing them here buried the real ones (an alias list) under
+        # a hundred lines of framework mappings.
+        if tok.startswith(_LINK_FLAG_HANDLED):
+            continue
         m = re.match(r"(-Wl,-[a-z_]+),(/\S+)$", tok)
         if not m:
             continue
@@ -868,7 +887,19 @@ def generate_dylibs(target: str, edges, only: str = ""):
     # A library named BOTH as a sibling and as a reexport gets linked twice, and the
     # plain mention wins: libSystem came out with 27 LC_LOAD_DYLIBs and no
     # LC_REEXPORT_DYLIB at all, which is the opposite of what an umbrella is for.
-    sibs = [s for s in sibs if s not in reex]
+    # The match is per LIBRARY, not per label: the reference lists libsystem_malloc's
+    # FIRSTPASS among the umbrella's inputs and reexports its FINAL, and those are two
+    # labels for one install_name -- comparing labels left the reexport dropped, so
+    # libc++abi could not resolve _malloc through libSystem.
+    def _lib_of(label):
+        name = label.rsplit(":", 1)[-1]
+        for suffix in ("_firstpass", "_final", "_dylib"):
+            if name.endswith(suffix):
+                return name[: -len(suffix)]
+        return name
+
+    reex_libs = {_lib_of(r) for r in reex}
+    sibs = [s for s in sibs if _lib_of(s) not in reex_libs]
     ldflags = [d[len("ldflag:"):] for d in extra_deps(target) if d.startswith("ldflag:")]
     # Object groups this port adds that no cmake object library corresponds to: the
     # kernel's generated rpc.c needs its own flag group (dserver-rpc-defs.h forced
@@ -903,6 +934,7 @@ def generate_dylibs(target: str, edges, only: str = ""):
             w(f"#   {t}")
     w("")
 
+    single = first is None
     for kind in ("firstpass", "final"):
         if kind == "firstpass" and (first is None or only == "final"):
             continue
@@ -911,7 +943,8 @@ def generate_dylibs(target: str, edges, only: str = ""):
         if kind == "final" and final is None:
             continue
         w("darwin_dylib(")
-        w(f'    name = "{target}_{kind}",')
+        base = target.removesuffix("_obj")
+        w(f'    name = "{base}_{"dylib" if single else kind}",')
         # The ARTIFACT name from the edge, not a guess: libSystem's final pass is
         # libSystem.B.dylib and libobjc's is libobjc.A.dylib.
         edge = first if kind == "firstpass" else final

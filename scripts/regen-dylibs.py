@@ -69,8 +69,22 @@ def members():
     return sorted(found - NOT_MEMBERS - HAND_TUNED)
 
 
+def generated_dylib_targets():
+    """cmake targets that already own a `<t> dylibs` block.
+
+    Libraries outside the circular cluster (libc++abi, libquarantine, ...) are not
+    members, so enumerating members misses them -- and a stale label in one of their
+    blocks breaks every consumer. The marker is the record of what generated it.
+    """
+    found = set()
+    for f in buck_files():
+        for m in re.finditer(r"^# BEGIN generated: (\S+) dylibs\n", open(f).read(), re.M):
+            found.add(m.group(1))
+    return found
+
+
 def classify():
-    """(members to regenerate as a pair, members where only the final is generated)."""
+    """(targets to regenerate as a pair, targets where only the final is generated)."""
     hand = set()
     for f in buck_files():
         text = open(f).read()
@@ -78,8 +92,8 @@ def classify():
         for m in re.finditer(r'name = "([A-Za-z0-9_]+)_firstpass",', text):
             if not any(a <= m.start() < b for a, b in spans):
                 hand.add(m.group(1))
-    all_members = members()
-    return [m for m in all_members if m not in hand], sorted(hand & set(all_members))
+    all_targets = set(members()) | generated_dylib_targets()
+    return sorted(t for t in all_targets if t not in hand), sorted(hand & all_targets)
 
 
 def main(argv: list[str]) -> int:

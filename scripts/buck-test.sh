@@ -346,27 +346,21 @@ printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
 	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
 	bad "kernel final is missing _dserver_rpc_checkin"
 
-say "== every libSystem member links, both passes =="
+say "== every ported dylib links =="
 # Discovered rather than listed: the members come from the reference graph, and a
 # hand-kept list here would quietly stop covering new ones. Every target must
-# produce a Mach-O dylib whose install_name is the one its siblings look it up by.
-#
-# Two finals are expected to fail, and only these two, each on libraries OUTSIDE
-# the circular cluster that are not ported yet:
-#   resolv-darwin_final -- libsystem_dnssd and libsystem_configuration
-#   objc_final          -- libc++ and libc++abi
-expected_fail="resolv-darwin_final objc_final"
-dylib_pkgs="//buck-src: //src/duct: //src/libm: //src/libcache: //src/sandbox: //src/launchd: //src/external/libtrace: //src/libsystem_coreservices:"
+# produce a Mach-O dylib whose install_name is the one its consumers look it up by.
+# Nothing is expected to fail any more: the layer outside the circular cluster
+# (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
+# libremovefile, libcopyfile, libsystem_networkextension) is ported too.
+dylib_pkgs="//buck-src: //src/duct: //src/libm: //src/libcache: //src/sandbox: //src/launchd: //src/external/libtrace: //src/libsystem_coreservices: //src/lib: //src/quarantine: //src/networkextension:"
 # shellcheck disable=SC2086
 all_dylibs=$(buck2 targets $dylib_pkgs 2>/dev/null |
-	grep -E ":[A-Za-z0-9_.-]+_(final|firstpass)$" || true)
+	grep -E ":[A-Za-z0-9_.-]+_(final|firstpass|dylib)$" || true)
 n_first=0
-n_final=0
+n_linked=0
 for t in $all_dylibs; do
 	name=${t##*:}
-	case " $expected_fail " in
-	*" $name "*) continue ;;
-	esac
 	f=$(out_of "$t" || true)
 	# Both substitutions have to tolerate failure: with `set -euo pipefail`, an
 	# objdump on an empty path takes the whole suite down mid-section, which looks
@@ -374,27 +368,18 @@ for t in $all_dylibs; do
 	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1 || true)
 	case "$id" in
 	/usr/lib/*)
+		n_linked=$((n_linked + 1))
 		case "$name" in
 		*_firstpass) n_first=$((n_first + 1)) ;;
-		*) n_final=$((n_final + 1)) ;;
 		esac
 		;;
 	*) bad "$name has no install_name (got '$id')" ;;
 	esac
 done
-[ "$n_first" -ge 29 ] && ok "$n_first firstpass dylibs link" ||
-	bad "expected >= 29 firstpass dylibs, got $n_first"
-[ "$n_final" -ge 28 ] && ok "$n_final final dylibs link" ||
-	bad "expected >= 28 final dylibs, got $n_final"
-# And the two known gaps really are still gaps, so this list cannot rot silently.
-for name in $expected_fail; do
-	pkg=//buck-src
-	if buck2 build "$pkg:$name" >/dev/null 2>&1; then
-		bad "$name links now -- drop it from expected_fail"
-	else
-		ok "$name still blocked on unported libraries (expected)"
-	fi
-done
+[ "$n_first" -ge 30 ] && ok "$n_first firstpass dylibs link" ||
+	bad "expected >= 30 firstpass dylibs, got $n_first"
+[ "$n_linked" -ge 72 ] && ok "$n_linked dylibs link in total" ||
+	bad "expected >= 72 dylibs, got $n_linked"
 
 say "== libSystem's umbrella records its members =="
 # The umbrella reexports each member, so its LC_REEXPORT_DYLIB entries are the
@@ -402,8 +387,15 @@ say "== libSystem's umbrella records its members =="
 su=$(out_of //buck-src:system_final)
 reex=$(llvm-objdump --macho --private-headers "$su" 2>/dev/null |
 	grep -c LC_REEXPORT_DYLIB || true)
-[ "$reex" -ge 20 ] && ok "libSystem reexports $reex dylibs" ||
+[ "$reex" -ge 33 ] && ok "libSystem reexports $reex dylibs" ||
 	bad "libSystem reexports only $reex dylibs"
+# The Objective-C runtime is the deepest consumer of that umbrella: it links only
+# against libSystem.B.dylib plus libc++/libc++abi, so its message dispatch entry
+# point being defined means the reexport chain actually resolves.
+oc=$(out_of //buck-src:objc_final)
+printf '%s\n' "$(llvm-nm --defined-only --extern-only "$oc" 2>/dev/null | awk '{print $3}')" |
+	grep -qx "_objc_msgSend" && ok "libobjc defines _objc_msgSend" ||
+	bad "libobjc does not define _objc_msgSend"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

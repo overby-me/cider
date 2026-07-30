@@ -162,6 +162,10 @@ def to_buck_src(repo_rel: str) -> str | None:
 # reference build has no rule that would create it either.
 ALIASES = {
     "System/pthread_machdep.h": "pthread_machdep.h",
+    # Upstream also exposes the kernel headers under /usr/include/Kernel/; copyfile
+    # includes <Kernel/sys/decmpfs.h> whenever VOL_CAP_FMT_DECMPFS_COMPRESSION is
+    # defined, which sys/attr.h does.
+    "Kernel/sys/decmpfs.h": "sys/decmpfs.h",
 }
 
 

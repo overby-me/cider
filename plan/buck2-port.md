@@ -88,16 +88,39 @@ What had to become generator features, each one a class of silent wrongness:
 
 84 checks pass.
 
-**Next up, in order:** the layer OUTSIDE the circular cluster, which is what the two
-remaining finals and the umbrella's reexport TODO both point at:
+### 2026-07-30 (later) -- the layer outside the cluster, and every dylib links
 
-  1. `libc++abi` and `libc++` -> unblocks `objc_final`.
-  2. `libsystem_dnssd` and `libsystem_configuration` -> unblocks `resolv-darwin_final`.
-  3. `libquarantine`, `libremovefile`, `libcopyfile`, `libsystem_networkextension`
-     -> the rest of what libSystem.B.dylib reexports (the block lists them as TODO).
+libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
+libremovefile, libcopyfile and libsystem_networkextension are ported, which closes
+the last two finals: **72 of 72 dylib targets link, nothing is expected to fail.**
+libobjc.A.dylib defines `_objc_msgSend`, and libSystem.B.dylib reexports 33 members.
 
-Each is `scripts/gen-buck-from-ninja.py --write <objlib>` then
-`scripts/regen-dylibs.py`, which picks new members up from the graph automatically.
+Three more generator features, same pattern (each one silently wrong before):
+
+  * **Single-pass libraries.** A library outside the cluster has no firstpass edge
+    and its dylib is often named nothing like its cmake target (`system_copyfile`
+    builds libcopyfile.dylib, `cxxabi_obj` builds libc++abi.dylib), so the edge is
+    matched by OBJECT LIBRARY. Its target is `<base>_dylib`, not `<base>_final` --
+    there is no second pass to distinguish it from.
+  * **Sibling-vs-reexport is matched per LIBRARY, not per label.** The reference
+    lists libsystem_malloc's FIRSTPASS among the umbrella's inputs and reexports its
+    FINAL; comparing labels left both on the line, the plain mention won, and
+    libc++abi could not resolve `_malloc` through libSystem.
+  * **`regen-dylibs.py` regenerates everything with a `<t> dylibs` marker**, not just
+    the graph's members: a stale label inside a non-member's block (libcopyfile
+    naming `system_quarantine_final`) breaks every consumer of it.
+
+Also: `Kernel/sys/decmpfs.h` joined the SDK ALIASES (copyfile includes it whenever
+`VOL_CAP_FMT_DECMPFS_COMPRESSION` is defined, and darling's farm has no `Kernel/`),
+and `-Wl,-dylib_file` is excluded from the file-bearing-flag report, which had buried
+the real one (an alias list) under a hundred framework mappings.
+
+83 checks pass.
+
+**Next up:** binaries and the rest of the guest tree. The dylib layer is done, so the
+remaining Phase 2 work is executables (`darling`, `launchd`, `dyld`, the CLI tools)
+and the frameworks, which need `darwin_binary` at scale rather than new link
+machinery.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

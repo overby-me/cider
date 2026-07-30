@@ -6,7 +6,7 @@
 # Regenerate after materializing more pins:
 #   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys > buck-src/sdk_headers.bzl
 
-# ./: 3590 headers
+# ./: 3591 headers
 SDK_ROOT = {
     "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
     "BerkeleyDB/db.h": "BerkeleyDB/db/build_unix/db.h",
@@ -376,6 +376,7 @@ SDK_ROOT = {
     "IOKit/usb/IOUSBUserClient.h": "IOKitUser/darling/include/IOKit/usb/IOUSBUserClient.h",
     "IOKit/usb/USB.h": "IOKitUser/darling/include/IOKit/usb/USB.h",
     "IOKit/usb/USBSpec.h": "IOKitUser/darling/include/IOKit/usb/USBSpec.h",
+    "Kernel/sys/decmpfs.h": "xnu/bsd/sys/decmpfs.h",
     "SoftLinking/WeakLinking.h": "WTF/darling/include/wtf/darwin/WeakLinking.h",
     "System/IODataQueueDispatchSourceShared.h": "xnu/iokit/System/IODataQueueDispatchSourceShared.h",
     "System/arm/cpu_capabilities.h": "xnu/osfmk/arm/cpu_capabilities.h",
@@ -3918,8 +3919,9 @@ SDK_LIBKERN = {
     "libkern/zlib.h": "xnu/libkern/libkern/zlib.h",
 }
 
-# sys/: 311 headers
+# sys/: 312 headers
 SDK_SYS = {
+    "Kernel/sys/decmpfs.h": "xnu/bsd/sys/decmpfs.h",
     "sys/_endian.h": "xnu/bsd/sys/_endian.h",
     "sys/_pthread/_pthread_attr_t.h": "libpthread/include/sys/_pthread/_pthread_attr_t.h",
     "sys/_pthread/_pthread_cond_t.h": "libpthread/include/sys/_pthread/_pthread_cond_t.h",

@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -16,3 +17,72 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: system_networkextension
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_networkextension   -- review before committing.
+# cmake target: system_networkextension  ->  src/networkextension/libsystem_networkextension.dylib
+
+cc_header_root(
+    name = "system_networkextension_inc_src_networkextension_include",
+    headers = glob(["include/*.h", "include/**/*.h"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_networkextension_obj",
+    srcs = [
+        "NEHelperClient.c",
+        "ne_session.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dsystem_networkextension_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_networkextension_inc_src_networkextension_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_networkextension_firstpass",
+    dylib_name = "libsystem_networkextension_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_networkextension.dylib",
+    objs = [
+        ":system_networkextension_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_networkextension
+
+# BEGIN generated: system_networkextension dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system_networkextension   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "system_networkextension_dylib",
+    dylib_name = "libsystem_networkextension.dylib",
+    install_name = "/usr/lib/system/libsystem_networkextension.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # system_networkextension
+        ":system_networkextension_obj",
+    ],
+    siblings = [
+        "//buck-src:system_c_final",
+        "//buck-src:system_dyld_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_networkextension dylibs
