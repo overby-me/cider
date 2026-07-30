@@ -198,6 +198,9 @@ cc_header_root(
     name = "dt_include",
     headers = glob(["include/**/*.h", "include/**/*.defs"]),
     root = "include",
+    # PUBLIC because the daemon binds this contract: linux/server runs bindgen over
+    # hooks.h to generate the 36-field vtable rather than transcribing it.
+    visibility = ["PUBLIC"],
 )
 
 # One target carrying duct-tape's whole compile environment: the defines,

@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_lib_dir")
+load("//buck/rules:cc.bzl", "cc_lib_dir", "cc_library")
+load("//buck/rules:rust.bzl", "bindgen_gen", "rust_binary", "rust_library")
 
 # The C libraries the Rust daemon links, staged into the single directory its
 # build.rs expects in DUCT_TAPE_LIB:
@@ -14,6 +15,93 @@ cc_lib_dir(
     deps = [
         "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# The dtape hooks contract, generated from the real headers.
+#
+# The daemon implements a 36-function-pointer vtable that duct-tape calls back into, and
+# binding it from hooks.h rather than transcribing it is what keeps the Rust side honest
+# when the C side moves. build.rs calls the bindgen library; this calls the same generator
+# as a tool (nix/devShell.nix provides it), so the port never has to build bindgen itself.
+#
+# The output is a DIRECTORY because the crate reaches it as OUT_DIR, which is what cargo
+# hands a build script: src/lib.rs does include!(concat!(env!("OUT_DIR"), "/...")).
+bindgen_gen(
+    name = "dtape_bindings",
+    out = "dtape_bindings.rs",
+    header = "wrapper.h",
+    # The same allowlist build.rs uses: the dtape surface, without the XNU and libsimple
+    # internals those headers drag in.
+    flags = [
+        "--allowlist-type=dtape_hooks_t",
+        "--allowlist-type=dtape_hooks",
+        "--allowlist-type=dtape_.*_t",
+        "--allowlist-type=dtape_.*_f",
+        "--allowlist-type=libsimple_lock_t",
+        "--allowlist-var=DTAPE_.*",
+        # Function-pointer struct fields become Option<unsafe extern "C" fn ...>, which is
+        # what lets the daemon zero the vtable and fill only the hooks it implements.
+        "--default-enum-style=rust_non_exhaustive",
+        "--no-layout-tests",
+    ],
+    include_dirs = [
+        "//src/external/darlingserver/duct-tape:dt_include",
+        "//src/libsimple:libsimple_headers",
+    ],
+)
+
+# fast_context.c: the signal-mask-free ucontext the scheduler switches microthreads with.
+# build.rs compiles it through the cc crate; here it goes through the port's own C rules,
+# which is the whole point of not having cargo in the graph.
+cc_library(
+    name = "dserver_fast_context",
+    srcs = ["//src/external/darlingserver:src_fast_context.c"],
+    compiler_flags = ["-DDSERVER_FAST_CONTEXT=1"],
+    lib_name = "dserver_fast_context",
+    visibility = ["PUBLIC"],
+)
+
+# ... staged into a directory, because -L names a search path and cc_library's own output
+# is the archive file.
+cc_lib_dir(
+    name = "fast_context_lib",
+    deps = [":dserver_fast_context"],
+)
+
+# The lib crate. Named `darling` regardless of the package, since that is how every binary
+# in src/bin imports it.
+rust_library(
+    name = "darling",
+    crate_root = "src/lib.rs",
+    srcs = glob(["src/*.rs"]),
+    out_dir = ":dtape_bindings",
+    deps = ["//buck-rust:libc"],
+    visibility = ["PUBLIC"],
+)
+
+# darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
+# static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
+# XNU's C pulls in, exactly as build.rs prints them.
+rust_binary(
+    name = "darlingserverd",
+    crate_root = "src/bin/darlingserverd.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
     ],
     visibility = ["PUBLIC"],
 )

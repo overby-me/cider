@@ -68,6 +68,11 @@ in {
     # rustc only: buck2 invokes it directly and the crate sources come from
     # rustVendor above, so there is nothing for cargo to do in the build graph.
     rustc
+    # bindgen as a TOOL rather than a build dependency. The daemon's build.rs runs it to
+    # generate the dtape hooks bindings; building bindgen itself from source would drag
+    # about thirty crates and a clang-sys probe through the graph to produce a generator,
+    # so the port consumes it the way it already consumes clang and ld64.
+    rust-bindgen
 
     # ── Debugging & analysis ────────────────────────────────────
     gdb

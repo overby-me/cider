@@ -539,6 +539,30 @@ for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do
 	[ -f "$dir/$a" ] && ok "staged $a" || bad "missing $a in DUCT_TAPE_LIB dir"
 done
 
+say "== the Rust components (no cargo in the graph) =="
+# All three of Darling's Rust crates, built by rustc under buck2: the launcher, the guest
+# loader and the daemon. The daemon is the one that proves the seam -- it links the
+# buck2-built duct-tape and libsimple archives and the bindgen-generated hooks vtable.
+for t in //linux/launcher:darling //darwin/loader:mldr //linux/server:darlingserverd; do
+	b=$(out_of "$t")
+	[ -x "$b" ] && ok "built ${t##*:}" || bad "$t did not build"
+done
+# It refuses to run outside a container, which is exactly the message we want: reaching it
+# means the binary linked and got as far as its own startup check.
+# Captured, not piped: `grep -q` exits on the first match, the writer takes SIGPIPE, and
+# under `set -o pipefail` the whole pipeline then reports failure even though it matched.
+msg=$("$(out_of //linux/server:darlingserverd)" 2>&1 || true)
+case "$msg" in
+*"not meant to be started manually"*)
+	ok "darlingserverd links and reaches its startup check" ;;
+*) bad "darlingserverd did not reach its startup check" ;;
+esac
+ver=$("$(out_of //linux/launcher:darling)" --version 2>&1 || true)
+case "$ver" in
+*"Rust launcher"*) ok "darling --version runs" ;;
+*) bad "darling --version failed" ;;
+esac
+
 say "== the prefix (what a Darling install actually is) =="
 # The port's product is not the link outputs, it is a laid-out prefix. This builds the
 # whole of it, which is also the broadest single check in this file: 151 targets, and a
