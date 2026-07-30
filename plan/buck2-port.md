@@ -44,6 +44,51 @@ points it at Darling.
 
 ## Status log
 
+### 2026-07-30 -- the whole circular cluster links, and libSystem closes over it
+
+29 circular members, both passes, all generated from the reference graph:
+`scripts/regen-dylibs.py` enumerates the members out of build.ninja, generates the
+firstpass/final pair for each, and iterates to a fixpoint (a pass can only name
+siblings whose targets already exist). Every hand-written dylib block is gone.
+
+  * 30 firstpass dylibs link (29 members + libsystem_coreservices)
+  * 28 finals link, including **libSystem.B.dylib**, which reexports 26 members
+  * 2 finals are blocked on libraries OUTSIDE the cluster, and only those:
+    `objc_final` (libc++, libc++abi) and `resolv-darwin_final` (libsystem_dnssd,
+    libsystem_configuration). Both are asserted as still-blocked by the suite, so
+    the list cannot rot.
+
+What had to become generator features, each one a class of silent wrongness:
+
+  * **Siblings on BOTH passes.** libc's firstpass links libplatform's, which is how
+    a client of libsystem_c resolves `_strcmp` -- ld64 finds it in the indirect
+    dylib. Emitting siblings only on the final pass left 14 members undefined.
+  * **Siblings are not always firstpass dylibs.** libsystem_notify's and
+    libsystem_sandbox's finals link the FINAL libsystem_c/libsystem_kernel.
+  * **`-Wl,-alias_list` and friends.** libplatform defines `_platform_strcmp` and
+    answers to `_strcmp` only through its alias list; the flag carries a FILE, so
+    `darwin_dylib` gained `link_flag_files` and the file travels as an input.
+  * **Link semantics come from the edge, not from `firstpass`.** libunwind's and
+    libclosure's FINAL passes are linked `-flat_namespace -undefined,suppress` in
+    the reference; the rule assumed only firstpasses were.
+  * **A reexport implies the load.** Naming a library as both sibling and reexport
+    made ld64 keep the plain mention: libSystem came out with 27 LC_LOAD_DYLIBs and
+    zero LC_REEXPORT_DYLIBs.
+  * **Names carry hyphens and dots** (`resolv-darwin_firstpass`, `libresolv.9.dylib`).
+    `[A-Za-z0-9_]+` silently dropped those siblings.
+  * **Object libraries with no target of their own** (`libsyscall_64`, `asl_ipc_user`
+    hold only mig-generated sources their sibling compiles) -> `OBJLIB_ALIASES`;
+    object groups this port adds (the kernel's `emulation_rpc_obj`) -> `objs:` and
+    `dep:` entries in extra-deps.json.
+  * **Sibling include dirs must stay siblings.** A staged header's own
+    `#include "../lib/x.h"` resolves relative to the staged copy, so
+    `cc_header_root` gained `include_subdirs` (one tree, -I into each subdir).
+  * **The SDK map dropped directory symlinks into committed repo trees**, silently
+    losing the whole `opendirectory/` namespace that Libinfo includes.
+
+84 checks pass.
+
+
 Decisions taken 2026-07-29 (branch `buck2-port`):
 
 - **Own rules, no prelude.** `buck/rules/cc.bzl` + `buck/toolchains/native.bzl`

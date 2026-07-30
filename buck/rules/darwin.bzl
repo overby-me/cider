@@ -119,6 +119,8 @@ def _darwin_dylib_impl(ctx):
         # built before the libraries it will eventually need.
         flags.extend(["-Wl,-flat_namespace", "-Wl,-undefined,suppress"])
     flags.extend(ctx.attrs.linker_flags)
+    for flag, art in ctx.attrs.link_flag_files.items():
+        flags.append(cmd_args(art, format = flag + ",{}"))
 
     # Siblings are linked through their FIRSTPASS dylib, which is what makes the
     # mutual dependency expressible.
@@ -173,6 +175,12 @@ _darwin_dylib_attrs = {
     "headers": attrs.list(attrs.source(), default = []),
     "include_root": attrs.string(default = ""),
     "install_name": attrs.string(default = ""),
+    # Linker flags whose argument is a FILE: {"-Wl,-alias_list": <source>}. The file
+    # travels as a declared input, and the flag is emitted as `<flag>,<path>`.
+    # libplatform needs this: it defines _platform_strcmp and only an alias list
+    # makes it answer to _strcmp, so dropping the flag leaves every client of the
+    # string routines undefined.
+    "link_flag_files": attrs.dict(attrs.string(), attrs.source(), default = {}),
     "linker_flags": attrs.list(attrs.string(), default = []),
     "objs": attrs.list(attrs.dep(), default = []),
     "prefix_headers": attrs.list(attrs.source(), default = []),
@@ -229,7 +237,10 @@ def _darwin_binary_impl(ctx):
     link_libs.extend(merged.linker_flags)
     dylib_files = _merge_dylib_files(ctx.attrs.dylibs + ctx.attrs.deps)
 
-    _darwin_link(ctx, tc, out, objects, ctx.attrs.linker_flags, link_libs, dylib_files)
+    bin_flags = list(ctx.attrs.linker_flags)
+    for flag, art in ctx.attrs.link_flag_files.items():
+        bin_flags.append(cmd_args(art, format = flag + ",{}"))
+    _darwin_link(ctx, tc, out, objects, bin_flags, link_libs, dylib_files)
     return [DefaultInfo(default_output = out)]
 
 darwin_binary = rule(
@@ -241,7 +252,13 @@ darwin_binary = rule(
         "exe_name": attrs.string(default = ""),
         "headers": attrs.list(attrs.source(), default = []),
         "include_root": attrs.string(default = ""),
-        "linker_flags": attrs.list(attrs.string(), default = []),
+        # Linker flags whose argument is a FILE: {"-Wl,-alias_list": <source>}. The file
+    # travels as a declared input, and the flag is emitted as `<flag>,<path>`.
+    # libplatform needs this: it defines _platform_strcmp and only an alias list
+    # makes it answer to _strcmp, so dropping the flag leaves every client of the
+    # string routines undefined.
+    "link_flag_files": attrs.dict(attrs.string(), attrs.source(), default = {}),
+    "linker_flags": attrs.list(attrs.string(), default = []),
         "objs": attrs.list(attrs.dep(), default = []),
         "prefix_headers": attrs.list(attrs.source(), default = []),
         "srcs": attrs.list(attrs.source(), default = []),

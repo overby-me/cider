@@ -594,16 +594,43 @@ def dylib_edges(target: str, edges):
     The top-level alias edges (bare libxpc.dylib, no flags) are skipped.
     """
     final = first = None
+    dylibs = []
     for outs, _rule, inputs, vars in edges:
         for o in outs:
             base = os.path.basename(o)
-            if "/" not in o:
+            if "/" not in o or not base.endswith(".dylib"):
                 continue
             if base == f"lib{target}.dylib" and final is None:
                 final = (o, inputs, vars)
             elif base == f"lib{target}_firstpass.dylib" and first is None:
                 first = (o, inputs, vars)
+            else:
+                dylibs.append((o, inputs, vars))
+    if final is None and first is not None:
+        # The final pass is not always lib<target>.dylib: libSystem's is
+        # libSystem.B.dylib, libobjc's is libobjc.A.dylib, libcache's drops the
+        # doubled prefix. It IS the other dylib in the same directory built from
+        # the same objects, which is what this matches on.
+        want = set(objlibs_of(first))
+        d = os.path.dirname(first[0])
+        for cand in dylibs:
+            base = os.path.basename(cand[0])
+            if os.path.dirname(cand[0]) != d or "_firstpass" in base:
+                continue
+            if set(objlibs_of(cand)) == want:
+                final = cand
+                break
     return final, first
+
+
+# cmake object libraries with no buck target of their own, because this port
+# compiles their sources elsewhere. An empty list means "already covered": both of
+# these hold ONLY mig-generated sources, which the sibling object library compiles
+# through gen_srcs, so emitting a target for them would double the objects up.
+OBJLIB_ALIASES = {
+    "libsyscall_64": [],   # -x86_64-User.c stubs, compiled by libsyscall
+    "asl_ipc_user": [],    # asl_ipcUser.c, compiled by system_asl_obj
+}
 
 
 def objlibs_of(edge) -> list[str]:
@@ -653,28 +680,135 @@ def firstpass_registry() -> dict:
             continue
         pkg = os.path.relpath(dirpath, REPO)
         with open(os.path.join(dirpath, "BUCK")) as fh:
-            for m in re.finditer(r'name = "([A-Za-z0-9_]+)_firstpass"', fh.read()):
+            for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_firstpass"', fh.read()):
                 reg[m.group(1)] = f"//{pkg}:{m.group(1)}_firstpass"
     return reg
 
 
-def siblings_of(edge, reg):
-    """(sibling labels, unported names) from a final link edge's dylib inputs."""
-    sibs, missing = [], []
-    for i in edge[1]:
-        m = re.match(r"lib([A-Za-z0-9_]+)_firstpass\.dylib$", os.path.basename(i))
+def final_registry() -> dict:
+    """dylib basename -> buck label, for every final-pass dylib already declared.
+
+    Keyed by ARTIFACT name rather than target name: the umbrella names its
+    reexports by path (libSystem.B.dylib reexports libsystem_duct.dylib), and the
+    dylib name and the cmake target name differ often enough that guessing between
+    them is how a reexport list ends up naming something that does not exist.
+    """
+    reg = {}
+    for dirpath, dirnames, filenames in os.walk(REPO):
+        dirnames[:] = [d for d in dirnames
+                       if d not in ("buck-out", ".git", ".jj", ".direnv", "build")]
+        if "BUCK" not in filenames:
+            continue
+        pkg = os.path.relpath(dirpath, REPO)
+        text = open(os.path.join(dirpath, "BUCK")).read()
+        for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_final",\s*\n\s*dylib_name = "([^"]+)"', text):
+            reg[m.group(2)] = f"//{pkg}:{m.group(1)}_final"
+    return reg
+
+
+# Link flags the darwin_dylib rule already derives from its own attrs, or that
+# belong to the toolchain rather than the target.
+_LINK_FLAG_HANDLED = (
+    "-Wl,-dylib_install_name,", "-Wl,-compatibility_version,", "-Wl,-current_version,",
+    "-Wl,-dylib_file,", "-Wl,-reexport_library", "-Wl,-upward_library", "-Wl,-rpath",
+    "-Wl,-sdk_version", "-Wl,-Z", "-Wl,-syslibroot",
+)
+
+
+def link_flag_files(link_vars, pkg) -> tuple:
+    """({flag: package-relative file}, flags whose file is elsewhere).
+
+    A linker flag can carry a FILE, and dropping it changes the dylib's symbols:
+    libplatform defines _platform_strcmp and answers to _strcmp only through
+    -Wl,-alias_list. The file has to be a source in the declaring package, so any
+    that is not gets reported instead of being emitted wrong.
+    """
+    files, elsewhere = {}, []
+    for tok in link_vars.get("LINK_FLAGS", "").split():
+        m = re.match(r"(-Wl,-[a-z_]+),(/\S+)$", tok)
         if not m:
             continue
-        t = m.group(1)
-        if t in reg:
-            if reg[t] not in sibs:
-                sibs.append(reg[t])
-        elif t not in missing:
-            missing.append(t)
+        flag, path = m.group(1), m.group(2)
+        kind, rel = repo_path(path)
+        if kind == "generated":
+            elsewhere.append(tok)
+            continue
+        if kind == "buck-src" and pkg == BUCK_SRC:
+            files[flag] = rel
+        elif kind == "src" and rel.startswith(pkg + "/"):
+            files[flag] = rel[len(pkg) + 1:]
+        else:
+            elsewhere.append(f"{flag},{rel}")
+    return files, elsewhere
+
+
+def semantic_link_flags(link_vars) -> tuple:
+    """(-Wl flags that change link SEMANTICS, flags naming a path we cannot pass).
+
+    Darling does not use one link model for the whole cluster: libunwind's FINAL
+    pass is linked -flat_namespace -undefined suppress, exactly like its firstpass,
+    while libsystem_kernel's is not. Tying that to `firstpass = True` in the rule
+    left every such member's final pass undefined against symbols that live in a
+    library it never names (memset, in libsystem_platform).
+    """
+    flags, paths = [], []
+    for tok in link_vars.get("LINK_FLAGS", "").split():
+        if not tok.startswith("-Wl,") or tok.startswith(_LINK_FLAG_HANDLED):
+            continue
+        if "/" in tok:
+            if tok not in paths:
+                paths.append(tok)
+            continue
+        if tok not in flags:
+            flags.append(tok)
+    return flags, paths
+
+
+def reexports_of(edge, reg):
+    """(reexport labels, unported dylib names) from -Wl,-reexport_library flags."""
+    paths = re.findall(r"-Wl,-reexport_library\s+-Wl,(\S+)", edge[2].get("LINK_FLAGS", ""))
+    labels, missing = [], []
+    for path in paths:
+        base = os.path.basename(path)
+        if base in reg:
+            if reg[base] not in labels:
+                labels.append(reg[base])
+        elif base not in missing:
+            missing.append(base)
+    return labels, missing
+
+
+def siblings_of(edge, reg, final_reg):
+    """(sibling labels, unported names) from a link edge's dylib inputs.
+
+    Not every sibling is a FIRSTPASS dylib: libsystem_notify's and
+    libsystem_sandbox's final passes link the FINAL libsystem_c.dylib and
+    libsystem_kernel.dylib, because by then those are already built. Matching only
+    the _firstpass spelling silently dropped them, and the link then failed on
+    symbols as basic as _free.
+    """
+    sibs, missing = [], []
+    for i in edge[1]:
+        base = os.path.basename(i)
+        if not base.endswith(".dylib"):
+            continue
+        m = re.match(r"lib([A-Za-z0-9_.-]+)_firstpass\.dylib$", base)
+        if m:
+            t = m.group(1)
+            label = reg.get(t)
+            name = f"lib{t}_firstpass.dylib"
+        else:
+            label = final_reg.get(base)
+            name = base
+        if label:
+            if label not in sibs:
+                sibs.append(label)
+        elif name not in missing:
+            missing.append(name)
     return sibs, missing
 
 
-def generate_dylibs(target: str, edges):
+def generate_dylibs(target: str, edges, only: str = ""):
     """The firstpass/final dylib pair for a cmake target, and its package.
 
     Darling links every circular library twice from the same objects (see
@@ -691,7 +825,13 @@ def generate_dylibs(target: str, edges):
         return None
 
     objs, pkgs = [], {}
+    aliased = []
     for lib in libs:
+        if lib in OBJLIB_ALIASES:
+            for label in OBJLIB_ALIASES[lib]:
+                objs.append((None, label, lib))
+            aliased.append(lib)
+            continue
         names, pkg = obj_targets(lib, edges)
         pkgs[pkg] = pkgs.get(pkg, 0) + len(names)
         for n in names:
@@ -699,6 +839,8 @@ def generate_dylibs(target: str, edges):
     pkg = max(pkgs, key=lambda k: pkgs[k])
 
     def label(op, on):
+        if op is None:
+            return on
         return f":{on}" if op == pkg else f"//{op}:{on}"
 
     install_name = ""
@@ -715,29 +857,65 @@ def generate_dylibs(target: str, edges):
             if m:
                 versions.setdefault(key, m.group(1))
 
-    reg = firstpass_registry()
-    sibs, missing = siblings_of(final, reg) if final else ([], [])
+    reg, final_reg = firstpass_registry(), final_registry()
+    # BOTH passes link siblings, and the firstpass ones matter as much: libc's
+    # firstpass links libplatform's, which is how a client of libsystem_c resolves
+    # _strcmp -- ld64 finds it in the INDIRECT dylib. Emitting siblings only on the
+    # final pass left 14 members' finals undefined against the string routines.
+    sibs, missing = siblings_of(final, reg, final_reg) if final else ([], [])
+    sibs_first, missing_first = siblings_of(first, reg, final_reg) if first else ([], [])
+    reex, reex_missing = reexports_of(final, final_reg) if final else ([], [])
+    # A library named BOTH as a sibling and as a reexport gets linked twice, and the
+    # plain mention wins: libSystem came out with 27 LC_LOAD_DYLIBs and no
+    # LC_REEXPORT_DYLIB at all, which is the opposite of what an umbrella is for.
+    sibs = [s for s in sibs if s not in reex]
     ldflags = [d[len("ldflag:"):] for d in extra_deps(target) if d.startswith("ldflag:")]
+    # Object groups this port adds that no cmake object library corresponds to: the
+    # kernel's generated rpc.c needs its own flag group (dserver-rpc-defs.h forced
+    # in), and it is as load-bearing as any of the graph's own objects.
+    extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
+    extra_dylib_deps = [d[len("dep:"):] for d in extra_deps(target) if d.startswith("dep:")]
+    final_flags, _ = semantic_link_flags(final[2]) if final else ([], [])
+    first_flags, _ = semantic_link_flags(first[2]) if first else ([], [])
+    final_files, final_elsewhere = link_flag_files(final[2], pkg) if final else ({}, [])
+    first_files, first_elsewhere = link_flag_files(first[2], pkg) if first else ({}, [])
 
     out = []
     w = out.append
     w("# GENERATED from the reference build.ninja by")
     w(f"# scripts/gen-buck-from-ninja.py --dylibs {target}   -- review before committing.")
     w(f"# Links {len(libs)} cmake object library/ies, {len(objs)} flag groups in total.")
-    if missing:
-        w("# TODO the final pass also links these siblings, not ported yet:")
-        for t in missing:
-            w(f"#   lib{t}_firstpass.dylib")
+    for pass_name, names in (("final", missing), ("firstpass", missing_first)):
+        if names:
+            w(f"# TODO the {pass_name} pass also links these siblings, not ported yet:")
+            for t in names:
+                w(f"#   {t}")
+    for pass_name, toks in (("final", final_elsewhere), ("firstpass", first_elsewhere)):
+        if toks:
+            w(f"# TODO the {pass_name} link passes these file-bearing flags whose file is")
+            w("# not a source of this package:")
+            for f in sorted(set(toks)):
+                w(f"#   {f}")
+    if reex_missing:
+        w(f"# TODO the final pass REEXPORTS {len(reex_missing)} more dylibs whose final")
+        w("# pass is not ported yet; without them its symbol surface is incomplete:")
+        for t in reex_missing:
+            w(f"#   {t}")
     w("")
 
     for kind in ("firstpass", "final"):
-        if kind == "firstpass" and first is None:
+        if kind == "firstpass" and (first is None or only == "final"):
+            continue
+        if kind == "final" and only == "firstpass":
             continue
         if kind == "final" and final is None:
             continue
         w("darwin_dylib(")
         w(f'    name = "{target}_{kind}",')
-        w('    dylib_name = "lib' + target + ("_firstpass" if kind == "firstpass" else "") + '.dylib",')
+        # The ARTIFACT name from the edge, not a guess: libSystem's final pass is
+        # libSystem.B.dylib and libobjc's is libobjc.A.dylib.
+        edge = first if kind == "firstpass" else final
+        w(f'    dylib_name = "{os.path.basename(edge[0])}",')
         if kind == "firstpass":
             w("    firstpass = True,")
         w(f'    install_name = "{install_name}",')
@@ -750,23 +928,52 @@ def generate_dylibs(target: str, edges):
                 w(f"        # {lib}")
                 last = lib
             w(f'        "{label(op, on)}",')
+        for extra in extra_objs:
+            w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
         w("    ],")
-        if kind == "final" and sibs:
+        kind_sibs = sibs if kind == "final" else sibs_first
+        if kind_sibs:
             w("    siblings = [")
-            for sl in sibs:
+            for sl in kind_sibs:
                 w(f'        "{sl}",')
             w("    ],")
-        if ldflags:
+        if kind == "final" and reex:
+            w("    reexport = [")
+            for rl in reex:
+                w(f'        "{rl}",')
+            w("    ],")
+        # The firstpass rule adds -flat_namespace/-undefined,suppress itself; the rest
+        # of the reference's semantic flags apply to whichever pass carries them.
+        own = final_flags if kind == "final" else [
+            f for f in first_flags if f not in ("-Wl,-flat_namespace", "-Wl,-undefined,suppress")]
+        kind_flags = list(ldflags) + own
+        if kind_flags:
             w("    linker_flags = [")
-            for f in ldflags:
+            for f in kind_flags:
                 w(f"        {starlark_str(f)},")
             w("    ],")
+        kind_files = final_files if kind == "final" else first_files
+        if kind_files:
+            w("    link_flag_files = {")
+            for flag, rel in sorted(kind_files.items()):
+                w(f'        "{flag}": "{rel}",')
+            w("    },")
         w('    toolchain = "toolchains//:darwin_cc",')
-        w('    deps = ["//darwin:sdk_env"],')
+        if extra_dylib_deps:
+            w("    deps = [")
+            w('        "//darwin:sdk_env",')
+            for d in extra_dylib_deps:
+                w(f'        "{d}",')
+            w("    ],")
+        else:
+            w('    deps = ["//darwin:sdk_env"],')
         w('    visibility = ["PUBLIC"],')
         w(")")
         w("")
 
+    if aliased:
+        out.insert(3, "# Object libraries whose sources are compiled elsewhere in this port, so "
+                      "they\n# contribute no target here: " + ", ".join(aliased))
     return "\n".join(out).rstrip() + "\n", pkg
 
 
@@ -828,7 +1035,9 @@ def main(argv: list[str]) -> int:
             continue
 
         if "--dylibs" in argv:
-            pair = generate_dylibs(target, edges)
+            only = "final" if "--final-only" in argv else (
+                "firstpass" if "--firstpass-only" in argv else "")
+            pair = generate_dylibs(target, edges, only)
             if pair is None:
                 print(f"# no dylib link edge for cmake target {target}", file=sys.stderr)
                 continue
@@ -836,8 +1045,11 @@ def main(argv: list[str]) -> int:
             if "--write" not in argv:
                 print(text)
                 continue
-            write_block(pkg, target + " dylibs", text)
-            print(f"wrote {pkg}/BUCK: {target} dylibs", file=sys.stderr)
+            # ONE marker per target, whichever kinds the block holds: a suffixed
+            # variant would register the same target twice.
+            marker = target + " dylibs"
+            write_block(pkg, marker, text)
+            print(f"wrote {pkg}/BUCK: {marker}", file=sys.stderr)
             continue
 
         result = generate(target, edges)

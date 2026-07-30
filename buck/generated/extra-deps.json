@@ -11,7 +11,8 @@
     ""
   ],
   "system_asl_obj": [
-    ":asl_ipc_mig"
+    ":asl_ipc_mig",
+    "gen::asl_ipc_mig"
   ],
   "system_coretls_obj": [
     ":fw_Security",
@@ -114,7 +115,8 @@
   "libdispatch_shared_obj": [
     "//buck-src:fw_Foundation",
     "//buck-src:fw_CoreFoundation",
-    "//buck-src:dispatchmig_protocol"
+    "//buck-src:dispatchmig_protocol",
+    "gen://buck-src:dispatchmig_protocol"
   ],
   "system_notify_obj": [
     "//buck-src:notifymig_notify_ipc",
@@ -123,6 +125,12 @@
   "launch_obj": [
     "//buck-src:dispatchmig_protocol",
     ":launchmig_job",
-    ":launchmig_helper"
+    ":launchmig_helper",
+    "gen::launchmig_job",
+    "gen::launchmig_helper"
+  ],
+  "system_kernel": [
+    "objs::emulation_rpc_obj",
+    "dep://src/libsimple:libsimple_darling"
   ]
 }

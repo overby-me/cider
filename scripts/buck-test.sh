@@ -301,9 +301,30 @@ for want in libsystem_kernel libsystem_malloc libsystem_pthread libsystem_c; do
 	*) bad "final pass does not load $want" ;;
 	esac
 done
-undef=$(llvm-nm --undefined-only "$fin" 2>/dev/null | wc -l)
-[ "$undef" -eq 0 ] && ok "final pass has NO undefined symbols" ||
-	bad "final pass still has $undef undefined symbols"
+# What it exports is the point of the pass: the firstpass/final split exists so
+# the mutually dependent libraries can define their own symbols.
+printf '%s\n' "$(llvm-nm --defined-only --extern-only "$fin" 2>/dev/null | awk '{print $3}')" |
+	grep -qx "__Block_copy" && ok "final pass defines _Block_copy" ||
+	bad "final pass does not define _Block_copy"
+# libclosure's final pass is linked -flat_namespace -undefined,suppress in the
+# reference, so its imports are deliberately left unbound and the image is NOT
+# two-level. Asserting "no undefined symbols" here would assert the opposite of
+# what the reference does.
+if llvm-objdump --macho --private-headers "$fin" 2>/dev/null | grep -q TWOLEVEL; then
+	bad "final pass is two-level, but the reference links it flat"
+else
+	ok "final pass is flat-namespace, as the reference links it"
+fi
+# The kernel's final pass IS two-level, and there nothing may be left unbound.
+kfin=$(out_of //buck-src:system_kernel_final)
+if llvm-objdump --macho --private-headers "$kfin" 2>/dev/null | grep -q TWOLEVEL; then
+	ok "the kernel's final pass is two-level"
+else
+	bad "the kernel's final pass is not two-level"
+fi
+unbound=$(llvm-nm -m "$kfin" 2>/dev/null | grep -c "(undefined) external [^(]*$" || true)
+[ "$unbound" -eq 0 ] && ok "the kernel's final pass leaves nothing unbound" ||
+	bad "the kernel's final pass leaves $unbound symbols unbound"
 
 say "== the kernel's FINAL pass (the syscall boundary) =="
 kf=$(out_of //buck-src:system_kernel_final)
@@ -325,31 +346,64 @@ printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
 	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
 	bad "kernel final is missing _dserver_rpc_checkin"
 
-say "== every circular libSystem member has a firstpass dylib =="
-# All 28 of them: the final passes link against these, so a missing one blocks a
-# whole cluster. Each is checked for being a real Mach-O dylib, not just present.
-for t in \
-	//buck-src:compiler_rt_firstpass //buck-src:corecrypto_firstpass \
-	//buck-src:keymgr_firstpass //src/launchd:launch_firstpass \
-	//buck-src:libdispatch_shared_firstpass //buck-src:macho_firstpass \
-	//buck-src:platform_firstpass //buck-src:system_asl_firstpass \
-	//buck-src:system_blocks_firstpass //buck-src:system_c_firstpass \
-	//buck-src:system_coretls_firstpass //src/duct:system_duct_firstpass \
-	//buck-src:system_dyld_firstpass //buck-src:system_kernel_firstpass \
-	//buck-src:system_m_firstpass //buck-src:system_malloc_firstpass \
-	//buck-src:system_notify_firstpass //buck-src:system_pthread_firstpass \
-	//src/external/libtrace:system_trace_firstpass //buck-src:xpc_firstpass \
-	//buck-src:commonCrypto_firstpass //src/libcache:libcache_firstpass \
-	//buck-src:objc_firstpass //buck-src:system_firstpass \
-	//buck-src:system_darwin_firstpass //buck-src:system_info_firstpass \
-	//src/sandbox:system_sandbox_firstpass //buck-src:unwind_firstpass; do
-	f=$(out_of "$t")
-	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1)
+say "== every libSystem member links, both passes =="
+# Discovered rather than listed: the members come from the reference graph, and a
+# hand-kept list here would quietly stop covering new ones. Every target must
+# produce a Mach-O dylib whose install_name is the one its siblings look it up by.
+#
+# Two finals are expected to fail, and only these two, each on libraries OUTSIDE
+# the circular cluster that are not ported yet:
+#   resolv-darwin_final -- libsystem_dnssd and libsystem_configuration
+#   objc_final          -- libc++ and libc++abi
+expected_fail="resolv-darwin_final objc_final"
+dylib_pkgs="//buck-src: //src/duct: //src/libm: //src/libcache: //src/sandbox: //src/launchd: //src/external/libtrace: //src/libsystem_coreservices:"
+# shellcheck disable=SC2086
+all_dylibs=$(buck2 targets $dylib_pkgs 2>/dev/null |
+	grep -E ":[A-Za-z0-9_.-]+_(final|firstpass)$" || true)
+n_first=0
+n_final=0
+for t in $all_dylibs; do
+	name=${t##*:}
+	case " $expected_fail " in
+	*" $name "*) continue ;;
+	esac
+	f=$(out_of "$t" || true)
+	# Both substitutions have to tolerate failure: with `set -euo pipefail`, an
+	# objdump on an empty path takes the whole suite down mid-section, which looks
+	# like the run stopping for no reason.
+	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1 || true)
 	case "$id" in
-	/usr/lib/*) ok "${t##*:} -> $id" ;;
-	*) bad "${t##*:} has no install_name (got '$id')" ;;
+	/usr/lib/*)
+		case "$name" in
+		*_firstpass) n_first=$((n_first + 1)) ;;
+		*) n_final=$((n_final + 1)) ;;
+		esac
+		;;
+	*) bad "$name has no install_name (got '$id')" ;;
 	esac
 done
+[ "$n_first" -ge 29 ] && ok "$n_first firstpass dylibs link" ||
+	bad "expected >= 29 firstpass dylibs, got $n_first"
+[ "$n_final" -ge 28 ] && ok "$n_final final dylibs link" ||
+	bad "expected >= 28 final dylibs, got $n_final"
+# And the two known gaps really are still gaps, so this list cannot rot silently.
+for name in $expected_fail; do
+	pkg=//buck-src
+	if buck2 build "$pkg:$name" >/dev/null 2>&1; then
+		bad "$name links now -- drop it from expected_fail"
+	else
+		ok "$name still blocked on unported libraries (expected)"
+	fi
+done
+
+say "== libSystem's umbrella records its members =="
+# The umbrella reexports each member, so its LC_REEXPORT_DYLIB entries are the
+# check that the cluster is wired together rather than merely built.
+su=$(out_of //buck-src:system_final)
+reex=$(llvm-objdump --macho --private-headers "$su" 2>/dev/null |
+	grep -c LC_REEXPORT_DYLIB || true)
+[ "$reex" -ge 20 ] && ok "libSystem reexports $reex dylibs" ||
+	bad "libSystem reexports only $reex dylibs"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
