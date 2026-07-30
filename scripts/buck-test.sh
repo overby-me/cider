@@ -530,14 +530,32 @@ say "== coverage against the reference graph =="
 # means a regression that drops targets cannot pass unnoticed.
 cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
 tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
-[ "${cov:-0}" -ge 206 ] && ok "$cov of the reference's ${tot:-206} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-207}"
+[ "${cov:-0}" -ge 208 ] && ok "$cov of the reference's ${tot:-206} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-248}"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do
 	[ -f "$dir/$a" ] && ok "staged $a" || bad "missing $a in DUCT_TAPE_LIB dir"
 done
+
+say "== the prefix (what a Darling install actually is) =="
+# The port's product is not the link outputs, it is a laid-out prefix. This builds the
+# whole of it, which is also the broadest single check in this file: 151 targets, and a
+# failure anywhere in the port surfaces here.
+prefix=$(out_of //buck/prefix:darling_prefix)
+n=$(find "$prefix/" \( -type f -o -type l \) 2>/dev/null | wc -l)
+[ "${n:-0}" -ge 5000 ] && ok "prefix has $n entries" || bad "prefix has only ${n:-0} entries"
+for f in bin/bash bin/sh usr/lib/dyld usr/lib/libSystem.B.dylib \
+	usr/lib/system/libsystem_kernel.dylib usr/share/icu/icudt66l.dat; do
+	[ -e "$prefix/libexec/darling/$f" ] && ok "prefix has $f" || bad "prefix is missing $f"
+done
+# bin/sh is bash under a second name, which is how bash knows to start in POSIX mode.
+[ "$(readlink "$prefix/libexec/darling/bin/sh")" = \
+  "$(readlink "$prefix/libexec/darling/bin/bash")" ] &&
+	ok "bin/sh is the same artifact as bin/bash" || bad "bin/sh does not point at bash"
+file -bL "$prefix/libexec/darling/bin/bash" | grep -q "Mach-O 64-bit x86_64 executable" &&
+	ok "prefix bash is a Mach-O x86_64 executable" || bad "prefix bash is not Mach-O x86_64"
 
 say ""
 say "$pass passed, $fail failed"
