@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -112,3 +112,54 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: system_duct dylibs
+
+# BEGIN generated: system_duct_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_duct_static   -- review before committing.
+# cmake target: system_duct_static  ->  src/duct/src/libsystem_duct_static.a
+
+cc_objects(
+    name = "system_duct_static_obj",
+    srcs = [
+        "src/CRGetCrashLogMessage.c",
+        "src/acl.c",
+        "src/commpage.c",
+        "src/dns_sd.c",
+        "src/libnotify.c",
+        "src/numcpus.c",
+        "src/os_log.c",
+        "src/sa_dst_compare.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_duct_static
+
+# BEGIN generated: libsystem_duct_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libsystem_duct_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "system_duct_static",
+    lib_name = "libsystem_duct_static.a",
+    objs = [
+        # system_duct_static
+        ":system_duct_static_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libsystem_duct_static.a archive

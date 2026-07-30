@@ -149,5 +149,15 @@
     "//darwin/frameworks:fw_OpenGL",
     "//darwin/frameworks:fw_SearchKit",
     "//buck-src:fw_Security"
+  ],
+  "emulation_dyld": [
+    "gen::emmig_signal_mach_exc",
+    "//src/startup:rtsig_header",
+    ":emulation_included_sources",
+    "//src/include:darling_config",
+    "//src/external/darlingserver:dserver_headers"
+  ],
+  "libsystem_kernel_static64.a": [
+    "objs::emulation_dyld_rpc_obj"
   ]
 }

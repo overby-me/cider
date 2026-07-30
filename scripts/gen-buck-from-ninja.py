@@ -15,6 +15,7 @@ Usage:
     scripts/gen-buck-from-ninja.py --write <cmake-target> [...]  # into its package
     scripts/gen-buck-from-ninja.py --dylibs <cmake-target> [...]  # firstpass+final pair
     scripts/gen-buck-from-ninja.py --binaries <exe-name> [...]    # darwin_binary
+    scripts/gen-buck-from-ninja.py --archives <archive> [...]      # cc_static_lib
     scripts/gen-buck-from-ninja.py --list [<substring>]     # what targets exist
     scripts/gen-buck-from-ninja.py --explain <cmake-target> # flags/includes as-is
 
@@ -1061,6 +1062,110 @@ def generate_dylibs(target: str, edges, only: str = ""):
     return "\n".join(out).rstrip() + "\n", pkg
 
 
+def archive_edge(name: str, edges):
+    """The archive link edge producing `name` (libfoo_static.a, or just foo_static)."""
+    cands = {name, f"lib{name}.a", f"{name}.a"}
+    for outs, _rule, inputs, vars in edges:
+        for o in outs:
+            if "/" in o and os.path.basename(o) in cands and any(i.endswith(".o") for i in inputs):
+                return (o, inputs, vars)
+    return None
+
+
+def archive_target_name(artifact: str) -> str:
+    """libsystem_kernel_static64.a -> system_kernel_static64.
+
+    Object-library targets always end in _obj, so this can never collide with one
+    (the archive libsystem_blocks_static.a is built FROM the object library
+    system_blocks_static, whose target is system_blocks_static_obj).
+    """
+    base = os.path.basename(artifact)
+    return base.removeprefix("lib").removesuffix(".a")
+
+
+# Archives this port already builds under a different artifact name. The name is
+# just a path on the link line, so only the mapping matters: libsimple's Darwin
+# archive is libsimple_darling.a here and liblibsimple_darling.a in the reference
+# (cmake doubles the "lib" for a target already called libsimple_darling).
+ARCHIVE_ALIASES = {
+    "liblibsimple_darling.a": "//src/libsimple:libsimple_darling",
+}
+
+
+def archive_registry() -> dict:
+    """archive artifact name -> buck label, for every static library declared."""
+    reg = dict(ARCHIVE_ALIASES)
+    for dirpath, dirnames, filenames in os.walk(REPO):
+        dirnames[:] = [d for d in dirnames
+                       if d not in ("buck-out", ".git", ".jj", ".direnv", "build")]
+        if "BUCK" not in filenames:
+            continue
+        pkg = os.path.relpath(dirpath, REPO)
+        text = open(os.path.join(dirpath, "BUCK")).read()
+        for m in re.finditer(
+                r'cc_static_lib\(\s*\n\s*name = "([A-Za-z0-9_.-]+)",'
+                r'(?:\s*\n\s*lib_name = "([^"]+)",)?', text):
+            artifact = m.group(2) or f"lib{m.group(1)}.a"
+            reg[artifact] = f"//{pkg}:{m.group(1)}"
+    return reg
+
+
+def generate_archive(name: str, edges):
+    """A cc_static_lib for one archive, and its package."""
+    edge = archive_edge(name, edges)
+    if edge is None:
+        return None
+    libs = objlibs_of(edge)
+    if not libs:
+        return None
+    objs, pkgs, aliased = [], {}, []
+    for lib in libs:
+        if lib in OBJLIB_ALIASES:
+            for label in OBJLIB_ALIASES[lib]:
+                objs.append((None, label, lib))
+            aliased.append(lib)
+            continue
+        names, pkg = obj_targets(lib, edges)
+        pkgs[pkg] = pkgs.get(pkg, 0) + len(names)
+        for n in names:
+            objs.append((pkg, n, lib))
+    if not pkgs:
+        return None
+    pkg = max(pkgs, key=lambda k: pkgs[k])
+    artifact = os.path.basename(edge[0])
+    target = archive_target_name(artifact)
+    # Object groups this port adds that no cmake object library corresponds to, keyed
+    # by ARTIFACT name (the static kernel needs the generated rpc.c in its own group).
+    extra_objs = [x[len("objs:"):] for x in extra_deps(artifact) if x.startswith("objs:")]
+
+    out = []
+    w = out.append
+    w("# GENERATED from the reference build.ninja by")
+    w(f"# scripts/gen-buck-from-ninja.py --archives {name}   -- review before committing.")
+    w(f"# Archives {len(libs)} cmake object library/ies, {len(objs)} flag groups.")
+    if aliased:
+        w("# Object libraries whose sources are compiled elsewhere in this port: "
+          + ", ".join(aliased))
+    w("")
+    w("cc_static_lib(")
+    w(f'    name = "{target}",')
+    w(f'    lib_name = "{artifact}",')
+    w("    objs = [")
+    last = None
+    for op, on, lib in objs:
+        if lib != last:
+            w(f"        # {lib}")
+            last = lib
+        w(f'        "{on if op is None else (":" + on if op == pkg else "//" + op + ":" + on)}",')
+    for extra in extra_objs:
+        w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
+    w("    ],")
+    w('    toolchain = "toolchains//:darwin_cc",')
+    w('    visibility = ["PUBLIC"],')
+    w(")")
+    return "\n".join(out).rstrip() + "\n", pkg
+
+
 def exe_edge(target: str, edges):
     """The executable link edge that produces `target`.
 
@@ -1113,6 +1218,21 @@ def generate_binary(target: str, edges):
 
     reg, final_reg = firstpass_registry(), final_registry()
     dylibs, missing = siblings_of(edge, reg, final_reg)
+    # Static archives, in the order LINK_LIBRARIES names them: for archives the order
+    # IS the resolution order, so preserving it is part of being faithful.
+    arch_reg = archive_registry()
+    archives, missing_a = [], []
+    ordered = re.findall(r"(\S+\.a)\b", edge[2].get("LINK_LIBRARIES", "")) or \
+        [i for i in edge[1] if i.endswith(".a")]
+    for path in ordered:
+        base = os.path.basename(path)
+        label = arch_reg.get(base)
+        if label:
+            if label not in archives:
+                archives.append(label)
+        elif base not in missing_a:
+            missing_a.append(base)
+    missing = missing + missing_a
     flags, _ = semantic_link_flags(edge[2])
     files, elsewhere = link_flag_files(edge[2], pkg)
     extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
@@ -1165,6 +1285,8 @@ def generate_binary(target: str, edges):
     w('    toolchain = "toolchains//:darwin_cc",')
     w("    deps = [")
     w('        "//darwin:sdk_env",')
+    for a in archives:
+        w(f'        "{a}",')
     for d in extra_dylib_deps:
         w(f'        "{d}",')
     w("    ],")
@@ -1228,6 +1350,19 @@ def main(argv: list[str]) -> int:
                 print("  generated include dirs:", gen)
             if link:
                 print("  link out:", link[0])
+            continue
+
+        if "--archives" in argv:
+            pair = generate_archive(target, edges)
+            if pair is None:
+                print(f"# no archive edge for {target}", file=sys.stderr)
+                continue
+            text, pkg = pair
+            if "--write" not in argv:
+                print(text)
+                continue
+            write_block(pkg, target + " archive", text)
+            print(f"wrote {pkg}/BUCK: {target} archive", file=sys.stderr)
             continue
 
         if "--binaries" in argv:

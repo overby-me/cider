@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
@@ -106,3 +106,20 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: system_trace dylibs
+
+# BEGIN generated: libsystem_trace_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libsystem_trace_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "system_trace_static",
+    lib_name = "libsystem_trace_static.a",
+    objs = [
+        # system_trace_obj
+        ":system_trace_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libsystem_trace_static.a archive

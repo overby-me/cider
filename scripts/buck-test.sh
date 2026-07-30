@@ -141,7 +141,7 @@ dt_syms=$(nm --defined-only "$dt" | awk '{print $3}' | grep -v '^$' | sort -u)
 sym_count=$(printf '%s\n' "$dt_syms" | wc -l)
 [ "$sym_count" -ge 2700 ] && ok "defines $sym_count symbols" ||
 	bad "expected >= 2700 symbols, got $sym_count"
-has_sym() { printf '%s\n' "$dt_syms" | grep -qx "$1"; }
+has_sym() { grep -qxF "$1" <<<"$dt_syms"; }
 for sym in dtape_init dtape_init_in_thread ipc_kmsg_send mig_init thread_call_initialize; do
 	if has_sym "$sym"; then ok "defines $sym"; else bad "missing $sym"; fi
 done
@@ -204,7 +204,7 @@ bid=$(llvm-objdump --macho --dylib-id "$blocks" 2>/dev/null | tail -1)
 	ok "install_name is $bid" || bad "install_name is '$bid'"
 blocks_syms=$(llvm-nm --defined-only --extern-only "$blocks" 2>/dev/null | awk '{print $3}')
 for sym in __Block_copy __Block_release __Block_object_assign __Block_object_dispose; do
-	if printf '%s\n' "$blocks_syms" | grep -qx "$sym"; then
+	if grep -qxF "$sym" <<<"$blocks_syms"; then
 		ok "exports $sym"
 	else
 		bad "missing $sym"
@@ -252,7 +252,7 @@ pth=$(out_of //buck-src:system_pthread_firstpass)
 # exits on the first match and llvm-nm dies on SIGPIPE.
 pth_syms=$(llvm-nm --defined-only "$pth" 2>/dev/null | awk '{print $3}')
 for sym in _pthread_create __pthread_list_lock; do
-	printf '%s\n' "$pth_syms" | grep -qx "$sym" &&
+	grep -qxF "$sym" <<<"$pth_syms" &&
 		ok "libsystem_pthread defines $sym" || bad "libsystem_pthread is missing $sym"
 done
 
@@ -265,7 +265,7 @@ libc_count=$(printf '%s\n' "$libc_syms" | wc -l)
 [ "$libc_count" -ge 1300 ] && ok "libsystem_c exports $libc_count symbols" ||
 	bad "libsystem_c exports only $libc_count symbols"
 for sym in _printf _fopen _strtod _qsort _getenv _regcomp _uuid_generate _strftime; do
-	printf '%s\n' "$libc_syms" | grep -qx "$sym" && ok "libsystem_c exports $sym" ||
+	grep -qxF "$sym" <<<"$libc_syms" && ok "libsystem_c exports $sym" ||
 		bad "libsystem_c is missing $sym"
 done
 
@@ -282,7 +282,7 @@ kn=$(printf '%s\n' "$krn_syms" | wc -l)
 [ "$kn" -ge 1300 ] && ok "libsystem_kernel exports $kn symbols" ||
 	bad "libsystem_kernel exports only $kn symbols"
 for sym in _mach_msg _mach_task_self_ ___syscall _mmap _kevent; do
-	printf '%s\n' "$krn_syms" | grep -qx "$sym" && ok "libsystem_kernel exports $sym" ||
+	grep -qxF "$sym" <<<"$krn_syms" && ok "libsystem_kernel exports $sym" ||
 		bad "libsystem_kernel is missing $sym"
 done
 
@@ -342,7 +342,7 @@ done
 # flag group (dserver-rpc-defs.h force-included). Missing it links a firstpass
 # fine but breaks the final pass, so assert one of them is really defined.
 kf_syms=$(llvm-nm --defined-only "$kf" 2>/dev/null | awk '{print $3}')
-printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
+grep -qxF "_dserver_rpc_checkin" <<<"$kf_syms" &&
 	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
 	bad "kernel final is missing _dserver_rpc_checkin"
 
@@ -412,16 +412,58 @@ for t in //src/vchroot:vchroot //buck-src:notifyutil \
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-# dyld and plconvert are generated but cannot link yet, and only those two:
-#   dyld      -- links 17 *_static*.a archives (a whole parallel static tier)
-#   plconvert -- needs the CoreFoundation dylib, not ported
-for t in //buck-src:dyld //buck-src:plconvert; do
+# plconvert is generated but cannot link yet, and only it: it needs the
+# CoreFoundation dylib, which is not ported.
+for t in //buck-src:plconvert; do
 	if buck2 build "$t" >/dev/null 2>&1; then
 		bad "${t##*:} links now -- drop it from the blocked list"
 	else
 		ok "${t##*:} still blocked on unported targets (expected)"
 	fi
 done
+
+say "== the STATIC tier, and dyld =="
+# dyld is not linked against dylibs at all: it links 17 static archives, because the
+# loader has to run before any dylib is mapped. Each archive is checked for holding
+# objects (an empty one links fine and silently drops symbols).
+n_ar=0
+for t in //buck-src:compiler_rt_static64 //buck-src:corecrypto_static \
+	//buck-src:cxx_static //buck-src:cxxabi_static //buck-src:keymgr_static \
+	//buck-src:libc_static //buck-src:libc_static64 //buck-src:macho_static \
+	//buck-src:platform_static64 //buck-src:pthread_static \
+	//buck-src:system_blocks_static //src/duct:system_duct_static \
+	//buck-src:system_kernel_static64 //src/libm:system_m_static \
+	//src/external/libtrace:system_trace_static //buck-src:unwind_static; do
+	f=$(out_of "$t" || true)
+	n=$(ar t "$f" 2>/dev/null | wc -l)
+	if [ "$n" -gt 0 ]; then
+		n_ar=$((n_ar + 1))
+	else
+		bad "${t##*:} is empty or missing"
+	fi
+done
+[ "$n_ar" -eq 16 ] && ok "$n_ar static archives hold objects" ||
+	bad "only $n_ar of 16 static archives hold objects"
+# The kernel archive needs the generated rpc.c in a flag group of its own, exactly as
+# the dylib tier does; without it dyld comes out undefined against dserver_rpc_*.
+ka=$(out_of //buck-src:system_kernel_static64)
+# Collect the symbols FIRST: under `set -o pipefail`, `nm | grep -q` fails even on a
+# match, because grep exits early and nm dies on SIGPIPE.
+ka_syms=$(llvm-nm --defined-only "$ka" 2>/dev/null | awk '{print $3}' | sort -u)
+grep -qxF "_dserver_rpc_tid_for_thread" <<<"$ka_syms" &&
+	ok "the static kernel defines _dserver_rpc_tid_for_thread" ||
+	bad "the static kernel is missing the generated rpc.c"
+
+dy=$(out_of //buck-src:dyld)
+dhdr=$(llvm-objdump --macho --private-headers "$dy" 2>/dev/null | grep -m1 MH_MAGIC || true)
+case "$dhdr" in
+*DYLINKER*NOUNDEFS*) ok "dyld is a Mach-O DYLINKER with nothing undefined" ;;
+*DYLINKER*) bad "dyld links but leaves symbols undefined" ;;
+*) bad "dyld is not a Mach-O dylinker ($dhdr)" ;;
+esac
+dy_syms=$(llvm-nm --defined-only "$dy" 2>/dev/null | awk '{print $3}' | sort -u)
+grep -qxF "__dyld_start" <<<"$dy_syms" &&
+	ok "dyld defines __dyld_start" || bad "dyld has no __dyld_start"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

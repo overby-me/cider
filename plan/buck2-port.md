@@ -150,9 +150,34 @@ and `plconvert` needs the CoreFoundation dylib. Both are asserted as still-block
 
 89 checks pass.
 
-**Next up:** the static tier (`*_static*.a` via `cc_static_lib`), which is what dyld
-needs and what the rest of the CLI tools will need too; then the remaining ~45
-executables and the frameworks.
+### 2026-07-30 (still later) -- the static tier, and dyld
+
+**dyld links**: a Mach-O `DYLINKER` with `NOUNDEFS` that defines `__dyld_start`. It is
+linked against no dylib at all -- the loader runs before any dylib is mapped -- so it
+takes 17 static archives instead, and `--archives` generates a `cc_static_lib` from
+each archive edge the same way the other modes do.
+
+  * 16 archives generated (the 17th, libsimple's Darwin archive, already existed under
+    a different artifact name: cmake doubles the "lib" for a target already called
+    libsimple_darling, so `ARCHIVE_ALIASES` maps it).
+  * 9 new object libraries for the static variants (cxx_static, platform_static64,
+    pthread_static, emulation_dyld at 293 sources, system_m_static at 118, ...).
+  * For archives the LINK ORDER is the resolution order, so a binary's `deps` are
+    emitted in the order LINK_LIBRARIES names them.
+  * The static kernel needs the generated rpc.c in a flag group of its OWN, exactly as
+    the dylib tier does; `emulation_dyld_rpc_obj` is derived from the generated
+    emulation_dyld block so its flags cannot drift from it.
+
+One test-harness bug worth recording, because it made a symbol that IS present read as
+missing: under `set -o pipefail`, `printf '%s\n' "$syms" | grep -q X` returns 141 once
+the list outgrows the 64K pipe buffer -- grep exits on the first match and printf dies
+of SIGPIPE. Small symbol lists happened to fit, so it only surfaced on dyld's 6703.
+Every such check is a herestring now.
+
+92 checks pass.
+
+**Next up:** the remaining ~45 executables (launchctl needs libedit; most need only
+what is already ported), then the frameworks.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

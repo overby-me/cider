@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen", "mig_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
@@ -19673,6 +19673,23 @@ darwin_binary(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:libc_static",
+        "//buck-src:system_blocks_static",
+        "//buck-src:cxx_static",
+        "//buck-src:unwind_static",
+        "//src/libm:system_m_static",
+        "//buck-src:cxxabi_static",
+        "//buck-src:keymgr_static",
+        "//src/duct:system_duct_static",
+        "//buck-src:pthread_static",
+        "//buck-src:macho_static",
+        "//src/external/libtrace:system_trace_static",
+        "//buck-src:corecrypto_static",
+        "//buck-src:libc_static64",
+        "//buck-src:compiler_rt_static64",
+        "//buck-src:platform_static64",
+        "//buck-src:system_kernel_static64",
+        "//src/libsimple:libsimple_darling",
     ],
     visibility = ["PUBLIC"],
 )
@@ -19790,3 +19807,1386 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: crt1.10.6
+
+# BEGIN generated: cxx_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cxx_static   -- review before committing.
+# cmake target: cxx_static  ->  src/external/libcxx/libcxx_static.a
+# 43 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "cxx_static_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cxx_static_obj",
+    srcs = [
+        "libcxx/src/algorithm.cpp",
+        "libcxx/src/any.cpp",
+        "libcxx/src/atomic.cpp",
+        "libcxx/src/barrier.cpp",
+        "libcxx/src/bind.cpp",
+        "libcxx/src/charconv.cpp",
+        "libcxx/src/chrono.cpp",
+        "libcxx/src/condition_variable.cpp",
+        "libcxx/src/condition_variable_destructor.cpp",
+        "libcxx/src/debug.cpp",
+        "libcxx/src/exception.cpp",
+        "libcxx/src/format.cpp",
+        "libcxx/src/functional.cpp",
+        "libcxx/src/future.cpp",
+        "libcxx/src/hash.cpp",
+        "libcxx/src/ios.cpp",
+        "libcxx/src/ios.instantiations.cpp",
+        "libcxx/src/iostream.cpp",
+        "libcxx/src/locale.cpp",
+        "libcxx/src/memory.cpp",
+        "libcxx/src/mutex.cpp",
+        "libcxx/src/mutex_destructor.cpp",
+        "libcxx/src/new.cpp",
+        "libcxx/src/optional.cpp",
+        "libcxx/src/random.cpp",
+        "libcxx/src/random_shuffle.cpp",
+        "libcxx/src/regex.cpp",
+        "libcxx/src/shared_mutex.cpp",
+        "libcxx/src/stdexcept.cpp",
+        "libcxx/src/string.cpp",
+        "libcxx/src/strstream.cpp",
+        "libcxx/src/system_error.cpp",
+        "libcxx/src/thread.cpp",
+        "libcxx/src/typeinfo.cpp",
+        "libcxx/src/utility.cpp",
+        "libcxx/src/valarray.cpp",
+        "libcxx/src/variant.cpp",
+        "libcxx/src/vector.cpp",
+    ],
+    compiler_flags = [
+        "-DLIBCXX_BUILDING_LIBCXXABI=1",
+        "-D_LIBCPP_BUILDING_LIBRARY=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-std=c++11",
+        "-fvisibility=hidden",
+        "-fvisibility-inlines-hidden",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cxx_static_inc_libcxxabi_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cxx_static_obj2",
+    srcs = [
+        "libcxx/src/filesystem/directory_iterator.cpp",
+        "libcxx/src/filesystem/int128_builtins.cpp",
+        "libcxx/src/filesystem/operations.cpp",
+        "libcxx/src/memory_resource_std.cpp",
+        "libcxx/src/verbose_abort_std.cpp",
+    ],
+    compiler_flags = [
+        "-DLIBCXX_BUILDING_LIBCXXABI=1",
+        "-D_LIBCPP_BUILDING_LIBRARY=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-std=c++11",
+        "-fvisibility=hidden",
+        "-fvisibility-inlines-hidden",
+        "-std=c++17",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cxx_static_inc_libcxxabi_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cxx_static
+
+# BEGIN generated: keymgr_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py keymgr_static   -- review before committing.
+# cmake target: keymgr_static  ->  src/external/keymgr/libkeymgr_static.a
+
+cc_objects(
+    name = "keymgr_static_obj",
+    srcs = [
+        "keymgr/keymgr.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: keymgr_static
+
+# BEGIN generated: platform_static64
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py platform_static64   -- review before committing.
+# cmake target: platform_static64  ->  src/external/libplatform/libplatform_static64.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_internal",
+    headers = glob(["libplatform/internal/*.h", "libplatform/internal/**/*.h"]),
+    root = "libplatform/internal",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_private",
+    headers = glob(["libplatform/private/*.h", "libplatform/private/**/*.h"]),
+    root = "libplatform/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "platform_static64_inc_libplatform_include",
+    headers = glob(["libplatform/include/*.h", "libplatform/include/**/*.h"]),
+    root = "libplatform/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "platform_static64_obj",
+    srcs = [
+        "libplatform/src/atomics/common/MKGetTimeBaseInfo.c",
+        "libplatform/src/atomics/init.c",
+        "libplatform/src/cachecontrol/generic/cache.c",
+        "libplatform/src/force_libplatform_to_build.c",
+        "libplatform/src/init.c",
+        "libplatform/src/os/alloc_once.c",
+        "libplatform/src/os/atomic.c",
+        "libplatform/src/os/lock.c",
+        "libplatform/src/os/semaphore.c",
+        "libplatform/src/setjmp/generic/setjmperr.c",
+        "libplatform/src/setjmp/generic/sigaction.c",
+        "libplatform/src/setjmp/generic/sigtramp.c",
+        "libplatform/src/simple/asl.c",
+        "libplatform/src/simple/getenv.c",
+        "libplatform/src/simple/string_io.c",
+        "libplatform/src/string/generic/bzero.c",
+        "libplatform/src/string/generic/ffsll.c",
+        "libplatform/src/string/generic/flsll.c",
+        "libplatform/src/string/generic/memccpy.c",
+        "libplatform/src/string/generic/memchr.c",
+        "libplatform/src/string/generic/memcmp.c",
+        "libplatform/src/string/generic/memmove.c",
+        "libplatform/src/string/generic/memset_pattern.c",
+        "libplatform/src/string/generic/strchr.c",
+        "libplatform/src/string/generic/strcmp.c",
+        "libplatform/src/string/generic/strcpy.c",
+        "libplatform/src/string/generic/strlcat.c",
+        "libplatform/src/string/generic/strlcpy.c",
+        "libplatform/src/string/generic/strlen.c",
+        "libplatform/src/string/generic/strncmp.c",
+        "libplatform/src/string/generic/strncpy.c",
+        "libplatform/src/string/generic/strnlen.c",
+        "libplatform/src/string/generic/strstr.c",
+        "libplatform/src/ucontext/generic/getmcontext.c",
+        "libplatform/src/ucontext/generic/makecontext.c",
+        "libplatform/src/ucontext/generic/setcontext.c",
+        "libplatform/src/ucontext/generic/swapcontext.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_STATIC",
+        "-fvisibility=hidden",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_static64_inc_libplatform_internal",
+        ":platform_static64_inc_libplatform_private",
+        ":platform_static64_inc_libplatform_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: platform_static64
+
+# BEGIN generated: pthread_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pthread_static   -- review before committing.
+# cmake target: pthread_static  ->  src/external/libpthread/src/libpthread_static.a
+# 12 sources in 7 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_src",
+    headers = glob(["libpthread/src/*.h", "libpthread/src/**/*.h"]),
+    root = "libpthread/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_src_resolver",
+    headers = glob(["libpthread/src/resolver/*.h", "libpthread/src/resolver/**/*.h"]),
+    root = "libpthread/src/resolver",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread_private",
+    headers = glob(["libpthread/private/*.h", "libpthread/private/**/*.h"]),
+    root = "libpthread/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pthread_static_inc_libpthread",
+    headers = glob(["libpthread/*.h", "libpthread/**/*.h"]),
+    root = "libpthread",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj",
+    srcs = [
+        "libpthread/src/pthread_atfork.c",
+        "libpthread/src/pthread_cwd.c",
+        "libpthread/src/pthread_dependency.c",
+        "libpthread/src/pthread_tsd.c",
+        "libpthread/src/qos.c",
+        "libpthread/src/resolver/resolver.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj2",
+    srcs = [
+        "libpthread/src/pthread.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_CANCEL",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELSTATE",
+        "-DLIBC_ALIAS_PTHREAD_SETCANCELTYPE",
+        "-DLIBC_ALIAS_PTHREAD_SIGMASK",
+        "-DLIBC_ALIAS_PTHREAD_TESTCANCEL",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj3",
+    srcs = [
+        "libpthread/src/pthread_asm.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj4",
+    srcs = [
+        "libpthread/src/pthread_cancelable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+        "-DLIBC_ALIAS_PTHREAD_JOIN",
+        "-DLIBC_ALIAS_SIGWAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj5",
+    srcs = [
+        "libpthread/src/pthread_cond.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_COND_TIMEDWAIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_INIT",
+        "-DLIBC_ALIAS_PTHREAD_COND_WAIT",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj6",
+    srcs = [
+        "libpthread/src/pthread_mutex.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pthread_static_obj7",
+    srcs = [
+        "libpthread/src/pthread_rwlock.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FORTIFY_SOURCE=0",
+        "-D__DARWIN_64_BIT_INO_T=1",
+        "-D__DARWIN_NON_CANCELABLE=1",
+        "-D__DARWIN_UNIX03=1",
+        "-D__DARWIN_VERS_1050=1",
+        "-D__LIBC__",
+        "-D__POSIX_LIB__",
+        "-D__PTHREAD_BUILDING_PTHREAD__=1",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DVARIANT_DYLD=1",
+        "-DVARIANT_STATIC=1",
+        "-nostdinc",
+        "-std=gnu11",
+        "-Wno-error=int-conversion",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_INIT",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_WRLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_RDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_UNLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_DESTROY",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYRDLOCK",
+        "-DLIBC_ALIAS_PTHREAD_RWLOCK_TRYWRLOCK",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pthread_static_inc_libpthread_src",
+        ":pthread_static_inc_libpthread_src_resolver",
+        ":pthread_static_inc_libpthread_private",
+        ":pthread_static_inc_libpthread",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pthread_static
+
+# BEGIN generated: system_blocks_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_blocks_static   -- review before committing.
+# cmake target: system_blocks_static  ->  src/external/libclosure/libsystem_blocks_static.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "system_blocks_static_inc_libclosure",
+    headers = glob(["libclosure/*.h", "libclosure/**/*.h"]),
+    root = "libclosure",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_static_obj",
+    srcs = [
+        "libclosure/data.c",
+        "libclosure/data.m",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fno-stack-check",
+        "-fno-stack-protector",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_blocks_static_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "system_blocks_static_obj2",
+    srcs = [
+        "libclosure/runtime.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-fno-stack-check",
+        "-fno-stack-protector",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_blocks_static_inc_libclosure",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_blocks_static
+
+# BEGIN generated: emulation_dyld
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py emulation_dyld   -- review before committing.
+# cmake target: emulation_dyld  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation_dyld
+# 295 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/darlingserver/src/rpc.c
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+#   src/startup
+
+cc_header_root(
+    name = "emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_dyld_obj",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/base.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/guarded/table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/simple.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/errno.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/fcntl/open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/duct.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/getsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/recvmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/process/wait4.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/signal/duct_signals.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/elfcalls_wrapper.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_gettime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_nanosleep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create1.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_ctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_read.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_write.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/fanotify.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libelfloader.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-xtrace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/futex.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_add_watch.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init1.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_rm_watch.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/mremap.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/nanosleep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sched_yield.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/signalfd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sysinfo.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/syslog.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_gettime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_settime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/uname.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/misc/ioctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/socket.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/termios.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/common_at.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/fdpath.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/readline.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_machdep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_proc.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_sysctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_unspec.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_vm.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_addr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_join.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_port.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_self.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_terminate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/disable_threadsignal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_canceled.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_chdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_fchdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_kill.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_markcancel.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/fpathconf.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/pathconf.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/dirent/getdirentries.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/openat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_close_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_kqueue_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_open_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/hfs/stub.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/ioctl/ioctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent64.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent_qos.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kqueue.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/abort_with_payload.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csops.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csrctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makefd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makeport.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fsgetpath.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getentropy.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/gethostuuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getlogin.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrlimit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrusage.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/iopolicysys.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/ptrace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setlogin.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setrlimit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/shared_region_check_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/syscall.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/sysctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/thread_selfid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/madvise.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/msync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mount/unmount.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/accept.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/bind.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/connect.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/listen.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendto.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/setsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/shutdown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socket.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socketpair.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/getpriority.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/setpriority.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/vfork.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/wait4.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/waitid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvbroad.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvclrprepost.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvsignal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexdrop.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_rdlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_unlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_wrlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wake.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/pselect.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/select.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/kill.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaltstack.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigpending.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigprocmask.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigreturn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigsuspend.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatfs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/getfsstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdirat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifo.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/statfs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/synch/semwait_signal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semget.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semop.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/futimes.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/getitimer.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/gettimeofday.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/setitimer.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/utimes.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/access.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chroot.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/exit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/faccessat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmodat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchownat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fdatasync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/flock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fsync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/ftruncate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getdtablesize.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getegid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/geteuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgrp.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getppid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getsid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/gettid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/initgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/issetugid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lchown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/link.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/linkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lseek.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pread.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pwrite.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/read.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readv.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/rename.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setegid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/seteuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setpgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setsid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/settid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/sync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/truncate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/umask.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/write.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/writev.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_close.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_post.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_trywait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistbulk.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlistat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_time.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall_table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall_table.c",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-ffunction-sections",
+        "-DVARIANT_DYLD",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/external/darlingserver:dserver_headers",
+        ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+        "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        ":emmig_signal_mach_exc",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_dyld_obj2",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-ffunction-sections",
+        "-DVARIANT_DYLD",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/external/darlingserver:dserver_headers",
+        ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: emulation_dyld
+
+# BEGIN generated: unwind_static
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py unwind_static   -- review before committing.
+# cmake target: unwind_static  ->  src/external/libunwind/libunwind_static.a
+# 9 sources in 3 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "unwind_static_inc_libunwind_libunwind_src",
+    headers = glob(["libunwind/libunwind/src/*.h", "libunwind/libunwind/src/**/*.h"]),
+    root = "libunwind/libunwind/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "unwind_static_inc_libunwind_libunwind_include",
+    headers = glob(["libunwind/libunwind/include/*.h", "libunwind/libunwind/include/**/*.h"]),
+    root = "libunwind/libunwind/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj",
+    srcs = [
+        "libunwind/libunwind/src/Unwind-EHABI.cpp",
+        "libunwind/libunwind/src/Unwind-seh.cpp",
+        "libunwind/libunwind/src/Unwind_AppleExtras.cpp",
+        "libunwind/libunwind/src/libunwind.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_LIBUNWIND_IS_NATIVE_ONLY",
+        "-nostdinc",
+        "-nostdinc++",
+        "-fno-rtti",
+        "-fno-exceptions",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj2",
+    srcs = [
+        "libunwind/libunwind/src/Unwind-sjlj.c",
+        "libunwind/libunwind/src/UnwindLevel1-gcc-ext.c",
+        "libunwind/libunwind/src/UnwindLevel1.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-fno-rtti",
+        "-funwind-tables",
+        "-ggdb",
+        "-O0",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "unwind_static_obj3",
+    srcs = [
+        "libunwind/libunwind/src/UnwindRegistersRestore.S",
+        "libunwind/libunwind/src/UnwindRegistersSave.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-DNDEBUG=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":unwind_static_inc_libunwind_libunwind_src",
+        ":unwind_static_inc_libunwind_libunwind_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: unwind_static
+
+# BEGIN generated: libcompiler_rt_static64.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcompiler_rt_static64.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "compiler_rt_static64",
+    lib_name = "libcompiler_rt_static64.a",
+    objs = [
+        # compiler_rt_64bit
+        ":compiler_rt_64bit_obj",
+        ":compiler_rt_64bit_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcompiler_rt_static64.a archive
+
+# BEGIN generated: libcorecrypto_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcorecrypto_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "corecrypto_static",
+    lib_name = "libcorecrypto_static.a",
+    objs = [
+        # corecrypto_obj
+        ":corecrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcorecrypto_static.a archive
+
+# BEGIN generated: libcxx_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcxx_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "cxx_static",
+    lib_name = "libcxx_static.a",
+    objs = [
+        # cxx_static
+        ":cxx_static_obj",
+        ":cxx_static_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcxx_static.a archive
+
+# BEGIN generated: libcxxabi_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcxxabi_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "cxxabi_static",
+    lib_name = "libcxxabi_static.a",
+    objs = [
+        # cxxabi_obj
+        ":cxxabi_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcxxabi_static.a archive
+
+# BEGIN generated: libkeymgr_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libkeymgr_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "keymgr_static",
+    lib_name = "libkeymgr_static.a",
+    objs = [
+        # keymgr_static
+        ":keymgr_static_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libkeymgr_static.a archive
+
+# BEGIN generated: liblibc_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibc_static.a   -- review before committing.
+# Archives 14 cmake object library/ies, 35 flag groups.
+
+cc_static_lib(
+    name = "libc_static",
+    lib_name = "liblibc_static.a",
+    objs = [
+        # libc-gen_dyld
+        ":libc-gen_dyld_obj",
+        ":libc-gen_dyld_obj2",
+        ":libc-gen_dyld_obj3",
+        ":libc-gen_dyld_obj4",
+        ":libc-gen_dyld_obj5",
+        ":libc-gen_dyld_obj6",
+        ":libc-gen_dyld_obj7",
+        ":libc-gen_dyld_obj8",
+        # libc-stdlib_dyld
+        ":libc-stdlib_dyld_obj",
+        ":libc-stdlib_dyld_obj2",
+        # libc-string_dyld
+        ":libc-string_dyld_obj",
+        ":libc-string_dyld_obj2",
+        # libc-sys_dyld
+        ":libc-sys_dyld_obj",
+        # libc-locale
+        ":libc-locale_obj",
+        ":libc-locale_obj2",
+        # libc-stdio
+        ":libc-stdio_obj",
+        ":libc-stdio_obj2",
+        ":libc-stdio_obj3",
+        ":libc-stdio_obj4",
+        ":libc-stdio_obj5",
+        ":libc-stdio_obj6",
+        ":libc-stdio_obj7",
+        # libc-stdtime
+        ":libc-stdtime_obj",
+        ":libc-stdtime_obj2",
+        ":libc-stdtime_obj3",
+        ":libc-stdtime_obj4",
+        # libc-string
+        ":libc-string_obj",
+        ":libc-string_obj2",
+        # libc-gdtoa_dyld
+        ":libc-gdtoa_dyld_obj",
+        # libc-secure
+        ":libc-secure_obj",
+        # libc-uuid
+        ":libc-uuid_obj",
+        # libc-os
+        ":libc-os_obj",
+        # libc-stdio_extsn
+        ":libc-stdio_extsn_obj",
+        ":libc-stdio_extsn_obj2",
+        # libc-darwin
+        ":libc-darwin_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibc_static.a archive
+
+# BEGIN generated: liblibc_static64.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibc_static64.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "libc_static64",
+    lib_name = "liblibc_static64.a",
+    objs = [
+        # libc-x86_64
+        ":libc-x86_64_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibc_static64.a archive
+
+# BEGIN generated: libmacho_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libmacho_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "macho_static",
+    lib_name = "libmacho_static.a",
+    objs = [
+        # macho_obj
+        ":macho_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libmacho_static.a archive
+
+# BEGIN generated: libplatform_static64.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libplatform_static64.a   -- review before committing.
+# Archives 2 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "platform_static64",
+    lib_name = "libplatform_static64.a",
+    objs = [
+        # platform_64bit
+        ":platform_64bit_obj",
+        # platform_static64
+        ":platform_static64_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libplatform_static64.a archive
+
+# BEGIN generated: libpthread_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libpthread_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 7 flag groups.
+
+cc_static_lib(
+    name = "pthread_static",
+    lib_name = "libpthread_static.a",
+    objs = [
+        # pthread_static
+        ":pthread_static_obj",
+        ":pthread_static_obj2",
+        ":pthread_static_obj3",
+        ":pthread_static_obj4",
+        ":pthread_static_obj5",
+        ":pthread_static_obj6",
+        ":pthread_static_obj7",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libpthread_static.a archive
+
+# BEGIN generated: libsystem_blocks_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libsystem_blocks_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "system_blocks_static",
+    lib_name = "libsystem_blocks_static.a",
+    objs = [
+        # system_blocks_static
+        ":system_blocks_static_obj",
+        ":system_blocks_static_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libsystem_blocks_static.a archive
+
+# BEGIN generated: libsystem_kernel_static64.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libsystem_kernel_static64.a   -- review before committing.
+# Archives 3 cmake object library/ies, 7 flag groups.
+# Object libraries whose sources are compiled elsewhere in this port: libsyscall_64
+
+cc_static_lib(
+    name = "system_kernel_static64",
+    lib_name = "libsystem_kernel_static64.a",
+    objs = [
+        # libsyscall
+        ":libsyscall_obj",
+        ":libsyscall_obj2",
+        ":libsyscall_obj3",
+        ":libsyscall_obj4",
+        ":libsyscall_obj5",
+        # emulation_dyld
+        ":emulation_dyld_obj",
+        ":emulation_dyld_obj2",
+        ":emulation_dyld_rpc_obj",  # added by this port (buck/generated/extra-deps.json)
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libsystem_kernel_static64.a archive
+
+# BEGIN generated: libunwind_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libunwind_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 3 flag groups.
+
+cc_static_lib(
+    name = "unwind_static",
+    lib_name = "libunwind_static.a",
+    objs = [
+        # unwind_static
+        ":unwind_static_obj",
+        ":unwind_static_obj2",
+        ":unwind_static_obj3",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libunwind_static.a archive
+
+# The generated darlingserver rpc.c, compiled for the STATIC (dyld) tier.
+# Same shape as emulation_rpc_obj but with emulation_dyld's flags: the source
+# needs dserver-rpc-defs.h force-included, which no other source in the group
+# wants, so it cannot share their cc_objects.
+cc_objects(
+    name = "emulation_dyld_rpc_obj",
+    gen_srcs = ["//src/external/darlingserver:dserver_rpc"],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/emulation/include/linux_premigration/resources/dserver-rpc-defs.h",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+        "-ffunction-sections",
+        "-DVARIANT_DYLD",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/external/darlingserver:dserver_headers",
+        ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
