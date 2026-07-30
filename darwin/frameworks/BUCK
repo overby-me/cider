@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -36,3 +37,50 @@ load("//buck/generated:sdk_framework_darwin_frameworks.bzl", FRAMEWORKS = "FRAME
     for _name, _map in FRAMEWORKS.items()
 ]
 # END generated: framework roots
+
+# BEGIN generated: DirectoryService
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py DirectoryService   -- review before committing.
+# cmake target: DirectoryService  ->  src/frameworks/DirectoryServices/DirectoryService
+
+cc_objects(
+    name = "DirectoryService_obj",
+    srcs = [
+        "DirectoryServices/src/DirectoryService.c",
+    ],
+    compiler_flags = [
+        "-DDirectoryService_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: DirectoryService
+
+# BEGIN generated: DirectoryService dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs DirectoryService   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "DirectoryService_dylib",
+    dylib_name = "DirectoryService",
+    install_name = "/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # DirectoryService
+        ":DirectoryService_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: DirectoryService dylibs

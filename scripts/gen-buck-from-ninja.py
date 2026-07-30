@@ -123,7 +123,11 @@ def read_edges():
             edges.append(cur)
         elif cur is not None and line.startswith("  ") and " = " in line:
             k, _, v = line.strip().partition(" = ")
-            cur[3][k] = v
+            # Undo NINJA's own escaping before anything else looks at the value: it
+            # writes a literal $ as $$, and CoreFoundation's link carries
+            # -Wl,-alias,_OBJC_CLASS_$___NSCFConstantString,... -- passing the escape
+            # through hands ld64 a symbol name that does not exist.
+            cur[3][k] = v.replace("$$", "$").replace("$:", ":")
         elif line.strip() == "":
             cur = None
     return edges
@@ -614,9 +618,13 @@ def dylib_edges(target: str, edges):
     final = first = None
     dylibs = []
     for outs, _rule, inputs, vars in edges:
+        # A FRAMEWORK binary is a Mach-O dylib with no extension at all
+        # (CoreFoundation, DirectoryService), so the install_name flag is what
+        # identifies a dylib link -- not the file name.
+        is_dylib_link = "-dylib_install_name" in vars.get("LINK_FLAGS", "")
         for o in outs:
             base = os.path.basename(o)
-            if "/" not in o or not base.endswith(".dylib"):
+            if "/" not in o or not (base.endswith(".dylib") or is_dylib_link):
                 continue
             if base == f"lib{target}.dylib" and final is None:
                 final = (o, inputs, vars)
@@ -790,7 +798,7 @@ def link_flag_files(link_vars, pkg) -> tuple:
     that is not gets reported instead of being emitted wrong.
     """
     files, elsewhere = {}, []
-    for tok in link_vars.get("LINK_FLAGS", "").split():
+    for tok in split_flags(link_vars.get("LINK_FLAGS", "")):
         # -dylib_file and friends carry paths too, but the rule derives those from
         # its own deps; listing them here buried the real ones (an alias list) under
         # a hundred lines of framework mappings.
@@ -823,7 +831,7 @@ def semantic_link_flags(link_vars) -> tuple:
     library it never names (memset, in libsystem_platform).
     """
     flags, paths = [], []
-    for tok in link_vars.get("LINK_FLAGS", "").split():
+    for tok in split_flags(link_vars.get("LINK_FLAGS", "")):
         if not tok.startswith("-Wl,") or tok.startswith(_LINK_FLAG_HANDLED):
             continue
         if "/" in tok:
@@ -861,7 +869,10 @@ def siblings_of(edge, reg, final_reg):
     sibs, missing = [], []
     for i in edge[1]:
         base = os.path.basename(i)
-        if not base.endswith(".dylib"):
+        # A framework binary has NO extension (CoreFoundation, DirectoryService), and
+        # it is as much a library input as any .dylib -- memberd's _ds* symbols live in
+        # one. Anything with a different extension (.o, .a) is not a library here.
+        if not base.endswith(".dylib") and "." in base:
             continue
         m = re.match(r"lib([A-Za-z0-9_.-]+)_firstpass\.dylib$", base)
         if m:
@@ -958,6 +969,14 @@ def generate_dylibs(target: str, edges, only: str = ""):
     # in), and it is as load-bearing as any of the graph's own objects.
     extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
     extra_dylib_deps = [d[len("dep:"):] for d in extra_deps(target) if d.startswith("dep:")]
+    # Libraries this port names explicitly where the reference relies on ld64 finding
+    # them as an INDIRECT dylib (ICU's C++ ABI vtables live in libc++abi, reached in
+    # the reference through libc++'s load command alone).
+    for d in extra_deps(target):
+        if d.startswith("dylib:"):
+            sib_label = d[len("dylib:"):]
+            if sib_label not in sibs:
+                sibs.append(sib_label)
     final_flags, _ = semantic_link_flags(final[2]) if final else ([], [])
     first_flags, _ = semantic_link_flags(first[2]) if first else ([], [])
     final_files, final_elsewhere = link_flag_files(final[2], pkg) if final else ({}, [])

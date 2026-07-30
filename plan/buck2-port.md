@@ -202,9 +202,39 @@ exists.
 
 91 checks pass.
 
-**Next up:** the frameworks (CoreFoundation first -- it unblocks plconvert and is what
-every higher-level framework needs), then the remaining executables behind
-libncurses/libiconv/libz.
+### 2026-07-30 (morning) -- CoreFoundation, and nothing is blocked
+
+**CoreFoundation links**, with the right framework install_name, and so do ICU
+(libicucore.A.dylib, 446 sources) and the DirectoryService framework. With those three
+in, **no target is blocked any more**: 74 dylibs and 31 executables, all with nothing
+undefined.
+
+A framework binary is a Mach-O dylib with NO extension at all, which broke two things
+that keyed on the file suffix:
+
+  * the edge matcher skipped it, so `--dylibs DirectoryService` found no link edge; a
+    dylib link is now identified by its `-dylib_install_name` flag rather than by name.
+  * `siblings_of` dropped it as an input, so memberd came out undefined against the
+    `_ds*` functions that live in it.
+
+And two escaping layers had to be peeled, in the right order, for CoreFoundation's
+constant strings to work at all. `CFSTR()` references `___CFConstantStringClassReference`,
+which nothing defines: the reference creates it on the link line with
+`-Wl,-alias,_OBJC_CLASS_$___NSCFConstantString,___CFConstantStringClassReference`. In
+build.ninja that is written `\$$`, because
+
+  * ninja escapes a literal `$` as `$$` -- undone now for every var value in
+    read_edges (exactly one occurrence in the whole graph, and it was this one), and
+  * the shell then strips the backslash, so LINK_FLAGS has to be split with the
+    SHELL-aware splitter, not `.split()`.
+
+Passing either escape through hands ld64 a symbol name that does not exist, and the
+alias silently does nothing.
+
+93 checks pass.
+
+**Next up:** the remaining executables behind libncurses/libiconv/libz/libbsm, and the
+higher-level frameworks now that CoreFoundation is up.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

@@ -367,7 +367,8 @@ for t in $all_dylibs; do
 	# like the run stopping for no reason.
 	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1 || true)
 	case "$id" in
-	/usr/lib/*)
+	# A framework binary's id lives under /System/Library, not /usr/lib.
+	/usr/lib/* | /System/Library/*)
 		n_linked=$((n_linked + 1))
 		case "$name" in
 		*_firstpass) n_first=$((n_first + 1)) ;;
@@ -406,8 +407,8 @@ say "== guest EXECUTABLES =="
 # Discovered from the graph, like the dylibs: every executable target that exists.
 exe_pkgs="//buck-src: + //src/shellspawn: + //src/vchroot: + //src/launchd:"
 # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
-exe_skip="memberd plconvert dyld"
-exe_blocked="memberd plconvert"
+exe_skip="dyld"
+exe_blocked=""
 all_exes=$(buck2 uquery "kind('darwin_binary', $exe_pkgs)" 2>/dev/null || true)
 n_exe=0
 for t in $all_exes; do
@@ -423,10 +424,10 @@ for t in $all_exes; do
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-[ "$n_exe" -ge 29 ] && ok "$n_exe guest executables link with nothing undefined" ||
-	bad "expected >= 29 executables, got $n_exe"
-# Two are generated but cannot link, and only these two: both need a FRAMEWORK BINARY
-# that is not ported (DirectoryService for memberd, CoreFoundation for plconvert).
+[ "$n_exe" -ge 31 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 31 executables, got $n_exe"
+# Nothing is blocked any more: the two framework binaries that used to block memberd
+# and plconvert (DirectoryService, CoreFoundation) are ported.
 for name in $exe_blocked; do
 	if buck2 build "//buck-src:$name" >/dev/null 2>&1; then
 		bad "$name links now -- drop it from the blocked list"
@@ -434,6 +435,28 @@ for name in $exe_blocked; do
 		ok "$name still blocked on an unported framework binary (expected)"
 	fi
 done
+
+say "== FRAMEWORK binaries =="
+# A framework binary is a Mach-O dylib with no extension at all, so both the edge
+# matcher and the sibling resolver have to identify it by its install_name rather than
+# by a file suffix. CoreFoundation is the one that matters: it is what every
+# higher-level framework builds on, and its constant strings only work because the
+# reference aliases _OBJC_CLASS_$___NSCFConstantString to
+# ___CFConstantStringClassReference on the link line.
+for spec in \
+	"//buck-src:CoreFoundation_dylib=/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation" \
+	"//darwin/frameworks:DirectoryService_dylib=/System/Library/Frameworks/DirectoryService.framework/Versions/A/DirectoryService" \
+	"//buck-src:icucore_dylib=/usr/lib/libicucore.A.dylib"; do
+	t=${spec%%=*}
+	want=${spec#*=}
+	id=$(llvm-objdump --macho --dylib-id "$(out_of "$t")" 2>/dev/null | tail -1 || true)
+	[ "$id" = "$want" ] && ok "${t##*:} id is $id" || bad "${t##*:} id is '$id', want $want"
+done
+cf_syms=$(llvm-nm --defined-only "$(out_of //buck-src:CoreFoundation_dylib)" 2>/dev/null |
+	awk '{print $3}' | sort -u)
+grep -qxF "___CFConstantStringClassReference" <<<"$cf_syms" &&
+	ok "CoreFoundation defines ___CFConstantStringClassReference (the -Wl,-alias took)" ||
+	bad "CoreFoundation is missing ___CFConstantStringClassReference"
 # cctools' tools are the ones that prove the static archive path: they link
 # liblibstuff.a, and strings without libstuff would silently be a stub.
 st_syms=$(llvm-nm --defined-only "$(out_of //buck-src:strip)" 2>/dev/null | awk '{print $3}' | sort -u)
