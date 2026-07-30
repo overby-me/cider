@@ -9,4 +9,5 @@ EXPORTS = {
     "darling_include_histedit.h": "darling/include/histedit.h",
     "darling_include_readline_history.h": "darling/include/readline/history.h",
     "darling_include_readline_readline.h": "darling/include/readline/readline.h",
+    "inputrc": "inputrc",
 }

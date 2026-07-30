@@ -1,3 +1,4 @@
+load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
 
@@ -49,3 +50,15 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: shellspawn binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "org.darlinghq.shellspawn.plist",
+    src = "org.darlinghq.shellspawn.plist",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

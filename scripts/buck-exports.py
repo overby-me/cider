@@ -33,7 +33,16 @@ SKIP_DIRS = ("buck-out", ".git", ".jj", ".direnv", "build")
 # apart -- and the name is only accepted once it resolves to a file that really exists.
 FILE_EXTS = (".h", ".hpp", ".hh", ".hxx", ".inc", ".defs", ".c", ".cc", ".cpp", ".cxx",
              ".m", ".mm", ".S", ".s", ".y", ".l", ".tcc", ".mdh", ".mdhi", ".mdhs",
-             ".pro", ".epro", ".sh", ".plist", ".txt", ".in", ".sym", ".exp", ".def")
+             ".pro", ".epro", ".sh", ".plist", ".txt", ".in", ".sym", ".exp", ".def",
+             # Prefix DATA, added with the install rules: configs, an asl policy, iconv's
+             # charset table and the man pages, which are sections 1 through 9.
+             ".conf", ".asl", ".alias",
+             ".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9")
+
+# The same, for files that carry no extension at all. The rule above cannot see these --
+# vim's vimrc and libedit's inputrc are installed by name -- and without them the label goes
+# unresolved and the package it names is never even created.
+FILE_NAMES = ("vimrc", "inputrc")
 
 BEGIN = "# BEGIN generated: pin exports\n"
 END = "# END generated: pin exports\n"
@@ -77,7 +86,7 @@ def scan_labels() -> dict[str, set]:
             except (UnicodeDecodeError, OSError):
                 continue
             for pkg, name in pat.findall(text):
-                if name.endswith(FILE_EXTS):
+                if name.endswith(FILE_EXTS) or name.endswith(FILE_NAMES):
                     wanted.setdefault(pkg, set()).add(name)
     return wanted
 
@@ -239,6 +248,12 @@ def main(argv: list[str]) -> int:
             new = pre + block(pkg) + rest.split(END, 1)[1]
         else:
             new = (btext.rstrip("\n") + "\n\n" if btext.strip() else "") + block(pkg)
+        # The comprehension calls export_file, which a pin that exported nothing before has
+        # no reason to have loaded (crontabs, once the install rules started naming its man
+        # pages). Adding the block without the load leaves the package unparseable.
+        load = 'load("//buck/rules:files.bzl", "export_file")'
+        if load not in new:
+            new = load + "\n" + new
         if new != btext:
             if check:
                 stale.append(f"{pkg}/BUCK")

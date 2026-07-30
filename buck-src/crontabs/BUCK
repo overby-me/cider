@@ -1,3 +1,4 @@
+load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_objects")
 
 # Targets over the crontabs pin, materialized by scripts/buck-src.sh. The tree
@@ -47,3 +48,14 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: periodic-wrapper
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_crontabs.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

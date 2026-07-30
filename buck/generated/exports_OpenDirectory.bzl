@@ -5,5 +5,8 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "memberd-21.1_memberd.8": "memberd-21.1/memberd.8",
     "memberd-21.1_memberd.defs": "memberd-21.1/memberd.defs",
+    "memberd-21.1_memberd.plist": "memberd-21.1/memberd.plist",
+    "opendirectoryd_com.apple.opendirectoryd.plist": "opendirectoryd/com.apple.opendirectoryd.plist",
 }

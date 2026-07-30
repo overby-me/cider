@@ -8,4 +8,5 @@ EXPORTS = {
     "darling_include_iconv.h": "darling/include/iconv.h",
     "darling_include_libcharset.h": "darling/include/libcharset.h",
     "darling_include_localcharset.h": "darling/include/localcharset.h",
+    "libiconv_lib_charset.alias": "libiconv/lib/charset.alias",
 }

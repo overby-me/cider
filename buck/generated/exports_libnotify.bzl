@@ -10,4 +10,6 @@ EXPORTS = {
     "notify_keys.h": "notify_keys.h",
     "notifyd_notify.defs": "notifyd/notify.defs",
     "notifyd_notify_ipc.defs": "notifyd/notify_ipc.defs",
+    "notifyd_notifyd.8": "notifyd/notifyd.8",
+    "notifyutil_notifyutil.1": "notifyutil/notifyutil.1",
 }

@@ -1,4 +1,9 @@
 {
+  "buck-src": {
+    "libkqueue_kqueue.2": "libkqueue/kqueue.2",
+    "vim_local_vimrc": "vim/local/vimrc",
+    "vim_runtime_doc_vim.1": "vim/runtime/doc/vim.1"
+  },
   "buck-src/Libinfo": {
     "dns.subproj_herror.c": "dns.subproj/herror.c",
     "dns.subproj_res_comp.c": "dns.subproj/res_comp.c",

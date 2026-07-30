@@ -8922,3 +8922,14 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: zsh binary
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_buck_src.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

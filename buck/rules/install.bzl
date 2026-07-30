@@ -15,6 +15,15 @@
 
 load("//buck/rules:cc.bzl", "CcLibInfo")
 
+# What a prefix_dir hands to a prefix_tree: {path inside the tree: artifact}.
+#
+# The directory ARTIFACT is not enough, because cmake's install(DIRECTORY) merges: zsh
+# installs the contents of gen/install-this/ straight into libexec/darling, which already
+# holds bin/, usr/ and everything else. symlinked_dir refuses overlapping destinations (and
+# is right to -- a symlink at libexec/darling would shadow the rest), so a tree is expanded
+# into its individual files and merged path by path instead.
+PrefixDirInfo = provider(fields = ["files"])
+
 def _prefix_tree_impl(ctx):
     out = ctx.actions.declare_output(ctx.label.name + "__prefix", dir = True)
 
@@ -48,6 +57,14 @@ def _prefix_tree_impl(ctx):
             fail("prefix_tree: %s is a link to %s, which nothing installs" % (dest, target))
         mapping[dest] = mapping[target]
 
+    # Whole directories, expanded per file so two trees can share a destination root.
+    for dest, dep in ctx.attrs.trees.items():
+        for rel, art in dep[PrefixDirInfo].files.items():
+            full = "%s/%s" % (dest, rel) if dest else rel
+            if full in mapping:
+                fail("prefix_tree: %s is installed twice" % full)
+            mapping[full] = art
+
     staged = ctx.actions.symlinked_dir(out, mapping)
 
     return [
@@ -71,6 +88,8 @@ prefix_tree = rule(
         "files": attrs.dict(attrs.string(), attrs.source(), default = {}),
         # {prefix-relative destination: another destination in this tree it names}
         "symlinks": attrs.dict(attrs.string(), attrs.string(), default = {}),
+        # {prefix-relative destination: prefix_dir target whose tree is merged in there}
+        "trees": attrs.dict(attrs.string(), attrs.dep(), default = {}),
         # Prefixes compose: a subtree can be merged in whole.
         "deps": attrs.list(attrs.dep(), default = []),
     },
@@ -99,7 +118,10 @@ def _prefix_dir_impl(ctx):
             rel = rel[len(ctx.attrs.strip):].lstrip("/")
         mapping[rel] = src
 
-    return [DefaultInfo(default_output = ctx.actions.symlinked_dir(out, mapping))]
+    return [
+        DefaultInfo(default_output = ctx.actions.symlinked_dir(out, mapping)),
+        PrefixDirInfo(files = mapping),
+    ]
 
 prefix_dir = rule(
     impl = _prefix_dir_impl,

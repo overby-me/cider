@@ -1,3 +1,4 @@
+load("//buck/rules:install.bzl", "prefix_dir")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
@@ -12416,3 +12417,18 @@ load("//buck/generated:exports_libc.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_darling_assets_locale",
+    srcs = glob(
+        ["darling/assets/locale/**"],
+        exclude = [],
+    ),
+    strip = "darling/assets/locale",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs

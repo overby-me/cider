@@ -183,6 +183,45 @@ def build_rel(path: str) -> str | None:
     return m.group(1) if m else None
 
 
+def flatten(rel: str) -> str:
+    """The same flattening scripts/buck-exports.py and gen-buck-from-ninja.py use."""
+    return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel)
+
+
+def owning_package(rel: str) -> str | None:
+    """The nearest ancestor package that can declare this file, or None."""
+    d = os.path.dirname(rel)
+    while d:
+        if os.path.isfile(os.path.join(REPO, d, "BUCK")):
+            return d
+        d = os.path.dirname(d)
+    return None
+
+
+def file_label(rel: str):
+    """(label, package needing an export_file or None) for a source file the prefix installs.
+
+    A source attribute has to name a file of the package that DECLARES it, and buck/prefix
+    owns none of these -- so every one of them travels as a LABEL backed by an export_file in
+    its owner. For a pin that is the machinery scripts/buck-exports.py already runs; for the
+    few files outside the pins (launchd's man pages, shellspawn's plist, etc/resolv.conf) the
+    export goes in a generated block, since nothing else was minting labels into them.
+    """
+    pin, within = pin_of(rel)
+    if pin is not None and os.path.isdir(os.path.join(REPO, "buck-src", pin)):
+        if os.path.isfile(os.path.join(REPO, "buck-src", pin, "BUCK")):
+            return (f"//buck-src/{pin}:{flatten(within)}", None)
+        # A pin that has not been split out yet still lives in the buck-src mega-package, so
+        # the label goes there -- and since buck-src cannot be walked to resolve a name (it
+        # holds every materialized pin), the path is recorded as a HINT, which is the same
+        # arrangement scripts/buck-split-pins.py uses.
+        return (f"//buck-src:{flatten(f'{pin}/{within}')}", "buck-src")
+    pkg = owning_package(rel)
+    if pkg is None:
+        return (None, None)
+    return (f"//{pkg}:{flatten(os.path.relpath(rel, pkg))}", pkg)
+
+
 def pin_of(rel: str):
     """(pin, path within the pin) for a src/external/<pin>/... source path."""
     m = re.match(r"src/external/([^/]+)/(.*)", rel)
@@ -232,13 +271,14 @@ def dir_target(rel: str, excludes: list[str]):
     return (f"//{pkg}:{name}", pkg, block)
 
 
-def write_block(pkg: str, blocks: list[str]) -> None:
-    """Replace the generated prefix-dirs block in a pin's BUCK file, creating it if absent."""
+def write_block(pkg: str, blocks: list[str], kind: str = "prefix dirs",
+                load: str = 'load("//buck/rules:install.bzl", "prefix_dir")') -> None:
+    """Replace a generated block in a package's BUCK file, creating the file if absent."""
     path = os.path.join(REPO, pkg, "BUCK")
-    begin = "# BEGIN generated: prefix dirs"
-    end = "# END generated: prefix dirs"
+    begin = f"# BEGIN generated: {kind}"
+    end = f"# END generated: {kind}"
     body = (f"{begin}\n"
-            "# GENERATED from the reference build's install(DIRECTORY) entries by\n"
+            "# GENERATED from the reference build's install entries by\n"
             "# scripts/gen-install-from-manifests.py -- review before committing.\n\n"
             + "\n".join(blocks) + f"{end}\n")
     text = open(path).read() if os.path.isfile(path) else ""
@@ -247,8 +287,8 @@ def write_block(pkg: str, blocks: list[str]) -> None:
                       flags=re.S)
     else:
         text = text.rstrip("\n") + ("\n\n" if text.strip() else "") + body
-    if 'load("//buck/rules:install.bzl", "prefix_dir")' not in text:
-        text = 'load("//buck/rules:install.bzl", "prefix_dir")\n' + text
+    if load not in text:
+        text = load + "\n" + text
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w").write(text)
 
@@ -275,6 +315,8 @@ def main(argv: list[str]) -> int:
 
     built, sources, symlinks, dirs, unmapped, skipped = {}, {}, {}, {}, [], []
     blocks: dict[str, list[str]] = {}
+    exports: dict[str, dict] = {}
+    hints: dict[str, dict] = {}
     for dest, kind, files, excludes in entries:
         for src in files:
             if not src:
@@ -302,7 +344,17 @@ def main(argv: list[str]) -> int:
                     continue
                 rel = source_rel(src)
                 if rel:
-                    sources[full] = rel
+                    label, needs_export = file_label(rel)
+                    if label is None:
+                        unmapped.append((full, f"{rel} is in no package"))
+                        continue
+                    sources[full] = label
+                    if needs_export == "buck-src":
+                        hints.setdefault("buck-src", {})[label.split(":", 1)[1]] = \
+                            rel.removeprefix("src/external/")
+                    elif needs_export:
+                        exports.setdefault(needs_export, {})[
+                            label.split(":", 1)[1]] = os.path.relpath(rel, needs_export)
                     continue
                 t = target_for(src, gen, binaries)
                 if t:
@@ -343,6 +395,25 @@ def main(argv: list[str]) -> int:
         write_block(pkg, bs)
         print(f"wrote {pkg}/BUCK: {len(bs)} prefix_dir target(s)")
 
+    if hints:
+        import json
+        f = os.path.join(REPO, "buck", "generated", "export-hints.json")
+        have = json.load(open(f)) if os.path.isfile(f) else {}
+        for pkg, entries in hints.items():
+            have.setdefault(pkg, {}).update(entries)
+        open(f, "w").write(json.dumps(have, indent=2, sort_keys=True) + "\n")
+        print(f"wrote buck/generated/export-hints.json: "
+              f"{sum(len(v) for v in hints.values())} hint(s)")
+
+    for pkg, files in sorted(exports.items()):
+        block = "".join(
+            f'export_file(\n    name = "{n}",\n    src = "{sp}",\n'
+            f'    visibility = ["PUBLIC"],\n)\n\n'
+            for n, sp in sorted(files.items()))
+        write_block(pkg, [block], kind="prefix exports",
+                    load='load("//buck/rules:files.bzl", "export_file")')
+        print(f"wrote {pkg}/BUCK: {len(files)} export_file target(s)")
+
     lines = ['load("//buck/rules:install.bzl", "prefix_tree")', "",
              "# GENERATED from the reference build's cmake_install.cmake manifests by",
              "# scripts/gen-install-from-manifests.py -- review before committing.",
@@ -351,6 +422,7 @@ def main(argv: list[str]) -> int:
              "    entries = {"]
     for dest in sorted(built):
         lines.append(f'        "{dest}": "{built[dest]}",')
+    lines += ["    },", "    trees = {"]
     for dest in sorted(dirs):
         lines.append(f'        "{dest}": "{dirs[dest]}",')
     lines += ["    },", "    files = {"]

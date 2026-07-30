@@ -1,3 +1,4 @@
+load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "mig_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
@@ -584,3 +585,20 @@ darwin_binary(
 )
 # END generated: launchd binary
 
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "man_launchctl.1",
+    src = "man/launchctl.1",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "man_launchd.8",
+    src = "man/launchd.8",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

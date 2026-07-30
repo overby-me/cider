@@ -1,3 +1,4 @@
+load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 
@@ -123,3 +124,15 @@ cc_static_lib(
     visibility = ["PUBLIC"],
 )
 # END generated: libsystem_trace_static.a archive
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "libsystem_trace_org.puredarwin.os_log.asl",
+    src = "libsystem_trace/org.puredarwin.os_log.asl",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

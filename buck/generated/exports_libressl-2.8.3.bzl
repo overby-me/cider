@@ -5,6 +5,7 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "apps_openssl_openssl.1": "apps/openssl/openssl.1",
     "include_openssl_aes.h": "include/openssl/aes.h",
     "include_openssl_asn1.h": "include/openssl/asn1.h",
     "include_openssl_asn1_mac.h": "include/openssl/asn1_mac.h",

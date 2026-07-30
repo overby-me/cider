@@ -1548,3 +1548,55 @@ The build work claimed is real, and two more targets turned out to be ported tha
 knew (migcom and rtsig, which it looked for as `darwin_binary` while they are `cc_binary`).
 What was wrong is the completeness claim on top of it. The gap does not block the bash
 milestone, but it is the honest picture of where the port stands.
+
+## The install rules: what a prefix is, generated from the manifests
+
+Task #2 of the bash milestone. Darling's build product is not the 208 link outputs, it is a
+PREFIX: a directory laid out so that dyld, launchd and bash can find each other. build.ninja
+says nothing about it, because `install` is one opaque edge that shells out to
+`cmake -P cmake_install.cmake`. The authoritative statement is the per-directory
+cmake_install.cmake files cmake writes at configure time, and nix/lib/darling-graph.nix ships
+all 145 of them, so scripts/gen-install-from-manifests.py can generate the layout from the
+reference the same way every other block in this port is generated.
+
+236 install entries for the system component. What they turn into:
+
+    142  built artifacts   -> prefix_tree `entries`, resolved through the port's registries
+     28  source files      -> prefix_tree `files`, as cross-package LABELS
+      1  symlink           -> prefix_tree `symlinks` (bin/sh -> bin/bash)
+      9  directories       -> a prefix_dir target in the owning pin, merged in as `trees`
+      1  out of scope      -> libstdc++, which is not ported and which nothing links
+     37  UNMAPPED          -> 35 zsh modules, the certs bundle, darling-coredump
+
+Four things the manifests do not say, each of which had to be recovered from somewhere else:
+
+  * WHAT A SYMLINK POINTS AT. cmake/InstallSymlink.cmake creates the link in the build
+    directory and then install()s it as an ordinary FILE, so the manifest names bin/sh and is
+    silent about its target. darling-graph.nix now records every build-tree link in
+    install-symlinks.tsv, which is the only place the answer exists.
+  * WHICH TARGET BUILDS A LIPO'D BINARY. CoreFoundation is installed under that name, but the
+    linker's output is CoreFoundation_x86_64 and a cmake POST_BUILD lipo renames it. With one
+    architecture that lipo is a rename, so the port installs the thin file under the name the
+    destination gives it.
+  * THAT A FILE IS GENERATED, NOT BUILT. icudt66l.dat is `xz -d` of a committed .dat.xz,
+    a CUSTOM_COMMAND rather than a link edge, so no registry knows it. Ported as a new
+    stdout_gen rule, which is the missing shape next to host_gen (output as the last
+    argument) and script_gen (outputs as argv).
+  * WHERE A SOURCE FILE MAY BE NAMED FROM. buck/prefix owns none of these files, and a source
+    attribute has to name a file of the package that DECLARES it, so all 28 travel as labels
+    backed by export_file: through scripts/buck-exports.py for a split pin, through
+    export-hints.json for a pin still inside the buck-src mega-package (libkqueue, vim), and
+    through a generated block for the few outside the pins entirely (launchd's man pages,
+    shellspawn's plist, etc/resolv.conf, which needed a package of its own).
+
+The one design decision worth recording: a prefix_dir hands the prefix_tree its FILES, not
+its directory. cmake's install(DIRECTORY) merges -- zsh installs the contents of
+gen/install-this/ straight into libexec/darling, which already holds bin/ and usr/ -- and
+symlinked_dir rejects overlapping destinations, correctly, since a symlink at libexec/darling
+would shadow everything under it. Expanding each tree into its files and merging path by path
+keeps the whole prefix a single in-process symlink farm, with a hard failure if two entries
+ever claim the same destination.
+
+What is still missing from a faithful prefix, none of it needed for bash: the 35 zsh modules
+(task #7), the openssl certificates bundle (a build-generated directory, so it needs its own
+target), and darling-coredump (task #8).
