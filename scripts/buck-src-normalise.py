@@ -47,6 +47,10 @@ def in_tree_target(link: str, target: str) -> str | None:
             tail = tail[3:]
         cand = os.path.normpath(os.path.join(REPO, tail))
         if not os.path.lexists(cand):
+            # Task #68 moved the guest trees under darwin/, and a pin written before
+            # that still says Developer/... from the repo root.
+            cand = os.path.normpath(os.path.join(REPO, "darwin", tail))
+        if not os.path.lexists(cand):
             return None
         resolved = cand
 

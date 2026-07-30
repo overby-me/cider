@@ -161,6 +161,19 @@ def to_buck_src(repo_rel: str) -> str | None:
 # /usr/include/System/<x>.h. Darling's symlink farm carries only one spelling, so
 # the other one is added here: objc4 includes <System/pthread_machdep.h>, and the
 # reference build has no rule that would create it either.
+# Pins already migrated to their own package (buck-src/<pin>/BUCK). Their headers come
+# from that package's own root, so they must NOT appear in the monolithic maps: once
+# buck-src/<pin>/BUCK exists, a header_map in buck-src/BUCK cannot name a file under it.
+# scripts/buck-split-pins.py maintains this list.
+SPLIT_PINS_FILE = os.path.join(REPO, "buck", "generated", "split-pins.txt")
+
+
+def split_pins() -> set:
+    if not os.path.exists(SPLIT_PINS_FILE):
+        return set()
+    return {l.strip() for l in open(SPLIT_PINS_FILE) if l.strip() and not l.startswith("#")}
+
+
 ALIASES = {
     "System/pthread_machdep.h": "pthread_machdep.h",
     # Upstream also exposes the kernel headers under /usr/include/Kernel/; copyfile
@@ -172,7 +185,11 @@ ALIASES = {
 
 def main(argv: list[str]) -> int:
     list_pins = "--list-pins" in argv
-    namespaces = [a for a in argv[1:] if not a.startswith("--")]
+    argv_vals = set()
+    for flag in ("--only",):
+        if flag in argv:
+            argv_vals.add(argv[argv.index(flag) + 1])
+    namespaces = [a for a in argv[1:] if not a.startswith("--") and a not in argv_vals]
     if not namespaces:
         sys.exit(__doc__)
 
@@ -182,6 +199,7 @@ def main(argv: list[str]) -> int:
 
     for ns in namespaces:
         entries = []
+        moved = split_pins()
         for include_path, repo_rel in walk_namespace(ns):
             pin = repo_rel.split("/")[2] if repo_rel.startswith("src/external/") else "(repo)"
             pins[pin] = pins.get(pin, 0) + 1
@@ -189,6 +207,8 @@ def main(argv: list[str]) -> int:
             if buck_rel is None:
                 key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("src/external/") else 2])
                 skipped[key] = skipped.get(key, 0) + 1
+                continue
+            if buck_rel.split("/")[0] in moved:
                 continue
             entries.append((include_path, buck_rel))
         by_path = dict(entries)
@@ -276,8 +296,11 @@ def main(argv: list[str]) -> int:
                 pin = buck_rel.split("/")[0]
                 by_pin.setdefault(pin, []).append((include_path, buck_rel[len(pin) + 1:]))
         apply = "--apply" in argv
+        only = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
         labels = []
         for pin, entries in sorted(by_pin.items()):
+            if only and pin not in only:
+                continue
             name = "sdk_pin_" + re.sub(r"[^A-Za-z0-9_]+", "_", pin).strip("_") + "_headers"
             labels.append(f"//{BUCK_SRC}/{pin}:{name}")
             block = ["# BEGIN generated: sdk pin headers",

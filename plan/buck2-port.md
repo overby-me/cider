@@ -437,10 +437,27 @@ of whatever starts it, and a daemon that came back from an OOM without clang/bis
 fails every action with "Failed to spawn a process", which reads like a build error.
 Source it before any buck2 command.
 
-**Next up, in order:** apply `--pin-roots`, repoint `//darwin:sdk_env` (watching include
-order), then flip `SPLIT_PINS` and migrate pin by pin with `scripts/buck-split-pins.py`,
-the suite as the net after each pin. Then the last six targets: libstdc++.6, zsh, the
-firehose/notify xtrace stubs and libsystem_kernel_static32.
+Migrating one pin end to end showed what the unit really is, and where it stops:
+
+  * **Content-wise the split is safe.** No include path in the pinned SDK maps is claimed
+    by two pins, and the 614 paths that appear in more than one map always name the same
+    source, so per-pin roots cannot change what an include resolves to.
+  * **A pin moves as one unit**: its SDK root, its generated blocks, its HAND-WRITTEN
+    blocks (the mig targets naming its .defs), its removal from the monolithic maps, and
+    every reference to the moved targets repointed. `scripts/buck-split-pins.py` does all
+    of that now, and `buck/generated/split-pins.txt` records what has moved so
+    `gen-sdk-header-roots.py` leaves those pins out of the monolithic maps.
+  * **What still blocks it: cross-pin FILE references.** libsystem_notify force-includes
+    xnu's `sys/fileport.h`; once libnotify is its own package that path no longer resolves
+    from there. Every such reference needs an `export_file` in the owning package and a
+    label -- the generator already has `CROSS_PACKAGE_FILES` for exactly this shape, so
+    the fix is to populate it automatically during a migration.
+
+`SPLIT_PINS` is off again and the trial reverted. 96 checks pass.
+
+**Reordered, because the daemon build is the goal and the Nix path is the stretch:** the
+remaining unported targets first (libstdc++.6, zsh, the firehose/notify xtrace stubs,
+libsystem_kernel_static32), then the cross-pin export_file work, then the split.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
