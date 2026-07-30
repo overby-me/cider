@@ -26771,6 +26771,7 @@ mig_gen(
     compile_srcs = [
         "notifyServer.c",
     ],
+    xtrace_srcs = ["notifyXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -32822,3 +32823,306 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: openssl binary
+
+# libdispatch's firehose protocols. Nothing compiles their stubs here yet --
+# libdispatch itself does not -- but xtrace's per-protocol decoders do, so the
+# targets exist for the [xtrace] subtarget alone.
+mig_gen(
+    name = "fhmig_firehose",
+    defs = "libdispatch/src/firehose/firehose.defs",
+    out_base = "libdispatch/src/firehose",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["firehoseXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "fhmig_firehose_reply",
+    defs = "libdispatch/src/firehose/firehose_reply.defs",
+    out_base = "libdispatch/src/firehose",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    xtrace_srcs = ["firehose_replyXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: firehose_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py firehose_xtrace_mig   -- review before committing.
+# cmake target: firehose_xtrace_mig  ->  src/external/libdispatch/libfirehose_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libdispatch/src/firehose/firehoseXtraceMig.c
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch",
+    headers = glob(["libdispatch/*.h", "libdispatch/**/*.h", "libdispatch/*.c"]),
+    root = "libdispatch",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["libdispatch/private/*.h", "libdispatch/private/**/*.h", "libdispatch/private/*.c"]),
+    root = "libdispatch/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["libdispatch/src/*.h", "libdispatch/src/**/*.h", "libdispatch/src/*.c"]),
+    root = "libdispatch/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "firehose_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dfirehose_xtrace_mig_EXPORTS",
+        "-Dtypeof=__typeof__",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":firehose_xtrace_mig_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":firehose_xtrace_mig_inc_libdispatch",
+        ":firehose_xtrace_mig_inc_libdispatch_private",
+        ":firehose_xtrace_mig_inc_libdispatch_src",
+    ],
+    gen_srcs = [
+        "//buck-src:fhmig_firehose[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: firehose_xtrace_mig
+
+# BEGIN generated: firehose_reply_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py firehose_reply_xtrace_mig   -- review before committing.
+# cmake target: firehose_reply_xtrace_mig  ->  src/external/libdispatch/libfirehose_reply_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libdispatch/src/firehose/firehose_replyXtraceMig.c
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch",
+    headers = glob(["libdispatch/*.h", "libdispatch/**/*.h", "libdispatch/*.c"]),
+    root = "libdispatch",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch_private",
+    headers = glob(["libdispatch/private/*.h", "libdispatch/private/**/*.h", "libdispatch/private/*.c"]),
+    root = "libdispatch/private",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "firehose_reply_xtrace_mig_inc_libdispatch_src",
+    headers = glob(["libdispatch/src/*.h", "libdispatch/src/**/*.h", "libdispatch/src/*.c"]),
+    root = "libdispatch/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "firehose_reply_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DDISPATCH_USE_DTRACE=0",
+        "-DDISPATCH_USE_INTERNAL_WORKQUEUE=0",
+        "-DDISPATCH_USE_KEVENT_WORKLOOP=0",
+        "-DDISPATCH_USE_KEVENT_WORKQUEUE=0",
+        "-DDISPATCH_USE_WORKQUEUE_NARROWING=0",
+        "-DHAVE_PTHREAD_WORKQUEUE_QOS=0",
+        "-DNS_RETURNS_INNER_POINTER=",
+        "-DNeXT_RUNTIME=1",
+        "-DOS_ATOMIC_CONFIG_MEMORY_ORDER_DEPENDENCY=1",
+        "-DPRIVATE",
+        "-DVOUCHER_USE_MACH_VOUCHER=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BLOCKS__",
+        "-D__PTHREAD_EXPOSE_INTERNALS__",
+        "-Dfirehose_reply_xtrace_mig_EXPORTS",
+        "-Dtypeof=__typeof__",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":firehose_reply_xtrace_mig_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        ":firehose_reply_xtrace_mig_inc_libdispatch",
+        ":firehose_reply_xtrace_mig_inc_libdispatch_private",
+        ":firehose_reply_xtrace_mig_inc_libdispatch_src",
+    ],
+    gen_srcs = [
+        "//buck-src:fhmig_firehose_reply[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: firehose_reply_xtrace_mig
+
+# BEGIN generated: notify_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py notify_xtrace_mig   -- review before committing.
+# cmake target: notify_xtrace_mig  ->  src/launchd/src/libnotify_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/src/notifyXtraceMig.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+
+cc_objects(
+    name = "notify_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dnotify_xtrace_mig_EXPORTS",
+        "-Dxpc_domain_server=job_server",
+        "-fblocks",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-I",
+        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+        "//src/launchd:launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        "//buck-src:launchdmig_notify[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notify_xtrace_mig
+
+# BEGIN generated: firehose_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs firehose_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "firehose_xtrace_mig_dylib",
+    dylib_name = "libfirehose_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # firehose_xtrace_mig
+        ":firehose_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: firehose_xtrace_mig dylibs
+
+# BEGIN generated: firehose_reply_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs firehose_reply_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "firehose_reply_xtrace_mig_dylib",
+    dylib_name = "libfirehose_reply_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # firehose_reply_xtrace_mig
+        ":firehose_reply_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: firehose_reply_xtrace_mig dylibs
+
+# BEGIN generated: notify_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs notify_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "notify_xtrace_mig_dylib",
+    dylib_name = "libnotify_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # notify_xtrace_mig
+        ":notify_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: notify_xtrace_mig dylibs

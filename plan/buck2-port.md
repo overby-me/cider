@@ -455,9 +455,21 @@ Migrating one pin end to end showed what the unit really is, and where it stops:
 
 `SPLIT_PINS` is off again and the trial reverted. 96 checks pass.
 
-**Reordered, because the daemon build is the goal and the Nix path is the stretch:** the
-remaining unported targets first (libstdc++.6, zsh, the firehose/notify xtrace stubs,
-libsystem_kernel_static32), then the cross-pin export_file work, then the split.
+### 2026-07-30 (late morning) -- 99%: two targets left, one of them out of scope
+
+**205 of 207 in-scope link edges** (119/120 dylibs, 50/51 executables, 36/36 archives).
+All 31 xtrace stubs build now: the last three needed mig INSTANCES that did not exist --
+libdispatch's firehose pair (nothing else compiles their stubs, so the targets exist for
+the `[xtrace]` subtarget alone) and launchd's notify.defs, which reuses the buck-src
+instance because the launchd-side `.defs` is a symlink into a submodule that is not
+checked out here.
+
+`libsystem_kernel_static32.a` is **out of scope, not missing**: its `libsyscall_32`
+compiles the `-i386-User.c` mig stubs, and this port targets x86_64 only. The coverage
+tool counts it separately with that reason, so "what is left" stays honest.
+
+**Left:** `libstdc++.6` (needs GCC's own libstdc++ header layout, including its generated
+config headers) and `zsh` (its `zsh.mdh` codegen chain).
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

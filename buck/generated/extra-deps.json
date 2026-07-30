@@ -369,5 +369,17 @@
   "bash": [
     ":bash_parser",
     "gen::bash_parser"
+  ],
+  "firehose_reply_xtrace_mig": [
+    "gen://buck-src:fhmig_firehose_reply[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "firehose_xtrace_mig": [
+    "gen://buck-src:fhmig_firehose[xtrace]",
+    "//src/xtrace:xtrace_headers"
+  ],
+  "notify_xtrace_mig": [
+    "gen://buck-src:launchdmig_notify[xtrace]",
+    "//src/xtrace:xtrace_headers"
   ]
 }

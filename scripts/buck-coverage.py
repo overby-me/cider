@@ -27,6 +27,15 @@ def load_gen():
     return mod
 
 
+# Deliberately not ported, with the reason. Counted separately so "what is left" stays
+# an honest number rather than a permanent three.
+OUT_OF_SCOPE = {
+    "libsystem_kernel_static32.a":
+        "the i386 slice: its libsyscall_32 compiles the -i386-User.c mig stubs, and this "
+        "port targets x86_64 only",
+}
+
+
 def main(argv: list[str]) -> int:
     g = load_gen()
     edges = g.read_edges()
@@ -67,15 +76,23 @@ def main(argv: list[str]) -> int:
         items = {}
         for name, ported in kinds[kind]:
             items[name] = items.get(name, False) or ported
+        skipped = {k for k in items if k in OUT_OF_SCOPE}
+        for k in skipped:
+            items.pop(k)
         n, d = len(items), sum(1 for v in items.values() if v)
         total += n
         done += d
-        print(f"{kind + 's':10} {d:4d} / {n:4d}")
+        note = f"   ({len(skipped)} out of scope)" if skipped else ""
+        print(f"{kind + 's':10} {d:4d} / {n:4d}{note}")
         if "--missing" in argv:
             miss = sorted(k for k, v in items.items() if not v)
             for m in miss:
                 print(f"    - {m}")
     print(f"{'total':10} {done:4d} / {total:4d}  ({100 * done // max(total, 1)}%)")
+    if "--missing" in argv and OUT_OF_SCOPE:
+        print("out of scope:")
+        for name, why in sorted(OUT_OF_SCOPE.items()):
+            print(f"    - {name}: {why}")
     return 0
 
 

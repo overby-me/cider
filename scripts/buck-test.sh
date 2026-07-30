@@ -529,8 +529,9 @@ say "== coverage against the reference graph =="
 # reference build.ninja and reports which have a buck2 target. Asserting a floor here
 # means a regression that drops targets cannot pass unnoticed.
 cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
-[ "${cov:-0}" -ge 200 ] && ok "$cov of the reference's 208 link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of 208"
+tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
+[ "${cov:-0}" -ge 205 ] && ok "$cov of the reference's ${tot:-207} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-207}"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
