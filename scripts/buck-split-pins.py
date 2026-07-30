@@ -191,6 +191,88 @@ def drop_duplicates() -> None:
           + ", ".join(dropped))
 
 
+def split_everything(dry: bool = False) -> int:
+    """Migrate EVERY pin in one pass.
+
+    One pin at a time cannot work: a dylib/archive/binary block names only labels, so
+    regenerating it is global, and doing that mid-migration leaves half the labels pointing
+    at objects that have moved. So the whole thing moves at once -- SDK roots, every
+    generated block, the exports, and //darwin:sdk_env -- and the tree only builds again at
+    the end.
+    """
+    text = open(BUCK_SRC).read()
+    pins = sorted({pin for marker, a, b in blocks(text)
+                   if (pin := pin_of_block(text[a:b])) and "/" not in pin and pin != ".."})
+    print(f"{len(pins)} pin(s) carry generated blocks: {' '.join(pins)}")
+    if dry:
+        return 0
+
+    sdk_gen = os.path.join(REPO, "scripts", "gen-sdk-header-roots.py")
+    gen = os.path.join(REPO, "scripts", "gen-buck-from-ninja.py")
+    NS = [".", "mach", "i386", "machine", "libkern", "sys"]
+
+    # 1. Every pin's own SDK header root, and the record that says so.
+    subprocess.run([sdk_gen, "--pin-roots", "--apply"] + NS, cwd=REPO, check=False)
+    marker_file = os.path.join(REPO, "buck", "generated", "split-pins.txt")
+    with open(marker_file, "w") as fh:
+        fh.write("# Pins migrated to their own package (scripts/buck-split-pins.py --all).\n")
+        for pin in sorted(set(pins) | sdk_pins()):
+            fh.write(pin + "\n")
+
+    # 2. The monolithic maps, minus everything that just moved.
+    out = subprocess.run([sdk_gen] + NS, cwd=REPO, capture_output=True, text=True)
+    if out.returncode == 0:
+        open(os.path.join(REPO, "buck", "generated", "sdk_headers.bzl"), "w").write(out.stdout)
+
+    # 3. Every generated block, regenerated so it lands in its pin's package.
+    targets = [m for m, a, b in blocks(text) if " " not in m]
+    pairs = [m.split(" ")[0] for m, a, b in blocks(text) if m.endswith(" dylibs")]
+    if targets:
+        subprocess.run([gen, "--write"] + targets, cwd=REPO, check=False)
+    if pairs:
+        subprocess.run([gen, "--dylibs", "--write"] + pairs, cwd=REPO, check=False)
+    subprocess.run([os.path.join(REPO, "scripts", "regen-dylibs.py")], cwd=REPO, check=False)
+
+    # 4. Hand-written blocks, exports, and the leftovers.
+    for pin in pins:
+        move_handwritten(pin)
+    for pin in pins:
+        ensure_exports(pin)
+    drop_duplicates()
+
+    # 5. sdk_env: the per-pin roots take the monolithic one's place.
+    repoint_sdk_env()
+    subprocess.run([os.path.join(REPO, "scripts", "buck-fix-loads.py")], cwd=REPO, check=False)
+    print("migration written; build and iterate")
+    return 0
+
+
+def sdk_pins() -> set:
+    """Pins that got an SDK header root written for them."""
+    found = set()
+    root = os.path.join(REPO, "buck-src")
+    for name in sorted(os.listdir(root)):
+        f = os.path.join(root, name, "BUCK")
+        if os.path.isfile(f) and "sdk pin headers" in open(f).read():
+            found.add(name)
+    return found
+
+
+def repoint_sdk_env() -> None:
+    """Replace the monolithic pinned SDK root in sdk_env with the per-pin ones."""
+    darwin = os.path.join(REPO, "darwin", "BUCK")
+    text = open(darwin).read()
+    anchor = '        "//buck-src:sdk_include",\n'
+    if anchor not in text:
+        return
+    labels = "".join(
+        f'        "//buck-src/{pin}:sdk_pin_'
+        + re.sub(r"[^A-Za-z0-9_]+", "_", pin).strip("_") + '_headers",\n'
+        for pin in sorted(sdk_pins()))
+    open(darwin, "w").write(text.replace(anchor, labels, 1))
+    print(f"sdk_env now names {len(sdk_pins())} per-pin roots")
+
+
 def main(argv: list[str]) -> int:
     text = open(BUCK_SRC).read()
     found = blocks(text)
@@ -203,6 +285,9 @@ def main(argv: list[str]) -> int:
         for pin, items in sorted(by_pin.items(), key=lambda kv: -sum(i[1] for i in kv[1])):
             print(f"{sum(i[1] for i in items):8d} bytes  {pin:24} {len(items)} block(s)")
         return 0
+
+    if "--all" in argv:
+        return split_everything(dry="--dry-run" in argv)
 
     if "--pin" not in argv:
         sys.exit(__doc__)
