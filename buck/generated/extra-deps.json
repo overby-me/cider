@@ -365,5 +365,9 @@
   "vm_map_xtrace_mig": [
     "gen://buck-src:ksmig_mach_vm_map[xtrace]",
     "//src/xtrace:xtrace_headers"
+  ],
+  "bash": [
+    ":bash_parser",
+    "gen::bash_parser"
   ]
 }

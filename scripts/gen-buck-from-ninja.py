@@ -944,7 +944,7 @@ def generate_dylibs(target: str, edges, only: str = ""):
             objs.append((pkg, n, lib))
     pkg = max(pkgs, key=lambda k: pkgs[k])
 
-    def label(op, on):
+    def obj_label(op, on):
         if op is None:
             return on
         return f":{on}" if op == pkg else f"//{op}:{on}"
@@ -964,6 +964,21 @@ def generate_dylibs(target: str, edges, only: str = ""):
                 versions.setdefault(key, m.group(1))
 
     reg, final_reg = firstpass_registry(), final_registry()
+    # A dylib can link static archives too, and the order LINK_LIBRARIES names them is
+    # the resolution order: libcrypto's _explicit_bzero lives in libressl's compat
+    # archive, and without it the link fails on a symbol nothing else provides.
+    arch_reg = archive_registry()
+    dylib_archives, missing_a = [], []
+    for edge in (final, first):
+        if not edge:
+            continue
+        for path in re.findall(r"(\S+\.a)\b", edge[2].get("LINK_LIBRARIES", "")):
+            base = os.path.basename(path)
+            a_label = arch_reg.get(base)
+            if a_label and a_label not in dylib_archives:
+                dylib_archives.append(a_label)
+            elif not a_label and base not in missing_a:
+                missing_a.append(base)
     # BOTH passes link siblings, and the firstpass ones matter as much: libc's
     # firstpass links libplatform's, which is how a client of libsystem_c resolves
     # _strcmp -- ld64 finds it in the INDIRECT dylib. Emitting siblings only on the
@@ -1022,6 +1037,10 @@ def generate_dylibs(target: str, edges, only: str = ""):
             w("# not a source of this package:")
             for f in sorted(set(toks)):
                 w(f"#   {f}")
+    if missing_a:
+        w("# TODO it also links these static archives, not ported yet:")
+        for a in missing_a:
+            w(f"#   {a}")
     if reex_missing:
         w(f"# TODO the final pass REEXPORTS {len(reex_missing)} more dylibs whose final")
         w("# pass is not ported yet; without them its symbol surface is incomplete:")
@@ -1055,7 +1074,7 @@ def generate_dylibs(target: str, edges, only: str = ""):
             if lib != last:
                 w(f"        # {lib}")
                 last = lib
-            w(f'        "{label(op, on)}",')
+            w(f'        "{obj_label(op, on)}",')
         for extra in extra_objs:
             w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
         w("    ],")
@@ -1080,6 +1099,11 @@ def generate_dylibs(target: str, edges, only: str = ""):
             for f in kind_flags:
                 w(f"        {starlark_str(f)},")
             w("    ],")
+        if dylib_archives and not extra_dylib_deps:
+            extra_dylib_deps = list(dylib_archives)
+        elif dylib_archives:
+            extra_dylib_deps = extra_dylib_deps + [a for a in dylib_archives
+                                                   if a not in extra_dylib_deps]
         kind_files = final_files if kind == "final" else first_files
         if kind_files:
             w("    link_flag_files = {")
@@ -1132,6 +1156,11 @@ def archive_target_name(artifact: str) -> str:
 # (cmake doubles the "lib" for a target already called libsimple_darling).
 ARCHIVE_ALIASES = {
     "liblibsimple_darling.a": "//src/libsimple:libsimple_darling",
+    # The host tier, ported before cc_static_lib existed (both are cc_library targets
+    # whose archive the Rust daemon consumes through DUCT_TAPE_LIB).
+    "libdarlingserver_duct_tape.a":
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+    "liblibsimple_darlingserver.a": "//src/libsimple:libsimple_darlingserver",
 }
 
 

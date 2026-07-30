@@ -6137,63 +6137,73 @@ cc_objects(
 #   src/external/external/libmalloc/src
 
 cc_header_root(
-    name = "libc-i386_inc_generated_private_include",
-    headers = glob(["libc/generated/private-include/*.h", "libc/generated/private-include/**/*.h"]),
+    name = "libc-i386_inc_libc_generated_private_include",
+    headers = glob(["libc/generated/private-include/*.h", "libc/generated/private-include/**/*.h", "libc/generated/private-include/*.c"]),
     root = "libc/generated/private-include",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_include",
-    headers = glob(["libc/include/*.h", "libc/include/**/*.h"]),
+    name = "libc-i386_inc_libc_include",
+    headers = glob(["libc/include/*.h", "libc/include/**/*.h", "libc/include/*.c"]),
     root = "libc/include",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_fbsdcompat",
-    headers = glob(["libc/fbsdcompat/*.h", "libc/fbsdcompat/**/*.h"]),
+    name = "libc-i386_inc_libc_fbsdcompat",
+    headers = glob(["libc/fbsdcompat/*.h", "libc/fbsdcompat/**/*.h", "libc/fbsdcompat/*.c"]),
     root = "libc/fbsdcompat",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_darwin",
-    headers = glob(["libc/darwin/*.h", "libc/darwin/**/*.h"]),
+    name = "libc-i386_inc_libc_darwin",
+    headers = glob(["libc/darwin/*.h", "libc/darwin/**/*.h", "libc/darwin/*.c"]),
     root = "libc/darwin",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_generated_derived",
-    headers = glob(["libc/generated/derived/*.h", "libc/generated/derived/**/*.h"]),
+    name = "libc-i386_inc_libc_generated_derived",
+    headers = glob(["libc/generated/derived/*.h", "libc/generated/derived/**/*.h", "libc/generated/derived/*.c"]),
     root = "libc/generated/derived",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_locale",
-    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h"]),
+    name = "libc-i386_inc_libc_locale",
+    headers = glob(["libc/locale/*.h", "libc/locale/**/*.h", "libc/locale/*.c"]),
     root = "libc/locale",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_gen",
-    headers = glob(["libc/gen/*.h", "libc/gen/**/*.h"]),
+    name = "libc-i386_inc_libc_gen",
+    headers = glob(["libc/gen/*.h", "libc/gen/**/*.h", "libc/gen/*.c"]),
     root = "libc/gen",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_locale_FreeBSD",
-    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h"]),
+    name = "libc-i386_inc_libc_locale_FreeBSD",
+    headers = glob(["libc/locale/FreeBSD/*.h", "libc/locale/FreeBSD/**/*.h", "libc/locale/FreeBSD/*.c"]),
     root = "libc/locale/FreeBSD",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_include_NetBSD",
-    headers = glob(["libc/include/NetBSD/*.h", "libc/include/NetBSD/**/*.h"]),
+    name = "libc-i386_inc_libc_include_NetBSD",
+    headers = glob(["libc/include/NetBSD/*.h", "libc/include/NetBSD/**/*.h", "libc/include/NetBSD/*.c"]),
     root = "libc/include/NetBSD",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libc-i386_inc_stdtime_FreeBSD",
-    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h"]),
+    name = "libc-i386_inc_libc_stdtime_FreeBSD",
+    headers = glob(["libc/stdtime/FreeBSD/*.h", "libc/stdtime/FreeBSD/**/*.h", "libc/stdtime/FreeBSD/*.c"]),
     root = "libc/stdtime/FreeBSD",
+    visibility = ["PUBLIC"],
 )
 
 cc_objects(
@@ -6228,18 +6238,19 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":libc-i386_inc_generated_private_include",
-        ":libc-i386_inc_include",
+        ":libc-i386_inc_libc_generated_private_include",
+        ":libc-i386_inc_libc_include",
         "//darwin:sdk_env",
-        ":libc-i386_inc_fbsdcompat",
-        ":libc-i386_inc_darwin",
-        ":libc-i386_inc_generated_derived",
-        ":libc-i386_inc_locale",
-        ":libc-i386_inc_gen",
-        ":libc-i386_inc_locale_FreeBSD",
-        ":libc-i386_inc_include_NetBSD",
-        ":libc-i386_inc_stdtime_FreeBSD",
+        ":libc-i386_inc_libc_fbsdcompat",
+        ":libc-i386_inc_libc_darwin",
+        ":libc-i386_inc_libc_generated_derived",
+        ":libc-i386_inc_libc_locale",
+        ":libc-i386_inc_libc_gen",
+        ":libc-i386_inc_libc_locale_FreeBSD",
+        ":libc-i386_inc_libc_include_NetBSD",
+        ":libc-i386_inc_libc_stdtime_FreeBSD",
     ],
+    visibility = ["PUBLIC"],
 )
 # END generated: libc-i386
 
@@ -11916,17 +11927,21 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py libressl_2_8_3_libcompat   -- review before committing.
 # cmake target: libressl_2_8_3_libcompat  ->  src/external/libressl-2.8.3/liblibressl_2_8_3_libcompat.a
+# 5 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
 
 cc_header_root(
-    name = "libressl_2_8_3_libcompat_inc",
-    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h"]),
+    name = "libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
     root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
-    name = "libressl_2_8_3_libcompat_inc1",
-    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h"]),
+    name = "libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
     root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
 )
 
 cc_objects(
@@ -11935,7 +11950,6 @@ cc_objects(
         "libressl-2.8.3/crypto/compat/freezero.c",
         "libressl-2.8.3/crypto/compat/reallocarray.c",
         "libressl-2.8.3/crypto/compat/recallocarray.c",
-        "libressl-2.8.3/crypto/compat/explicit_bzero.c",
         "libressl-2.8.3/crypto/compat/timingsafe_memcmp.c",
     ],
     compiler_flags = [
@@ -11965,10 +11979,51 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":libressl_2_8_3_libcompat_inc",
-        ":libressl_2_8_3_libcompat_inc1",
+        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
+        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
         "//darwin:sdk_env",
     ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libressl_2_8_3_libcompat_obj2",
+    srcs = [
+        "libressl-2.8.3/crypto/compat/explicit_bzero.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-fno-common",
+        "-Wno-pointer-sign",
+        "-O0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
+        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
 )
 # END generated: libressl_2_8_3_libcompat
 
@@ -29873,3 +29928,2897 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: vm_map_xtrace_mig dylibs
+
+# BEGIN generated: bundle1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bundle1   -- review before committing.
+# cmake target: bundle1  ->  src/external/csu/libbundle1.a
+
+cc_objects(
+    name = "bundle1_obj",
+    srcs = [
+        "csu/dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bundle1
+
+# BEGIN generated: crt0
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt0   -- review before committing.
+# cmake target: crt0  ->  src/external/csu/libcrt0.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt0_obj",
+    srcs = [
+        "csu/crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt0_obj2",
+    srcs = [
+        "csu/start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt0
+
+# BEGIN generated: crt1.10.5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1.10.5   -- review before committing.
+# cmake target: crt1.10.5  ->  src/external/csu/libcrt1.10.5.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1.10.5_obj",
+    srcs = [
+        "csu/dyld_glue.S",
+        "csu/start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1.10.5_obj2",
+    srcs = [
+        "csu/crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1.10.5
+
+# BEGIN generated: crt1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crt1   -- review before committing.
+# cmake target: crt1  ->  src/external/csu/libcrt1.a
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "crt1_obj",
+    srcs = [
+        "csu/dyld_glue.S",
+        "csu/start.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crt1_obj2",
+    srcs = [
+        "csu/crt.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crt1
+
+# BEGIN generated: dylib1.10.5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dylib1.10.5   -- review before committing.
+# cmake target: dylib1.10.5  ->  src/external/csu/libdylib1.10.5.a
+
+cc_objects(
+    name = "dylib1.10.5_obj",
+    srcs = [
+        "csu/dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dylib1.10.5
+
+# BEGIN generated: dylib1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dylib1   -- review before committing.
+# cmake target: dylib1  ->  src/external/csu/libdylib1.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "dylib1_obj",
+    srcs = [
+        "csu/dyld_glue.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "dylib1_obj2",
+    srcs = [
+        "csu/icplusplus.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dylib1
+
+# BEGIN generated: lazydylib1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lazydylib1   -- review before committing.
+# cmake target: lazydylib1  ->  src/external/csu/liblazydylib1.a
+# 2 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "lazydylib1_obj",
+    srcs = [
+        "csu/lazy_dylib_helper.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lazydylib1_obj2",
+    srcs = [
+        "csu/lazy_dylib_loader.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Os",
+        "-nostdlib",
+        "-keep_private_externs",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lazydylib1
+
+# BEGIN generated: bash_glob
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bash_glob   -- review before committing.
+# cmake target: bash_glob  ->  src/external/bash/libbash_glob.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/bash
+
+cc_header_root(
+    name = "bash_glob_inc_bash_bash_3_2_lib",
+    headers = glob(["bash/bash-3.2/lib/*.h", "bash/bash-3.2/lib/**/*.h", "bash/bash-3.2/lib/*.c"]),
+    root = "bash/bash-3.2/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_glob_inc_bash_bash_3_2_include",
+    headers = glob(["bash/bash-3.2/include/*.h", "bash/bash-3.2/include/**/*.h", "bash/bash-3.2/include/*.c"]),
+    root = "bash/bash-3.2/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_glob_inc_bash_bash_3_2",
+    headers = glob(["bash/bash-3.2/*.h", "bash/bash-3.2/**/*.h", "bash/bash-3.2/*.c"]),
+    root = "bash/bash-3.2",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_glob_inc_bash",
+    headers = glob(["bash/*.h", "bash/**/*.h", "bash/*.c"]),
+    root = "bash",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bash_glob_obj",
+    srcs = [
+        "bash/bash-3.2/lib/glob/glob.c",
+        "bash/bash-3.2/lib/glob/smatch.c",
+        "bash/bash-3.2/lib/glob/strmatch.c",
+        "bash/bash-3.2/lib/glob/xmbsrtowcs.c",
+    ],
+    compiler_flags = [
+        "-DCONF_MACHTYPE=\"Mac\"",
+        "-DCONF_OSTYPE=\"darwin19\"",
+        "-DCONF_VENDOR=\"apple\"",
+        "-DHAVE_CONFIG_H",
+        "-DIN_LIBINTL",
+        "-DLIBDIR=\"/usr/libdata\"",
+        "-DLOCALEDIR=\"/usr/share/locale\"",
+        "-DLOCALE_ALIAS_PATH=\"/usr/share/locale\"",
+        "-DMACOSX",
+        "-DM_UNIX",
+        "-DPACKAGE=\"BASH\"",
+        "-DSHELL",
+        "-DSSH_SOURCE_BASHRC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bash_glob_inc_bash_bash_3_2_lib",
+        ":bash_glob_inc_bash_bash_3_2_include",
+        ":bash_glob_inc_bash_bash_3_2",
+        ":bash_glob_inc_bash",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash_glob
+
+# BEGIN generated: bash_intl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bash_intl   -- review before committing.
+# cmake target: bash_intl  ->  src/external/bash/libbash_intl.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/bash
+
+cc_header_root(
+    name = "bash_intl_inc_bash_bash_3_2_lib",
+    headers = glob(["bash/bash-3.2/lib/*.h", "bash/bash-3.2/lib/**/*.h", "bash/bash-3.2/lib/*.c"]),
+    root = "bash/bash-3.2/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_intl_inc_bash_bash_3_2_include",
+    headers = glob(["bash/bash-3.2/include/*.h", "bash/bash-3.2/include/**/*.h", "bash/bash-3.2/include/*.c"]),
+    root = "bash/bash-3.2/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_intl_inc_bash_bash_3_2",
+    headers = glob(["bash/bash-3.2/*.h", "bash/bash-3.2/**/*.h", "bash/bash-3.2/*.c"]),
+    root = "bash/bash-3.2",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_intl_inc_bash",
+    headers = glob(["bash/*.h", "bash/**/*.h", "bash/*.c"]),
+    root = "bash",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bash_intl_obj",
+    srcs = [
+        "bash/bash-3.2/lib/intl/bindtextdom.c",
+        "bash/bash-3.2/lib/intl/dcgettext.c",
+        "bash/bash-3.2/lib/intl/dcigettext.c",
+        "bash/bash-3.2/lib/intl/dcngettext.c",
+        "bash/bash-3.2/lib/intl/dgettext.c",
+        "bash/bash-3.2/lib/intl/dngettext.c",
+        "bash/bash-3.2/lib/intl/explodename.c",
+        "bash/bash-3.2/lib/intl/finddomain.c",
+        "bash/bash-3.2/lib/intl/gettext.c",
+        "bash/bash-3.2/lib/intl/l10nflist.c",
+        "bash/bash-3.2/lib/intl/loadmsgcat.c",
+        "bash/bash-3.2/lib/intl/localcharset.c",
+        "bash/bash-3.2/lib/intl/localealias.c",
+        "bash/bash-3.2/lib/intl/localename.c",
+        "bash/bash-3.2/lib/intl/log.c",
+        "bash/bash-3.2/lib/intl/ngettext.c",
+        "bash/bash-3.2/lib/intl/plural-exp.c",
+        "bash/bash-3.2/lib/intl/plural.c",
+        "bash/bash-3.2/lib/intl/textdomain.c",
+    ],
+    compiler_flags = [
+        "-DCONF_MACHTYPE=\"Mac\"",
+        "-DCONF_OSTYPE=\"darwin19\"",
+        "-DCONF_VENDOR=\"apple\"",
+        "-DHAVE_CONFIG_H",
+        "-DIN_LIBINTL",
+        "-DLIBDIR=\"/usr/libdata\"",
+        "-DLOCALEDIR=\"/usr/share/locale\"",
+        "-DLOCALE_ALIAS_PATH=\"/usr/share/locale\"",
+        "-DMACOSX",
+        "-DM_UNIX",
+        "-DPACKAGE=\"BASH\"",
+        "-DSHELL",
+        "-DSSH_SOURCE_BASHRC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bash_intl_inc_bash_bash_3_2_lib",
+        ":bash_intl_inc_bash_bash_3_2_include",
+        ":bash_intl_inc_bash_bash_3_2",
+        ":bash_intl_inc_bash",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash_intl
+
+# BEGIN generated: bash_readline
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bash_readline   -- review before committing.
+# cmake target: bash_readline  ->  src/external/bash/libbash_readline.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/bash
+
+cc_header_root(
+    name = "bash_readline_inc_bash_bash_3_2_lib",
+    headers = glob(["bash/bash-3.2/lib/*.h", "bash/bash-3.2/lib/**/*.h", "bash/bash-3.2/lib/*.c"]),
+    root = "bash/bash-3.2/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_readline_inc_bash_bash_3_2_include",
+    headers = glob(["bash/bash-3.2/include/*.h", "bash/bash-3.2/include/**/*.h", "bash/bash-3.2/include/*.c"]),
+    root = "bash/bash-3.2/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_readline_inc_bash_bash_3_2",
+    headers = glob(["bash/bash-3.2/*.h", "bash/bash-3.2/**/*.h", "bash/bash-3.2/*.c"]),
+    root = "bash/bash-3.2",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_readline_inc_bash",
+    headers = glob(["bash/*.h", "bash/**/*.h", "bash/*.c"]),
+    root = "bash",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bash_readline_obj",
+    srcs = [
+        "bash/bash-3.2/lib/readline/bind.c",
+        "bash/bash-3.2/lib/readline/callback.c",
+        "bash/bash-3.2/lib/readline/compat.c",
+        "bash/bash-3.2/lib/readline/complete.c",
+        "bash/bash-3.2/lib/readline/display.c",
+        "bash/bash-3.2/lib/readline/funmap.c",
+        "bash/bash-3.2/lib/readline/histexpand.c",
+        "bash/bash-3.2/lib/readline/histfile.c",
+        "bash/bash-3.2/lib/readline/history.c",
+        "bash/bash-3.2/lib/readline/histsearch.c",
+        "bash/bash-3.2/lib/readline/input.c",
+        "bash/bash-3.2/lib/readline/isearch.c",
+        "bash/bash-3.2/lib/readline/keymaps.c",
+        "bash/bash-3.2/lib/readline/kill.c",
+        "bash/bash-3.2/lib/readline/macro.c",
+        "bash/bash-3.2/lib/readline/mbutil.c",
+        "bash/bash-3.2/lib/readline/misc.c",
+        "bash/bash-3.2/lib/readline/nls.c",
+        "bash/bash-3.2/lib/readline/parens.c",
+        "bash/bash-3.2/lib/readline/readline.c",
+        "bash/bash-3.2/lib/readline/rltty.c",
+        "bash/bash-3.2/lib/readline/savestring.c",
+        "bash/bash-3.2/lib/readline/search.c",
+        "bash/bash-3.2/lib/readline/signals.c",
+        "bash/bash-3.2/lib/readline/terminal.c",
+        "bash/bash-3.2/lib/readline/text.c",
+        "bash/bash-3.2/lib/readline/tilde.c",
+        "bash/bash-3.2/lib/readline/undo.c",
+        "bash/bash-3.2/lib/readline/util.c",
+        "bash/bash-3.2/lib/readline/vi_keymap.c",
+        "bash/bash-3.2/lib/readline/vi_mode.c",
+        "bash/bash-3.2/lib/readline/xmalloc.c",
+    ],
+    compiler_flags = [
+        "-DCONF_MACHTYPE=\"Mac\"",
+        "-DCONF_OSTYPE=\"darwin19\"",
+        "-DCONF_VENDOR=\"apple\"",
+        "-DHAVE_CONFIG_H",
+        "-DIN_LIBINTL",
+        "-DLIBDIR=\"/usr/libdata\"",
+        "-DLOCALEDIR=\"/usr/share/locale\"",
+        "-DLOCALE_ALIAS_PATH=\"/usr/share/locale\"",
+        "-DMACOSX",
+        "-DM_UNIX",
+        "-DPACKAGE=\"BASH\"",
+        "-DSHELL",
+        "-DSSH_SOURCE_BASHRC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bash_readline_inc_bash_bash_3_2_lib",
+        ":bash_readline_inc_bash_bash_3_2_include",
+        ":bash_readline_inc_bash_bash_3_2",
+        ":bash_readline_inc_bash",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash_readline
+
+# BEGIN generated: bash_sh
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bash_sh   -- review before committing.
+# cmake target: bash_sh  ->  src/external/bash/libbash_sh.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/bash
+
+cc_header_root(
+    name = "bash_sh_inc_bash_bash_3_2_lib",
+    headers = glob(["bash/bash-3.2/lib/*.h", "bash/bash-3.2/lib/**/*.h", "bash/bash-3.2/lib/*.c"]),
+    root = "bash/bash-3.2/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_sh_inc_bash_bash_3_2_include",
+    headers = glob(["bash/bash-3.2/include/*.h", "bash/bash-3.2/include/**/*.h", "bash/bash-3.2/include/*.c"]),
+    root = "bash/bash-3.2/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_sh_inc_bash_bash_3_2",
+    headers = glob(["bash/bash-3.2/*.h", "bash/bash-3.2/**/*.h", "bash/bash-3.2/*.c"]),
+    root = "bash/bash-3.2",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_sh_inc_bash",
+    headers = glob(["bash/*.h", "bash/**/*.h", "bash/*.c"]),
+    root = "bash",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bash_sh_obj",
+    srcs = [
+        "bash/bash-3.2/lib/sh/eaccess.c",
+        "bash/bash-3.2/lib/sh/fmtulong.c",
+        "bash/bash-3.2/lib/sh/fmtumax.c",
+        "bash/bash-3.2/lib/sh/getenv.c",
+        "bash/bash-3.2/lib/sh/itos.c",
+        "bash/bash-3.2/lib/sh/mailstat.c",
+        "bash/bash-3.2/lib/sh/makepath.c",
+        "bash/bash-3.2/lib/sh/netconn.c",
+        "bash/bash-3.2/lib/sh/netopen.c",
+        "bash/bash-3.2/lib/sh/oslib.c",
+        "bash/bash-3.2/lib/sh/pathcanon.c",
+        "bash/bash-3.2/lib/sh/pathphys.c",
+        "bash/bash-3.2/lib/sh/setlinebuf.c",
+        "bash/bash-3.2/lib/sh/shmatch.c",
+        "bash/bash-3.2/lib/sh/shquote.c",
+        "bash/bash-3.2/lib/sh/shtty.c",
+        "bash/bash-3.2/lib/sh/spell.c",
+        "bash/bash-3.2/lib/sh/strindex.c",
+        "bash/bash-3.2/lib/sh/stringlist.c",
+        "bash/bash-3.2/lib/sh/stringvec.c",
+        "bash/bash-3.2/lib/sh/strnlen.c",
+        "bash/bash-3.2/lib/sh/strtoimax.c",
+        "bash/bash-3.2/lib/sh/strtoumax.c",
+        "bash/bash-3.2/lib/sh/strtrans.c",
+        "bash/bash-3.2/lib/sh/timeval.c",
+        "bash/bash-3.2/lib/sh/tmpfile.c",
+        "bash/bash-3.2/lib/sh/wcsdup.c",
+        "bash/bash-3.2/lib/sh/winsize.c",
+        "bash/bash-3.2/lib/sh/xstrchr.c",
+        "bash/bash-3.2/lib/sh/zcatfd.c",
+        "bash/bash-3.2/lib/sh/zread.c",
+        "bash/bash-3.2/lib/sh/zwrite.c",
+    ],
+    compiler_flags = [
+        "-DCONF_MACHTYPE=\"Mac\"",
+        "-DCONF_OSTYPE=\"darwin19\"",
+        "-DCONF_VENDOR=\"apple\"",
+        "-DHAVE_CONFIG_H",
+        "-DIN_LIBINTL",
+        "-DLIBDIR=\"/usr/libdata\"",
+        "-DLOCALEDIR=\"/usr/share/locale\"",
+        "-DLOCALE_ALIAS_PATH=\"/usr/share/locale\"",
+        "-DMACOSX",
+        "-DM_UNIX",
+        "-DPACKAGE=\"BASH\"",
+        "-DSHELL",
+        "-DSSH_SOURCE_BASHRC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bash_sh_inc_bash_bash_3_2_lib",
+        ":bash_sh_inc_bash_bash_3_2_include",
+        ":bash_sh_inc_bash_bash_3_2",
+        ":bash_sh_inc_bash",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash_sh
+
+# BEGIN generated: libbundle1.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libbundle1.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bundle1",
+    lib_name = "libbundle1.a",
+    objs = [
+        # bundle1
+        ":bundle1_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libbundle1.a archive
+
+# BEGIN generated: libcrt0.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcrt0.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "crt0",
+    lib_name = "libcrt0.a",
+    objs = [
+        # crt0
+        ":crt0_obj",
+        ":crt0_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcrt0.a archive
+
+# BEGIN generated: libcrt1.10.5.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcrt1.10.5.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "crt1.10.5",
+    lib_name = "libcrt1.10.5.a",
+    objs = [
+        # crt1.10.5
+        ":crt1.10.5_obj",
+        ":crt1.10.5_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcrt1.10.5.a archive
+
+# BEGIN generated: libcrt1.10.6.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcrt1.10.6.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "crt1.10.6",
+    lib_name = "libcrt1.10.6.a",
+    objs = [
+        # crt1.10.6
+        ":crt1.10.6_obj",
+        ":crt1.10.6_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcrt1.10.6.a archive
+
+# BEGIN generated: libcrt1.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcrt1.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "crt1",
+    lib_name = "libcrt1.a",
+    objs = [
+        # crt1
+        ":crt1_obj",
+        ":crt1_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcrt1.a archive
+
+# BEGIN generated: libdylib1.10.5.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libdylib1.10.5.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "dylib1.10.5",
+    lib_name = "libdylib1.10.5.a",
+    objs = [
+        # dylib1.10.5
+        ":dylib1.10.5_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libdylib1.10.5.a archive
+
+# BEGIN generated: libdylib1.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libdylib1.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "dylib1",
+    lib_name = "libdylib1.a",
+    objs = [
+        # dylib1
+        ":dylib1_obj",
+        ":dylib1_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libdylib1.a archive
+
+# BEGIN generated: liblazydylib1.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblazydylib1.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "lazydylib1",
+    lib_name = "liblazydylib1.a",
+    objs = [
+        # lazydylib1
+        ":lazydylib1_obj",
+        ":lazydylib1_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblazydylib1.a archive
+
+# BEGIN generated: liblibdispatch_static.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibdispatch_static.a   -- review before committing.
+# Archives 1 cmake object library/ies, 3 flag groups.
+
+cc_static_lib(
+    name = "libdispatch_static",
+    lib_name = "liblibdispatch_static.a",
+    objs = [
+        # libdispatch_shared_obj
+        ":libdispatch_shared_obj",
+        ":libdispatch_shared_obj2",
+        ":libdispatch_shared_obj3",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibdispatch_static.a archive
+
+# BEGIN generated: liblibressl_2_8_3_libcompat.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibressl_2_8_3_libcompat.a   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "libressl_2_8_3_libcompat",
+    lib_name = "liblibressl_2_8_3_libcompat.a",
+    objs = [
+        # libressl_2_8_3_libcompat
+        ":libressl_2_8_3_libcompat_obj",
+        ":libressl_2_8_3_libcompat_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibressl_2_8_3_libcompat.a archive
+
+# BEGIN generated: liblibc_static32.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives liblibc_static32.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "libc_static32",
+    lib_name = "liblibc_static32.a",
+    objs = [
+        # libc-i386
+        ":libc-i386_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: liblibc_static32.a archive
+
+# BEGIN generated: libcompiler_rt_static32.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libcompiler_rt_static32.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "compiler_rt_static32",
+    lib_name = "libcompiler_rt_static32.a",
+    objs = [
+        # compiler_rt_32bit
+        ":compiler_rt_32bit_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libcompiler_rt_static32.a archive
+
+# BEGIN generated: libbash_glob.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libbash_glob.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bash_glob",
+    lib_name = "libbash_glob.a",
+    objs = [
+        # bash_glob
+        ":bash_glob_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libbash_glob.a archive
+
+# BEGIN generated: libbash_intl.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libbash_intl.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bash_intl",
+    lib_name = "libbash_intl.a",
+    objs = [
+        # bash_intl
+        ":bash_intl_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libbash_intl.a archive
+
+# BEGIN generated: libbash_readline.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libbash_readline.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bash_readline",
+    lib_name = "libbash_readline.a",
+    objs = [
+        # bash_readline
+        ":bash_readline_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libbash_readline.a archive
+
+# BEGIN generated: libbash_sh.a archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libbash_sh.a   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bash_sh",
+    lib_name = "libbash_sh.a",
+    objs = [
+        # bash_sh
+        ":bash_sh_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libbash_sh.a archive
+
+# BEGIN generated: bash binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries bash   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "bash",
+    objs = [
+        # bash
+        ":bash_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:bash_sh",
+        "//buck-src:bash_intl",
+        "//buck-src:bash_glob",
+        "//buck-src:bash_readline",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash binary
+
+# BEGIN generated: bash
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bash   -- review before committing.
+# cmake target: bash  ->  src/external/bash/bash
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/bash/y.tab.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/bash
+
+cc_header_root(
+    name = "bash_inc_bash_bash_3_2_lib",
+    headers = glob(["bash/bash-3.2/lib/*.h", "bash/bash-3.2/lib/**/*.h", "bash/bash-3.2/lib/*.c"]),
+    root = "bash/bash-3.2/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_inc_bash_bash_3_2_include",
+    headers = glob(["bash/bash-3.2/include/*.h", "bash/bash-3.2/include/**/*.h", "bash/bash-3.2/include/*.c"]),
+    root = "bash/bash-3.2/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_inc_bash_bash_3_2",
+    headers = glob(["bash/bash-3.2/*.h", "bash/bash-3.2/**/*.h", "bash/bash-3.2/*.c"]),
+    root = "bash/bash-3.2",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bash_inc_bash",
+    headers = glob(["bash/*.h", "bash/**/*.h", "bash/*.c"]),
+    root = "bash",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bash_obj",
+    srcs = [
+        "bash/bash-3.2/alias.c",
+        "bash/bash-3.2/array.c",
+        "bash/bash-3.2/arrayfunc.c",
+        "bash/bash-3.2/bashhist.c",
+        "bash/bash-3.2/bashline.c",
+        "bash/bash-3.2/bracecomp.c",
+        "bash/bash-3.2/braces.c",
+        "bash/bash-3.2/builtins/alias.c",
+        "bash/bash-3.2/builtins/bashgetopt.c",
+        "bash/bash-3.2/builtins/bind.c",
+        "bash/bash-3.2/builtins/break.c",
+        "bash/bash-3.2/builtins/builtin.c",
+        "bash/bash-3.2/builtins/builtins.c",
+        "bash/bash-3.2/builtins/caller.c",
+        "bash/bash-3.2/builtins/cd.c",
+        "bash/bash-3.2/builtins/colon.c",
+        "bash/bash-3.2/builtins/command.c",
+        "bash/bash-3.2/builtins/common.c",
+        "bash/bash-3.2/builtins/complete.c",
+        "bash/bash-3.2/builtins/declare.c",
+        "bash/bash-3.2/builtins/echo.c",
+        "bash/bash-3.2/builtins/enable.c",
+        "bash/bash-3.2/builtins/eval.c",
+        "bash/bash-3.2/builtins/evalfile.c",
+        "bash/bash-3.2/builtins/evalstring.c",
+        "bash/bash-3.2/builtins/exec.c",
+        "bash/bash-3.2/builtins/exit.c",
+        "bash/bash-3.2/builtins/fc.c",
+        "bash/bash-3.2/builtins/fg_bg.c",
+        "bash/bash-3.2/builtins/getopt.c",
+        "bash/bash-3.2/builtins/getopts.c",
+        "bash/bash-3.2/builtins/hash.c",
+        "bash/bash-3.2/builtins/help.c",
+        "bash/bash-3.2/builtins/history.c",
+        "bash/bash-3.2/builtins/jobs.c",
+        "bash/bash-3.2/builtins/kill.c",
+        "bash/bash-3.2/builtins/let.c",
+        "bash/bash-3.2/builtins/printf.c",
+        "bash/bash-3.2/builtins/pushd.c",
+        "bash/bash-3.2/builtins/read.c",
+        "bash/bash-3.2/builtins/return.c",
+        "bash/bash-3.2/builtins/set.c",
+        "bash/bash-3.2/builtins/setattr.c",
+        "bash/bash-3.2/builtins/shift.c",
+        "bash/bash-3.2/builtins/shopt.c",
+        "bash/bash-3.2/builtins/source.c",
+        "bash/bash-3.2/builtins/suspend.c",
+        "bash/bash-3.2/builtins/test.c",
+        "bash/bash-3.2/builtins/times.c",
+        "bash/bash-3.2/builtins/trap.c",
+        "bash/bash-3.2/builtins/type.c",
+        "bash/bash-3.2/builtins/ulimit.c",
+        "bash/bash-3.2/builtins/umask.c",
+        "bash/bash-3.2/builtins/wait.c",
+        "bash/bash-3.2/copy_cmd.c",
+        "bash/bash-3.2/dispose_cmd.c",
+        "bash/bash-3.2/error.c",
+        "bash/bash-3.2/eval.c",
+        "bash/bash-3.2/execute_cmd.c",
+        "bash/bash-3.2/expr.c",
+        "bash/bash-3.2/findcmd.c",
+        "bash/bash-3.2/flags.c",
+        "bash/bash-3.2/general.c",
+        "bash/bash-3.2/hashcmd.c",
+        "bash/bash-3.2/hashlib.c",
+        "bash/bash-3.2/input.c",
+        "bash/bash-3.2/jobs.c",
+        "bash/bash-3.2/list.c",
+        "bash/bash-3.2/locale.c",
+        "bash/bash-3.2/mailcheck.c",
+        "bash/bash-3.2/make_cmd.c",
+        "bash/bash-3.2/pathexp.c",
+        "bash/bash-3.2/pcomplete.c",
+        "bash/bash-3.2/pcomplib.c",
+        "bash/bash-3.2/print_cmd.c",
+        "bash/bash-3.2/redir.c",
+        "bash/bash-3.2/shell.c",
+        "bash/bash-3.2/sig.c",
+        "bash/bash-3.2/siglist.c",
+        "bash/bash-3.2/stringlib.c",
+        "bash/bash-3.2/subst.c",
+        "bash/bash-3.2/test.c",
+        "bash/bash-3.2/trap.c",
+        "bash/bash-3.2/unwind_prot.c",
+        "bash/bash-3.2/variables.c",
+        "bash/bash-3.2/version.c",
+        "bash/bash-3.2/xmalloc.c",
+        "bash/syntax.c",
+    ],
+    compiler_flags = [
+        "-DCONF_MACHTYPE=\"Mac\"",
+        "-DCONF_OSTYPE=\"darwin19\"",
+        "-DCONF_VENDOR=\"apple\"",
+        "-DHAVE_CONFIG_H",
+        "-DIN_LIBINTL",
+        "-DLIBDIR=\"/usr/libdata\"",
+        "-DLOCALEDIR=\"/usr/share/locale\"",
+        "-DLOCALE_ALIAS_PATH=\"/usr/share/locale\"",
+        "-DMACOSX",
+        "-DM_UNIX",
+        "-DPACKAGE=\"BASH\"",
+        "-DSHELL",
+        "-DSSH_SOURCE_BASHRC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-O0",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bash_inc_bash_bash_3_2_lib",
+        ":bash_inc_bash_bash_3_2_include",
+        ":bash_inc_bash_bash_3_2",
+        ":bash_inc_bash",
+        "//darwin:sdk_env",
+        ":bash_parser",
+    ],
+    gen_srcs = [
+        ":bash_parser",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bash
+
+# bash's own grammar. The reference runs `bison -d -o y.tab.c bash-3.2/parse.y`, so the
+# token header is y.tab.h and the sources include it bare.
+bison_gen(
+    name = "bash_parser",
+    src = "bash/bash-3.2/parse.y",
+    out_c = "y.tab.c",
+    out_h = "y.tab.h",
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: form
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py form   -- review before committing.
+# cmake target: form  ->  src/external/ncurses/ncurses/form/libform.5.4.dylib
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_form",
+    headers = glob(["ncurses/ncurses/form/*.h", "ncurses/ncurses/form/**/*.h", "ncurses/ncurses/form/*.c"]),
+    root = "ncurses/ncurses/form",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "form_inc_ncurses_ncurses_menu",
+    headers = glob(["ncurses/ncurses/menu/*.h", "ncurses/ncurses/menu/**/*.h", "ncurses/ncurses/menu/*.c"]),
+    root = "ncurses/ncurses/menu",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "form_obj",
+    srcs = [
+        "ncurses/ncurses/form/fld_arg.c",
+        "ncurses/ncurses/form/fld_attr.c",
+        "ncurses/ncurses/form/fld_current.c",
+        "ncurses/ncurses/form/fld_def.c",
+        "ncurses/ncurses/form/fld_dup.c",
+        "ncurses/ncurses/form/fld_ftchoice.c",
+        "ncurses/ncurses/form/fld_ftlink.c",
+        "ncurses/ncurses/form/fld_info.c",
+        "ncurses/ncurses/form/fld_just.c",
+        "ncurses/ncurses/form/fld_link.c",
+        "ncurses/ncurses/form/fld_max.c",
+        "ncurses/ncurses/form/fld_move.c",
+        "ncurses/ncurses/form/fld_newftyp.c",
+        "ncurses/ncurses/form/fld_opts.c",
+        "ncurses/ncurses/form/fld_pad.c",
+        "ncurses/ncurses/form/fld_page.c",
+        "ncurses/ncurses/form/fld_stat.c",
+        "ncurses/ncurses/form/fld_type.c",
+        "ncurses/ncurses/form/fld_user.c",
+        "ncurses/ncurses/form/frm_cursor.c",
+        "ncurses/ncurses/form/frm_data.c",
+        "ncurses/ncurses/form/frm_def.c",
+        "ncurses/ncurses/form/frm_driver.c",
+        "ncurses/ncurses/form/frm_hook.c",
+        "ncurses/ncurses/form/frm_opts.c",
+        "ncurses/ncurses/form/frm_page.c",
+        "ncurses/ncurses/form/frm_post.c",
+        "ncurses/ncurses/form/frm_req_name.c",
+        "ncurses/ncurses/form/frm_scale.c",
+        "ncurses/ncurses/form/frm_sub.c",
+        "ncurses/ncurses/form/frm_user.c",
+        "ncurses/ncurses/form/frm_win.c",
+        "ncurses/ncurses/form/fty_alnum.c",
+        "ncurses/ncurses/form/fty_alpha.c",
+        "ncurses/ncurses/form/fty_enum.c",
+        "ncurses/ncurses/form/fty_int.c",
+        "ncurses/ncurses/form/fty_ipv4.c",
+        "ncurses/ncurses/form/fty_num.c",
+        "ncurses/ncurses/form/fty_regex.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dform_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":form_inc_ncurses_ncurses_include",
+        ":form_inc_ncurses_ncurses_ncurses",
+        ":form_inc_ncurses_gen",
+        ":form_inc_ncurses_ncurses_form",
+        ":form_inc_ncurses_ncurses_menu",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: form
+
+# BEGIN generated: menu
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py menu   -- review before committing.
+# cmake target: menu  ->  src/external/ncurses/ncurses/menu/libmenu.5.4.dylib
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "menu_inc_ncurses_ncurses_menu",
+    headers = glob(["ncurses/ncurses/menu/*.h", "ncurses/ncurses/menu/**/*.h", "ncurses/ncurses/menu/*.c"]),
+    root = "ncurses/ncurses/menu",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "menu_obj",
+    srcs = [
+        "ncurses/ncurses/menu/m_attribs.c",
+        "ncurses/ncurses/menu/m_cursor.c",
+        "ncurses/ncurses/menu/m_driver.c",
+        "ncurses/ncurses/menu/m_format.c",
+        "ncurses/ncurses/menu/m_global.c",
+        "ncurses/ncurses/menu/m_hook.c",
+        "ncurses/ncurses/menu/m_item_cur.c",
+        "ncurses/ncurses/menu/m_item_nam.c",
+        "ncurses/ncurses/menu/m_item_new.c",
+        "ncurses/ncurses/menu/m_item_opt.c",
+        "ncurses/ncurses/menu/m_item_top.c",
+        "ncurses/ncurses/menu/m_item_use.c",
+        "ncurses/ncurses/menu/m_item_val.c",
+        "ncurses/ncurses/menu/m_item_vis.c",
+        "ncurses/ncurses/menu/m_items.c",
+        "ncurses/ncurses/menu/m_new.c",
+        "ncurses/ncurses/menu/m_opts.c",
+        "ncurses/ncurses/menu/m_pad.c",
+        "ncurses/ncurses/menu/m_pattern.c",
+        "ncurses/ncurses/menu/m_post.c",
+        "ncurses/ncurses/menu/m_req_name.c",
+        "ncurses/ncurses/menu/m_scale.c",
+        "ncurses/ncurses/menu/m_spacing.c",
+        "ncurses/ncurses/menu/m_sub.c",
+        "ncurses/ncurses/menu/m_userptr.c",
+        "ncurses/ncurses/menu/m_win.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dmenu_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":menu_inc_ncurses_ncurses_include",
+        ":menu_inc_ncurses_ncurses_ncurses",
+        ":menu_inc_ncurses_gen",
+        ":menu_inc_ncurses_ncurses_menu",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: menu
+
+# BEGIN generated: panel
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py panel   -- review before committing.
+# cmake target: panel  ->  src/external/ncurses/ncurses/panel/libpanel.5.4.dylib
+
+cc_header_root(
+    name = "panel_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "panel_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "panel_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "panel_obj",
+    srcs = [
+        "ncurses/ncurses/panel/p_above.c",
+        "ncurses/ncurses/panel/p_below.c",
+        "ncurses/ncurses/panel/p_bottom.c",
+        "ncurses/ncurses/panel/p_delete.c",
+        "ncurses/ncurses/panel/p_hidden.c",
+        "ncurses/ncurses/panel/p_hide.c",
+        "ncurses/ncurses/panel/p_move.c",
+        "ncurses/ncurses/panel/p_new.c",
+        "ncurses/ncurses/panel/p_replace.c",
+        "ncurses/ncurses/panel/p_show.c",
+        "ncurses/ncurses/panel/p_top.c",
+        "ncurses/ncurses/panel/p_update.c",
+        "ncurses/ncurses/panel/p_user.c",
+        "ncurses/ncurses/panel/p_win.c",
+        "ncurses/ncurses/panel/panel.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpanel_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":panel_inc_ncurses_ncurses_include",
+        ":panel_inc_ncurses_ncurses_ncurses",
+        ":panel_inc_ncurses_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: panel
+
+# BEGIN generated: coretls
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py coretls   -- review before committing.
+# cmake target: coretls  ->  src/external/coretls/libcoretls.dylib
+
+cc_header_root(
+    name = "coretls_inc_coretls_lib",
+    headers = glob(["coretls/lib/*.h", "coretls/lib/**/*.h", "coretls/lib/*.c"]),
+    root = "coretls/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "coretls_obj",
+    srcs = [
+        "coretls/dummy.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcoretls_EXPORTS",
+        "-std=gnu99",
+        "-fPIC",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":coretls_inc_coretls_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls
+
+# BEGIN generated: tls18
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tls18   -- review before committing.
+# cmake target: tls18  ->  tls18
+
+cc_header_root(
+    name = "tls18_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
+    root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tls18_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
+    root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tls18_inc_libressl_2_8_3_tls",
+    headers = glob(["libressl-2.8.3/tls/*.h", "libressl-2.8.3/tls/**/*.h", "libressl-2.8.3/tls/*.c"]),
+    root = "libressl-2.8.3/tls",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tls18_obj",
+    srcs = [
+        "libressl-2.8.3/tls/tls.c",
+        "libressl-2.8.3/tls/tls_bio_cb.c",
+        "libressl-2.8.3/tls/tls_client.c",
+        "libressl-2.8.3/tls/tls_config.c",
+        "libressl-2.8.3/tls/tls_conninfo.c",
+        "libressl-2.8.3/tls/tls_keypair.c",
+        "libressl-2.8.3/tls/tls_ocsp.c",
+        "libressl-2.8.3/tls/tls_peer.c",
+        "libressl-2.8.3/tls/tls_server.c",
+        "libressl-2.8.3/tls/tls_util.c",
+        "libressl-2.8.3/tls/tls_verify.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_PATH_SSL_CA_FILE=\"/etc/ssl/cert.pem\"",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-Dtls18_EXPORTS",
+        "-fPIC",
+        "-fno-common",
+        "-Wno-pointer-sign",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":tls18_inc_libressl_2_8_3_include",
+        ":tls18_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+        ":tls18_inc_libressl_2_8_3_tls",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tls18
+
+# BEGIN generated: objc-trampolines
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py objc-trampolines   -- review before committing.
+# cmake target: objc-trampolines  ->  src/external/objc4/runtime/libobjc-trampolines.dylib
+# 5 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "objc-trampolines_inc_objc4_runtime",
+    headers = glob(["objc4/runtime/*.h", "objc4/runtime/**/*.h", "objc4/runtime/*.c"]),
+    root = "objc4/runtime",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "objc-trampolines_obj",
+    srcs = [
+        "objc4/runtime/objc-blocktramps-arm.S",
+        "objc4/runtime/objc-blocktramps-arm64.S",
+        "objc4/runtime/objc-blocktramps-i386.S",
+        "objc4/runtime/objc-blocktramps-x86_64.S",
+    ],
+    compiler_flags = [
+        "-DOBJC_IS_DEBUG_BUILD=1",
+        "-DOBJC_NO_GC",
+        "-DOS_OBJECT_USE_OBJC=0",
+        "-DTARGET_OS_IPHONE=0",
+        "-D_LIBCPP_VISIBLE=\"\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__STDC_NO_ATOMICS__",
+        "-Dobjc_trampolines_EXPORTS",
+        "-fPIC",
+        "-Wno-unused-command-line-argument",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":objc-trampolines_inc_objc4_runtime",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "objc-trampolines_obj2",
+    srcs = [
+        "objc4/runtime/dummy.c",
+    ],
+    compiler_flags = [
+        "-DOBJC_IS_DEBUG_BUILD=1",
+        "-DOBJC_NO_GC",
+        "-DOS_OBJECT_USE_OBJC=0",
+        "-DTARGET_OS_IPHONE=0",
+        "-D_LIBCPP_VISIBLE=\"\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__STDC_NO_ATOMICS__",
+        "-Dobjc_trampolines_EXPORTS",
+        "-nostdinc",
+        "-O2",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fblocks",
+        "-fobjc-legacy-dispatch",
+        "-fvisibility-inlines-hidden",
+        "-fstrict-aliasing",
+        "-fno-delete-null-pointer-checks",
+        "-fPIC",
+        "-Wno-unused-command-line-argument",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":objc-trampolines_inc_objc4_runtime",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: objc-trampolines
+
+# BEGIN generated: stdcxx
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py stdcxx   -- review before committing.
+# cmake target: stdcxx  ->  stdcxx
+# 65 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
+    headers = glob(["libstdcxx/include/c++/4.2.1/backward/*.h", "libstdcxx/include/c++/4.2.1/backward/**/*.h", "libstdcxx/include/c++/4.2.1/backward/*.c"]),
+    root = "libstdcxx/include/c++/4.2.1/backward",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "stdcxx_inc_libstdcxx_include_c_4_2_1",
+    headers = glob(["libstdcxx/include/c++/4.2.1/*.h", "libstdcxx/include/c++/4.2.1/**/*.h", "libstdcxx/include/c++/4.2.1/*.c"]),
+    root = "libstdcxx/include/c++/4.2.1",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "stdcxx_obj",
+    srcs = [
+        "libstdcxx/src/allocator-inst.cc",
+        "libstdcxx/src/atomicity.cc",
+        "libstdcxx/src/basic_file.cc",
+        "libstdcxx/src/bitmap_allocator.cc",
+        "libstdcxx/src/c++locale.cc",
+        "libstdcxx/src/codecvt.cc",
+        "libstdcxx/src/codecvt_members.cc",
+        "libstdcxx/src/collate_members.cc",
+        "libstdcxx/src/compatibility-ldbl.cc",
+        "libstdcxx/src/compatibility.cc",
+        "libstdcxx/src/complex_io.cc",
+        "libstdcxx/src/ctype.cc",
+        "libstdcxx/src/ctype_members.cc",
+        "libstdcxx/src/debug.cc",
+        "libstdcxx/src/debug_list.cc",
+        "libstdcxx/src/del_op.cc",
+        "libstdcxx/src/del_opnt.cc",
+        "libstdcxx/src/del_opv.cc",
+        "libstdcxx/src/del_opvnt.cc",
+        "libstdcxx/src/eh_exception.cc",
+        "libstdcxx/src/eh_terminate.cc",
+        "libstdcxx/src/ext-inst.cc",
+        "libstdcxx/src/fstream-inst.cc",
+        "libstdcxx/src/functexcept.cc",
+        "libstdcxx/src/globals_io.cc",
+        "libstdcxx/src/ios-inst.cc",
+        "libstdcxx/src/ios.cc",
+        "libstdcxx/src/ios_failure.cc",
+        "libstdcxx/src/ios_init.cc",
+        "libstdcxx/src/ios_locale.cc",
+        "libstdcxx/src/iostream-inst.cc",
+        "libstdcxx/src/istream-inst.cc",
+        "libstdcxx/src/istream.cc",
+        "libstdcxx/src/limits.cc",
+        "libstdcxx/src/list.cc",
+        "libstdcxx/src/locale-inst.cc",
+        "libstdcxx/src/locale.cc",
+        "libstdcxx/src/locale_facets.cc",
+        "libstdcxx/src/locale_init.cc",
+        "libstdcxx/src/localename.cc",
+        "libstdcxx/src/messages_members.cc",
+        "libstdcxx/src/misc-inst.cc",
+        "libstdcxx/src/monetary_members.cc",
+        "libstdcxx/src/mt_allocator.cc",
+        "libstdcxx/src/new_handler.cc",
+        "libstdcxx/src/new_op.cc",
+        "libstdcxx/src/new_opnt.cc",
+        "libstdcxx/src/new_opv.cc",
+        "libstdcxx/src/new_opvnt.cc",
+        "libstdcxx/src/numeric_members.cc",
+        "libstdcxx/src/ostream-inst.cc",
+        "libstdcxx/src/pool_allocator.cc",
+        "libstdcxx/src/sstream-inst.cc",
+        "libstdcxx/src/stdexcept.cc",
+        "libstdcxx/src/streambuf-inst.cc",
+        "libstdcxx/src/streambuf.cc",
+        "libstdcxx/src/string-inst.cc",
+        "libstdcxx/src/strstream.cc",
+        "libstdcxx/src/time_members.cc",
+        "libstdcxx/src/tinfo.cc",
+        "libstdcxx/src/tree.cc",
+        "libstdcxx/src/valarray-inst.cc",
+        "libstdcxx/src/wlocale-inst.cc",
+        "libstdcxx/src/wstring-inst.cc",
+    ],
+    compiler_flags = [
+        "-DBUILDING_LIBSTDCXX",
+        "-D_LIBCPPABI_VERSION=1",
+        "-Dstdcxx_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-nostdinc++",
+        "-w",
+        "-std=c++14",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "stdcxx_obj2",
+    srcs = [
+        "libstdcxx/src/concept-inst.cc",
+    ],
+    compiler_flags = [
+        "-DBUILDING_LIBSTDCXX",
+        "-D_LIBCPPABI_VERSION=1",
+        "-Dstdcxx_EXPORTS",
+        "-D_GLIBCXX_CONCEPT_CHECKS",
+        "-fPIC",
+        "-nostdinc",
+        "-nostdinc++",
+        "-w",
+        "-std=c++14",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
+        ":stdcxx_inc_libstdcxx_include_c_4_2_1",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stdcxx
+
+# BEGIN generated: crypto44
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crypto44   -- review before committing.
+# cmake target: crypto44  ->  crypto44
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
+    root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
+    root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto",
+    headers = glob(["libressl-2.8.3/crypto/*.h", "libressl-2.8.3/crypto/**/*.h", "libressl-2.8.3/crypto/*.c"]),
+    root = "libressl-2.8.3/crypto",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto_asn1",
+    headers = glob(["libressl-2.8.3/crypto/asn1/*.h", "libressl-2.8.3/crypto/asn1/**/*.h", "libressl-2.8.3/crypto/asn1/*.c"]),
+    root = "libressl-2.8.3/crypto/asn1",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto_bn",
+    headers = glob(["libressl-2.8.3/crypto/bn/*.h", "libressl-2.8.3/crypto/bn/**/*.h", "libressl-2.8.3/crypto/bn/*.c"]),
+    root = "libressl-2.8.3/crypto/bn",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto_dsa",
+    headers = glob(["libressl-2.8.3/crypto/dsa/*.h", "libressl-2.8.3/crypto/dsa/**/*.h", "libressl-2.8.3/crypto/dsa/*.c"]),
+    root = "libressl-2.8.3/crypto/dsa",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto_evp",
+    headers = glob(["libressl-2.8.3/crypto/evp/*.h", "libressl-2.8.3/crypto/evp/**/*.h", "libressl-2.8.3/crypto/evp/*.c"]),
+    root = "libressl-2.8.3/crypto/evp",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_inc_libressl_2_8_3_crypto_modes",
+    headers = glob(["libressl-2.8.3/crypto/modes/*.h", "libressl-2.8.3/crypto/modes/**/*.h", "libressl-2.8.3/crypto/modes/*.c"]),
+    root = "libressl-2.8.3/crypto/modes",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crypto44_obj",
+    srcs = [
+        "libressl-2.8.3/crypto/aes/aes_cbc.c",
+        "libressl-2.8.3/crypto/aes/aes_cfb.c",
+        "libressl-2.8.3/crypto/aes/aes_core.c",
+        "libressl-2.8.3/crypto/aes/aes_ctr.c",
+        "libressl-2.8.3/crypto/aes/aes_ecb.c",
+        "libressl-2.8.3/crypto/aes/aes_ige.c",
+        "libressl-2.8.3/crypto/aes/aes_misc.c",
+        "libressl-2.8.3/crypto/aes/aes_ofb.c",
+        "libressl-2.8.3/crypto/aes/aes_wrap.c",
+        "libressl-2.8.3/crypto/asn1/a_bitstr.c",
+        "libressl-2.8.3/crypto/asn1/a_bool.c",
+        "libressl-2.8.3/crypto/asn1/a_bytes.c",
+        "libressl-2.8.3/crypto/asn1/a_d2i_fp.c",
+        "libressl-2.8.3/crypto/asn1/a_digest.c",
+        "libressl-2.8.3/crypto/asn1/a_dup.c",
+        "libressl-2.8.3/crypto/asn1/a_enum.c",
+        "libressl-2.8.3/crypto/asn1/a_i2d_fp.c",
+        "libressl-2.8.3/crypto/asn1/a_int.c",
+        "libressl-2.8.3/crypto/asn1/a_mbstr.c",
+        "libressl-2.8.3/crypto/asn1/a_object.c",
+        "libressl-2.8.3/crypto/asn1/a_octet.c",
+        "libressl-2.8.3/crypto/asn1/a_print.c",
+        "libressl-2.8.3/crypto/asn1/a_set.c",
+        "libressl-2.8.3/crypto/asn1/a_sign.c",
+        "libressl-2.8.3/crypto/asn1/a_strex.c",
+        "libressl-2.8.3/crypto/asn1/a_strnid.c",
+        "libressl-2.8.3/crypto/asn1/a_time.c",
+        "libressl-2.8.3/crypto/asn1/a_type.c",
+        "libressl-2.8.3/crypto/asn1/a_utf8.c",
+        "libressl-2.8.3/crypto/asn1/a_verify.c",
+        "libressl-2.8.3/crypto/asn1/ameth_lib.c",
+        "libressl-2.8.3/crypto/asn1/asn1_err.c",
+        "libressl-2.8.3/crypto/asn1/asn1_gen.c",
+        "libressl-2.8.3/crypto/asn1/asn1_lib.c",
+        "libressl-2.8.3/crypto/asn1/asn1_par.c",
+        "libressl-2.8.3/crypto/asn1/asn_mime.c",
+        "libressl-2.8.3/crypto/asn1/asn_moid.c",
+        "libressl-2.8.3/crypto/asn1/asn_pack.c",
+        "libressl-2.8.3/crypto/asn1/bio_asn1.c",
+        "libressl-2.8.3/crypto/asn1/bio_ndef.c",
+        "libressl-2.8.3/crypto/asn1/d2i_pr.c",
+        "libressl-2.8.3/crypto/asn1/d2i_pu.c",
+        "libressl-2.8.3/crypto/asn1/evp_asn1.c",
+        "libressl-2.8.3/crypto/asn1/f_enum.c",
+        "libressl-2.8.3/crypto/asn1/f_int.c",
+        "libressl-2.8.3/crypto/asn1/f_string.c",
+        "libressl-2.8.3/crypto/asn1/i2d_pr.c",
+        "libressl-2.8.3/crypto/asn1/i2d_pu.c",
+        "libressl-2.8.3/crypto/asn1/n_pkey.c",
+        "libressl-2.8.3/crypto/asn1/nsseq.c",
+        "libressl-2.8.3/crypto/asn1/p5_pbe.c",
+        "libressl-2.8.3/crypto/asn1/p5_pbev2.c",
+        "libressl-2.8.3/crypto/asn1/p8_pkey.c",
+        "libressl-2.8.3/crypto/asn1/t_bitst.c",
+        "libressl-2.8.3/crypto/asn1/t_crl.c",
+        "libressl-2.8.3/crypto/asn1/t_pkey.c",
+        "libressl-2.8.3/crypto/asn1/t_req.c",
+        "libressl-2.8.3/crypto/asn1/t_spki.c",
+        "libressl-2.8.3/crypto/asn1/t_x509.c",
+        "libressl-2.8.3/crypto/asn1/t_x509a.c",
+        "libressl-2.8.3/crypto/asn1/tasn_dec.c",
+        "libressl-2.8.3/crypto/asn1/tasn_enc.c",
+        "libressl-2.8.3/crypto/asn1/tasn_fre.c",
+        "libressl-2.8.3/crypto/asn1/tasn_new.c",
+        "libressl-2.8.3/crypto/asn1/tasn_prn.c",
+        "libressl-2.8.3/crypto/asn1/tasn_typ.c",
+        "libressl-2.8.3/crypto/asn1/tasn_utl.c",
+        "libressl-2.8.3/crypto/asn1/x_algor.c",
+        "libressl-2.8.3/crypto/asn1/x_attrib.c",
+        "libressl-2.8.3/crypto/asn1/x_bignum.c",
+        "libressl-2.8.3/crypto/asn1/x_crl.c",
+        "libressl-2.8.3/crypto/asn1/x_exten.c",
+        "libressl-2.8.3/crypto/asn1/x_info.c",
+        "libressl-2.8.3/crypto/asn1/x_long.c",
+        "libressl-2.8.3/crypto/asn1/x_name.c",
+        "libressl-2.8.3/crypto/asn1/x_nx509.c",
+        "libressl-2.8.3/crypto/asn1/x_pkey.c",
+        "libressl-2.8.3/crypto/asn1/x_pubkey.c",
+        "libressl-2.8.3/crypto/asn1/x_req.c",
+        "libressl-2.8.3/crypto/asn1/x_sig.c",
+        "libressl-2.8.3/crypto/asn1/x_spki.c",
+        "libressl-2.8.3/crypto/asn1/x_val.c",
+        "libressl-2.8.3/crypto/asn1/x_x509.c",
+        "libressl-2.8.3/crypto/asn1/x_x509a.c",
+        "libressl-2.8.3/crypto/bf/bf_cfb64.c",
+        "libressl-2.8.3/crypto/bf/bf_ecb.c",
+        "libressl-2.8.3/crypto/bf/bf_enc.c",
+        "libressl-2.8.3/crypto/bf/bf_ofb64.c",
+        "libressl-2.8.3/crypto/bf/bf_skey.c",
+        "libressl-2.8.3/crypto/bio/b_dump.c",
+        "libressl-2.8.3/crypto/bio/b_posix.c",
+        "libressl-2.8.3/crypto/bio/b_print.c",
+        "libressl-2.8.3/crypto/bio/b_sock.c",
+        "libressl-2.8.3/crypto/bio/bf_buff.c",
+        "libressl-2.8.3/crypto/bio/bf_nbio.c",
+        "libressl-2.8.3/crypto/bio/bf_null.c",
+        "libressl-2.8.3/crypto/bio/bio_cb.c",
+        "libressl-2.8.3/crypto/bio/bio_err.c",
+        "libressl-2.8.3/crypto/bio/bio_lib.c",
+        "libressl-2.8.3/crypto/bio/bio_meth.c",
+        "libressl-2.8.3/crypto/bio/bss_acpt.c",
+        "libressl-2.8.3/crypto/bio/bss_bio.c",
+        "libressl-2.8.3/crypto/bio/bss_conn.c",
+        "libressl-2.8.3/crypto/bio/bss_dgram.c",
+        "libressl-2.8.3/crypto/bio/bss_fd.c",
+        "libressl-2.8.3/crypto/bio/bss_file.c",
+        "libressl-2.8.3/crypto/bio/bss_log.c",
+        "libressl-2.8.3/crypto/bio/bss_mem.c",
+        "libressl-2.8.3/crypto/bio/bss_null.c",
+        "libressl-2.8.3/crypto/bio/bss_sock.c",
+        "libressl-2.8.3/crypto/bn/bn_add.c",
+        "libressl-2.8.3/crypto/bn/bn_asm.c",
+        "libressl-2.8.3/crypto/bn/bn_blind.c",
+        "libressl-2.8.3/crypto/bn/bn_const.c",
+        "libressl-2.8.3/crypto/bn/bn_ctx.c",
+        "libressl-2.8.3/crypto/bn/bn_depr.c",
+        "libressl-2.8.3/crypto/bn/bn_div.c",
+        "libressl-2.8.3/crypto/bn/bn_err.c",
+        "libressl-2.8.3/crypto/bn/bn_exp.c",
+        "libressl-2.8.3/crypto/bn/bn_exp2.c",
+        "libressl-2.8.3/crypto/bn/bn_gcd.c",
+        "libressl-2.8.3/crypto/bn/bn_gf2m.c",
+        "libressl-2.8.3/crypto/bn/bn_kron.c",
+        "libressl-2.8.3/crypto/bn/bn_lib.c",
+        "libressl-2.8.3/crypto/bn/bn_mod.c",
+        "libressl-2.8.3/crypto/bn/bn_mont.c",
+        "libressl-2.8.3/crypto/bn/bn_mpi.c",
+        "libressl-2.8.3/crypto/bn/bn_mul.c",
+        "libressl-2.8.3/crypto/bn/bn_nist.c",
+        "libressl-2.8.3/crypto/bn/bn_prime.c",
+        "libressl-2.8.3/crypto/bn/bn_print.c",
+        "libressl-2.8.3/crypto/bn/bn_rand.c",
+        "libressl-2.8.3/crypto/bn/bn_recp.c",
+        "libressl-2.8.3/crypto/bn/bn_shift.c",
+        "libressl-2.8.3/crypto/bn/bn_sqr.c",
+        "libressl-2.8.3/crypto/bn/bn_sqrt.c",
+        "libressl-2.8.3/crypto/bn/bn_word.c",
+        "libressl-2.8.3/crypto/bn/bn_x931p.c",
+        "libressl-2.8.3/crypto/buffer/buf_err.c",
+        "libressl-2.8.3/crypto/buffer/buf_str.c",
+        "libressl-2.8.3/crypto/buffer/buffer.c",
+        "libressl-2.8.3/crypto/camellia/camellia.c",
+        "libressl-2.8.3/crypto/camellia/cmll_cbc.c",
+        "libressl-2.8.3/crypto/camellia/cmll_cfb.c",
+        "libressl-2.8.3/crypto/camellia/cmll_ctr.c",
+        "libressl-2.8.3/crypto/camellia/cmll_ecb.c",
+        "libressl-2.8.3/crypto/camellia/cmll_misc.c",
+        "libressl-2.8.3/crypto/camellia/cmll_ofb.c",
+        "libressl-2.8.3/crypto/cast/c_cfb64.c",
+        "libressl-2.8.3/crypto/cast/c_ecb.c",
+        "libressl-2.8.3/crypto/cast/c_enc.c",
+        "libressl-2.8.3/crypto/cast/c_ofb64.c",
+        "libressl-2.8.3/crypto/cast/c_skey.c",
+        "libressl-2.8.3/crypto/chacha/chacha.c",
+        "libressl-2.8.3/crypto/cmac/cm_ameth.c",
+        "libressl-2.8.3/crypto/cmac/cm_pmeth.c",
+        "libressl-2.8.3/crypto/cmac/cmac.c",
+        "libressl-2.8.3/crypto/comp/c_rle.c",
+        "libressl-2.8.3/crypto/comp/c_zlib.c",
+        "libressl-2.8.3/crypto/comp/comp_err.c",
+        "libressl-2.8.3/crypto/comp/comp_lib.c",
+        "libressl-2.8.3/crypto/conf/conf_api.c",
+        "libressl-2.8.3/crypto/conf/conf_def.c",
+        "libressl-2.8.3/crypto/conf/conf_err.c",
+        "libressl-2.8.3/crypto/conf/conf_lib.c",
+        "libressl-2.8.3/crypto/conf/conf_mall.c",
+        "libressl-2.8.3/crypto/conf/conf_mod.c",
+        "libressl-2.8.3/crypto/conf/conf_sap.c",
+        "libressl-2.8.3/crypto/cpt_err.c",
+        "libressl-2.8.3/crypto/cryptlib.c",
+        "libressl-2.8.3/crypto/crypto_init.c",
+        "libressl-2.8.3/crypto/curve25519/curve25519-generic.c",
+        "libressl-2.8.3/crypto/curve25519/curve25519.c",
+        "libressl-2.8.3/crypto/cversion.c",
+        "libressl-2.8.3/crypto/des/cbc_cksm.c",
+        "libressl-2.8.3/crypto/des/cbc_enc.c",
+        "libressl-2.8.3/crypto/des/cfb64ede.c",
+        "libressl-2.8.3/crypto/des/cfb64enc.c",
+        "libressl-2.8.3/crypto/des/cfb_enc.c",
+        "libressl-2.8.3/crypto/des/des_enc.c",
+        "libressl-2.8.3/crypto/des/ecb3_enc.c",
+        "libressl-2.8.3/crypto/des/ecb_enc.c",
+        "libressl-2.8.3/crypto/des/ede_cbcm_enc.c",
+        "libressl-2.8.3/crypto/des/enc_read.c",
+        "libressl-2.8.3/crypto/des/enc_writ.c",
+        "libressl-2.8.3/crypto/des/fcrypt.c",
+        "libressl-2.8.3/crypto/des/fcrypt_b.c",
+        "libressl-2.8.3/crypto/des/ofb64ede.c",
+        "libressl-2.8.3/crypto/des/ofb64enc.c",
+        "libressl-2.8.3/crypto/des/ofb_enc.c",
+        "libressl-2.8.3/crypto/des/pcbc_enc.c",
+        "libressl-2.8.3/crypto/des/qud_cksm.c",
+        "libressl-2.8.3/crypto/des/rand_key.c",
+        "libressl-2.8.3/crypto/des/set_key.c",
+        "libressl-2.8.3/crypto/des/str2key.c",
+        "libressl-2.8.3/crypto/des/xcbc_enc.c",
+        "libressl-2.8.3/crypto/dh/dh_ameth.c",
+        "libressl-2.8.3/crypto/dh/dh_asn1.c",
+        "libressl-2.8.3/crypto/dh/dh_check.c",
+        "libressl-2.8.3/crypto/dh/dh_depr.c",
+        "libressl-2.8.3/crypto/dh/dh_err.c",
+        "libressl-2.8.3/crypto/dh/dh_gen.c",
+        "libressl-2.8.3/crypto/dh/dh_key.c",
+        "libressl-2.8.3/crypto/dh/dh_lib.c",
+        "libressl-2.8.3/crypto/dh/dh_pmeth.c",
+        "libressl-2.8.3/crypto/dh/dh_prn.c",
+        "libressl-2.8.3/crypto/dsa/dsa_ameth.c",
+        "libressl-2.8.3/crypto/dsa/dsa_asn1.c",
+        "libressl-2.8.3/crypto/dsa/dsa_depr.c",
+        "libressl-2.8.3/crypto/dsa/dsa_err.c",
+        "libressl-2.8.3/crypto/dsa/dsa_gen.c",
+        "libressl-2.8.3/crypto/dsa/dsa_key.c",
+        "libressl-2.8.3/crypto/dsa/dsa_lib.c",
+        "libressl-2.8.3/crypto/dsa/dsa_meth.c",
+        "libressl-2.8.3/crypto/dsa/dsa_ossl.c",
+        "libressl-2.8.3/crypto/dsa/dsa_pmeth.c",
+        "libressl-2.8.3/crypto/dsa/dsa_prn.c",
+        "libressl-2.8.3/crypto/dsa/dsa_sign.c",
+        "libressl-2.8.3/crypto/dsa/dsa_vrf.c",
+        "libressl-2.8.3/crypto/dso/dso_dlfcn.c",
+        "libressl-2.8.3/crypto/dso/dso_err.c",
+        "libressl-2.8.3/crypto/dso/dso_lib.c",
+        "libressl-2.8.3/crypto/dso/dso_null.c",
+        "libressl-2.8.3/crypto/dso/dso_openssl.c",
+        "libressl-2.8.3/crypto/ec/ec2_mult.c",
+        "libressl-2.8.3/crypto/ec/ec2_oct.c",
+        "libressl-2.8.3/crypto/ec/ec2_smpl.c",
+        "libressl-2.8.3/crypto/ec/ec_ameth.c",
+        "libressl-2.8.3/crypto/ec/ec_asn1.c",
+        "libressl-2.8.3/crypto/ec/ec_check.c",
+        "libressl-2.8.3/crypto/ec/ec_curve.c",
+        "libressl-2.8.3/crypto/ec/ec_cvt.c",
+        "libressl-2.8.3/crypto/ec/ec_err.c",
+        "libressl-2.8.3/crypto/ec/ec_key.c",
+        "libressl-2.8.3/crypto/ec/ec_lib.c",
+        "libressl-2.8.3/crypto/ec/ec_mult.c",
+        "libressl-2.8.3/crypto/ec/ec_oct.c",
+        "libressl-2.8.3/crypto/ec/ec_pmeth.c",
+        "libressl-2.8.3/crypto/ec/ec_print.c",
+        "libressl-2.8.3/crypto/ec/eck_prn.c",
+        "libressl-2.8.3/crypto/ec/ecp_mont.c",
+        "libressl-2.8.3/crypto/ec/ecp_nist.c",
+        "libressl-2.8.3/crypto/ec/ecp_oct.c",
+        "libressl-2.8.3/crypto/ec/ecp_smpl.c",
+        "libressl-2.8.3/crypto/ecdh/ech_err.c",
+        "libressl-2.8.3/crypto/ecdh/ech_key.c",
+        "libressl-2.8.3/crypto/ecdh/ech_lib.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_asn1.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_err.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_lib.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_ossl.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_sign.c",
+        "libressl-2.8.3/crypto/ecdsa/ecs_vrf.c",
+        "libressl-2.8.3/crypto/engine/eng_all.c",
+        "libressl-2.8.3/crypto/engine/eng_cnf.c",
+        "libressl-2.8.3/crypto/engine/eng_ctrl.c",
+        "libressl-2.8.3/crypto/engine/eng_dyn.c",
+        "libressl-2.8.3/crypto/engine/eng_err.c",
+        "libressl-2.8.3/crypto/engine/eng_fat.c",
+        "libressl-2.8.3/crypto/engine/eng_init.c",
+        "libressl-2.8.3/crypto/engine/eng_lib.c",
+        "libressl-2.8.3/crypto/engine/eng_list.c",
+        "libressl-2.8.3/crypto/engine/eng_openssl.c",
+        "libressl-2.8.3/crypto/engine/eng_pkey.c",
+        "libressl-2.8.3/crypto/engine/eng_table.c",
+        "libressl-2.8.3/crypto/engine/tb_asnmth.c",
+        "libressl-2.8.3/crypto/engine/tb_cipher.c",
+        "libressl-2.8.3/crypto/engine/tb_dh.c",
+        "libressl-2.8.3/crypto/engine/tb_digest.c",
+        "libressl-2.8.3/crypto/engine/tb_dsa.c",
+        "libressl-2.8.3/crypto/engine/tb_ecdh.c",
+        "libressl-2.8.3/crypto/engine/tb_ecdsa.c",
+        "libressl-2.8.3/crypto/engine/tb_pkmeth.c",
+        "libressl-2.8.3/crypto/engine/tb_rand.c",
+        "libressl-2.8.3/crypto/engine/tb_rsa.c",
+        "libressl-2.8.3/crypto/engine/tb_store.c",
+        "libressl-2.8.3/crypto/err/err.c",
+        "libressl-2.8.3/crypto/err/err_all.c",
+        "libressl-2.8.3/crypto/err/err_prn.c",
+        "libressl-2.8.3/crypto/evp/bio_b64.c",
+        "libressl-2.8.3/crypto/evp/bio_enc.c",
+        "libressl-2.8.3/crypto/evp/bio_md.c",
+        "libressl-2.8.3/crypto/evp/c_all.c",
+        "libressl-2.8.3/crypto/evp/digest.c",
+        "libressl-2.8.3/crypto/evp/e_aes.c",
+        "libressl-2.8.3/crypto/evp/e_aes_cbc_hmac_sha1.c",
+        "libressl-2.8.3/crypto/evp/e_bf.c",
+        "libressl-2.8.3/crypto/evp/e_camellia.c",
+        "libressl-2.8.3/crypto/evp/e_cast.c",
+        "libressl-2.8.3/crypto/evp/e_chacha.c",
+        "libressl-2.8.3/crypto/evp/e_chacha20poly1305.c",
+        "libressl-2.8.3/crypto/evp/e_des.c",
+        "libressl-2.8.3/crypto/evp/e_des3.c",
+        "libressl-2.8.3/crypto/evp/e_gost2814789.c",
+        "libressl-2.8.3/crypto/evp/e_idea.c",
+        "libressl-2.8.3/crypto/evp/e_null.c",
+        "libressl-2.8.3/crypto/evp/e_old.c",
+        "libressl-2.8.3/crypto/evp/e_rc2.c",
+        "libressl-2.8.3/crypto/evp/e_rc4.c",
+        "libressl-2.8.3/crypto/evp/e_rc4_hmac_md5.c",
+        "libressl-2.8.3/crypto/evp/e_xcbc_d.c",
+        "libressl-2.8.3/crypto/evp/encode.c",
+        "libressl-2.8.3/crypto/evp/evp_aead.c",
+        "libressl-2.8.3/crypto/evp/evp_enc.c",
+        "libressl-2.8.3/crypto/evp/evp_err.c",
+        "libressl-2.8.3/crypto/evp/evp_key.c",
+        "libressl-2.8.3/crypto/evp/evp_lib.c",
+        "libressl-2.8.3/crypto/evp/evp_pbe.c",
+        "libressl-2.8.3/crypto/evp/evp_pkey.c",
+        "libressl-2.8.3/crypto/evp/m_dss.c",
+        "libressl-2.8.3/crypto/evp/m_dss1.c",
+        "libressl-2.8.3/crypto/evp/m_ecdsa.c",
+        "libressl-2.8.3/crypto/evp/m_gost2814789.c",
+        "libressl-2.8.3/crypto/evp/m_gostr341194.c",
+        "libressl-2.8.3/crypto/evp/m_md4.c",
+        "libressl-2.8.3/crypto/evp/m_md5.c",
+        "libressl-2.8.3/crypto/evp/m_md5_sha1.c",
+        "libressl-2.8.3/crypto/evp/m_null.c",
+        "libressl-2.8.3/crypto/evp/m_ripemd.c",
+        "libressl-2.8.3/crypto/evp/m_sha1.c",
+        "libressl-2.8.3/crypto/evp/m_sigver.c",
+        "libressl-2.8.3/crypto/evp/m_streebog.c",
+        "libressl-2.8.3/crypto/evp/m_wp.c",
+        "libressl-2.8.3/crypto/evp/names.c",
+        "libressl-2.8.3/crypto/evp/p5_crpt.c",
+        "libressl-2.8.3/crypto/evp/p5_crpt2.c",
+        "libressl-2.8.3/crypto/evp/p_dec.c",
+        "libressl-2.8.3/crypto/evp/p_enc.c",
+        "libressl-2.8.3/crypto/evp/p_lib.c",
+        "libressl-2.8.3/crypto/evp/p_open.c",
+        "libressl-2.8.3/crypto/evp/p_seal.c",
+        "libressl-2.8.3/crypto/evp/p_sign.c",
+        "libressl-2.8.3/crypto/evp/p_verify.c",
+        "libressl-2.8.3/crypto/evp/pmeth_fn.c",
+        "libressl-2.8.3/crypto/evp/pmeth_gn.c",
+        "libressl-2.8.3/crypto/evp/pmeth_lib.c",
+        "libressl-2.8.3/crypto/ex_data.c",
+        "libressl-2.8.3/crypto/gost/gost2814789.c",
+        "libressl-2.8.3/crypto/gost/gost89_keywrap.c",
+        "libressl-2.8.3/crypto/gost/gost89_params.c",
+        "libressl-2.8.3/crypto/gost/gost89imit_ameth.c",
+        "libressl-2.8.3/crypto/gost/gost89imit_pmeth.c",
+        "libressl-2.8.3/crypto/gost/gost_asn1.c",
+        "libressl-2.8.3/crypto/gost/gost_err.c",
+        "libressl-2.8.3/crypto/gost/gostr341001.c",
+        "libressl-2.8.3/crypto/gost/gostr341001_ameth.c",
+        "libressl-2.8.3/crypto/gost/gostr341001_key.c",
+        "libressl-2.8.3/crypto/gost/gostr341001_params.c",
+        "libressl-2.8.3/crypto/gost/gostr341001_pmeth.c",
+        "libressl-2.8.3/crypto/gost/gostr341194.c",
+        "libressl-2.8.3/crypto/gost/streebog.c",
+        "libressl-2.8.3/crypto/hkdf/hkdf.c",
+        "libressl-2.8.3/crypto/hmac/hm_ameth.c",
+        "libressl-2.8.3/crypto/hmac/hm_pmeth.c",
+        "libressl-2.8.3/crypto/hmac/hmac.c",
+        "libressl-2.8.3/crypto/idea/i_cbc.c",
+        "libressl-2.8.3/crypto/idea/i_cfb64.c",
+        "libressl-2.8.3/crypto/idea/i_ecb.c",
+        "libressl-2.8.3/crypto/idea/i_ofb64.c",
+        "libressl-2.8.3/crypto/idea/i_skey.c",
+        "libressl-2.8.3/crypto/lhash/lh_stats.c",
+        "libressl-2.8.3/crypto/lhash/lhash.c",
+        "libressl-2.8.3/crypto/malloc-wrapper.c",
+        "libressl-2.8.3/crypto/md4/md4_dgst.c",
+        "libressl-2.8.3/crypto/md4/md4_one.c",
+        "libressl-2.8.3/crypto/md5/md5_dgst.c",
+        "libressl-2.8.3/crypto/md5/md5_one.c",
+        "libressl-2.8.3/crypto/mem_clr.c",
+        "libressl-2.8.3/crypto/mem_dbg.c",
+        "libressl-2.8.3/crypto/modes/cbc128.c",
+        "libressl-2.8.3/crypto/modes/ccm128.c",
+        "libressl-2.8.3/crypto/modes/cfb128.c",
+        "libressl-2.8.3/crypto/modes/ctr128.c",
+        "libressl-2.8.3/crypto/modes/cts128.c",
+        "libressl-2.8.3/crypto/modes/gcm128.c",
+        "libressl-2.8.3/crypto/modes/ofb128.c",
+        "libressl-2.8.3/crypto/modes/xts128.c",
+        "libressl-2.8.3/crypto/o_init.c",
+        "libressl-2.8.3/crypto/o_str.c",
+        "libressl-2.8.3/crypto/o_time.c",
+        "libressl-2.8.3/crypto/objects/o_names.c",
+        "libressl-2.8.3/crypto/objects/obj_dat.c",
+        "libressl-2.8.3/crypto/objects/obj_err.c",
+        "libressl-2.8.3/crypto/objects/obj_lib.c",
+        "libressl-2.8.3/crypto/objects/obj_xref.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_asn.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_cl.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_err.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_ext.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_ht.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_lib.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_prn.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_srv.c",
+        "libressl-2.8.3/crypto/ocsp/ocsp_vfy.c",
+        "libressl-2.8.3/crypto/pem/pem_all.c",
+        "libressl-2.8.3/crypto/pem/pem_err.c",
+        "libressl-2.8.3/crypto/pem/pem_info.c",
+        "libressl-2.8.3/crypto/pem/pem_lib.c",
+        "libressl-2.8.3/crypto/pem/pem_oth.c",
+        "libressl-2.8.3/crypto/pem/pem_pk8.c",
+        "libressl-2.8.3/crypto/pem/pem_pkey.c",
+        "libressl-2.8.3/crypto/pem/pem_seal.c",
+        "libressl-2.8.3/crypto/pem/pem_sign.c",
+        "libressl-2.8.3/crypto/pem/pem_x509.c",
+        "libressl-2.8.3/crypto/pem/pem_xaux.c",
+        "libressl-2.8.3/crypto/pem/pvkfmt.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_add.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_asn.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_attr.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_crpt.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_crt.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_decr.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_init.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_key.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_kiss.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_mutl.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_npas.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_p8d.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_p8e.c",
+        "libressl-2.8.3/crypto/pkcs12/p12_utl.c",
+        "libressl-2.8.3/crypto/pkcs12/pk12err.c",
+        "libressl-2.8.3/crypto/pkcs7/bio_pk7.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_asn1.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_attr.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_doit.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_lib.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_mime.c",
+        "libressl-2.8.3/crypto/pkcs7/pk7_smime.c",
+        "libressl-2.8.3/crypto/pkcs7/pkcs7err.c",
+        "libressl-2.8.3/crypto/poly1305/poly1305.c",
+        "libressl-2.8.3/crypto/rand/rand_err.c",
+        "libressl-2.8.3/crypto/rand/rand_lib.c",
+        "libressl-2.8.3/crypto/rand/randfile.c",
+        "libressl-2.8.3/crypto/rc2/rc2_cbc.c",
+        "libressl-2.8.3/crypto/rc2/rc2_ecb.c",
+        "libressl-2.8.3/crypto/rc2/rc2_skey.c",
+        "libressl-2.8.3/crypto/rc2/rc2cfb64.c",
+        "libressl-2.8.3/crypto/rc2/rc2ofb64.c",
+        "libressl-2.8.3/crypto/rc4/rc4_enc.c",
+        "libressl-2.8.3/crypto/rc4/rc4_skey.c",
+        "libressl-2.8.3/crypto/ripemd/rmd_dgst.c",
+        "libressl-2.8.3/crypto/ripemd/rmd_one.c",
+        "libressl-2.8.3/crypto/rsa/rsa_ameth.c",
+        "libressl-2.8.3/crypto/rsa/rsa_asn1.c",
+        "libressl-2.8.3/crypto/rsa/rsa_chk.c",
+        "libressl-2.8.3/crypto/rsa/rsa_crpt.c",
+        "libressl-2.8.3/crypto/rsa/rsa_depr.c",
+        "libressl-2.8.3/crypto/rsa/rsa_eay.c",
+        "libressl-2.8.3/crypto/rsa/rsa_err.c",
+        "libressl-2.8.3/crypto/rsa/rsa_gen.c",
+        "libressl-2.8.3/crypto/rsa/rsa_lib.c",
+        "libressl-2.8.3/crypto/rsa/rsa_meth.c",
+        "libressl-2.8.3/crypto/rsa/rsa_none.c",
+        "libressl-2.8.3/crypto/rsa/rsa_oaep.c",
+        "libressl-2.8.3/crypto/rsa/rsa_pk1.c",
+        "libressl-2.8.3/crypto/rsa/rsa_pmeth.c",
+        "libressl-2.8.3/crypto/rsa/rsa_prn.c",
+        "libressl-2.8.3/crypto/rsa/rsa_pss.c",
+        "libressl-2.8.3/crypto/rsa/rsa_saos.c",
+        "libressl-2.8.3/crypto/rsa/rsa_sign.c",
+        "libressl-2.8.3/crypto/rsa/rsa_x931.c",
+        "libressl-2.8.3/crypto/sha/sha1_one.c",
+        "libressl-2.8.3/crypto/sha/sha1dgst.c",
+        "libressl-2.8.3/crypto/sha/sha256.c",
+        "libressl-2.8.3/crypto/sha/sha512.c",
+        "libressl-2.8.3/crypto/stack/stack.c",
+        "libressl-2.8.3/crypto/ts/ts_asn1.c",
+        "libressl-2.8.3/crypto/ts/ts_conf.c",
+        "libressl-2.8.3/crypto/ts/ts_err.c",
+        "libressl-2.8.3/crypto/ts/ts_lib.c",
+        "libressl-2.8.3/crypto/ts/ts_req_print.c",
+        "libressl-2.8.3/crypto/ts/ts_req_utils.c",
+        "libressl-2.8.3/crypto/ts/ts_rsp_print.c",
+        "libressl-2.8.3/crypto/ts/ts_rsp_sign.c",
+        "libressl-2.8.3/crypto/ts/ts_rsp_utils.c",
+        "libressl-2.8.3/crypto/ts/ts_rsp_verify.c",
+        "libressl-2.8.3/crypto/ts/ts_verify_ctx.c",
+        "libressl-2.8.3/crypto/txt_db/txt_db.c",
+        "libressl-2.8.3/crypto/ui/ui_err.c",
+        "libressl-2.8.3/crypto/ui/ui_lib.c",
+        "libressl-2.8.3/crypto/ui/ui_openssl.c",
+        "libressl-2.8.3/crypto/ui/ui_util.c",
+        "libressl-2.8.3/crypto/whrlpool/wp_block.c",
+        "libressl-2.8.3/crypto/whrlpool/wp_dgst.c",
+        "libressl-2.8.3/crypto/x509/by_dir.c",
+        "libressl-2.8.3/crypto/x509/by_file.c",
+        "libressl-2.8.3/crypto/x509/by_mem.c",
+        "libressl-2.8.3/crypto/x509/x509_att.c",
+        "libressl-2.8.3/crypto/x509/x509_cmp.c",
+        "libressl-2.8.3/crypto/x509/x509_d2.c",
+        "libressl-2.8.3/crypto/x509/x509_def.c",
+        "libressl-2.8.3/crypto/x509/x509_err.c",
+        "libressl-2.8.3/crypto/x509/x509_ext.c",
+        "libressl-2.8.3/crypto/x509/x509_lu.c",
+        "libressl-2.8.3/crypto/x509/x509_obj.c",
+        "libressl-2.8.3/crypto/x509/x509_r2x.c",
+        "libressl-2.8.3/crypto/x509/x509_req.c",
+        "libressl-2.8.3/crypto/x509/x509_set.c",
+        "libressl-2.8.3/crypto/x509/x509_trs.c",
+        "libressl-2.8.3/crypto/x509/x509_txt.c",
+        "libressl-2.8.3/crypto/x509/x509_v3.c",
+        "libressl-2.8.3/crypto/x509/x509_vfy.c",
+        "libressl-2.8.3/crypto/x509/x509_vpm.c",
+        "libressl-2.8.3/crypto/x509/x509cset.c",
+        "libressl-2.8.3/crypto/x509/x509name.c",
+        "libressl-2.8.3/crypto/x509/x509rset.c",
+        "libressl-2.8.3/crypto/x509/x509spki.c",
+        "libressl-2.8.3/crypto/x509/x509type.c",
+        "libressl-2.8.3/crypto/x509/x_all.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_cache.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_data.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_lib.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_map.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_node.c",
+        "libressl-2.8.3/crypto/x509v3/pcy_tree.c",
+        "libressl-2.8.3/crypto/x509v3/v3_akey.c",
+        "libressl-2.8.3/crypto/x509v3/v3_akeya.c",
+        "libressl-2.8.3/crypto/x509v3/v3_alt.c",
+        "libressl-2.8.3/crypto/x509v3/v3_bcons.c",
+        "libressl-2.8.3/crypto/x509v3/v3_bitst.c",
+        "libressl-2.8.3/crypto/x509v3/v3_conf.c",
+        "libressl-2.8.3/crypto/x509v3/v3_cpols.c",
+        "libressl-2.8.3/crypto/x509v3/v3_crld.c",
+        "libressl-2.8.3/crypto/x509v3/v3_enum.c",
+        "libressl-2.8.3/crypto/x509v3/v3_extku.c",
+        "libressl-2.8.3/crypto/x509v3/v3_genn.c",
+        "libressl-2.8.3/crypto/x509v3/v3_ia5.c",
+        "libressl-2.8.3/crypto/x509v3/v3_info.c",
+        "libressl-2.8.3/crypto/x509v3/v3_int.c",
+        "libressl-2.8.3/crypto/x509v3/v3_lib.c",
+        "libressl-2.8.3/crypto/x509v3/v3_ncons.c",
+        "libressl-2.8.3/crypto/x509v3/v3_ocsp.c",
+        "libressl-2.8.3/crypto/x509v3/v3_pci.c",
+        "libressl-2.8.3/crypto/x509v3/v3_pcia.c",
+        "libressl-2.8.3/crypto/x509v3/v3_pcons.c",
+        "libressl-2.8.3/crypto/x509v3/v3_pku.c",
+        "libressl-2.8.3/crypto/x509v3/v3_pmaps.c",
+        "libressl-2.8.3/crypto/x509v3/v3_prn.c",
+        "libressl-2.8.3/crypto/x509v3/v3_purp.c",
+        "libressl-2.8.3/crypto/x509v3/v3_skey.c",
+        "libressl-2.8.3/crypto/x509v3/v3_sxnet.c",
+        "libressl-2.8.3/crypto/x509v3/v3_utl.c",
+        "libressl-2.8.3/crypto/x509v3/v3err.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSLDIR=\"/etc/ssl\"",
+        "-DOPENSSL_NO_ASM",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-Dcrypto44_EXPORTS",
+        "-fPIC",
+        "-fno-common",
+        "-Wno-pointer-sign",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":crypto44_inc_libressl_2_8_3_include",
+        ":crypto44_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+        ":crypto44_inc_libressl_2_8_3_crypto",
+        ":crypto44_inc_libressl_2_8_3_crypto_asn1",
+        ":crypto44_inc_libressl_2_8_3_crypto_bn",
+        ":crypto44_inc_libressl_2_8_3_crypto_dsa",
+        ":crypto44_inc_libressl_2_8_3_crypto_evp",
+        ":crypto44_inc_libressl_2_8_3_crypto_modes",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crypto44
+
+# BEGIN generated: crypto44_64
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py crypto44_64   -- review before committing.
+# cmake target: crypto44_64  ->  src/external/libressl-2.8.3/crypto44_64
+
+cc_header_root(
+    name = "crypto44_64_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
+    root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_64_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
+    root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "crypto44_64_inc_libressl_2_8_3_crypto",
+    headers = glob(["libressl-2.8.3/crypto/*.h", "libressl-2.8.3/crypto/**/*.h", "libressl-2.8.3/crypto/*.c"]),
+    root = "libressl-2.8.3/crypto",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "crypto44_64_obj",
+    srcs = [
+        "libressl-2.8.3/crypto/asn1/a_time_tm.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-DSIZEOF_TIME_T=8",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-fno-common",
+        "-Wno-pointer-sign",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":crypto44_64_inc_libressl_2_8_3_include",
+        ":crypto44_64_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+        ":crypto44_64_inc_libressl_2_8_3_crypto",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crypto44_64
+
+# BEGIN generated: ssl46
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ssl46   -- review before committing.
+# cmake target: ssl46  ->  ssl46
+
+cc_header_root(
+    name = "ssl46_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
+    root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ssl46_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
+    root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ssl46_inc_libressl_2_8_3_ssl",
+    headers = glob(["libressl-2.8.3/ssl/*.h", "libressl-2.8.3/ssl/**/*.h", "libressl-2.8.3/ssl/*.c"]),
+    root = "libressl-2.8.3/ssl",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ssl46_obj",
+    srcs = [
+        "libressl-2.8.3/ssl/bio_ssl.c",
+        "libressl-2.8.3/ssl/bs_ber.c",
+        "libressl-2.8.3/ssl/bs_cbb.c",
+        "libressl-2.8.3/ssl/bs_cbs.c",
+        "libressl-2.8.3/ssl/d1_both.c",
+        "libressl-2.8.3/ssl/d1_clnt.c",
+        "libressl-2.8.3/ssl/d1_enc.c",
+        "libressl-2.8.3/ssl/d1_lib.c",
+        "libressl-2.8.3/ssl/d1_meth.c",
+        "libressl-2.8.3/ssl/d1_pkt.c",
+        "libressl-2.8.3/ssl/d1_srtp.c",
+        "libressl-2.8.3/ssl/d1_srvr.c",
+        "libressl-2.8.3/ssl/pqueue.c",
+        "libressl-2.8.3/ssl/s3_cbc.c",
+        "libressl-2.8.3/ssl/s3_lib.c",
+        "libressl-2.8.3/ssl/ssl_algs.c",
+        "libressl-2.8.3/ssl/ssl_asn1.c",
+        "libressl-2.8.3/ssl/ssl_both.c",
+        "libressl-2.8.3/ssl/ssl_cert.c",
+        "libressl-2.8.3/ssl/ssl_ciph.c",
+        "libressl-2.8.3/ssl/ssl_clnt.c",
+        "libressl-2.8.3/ssl/ssl_err.c",
+        "libressl-2.8.3/ssl/ssl_init.c",
+        "libressl-2.8.3/ssl/ssl_lib.c",
+        "libressl-2.8.3/ssl/ssl_packet.c",
+        "libressl-2.8.3/ssl/ssl_pkt.c",
+        "libressl-2.8.3/ssl/ssl_rsa.c",
+        "libressl-2.8.3/ssl/ssl_sess.c",
+        "libressl-2.8.3/ssl/ssl_srvr.c",
+        "libressl-2.8.3/ssl/ssl_stat.c",
+        "libressl-2.8.3/ssl/ssl_tlsext.c",
+        "libressl-2.8.3/ssl/ssl_txt.c",
+        "libressl-2.8.3/ssl/ssl_versions.c",
+        "libressl-2.8.3/ssl/t1_clnt.c",
+        "libressl-2.8.3/ssl/t1_enc.c",
+        "libressl-2.8.3/ssl/t1_hash.c",
+        "libressl-2.8.3/ssl/t1_lib.c",
+        "libressl-2.8.3/ssl/t1_meth.c",
+        "libressl-2.8.3/ssl/t1_srvr.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-Dssl46_EXPORTS",
+        "-fPIC",
+        "-fno-common",
+        "-Wno-pointer-sign",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":ssl46_inc_libressl_2_8_3_include",
+        ":ssl46_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+        ":ssl46_inc_libressl_2_8_3_ssl",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ssl46
+
+# BEGIN generated: form dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs form   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "form_dylib",
+    dylib_name = "libform.5.4.dylib",
+    install_name = "/usr/lib/libform.5.4.dylib",
+    compatibility_version = "5.4.0",
+    current_version = "5.4.0",
+    objs = [
+        # form
+        ":form_obj",
+    ],
+    siblings = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: form dylibs
+
+# BEGIN generated: menu dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs menu   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "menu_dylib",
+    dylib_name = "libmenu.5.4.dylib",
+    install_name = "/usr/lib/libmenu.5.4.dylib",
+    compatibility_version = "5.4.0",
+    current_version = "5.4.0",
+    objs = [
+        # menu
+        ":menu_obj",
+    ],
+    siblings = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: menu dylibs
+
+# BEGIN generated: panel dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs panel   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "panel_dylib",
+    dylib_name = "libpanel.5.4.dylib",
+    install_name = "/usr/lib/libpanel.5.4.dylib",
+    compatibility_version = "5.4.0",
+    current_version = "5.4.0",
+    objs = [
+        # panel
+        ":panel_obj",
+    ],
+    siblings = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: panel dylibs
+
+# BEGIN generated: coretls dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs coretls   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "coretls_dylib",
+    dylib_name = "libcoretls.dylib",
+    install_name = "/usr/lib/libcoretls.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "167.0.0",
+    objs = [
+        # coretls
+        ":coretls_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls dylibs
+
+# BEGIN generated: objc-trampolines dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs objc-trampolines   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "objc-trampolines_dylib",
+    dylib_name = "libobjc-trampolines.dylib",
+    install_name = "/usr/lib/libobjc-trampolines.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "228.0.0",
+    objs = [
+        # objc-trampolines
+        ":objc-trampolines_obj",
+        ":objc-trampolines_obj2",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-not_for_dyld_shared_cache",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: objc-trampolines dylibs
+
+# BEGIN generated: crypto44 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs crypto44   -- review before committing.
+# Links 2 cmake object library/ies, 2 flag groups in total.
+# TODO the final link passes these file-bearing flags whose file is
+# not a source of this package:
+#   -Wl,-exported_symbols_list,/build/build/src/external/libressl-2.8.3/crypto.exp
+
+darwin_dylib(
+    name = "crypto44_dylib",
+    dylib_name = "libcrypto.44.dylib",
+    install_name = "/usr/lib/libcrypto.44.dylib",
+    compatibility_version = "45.0.0",
+    current_version = "45.1.0",
+    objs = [
+        # crypto44_64
+        ":crypto44_64_obj",
+        # crypto44
+        ":crypto44_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libressl_2_8_3_libcompat",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: crypto44 dylibs
+
+# BEGIN generated: ssl46 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ssl46   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final link passes these file-bearing flags whose file is
+# not a source of this package:
+#   -Wl,-exported_symbols_list,/build/build/src/external/libressl-2.8.3/ssl.exp
+
+darwin_dylib(
+    name = "ssl46_dylib",
+    dylib_name = "libssl.46.dylib",
+    install_name = "/usr/lib/libssl.46.dylib",
+    compatibility_version = "47.0.0",
+    current_version = "47.1.0",
+    objs = [
+        # ssl46
+        ":ssl46_obj",
+    ],
+    siblings = [
+        "//buck-src:crypto44_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libressl_2_8_3_libcompat",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ssl46 dylibs
+
+# BEGIN generated: tls18 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs tls18   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final link passes these file-bearing flags whose file is
+# not a source of this package:
+#   -Wl,-exported_symbols_list,/build/build/src/external/libressl-2.8.3/tls.exp
+
+darwin_dylib(
+    name = "tls18_dylib",
+    dylib_name = "libtls.18.dylib",
+    install_name = "/usr/lib/libtls.18.dylib",
+    compatibility_version = "19.0.0",
+    current_version = "19.1.0",
+    objs = [
+        # tls18
+        ":tls18_obj",
+    ],
+    siblings = [
+        "//buck-src:ssl46_dylib",
+        "//buck-src:crypto44_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libressl_2_8_3_libcompat",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tls18 dylibs
+
+# BEGIN generated: openssl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py openssl   -- review before committing.
+# cmake target: openssl  ->  src/external/libressl-2.8.3/openssl
+
+cc_header_root(
+    name = "openssl_inc_libressl_2_8_3_include",
+    headers = glob(["libressl-2.8.3/include/*.h", "libressl-2.8.3/include/**/*.h", "libressl-2.8.3/include/*.c"]),
+    root = "libressl-2.8.3/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "openssl_inc_libressl_2_8_3_include_compat",
+    headers = glob(["libressl-2.8.3/include/compat/*.h", "libressl-2.8.3/include/compat/**/*.h", "libressl-2.8.3/include/compat/*.c"]),
+    root = "libressl-2.8.3/include/compat",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "openssl_inc_libressl_2_8_3_apps_openssl",
+    headers = glob(["libressl-2.8.3/apps/openssl/*.h", "libressl-2.8.3/apps/openssl/**/*.h", "libressl-2.8.3/apps/openssl/*.c"]),
+    root = "libressl-2.8.3/apps/openssl",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "openssl_obj",
+    srcs = [
+        "libressl-2.8.3/apps/openssl/apps.c",
+        "libressl-2.8.3/apps/openssl/apps_posix.c",
+        "libressl-2.8.3/apps/openssl/asn1pars.c",
+        "libressl-2.8.3/apps/openssl/ca.c",
+        "libressl-2.8.3/apps/openssl/certhash.c",
+        "libressl-2.8.3/apps/openssl/ciphers.c",
+        "libressl-2.8.3/apps/openssl/compat/strtonum.c",
+        "libressl-2.8.3/apps/openssl/crl.c",
+        "libressl-2.8.3/apps/openssl/crl2p7.c",
+        "libressl-2.8.3/apps/openssl/dgst.c",
+        "libressl-2.8.3/apps/openssl/dh.c",
+        "libressl-2.8.3/apps/openssl/dhparam.c",
+        "libressl-2.8.3/apps/openssl/dsa.c",
+        "libressl-2.8.3/apps/openssl/dsaparam.c",
+        "libressl-2.8.3/apps/openssl/ec.c",
+        "libressl-2.8.3/apps/openssl/ecparam.c",
+        "libressl-2.8.3/apps/openssl/enc.c",
+        "libressl-2.8.3/apps/openssl/errstr.c",
+        "libressl-2.8.3/apps/openssl/gendh.c",
+        "libressl-2.8.3/apps/openssl/gendsa.c",
+        "libressl-2.8.3/apps/openssl/genpkey.c",
+        "libressl-2.8.3/apps/openssl/genrsa.c",
+        "libressl-2.8.3/apps/openssl/nseq.c",
+        "libressl-2.8.3/apps/openssl/ocsp.c",
+        "libressl-2.8.3/apps/openssl/openssl.c",
+        "libressl-2.8.3/apps/openssl/passwd.c",
+        "libressl-2.8.3/apps/openssl/pkcs12.c",
+        "libressl-2.8.3/apps/openssl/pkcs7.c",
+        "libressl-2.8.3/apps/openssl/pkcs8.c",
+        "libressl-2.8.3/apps/openssl/pkey.c",
+        "libressl-2.8.3/apps/openssl/pkeyparam.c",
+        "libressl-2.8.3/apps/openssl/pkeyutl.c",
+        "libressl-2.8.3/apps/openssl/prime.c",
+        "libressl-2.8.3/apps/openssl/rand.c",
+        "libressl-2.8.3/apps/openssl/req.c",
+        "libressl-2.8.3/apps/openssl/rsa.c",
+        "libressl-2.8.3/apps/openssl/rsautl.c",
+        "libressl-2.8.3/apps/openssl/s_cb.c",
+        "libressl-2.8.3/apps/openssl/s_client.c",
+        "libressl-2.8.3/apps/openssl/s_server.c",
+        "libressl-2.8.3/apps/openssl/s_socket.c",
+        "libressl-2.8.3/apps/openssl/s_time.c",
+        "libressl-2.8.3/apps/openssl/sess_id.c",
+        "libressl-2.8.3/apps/openssl/smime.c",
+        "libressl-2.8.3/apps/openssl/speed.c",
+        "libressl-2.8.3/apps/openssl/spkac.c",
+        "libressl-2.8.3/apps/openssl/ts.c",
+        "libressl-2.8.3/apps/openssl/verify.c",
+        "libressl-2.8.3/apps/openssl/version.c",
+        "libressl-2.8.3/apps/openssl/x509.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_ARC4RANDOM_BUF",
+        "-DHAVE_ARC4RANDOM_UNIFORM",
+        "-DHAVE_ASPRINTF",
+        "-DHAVE_CLOCK_GETTIME",
+        "-DHAVE_ERR_H",
+        "-DHAVE_GETENTROPY",
+        "-DHAVE_GETPAGESIZE",
+        "-DHAVE_MEMMEM",
+        "-DHAVE_STRCASECMP",
+        "-DHAVE_STRLCAT",
+        "-DHAVE_STRLCPY",
+        "-DHAVE_STRNDUP",
+        "-DHAVE_STRNLEN",
+        "-DHAVE_STRSEP",
+        "-DHAVE_TIMEGM",
+        "-DHAVE_TIMINGSAFE_BCMP",
+        "-DLIBRESSL_INTERNAL",
+        "-DOPENSSL_NO_HW_PADLOCK",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__BEGIN_HIDDEN_DECLS=",
+        "-D__END_HIDDEN_DECLS=",
+        "-fno-common",
+        "-Wno-pointer-sign",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":openssl_inc_libressl_2_8_3_include",
+        ":openssl_inc_libressl_2_8_3_include_compat",
+        "//darwin:sdk_env",
+        ":openssl_inc_libressl_2_8_3_apps_openssl",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: openssl
+
+# BEGIN generated: openssl binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries openssl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "openssl",
+    objs = [
+        # openssl
+        ":openssl_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ssl46_dylib",
+        "//buck-src:crypto44_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libressl_2_8_3_libcompat",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: openssl binary

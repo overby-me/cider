@@ -388,8 +388,8 @@ for t in $all_dylibs; do
 done
 [ "$n_first" -ge 30 ] && ok "$n_first firstpass dylibs link" ||
 	bad "expected >= 30 firstpass dylibs, got $n_first"
-[ "$n_linked" -ge 72 ] && ok "$n_linked dylibs link in total" ||
-	bad "expected >= 72 dylibs, got $n_linked"
+[ "$n_linked" -ge 129 ] && ok "$n_linked dylibs link in total" ||
+	bad "expected >= 129 dylibs, got $n_linked"
 
 say "== libSystem's umbrella records its members =="
 # The umbrella reexports each member, so its LC_REEXPORT_DYLIB entries are the
@@ -433,8 +433,8 @@ for t in $all_exes; do
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-[ "$n_exe" -ge 47 ] && ok "$n_exe guest executables link with nothing undefined" ||
-	bad "expected >= 47 executables, got $n_exe"
+[ "$n_exe" -ge 49 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 49 executables, got $n_exe"
 # launchd is PID 1 in the container and notifyd is the notification daemon: both are
 # MIG servers, and which generated stub each protocol contributes is not guessable --
 # launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
@@ -523,6 +523,14 @@ esac
 dy_syms=$(llvm-nm --defined-only "$dy" 2>/dev/null | awk '{print $3}' | sort -u)
 grep -qxF "__dyld_start" <<<"$dy_syms" &&
 	ok "dyld defines __dyld_start" || bad "dyld has no __dyld_start"
+
+say "== coverage against the reference graph =="
+# Measured, not estimated: scripts/buck-coverage.py counts every LINK EDGE in the
+# reference build.ninja and reports which have a buck2 target. Asserting a floor here
+# means a regression that drops targets cannot pass unnoticed.
+cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
+[ "${cov:-0}" -ge 200 ] && ok "$cov of the reference's 208 link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of 208"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

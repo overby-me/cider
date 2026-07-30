@@ -322,9 +322,40 @@ asserts the Mach-O type for them instead.
 
 95 checks pass, 121 dylibs and 47 executables link.
 
-**Next up:** the archives (18/37 -- the remaining ones are mostly the `*_static*` variants
-of libraries already ported), then libressl/openssl, zsh's codegen chain and the ncurses
-add-ons (form, menu, panel).
+### 2026-07-30 (midday) -- 97% of the reference's link edges
+
+**202 of 208 link edges are ported** (116/120 dylibs, 50/51 executables, 36/37 archives),
+and the suite asserts that floor, so a regression that drops targets cannot pass
+unnoticed. 129 dylibs and 49 executables link.
+
+This round: csu's whole crt family (crt0, crt1, crt1.10.5/10.6, dylib1, dylib1.10.5,
+lazydylib1, bundle1), libdispatch_static, libressl (libcrypto 543 sources, libssl, libtls)
+and its compat archive, bash with its own bison grammar, openssl, the ncurses add-ons
+(form, menu, panel), libcoretls, libobjc-trampolines and libgcc_s.
+
+Two fixes:
+
+  * **A dylib can link static archives too**, and the order LINK_LIBRARIES names them is
+    the resolution order. libcrypto's `_explicit_bzero` lives in libressl's compat
+    archive; without it the link fails on a symbol nothing else provides. Archives were
+    only wired into binaries before.
+  * The nested `label()` helper in the dylib generator is now `obj_label()`: three
+    separate patches shadowed it with a local and turned it into a str mid-function.
+    Renaming it removes the trap rather than fixing the third instance.
+
+Coverage also stopped under-reporting the HOST tier: libdarlingserver_duct_tape.a and
+liblibsimple_darlingserver.a are ported as cc_library targets that predate cc_static_lib,
+so ARCHIVE_ALIASES maps them.
+
+**What is left, and why:** libstdc++.6 (needs GCC's own libstdc++ header layout, including
+its generated config headers), zsh (its own `zsh.mdh` codegen chain), the firehose pair and
+launchd's notify.defs xtrace stubs (three mig instances that do not exist yet), and
+libsystem_kernel_static32 (the i386 data-model variant; this port is x86_64-only).
+
+96 checks pass.
+
+**Next up:** Phase 3 -- wiring the port into Nix (`nix/lib/buck2` from overby.me), which is
+the endpoint the rules were written to stay reachable from.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):
