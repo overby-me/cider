@@ -1499,30 +1499,52 @@ in the dump reads a source byte, and the graph derivation can run on a names-onl
 Content addressing then becomes an optimisation rather than the mechanism.
 
 
-## The coverage metric had a blind spot: 206/241, not 206/206
+## The coverage metric had a blind spot: 208/248, not 206/206
 
 Every progress report in this file, and several commit messages, quoted coverage against a
-denominator the script computed for itself. It classified each link edge by its output:
-`.dylib` or a `-dylib_install_name` flag meant a dylib, `.a` an archive, and no dot in the
-basename an executable. A loadable MODULE matches none of those: zsh's are `-shared` with no
-install name, and their basename contains a dot, so the executable test rejects them too.
-They fell through every branch and were counted in NO category, which quietly removed them
-from the denominator as well as the numerator.
+denominator the script computed for itself, by guessing each link edge's kind from its output
+NAME: `.dylib` or a `-dylib_install_name` flag meant a dylib, `.a` an archive, and a basename
+with no dot an executable. Guessing failed twice, in the same direction both times.
 
-There are 70 such link edges in the reference, 35 distinct modules, all of them zsh's
-(`complete.so`, `zle.so`, `curses.so`, `computil.so`, ...). None is ported. True coverage:
+  * A loadable MODULE matches none of those. zsh's are `-shared` with no install name, and
+    their basename contains a dot, so the executable test rejected them too. 70 edges, 35
+    distinct modules, counted in NO category -- removed from the denominator as well as the
+    numerator.
+  * Recognising an executable additionally required LINK_FLAGS to be non-empty. cmake passes
+    none when it links an ordinary HOST tool, so `src/hosttools/darling-coredump` and its
+    neighbours vanished the same way.
+
+Both are the same failure: an edge nothing recognises is an edge nobody counts, and the
+output said 100% precisely because it was blind. The fix is to stop guessing. cmake already
+states what each edge IS, in the ninja rule name, so classification now reads that:
+
+    C_SHARED_LIBRARY_LINKER / CXX_...   -> dylib, or module when the output ends in .so
+    C_EXECUTABLE_LINKER     / CXX_...   -> executable
+    C_STATIC_LIBRARY_LINKER / ASM_...   -> archive
+    phony                               -> not a link at all
+
+That last line matters as much as the others. 105 edges with object inputs are cmake OBJECT
+libraries, whose `.o` files are aggregated behind a phony and never linked; the LINK_FLAGS
+test had been excluding them by accident, and dropping the test without reading the rule
+briefly inflated the executable count from 51 to 166. Anything the rule table does not
+recognise is now printed as UNCLASSIFIED rather than skipped.
+
+True coverage:
 
     dylibs      119 / 119   (1 out of scope)
-    exes         51 /  51
+    exes         53 /  58   (3 out of scope)
     archives     36 /  36   (1 out of scope)
     modules       0 /  35
-    total       206 / 241   (85%)
+    total       208 / 248   (83%)
 
-The build work claimed is real -- 206 edges are ported and the suite is green on them. What
-was wrong is the completeness claim on top of it, and the failure mode is worth naming: a
-metric that skips what it cannot classify reads as 100% precisely when it is blindest, and
-nothing in the output said 35 edges had been dropped. scripts/buck-coverage.py now has a
-`module` category, so these are visible whether or not they are ported.
+The 40 that are missing are 35 zsh modules and 5 host tools (bsdln, elfdep, getuuid, wrapgen,
+darling-coredump). None is needed to build or run the system component: the host tools appear
+in the reference only under cmake's own bookkeeping edges (edit_cache, rebuild_cache, install,
+and `all` phonies), and darling-coredump is installed but never invoked by the build. The
+three cctools binaries are newly marked out of scope because the port consumes ld64 from Nix
+rather than building it -- which was always true and never shown.
 
-The gap does not block the bash milestone -- it is entirely zsh, a component bash does not
-need -- but it is the honest picture of where the port stands. Tracked as its own task.
+The build work claimed is real, and two more targets turned out to be ported than the metric
+knew (migcom and rtsig, which it looked for as `darwin_binary` while they are `cc_binary`).
+What was wrong is the completeness claim on top of it. The gap does not block the bash
+milestone, but it is the honest picture of where the port stands.

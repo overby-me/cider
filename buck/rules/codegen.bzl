@@ -397,3 +397,44 @@ configure_file = rule(
         "values": attrs.dict(attrs.string(), attrs.string(), default = {}),
     },
 )
+
+# ---------------------------------------------------------------------------
+# stdout_gen: a generated file that is a tool's STDOUT.
+#
+# host_gen passes the output as the last argument and script_gen passes it as argv, which
+# covers cmake's own generators; a plain shell redirect covers the rest. ICU's data file is
+# the case that needs it -- the reference unpacks it with `xz -d -k -c <src> > icudt66l.dat`
+# -- and the prefix cannot be laid out without it.
+#
+# The tool comes from PATH deliberately. The reference hardcodes the store path of the xz it
+# was configured with, which is exactly the kind of machine-specific value the port keeps out
+# of its rules; PATH is what both consumers already control (the dev shell here, the
+# derivation's nativeBuildInputs in the Nix endpoint).
+# ---------------------------------------------------------------------------
+
+_STDOUT_GEN_RUNNER = '''set -euo pipefail
+out="$1"; shift
+mkdir -p "$(dirname "$out")"
+exec "$@" > "$out"
+'''
+
+def _stdout_gen_impl(ctx):
+    runner = ctx.actions.write(ctx.label.name + "__run.sh", _STDOUT_GEN_RUNNER, is_executable = True)
+    out = ctx.actions.declare_output(ctx.attrs.out)
+    cmd = cmd_args(["bash", runner, out.as_output(), ctx.attrs.tool])
+    cmd.add(ctx.attrs.args)
+    cmd.add(ctx.attrs.srcs)
+    ctx.actions.run(cmd, category = "stdout_gen", identifier = ctx.label.name)
+    return [DefaultInfo(default_output = out)]
+
+stdout_gen = rule(
+    impl = _stdout_gen_impl,
+    attrs = {
+        # Arguments before the sources, since a tool's flags come first.
+        "args": attrs.list(attrs.string(), default = []),
+        "out": attrs.string(),
+        # Input files, appended last and materialized for the action.
+        "srcs": attrs.list(attrs.source(), default = []),
+        "tool": attrs.string(),
+    },
+)

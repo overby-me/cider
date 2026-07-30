@@ -79,6 +79,14 @@ pkgs.runCommand "darling-ninja-graph-${components}"
           cp "$f" "$d/"
         done )
     echo "install manifests: $(find $out/install-manifests -name cmake_install.cmake | wc -l)"
+
+    # And the SYMLINKS configure left in the build tree. Darling installs 39 of them through
+    # cmake/InstallSymlink.cmake, which in binary-packaging mode creates the link next to the
+    # thing it points at and then install()s it as an ordinary FILE. So the manifest names
+    # libexec/darling/bin/sh but is silent about what it points at, and the only place that
+    # answer exists is the link itself.
+    ( cd build && find . -type l -printf '%p\t%l\n' ) > $out/install-symlinks.tsv
+    echo "build-tree symlinks: $(wc -l < $out/install-symlinks.tsv)"
     echo "extracting ninja graph (no compilation) ..."
     ( cd build && ${rustNinja}/bin/ninja -f build.ninja -t graph-json ) > $out/graph.json
     echo "graph.json bytes: $(wc -c < $out/graph.json)"

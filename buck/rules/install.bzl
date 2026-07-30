@@ -33,6 +33,21 @@ def _prefix_tree_impl(ctx):
     for dest, src in ctx.attrs.files.items():
         mapping[dest] = src
 
+    # Second names for things already in the tree. Darling installs these through
+    # cmake/InstallSymlink.cmake, which creates the link in the build directory and then
+    # install()s it as an ordinary file -- so the manifests name bin/sh but never say what it
+    # points at, and nix/lib/darling-graph.nix records the link values separately.
+    #
+    # A prefix_tree is a symlink farm already, so a second name is the same artifact mapped
+    # twice: whatever a consumer does with the tree (dereference it, copy it, mount it) it
+    # gets a working bin/sh, and the basename it runs under -- which is exactly what bash
+    # reads from argv[0] to decide whether to start in POSIX mode -- comes from the
+    # destination, not from the artifact.
+    for dest, target in ctx.attrs.symlinks.items():
+        if target not in mapping:
+            fail("prefix_tree: %s is a link to %s, which nothing installs" % (dest, target))
+        mapping[dest] = mapping[target]
+
     staged = ctx.actions.symlinked_dir(out, mapping)
 
     return [
@@ -54,7 +69,45 @@ prefix_tree = rule(
         "entries": attrs.dict(attrs.string(), attrs.dep(), default = {}),
         # {prefix-relative destination: source file that goes there}
         "files": attrs.dict(attrs.string(), attrs.source(), default = {}),
+        # {prefix-relative destination: another destination in this tree it names}
+        "symlinks": attrs.dict(attrs.string(), attrs.string(), default = {}),
         # Prefixes compose: a subtree can be merged in whole.
         "deps": attrs.list(attrs.dep(), default = []),
+    },
+)
+
+# A directory installed WHOLE.
+#
+# cmake's install(DIRECTORY) copies a tree with optional exclusions, and Darling uses it for
+# the parts of the prefix that are data rather than build output: the base filesystem layout
+# (src/external/files/{System,usr,private,Library}), terminfo, the locale assets, zsh's help.
+# Ten of them, 4,600 files.
+#
+# It is a separate rule, and it lives in the PIN's package rather than in buck/prefix,
+# because a glob cannot cross a package boundary -- buck-src/<pin> owns its files, so only a
+# target there can name them. The prefix then maps the resulting directory into place, which
+# also keeps buck/prefix/BUCK a list of destinations instead of 4,600 literal paths.
+def _prefix_dir_impl(ctx):
+    out = ctx.actions.declare_output(ctx.label.name + "__dir", dir = True)
+
+    mapping = {}
+    for src in ctx.attrs.srcs:
+        rel = src.short_path
+        if ctx.attrs.strip:
+            if not rel.startswith(ctx.attrs.strip):
+                fail("prefix_dir: %s is not under strip prefix %s" % (rel, ctx.attrs.strip))
+            rel = rel[len(ctx.attrs.strip):].lstrip("/")
+        mapping[rel] = src
+
+    return [DefaultInfo(default_output = ctx.actions.symlinked_dir(out, mapping))]
+
+prefix_dir = rule(
+    impl = _prefix_dir_impl,
+    attrs = {
+        # Usually a glob, with the install's REGEX ... EXCLUDE patterns as glob excludes.
+        "srcs": attrs.list(attrs.source(), default = []),
+        # Package-relative prefix removed from each source, so the tree is rooted where the
+        # install destination expects rather than at the pin root.
+        "strip": attrs.string(default = ""),
     },
 )

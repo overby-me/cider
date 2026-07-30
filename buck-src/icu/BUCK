@@ -1,11 +1,26 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:codegen.bzl", "stdout_gen")
 load("//buck/rules:files.bzl", "export_file")
 
 # Targets over the icu pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
 # committed. One package per pin keeps what the Nix-lowered path has to parse
 # small enough to evaluate (plan/buck2-port.md phase 3).
+
+# ICU's locale data, which the reference does not build but UNPACKS: one xz -d of a
+# committed .dat.xz. Hand-written and outside the generated blocks below, because the
+# generator reads link edges and this is a CUSTOM_COMMAND -- but the prefix installs it as
+# usr/share/icu/icudt66l.dat and CoreFoundation reads it at startup, so the layout cannot
+# leave it out.
+stdout_gen(
+    name = "icudt66l_dat",
+    args = ["-d", "-k", "-c"],
+    out = "icudt66l.dat",
+    srcs = ["icuSources/data/out/icudt66l.dat.xz"],
+    tool = "xz",
+    visibility = ["PUBLIC"],
+)
 
 # BEGIN generated: icucore
 # GENERATED from the reference build.ninja by
