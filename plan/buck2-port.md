@@ -296,6 +296,26 @@ the mechanism is not that it links, but what it recorded:
 So the plan's "highest risk" item is now demonstrated on real libSystem members,
 not just a fixture.
 
+**The kernel's own FINAL pass links too** (`//buck-src:system_kernel_final`,
+`libsystem_kernel.dylib`, 919 KB, 1357 exports): it records libsystem_c,
+libcompiler_rt and libdyld by install_name, and its remaining undefined symbols are
+two-level imports from those siblings. Getting there needed two things the
+firstpass pass had been hiding, both of which only a final link can reveal:
+
+1. The ~30 `_dserver_rpc_*` symbols come from the GENERATED `rpc.c`, which the
+   generator had dropped as "a generated source". Adding it was not enough: the
+   reference force-includes `dserver-rpc-defs.h` into that ONE file, without which
+   it hits its own `#error Missing definitions`. So it needs its own flag group
+   (`emulation_rpc_obj`) rather than joining an existing one.
+2. libsystem_kernel links libsimple's DARWIN archive, which has to be on the link
+   line.
+
+`libkqueue` now compiles as well (the symlink-dereference and glob fixes were what
+it needed), so **libsystem_c is complete at all 44 object libraries** (1369
+exports). Four more members are ported as firstpass dylibs: libsystem_platform,
+libcompiler_rt, libsystem_dyld, and libsystem_m's objects (its dylib link is still
+open).
+
 Getting libsyscall + emulation compiling turned up four more findings:
 
 - **MIG here runs the same definitions THREE times** with different suffix sets
@@ -365,10 +385,7 @@ its objects are all there, so the generator now expands each cmake object librar
 into all of its flag-group targets, and the suite asserts symbols from more than one
 group (`_pthread_create` and `__pthread_list_lock` come from different groups).
 
-Open: `libkqueue` (the 44th object library libsystem_c links) does not compile.
-Its XNU-emulation headers need an include ordering this port has not worked out
-(`struct kevent64_s` comes out incomplete, `uint16_t` undeclared). libsystem_c is
-otherwise complete, and the firstpass dylib links without it.
+
 
 All three of the failures recorded earlier are now fixed, and each turned out to
 be a real finding:

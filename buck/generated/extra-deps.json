@@ -70,7 +70,7 @@
     "gen::ksmig_mach_vm_map_x86_64"
   ],
   "emulation": [
-    "//src/external/darlingserver:dserver_rpc",
+    "gen::emmig_signal_mach_exc",
     "//src/startup:rtsig_header",
     ":emulation_included_sources",
     "//src/include:darling_config"

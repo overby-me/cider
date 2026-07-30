@@ -79,6 +79,13 @@ CROSS_PACKAGE_ROOTS = {
     "src/external/darlingserver/include": "//src/external/darlingserver:dserver_headers",
 }
 
+# Force-included headers (-include) owned by another package, mapped to the target
+# that exports them: prefix_headers needs a FILE, and a rule's sources must live in
+# its own package.
+CROSS_PACKAGE_FILES = {
+    "src/duct/include/CrashReporterClient.h": "//src/duct:CrashReporterClient.h",
+}
+
 # Include dirs //darwin:sdk_env covers, relative to the repo root.
 ENV_INCLUDES = {
     "src/include",
@@ -419,7 +426,7 @@ def generate(target: str, edges):
         if g["prefix"]:
             w("    prefix_headers = [")
             for _, hp in g["prefix"]:
-                w(f'        "{hp}",')
+                w(f'        "{CROSS_PACKAGE_FILES.get(hp, hp)}",')
             w("    ],")
         w('    toolchain = "toolchains//:darwin_cc",')
         w("    deps = [")

@@ -65,6 +65,10 @@ targets=(
 	//buck-src:system_c_firstpass
 	//buck-src:system_kernel_firstpass
 	//buck-src:system_blocks_final
+	//buck-src:system_kernel_final
+	//buck-src:platform_firstpass
+	//buck-src:compiler_rt_firstpass
+	//buck-src:system_dyld_firstpass
 	//buck-src:system_asl_firstpass
 	//buck-src:system_coretls_firstpass
 	//buck-src:asl_ipc_mig
@@ -300,6 +304,26 @@ done
 undef=$(llvm-nm --undefined-only "$fin" 2>/dev/null | wc -l)
 [ "$undef" -eq 0 ] && ok "final pass has NO undefined symbols" ||
 	bad "final pass still has $undef undefined symbols"
+
+say "== the kernel's FINAL pass (the syscall boundary) =="
+kf=$(out_of //buck-src:system_kernel_final)
+kfid=$(llvm-objdump --macho --dylib-id "$kf" 2>/dev/null | tail -1)
+[ "$kfid" = "/usr/lib/system/libsystem_kernel.dylib" ] && ok "install_name is $kfid" ||
+	bad "install_name is '$kfid'"
+kloads=$(llvm-objdump --macho --private-headers "$kf" 2>/dev/null | grep -A2 LC_LOAD_DYLIB | grep "name " || true)
+for want in libsystem_c libcompiler_rt libdyld; do
+	case "$kloads" in
+	*"/usr/lib/system/$want.dylib"*) ok "kernel final records $want by install_name" ;;
+	*) bad "kernel final does not load $want" ;;
+	esac
+done
+# The dserver_rpc_* symbols come from the GENERATED rpc.c, which needs its own
+# flag group (dserver-rpc-defs.h force-included). Missing it links a firstpass
+# fine but breaks the final pass, so assert one of them is really defined.
+kf_syms=$(llvm-nm --defined-only "$kf" 2>/dev/null | awk '{print $3}')
+printf '%s\n' "$kf_syms" | grep -qx "_dserver_rpc_checkin" &&
+	ok "kernel final defines _dserver_rpc_checkin (generated rpc.c is linked in)" ||
+	bad "kernel final is missing _dserver_rpc_checkin"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

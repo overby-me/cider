@@ -12003,12 +12003,6 @@ cc_header_root(
 )
 
 cc_header_root(
-    name = "kqueue_inc_external_darlingserver_include",
-    headers = glob(["src/external/darlingserver/include/*.h", "src/external/darlingserver/include/**/*.h"]),
-    root = "src/external/darlingserver/include",
-)
-
-cc_header_root(
     name = "kqueue_inc_emulation_include_linux_premigration_ext",
     headers = glob(["xnu/darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/*.h", "xnu/darling/src/libsystem_kernel/emulation/include/linux_premigration/ext/**/*.h"]),
     root = "xnu/darling/src/libsystem_kernel/emulation/include/linux_premigration/ext",
@@ -12064,14 +12058,14 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/external/darlingserver:dserver_rpc",
         ":kqueue_inc_xnu",
-        ":kqueue_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
         ":kqueue_inc_emulation_include_linux_premigration_ext",
         ":kqueue_inc_src_common",
         ":kqueue_inc_include",
-        "//src/external/darlingserver:dserver_headers",
-        "//src/external/darlingserver:dserver_rpc",
-        "//darwin:sdk_env",
     ],
 )
 # END generated: kqueue
@@ -12087,7 +12081,7 @@ cc_objects(
 # Each cmake object library can be several targets here, one per flag group,
 # because cmake gives individual files their own defines.
 #
-# Not linked: kqueue -- see plan/buck2-port.md.
+# All 44 object libraries the reference links, kqueue included.
 #
 # A firstpass dylib resolves nothing, which is what makes it buildable before
 # libsystem_kernel exists.
@@ -12228,10 +12222,8 @@ darwin_dylib(
         ":libc-i386_obj",
         # libc-x86_64
         ":libc-x86_64_obj",
-        # kqueue: NOT linked. libkqueue does not compile yet -- its
-        # XNU-emulation headers need an include ordering this port has not worked
-        # out (struct kevent64_s comes out incomplete). Tracked in
-        # plan/buck2-port.md; the dylib is otherwise complete.
+        # kqueue
+        ":kqueue_obj",
         # libc-darwin
         ":libc-darwin_obj",
         # libc-stdio_legacy
@@ -14923,13 +14915,15 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/external/darlingserver:dserver_rpc",
         "//src/startup:rtsig_header",
         ":emulation_included_sources",
         "//src/include:darling_config",
         ":emulation_inc_darling_src_libsystem_kernel",
         "//src/external/darlingserver:dserver_headers",
         "//src/libsimple:libsimple_headers",
+    ],
+    gen_srcs = [
+        ":emmig_signal_mach_exc",
     ],
 )
 
@@ -14954,7 +14948,6 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/external/darlingserver:dserver_rpc",
         "//src/startup:rtsig_header",
         ":emulation_included_sources",
         "//src/include:darling_config",
@@ -15002,9 +14995,10 @@ darwin_dylib(
         ":libsyscall_obj5",
         # libsyscall_dynamic
         ":libsyscall_dynamic_obj",
-        # emulation (2 flag groups)
+        # emulation (2 flag groups) + the RPC source in its own group
         ":emulation_obj",
         ":emulation_obj2",
+        ":emulation_rpc_obj",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -15175,4 +15169,562 @@ mig_gen(
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: platform_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py platform_obj   -- review before committing.
+# cmake target: platform_obj  ->  src/external/libplatform/platform_obj
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libplatform/os/resolver
+
+cc_header_root(
+    name = "platform_inc_internal",
+    headers = glob(["libplatform/internal/*.h", "libplatform/internal/**/*.h"]),
+    root = "libplatform/internal",
+)
+
+cc_header_root(
+    name = "platform_inc_private",
+    headers = glob(["libplatform/private/*.h", "libplatform/private/**/*.h"]),
+    root = "libplatform/private",
+)
+
+cc_header_root(
+    name = "platform_inc_include",
+    headers = glob(["libplatform/include/*.h", "libplatform/include/**/*.h"]),
+    root = "libplatform/include",
+)
+
+cc_objects(
+    name = "platform_obj",
+    srcs = [
+        "libplatform/src/atomics/common/MKGetTimeBaseInfo.c",
+        "libplatform/src/atomics/init.c",
+        "libplatform/src/cachecontrol/generic/cache.c",
+        "libplatform/src/force_libplatform_to_build.c",
+        "libplatform/src/init.c",
+        "libplatform/src/os/alloc_once.c",
+        "libplatform/src/os/atomic.c",
+        "libplatform/src/os/lock.c",
+        "libplatform/src/os/semaphore.c",
+        "libplatform/src/setjmp/generic/setjmperr.c",
+        "libplatform/src/setjmp/generic/sigaction.c",
+        "libplatform/src/setjmp/generic/sigtramp.c",
+        "libplatform/src/simple/asl.c",
+        "libplatform/src/simple/getenv.c",
+        "libplatform/src/simple/string_io.c",
+        "libplatform/src/string/generic/bzero.c",
+        "libplatform/src/string/generic/ffsll.c",
+        "libplatform/src/string/generic/flsll.c",
+        "libplatform/src/string/generic/memccpy.c",
+        "libplatform/src/string/generic/memchr.c",
+        "libplatform/src/string/generic/memcmp.c",
+        "libplatform/src/string/generic/memmove.c",
+        "libplatform/src/string/generic/memset_pattern.c",
+        "libplatform/src/string/generic/strchr.c",
+        "libplatform/src/string/generic/strcmp.c",
+        "libplatform/src/string/generic/strcpy.c",
+        "libplatform/src/string/generic/strlcat.c",
+        "libplatform/src/string/generic/strlcpy.c",
+        "libplatform/src/string/generic/strlen.c",
+        "libplatform/src/string/generic/strncmp.c",
+        "libplatform/src/string/generic/strncpy.c",
+        "libplatform/src/string/generic/strnlen.c",
+        "libplatform/src/string/generic/strstr.c",
+        "libplatform/src/ucontext/generic/getmcontext.c",
+        "libplatform/src/ucontext/generic/makecontext.c",
+        "libplatform/src/ucontext/generic/setcontext.c",
+        "libplatform/src/ucontext/generic/swapcontext.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":platform_inc_internal",
+        ":platform_inc_private",
+        ":platform_inc_include",
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: platform_obj
+
+# BEGIN generated: compiler_rt_64bit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py compiler_rt_64bit   -- review before committing.
+# cmake target: compiler_rt_64bit  ->  src/external/compiler-rt/lib/builtins/compiler_rt_64bit
+# 141 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "compiler_rt_64bit_obj",
+    srcs = [
+        "compiler-rt/lib/builtins/absvdi2.c",
+        "compiler-rt/lib/builtins/absvsi2.c",
+        "compiler-rt/lib/builtins/absvti2.c",
+        "compiler-rt/lib/builtins/adddf3.c",
+        "compiler-rt/lib/builtins/addsf3.c",
+        "compiler-rt/lib/builtins/addtf3.c",
+        "compiler-rt/lib/builtins/addvdi3.c",
+        "compiler-rt/lib/builtins/addvsi3.c",
+        "compiler-rt/lib/builtins/addvti3.c",
+        "compiler-rt/lib/builtins/apple_versioning.c",
+        "compiler-rt/lib/builtins/ashldi3.c",
+        "compiler-rt/lib/builtins/ashlti3.c",
+        "compiler-rt/lib/builtins/ashrdi3.c",
+        "compiler-rt/lib/builtins/ashrti3.c",
+        "compiler-rt/lib/builtins/atomic_flag_clear.c",
+        "compiler-rt/lib/builtins/atomic_flag_clear_explicit.c",
+        "compiler-rt/lib/builtins/atomic_flag_test_and_set.c",
+        "compiler-rt/lib/builtins/atomic_flag_test_and_set_explicit.c",
+        "compiler-rt/lib/builtins/atomic_signal_fence.c",
+        "compiler-rt/lib/builtins/atomic_thread_fence.c",
+        "compiler-rt/lib/builtins/clear_cache.c",
+        "compiler-rt/lib/builtins/clzdi2.c",
+        "compiler-rt/lib/builtins/clzsi2.c",
+        "compiler-rt/lib/builtins/clzti2.c",
+        "compiler-rt/lib/builtins/cmpdi2.c",
+        "compiler-rt/lib/builtins/cmpti2.c",
+        "compiler-rt/lib/builtins/comparedf2.c",
+        "compiler-rt/lib/builtins/comparesf2.c",
+        "compiler-rt/lib/builtins/ctzdi2.c",
+        "compiler-rt/lib/builtins/ctzsi2.c",
+        "compiler-rt/lib/builtins/ctzti2.c",
+        "compiler-rt/lib/builtins/divdc3.c",
+        "compiler-rt/lib/builtins/divdf3.c",
+        "compiler-rt/lib/builtins/divdi3.c",
+        "compiler-rt/lib/builtins/divmoddi4.c",
+        "compiler-rt/lib/builtins/divmodsi4.c",
+        "compiler-rt/lib/builtins/divsc3.c",
+        "compiler-rt/lib/builtins/divsf3.c",
+        "compiler-rt/lib/builtins/divsi3.c",
+        "compiler-rt/lib/builtins/divtf3.c",
+        "compiler-rt/lib/builtins/divti3.c",
+        "compiler-rt/lib/builtins/divxc3.c",
+        "compiler-rt/lib/builtins/emutls.c",
+        "compiler-rt/lib/builtins/enable_execute_stack.c",
+        "compiler-rt/lib/builtins/eprintf.c",
+        "compiler-rt/lib/builtins/extendhfsf2.c",
+        "compiler-rt/lib/builtins/extendsfdf2.c",
+        "compiler-rt/lib/builtins/ffsdi2.c",
+        "compiler-rt/lib/builtins/ffsti2.c",
+        "compiler-rt/lib/builtins/fixdfdi.c",
+        "compiler-rt/lib/builtins/fixdfsi.c",
+        "compiler-rt/lib/builtins/fixdfti.c",
+        "compiler-rt/lib/builtins/fixsfdi.c",
+        "compiler-rt/lib/builtins/fixsfsi.c",
+        "compiler-rt/lib/builtins/fixsfti.c",
+        "compiler-rt/lib/builtins/fixunsdfdi.c",
+        "compiler-rt/lib/builtins/fixunsdfsi.c",
+        "compiler-rt/lib/builtins/fixunsdfti.c",
+        "compiler-rt/lib/builtins/fixunssfdi.c",
+        "compiler-rt/lib/builtins/fixunssfsi.c",
+        "compiler-rt/lib/builtins/fixunssfti.c",
+        "compiler-rt/lib/builtins/fixunsxfdi.c",
+        "compiler-rt/lib/builtins/fixunsxfsi.c",
+        "compiler-rt/lib/builtins/fixunsxfti.c",
+        "compiler-rt/lib/builtins/fixxfdi.c",
+        "compiler-rt/lib/builtins/fixxfti.c",
+        "compiler-rt/lib/builtins/floatsidf.c",
+        "compiler-rt/lib/builtins/floatsisf.c",
+        "compiler-rt/lib/builtins/floattidf.c",
+        "compiler-rt/lib/builtins/floattisf.c",
+        "compiler-rt/lib/builtins/floattixf.c",
+        "compiler-rt/lib/builtins/floatunsidf.c",
+        "compiler-rt/lib/builtins/floatunsisf.c",
+        "compiler-rt/lib/builtins/floatuntidf.c",
+        "compiler-rt/lib/builtins/floatuntisf.c",
+        "compiler-rt/lib/builtins/floatuntixf.c",
+        "compiler-rt/lib/builtins/gcc_personality_v0.c",
+        "compiler-rt/lib/builtins/int_util.c",
+        "compiler-rt/lib/builtins/lshrdi3.c",
+        "compiler-rt/lib/builtins/lshrti3.c",
+        "compiler-rt/lib/builtins/moddi3.c",
+        "compiler-rt/lib/builtins/modsi3.c",
+        "compiler-rt/lib/builtins/modti3.c",
+        "compiler-rt/lib/builtins/muldc3.c",
+        "compiler-rt/lib/builtins/muldf3.c",
+        "compiler-rt/lib/builtins/muldi3.c",
+        "compiler-rt/lib/builtins/mulodi4.c",
+        "compiler-rt/lib/builtins/mulosi4.c",
+        "compiler-rt/lib/builtins/muloti4.c",
+        "compiler-rt/lib/builtins/mulsc3.c",
+        "compiler-rt/lib/builtins/mulsf3.c",
+        "compiler-rt/lib/builtins/multf3.c",
+        "compiler-rt/lib/builtins/multi3.c",
+        "compiler-rt/lib/builtins/mulvdi3.c",
+        "compiler-rt/lib/builtins/mulvsi3.c",
+        "compiler-rt/lib/builtins/mulvti3.c",
+        "compiler-rt/lib/builtins/mulxc3.c",
+        "compiler-rt/lib/builtins/negdf2.c",
+        "compiler-rt/lib/builtins/negdi2.c",
+        "compiler-rt/lib/builtins/negsf2.c",
+        "compiler-rt/lib/builtins/negti2.c",
+        "compiler-rt/lib/builtins/negvdi2.c",
+        "compiler-rt/lib/builtins/negvsi2.c",
+        "compiler-rt/lib/builtins/negvti2.c",
+        "compiler-rt/lib/builtins/paritydi2.c",
+        "compiler-rt/lib/builtins/paritysi2.c",
+        "compiler-rt/lib/builtins/parityti2.c",
+        "compiler-rt/lib/builtins/popcountdi2.c",
+        "compiler-rt/lib/builtins/popcountsi2.c",
+        "compiler-rt/lib/builtins/popcountti2.c",
+        "compiler-rt/lib/builtins/powidf2.c",
+        "compiler-rt/lib/builtins/powisf2.c",
+        "compiler-rt/lib/builtins/powitf2.c",
+        "compiler-rt/lib/builtins/powixf2.c",
+        "compiler-rt/lib/builtins/subdf3.c",
+        "compiler-rt/lib/builtins/subsf3.c",
+        "compiler-rt/lib/builtins/subtf3.c",
+        "compiler-rt/lib/builtins/subvdi3.c",
+        "compiler-rt/lib/builtins/subvsi3.c",
+        "compiler-rt/lib/builtins/subvti3.c",
+        "compiler-rt/lib/builtins/trampoline_setup.c",
+        "compiler-rt/lib/builtins/truncdfhf2.c",
+        "compiler-rt/lib/builtins/truncdfsf2.c",
+        "compiler-rt/lib/builtins/truncsfhf2.c",
+        "compiler-rt/lib/builtins/ucmpdi2.c",
+        "compiler-rt/lib/builtins/ucmpti2.c",
+        "compiler-rt/lib/builtins/udivdi3.c",
+        "compiler-rt/lib/builtins/udivmoddi4.c",
+        "compiler-rt/lib/builtins/udivmodsi4.c",
+        "compiler-rt/lib/builtins/udivmodti4.c",
+        "compiler-rt/lib/builtins/udivsi3.c",
+        "compiler-rt/lib/builtins/udivti3.c",
+        "compiler-rt/lib/builtins/umoddi3.c",
+        "compiler-rt/lib/builtins/umodsi3.c",
+        "compiler-rt/lib/builtins/umodti3.c",
+        "compiler-rt/lib/builtins/x86_64/floatdidf.c",
+        "compiler-rt/lib/builtins/x86_64/floatdisf.c",
+        "compiler-rt/lib/builtins/x86_64/floatdixf.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+)
+
+cc_objects(
+    name = "compiler_rt_64bit_obj2",
+    srcs = [
+        "compiler-rt/lib/builtins/x86_64/floatundidf.S",
+        "compiler-rt/lib/builtins/x86_64/floatundisf.S",
+        "compiler-rt/lib/builtins/x86_64/floatundixf.S",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+)
+# END generated: compiler_rt_64bit
+
+# BEGIN generated: system_dyld_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_dyld_obj   -- review before committing.
+# cmake target: system_dyld_obj  ->  src/external/dyld/system_dyld_obj
+# 28 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dyld/launch-cache
+
+cc_header_root(
+    name = "system_dyld_inc_src",
+    headers = glob(["dyld/src/*.h", "dyld/src/**/*.h"]),
+    root = "dyld/src",
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld3",
+    headers = glob(["dyld/dyld3/*.h", "dyld/dyld3/**/*.h"]),
+    root = "dyld/dyld3",
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld3_shared_cache",
+    headers = glob(["dyld/dyld3/shared-cache/*.h", "dyld/dyld3/shared-cache/**/*.h"]),
+    root = "dyld/dyld3/shared-cache",
+)
+
+cc_header_root(
+    name = "system_dyld_inc_include_mach_o",
+    headers = glob(["dyld/include/mach-o/*.h", "dyld/include/mach-o/**/*.h"]),
+    root = "dyld/include/mach-o",
+)
+
+cc_header_root(
+    name = "system_dyld_inc_include",
+    headers = glob(["dyld/include/*.h", "dyld/include/**/*.h"]),
+    root = "dyld/include",
+)
+
+cc_header_root(
+    name = "system_dyld_inc_dyld",
+    headers = glob(["dyld/*.h", "dyld/**/*.h"]),
+    root = "dyld",
+)
+
+cc_objects(
+    name = "system_dyld_obj",
+    srcs = [
+        "dyld/dyld3/APIs.cpp",
+        "dyld/dyld3/APIs_macOS.cpp",
+        "dyld/dyld3/AllImages.cpp",
+        "dyld/dyld3/Closure.cpp",
+        "dyld/dyld3/ClosureBuilder.cpp",
+        "dyld/dyld3/ClosureFileSystemPhysical.cpp",
+        "dyld/dyld3/ClosureWriter.cpp",
+        "dyld/dyld3/Diagnostics.cpp",
+        "dyld/dyld3/Loading.cpp",
+        "dyld/dyld3/Logging.cpp",
+        "dyld/dyld3/MachOAnalyzer.cpp",
+        "dyld/dyld3/MachOAnalyzerSet.cpp",
+        "dyld/dyld3/MachOFile.cpp",
+        "dyld/dyld3/MachOLoaded.cpp",
+        "dyld/dyld3/PathOverrides.cpp",
+        "dyld/dyld3/RootsChecker.cpp",
+        "dyld/dyld3/Tracing.cpp",
+        "dyld/dyld3/libdyldEntryVector.cpp",
+        "dyld/dyld3/shared-cache/DyldSharedCache.cpp",
+        "dyld/src/dyldAPIsInLibSystem.cpp",
+        "dyld/src/dyldLock.cpp",
+        "dyld/src/dyld_process_info.cpp",
+        "dyld/src/dyld_process_info_notify.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-DBUILDING_LIBDYLD=1",
+    ],
+    prefix_headers = [
+        "//src/duct:CrashReporterClient.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_dyld_inc_src",
+        ":system_dyld_inc_dyld3",
+        ":system_dyld_inc_dyld3_shared_cache",
+        ":system_dyld_inc_include_mach_o",
+        ":system_dyld_inc_include",
+        "//darwin:sdk_env",
+        ":system_dyld_inc_dyld",
+    ],
+)
+
+cc_objects(
+    name = "system_dyld_obj2",
+    srcs = [
+        "dyld/src/dyldLibSystemGlue.c",
+        "dyld/src/dyld_stub_binder.S",
+        "dyld/src/start_glue.S",
+        "dyld/src/threadLocalHelpers.S",
+        "dyld/src/threadLocalVariables.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBCPP_NO_EXCEPTIONS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fno-exceptions",
+        "-fno-rtti",
+        "-DBUILDING_LIBDYLD=1",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":system_dyld_inc_src",
+        ":system_dyld_inc_dyld3",
+        ":system_dyld_inc_dyld3_shared_cache",
+        ":system_dyld_inc_include_mach_o",
+        ":system_dyld_inc_include",
+        "//darwin:sdk_env",
+        ":system_dyld_inc_dyld",
+    ],
+)
+# END generated: system_dyld_obj
+
+darwin_dylib(
+    name = "platform_firstpass",
+    dylib_name = "libplatform_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_platform.dylib",
+    objs = [
+        ":platform_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "compiler_rt_firstpass",
+    dylib_name = "libcompiler_rt_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libcompiler_rt.dylib",
+    objs = [
+        ":compiler_rt_64bit_obj",
+        ":compiler_rt_64bit_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_dyld_firstpass",
+    dylib_name = "libsystem_dyld_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libdyld.dylib",
+    objs = [
+        ":system_dyld_obj",
+        ":system_dyld_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_m_firstpass",
+    dylib_name = "libsystem_m_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_m.dylib",
+    objs = [
+        "//src/libm:system_m_obj",
+        "//src/libm:system_m_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# The kernel's FINAL pass. libsystem_kernel's add_circular names system_c,
+# compiler_rt and system_dyld as siblings; all three exist as firstpass dylibs.
+darwin_dylib(
+    name = "system_kernel_final",
+    dylib_name = "libsystem_kernel.dylib",
+    install_name = "/usr/lib/system/libsystem_kernel.dylib",
+    objs = [
+        # libsyscall (5 flag groups)
+        ":libsyscall_obj",
+        ":libsyscall_obj2",
+        ":libsyscall_obj3",
+        ":libsyscall_obj4",
+        ":libsyscall_obj5",
+        # libsyscall_dynamic
+        ":libsyscall_dynamic_obj",
+        # emulation (2 flag groups) + the RPC source in its own group
+        ":emulation_obj",
+        ":emulation_obj2",
+        ":emulation_rpc_obj",
+    ],
+    siblings = [
+        ":system_c_firstpass",
+        ":compiler_rt_firstpass",
+        ":system_dyld_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        # libsimple, built for Darwin: the emulation layer uses its lock
+        # primitives, and a static archive has to be ON the link line.
+        "//src/libsimple:libsimple_darling",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated-mig: emulation
+# GENERATED by scripts/gen-mig-from-ninja.py -- review before committing.
+#
+# One mig_gen per (definition, pass): the same definitions are run through
+# mig several times with different suffix sets. Multiarch rides in the
+# suffix (-x86_64-User.c), so the rule needs no arch concept of its own.
+
+mig_gen(
+    name = "emmig_signal_mach_exc",
+    defs = "xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_exc.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/emulation/src/other",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//darwin:sdk_env",
+    ],
+    compile_srcs = ["signal/mach_excUser.c"],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "emmig_signal_exc",
+    defs = "xnu/darling/src/libsystem_kernel/emulation/src/other/signal/exc.defs",
+    out_base = "xnu/darling/src/libsystem_kernel/emulation/src/other",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//src/external/darlingserver:dserver_rpc",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated-mig: emulation
+
+# The generated darlingserver RPC library source, compiled the way the reference
+# does: with dserver-rpc-defs.h force-included. rpc.c refuses to compile without
+# it ("#error Missing definitions"), and it defines every dserver_rpc_* symbol the
+# emulation layer calls -- so the FINAL pass cannot link without this target. (The
+# firstpass pass hides the gap, since it resolves nothing by design.)
+cc_objects(
+    name = "emulation_rpc_obj",
+    gen_srcs = ["//src/external/darlingserver:dserver_rpc"],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/emulation/include/linux_premigration/resources/dserver-rpc-defs.h",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
 )
