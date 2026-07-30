@@ -451,7 +451,6 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
-        "job_forwardServer.c",
         "job_forwardUser.c",
     ],
     mig_sh = "//buck-src:mig.sh",
@@ -472,7 +471,6 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
-        "job_replyServer.c",
         "job_replyUser.c",
     ],
     mig_sh = "//buck-src:mig.sh",
@@ -495,7 +493,6 @@ mig_gen(
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
         "jobServer.c",
-        "jobUser.c",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -515,7 +512,6 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
-        "helperServer.c",
         "helperUser.c",
     ],
     mig_sh = "//buck-src:mig.sh",

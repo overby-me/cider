@@ -407,11 +407,8 @@ say "== guest EXECUTABLES =="
 # Discovered from the graph, like the dylibs: every executable target that exists.
 exe_pkgs="//buck-src: + //src/shellspawn: + //src/vchroot: + //src/launchd:"
 # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
-# launchd is generated but does not compile yet: its MIG-generated server stubs use
-# job_t from its own core.h, and the include roots the port stages for them are not
-# right yet. It is the only such target.
-exe_skip="dyld launchd"
-exe_blocked="launchd"
+exe_skip="dyld"
+exe_blocked=""
 all_exes=$(buck2 uquery "kind('darwin_binary', $exe_pkgs)" 2>/dev/null || true)
 n_exe=0
 for t in $all_exes; do
@@ -427,8 +424,20 @@ for t in $all_exes; do
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-[ "$n_exe" -ge 45 ] && ok "$n_exe guest executables link with nothing undefined" ||
-	bad "expected >= 45 executables, got $n_exe"
+[ "$n_exe" -ge 47 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 47 executables, got $n_exe"
+# launchd is PID 1 in the container and notifyd is the notification daemon: both are
+# MIG servers, and which generated stub each protocol contributes is not guessable --
+# launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
+# declare job_t.
+for t in //src/launchd:launchd //buck-src:notifyd; do
+	hdr=$(llvm-objdump --macho --private-headers "$(out_of "$t")" 2>/dev/null |
+		grep -m1 MH_MAGIC || true)
+	case "$hdr" in
+	*EXECUTE*NOUNDEFS*) ok "${t##*:} links with nothing undefined" ;;
+	*) bad "${t##*:}: $hdr" ;;
+	esac
+done
 for name in $exe_blocked; do
 	if buck2 build "//src/launchd:$name" >/dev/null 2>&1; then
 		bad "$name builds now -- drop it from the blocked list"

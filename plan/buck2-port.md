@@ -266,8 +266,33 @@ also needs its own codegen chain (`zsh.mdh`), and notifyd needs one more mig.
 
 94 checks pass.
 
-**Next up:** launchd (the include-root shape for generated stubs), then the higher-level
-frameworks now that CoreFoundation is up.
+### 2026-07-30 (mid-morning) -- launchd and notifyd, the two MIG servers
+
+**launchd links** (a Mach-O EXECUTE with NOUNDEFS, PIE), and so does **notifyd**: 47
+executables and 93 dylibs. Neither was a matter of missing libraries -- both are MIG
+SERVERS, and that surfaced two things a generator cannot guess:
+
+  * **Which generated stub a protocol contributes is per-consumer.** launchd compiles
+    `jobServer.c` (it serves that protocol) but `job_forwardUser.c` (it calls out on
+    that one), and `internal.defs` contributes BOTH. Exporting both sides everywhere
+    pulled in code needing types the includer never sees -- job_forwardServer.c wants
+    `job_t`, which vproc_internal.h only declares once `job_MSG_COUNT` is defined. The
+    reference's own unit list is the authority, and each mig_gen's `compile_srcs` now
+    matches it exactly.
+  * **The same .defs run twice is two targets.** notifyd generates `mach/notify.defs`
+    with its own server prefix (`do_`), so it cannot share launchd's mig target: the
+    subsystem symbol differs (`_do_notify_subsystem`).
+
+And one more materialisation rule: buck2 also rejects a symlink whose target LEAVES the
+cell, and libnotify ships `darling/src/notify.defs` pointing five levels up into the
+repo's SDK farm -- a depth that only made sense in a different tree. Those are
+re-pointed at the same file inside buck-src now (scripts/buck-src-normalise.py, which
+buck-src.sh calls), together with the "." -component case.
+
+95 checks pass.
+
+**Next up:** the higher-level frameworks now that CoreFoundation is up, and zsh's own
+codegen chain (`zsh.mdh`) -- the last two executables.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

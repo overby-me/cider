@@ -25663,11 +25663,12 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src:notifymig_notifyd_notify_ipc",
-        "//buck-src:launchdmig_notify",
+        ":notifydmig_notify",
         ":notifyd_inc_libnotify",
     ],
     gen_srcs = [
         "//buck-src:notifymig_notifyd_notify_ipc",
+        ":notifydmig_notify",
     ],
     visibility = ["PUBLIC"],
 )
@@ -26691,7 +26692,6 @@ mig_gen(
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
         "notifyServer.c",
-        "notifyUser.c",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -26714,7 +26714,56 @@ mig_gen(
     xtrace_suffix = "XtraceMig.c",
     compile_srcs = [
         "mach_excServer.c",
-        "mach_excUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: notifyd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries notifyd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "notifyd",
+    objs = [
+        # notifyd
+        ":notifyd_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notifyd binary
+
+# notifyd's own run of notify.defs: the same definitions as launchd's, but
+# generated with notifyd's server prefix (do_), so the two cannot share one
+# mig target -- the subsystem symbol differs.
+mig_gen(
+    name = "notifydmig_notify",
+    defs = "libnotify/notifyd/notify.defs",
+    out_base = "libnotify/notifyd",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "notifyServer.c",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",

@@ -226,7 +226,8 @@
   "notifyd": [
     "//buck-src:notifymig_notifyd_notify_ipc",
     "gen://buck-src:notifymig_notifyd_notify_ipc",
-    "//buck-src:launchdmig_notify"
+    ":notifydmig_notify",
+    "gen::notifydmig_notify"
   ],
   "aslmanager": [
     ":asl_ipc_mig"
