@@ -6,7 +6,7 @@
 # Regenerate after materializing more pins:
 #   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys > buck-src/sdk_headers.bzl
 
-# ./: 3563 headers
+# ./: 3565 headers
 SDK_ROOT = {
     "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
     "BerkeleyDB/db.h": "BerkeleyDB/db/build_unix/db.h",
@@ -844,6 +844,8 @@ SDK_ROOT = {
     "darling/emulation/xnu_syscall/bsd/helper/misc/sysctl_unspec.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/misc/sysctl_unspec.h",
     "darling/emulation/xnu_syscall/bsd/helper/misc/sysctl_vm.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/misc/sysctl_vm.h",
     "darling/emulation/xnu_syscall/bsd/helper/network/duct.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h",
+    "darling/emulation/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/getattrlist_generic.c",
+    "darling/emulation/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c",
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_addr.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_addr.h",
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_join.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_session_join.h",
     "darling/emulation/xnu_syscall/bsd/impl/audit/audit_session_port.h": "xnu/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/audit/audit_session_port.h",

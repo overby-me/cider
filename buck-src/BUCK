@@ -199,144 +199,6 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 
-# ---------------------------------------------------------------------------
-# libsystem_blocks (libclosure): the Block runtime, and the first real libSystem
-# sublibrary in the port. Mirrors libclosure/CMakeLists.txt, whose add_circular
-# call declares system_kernel / system_malloc / system_pthread / system_c as
-# siblings.
-#
-# Only the FIRSTPASS dylib is built, and that is not a shortcut: a firstpass link
-# resolves nothing by design (-flat_namespace -undefined suppress), so it is
-# precisely the pass that CAN be built before its siblings exist. The final pass
-# lands when those four are ported.
-#
-# NOTE these targets live in THIS file rather than a BUCK file inside
-# libclosure/. A BUCK file there would take that subtree out of the buck-src
-# package, and the generated SDK header map points into these trees -- so its
-# entries would stop resolving. Everything over the materialized pins belongs to
-# this one package.
-# ---------------------------------------------------------------------------
-
-# libclosure's own directory is on its include path (Block_private.h).
-cc_header_root(
-    name = "blocks_headers",
-    headers = glob(["libclosure/*.h"]),
-    root = "libclosure",
-    visibility = ["PUBLIC"],
-)
-
-# From the reference build's build.ninja, not from reading the CMakeLists:
-# -nostdinc (so the SDK roots must supply everything) and
-# -D_LIBC_NO_FEATURE_VERIFICATION, which is inherited from a parent scope.
-BLOCKS_FLAGS = [
-    "-nostdinc",
-    "-DHAVE_STDINT_H=1",
-    "-D_LIBC_NO_FEATURE_VERIFICATION",
-]
-
-cc_objects(
-    name = "system_blocks_obj",
-    srcs = [
-        "libclosure/data.c",
-        # Objective-C and C++ in one library; the rules pick the driver from the
-        # file extension.
-        "libclosure/data.m",
-        "libclosure/runtime.cpp",
-    ],
-    compiler_flags = BLOCKS_FLAGS,
-    toolchain = "toolchains//:darwin_cc",
-    deps = [
-        ":blocks_headers",
-        "//darwin:sdk_env",
-    ],
-)
-
-darwin_dylib(
-    name = "system_blocks_firstpass",
-    dylib_name = "libsystem_blocks_firstpass.dylib",
-    firstpass = True,
-    install_name = "/usr/lib/system/libsystem_blocks.dylib",
-    objs = [":system_blocks_obj"],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
-
-# ---------------------------------------------------------------------------
-# The firstpass dylibs for the three members above. Same reasoning as
-# libsystem_blocks: a firstpass link resolves nothing, so it can be built before
-# its siblings exist. install_names are the ones the reference build's -dylib_file
-# map uses.
-darwin_dylib(
-    name = "keymgr_firstpass",
-    dylib_name = "libkeymgr_firstpass.dylib",
-    firstpass = True,
-    install_name = "/usr/lib/system/libkeymgr.dylib",
-    objs = [":keymgr_obj"],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
-
-darwin_dylib(
-    name = "system_pthread_firstpass",
-    dylib_name = "libsystem_pthread_firstpass.dylib",
-    firstpass = True,
-    install_name = "/usr/lib/system/libsystem_pthread.dylib",
-    # All SEVEN flag groups, not just the first. Naming one group silently drops
-    # objects: the dylib still links, but symbols defined in the others come out
-    # undefined -- which is how this target produced an illegal text reloc to
-    # __pthread_list_lock, a symbol its own pthread.c defines.
-    objs = [
-        ":system_pthread_obj",
-        ":system_pthread_obj2",
-        ":system_pthread_obj3",
-        ":system_pthread_obj4",
-        ":system_pthread_obj5",
-        ":system_pthread_obj6",
-        ":system_pthread_obj7",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
-
-darwin_dylib(
-    name = "system_malloc_firstpass",
-    dylib_name = "libsystem_malloc_firstpass.dylib",
-    firstpass = True,
-    install_name = "/usr/lib/system/libsystem_malloc.dylib",
-    objs = [
-        ":system_malloc_obj",
-        ":system_malloc_obj2",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
-
-# GUEST-side MIG, as opposed to the kernel-side MIG that duct-tape uses: the
-# default cmake/mig.cmake suffixes (User.c / .h / Server.c / Server.h) and the
-# Darwin compile environment rather than the XNU one.
-#
-# asl's sources include <asl_ipc.h>, which is generated here. That include is
-# exactly where the nix-ninja full-graph build stalls (its -I for asl_ipc.h
-# resolves at subgraph scope but comes back empty at full-graph scope); under
-# buck2 it is just a dependency edge, and the header only exists on the include
-# path of targets that declare it.
-mig_gen(
-    name = "asl_ipc_mig",
-    defs = "syslog/aslcommon/asl_ipc.defs",
-    out_base = "syslog/aslcommon",
-    mig_sh = "//buck-src:mig.sh",
-    migcom = "//buck-src:migcom",
-    deps = [
-        ":system_asl_inc_libsystem_asl_tproj_include",
-        "//darwin:sdk_env",
-    ],
-    visibility = ["PUBLIC"],
-)
-
 # BEGIN generated: system_asl_obj
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py system_asl_obj   -- review before committing.
@@ -12456,12 +12318,6 @@ cc_header_root(
     root = "xnu/osfmk",
 )
 
-cc_header_root(
-    name = "libsyscall_inc_external_darlingserver_include",
-    headers = glob(["src/external/darlingserver/include/*.h", "src/external/darlingserver/include/**/*.h"]),
-    root = "src/external/darlingserver/include",
-)
-
 cc_objects(
     name = "libsyscall_obj",
     srcs = [
@@ -12951,7 +12807,7 @@ cc_objects(
         ":ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        ":libsyscall_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
     ],
     gen_srcs = [
         ":ksmig_mach_clock_priv_x86_64",
@@ -13146,7 +13002,7 @@ cc_objects(
         ":ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        ":libsyscall_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
     ],
 )
 
@@ -13260,7 +13116,7 @@ cc_objects(
         ":ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        ":libsyscall_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
     ],
 )
 
@@ -13337,7 +13193,7 @@ cc_objects(
         ":ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        ":libsyscall_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
     ],
 )
 
@@ -13414,7 +13270,7 @@ cc_objects(
         ":ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        ":libsyscall_inc_external_darlingserver_include",
+        "//src/external/darlingserver:dserver_headers",
     ],
 )
 # END generated: libsyscall
@@ -14626,3 +14482,697 @@ mig_gen(
     visibility = ["PUBLIC"],
 )
 # END generated-mig: libsyscall
+
+# BEGIN generated: libsyscall_dynamic
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libsyscall_dynamic   -- review before committing.
+# cmake target: libsyscall_dynamic  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall_dynamic
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_string",
+    headers = glob(["xnu/libsyscall/wrappers/string/*.h", "xnu/libsyscall/wrappers/string/**/*.h"]),
+    root = "xnu/libsyscall/wrappers/string",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_spawn",
+    headers = glob(["xnu/libsyscall/wrappers/spawn/*.h", "xnu/libsyscall/wrappers/spawn/**/*.h"]),
+    root = "xnu/libsyscall/wrappers/spawn",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers_libproc",
+    headers = glob(["xnu/libsyscall/wrappers/libproc/*.h", "xnu/libsyscall/wrappers/libproc/**/*.h"]),
+    root = "xnu/libsyscall/wrappers/libproc",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_os",
+    headers = glob(["xnu/libsyscall/os/*.h", "xnu/libsyscall/os/**/*.h"]),
+    root = "xnu/libsyscall/os",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_mach",
+    headers = glob(["xnu/libsyscall/mach/*.h", "xnu/libsyscall/mach/**/*.h"]),
+    root = "xnu/libsyscall/mach",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_libsyscall_wrappers",
+    headers = glob(["xnu/libsyscall/wrappers/*.h", "xnu/libsyscall/wrappers/**/*.h"]),
+    root = "xnu/libsyscall/wrappers",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel",
+)
+
+cc_header_root(
+    name = "libsyscall_dynamic_inc_osfmk",
+    headers = glob(["xnu/osfmk/*.h", "xnu/osfmk/**/*.h"]),
+    root = "xnu/osfmk",
+)
+
+cc_objects(
+    name = "libsyscall_dynamic_obj",
+    srcs = [
+        "xnu/libsyscall/wrappers/_libc_funcptr.c",
+        "xnu/libsyscall/wrappers/_libkernel_init.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-fblocks",
+        "-ffreestanding",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+        "-Wl,-bind_at_load",
+        "-std=c99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+        "-D__XNU_PRIVATE_EXTERN=",
+        "-no-cpp-precomp",
+        "-fno-common",
+        "-fno-stack-protector",
+        "-fno-stack-check",
+        "-momit-leaf-frame-pointer",
+    ],
+    prefix_headers = [
+        "xnu/darling/src/libsystem_kernel/extra/nolegacy.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_string",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_spawn",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers_libproc",
+        ":libsyscall_dynamic_inc_libsyscall_os",
+        ":libsyscall_dynamic_inc_libsyscall_mach",
+        ":libsyscall_dynamic_inc_libsyscall_wrappers",
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/startup:rtsig_header",
+        ":libsyscall_dynamic_inc_darling_src_libsystem_kernel",
+        ":libsyscall_dynamic_inc_osfmk",
+        "//src/external/darlingserver:dserver_headers",
+    ],
+)
+# END generated: libsyscall_dynamic
+
+# BEGIN generated: emulation
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py emulation   -- review before committing.
+# cmake target: emulation  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation
+# 295 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/darlingserver/src/rpc.c
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/darlingserver/include
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
+#   src/external/xnu/darling/src/libsystem_kernel/libsyscall
+#   src/startup
+
+cc_header_root(
+    name = "emulation_inc_darling_src_libsystem_kernel",
+    headers = glob(["xnu/darling/src/libsystem_kernel/*.h", "xnu/darling/src/libsystem_kernel/**/*.h"]),
+    root = "xnu/darling/src/libsystem_kernel",
+)
+
+cc_objects(
+    name = "emulation_obj",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/base.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/guarded/table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/common/simple.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/errno.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/fcntl/open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/duct.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/getsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/network/recvmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/process/wait4.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/signal/duct_signals.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/signal/sigaction.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/conversion/stat/common.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/elfcalls_wrapper.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_gettime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/clock_nanosleep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_create1.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_ctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/epoll_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_read.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/eventfd_write.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/fanotify.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/file_handle.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libelfloader.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-libkqueue.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/for-xtrace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/futex.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_add_watch.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_init1.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/inotify_rm_watch.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/mremap.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/nanosleep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sched_yield.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/signalfd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/sysinfo.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/syslog.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_gettime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/timerfd_settime.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/ext/uname.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/misc/ioctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/resources/dserver-rpc-defs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/vchroot_userspace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/other/mach/lkm.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/filio.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/socket.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/ioctl/termios.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/common_at.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/fdpath.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/readline.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_hw.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_kern.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_machdep.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_proc.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_sysctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_unspec.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_vm.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_addr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_join.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_port.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/audit/audit_session_self.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_create.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_ctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_register.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/bsdthread_terminate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/disable_threadsignal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_canceled.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_chdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_fchdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_kill.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/pthread_markcancel.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_kernreturn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/bsdthread/workq_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/fpathconf.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/conf/pathconf.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/dirent/getdirentries.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/fcntl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/fcntl/openat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_close_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_kqueue_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/guarded/guarded_open_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/hfs/stub.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/ioctl/ioctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent64.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kevent_qos.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/kqueue/kqueue.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/abort_with_payload.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/clonefile.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csops.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/csrctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makefd.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fileport_makeport.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/fsgetpath.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getentropy.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/gethostuuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getlogin.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrlimit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/getrusage.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/iopolicysys.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/proc_info.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/ptrace.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/reboot.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setlogin.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/setrlimit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/shared_region_check_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/syscall.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/sysctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/misc/thread_selfid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/madvise.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/mman.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mman/msync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/mount/unmount.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/accept.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/bind.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/connect.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/listen.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendmsg.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/sendto.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/setsockopt.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/shutdown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socket.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/socketpair.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/execve.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/fork.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/getpriority.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/posix_spawn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/setpriority.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/vfork.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/wait4.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/process/waitid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvbroad.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvclrprepost.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvsignal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_cvwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexdrop.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_mutexwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_rdlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_unlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/psynch_rw_wrlock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/psynch/ulock_wake.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/poll.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/pselect.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/select/select.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/kill.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaction.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigaltstack.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigpending.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigprocmask.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigreturn.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigsuspend.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/signal/sigwait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/fstatfs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/getfsstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/lstat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkdirat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifo.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/rmdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/stat64_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/statfs.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/synch/semwait_signal.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semctl.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semget.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/sysv_sem/semop.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/futimes.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/getitimer.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/gettimeofday.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/setitimer.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/time/utimes.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/access.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chflags.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chmod_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/chroot.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/close.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/exit.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/faccessat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchdir.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchflags.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmod_extended.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchmodat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fchownat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fdatasync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/flock.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/fsync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/ftruncate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getdtablesize.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getegid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/geteuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpgrp.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getpid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getppid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getsid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/gettid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/getuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/initgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/issetugid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lchown.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/link.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/linkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/lseek.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknod.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pipe.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pread.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/pwrite.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/read.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/readv.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/rename.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setegid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/seteuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setgroups.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setpgid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setsid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/settid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/setuid.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/symlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/sync.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/truncate.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/umask.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/unlinkat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/write.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/writev.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_close.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_post.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_trywait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/sem_wait.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_open.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/wrapped/shm_unlink.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fgetxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/flistxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fremovexattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/fsetxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getattrlistbulk.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/getxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/listxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/removexattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlist.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setattrlistat.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/xattr/setxattr.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_time.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/impl/mach_traps.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall_table.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/impl/tls.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall_table.c",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+)
+
+cc_objects(
+    name = "emulation_obj2",
+    srcs = [
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/linux-syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sig_restorer.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/mach/mach_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/machdep/machdep_syscall.S",
+        "xnu/darling/src/libsystem_kernel/emulation/src/xnu_syscall/xtrace-hooks.S",
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/startup:rtsig_header",
+        ":emulation_included_sources",
+        "//src/include:darling_config",
+        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+)
+# END generated: emulation
+
+# Darling's syscall emulation layer #INCLUDES .c files (helper/xattr/*_generic.c
+# and friends), so the root staging its tree has to carry sources as well as
+# headers. A headers-only root leaves those includes unresolved.
+cc_header_root(
+    name = "emulation_included_sources",
+    headers = glob([
+        "xnu/darling/src/libsystem_kernel/emulation/include/*.h",
+        "xnu/darling/src/libsystem_kernel/emulation/include/**/*.h",
+        "xnu/darling/src/libsystem_kernel/emulation/src/**/*.c",
+        "xnu/darling/src/libsystem_kernel/emulation/src/**/*.h",
+    ]),
+    root = "xnu/darling/src/libsystem_kernel/emulation/include",
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------
+# libsystem_kernel, the firstpass pass: the guest side of the syscall boundary.
+#
+# The reference links four cmake object libraries; three appear here, because
+# libsyscall_64's sources are ALL mig-generated -x86_64-User.c files, which the
+# libsyscall target already compiles through gen_srcs. Adding a separate target
+# for them would double them up.
+# ---------------------------------------------------------------------------
+darwin_dylib(
+    name = "system_kernel_firstpass",
+    dylib_name = "libsystem_kernel_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_kernel.dylib",
+    objs = [
+        # libsyscall (5 flag groups)
+        ":libsyscall_obj",
+        ":libsyscall_obj2",
+        ":libsyscall_obj3",
+        ":libsyscall_obj4",
+        ":libsyscall_obj5",
+        # libsyscall_dynamic
+        ":libsyscall_dynamic_obj",
+        # emulation (2 flag groups)
+        ":emulation_obj",
+        ":emulation_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: system_blocks_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py system_blocks_obj   -- review before committing.
+# cmake target: system_blocks_obj  ->  src/external/libclosure/system_blocks_obj
+# 3 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "system_blocks_inc_libclosure",
+    headers = glob(["libclosure/*.h", "libclosure/**/*.h"]),
+    root = "libclosure",
+)
+
+cc_objects(
+    name = "system_blocks_obj",
+    srcs = [
+        "libclosure/data.c",
+        "libclosure/data.m",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_blocks_inc_libclosure",
+    ],
+)
+
+cc_objects(
+    name = "system_blocks_obj2",
+    srcs = [
+        "libclosure/runtime.cpp",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":system_blocks_inc_libclosure",
+    ],
+)
+# END generated: system_blocks_obj
+
+cc_header_root(
+    name = "blocks_headers",
+    headers = glob(["libclosure/*.h"]),
+    root = "libclosure",
+    visibility = ["PUBLIC"],
+)
+
+# ---------------------------------------------------------------------------
+# THE FINAL PASS. libsystem_blocks linked against its siblings' FIRSTPASS dylibs,
+# exactly as cmake's add_circular does: libclosure's CMakeLists names
+# system_kernel / system_malloc / system_pthread / system_c as SIBLINGS, and all
+# four now exist as firstpass dylibs.
+#
+# This is what the whole firstpass mechanism is for. The artifact graph stays
+# acyclic (each firstpass resolves nothing), and this dylib records its siblings'
+# INSTALL_NAMES rather than the firstpass paths it actually linked against.
+# ---------------------------------------------------------------------------
+darwin_dylib(
+    name = "system_blocks_final",
+    dylib_name = "libsystem_blocks.dylib",
+    install_name = "/usr/lib/system/libsystem_blocks.dylib",
+    objs = [":system_blocks_obj"],
+    siblings = [
+        ":system_kernel_firstpass",
+        ":system_malloc_firstpass",
+        ":system_pthread_firstpass",
+        ":system_c_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_blocks_firstpass",
+    dylib_name = "libsystem_blocks_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_blocks.dylib",
+    # ALL flag groups: naming one still links but drops the others' symbols.
+    objs = [
+        ":system_blocks_obj",
+        ":system_blocks_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "keymgr_firstpass",
+    dylib_name = "libkeymgr_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libkeymgr.dylib",
+    # ALL flag groups: naming one still links but drops the others' symbols.
+    objs = [
+        ":keymgr_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_pthread_firstpass",
+    dylib_name = "libsystem_pthread_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_pthread.dylib",
+    # ALL flag groups: naming one still links but drops the others' symbols.
+    objs = [
+        ":system_pthread_obj",
+        ":system_pthread_obj2",
+        ":system_pthread_obj3",
+        ":system_pthread_obj4",
+        ":system_pthread_obj5",
+        ":system_pthread_obj6",
+        ":system_pthread_obj7",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_malloc_firstpass",
+    dylib_name = "libsystem_malloc_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_malloc.dylib",
+    # ALL flag groups: naming one still links but drops the others' symbols.
+    objs = [
+        ":system_malloc_obj",
+        ":system_malloc_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+# GUEST-side MIG, as opposed to the kernel-side MIG that duct-tape uses: the
+# default cmake/mig.cmake suffixes and the Darwin compile environment rather than
+# the XNU one.
+#
+# asl's sources include <asl_ipc.h>, generated here. That include is exactly where
+# nix-ninja's full-graph build stalls (its -I for asl_ipc.h resolves at subgraph
+# scope but comes back empty at full-graph scope); under buck2 it is a dependency
+# edge, and the header only exists on the include path of targets that declare it.
+mig_gen(
+    name = "asl_ipc_mig",
+    defs = "syslog/aslcommon/asl_ipc.defs",
+    out_base = "syslog/aslcommon",
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        ":system_asl_inc_libsystem_asl_tproj_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)

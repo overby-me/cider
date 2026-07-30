@@ -63,6 +63,8 @@ targets=(
 	//buck-src:system_malloc_firstpass
 	//buck-src:system_pthread_firstpass
 	//buck-src:system_c_firstpass
+	//buck-src:system_kernel_firstpass
+	//buck-src:system_blocks_final
 	//buck-src:system_asl_firstpass
 	//buck-src:system_coretls_firstpass
 	//buck-src:asl_ipc_mig
@@ -221,6 +223,7 @@ for pair in \
 	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
 	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
 	"//buck-src:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
+	"//buck-src:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib" \
 	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
 	"//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib" \
 	"//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib" \
@@ -267,6 +270,36 @@ done
 aslmig=$(out_of //buck-src:asl_ipc_mig)
 [ -f "$aslmig/asl_ipc.h" ] && ok "guest MIG generated asl_ipc.h" ||
 	bad "asl_ipc.h was not generated"
+
+say "== libsystem_kernel: the syscall boundary =="
+krn=$(out_of //buck-src:system_kernel_firstpass)
+krn_syms=$(llvm-nm --defined-only --extern-only "$krn" 2>/dev/null | awk '{print $3}')
+kn=$(printf '%s\n' "$krn_syms" | wc -l)
+[ "$kn" -ge 1300 ] && ok "libsystem_kernel exports $kn symbols" ||
+	bad "libsystem_kernel exports only $kn symbols"
+for sym in _mach_msg _mach_task_self_ ___syscall _mmap _kevent; do
+	printf '%s\n' "$krn_syms" | grep -qx "$sym" && ok "libsystem_kernel exports $sym" ||
+		bad "libsystem_kernel is missing $sym"
+done
+
+say "== THE FINAL PASS (phase 2's objective) =="
+# libsystem_blocks linked against its four siblings' FIRSTPASS dylibs, the way
+# cmake's add_circular does. What proves the mechanism is not that it links, but
+# WHAT it recorded: the siblings' install_names, and nothing left undefined.
+fin=$(out_of //buck-src:system_blocks_final)
+fid=$(llvm-objdump --macho --dylib-id "$fin" 2>/dev/null | tail -1)
+[ "$fid" = "/usr/lib/system/libsystem_blocks.dylib" ] && ok "final pass install_name is $fid" ||
+	bad "final pass install_name is '$fid'"
+loads=$(llvm-objdump --macho --private-headers "$fin" 2>/dev/null | grep -A2 LC_LOAD_DYLIB | grep "name " || true)
+for want in libsystem_kernel libsystem_malloc libsystem_pthread libsystem_c; do
+	case "$loads" in
+	*"/usr/lib/system/$want.dylib"*) ok "final pass records $want by install_name" ;;
+	*) bad "final pass does not load $want" ;;
+	esac
+done
+undef=$(llvm-nm --undefined-only "$fin" 2>/dev/null | wc -l)
+[ "$undef" -eq 0 ] && ok "final pass has NO undefined symbols" ||
+	bad "final pass still has $undef undefined symbols"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

@@ -36,7 +36,11 @@ SDK_INCLUDE = os.path.join(
 BUCK_SRC = "buck-src"
 
 
-HEADER_EXTS = (".h", ".hpp", ".modulemap", ".defs")
+# .c is included deliberately: Darling's SDK exposes implementation .c files under
+# its darling/emulation namespace, and the emulation layer #includes them by path
+# (<darling/emulation/.../setattrlist_generic.c>). Skipping them leaves those
+# includes unresolved.
+HEADER_EXTS = (".h", ".hpp", ".modulemap", ".defs", ".c")
 
 # Headers that are real files inside the SDK tree, collected while walking. They
 # are declared by a header root in the SDK directory's own package, where their

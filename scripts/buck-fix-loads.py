@@ -24,6 +24,7 @@ RULES = {
     ],
     "//buck/rules:codegen.bzl": [
         "bison_gen", "flex_gen", "mig_gen", "host_gen", "script_gen",
+        "configure_file",
     ],
     "//buck/rules:darwin.bzl": ["darwin_dylib", "darwin_binary"],
     "//buck/rules:files.bzl": ["export_file"],

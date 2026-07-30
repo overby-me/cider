@@ -273,10 +273,30 @@ wrong library rather than a build error:**
    symbols**. The reference link edge is the authority on the subset, and the
    generator now resolves a dylib's object libraries from it.
 
-### libsystem_kernel (libsyscall): 548 of 562 sources compile
+### libsystem_kernel DONE, and THE FINAL PASS WORKS
 
-The last member gating a FINAL pass. 562 sources in 5 flag groups, and 56 MIG
-targets, all of which generate.
+`libsystem_kernel_firstpass.dylib` links: 1343 exported symbols including
+`_mach_msg`, `_mach_task_self_`, `___syscall`, `_mmap`, `_kevent`. It is built from
+three cmake object libraries (libsyscall's 562 sources in 5 flag groups,
+libsyscall_dynamic, and the 293-source `emulation` layer); the reference's fourth,
+`libsyscall_64`, is not a separate target here because its sources are ALL
+mig-generated `-x86_64-User.c` files that libsyscall already compiles through
+`gen_srcs`.
+
+**`//buck-src:system_blocks_final` is the first FINAL-pass link**, and it is what
+phase 2 was for. libsystem_blocks linked against its four siblings' FIRSTPASS
+dylibs (kernel, malloc, pthread, c), exactly as `add_circular` does. What proves
+the mechanism is not that it links, but what it recorded:
+
+- `LC_ID_DYLIB` = `/usr/lib/system/libsystem_blocks.dylib`
+- four `LC_LOAD_DYLIB` entries naming the siblings' **install_names**, not the
+  firstpass paths it actually linked against
+- **zero undefined symbols**
+
+So the plan's "highest risk" item is now demonstrated on real libSystem members,
+not just a fixture.
+
+Getting libsyscall + emulation compiling turned up four more findings:
 
 - **MIG here runs the same definitions THREE times** with different suffix sets
   (headers, then per-arch sources, then `_internal.h` headers), and pass 2 is
@@ -309,6 +329,26 @@ targets, all of which generate.
   it requires at least one intermediate directory. Every generated root was
   therefore missing the headers sitting directly in it, so roots now glob both
   patterns.
+- **Flag strings are SHELL-quoted.** ninja hands its command to `/bin/sh`, so
+  cmake's escapes are load-bearing: `-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"` and
+  `-DEMULATED_VERSION="\"Darwin Kernel Version 23.4.0\""` are each ONE argument
+  whose value CONTAINS double quotes (they expand to C string literals). A naive
+  splitter drops the quotes (so the macro is no longer a string) or splits the
+  second on its spaces. The generator now splits with shell rules and re-escapes
+  for Starlark.
+- **A root in another package cannot be globbed from here.** `emulation` wants
+  `src/libsimple/include`, which the `buck-src` package cannot reach; such roots are
+  now mapped to the target that already declares them
+  (`//src/libsimple:libsimple_headers`) instead of emitting a glob that silently
+  stages nothing.
+- Darling's emulation layer **`#include`s `.c` files** by path
+  (`<darling/emulation/.../setattrlist_generic.c>`), so the SDK map now carries `.c`
+  as well as headers, and the root staging that tree globs sources too.
+- `configure_file` (a new rule) generates `darling-config.h` the way cmake does:
+  `${VAR}` / `@VAR@` substitution plus `#cmakedefine`. GIT_BRANCH and
+  GIT_COMMIT_HASH are deliberately left empty rather than shelled out to git --
+  baking VCS state into a header would invalidate every object that includes it on
+  every commit.
 
 **The pthread "text reloc" was my own bug, and it was hiding a worse one.**
 `libsystem_pthread`'s dylib failed with `illegal text reloc in

@@ -71,6 +71,14 @@ ENV_FLAGS = {
 TOOLCHAIN_FLAGS = {
     "-target", "x86_64-apple-darwin20", "-arch", "x86_64", "-mmacosx-version-min=11.0",
 }
+# Include dirs owned by another buck2 package, mapped to the target that already
+# declares them. A glob in one package cannot reach into another, so without this
+# the root would silently stage empty.
+CROSS_PACKAGE_ROOTS = {
+    "src/libsimple/include": "//src/libsimple:libsimple_headers",
+    "src/external/darlingserver/include": "//src/external/darlingserver:dserver_headers",
+}
+
 # Include dirs //darwin:sdk_env covers, relative to the repo root.
 ENV_INCLUDES = {
     "src/include",
@@ -155,51 +163,51 @@ def repo_path(p: str):
 
 
 def split_flags(s: str) -> list[str]:
-    """Split a ninja flag string, honoring the single quotes cmake emits."""
-    out, cur, quote = [], "", None
-    for ch in s:
-        if quote:
-            if ch == quote:
+    """Split a ninja flag string using SHELL quoting rules.
+
+    ninja passes its command line to /bin/sh, so cmake's quoting is shell quoting,
+    and the escapes are load-bearing rather than noise:
+
+        -DEMULATED_OSPRODUCTVERSION=\\"14.4.1\\"
+        -DEMULATED_VERSION="\\"Darwin Kernel Version 23.4.0\\""
+
+    Both are ONE argument, and in both the double quotes are part of the macro
+    VALUE (it expands to a C string literal). Dropping them, or splitting the
+    second on its spaces, silently changes what the code compiles to.
+    """
+    out, cur, quote, started = [], "", None, False
+    i = 0
+    while i < len(s):
+        ch = s[i]
+        if quote == "'":
+            if ch == "'":
                 quote = None
             else:
                 cur += ch
+        elif quote == '"':
+            if ch == "\\" and i + 1 < len(s) and s[i + 1] in '"\\$`':
+                cur += s[i + 1]
+                i += 1
+            elif ch == '"':
+                quote = None
+            else:
+                cur += ch
+        elif ch == "\\" and i + 1 < len(s):
+            cur += s[i + 1]
+            i += 1
         elif ch in "'\"":
             quote = ch
+            started = True
         elif ch.isspace():
-            if cur:
+            if cur or started:
                 out.append(cur)
-                cur = ""
+            cur, started = "", False
         else:
             cur += ch
-    if cur:
+        i += 1
+    if cur or started:
         out.append(cur)
     return out
-
-
-def link_object_libraries(target: str, edges):
-    """The cmake OBJECT LIBRARIES a link edge pulls in, in the reference's order.
-
-    A libSystem member is linked from object libraries rather than from its own
-    sources (cmake's add_circular takes OBJECTS), and WHICH ones matters: libc
-    ships alternates of the same sources -- the `_dyld` variants exist for
-    libsystem_dyld -- so linking every libc-* group produces ~190 duplicate
-    symbols. The link edge is the authority on the right subset.
-    """
-    for outs, rule, inputs, vars in edges:
-        for o in outs:
-            if os.path.basename(o) != target and not o.endswith("/" + target):
-                continue
-            libs, seen = [], set()
-            for i in inputs:
-                if i.startswith("|"):
-                    break
-                m = re.search(r"CMakeFiles/([^/]+)\.dir/", i)
-                if m and i.endswith(".o") and m.group(1) not in seen:
-                    seen.add(m.group(1))
-                    libs.append(m.group(1))
-            if libs:
-                return libs, (o, vars)
-    return [], None
 
 
 def collect(target: str, edges):
@@ -322,6 +330,11 @@ def extra_deps(target: str) -> list[str]:
 #   ldflag:    a linker flag for this target's dylib
 
 
+def starlark_str(v: str) -> str:
+    """Quote a value for Starlark, escaping what the parser would choke on."""
+    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def sanitize(path: str) -> str:
     return re.sub(r"[^A-Za-z0-9]+", "_", path).strip("_")
 
@@ -372,6 +385,9 @@ def generate(target: str, edges):
         for kind, p in g["inc"]:
             if kind != "own" or p in root_name:
                 continue
+            if p in CROSS_PACKAGE_ROOTS:
+                root_name[p] = CROSS_PACKAGE_ROOTS[p]
+                continue
             name = target.removesuffix("_obj") + "_inc_" + sanitize(p.split("/", 1)[-1])[-40:]
             root_name[p] = name
             w("cc_header_root(")
@@ -398,7 +414,7 @@ def generate(target: str, edges):
         if g["flags"]:
             w("    compiler_flags = [")
             for f in g["flags"]:
-                w(f'        "{f}",')
+                w(f"        {starlark_str(f)},")
             w("    ],")
         if g["prefix"]:
             w("    prefix_headers = [")
@@ -417,7 +433,8 @@ def generate(target: str, edges):
                     if not d.startswith(("gen:", "ldflag:")):
                         w(f'        "{d}",')
             else:
-                w(f'        ":{root_name[p]}",')
+                name = root_name[p]
+                w(f'        "{name}",' if name.startswith("//") else f'        ":{name}",')
         w("    ],")
         gen = [d[len("gen:"):] for d in extra_deps(target) if d.startswith("gen:")]
         if gen and idx == 0:
