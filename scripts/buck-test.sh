@@ -407,8 +407,11 @@ say "== guest EXECUTABLES =="
 # Discovered from the graph, like the dylibs: every executable target that exists.
 exe_pkgs="//buck-src: + //src/shellspawn: + //src/vchroot: + //src/launchd:"
 # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
-exe_skip="dyld"
-exe_blocked=""
+# launchd is generated but does not compile yet: its MIG-generated server stubs use
+# job_t from its own core.h, and the include roots the port stages for them are not
+# right yet. It is the only such target.
+exe_skip="dyld launchd"
+exe_blocked="launchd"
 all_exes=$(buck2 uquery "kind('darwin_binary', $exe_pkgs)" 2>/dev/null || true)
 n_exe=0
 for t in $all_exes; do
@@ -424,15 +427,13 @@ for t in $all_exes; do
 	*) bad "${t##*:} is not a Mach-O executable ($hdr)" ;;
 	esac
 done
-[ "$n_exe" -ge 31 ] && ok "$n_exe guest executables link with nothing undefined" ||
-	bad "expected >= 31 executables, got $n_exe"
-# Nothing is blocked any more: the two framework binaries that used to block memberd
-# and plconvert (DirectoryService, CoreFoundation) are ported.
+[ "$n_exe" -ge 45 ] && ok "$n_exe guest executables link with nothing undefined" ||
+	bad "expected >= 45 executables, got $n_exe"
 for name in $exe_blocked; do
-	if buck2 build "//buck-src:$name" >/dev/null 2>&1; then
-		bad "$name links now -- drop it from the blocked list"
+	if buck2 build "//src/launchd:$name" >/dev/null 2>&1; then
+		bad "$name builds now -- drop it from the blocked list"
 	else
-		ok "$name still blocked on an unported framework binary (expected)"
+		ok "$name still blocked (expected)"
 	fi
 done
 

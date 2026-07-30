@@ -119,7 +119,8 @@ def read_edges():
         if line.startswith("build "):
             head, _, rest = line[len("build "):].partition(": ")
             rule, _, inputs = rest.partition(" ")
-            cur = (head.split(" | ")[0].split(), rule, inputs.split(), {})
+            cur = (head.split(" | ")[0].split(), rule,
+                   [i for i in inputs.split() if i not in ("|", "||")], {})
             edges.append(cur)
         elif cur is not None and line.startswith("  ") and " = " in line:
             k, _, v = line.strip().partition(" = ")
@@ -473,6 +474,7 @@ def generate(target: str, edges):
         for p in ps:
             w(f'        "{p}/*.h",')
             w(f'        "{p}/**/*.h",')
+            w(f'        "{p}/*.c",')
         w("    ]),")
         w(f'    root = "{parent}",')
         w("    include_subdirs = [")
@@ -503,7 +505,10 @@ def generate(target: str, edges):
             w(f'    name = "{name}",')
             # BOTH patterns: buck2's "dir/**/*.h" does not match dir/x.h, so a
             # root whose headers sit directly in it would stage EMPTY.
-            w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h"]),')
+            # *.c at the root level too: some sources are #included rather than
+            # compiled (ncurses' capdefaults.c, libedit's history.c), and they resolve
+            # through an -I of the source dir like any header.
+            w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]),')
             w(f'    root = "{p}",')
             w('    visibility = ["PUBLIC"],')
             w(")")
@@ -668,6 +673,7 @@ def dylib_edges(target: str, edges):
 OBJLIB_ALIASES = {
     "libsyscall_64": [],   # -x86_64-User.c stubs, compiled by libsyscall
     "asl_ipc_user": [],    # asl_ipcUser.c, compiled by system_asl_obj
+    "asl_ipc_server": [],  # asl_ipcServer.c, compiled by syslogd
 }
 
 
@@ -881,6 +887,9 @@ def siblings_of(edge, reg, final_reg):
             name = f"lib{t}_firstpass.dylib"
         else:
             label = final_reg.get(base)
+            if label is None and not base.endswith(".dylib"):
+                # Extensionless and unknown: a tool or a phony, not a library.
+                continue
             name = base
         if label:
             if label not in sibs:

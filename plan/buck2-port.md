@@ -233,8 +233,41 @@ alias silently does nothing.
 
 93 checks pass.
 
-**Next up:** the remaining executables behind libncurses/libiconv/libz/libbsm, and the
-higher-level frameworks now that CoreFoundation is up.
+### 2026-07-30 (later morning) -- 45 executables, 93 dylibs
+
+Nine more libraries (libz, libbsm, libbz2, liblzma, libncurses, libcharset, libiconv,
+libedit, libarchive) unblocked the rest of the tool tree: **45 guest executables link
+with nothing undefined, and 93 dylibs**. New arrivals include launchctl, syslogd,
+aslmanager, tcsh, bsdtar, cpio, bzip2, xz, and the terminfo tools (tic, infocmp, tput,
+tset, toe, clear).
+
+Three fixes worth recording:
+
+  * **Sources included as headers.** ncurses' `include/capdefaults.c` and libedit's
+    `local/historyn.c` doing `#include "./history.c"` both resolve through an -I of the
+    SOURCE dir, so an include root that stages only `*.h` stages nothing they need.
+    Root-level `*.c` is staged now (recursive would drag thousands of files into
+    libc-sized roots).
+  * **ninja's dependency markers are not inputs.** `|` and `||` were being read as
+    library inputs once framework binaries (extensionless) became legal, so every
+    executable reported them as missing libraries. They are stripped at parse time, and
+    an extensionless input now counts as a library only when the registry knows it --
+    a tool like `x86_64-apple-darwin20-ld` is not one.
+  * **Two protocols can generate the same header.** liblaunch's `job.defs` and
+    launchd's own `src/job.defs` both produce a bare `job.h`; naming both let the wrong
+    one win by include order, which surfaced as `unknown type name 'job_t'`.
+
+xnu's `mach/notify.defs` and `mach/mach_exc.defs` now have mig targets in buck-src (a
+mig_gen's defs must be a source of the declaring package, and those live in the pins).
+
+**Blocked:** launchd alone. Its MIG-generated server stubs use `job_t` from its own
+core.h, and the include roots staged for the generated sources are not right yet. zsh
+also needs its own codegen chain (`zsh.mdh`), and notifyd needs one more mig.
+
+94 checks pass.
+
+**Next up:** launchd (the include-root shape for generated stubs), then the higher-level
+frameworks now that CoreFoundation is up.
 
 
 Decisions taken 2026-07-29 (branch `buck2-port`):

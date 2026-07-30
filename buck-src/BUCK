@@ -18573,7 +18573,7 @@ cc_objects(
 
 cc_header_root(
     name = "aslcommon_inc_syslog_libsystem_asl_tproj_include",
-    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h"]),
+    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h", "syslog/libsystem_asl.tproj/include/*.c"]),
     root = "syslog/libsystem_asl.tproj/include",
     visibility = ["PUBLIC"],
 )
@@ -23794,3 +23794,2932 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: icucore dylibs
+
+# BEGIN generated: z
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py z   -- review before committing.
+# cmake target: z  ->  src/external/zlib/libz.1.dylib
+# 15 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_objects(
+    name = "z_obj",
+    srcs = [
+        "zlib/zlib/adler32.c",
+        "zlib/zlib/compress.c",
+        "zlib/zlib/crc32.c",
+        "zlib/zlib/deflate.c",
+        "zlib/zlib/gzclose.c",
+        "zlib/zlib/gzlib.c",
+        "zlib/zlib/gzread.c",
+        "zlib/zlib/gzwrite.c",
+        "zlib/zlib/infback.c",
+        "zlib/zlib/inffast.c",
+        "zlib/zlib/inflate.c",
+        "zlib/zlib/inftrees.c",
+        "zlib/zlib/trees.c",
+        "zlib/zlib/uncompr.c",
+    ],
+    compiler_flags = [
+        "-DUSE_MMAP",
+        "-DVEC_OPTIMIZE",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dz_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "z_obj2",
+    srcs = [
+        "zlib/zlib/zutil.c",
+    ],
+    compiler_flags = [
+        "-DUSE_MMAP",
+        "-DVEC_OPTIMIZE",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dz_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+        "-Dfdopen=fdopen",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "z_firstpass",
+    dylib_name = "libz_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libz.1.dylib",
+    objs = [
+        ":z_obj",
+        ":z_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: z
+
+# BEGIN generated: bsm.0
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bsm.0   -- review before committing.
+# cmake target: bsm.0  ->  src/external/bsm/libbsm.0.dylib
+
+cc_header_root(
+    name = "bsm.0_inc_bsm_openbsm",
+    headers = glob(["bsm/openbsm/*.h", "bsm/openbsm/**/*.h"]),
+    root = "bsm/openbsm",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bsm.0_obj",
+    srcs = [
+        "bsm/openbsm/libbsm/bsm_audit.c",
+        "bsm/openbsm/libbsm/bsm_class.c",
+        "bsm/openbsm/libbsm/bsm_control.c",
+        "bsm/openbsm/libbsm/bsm_domain.c",
+        "bsm/openbsm/libbsm/bsm_errno.c",
+        "bsm/openbsm/libbsm/bsm_event.c",
+        "bsm/openbsm/libbsm/bsm_fcntl.c",
+        "bsm/openbsm/libbsm/bsm_flags.c",
+        "bsm/openbsm/libbsm/bsm_io.c",
+        "bsm/openbsm/libbsm/bsm_mask.c",
+        "bsm/openbsm/libbsm/bsm_notify.c",
+        "bsm/openbsm/libbsm/bsm_socket_type.c",
+        "bsm/openbsm/libbsm/bsm_token.c",
+        "bsm/openbsm/libbsm/bsm_user.c",
+        "bsm/openbsm/libbsm/bsm_wrappers.c",
+        "bsm/stub.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dbsm_0_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-std=c99",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":bsm.0_inc_bsm_openbsm",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "bsm.0_firstpass",
+    dylib_name = "libbsm.0_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libbsm.0.dylib",
+    objs = [
+        ":bsm.0_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bsm.0
+
+# BEGIN generated: bz2
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bz2   -- review before committing.
+# cmake target: bz2  ->  src/external/bzip2/libbz2.1.0.dylib
+
+cc_objects(
+    name = "bz2_obj",
+    srcs = [
+        "bzip2/bzip2/blocksort.c",
+        "bzip2/bzip2/bzlib.c",
+        "bzip2/bzip2/compress.c",
+        "bzip2/bzip2/crctable.c",
+        "bzip2/bzip2/decompress.c",
+        "bzip2/bzip2/huffman.c",
+        "bzip2/bzip2/randtable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dbz2_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "bz2_firstpass",
+    dylib_name = "libbz2_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libbz2.1.0.dylib",
+    objs = [
+        ":bz2_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bz2
+
+# BEGIN generated: bz264
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bz264   -- review before committing.
+# cmake target: bz264  ->  src/external/bzip2/bz264
+
+cc_objects(
+    name = "bz264_obj",
+    srcs = [
+        "bzip2/bzip2/x86_64/crc32vec.S",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bz264
+
+# BEGIN generated: lzma
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lzma   -- review before committing.
+# cmake target: lzma  ->  src/external/liblzma/liblzma.5.dylib
+
+cc_header_root(
+    name = "lzma_inc_liblzma",
+    headers = glob(["liblzma/*.h", "liblzma/**/*.h"]),
+    root = "liblzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_api",
+    headers = glob(["liblzma/src/liblzma/api/*.h", "liblzma/src/liblzma/api/**/*.h"]),
+    root = "liblzma/src/liblzma/api",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_check",
+    headers = glob(["liblzma/src/liblzma/check/*.h", "liblzma/src/liblzma/check/**/*.h"]),
+    root = "liblzma/src/liblzma/check",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_common",
+    headers = glob(["liblzma/src/liblzma/common/*.h", "liblzma/src/liblzma/common/**/*.h"]),
+    root = "liblzma/src/liblzma/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_lzma",
+    headers = glob(["liblzma/src/liblzma/lzma/*.h", "liblzma/src/liblzma/lzma/**/*.h"]),
+    root = "liblzma/src/liblzma/lzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_lz",
+    headers = glob(["liblzma/src/liblzma/lz/*.h", "liblzma/src/liblzma/lz/**/*.h"]),
+    root = "liblzma/src/liblzma/lz",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_simple",
+    headers = glob(["liblzma/src/liblzma/simple/*.h", "liblzma/src/liblzma/simple/**/*.h"]),
+    root = "liblzma/src/liblzma/simple",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_delta",
+    headers = glob(["liblzma/src/liblzma/delta/*.h", "liblzma/src/liblzma/delta/**/*.h"]),
+    root = "liblzma/src/liblzma/delta",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_liblzma_rangecoder",
+    headers = glob(["liblzma/src/liblzma/rangecoder/*.h", "liblzma/src/liblzma/rangecoder/**/*.h"]),
+    root = "liblzma/src/liblzma/rangecoder",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lzma_inc_liblzma_src_common",
+    headers = glob(["liblzma/src/common/*.h", "liblzma/src/common/**/*.h"]),
+    root = "liblzma/src/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lzma_obj",
+    srcs = [
+        "liblzma/src/common/tuklib_cpucores.c",
+        "liblzma/src/common/tuklib_exit.c",
+        "liblzma/src/common/tuklib_mbstr_fw.c",
+        "liblzma/src/common/tuklib_mbstr_width.c",
+        "liblzma/src/common/tuklib_open_stdxxx.c",
+        "liblzma/src/common/tuklib_physmem.c",
+        "liblzma/src/common/tuklib_progname.c",
+        "liblzma/src/liblzma/check/check.c",
+        "liblzma/src/liblzma/check/crc32_fast.c",
+        "liblzma/src/liblzma/check/crc32_table.c",
+        "liblzma/src/liblzma/check/crc64_fast.c",
+        "liblzma/src/liblzma/check/crc64_table.c",
+        "liblzma/src/liblzma/check/sha256.c",
+        "liblzma/src/liblzma/common/alone_decoder.c",
+        "liblzma/src/liblzma/common/alone_encoder.c",
+        "liblzma/src/liblzma/common/auto_decoder.c",
+        "liblzma/src/liblzma/common/block_buffer_decoder.c",
+        "liblzma/src/liblzma/common/block_buffer_encoder.c",
+        "liblzma/src/liblzma/common/block_decoder.c",
+        "liblzma/src/liblzma/common/block_encoder.c",
+        "liblzma/src/liblzma/common/block_header_decoder.c",
+        "liblzma/src/liblzma/common/block_header_encoder.c",
+        "liblzma/src/liblzma/common/block_util.c",
+        "liblzma/src/liblzma/common/common.c",
+        "liblzma/src/liblzma/common/easy_buffer_encoder.c",
+        "liblzma/src/liblzma/common/easy_decoder_memusage.c",
+        "liblzma/src/liblzma/common/easy_encoder.c",
+        "liblzma/src/liblzma/common/easy_encoder_memusage.c",
+        "liblzma/src/liblzma/common/easy_preset.c",
+        "liblzma/src/liblzma/common/filter_buffer_decoder.c",
+        "liblzma/src/liblzma/common/filter_buffer_encoder.c",
+        "liblzma/src/liblzma/common/filter_common.c",
+        "liblzma/src/liblzma/common/filter_decoder.c",
+        "liblzma/src/liblzma/common/filter_encoder.c",
+        "liblzma/src/liblzma/common/filter_flags_decoder.c",
+        "liblzma/src/liblzma/common/filter_flags_encoder.c",
+        "liblzma/src/liblzma/common/hardware_cputhreads.c",
+        "liblzma/src/liblzma/common/hardware_physmem.c",
+        "liblzma/src/liblzma/common/index.c",
+        "liblzma/src/liblzma/common/index_decoder.c",
+        "liblzma/src/liblzma/common/index_encoder.c",
+        "liblzma/src/liblzma/common/index_hash.c",
+        "liblzma/src/liblzma/common/outqueue.c",
+        "liblzma/src/liblzma/common/stream_buffer_decoder.c",
+        "liblzma/src/liblzma/common/stream_buffer_encoder.c",
+        "liblzma/src/liblzma/common/stream_decoder.c",
+        "liblzma/src/liblzma/common/stream_encoder.c",
+        "liblzma/src/liblzma/common/stream_encoder_mt.c",
+        "liblzma/src/liblzma/common/stream_flags_common.c",
+        "liblzma/src/liblzma/common/stream_flags_decoder.c",
+        "liblzma/src/liblzma/common/stream_flags_encoder.c",
+        "liblzma/src/liblzma/common/vli_decoder.c",
+        "liblzma/src/liblzma/common/vli_encoder.c",
+        "liblzma/src/liblzma/common/vli_size.c",
+        "liblzma/src/liblzma/delta/delta_common.c",
+        "liblzma/src/liblzma/delta/delta_decoder.c",
+        "liblzma/src/liblzma/delta/delta_encoder.c",
+        "liblzma/src/liblzma/lz/lz_decoder.c",
+        "liblzma/src/liblzma/lz/lz_encoder.c",
+        "liblzma/src/liblzma/lz/lz_encoder_mf.c",
+        "liblzma/src/liblzma/lzma/fastpos_table.c",
+        "liblzma/src/liblzma/lzma/lzma2_decoder.c",
+        "liblzma/src/liblzma/lzma/lzma2_encoder.c",
+        "liblzma/src/liblzma/lzma/lzma_decoder.c",
+        "liblzma/src/liblzma/lzma/lzma_encoder.c",
+        "liblzma/src/liblzma/lzma/lzma_encoder_optimum_fast.c",
+        "liblzma/src/liblzma/lzma/lzma_encoder_optimum_normal.c",
+        "liblzma/src/liblzma/lzma/lzma_encoder_presets.c",
+        "liblzma/src/liblzma/rangecoder/price_table.c",
+        "liblzma/src/liblzma/simple/arm.c",
+        "liblzma/src/liblzma/simple/armthumb.c",
+        "liblzma/src/liblzma/simple/ia64.c",
+        "liblzma/src/liblzma/simple/powerpc.c",
+        "liblzma/src/liblzma/simple/simple_coder.c",
+        "liblzma/src/liblzma/simple/simple_decoder.c",
+        "liblzma/src/liblzma/simple/simple_encoder.c",
+        "liblzma/src/liblzma/simple/sparc.c",
+        "liblzma/src/liblzma/simple/x86.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H=1",
+        "-DMYTHREAD_POSIX=1",
+        "-DTUKLIB_CPUCORES_SYSCTL=1",
+        "-DTUKLIB_PHYSMEM_SYSCTL=1",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dlzma_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":lzma_inc_liblzma",
+        ":lzma_inc_liblzma_src_liblzma_api",
+        ":lzma_inc_liblzma_src_liblzma_check",
+        ":lzma_inc_liblzma_src_liblzma_common",
+        ":lzma_inc_liblzma_src_liblzma_lzma",
+        ":lzma_inc_liblzma_src_liblzma_lz",
+        ":lzma_inc_liblzma_src_liblzma_simple",
+        ":lzma_inc_liblzma_src_liblzma_delta",
+        ":lzma_inc_liblzma_src_liblzma_rangecoder",
+        ":lzma_inc_liblzma_src_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "lzma_firstpass",
+    dylib_name = "liblzma_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/liblzma.5.dylib",
+    objs = [
+        ":lzma_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: lzma
+
+# BEGIN generated: ncurses
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ncurses   -- review before committing.
+# cmake target: ncurses  ->  src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ncurses_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ncurses_obj",
+    srcs = [
+        "ncurses/gen/codes.c",
+        "ncurses/gen/comp_captab.c",
+        "ncurses/gen/expanded.c",
+        "ncurses/gen/fallback.c",
+        "ncurses/gen/lib_gen.c",
+        "ncurses/gen/lib_keyname.c",
+        "ncurses/gen/names.c",
+        "ncurses/gen/unctrl.c",
+        "ncurses/ncurses/ncurses/base/define_key.c",
+        "ncurses/ncurses/ncurses/base/key_defined.c",
+        "ncurses/ncurses/ncurses/base/keybound.c",
+        "ncurses/ncurses/ncurses/base/keyok.c",
+        "ncurses/ncurses/ncurses/base/legacy_coding.c",
+        "ncurses/ncurses/ncurses/base/lib_addch.c",
+        "ncurses/ncurses/ncurses/base/lib_addstr.c",
+        "ncurses/ncurses/ncurses/base/lib_beep.c",
+        "ncurses/ncurses/ncurses/base/lib_bkgd.c",
+        "ncurses/ncurses/ncurses/base/lib_box.c",
+        "ncurses/ncurses/ncurses/base/lib_chgat.c",
+        "ncurses/ncurses/ncurses/base/lib_clear.c",
+        "ncurses/ncurses/ncurses/base/lib_clearok.c",
+        "ncurses/ncurses/ncurses/base/lib_clrbot.c",
+        "ncurses/ncurses/ncurses/base/lib_clreol.c",
+        "ncurses/ncurses/ncurses/base/lib_color.c",
+        "ncurses/ncurses/ncurses/base/lib_colorset.c",
+        "ncurses/ncurses/ncurses/base/lib_delch.c",
+        "ncurses/ncurses/ncurses/base/lib_delwin.c",
+        "ncurses/ncurses/ncurses/base/lib_dft_fgbg.c",
+        "ncurses/ncurses/ncurses/base/lib_echo.c",
+        "ncurses/ncurses/ncurses/base/lib_endwin.c",
+        "ncurses/ncurses/ncurses/base/lib_erase.c",
+        "ncurses/ncurses/ncurses/base/lib_flash.c",
+        "ncurses/ncurses/ncurses/base/lib_freeall.c",
+        "ncurses/ncurses/ncurses/base/lib_getch.c",
+        "ncurses/ncurses/ncurses/base/lib_getstr.c",
+        "ncurses/ncurses/ncurses/base/lib_hline.c",
+        "ncurses/ncurses/ncurses/base/lib_immedok.c",
+        "ncurses/ncurses/ncurses/base/lib_inchstr.c",
+        "ncurses/ncurses/ncurses/base/lib_initscr.c",
+        "ncurses/ncurses/ncurses/base/lib_insch.c",
+        "ncurses/ncurses/ncurses/base/lib_insdel.c",
+        "ncurses/ncurses/ncurses/base/lib_insnstr.c",
+        "ncurses/ncurses/ncurses/base/lib_instr.c",
+        "ncurses/ncurses/ncurses/base/lib_isendwin.c",
+        "ncurses/ncurses/ncurses/base/lib_leaveok.c",
+        "ncurses/ncurses/ncurses/base/lib_mouse.c",
+        "ncurses/ncurses/ncurses/base/lib_move.c",
+        "ncurses/ncurses/ncurses/base/lib_mvwin.c",
+        "ncurses/ncurses/ncurses/base/lib_newterm.c",
+        "ncurses/ncurses/ncurses/base/lib_newwin.c",
+        "ncurses/ncurses/ncurses/base/lib_nl.c",
+        "ncurses/ncurses/ncurses/base/lib_overlay.c",
+        "ncurses/ncurses/ncurses/base/lib_pad.c",
+        "ncurses/ncurses/ncurses/base/lib_printw.c",
+        "ncurses/ncurses/ncurses/base/lib_redrawln.c",
+        "ncurses/ncurses/ncurses/base/lib_refresh.c",
+        "ncurses/ncurses/ncurses/base/lib_restart.c",
+        "ncurses/ncurses/ncurses/base/lib_scanw.c",
+        "ncurses/ncurses/ncurses/base/lib_screen.c",
+        "ncurses/ncurses/ncurses/base/lib_scroll.c",
+        "ncurses/ncurses/ncurses/base/lib_scrollok.c",
+        "ncurses/ncurses/ncurses/base/lib_scrreg.c",
+        "ncurses/ncurses/ncurses/base/lib_set_term.c",
+        "ncurses/ncurses/ncurses/base/lib_slk.c",
+        "ncurses/ncurses/ncurses/base/lib_slkatr_set.c",
+        "ncurses/ncurses/ncurses/base/lib_slkatrof.c",
+        "ncurses/ncurses/ncurses/base/lib_slkatron.c",
+        "ncurses/ncurses/ncurses/base/lib_slkatrset.c",
+        "ncurses/ncurses/ncurses/base/lib_slkattr.c",
+        "ncurses/ncurses/ncurses/base/lib_slkclear.c",
+        "ncurses/ncurses/ncurses/base/lib_slkcolor.c",
+        "ncurses/ncurses/ncurses/base/lib_slkinit.c",
+        "ncurses/ncurses/ncurses/base/lib_slklab.c",
+        "ncurses/ncurses/ncurses/base/lib_slkrefr.c",
+        "ncurses/ncurses/ncurses/base/lib_slkset.c",
+        "ncurses/ncurses/ncurses/base/lib_slktouch.c",
+        "ncurses/ncurses/ncurses/base/lib_touch.c",
+        "ncurses/ncurses/ncurses/base/lib_ungetch.c",
+        "ncurses/ncurses/ncurses/base/lib_vline.c",
+        "ncurses/ncurses/ncurses/base/lib_wattroff.c",
+        "ncurses/ncurses/ncurses/base/lib_wattron.c",
+        "ncurses/ncurses/ncurses/base/lib_winch.c",
+        "ncurses/ncurses/ncurses/base/lib_window.c",
+        "ncurses/ncurses/ncurses/base/nc_panel.c",
+        "ncurses/ncurses/ncurses/base/resizeterm.c",
+        "ncurses/ncurses/ncurses/base/safe_sprintf.c",
+        "ncurses/ncurses/ncurses/base/tries.c",
+        "ncurses/ncurses/ncurses/base/use_window.c",
+        "ncurses/ncurses/ncurses/base/version.c",
+        "ncurses/ncurses/ncurses/base/wresize.c",
+        "ncurses/ncurses/ncurses/tinfo/access.c",
+        "ncurses/ncurses/ncurses/tinfo/add_tries.c",
+        "ncurses/ncurses/ncurses/tinfo/alloc_entry.c",
+        "ncurses/ncurses/ncurses/tinfo/alloc_ttype.c",
+        "ncurses/ncurses/ncurses/tinfo/captoinfo.c",
+        "ncurses/ncurses/ncurses/tinfo/comp_error.c",
+        "ncurses/ncurses/ncurses/tinfo/comp_expand.c",
+        "ncurses/ncurses/ncurses/tinfo/comp_hash.c",
+        "ncurses/ncurses/ncurses/tinfo/comp_parse.c",
+        "ncurses/ncurses/ncurses/tinfo/comp_scan.c",
+        "ncurses/ncurses/ncurses/tinfo/db_iterator.c",
+        "ncurses/ncurses/ncurses/tinfo/doalloc.c",
+        "ncurses/ncurses/ncurses/tinfo/entries.c",
+        "ncurses/ncurses/ncurses/tinfo/free_ttype.c",
+        "ncurses/ncurses/ncurses/tinfo/getenv_num.c",
+        "ncurses/ncurses/ncurses/tinfo/home_terminfo.c",
+        "ncurses/ncurses/ncurses/tinfo/init_keytry.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_acs.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_baudrate.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_cur_term.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_data.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_has_cap.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_kernel.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_longname.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_napms.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_options.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_print.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_raw.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_setup.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_termcap.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_termname.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_tgoto.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_ti.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_tparm.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_tputs.c",
+        "ncurses/ncurses/ncurses/tinfo/lib_ttyflags.c",
+        "ncurses/ncurses/ncurses/tinfo/name_match.c",
+        "ncurses/ncurses/ncurses/tinfo/parse_entry.c",
+        "ncurses/ncurses/ncurses/tinfo/read_entry.c",
+        "ncurses/ncurses/ncurses/tinfo/read_termcap.c",
+        "ncurses/ncurses/ncurses/tinfo/setbuf.c",
+        "ncurses/ncurses/ncurses/tinfo/strings.c",
+        "ncurses/ncurses/ncurses/tinfo/trim_sgr0.c",
+        "ncurses/ncurses/ncurses/tinfo/use_screen.c",
+        "ncurses/ncurses/ncurses/tinfo/write_entry.c",
+        "ncurses/ncurses/ncurses/trace/lib_trace.c",
+        "ncurses/ncurses/ncurses/trace/visbuf.c",
+        "ncurses/ncurses/ncurses/tty/hardscroll.c",
+        "ncurses/ncurses/ncurses/tty/hashmap.c",
+        "ncurses/ncurses/ncurses/tty/lib_mvcur.c",
+        "ncurses/ncurses/ncurses/tty/lib_tstp.c",
+        "ncurses/ncurses/ncurses/tty/lib_twait.c",
+        "ncurses/ncurses/ncurses/tty/lib_vidattr.c",
+        "ncurses/ncurses/ncurses/tty/tty_update.c",
+        "ncurses/ncurses/ncurses/widechar/charable.c",
+        "ncurses/ncurses/ncurses/widechar/lib_add_wch.c",
+        "ncurses/ncurses/ncurses/widechar/lib_box_set.c",
+        "ncurses/ncurses/ncurses/widechar/lib_cchar.c",
+        "ncurses/ncurses/ncurses/widechar/lib_erasewchar.c",
+        "ncurses/ncurses/ncurses/widechar/lib_get_wch.c",
+        "ncurses/ncurses/ncurses/widechar/lib_get_wstr.c",
+        "ncurses/ncurses/ncurses/widechar/lib_hline_set.c",
+        "ncurses/ncurses/ncurses/widechar/lib_in_wch.c",
+        "ncurses/ncurses/ncurses/widechar/lib_in_wchnstr.c",
+        "ncurses/ncurses/ncurses/widechar/lib_ins_wch.c",
+        "ncurses/ncurses/ncurses/widechar/lib_inwstr.c",
+        "ncurses/ncurses/ncurses/widechar/lib_key_name.c",
+        "ncurses/ncurses/ncurses/widechar/lib_pecho_wchar.c",
+        "ncurses/ncurses/ncurses/widechar/lib_slk_wset.c",
+        "ncurses/ncurses/ncurses/widechar/lib_unget_wch.c",
+        "ncurses/ncurses/ncurses/widechar/lib_vid_attr.c",
+        "ncurses/ncurses/ncurses/widechar/lib_vline_set.c",
+        "ncurses/ncurses/ncurses/widechar/lib_wacs.c",
+        "ncurses/ncurses/ncurses/widechar/lib_wunctrl.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dncurses_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ncurses_inc_ncurses_ncurses_include",
+        ":ncurses_inc_ncurses_ncurses_ncurses",
+        ":ncurses_inc_ncurses_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "ncurses_firstpass",
+    dylib_name = "libncurses_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libncurses.5.4.dylib",
+    objs = [
+        ":ncurses_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: ncurses
+
+# BEGIN generated: iconv
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py iconv   -- review before committing.
+# cmake target: iconv  ->  src/external/libiconv/libiconv.2.dylib
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv",
+    headers = glob(["libiconv/libiconv/*.h", "libiconv/libiconv/**/*.h"]),
+    root = "libiconv/libiconv",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_lib",
+    headers = glob(["libiconv/libiconv/lib/*.h", "libiconv/libiconv/lib/**/*.h"]),
+    root = "libiconv/libiconv/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_srclib",
+    headers = glob(["libiconv/libiconv/srclib/*.h", "libiconv/libiconv/srclib/**/*.h"]),
+    root = "libiconv/libiconv/srclib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_include",
+    headers = glob(["libiconv/libiconv/include/*.h", "libiconv/libiconv/include/**/*.h"]),
+    root = "libiconv/libiconv/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "iconv_inc_libiconv_libiconv_libcharset_include",
+    headers = glob(["libiconv/libiconv/libcharset/include/*.h", "libiconv/libiconv/libcharset/include/**/*.h"]),
+    root = "libiconv/libiconv/libcharset/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "iconv_obj",
+    srcs = [
+        "libiconv/libiconv/lib/iconv.c",
+        "libiconv/libiconv/libcharset/lib/relocatable.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_DLL",
+        "-DBUILDING_LIBICONV",
+        "-DENABLE_RELOCATABLE",
+        "-DHAVE_CONFIG_H",
+        "-DHAVE_STDINT_H=1",
+        "-DIN_LIBRARY",
+        "-DNO_XMALLOC",
+        "-DPIC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Diconv_EXPORTS",
+        "-Drelocate=libiconv_relocate",
+        "-Dset_relocation_prefix=libiconv_set_relocation_prefix",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-O0",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":iconv_inc_libiconv_libiconv",
+        ":iconv_inc_libiconv_libiconv_lib",
+        ":iconv_inc_libiconv_libiconv_srclib",
+        ":iconv_inc_libiconv_libiconv_include",
+        ":iconv_inc_libiconv_libiconv_libcharset_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "iconv_firstpass",
+    dylib_name = "libiconv_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libiconv.2.dylib",
+    objs = [
+        ":iconv_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: iconv
+
+# BEGIN generated: edit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py edit   -- review before committing.
+# cmake target: edit  ->  src/external/libedit/libedit.3.dylib
+
+cc_header_root(
+    name = "edit_inc_libedit_src",
+    headers = glob(["libedit/src/*.h", "libedit/src/**/*.h", "libedit/src/*.c"]),
+    root = "libedit/src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "edit_inc_libedit_local",
+    headers = glob(["libedit/local/*.h", "libedit/local/**/*.h", "libedit/local/*.c"]),
+    root = "libedit/local",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "edit_inc_libedit",
+    headers = glob(["libedit/*.h", "libedit/**/*.h", "libedit/*.c"]),
+    root = "libedit",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "edit_obj",
+    srcs = [
+        "libedit/local/fcns.c",
+        "libedit/local/help.c",
+        "libedit/local/historyn.c",
+        "libedit/local/tokenizern.c",
+        "libedit/src/chared.c",
+        "libedit/src/chartype.c",
+        "libedit/src/common.c",
+        "libedit/src/el.c",
+        "libedit/src/eln.c",
+        "libedit/src/emacs.c",
+        "libedit/src/filecomplete.c",
+        "libedit/src/hist.c",
+        "libedit/src/history.c",
+        "libedit/src/keymacro.c",
+        "libedit/src/map.c",
+        "libedit/src/parse.c",
+        "libedit/src/prompt.c",
+        "libedit/src/read.c",
+        "libedit/src/readline.c",
+        "libedit/src/refresh.c",
+        "libedit/src/search.c",
+        "libedit/src/sig.c",
+        "libedit/src/terminal.c",
+        "libedit/src/tokenizer.c",
+        "libedit/src/tty.c",
+        "libedit/src/unvis.c",
+        "libedit/src/vi.c",
+        "libedit/src/vis.c",
+        "libedit/src/wcsdup.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dedit_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":edit_inc_libedit_src",
+        "//darwin:sdk_env",
+        ":edit_inc_libedit_local",
+        ":edit_inc_libedit",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "edit_firstpass",
+    dylib_name = "libedit_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libedit.3.dylib",
+    objs = [
+        ":edit_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: edit
+
+# BEGIN generated: archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py archive   -- review before committing.
+# cmake target: archive  ->  src/external/libarchive/libarchive/libarchive.2.dylib
+
+cc_header_root(
+    name = "archive_inc_libarchive_libarchive_libarchive_fe",
+    headers = glob(["libarchive/libarchive/libarchive_fe/*.h", "libarchive/libarchive/libarchive_fe/**/*.h"]),
+    root = "libarchive/libarchive/libarchive_fe",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_inc_libarchive_libarchive_libarchive",
+    headers = glob(["libarchive/libarchive/libarchive/*.h", "libarchive/libarchive/libarchive/**/*.h"]),
+    root = "libarchive/libarchive/libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_inc_libarchive",
+    headers = glob(["libarchive/*.h", "libarchive/**/*.h"]),
+    root = "libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_inc_icu_icuSources_common",
+    headers = glob(["icu/icuSources/common/*.h", "icu/icuSources/common/**/*.h"]),
+    root = "icu/icuSources/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "archive_obj",
+    srcs = [
+        "libarchive/libarchive/libarchive/archive_acl.c",
+        "libarchive/libarchive/libarchive/archive_check_magic.c",
+        "libarchive/libarchive/libarchive/archive_cmdline.c",
+        "libarchive/libarchive/libarchive/archive_cryptor.c",
+        "libarchive/libarchive/libarchive/archive_digest.c",
+        "libarchive/libarchive/libarchive/archive_disk_acl_darwin.c",
+        "libarchive/libarchive/libarchive/archive_entry.c",
+        "libarchive/libarchive/libarchive/archive_entry_copy_bhfi.c",
+        "libarchive/libarchive/libarchive/archive_entry_copy_stat.c",
+        "libarchive/libarchive/libarchive/archive_entry_link_resolver.c",
+        "libarchive/libarchive/libarchive/archive_entry_sparse.c",
+        "libarchive/libarchive/libarchive/archive_entry_stat.c",
+        "libarchive/libarchive/libarchive/archive_entry_strmode.c",
+        "libarchive/libarchive/libarchive/archive_entry_xattr.c",
+        "libarchive/libarchive/libarchive/archive_getdate.c",
+        "libarchive/libarchive/libarchive/archive_hmac.c",
+        "libarchive/libarchive/libarchive/archive_match.c",
+        "libarchive/libarchive/libarchive/archive_options.c",
+        "libarchive/libarchive/libarchive/archive_pack_dev.c",
+        "libarchive/libarchive/libarchive/archive_pathmatch.c",
+        "libarchive/libarchive/libarchive/archive_ppmd7.c",
+        "libarchive/libarchive/libarchive/archive_random.c",
+        "libarchive/libarchive/libarchive/archive_rb.c",
+        "libarchive/libarchive/libarchive/archive_read.c",
+        "libarchive/libarchive/libarchive/archive_read_add_passphrase.c",
+        "libarchive/libarchive/libarchive/archive_read_append_filter.c",
+        "libarchive/libarchive/libarchive/archive_read_data_into_fd.c",
+        "libarchive/libarchive/libarchive/archive_read_disk_entry_from_file.c",
+        "libarchive/libarchive/libarchive/archive_read_disk_posix.c",
+        "libarchive/libarchive/libarchive/archive_read_disk_set_standard_lookup.c",
+        "libarchive/libarchive/libarchive/archive_read_extract.c",
+        "libarchive/libarchive/libarchive/archive_read_extract2.c",
+        "libarchive/libarchive/libarchive/archive_read_open_fd.c",
+        "libarchive/libarchive/libarchive/archive_read_open_file.c",
+        "libarchive/libarchive/libarchive/archive_read_open_filename.c",
+        "libarchive/libarchive/libarchive/archive_read_open_memory.c",
+        "libarchive/libarchive/libarchive/archive_read_set_format.c",
+        "libarchive/libarchive/libarchive/archive_read_set_options.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_all.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_bzip2.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_compress.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_grzip.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_gzip.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_lrzip.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_lz4.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_lzop.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_none.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_program.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_rpm.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_uu.c",
+        "libarchive/libarchive/libarchive/archive_read_support_filter_xz.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_7zip.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_all.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_ar.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_by_code.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_cab.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_cpio.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_empty.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_iso9660.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_lha.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_mtree.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_rar.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_raw.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_tar.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_warc.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_xar.c",
+        "libarchive/libarchive/libarchive/archive_read_support_format_zip.c",
+        "libarchive/libarchive/libarchive/archive_string.c",
+        "libarchive/libarchive/libarchive/archive_string_sprintf.c",
+        "libarchive/libarchive/libarchive/archive_util.c",
+        "libarchive/libarchive/libarchive/archive_version_details.c",
+        "libarchive/libarchive/libarchive/archive_virtual.c",
+        "libarchive/libarchive/libarchive/archive_write.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_b64encode.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_by_name.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_bzip2.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_compress.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_grzip.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_gzip.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_lrzip.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_lz4.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_lzop.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_none.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_program.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_uuencode.c",
+        "libarchive/libarchive/libarchive/archive_write_add_filter_xz.c",
+        "libarchive/libarchive/libarchive/archive_write_disk_posix.c",
+        "libarchive/libarchive/libarchive/archive_write_disk_set_standard_lookup.c",
+        "libarchive/libarchive/libarchive/archive_write_open_fd.c",
+        "libarchive/libarchive/libarchive/archive_write_open_file.c",
+        "libarchive/libarchive/libarchive/archive_write_open_filename.c",
+        "libarchive/libarchive/libarchive/archive_write_open_memory.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_7zip.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_ar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_by_name.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_cpio.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_cpio_newc.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_filter_by_ext.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_gnutar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_iso9660.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_mtree.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_pax.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_raw.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_shar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_ustar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_v7tar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_warc.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_xar.c",
+        "libarchive/libarchive/libarchive/archive_write_set_format_zip.c",
+        "libarchive/libarchive/libarchive/archive_write_set_options.c",
+        "libarchive/libarchive/libarchive/archive_write_set_passphrase.c",
+        "libarchive/libarchive/libarchive/filter_fork_posix.c",
+        "libarchive/libarchive/libarchive/xxhash.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Darchive_EXPORTS",
+        "-fPIC",
+        "-Wno-error=int-conversion",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":archive_inc_libarchive_libarchive_libarchive_fe",
+        ":archive_inc_libarchive_libarchive_libarchive",
+        ":archive_inc_libarchive",
+        "//darwin:sdk_env",
+        ":archive_inc_icu_icuSources_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "archive_firstpass",
+    dylib_name = "libarchive_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libarchive.2.dylib",
+    objs = [
+        ":archive_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: archive
+
+# BEGIN generated: z dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs z   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "z_dylib",
+    dylib_name = "libz.1.dylib",
+    install_name = "/usr/lib/libz.1.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.2.11",
+    objs = [
+        # z
+        ":z_obj",
+        ":z_obj2",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: z dylibs
+
+# BEGIN generated: bsm.0 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs bsm.0   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "bsm.0_dylib",
+    dylib_name = "libbsm.0.dylib",
+    install_name = "/usr/lib/libbsm.0.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # bsm.0
+        ":bsm.0_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bsm.0 dylibs
+
+# BEGIN generated: bz2 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs bz2   -- review before committing.
+# Links 2 cmake object library/ies, 2 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   bz264
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "bz2_dylib",
+    dylib_name = "libbz2.1.0.dylib",
+    install_name = "/usr/lib/libbz2.1.0.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.5",
+    objs = [
+        # bz264
+        ":bz264_obj",
+        # bz2
+        ":bz2_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: bz2 dylibs
+
+# BEGIN generated: lzma dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs lzma   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "lzma_dylib",
+    dylib_name = "liblzma.5.dylib",
+    install_name = "/usr/lib/liblzma.5.dylib",
+    compatibility_version = "6.0.0",
+    current_version = "6.3.0",
+    objs = [
+        # lzma
+        ":lzma_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: lzma dylibs
+
+# BEGIN generated: ncurses dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ncurses   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "ncurses_dylib",
+    dylib_name = "libncurses.5.4.dylib",
+    install_name = "/usr/lib/libncurses.5.4.dylib",
+    compatibility_version = "5.4.0",
+    current_version = "5.4.0",
+    objs = [
+        # ncurses
+        ":ncurses_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: ncurses dylibs
+
+# BEGIN generated: iconv dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs iconv   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "iconv_dylib",
+    dylib_name = "libiconv.2.dylib",
+    install_name = "/usr/lib/libiconv.2.dylib",
+    compatibility_version = "7.0.0",
+    current_version = "7.0.0",
+    objs = [
+        # iconv
+        ":iconv_obj",
+    ],
+    siblings = [
+        "//buck-src:charset_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: iconv dylibs
+
+# BEGIN generated: edit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs edit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "edit_dylib",
+    dylib_name = "libedit.3.dylib",
+    install_name = "/usr/lib/libedit.3.dylib",
+    compatibility_version = "2.0.0",
+    current_version = "3.0.0",
+    objs = [
+        # edit
+        ":edit_obj",
+    ],
+    siblings = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: edit dylibs
+
+# BEGIN generated: archive dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs archive   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "archive_dylib",
+    dylib_name = "libarchive.2.dylib",
+    install_name = "/usr/lib/libarchive.2.dylib",
+    compatibility_version = "9.0.0",
+    current_version = "9.2.0",
+    objs = [
+        # archive
+        ":archive_obj",
+    ],
+    siblings = [
+        "//buck-src:lzma_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: archive dylibs
+
+# BEGIN generated: charset
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py charset   -- review before committing.
+# cmake target: charset  ->  src/external/libiconv/libcharset.1.dylib
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv",
+    headers = glob(["libiconv/libiconv/*.h", "libiconv/libiconv/**/*.h", "libiconv/libiconv/*.c"]),
+    root = "libiconv/libiconv",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_lib",
+    headers = glob(["libiconv/libiconv/lib/*.h", "libiconv/libiconv/lib/**/*.h", "libiconv/libiconv/lib/*.c"]),
+    root = "libiconv/libiconv/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_srclib",
+    headers = glob(["libiconv/libiconv/srclib/*.h", "libiconv/libiconv/srclib/**/*.h", "libiconv/libiconv/srclib/*.c"]),
+    root = "libiconv/libiconv/srclib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_include",
+    headers = glob(["libiconv/libiconv/include/*.h", "libiconv/libiconv/include/**/*.h", "libiconv/libiconv/include/*.c"]),
+    root = "libiconv/libiconv/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "charset_inc_libiconv_libiconv_libcharset_include",
+    headers = glob(["libiconv/libiconv/libcharset/include/*.h", "libiconv/libiconv/libcharset/include/**/*.h", "libiconv/libiconv/libcharset/include/*.c"]),
+    root = "libiconv/libiconv/libcharset/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "charset_obj",
+    srcs = [
+        "libiconv/libiconv/libcharset/lib/localcharset.c",
+        "libiconv/libiconv/libcharset/lib/relocatable.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_DLL",
+        "-DBUILDING_LIBCHARSET",
+        "-DENABLE_RELOCATABLE",
+        "-DHAVE_CONFIG_H",
+        "-DHAVE_STDINT_H=1",
+        "-DIN_LIBRARY",
+        "-DNO_XMALLOC",
+        "-DPIC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcharset_EXPORTS",
+        "-Drelocate=libcharset_relocate",
+        "-Dset_relocation_prefix=libcharset_set_relocation_prefix",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-O0",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":charset_inc_libiconv_libiconv",
+        ":charset_inc_libiconv_libiconv_lib",
+        ":charset_inc_libiconv_libiconv_srclib",
+        ":charset_inc_libiconv_libiconv_include",
+        ":charset_inc_libiconv_libiconv_libcharset_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "charset_firstpass",
+    dylib_name = "libcharset_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libcharset.1.dylib",
+    objs = [
+        ":charset_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: charset
+
+# BEGIN generated: charset dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs charset   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   |
+#   ||
+#   x86_64-apple-darwin20-ld
+#   lipo
+
+darwin_dylib(
+    name = "charset_dylib",
+    dylib_name = "libcharset.1.dylib",
+    install_name = "/usr/lib/libcharset.1.dylib",
+    compatibility_version = "2.0.0",
+    current_version = "2.0.0",
+    objs = [
+        # charset
+        ":charset_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: charset dylibs
+
+# BEGIN generated: aslmanager
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py aslmanager   -- review before committing.
+# cmake target: aslmanager  ->  src/external/syslog/aslmanager.tproj/aslmanager
+
+cc_header_root(
+    name = "aslmanager_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h", "syslog/libsystem_asl.tproj/include/*.c"]),
+    root = "syslog/libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "aslmanager_inc_syslog_aslcommon",
+    headers = glob(["syslog/aslcommon/*.h", "syslog/aslcommon/**/*.h", "syslog/aslcommon/*.c"]),
+    root = "syslog/aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "aslmanager_obj",
+    srcs = [
+        "syslog/aslmanager.tproj/aslmanager.c",
+        "syslog/aslmanager.tproj/daemon.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":asl_ipc_mig",
+        ":aslmanager_inc_syslog_libsystem_asl_tproj_include",
+        ":aslmanager_inc_syslog_aslcommon",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: aslmanager
+
+# BEGIN generated: archive_fe
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py archive_fe   -- review before committing.
+# cmake target: archive_fe  ->  src/external/libarchive/libarchive/archive_fe
+
+cc_header_root(
+    name = "archive_fe_inc_libarchive_libarchive_libarchive_fe",
+    headers = glob(["libarchive/libarchive/libarchive_fe/*.h", "libarchive/libarchive/libarchive_fe/**/*.h", "libarchive/libarchive/libarchive_fe/*.c"]),
+    root = "libarchive/libarchive/libarchive_fe",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_fe_inc_libarchive_libarchive_libarchive",
+    headers = glob(["libarchive/libarchive/libarchive/*.h", "libarchive/libarchive/libarchive/**/*.h", "libarchive/libarchive/libarchive/*.c"]),
+    root = "libarchive/libarchive/libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_fe_inc_libarchive",
+    headers = glob(["libarchive/*.h", "libarchive/**/*.h", "libarchive/*.c"]),
+    root = "libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "archive_fe_inc_icu_icuSources_common",
+    headers = glob(["icu/icuSources/common/*.h", "icu/icuSources/common/**/*.h", "icu/icuSources/common/*.c"]),
+    root = "icu/icuSources/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "archive_fe_obj",
+    srcs = [
+        "libarchive/libarchive/libarchive_fe/err.c",
+        "libarchive/libarchive/libarchive_fe/line_reader.c",
+        "libarchive/libarchive/libarchive_fe/passphrase.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-Wno-error=int-conversion",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":archive_fe_inc_libarchive_libarchive_libarchive_fe",
+        ":archive_fe_inc_libarchive_libarchive_libarchive",
+        ":archive_fe_inc_libarchive",
+        "//darwin:sdk_env",
+        ":archive_fe_inc_icu_icuSources_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: archive_fe
+
+# BEGIN generated: bsdtar
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bsdtar   -- review before committing.
+# cmake target: bsdtar  ->  src/external/libarchive/libarchive/bsdtar
+
+cc_header_root(
+    name = "bsdtar_inc_libarchive_libarchive_libarchive_fe",
+    headers = glob(["libarchive/libarchive/libarchive_fe/*.h", "libarchive/libarchive/libarchive_fe/**/*.h", "libarchive/libarchive/libarchive_fe/*.c"]),
+    root = "libarchive/libarchive/libarchive_fe",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bsdtar_inc_libarchive_libarchive_libarchive",
+    headers = glob(["libarchive/libarchive/libarchive/*.h", "libarchive/libarchive/libarchive/**/*.h", "libarchive/libarchive/libarchive/*.c"]),
+    root = "libarchive/libarchive/libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bsdtar_inc_libarchive",
+    headers = glob(["libarchive/*.h", "libarchive/**/*.h", "libarchive/*.c"]),
+    root = "libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "bsdtar_inc_icu_icuSources_common",
+    headers = glob(["icu/icuSources/common/*.h", "icu/icuSources/common/**/*.h", "icu/icuSources/common/*.c"]),
+    root = "icu/icuSources/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bsdtar_obj",
+    srcs = [
+        "libarchive/libarchive/tar/bsdtar.c",
+        "libarchive/libarchive/tar/cmdline.c",
+        "libarchive/libarchive/tar/creation_set.c",
+        "libarchive/libarchive/tar/read.c",
+        "libarchive/libarchive/tar/subst.c",
+        "libarchive/libarchive/tar/util.c",
+        "libarchive/libarchive/tar/write.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-Wno-error=int-conversion",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":bsdtar_inc_libarchive_libarchive_libarchive_fe",
+        ":bsdtar_inc_libarchive_libarchive_libarchive",
+        ":bsdtar_inc_libarchive",
+        "//darwin:sdk_env",
+        ":bsdtar_inc_icu_icuSources_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bsdtar
+
+# BEGIN generated: bzip2
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bzip2   -- review before committing.
+# cmake target: bzip2  ->  src/external/bzip2/bzip2
+
+cc_objects(
+    name = "bzip2_obj",
+    srcs = [
+        "bzip2/bzip2/bzip2.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_FILE_OFFSET_BITS=64",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bzip2
+
+# BEGIN generated: clear
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py clear   -- review before committing.
+# cmake target: clear  ->  src/external/ncurses/clear
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "clear_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "clear_obj",
+    srcs = [
+        "ncurses/ncurses/progs/clear.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":clear_inc_ncurses_ncurses_include",
+        ":clear_inc_ncurses_ncurses_ncurses",
+        ":clear_inc_ncurses_gen",
+        ":clear_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clear
+
+# BEGIN generated: cpio
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cpio   -- review before committing.
+# cmake target: cpio  ->  src/external/libarchive/libarchive/cpio
+
+cc_header_root(
+    name = "cpio_inc_libarchive_libarchive_libarchive_fe",
+    headers = glob(["libarchive/libarchive/libarchive_fe/*.h", "libarchive/libarchive/libarchive_fe/**/*.h", "libarchive/libarchive/libarchive_fe/*.c"]),
+    root = "libarchive/libarchive/libarchive_fe",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "cpio_inc_libarchive_libarchive_libarchive",
+    headers = glob(["libarchive/libarchive/libarchive/*.h", "libarchive/libarchive/libarchive/**/*.h", "libarchive/libarchive/libarchive/*.c"]),
+    root = "libarchive/libarchive/libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "cpio_inc_libarchive",
+    headers = glob(["libarchive/*.h", "libarchive/**/*.h", "libarchive/*.c"]),
+    root = "libarchive",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "cpio_inc_icu_icuSources_common",
+    headers = glob(["icu/icuSources/common/*.h", "icu/icuSources/common/**/*.h", "icu/icuSources/common/*.c"]),
+    root = "icu/icuSources/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cpio_obj",
+    srcs = [
+        "libarchive/libarchive/cpio/cmdline.c",
+        "libarchive/libarchive/cpio/cpio.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-Wno-error=int-conversion",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":cpio_inc_libarchive_libarchive_libarchive_fe",
+        ":cpio_inc_libarchive_libarchive_libarchive",
+        ":cpio_inc_libarchive",
+        "//darwin:sdk_env",
+        ":cpio_inc_icu_icuSources_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cpio
+
+# BEGIN generated: nc_dump_entry
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py nc_dump_entry   -- review before committing.
+# cmake target: nc_dump_entry  ->  src/external/ncurses/nc_dump_entry
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "nc_dump_entry_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "nc_dump_entry_obj",
+    srcs = [
+        "ncurses/ncurses/progs/dump_entry.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":nc_dump_entry_inc_ncurses_ncurses_include",
+        ":nc_dump_entry_inc_ncurses_ncurses_ncurses",
+        ":nc_dump_entry_inc_ncurses_gen",
+        ":nc_dump_entry_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nc_dump_entry
+
+# BEGIN generated: infocmp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py infocmp   -- review before committing.
+# cmake target: infocmp  ->  src/external/ncurses/infocmp
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "infocmp_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "infocmp_obj",
+    srcs = [
+        "ncurses/ncurses/progs/infocmp.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":infocmp_inc_ncurses_ncurses_include",
+        ":infocmp_inc_ncurses_ncurses_ncurses",
+        ":infocmp_inc_ncurses_gen",
+        ":infocmp_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: infocmp
+
+# BEGIN generated: notifyd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py notifyd   -- review before committing.
+# cmake target: notifyd  ->  src/external/libnotify/notifyd/notifyd
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/libnotify/notifyd/notifyServer.c
+#   src/external/libnotify/notifyd/notify_ipcServer.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/libnotify
+#   src/external/libnotify/notifyd
+
+cc_header_root(
+    name = "notifyd_inc_libnotify",
+    headers = glob(["libnotify/*.h", "libnotify/**/*.h", "libnotify/*.c"]),
+    root = "libnotify",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "notifyd_obj",
+    srcs = [
+        "libnotify/notifyd/notify_proc.c",
+        "libnotify/notifyd/notifyd.c",
+        "libnotify/notifyd/pathwatch.c",
+        "libnotify/notifyd/service.c",
+    ],
+    compiler_flags = [
+        "-DMACH_NOTIFY_SEND_POSSIBLE_EXPECTED=1",
+        "-DSINGLE_THREADED_NOTIFY_STATE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-w",
+    ],
+    prefix_headers = [
+        "xnu/bsd/sys/fileport.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:notifymig_notifyd_notify_ipc",
+        "//buck-src:launchdmig_notify",
+        ":notifyd_inc_libnotify",
+    ],
+    gen_srcs = [
+        "//buck-src:notifymig_notifyd_notify_ipc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: notifyd
+
+# BEGIN generated: syslogd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py syslogd   -- review before committing.
+# cmake target: syslogd  ->  src/external/syslog/syslogd.tproj/syslogd
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/syslog/aslcommon
+
+cc_header_root(
+    name = "syslogd_inc_syslog_libsystem_asl_tproj_include",
+    headers = glob(["syslog/libsystem_asl.tproj/include/*.h", "syslog/libsystem_asl.tproj/include/**/*.h", "syslog/libsystem_asl.tproj/include/*.c"]),
+    root = "syslog/libsystem_asl.tproj/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "syslogd_inc_syslog_aslcommon",
+    headers = glob(["syslog/aslcommon/*.h", "syslog/aslcommon/**/*.h", "syslog/aslcommon/*.c"]),
+    root = "syslog/aslcommon",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "syslogd_obj",
+    srcs = [
+        "syslog/syslogd.tproj/asl_action.c",
+        "syslog/syslogd.tproj/bsd_in.c",
+        "syslog/syslogd.tproj/bsd_out.c",
+        "syslog/syslogd.tproj/daemon.c",
+        "syslog/syslogd.tproj/dbserver.c",
+        "syslog/syslogd.tproj/klog_in.c",
+        "syslog/syslogd.tproj/remote.c",
+        "syslog/syslogd.tproj/syslogd.c",
+        "syslog/syslogd.tproj/udp_in.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":asl_ipc_mig",
+        ":asl_ipc_server_mig",
+        ":syslogd_inc_syslog_libsystem_asl_tproj_include",
+        ":syslogd_inc_syslog_aslcommon",
+    ],
+    gen_srcs = [
+        ":asl_ipc_server_mig",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslogd
+
+# BEGIN generated: tcsh
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tcsh   -- review before committing.
+# cmake target: tcsh  ->  src/external/tcsh/tcsh
+
+cc_header_root(
+    name = "tcsh_inc_tcsh_tcsh",
+    headers = glob(["tcsh/tcsh/*.h", "tcsh/tcsh/**/*.h", "tcsh/tcsh/*.c"]),
+    root = "tcsh/tcsh",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tcsh_inc_tcsh_gen",
+    headers = glob(["tcsh/gen/*.h", "tcsh/gen/**/*.h", "tcsh/gen/*.c"]),
+    root = "tcsh/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tcsh_obj",
+    srcs = [
+        "tcsh/gen/tc.defs.c",
+        "tcsh/tcsh/dotlock.c",
+        "tcsh/tcsh/ed.chared.c",
+        "tcsh/tcsh/ed.defns.c",
+        "tcsh/tcsh/ed.init.c",
+        "tcsh/tcsh/ed.inputl.c",
+        "tcsh/tcsh/ed.refresh.c",
+        "tcsh/tcsh/ed.screen.c",
+        "tcsh/tcsh/ed.term.c",
+        "tcsh/tcsh/ed.xmap.c",
+        "tcsh/tcsh/glob.c",
+        "tcsh/tcsh/ma.setp.c",
+        "tcsh/tcsh/mi.termios.c",
+        "tcsh/tcsh/sh.c",
+        "tcsh/tcsh/sh.char.c",
+        "tcsh/tcsh/sh.dir.c",
+        "tcsh/tcsh/sh.dol.c",
+        "tcsh/tcsh/sh.err.c",
+        "tcsh/tcsh/sh.exec.c",
+        "tcsh/tcsh/sh.exp.c",
+        "tcsh/tcsh/sh.file.c",
+        "tcsh/tcsh/sh.func.c",
+        "tcsh/tcsh/sh.glob.c",
+        "tcsh/tcsh/sh.hist.c",
+        "tcsh/tcsh/sh.init.c",
+        "tcsh/tcsh/sh.lex.c",
+        "tcsh/tcsh/sh.misc.c",
+        "tcsh/tcsh/sh.parse.c",
+        "tcsh/tcsh/sh.print.c",
+        "tcsh/tcsh/sh.proc.c",
+        "tcsh/tcsh/sh.sem.c",
+        "tcsh/tcsh/sh.set.c",
+        "tcsh/tcsh/sh.time.c",
+        "tcsh/tcsh/tc.alloc.c",
+        "tcsh/tcsh/tc.bind.c",
+        "tcsh/tcsh/tc.const.c",
+        "tcsh/tcsh/tc.disc.c",
+        "tcsh/tcsh/tc.func.c",
+        "tcsh/tcsh/tc.nls.c",
+        "tcsh/tcsh/tc.os.c",
+        "tcsh/tcsh/tc.printf.c",
+        "tcsh/tcsh/tc.prompt.c",
+        "tcsh/tcsh/tc.sched.c",
+        "tcsh/tcsh/tc.sig.c",
+        "tcsh/tcsh/tc.str.c",
+        "tcsh/tcsh/tc.vers.c",
+        "tcsh/tcsh/tc.who.c",
+        "tcsh/tcsh/tw.color.c",
+        "tcsh/tcsh/tw.comp.c",
+        "tcsh/tcsh/tw.help.c",
+        "tcsh/tcsh/tw.init.c",
+        "tcsh/tcsh/tw.parse.c",
+        "tcsh/tcsh/tw.spell.c",
+        "tcsh/tcsh/vms.termcap.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_PATH_TCSHELL=\"/bin/tcsh\"",
+        "-nostdinc",
+        "-no-cpp-precomp",
+        "-mdynamic-no-picc",
+        "-fstack-protector-all",
+        "-fPIC",
+        "-Wno-everything",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":tcsh_inc_tcsh_tcsh",
+        ":tcsh_inc_tcsh_gen",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tcsh
+
+# BEGIN generated: tic
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tic   -- review before committing.
+# cmake target: tic  ->  src/external/ncurses/tic
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tic_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tic_obj",
+    srcs = [
+        "ncurses/ncurses/progs/tic.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":tic_inc_ncurses_ncurses_include",
+        ":tic_inc_ncurses_ncurses_ncurses",
+        ":tic_inc_ncurses_gen",
+        ":tic_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tic
+
+# BEGIN generated: toe
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py toe   -- review before committing.
+# cmake target: toe  ->  src/external/ncurses/toe
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "toe_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "toe_obj",
+    srcs = [
+        "ncurses/ncurses/progs/toe.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":toe_inc_ncurses_ncurses_include",
+        ":toe_inc_ncurses_ncurses_ncurses",
+        ":toe_inc_ncurses_gen",
+        ":toe_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: toe
+
+# BEGIN generated: tput
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tput   -- review before committing.
+# cmake target: tput  ->  src/external/ncurses/tput
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tput_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tput_obj",
+    srcs = [
+        "ncurses/ncurses/progs/tput.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":tput_inc_ncurses_ncurses_include",
+        ":tput_inc_ncurses_ncurses_ncurses",
+        ":tput_inc_ncurses_gen",
+        ":tput_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tput
+
+# BEGIN generated: tset
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tset   -- review before committing.
+# cmake target: tset  ->  src/external/ncurses/tset
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_include",
+    headers = glob(["ncurses/ncurses/include/*.h", "ncurses/ncurses/include/**/*.h", "ncurses/ncurses/include/*.c"]),
+    root = "ncurses/ncurses/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_ncurses",
+    headers = glob(["ncurses/ncurses/ncurses/*.h", "ncurses/ncurses/ncurses/**/*.h", "ncurses/ncurses/ncurses/*.c"]),
+    root = "ncurses/ncurses/ncurses",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_gen",
+    headers = glob(["ncurses/gen/*.h", "ncurses/gen/**/*.h", "ncurses/gen/*.c"]),
+    root = "ncurses/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tset_inc_ncurses_ncurses_progs",
+    headers = glob(["ncurses/ncurses/progs/*.h", "ncurses/ncurses/progs/**/*.h", "ncurses/ncurses/progs/*.c"]),
+    root = "ncurses/ncurses/progs",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tset_obj",
+    srcs = [
+        "ncurses/ncurses/progs/tset.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-D",
+        "_XOPEN_SOURCE_EXTENDED=1",
+        "-Wno-format-security",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":tset_inc_ncurses_ncurses_include",
+        ":tset_inc_ncurses_ncurses_ncurses",
+        ":tset_inc_ncurses_gen",
+        ":tset_inc_ncurses_ncurses_progs",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tset
+
+# BEGIN generated: xz
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xz   -- review before committing.
+# cmake target: xz  ->  src/external/liblzma/xz
+
+cc_header_root(
+    name = "xz_inc_liblzma",
+    headers = glob(["liblzma/*.h", "liblzma/**/*.h", "liblzma/*.c"]),
+    root = "liblzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_api",
+    headers = glob(["liblzma/src/liblzma/api/*.h", "liblzma/src/liblzma/api/**/*.h", "liblzma/src/liblzma/api/*.c"]),
+    root = "liblzma/src/liblzma/api",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_check",
+    headers = glob(["liblzma/src/liblzma/check/*.h", "liblzma/src/liblzma/check/**/*.h", "liblzma/src/liblzma/check/*.c"]),
+    root = "liblzma/src/liblzma/check",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_common",
+    headers = glob(["liblzma/src/liblzma/common/*.h", "liblzma/src/liblzma/common/**/*.h", "liblzma/src/liblzma/common/*.c"]),
+    root = "liblzma/src/liblzma/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_lzma",
+    headers = glob(["liblzma/src/liblzma/lzma/*.h", "liblzma/src/liblzma/lzma/**/*.h", "liblzma/src/liblzma/lzma/*.c"]),
+    root = "liblzma/src/liblzma/lzma",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_lz",
+    headers = glob(["liblzma/src/liblzma/lz/*.h", "liblzma/src/liblzma/lz/**/*.h", "liblzma/src/liblzma/lz/*.c"]),
+    root = "liblzma/src/liblzma/lz",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_simple",
+    headers = glob(["liblzma/src/liblzma/simple/*.h", "liblzma/src/liblzma/simple/**/*.h", "liblzma/src/liblzma/simple/*.c"]),
+    root = "liblzma/src/liblzma/simple",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_delta",
+    headers = glob(["liblzma/src/liblzma/delta/*.h", "liblzma/src/liblzma/delta/**/*.h", "liblzma/src/liblzma/delta/*.c"]),
+    root = "liblzma/src/liblzma/delta",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_liblzma_rangecoder",
+    headers = glob(["liblzma/src/liblzma/rangecoder/*.h", "liblzma/src/liblzma/rangecoder/**/*.h", "liblzma/src/liblzma/rangecoder/*.c"]),
+    root = "liblzma/src/liblzma/rangecoder",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "xz_inc_liblzma_src_common",
+    headers = glob(["liblzma/src/common/*.h", "liblzma/src/common/**/*.h", "liblzma/src/common/*.c"]),
+    root = "liblzma/src/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xz_obj",
+    srcs = [
+        "liblzma/src/xz/args.c",
+        "liblzma/src/xz/coder.c",
+        "liblzma/src/xz/file_io.c",
+        "liblzma/src/xz/hardware.c",
+        "liblzma/src/xz/list.c",
+        "liblzma/src/xz/main.c",
+        "liblzma/src/xz/message.c",
+        "liblzma/src/xz/mytime.c",
+        "liblzma/src/xz/options.c",
+        "liblzma/src/xz/signals.c",
+        "liblzma/src/xz/suffix.c",
+        "liblzma/src/xz/util.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H=1",
+        "-DMYTHREAD_POSIX=1",
+        "-DTUKLIB_CPUCORES_SYSCTL=1",
+        "-DTUKLIB_PHYSMEM_SYSCTL=1",
+        "-D_LARGEFILE64_SOURCE=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":xz_inc_liblzma",
+        ":xz_inc_liblzma_src_liblzma_api",
+        ":xz_inc_liblzma_src_liblzma_check",
+        ":xz_inc_liblzma_src_liblzma_common",
+        ":xz_inc_liblzma_src_liblzma_lzma",
+        ":xz_inc_liblzma_src_liblzma_lz",
+        ":xz_inc_liblzma_src_liblzma_simple",
+        ":xz_inc_liblzma_src_liblzma_delta",
+        ":xz_inc_liblzma_src_liblzma_rangecoder",
+        ":xz_inc_liblzma_src_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xz
+
+# BEGIN generated: zsh
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py zsh   -- review before committing.
+# cmake target: zsh  ->  src/external/zsh/zsh
+
+cc_header_root(
+    name = "zsh_inc_zsh_zsh_Src_Zle",
+    headers = glob(["zsh/zsh/Src/Zle/*.h", "zsh/zsh/Src/Zle/**/*.h", "zsh/zsh/Src/Zle/*.c"]),
+    root = "zsh/zsh/Src/Zle",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "zsh_inc_zsh_zsh_Src",
+    headers = glob(["zsh/zsh/Src/*.h", "zsh/zsh/Src/**/*.h", "zsh/zsh/Src/*.c"]),
+    root = "zsh/zsh/Src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "zsh_inc_zsh_gen_Src",
+    headers = glob(["zsh/gen/Src/*.h", "zsh/gen/Src/**/*.h", "zsh/gen/Src/*.c"]),
+    root = "zsh/gen/Src",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "zsh_inc_zsh_gen",
+    headers = glob(["zsh/gen/*.h", "zsh/gen/**/*.h", "zsh/gen/*.c"]),
+    root = "zsh/gen",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "zsh_obj",
+    srcs = [
+        "zsh/gen/Src/signames.c",
+        "zsh/zsh/Src/builtin.c",
+        "zsh/zsh/Src/compat.c",
+        "zsh/zsh/Src/cond.c",
+        "zsh/zsh/Src/context.c",
+        "zsh/zsh/Src/exec.c",
+        "zsh/zsh/Src/glob.c",
+        "zsh/zsh/Src/hashnameddir.c",
+        "zsh/zsh/Src/hashtable.c",
+        "zsh/zsh/Src/hist.c",
+        "zsh/zsh/Src/init.c",
+        "zsh/zsh/Src/input.c",
+        "zsh/zsh/Src/jobs.c",
+        "zsh/zsh/Src/lex.c",
+        "zsh/zsh/Src/linklist.c",
+        "zsh/zsh/Src/loop.c",
+        "zsh/zsh/Src/main.c",
+        "zsh/zsh/Src/math.c",
+        "zsh/zsh/Src/mem.c",
+        "zsh/zsh/Src/module.c",
+        "zsh/zsh/Src/options.c",
+        "zsh/zsh/Src/params.c",
+        "zsh/zsh/Src/parse.c",
+        "zsh/zsh/Src/pattern.c",
+        "zsh/zsh/Src/prompt.c",
+        "zsh/zsh/Src/signals.c",
+        "zsh/zsh/Src/sort.c",
+        "zsh/zsh/Src/string.c",
+        "zsh/zsh/Src/subst.c",
+        "zsh/zsh/Src/text.c",
+        "zsh/zsh/Src/utils.c",
+        "zsh/zsh/Src/watch.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DUSE_GETCWD",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-no-cpp-precomp",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":zsh_inc_zsh_zsh_Src_Zle",
+        ":zsh_inc_zsh_zsh_Src",
+        ":zsh_inc_zsh_gen_Src",
+        ":zsh_inc_zsh_gen",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zsh
+
+# notifyd's side of the same protocol: its own generated header and the
+# SERVER stub (libsystem_notify compiles the user stub instead).
+mig_gen(
+    name = "notifymig_notifyd_notify_ipc",
+    defs = "libnotify/notifyd/notify_ipc.defs",
+    out_base = "libnotify/notifyd",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "notify_ipcServer.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# BEGIN generated: aslmanager binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries aslmanager   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "aslmanager",
+    objs = [
+        # aslcommon
+        ":aslcommon_obj",
+        # aslmanager
+        ":aslmanager_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: aslmanager binary
+
+# BEGIN generated: bsdtar binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries bsdtar   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "bsdtar",
+    objs = [
+        # archive_fe
+        ":archive_fe_obj",
+        # bsdtar
+        ":bsdtar_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:archive_dylib",
+        "//buck-src:lzma_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bsdtar binary
+
+# BEGIN generated: bzip2 binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries bzip2   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "bzip2",
+    objs = [
+        # bzip2
+        ":bzip2_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bz2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bzip2 binary
+
+# BEGIN generated: clear binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries clear   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "clear",
+    objs = [
+        # clear
+        ":clear_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: clear binary
+
+# BEGIN generated: cpio binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cpio   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "cpio",
+    objs = [
+        # archive_fe
+        ":archive_fe_obj",
+        # cpio
+        ":cpio_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:archive_dylib",
+        "//buck-src:lzma_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cpio binary
+
+# BEGIN generated: infocmp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries infocmp   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "infocmp",
+    objs = [
+        # nc_dump_entry
+        ":nc_dump_entry_obj",
+        # infocmp
+        ":infocmp_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: infocmp binary
+
+# BEGIN generated: syslogd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries syslogd   -- review before committing.
+# Links 3 cmake object library/ies, 3 flag groups in total.
+# Object libraries whose sources are compiled elsewhere in this port, so they
+# contribute no target here: asl_ipc_server
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "syslogd",
+    objs = [
+        # aslcommon
+        ":aslcommon_obj",
+        # syslogd
+        ":syslogd_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: syslogd binary
+
+# BEGIN generated: tcsh binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tcsh   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "tcsh",
+    objs = [
+        # tcsh
+        ":tcsh_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tcsh binary
+
+# BEGIN generated: tic binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tic   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "tic",
+    objs = [
+        # nc_dump_entry
+        ":nc_dump_entry_obj",
+        # tic
+        ":tic_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tic binary
+
+# BEGIN generated: toe binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries toe   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "toe",
+    objs = [
+        # toe
+        ":toe_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: toe binary
+
+# BEGIN generated: tput binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tput   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "tput",
+    objs = [
+        # tput
+        ":tput_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tput binary
+
+# BEGIN generated: tset binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tset   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "tset",
+    objs = [
+        # tset
+        ":tset_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tset binary
+
+# BEGIN generated: xz binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries xz   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "xz",
+    objs = [
+        # xz
+        ":xz_obj",
+        # crt1.10.6
+        ":crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:lzma_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xz binary
+
+# The SERVER side of the same asl protocol, for syslogd. Kept as its own
+# mig_gen so libsystem_asl (the client) does not also compile the server
+# stub and end up exporting symbols it has no business exporting.
+mig_gen(
+    name = "asl_ipc_server_mig",
+    defs = "syslog/aslcommon/asl_ipc.defs",
+    out_base = "syslog/aslcommon",
+    compile_srcs = ["asl_ipcServer.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        ":system_asl_inc_syslog_libsystem_asl_tproj_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# mach/notify.defs: the port-notification protocol. Both launchd and notifyd
+# are servers for it, and the generated notifyServer.h is included bare.
+mig_gen(
+    name = "launchdmig_notify",
+    defs = "xnu/osfmk/mach/notify.defs",
+    out_base = "xnu/osfmk/mach",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "notifyServer.c",
+        "notifyUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# mach/mach_exc.defs: launchd is an exception server, so it compiles the
+# generated server stub.
+mig_gen(
+    name = "launchdmig_mach_exc",
+    defs = "xnu/osfmk/mach/mach_exc.defs",
+    out_base = "xnu/osfmk/mach",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "mach_excServer.c",
+        "mach_excUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)

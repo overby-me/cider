@@ -206,5 +206,51 @@
   ],
   "icucore": [
     "dylib://buck-src:cxxabi_dylib"
+  ],
+  "launchd": [
+    ":launchdmig_internal",
+    ":launchdmig_job_forward",
+    ":launchdmig_job_reply",
+    ":launchdmig_job",
+    ":launchdmig_helper",
+    "gen::launchdmig_internal",
+    "gen::launchdmig_job_forward",
+    "gen::launchdmig_job_reply",
+    "gen::launchdmig_job",
+    "gen::launchdmig_helper",
+    "//buck-src:launchdmig_notify",
+    "gen://buck-src:launchdmig_notify",
+    "//buck-src:launchdmig_mach_exc",
+    "gen://buck-src:launchdmig_mach_exc"
+  ],
+  "notifyd": [
+    "//buck-src:notifymig_notifyd_notify_ipc",
+    "gen://buck-src:notifymig_notifyd_notify_ipc",
+    "//buck-src:launchdmig_notify"
+  ],
+  "aslmanager": [
+    ":asl_ipc_mig"
+  ],
+  "syslogd": [
+    ":asl_ipc_mig",
+    ":asl_ipc_server_mig",
+    "gen::asl_ipc_server_mig"
+  ],
+  "launchctl": [
+    "//darwin/frameworks:fw_AE",
+    "//buck-src:fw_CFNetwork",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_IOKit",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//buck-src:fw_Onyx2D",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_SearchKit",
+    "//buck-src:fw_Security"
   ]
 }

@@ -257,3 +257,328 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: launchproxy binary
+
+# BEGIN generated: launchctl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py launchctl   -- review before committing.
+# cmake target: launchctl  ->  src/launchd/support/launchctl
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+# TODO these include dirs are GENERATED (codegen output):
+#   src/launchd/support
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "launchctl_inc_src_launchd",
+    headers = glob([
+        "src/*.h",
+        "src/**/*.h",
+        "src/*.c",
+        "liblaunch/*.h",
+        "liblaunch/**/*.h",
+        "liblaunch/*.c",
+    ]),
+    root = "src/launchd",
+    include_subdirs = [
+        "src",
+        "liblaunch",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "launchctl_inc_src_launchd_support",
+    headers = glob(["support/*.h", "support/**/*.h", "support/*.c"]),
+    root = "support",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "launchctl_obj",
+    srcs = [
+        "support/launchctl.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//darwin/frameworks:fw_AE",
+        "//buck-src:fw_CFNetwork",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_IOKit",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//buck-src:fw_Onyx2D",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_SearchKit",
+        "//buck-src:fw_Security",
+        ":launchctl_inc_src_launchd",
+        ":launchctl_inc_src_launchd_support",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchctl
+
+# BEGIN generated: launchd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py launchd   -- review before committing.
+# cmake target: launchd  ->  src/launchd/src/launchd
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/launchd/src/helperUser.c
+#   src/launchd/src/internalServer.c
+#   src/launchd/src/internalUser.c
+#   src/launchd/src/jobServer.c
+#   src/launchd/src/job_forwardUser.c
+#   src/launchd/src/job_replyUser.c
+#   src/launchd/src/mach_excServer.c
+#   src/launchd/src/notifyServer.c
+# TODO these headers are FORCE-INCLUDED (-include) but could not be
+# resolved to a file in this tree; the sources need them:
+#   darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/sys/fileport.h
+# TODO these include dirs are GENERATED (codegen output):
+#   src/launchd/src
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "launchd_inc_src_launchd",
+    headers = glob([
+        "src/*.h",
+        "src/**/*.h",
+        "src/*.c",
+        "liblaunch/*.h",
+        "liblaunch/**/*.h",
+        "liblaunch/*.c",
+    ]),
+    root = "src/launchd",
+    include_subdirs = [
+        "src",
+        "liblaunch",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "launchd_obj",
+    srcs = [
+        "src/core.c",
+        "src/ipc.c",
+        "src/kill2.c",
+        "src/ktrace.c",
+        "src/launchd.c",
+        "src/log.c",
+        "src/runtime.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dxpc_domain_server=job_server",
+        "-fblocks",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":launchdmig_internal",
+        ":launchdmig_job_forward",
+        ":launchdmig_job_reply",
+        ":launchdmig_job",
+        ":launchdmig_helper",
+        "//buck-src:launchdmig_notify",
+        "//buck-src:launchdmig_mach_exc",
+        ":launchd_inc_src_launchd",
+    ],
+    gen_srcs = [
+        ":launchdmig_internal",
+        ":launchdmig_job_forward",
+        ":launchdmig_job_reply",
+        ":launchdmig_job",
+        ":launchdmig_helper",
+        "//buck-src:launchdmig_notify",
+        "//buck-src:launchdmig_mach_exc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchd
+
+# launchd's own MIG protocols (src/*.defs): it is the server for these and
+# includes the generated headers bare.
+mig_gen(
+    name = "launchdmig_internal",
+    defs = "src/internal.defs",
+    out_base = "src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "internalServer.c",
+        "internalUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "launchdmig_job_forward",
+    defs = "src/job_forward.defs",
+    out_base = "src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "job_forwardServer.c",
+        "job_forwardUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "launchdmig_job_reply",
+    defs = "src/job_reply.defs",
+    out_base = "src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "job_replyServer.c",
+        "job_replyUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+
+mig_gen(
+    name = "launchdmig_job",
+    defs = "src/job.defs",
+    out_base = "src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "jobServer.c",
+        "jobUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "launchdmig_helper",
+    defs = "src/helper.defs",
+    out_base = "src",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "helperServer.c",
+        "helperUser.c",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+
+# BEGIN generated: launchctl binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries launchctl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "launchctl",
+    objs = [
+        # launchctl
+        ":launchctl_obj",
+        # crt1.10.6
+        "//buck-src:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:xpc_final",
+        "//buck-src:edit_dylib",
+        "//buck-src:system_final",
+        "//buck-src:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchctl binary
+
+# BEGIN generated: launchd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries launchd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   libcrt1.10.6.a
+
+darwin_binary(
+    name = "launchd",
+    objs = [
+        # launchd
+        ":launchd_obj",
+        # crt1.10.6
+        "//buck-src:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchd binary
