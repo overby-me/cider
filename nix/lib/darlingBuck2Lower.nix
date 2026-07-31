@@ -172,15 +172,25 @@
     # command line. The prefix is the case that needs it -- one manifest argument standing
     # for 5,537 inputs -- and aquery is where the declaration comes from.
     declared = lib.unique (lib.concatMap (a: a.input_targets or []) targets.${label});
+    # Only the ones that RUN something. A declared input can be a target with no actions at
+    # all -- a header root, a staged include tree -- and there is no derivation to copy for
+    # those; what they own travels as staged data instead, picked up just below.
+    declaredWithActions = lib.filter (t: targets ? ${t}) declared;
+    declaredStaged =
+      lib.filter (o: lib.elem (producerTarget.${o} or null) declared)
+      (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
   in {
     fromTargets =
       lib.unique (lib.filter (t: t != null && t != label)
-        (map (o: producerTarget.${o} or null) owners ++ declared));
+        (map (o: producerTarget.${o} or null) owners ++ declaredWithActions));
     # Either kind: a farm recorded as a link MAP, or content buck2 generated and the dump
     # copied out. Filtering on `staged` alone silently produced no farms at all once the
     # maps replaced the copies.
     fromStaged =
-      lib.filter (o: (g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o}) owners;
+      lib.unique (
+        lib.filter (o: (g.staged or {}) ? ${o} || (g.stagedTrees or {}) ? ${o}) owners
+        ++ declaredStaged
+      );
   };
 
   # ---- the working tree an action runs in --------------------------------

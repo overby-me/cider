@@ -316,6 +316,31 @@
         );
 
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all-graph
+      # The PREFIX, lowered: a Darling install built entirely through the Nix endpoint,
+      # one derivation per buck2 target. This is the bash milestone on the Nix side --
+      # the same tree scripts/buck-bash-check.sh boots, but assembled from store paths.
+      #
+      #   nix build .#darling-buck2-prefix
+      packages.darling-buck2-prefix =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix:darling_prefix";
+
       packages.darling-buck2-all-graph =
         pkgs:
         import ./nix/lib/darlingBuck2Graph.nix {
