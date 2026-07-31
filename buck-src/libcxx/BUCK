@@ -24,8 +24,17 @@ darwin_dylib(
         "//buck-src:cxx_obj2",
     ],
     siblings = [
-        "//buck-src:cxxabi_dylib",
         "//buck-src:system_final",
+    ],
+    # A REEXPORT, not an ordinary dependency. The reference passes
+    # -Wl,-reexport_library for libc++abi, and with it demoted to a plain sibling dyld
+    # aborts the guest at startup: "initializer in image (libc++.1.dylib) that does not
+    # link with libSystem.dylib", which really means an initializer ran before
+    # libSystem's. Hand-written here because regenerating this block loses the three
+    # symbol-list flags below, which the generator cannot place in a split pin
+    # (the generator/tree fixpoint debt in plan/buck2-port.md).
+    reexport = [
+        "//buck-src:cxxabi_dylib",
     ],
     link_flag_files = {
         "-Wl,-force_symbols_not_weak_list": "lib/notweak.exp",

@@ -55,6 +55,19 @@ GENERATED = {
     "icudt66l.dat": "//buck-src/icu:icudt66l_dat",
 }
 
+# What the reference does NOT install, but a runnable Darling needs.
+#
+# The Rust rewrite replaced the C darlingserver, launcher and mldr, and none of the three
+# appears in any install manifest: nix/package.nix places them by hand after cmake has run.
+# The prefix is what a Darling install IS, so it carries them here instead, at the paths the
+# launcher looks for -- it execs INSTALL_PREFIX/bin/darlingserver and the plain name is what
+# keeps /proc/<pid>/comm reading "darlingserver".
+EXTRA = {
+    "bin/darling": "//linux/launcher:darling",
+    "bin/darlingserver": "//linux/server:darlingserverd",
+    "libexec/darling/usr/libexec/darling/mldr": "//darwin/loader:mldr",
+}
+
 # Destinations deliberately left out of the prefix, with the reason. Counted apart from
 # UNMAPPED so "what is missing" stays a number that can reach zero.
 OUT_OF_SCOPE = {
@@ -98,6 +111,42 @@ def read_entries(root: str):
     if not seen:
         sys.exit(f"no cmake_install.cmake under {root} -- is the graph output still present?")
     return out
+
+
+# `install(DIRECTORY DESTINATION x)` with no source: cmake writes it as an INSTALL with an
+# empty file list, and it means "create this directory". libexec/darling/proc is one.
+EMPTY_DIR = re.compile(r'file\(INSTALL DESTINATION "([^"]+)" TYPE DIRECTORY FILES ""\)')
+# cmake/InstallSymlink.cmake's other branch: an install(CODE) block that runs
+# `cmake -E create_symlink <target> <destination>`. Nothing in the file()-based manifest
+# names these, so a parser that only reads file(INSTALL ...) misses all 74 of them.
+CODE_SYMLINK = re.compile(r"create_symlink\s+(\S+)\s+(\S+)\)")
+
+
+def read_layout(root: str, prefix: str):
+    """([empty directories], {destination: link value}) over every manifest.
+
+    Both forms are invisible to the file(INSTALL ...) parser, and both matter: without the
+    empty directories the container has no /proc to mount procfs on, and without the links
+    it has no etc, no var and no mtab.
+    """
+    dirs, links = [], {}
+    for dirpath, _d, files in os.walk(root):
+        if "cmake_install.cmake" not in files:
+            continue
+        text = open(os.path.join(dirpath, "cmake_install.cmake")).read()
+        for dest in EMPTY_DIR.findall(text):
+            d = dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/")
+            if d and d not in dirs:
+                dirs.append(d)
+        for target, dest in CODE_SYMLINK.findall(text):
+            # Each block has two branches, one of them under $ENV{DESTDIR}; they say the
+            # same thing, so the plain one is enough.
+            if "DESTDIR" in dest:
+                continue
+            rel = dest.removeprefix(prefix).lstrip("/")
+            if rel:
+                links[rel] = target
+    return dirs, links
 
 
 def read_symlinks(graph: str) -> dict:
@@ -303,6 +352,9 @@ def main(argv: list[str]) -> int:
     binaries = binary_index()
     links = read_symlinks(graph)
     entries = read_entries(root)
+    # The reference configures with CMAKE_INSTALL_PREFIX=/usr/local, which the install(CODE)
+    # blocks bake into absolute paths while file(INSTALL ...) keeps the variable.
+    empty_dirs, abs_links = read_layout(root, "/usr/local")
 
     # Where each installed source ends up, so a symlink can be expressed against the
     # DESTINATION of the thing it points at rather than against a build path.
@@ -378,11 +430,15 @@ def main(argv: list[str]) -> int:
             else:
                 unmapped.append((full, f"unhandled install type {kind}"))
 
+    built.update(EXTRA)
+
     print(f"install entries: {len(entries)}")
     print(f"  built artifacts mapped to targets: {len(built)}")
     print(f"  source files:                      {len(sources)}")
     print(f"  symlinks:                          {len(symlinks)}")
     print(f"  directories:                       {len(dirs)}")
+    print(f"  empty directories:                 {len(empty_dirs)}")
+    print(f"  symlinks outside the tree:         {len(abs_links)}")
     print(f"  out of scope:                      {len(skipped)}")
     print(f"  UNMAPPED:                          {len(unmapped)}")
     for full, why in unmapped:
@@ -431,7 +487,13 @@ def main(argv: list[str]) -> int:
     lines += ["    },", "    symlinks = {"]
     for dest in sorted(symlinks):
         lines.append(f'        "{dest}": "{symlinks[dest]}",')
-    lines += ["    },", '    visibility = ["PUBLIC"],', ")", ""]
+    lines += ["    },", "    links = {"]
+    for dest in sorted(abs_links):
+        lines.append(f'        "{dest}": "{abs_links[dest]}",')
+    lines += ["    },", "    dirs = ["]
+    for d in sorted(empty_dirs):
+        lines.append(f'        "{d}",')
+    lines += ["    ],", '    visibility = ["PUBLIC"],', ")", ""]
 
     out = os.path.join(REPO, "buck", "prefix", "BUCK")
     os.makedirs(os.path.dirname(out), exist_ok=True)

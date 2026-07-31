@@ -24,6 +24,41 @@ load("//buck/rules:cc.bzl", "CcLibInfo")
 # into its individual files and merged path by path instead.
 PrefixDirInfo = provider(fields = ["files"])
 
+# Three kinds of entry, in an order that matters: a directory before anything inside it, and
+# a link after whatever it points at, so that a link into the tree resolves as soon as it is
+# made. File entries link to an ABSOLUTE path, since a relative one computed for buck-out
+# would not survive being read from the prefix.
+_BUILD_PREFIX = """set -euo pipefail
+out="$1"; manifest="$2"
+mkdir -p "$out"
+# The manifest travels WITH the tree, at the prefix root rather than inside
+# libexec/darling, so it is never part of what the container mounts. A consumer that has to
+# turn this farm into a real directory cannot otherwise tell an installed artifact from a
+# link the layout itself declares: both are symlinks by then, and following the wrong one
+# means dereferencing Volumes/DarlingEmulatedDrive, which points at /.
+cp "$manifest" "$out/.prefix-manifest.tsv"
+while IFS=$'\\t' read -r kind dest src; do
+  case "$kind" in
+    dir)  mkdir -p "$out/$dest" ;;
+    link)
+      mkdir -p "$out/$(dirname "$dest")"
+      # A destination that is already a REAL directory is left alone, which is what the
+      # reference does too: install(DIRECTORY DESTINATION libexec/darling/var/root) runs
+      # before the install(CODE) that would link var -> private/var, and cmake -E
+      # create_symlink then fails into an execute_process nobody checks. Linking anyway
+      # would put the link INSIDE the directory (var/var), dangling.
+      if [ -d "$out/$dest" ] && [ ! -L "$out/$dest" ]; then
+        :
+      else
+        ln -sfn "$src" "$out/$dest"
+      fi
+      ;;
+    file) mkdir -p "$out/$(dirname "$dest")"; ln -sfn "$PWD/$src" "$out/$dest" ;;
+    *)    echo "prefix_tree: unknown entry kind '$kind' for $dest" >&2; exit 1 ;;
+  esac
+done < "$manifest"
+"""
+
 def _prefix_tree_impl(ctx):
     out = ctx.actions.declare_output(ctx.label.name + "__prefix", dir = True)
 
@@ -65,7 +100,35 @@ def _prefix_tree_impl(ctx):
                 fail("prefix_tree: %s is installed twice" % full)
             mapping[full] = art
 
-    staged = ctx.actions.symlinked_dir(out, mapping)
+    # Built by a script from a MANIFEST rather than by symlinked_dir, because a Darling
+    # prefix is not only files. The reference also installs
+    #
+    #   17 EMPTY directories, through `install(DIRECTORY DESTINATION ...)` with no source.
+    #      libexec/darling/proc is one of them, and without it the daemon cannot mount
+    #      procfs for the container's PID namespace and the container init dies at once.
+    #   74 SYMLINKS to paths outside the tree, through install(CODE) blocks that run
+    #      cmake -E create_symlink: etc -> private/etc, var -> private/var,
+    #      private/etc/mtab -> /proc/self/mounts, Volumes/DarlingEmulatedDrive -> /.
+    #
+    # symlinked_dir maps destinations to artifacts and can express neither. The manifest can
+    # express all three kinds, and the tree is still built from links rather than copies, so
+    # it costs no more than the farm did.
+    lines = []
+    for dest in sorted(ctx.attrs.dirs):
+        lines.append(cmd_args("dir", dest, "", delimiter = "\t"))
+    for dest in sorted(mapping):
+        lines.append(cmd_args("file", dest, mapping[dest], delimiter = "\t"))
+    for dest in sorted(ctx.attrs.links):
+        lines.append(cmd_args("link", dest, ctx.attrs.links[dest], delimiter = "\t"))
+
+    manifest = ctx.actions.write(ctx.label.name + "__manifest.tsv", lines, with_inputs = True)
+    builder = ctx.actions.write(ctx.label.name + "__build.sh", _BUILD_PREFIX, is_executable = True)
+    ctx.actions.run(
+        cmd_args(["bash", builder, out.as_output(), manifest]),
+        category = "prefix_tree",
+        identifier = ctx.label.name,
+    )
+    staged = out
 
     return [
         DefaultInfo(default_output = staged),
@@ -90,6 +153,12 @@ prefix_tree = rule(
         "symlinks": attrs.dict(attrs.string(), attrs.string(), default = {}),
         # {prefix-relative destination: prefix_dir target whose tree is merged in there}
         "trees": attrs.dict(attrs.string(), attrs.dep(), default = {}),
+        # Destinations created as EMPTY directories (install(DIRECTORY) with no source).
+        "dirs": attrs.list(attrs.string(), default = []),
+        # {prefix-relative destination: literal symlink value}, for links whose target is
+        # not a file this tree installs -- /proc/self/mounts, /dev/log, or a relative path
+        # resolved inside the running container.
+        "links": attrs.dict(attrs.string(), attrs.string(), default = {}),
         # Prefixes compose: a subtree can be merged in whole.
         "deps": attrs.list(attrs.dep(), default = []),
     },

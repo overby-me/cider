@@ -990,7 +990,12 @@ def semantic_link_flags(link_vars) -> tuple:
 
 def reexports_of(edge, reg):
     """(reexport labels, unported dylib names) from -Wl,-reexport_library flags."""
-    paths = re.findall(r"-Wl,-reexport_library\s+-Wl,(\S+)", edge[2].get("LINK_FLAGS", ""))
+    # BOTH spellings: cmake emits `-Wl,-reexport_library -Wl,<path>` for some targets and
+    # `-Wl,-reexport_library,<path>` for others. Matching only the first form silently
+    # demoted libc++abi from a reexport of libc++ to an ordinary dependency, which dyld
+    # then refused at runtime -- an initializer running before libSystem's.
+    flags = edge[2].get("LINK_FLAGS", "") + " " + edge[2].get("LINK_LIBRARIES", "")
+    paths = re.findall(r"-Wl,-reexport_library[,\s]+(?:-Wl,)?(\S+)", flags)
     labels, missing = [], []
     for path in paths:
         base = os.path.basename(path)

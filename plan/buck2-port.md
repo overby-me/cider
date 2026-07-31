@@ -1600,3 +1600,68 @@ ever claim the same destination.
 What is still missing from a faithful prefix, none of it needed for bash: the 35 zsh modules
 (task #7), the openssl certificates bundle (a build-generated directory, so it needs its own
 target), and darling-coredump (task #8).
+
+## Booting it: what four runtime failures said about the port
+
+Task #4 of the bash milestone is a check that boots the container and runs bash
+(scripts/buck-bash-check.sh). It found four defects that nothing static had caught, which is
+the argument for having it: every one of them passed analysis, linked cleanly, and produced
+an artifact that looked right.
+
+**1. The prefix had no empty directories.** The daemon died with "container: cannot mount
+procfs". libexec/darling/proc comes from `install(DIRECTORY DESTINATION ...)` with no source
+-- 17 of those, written into the manifest as `TYPE DIRECTORY FILES ""` -- and the generator
+skipped every entry with an empty file list. Same failure mode as the coverage metric: a
+parser that ignores what it does not recognise reports success.
+
+**2. The prefix had none of the 74 symlinks the reference installs.** etc -> private/etc,
+var -> private/var, private/etc/mtab -> /proc/self/mounts,
+Volumes/DarlingEmulatedDrive -> /. These come from install(CODE) blocks running
+`cmake -E create_symlink`, which the file(INSTALL ...) parser cannot see at all.
+
+Both meant prefix_tree could no longer be a symlinked_dir, which maps destinations to
+artifacts and expresses neither an empty directory nor a link to a path outside the tree. It
+now builds from a MANIFEST -- dir, file and link entries -- and still links rather than
+copies, so it costs the same.
+
+**3. A prefix is not a tree that can be copied naively.** With
+Volumes/DarlingEmulatedDrive -> /, `cp -aL` walks the whole machine; it had copied 82 GB
+before being stopped. The two kinds of link have to be told apart, and the value alone does
+not say which is which: an installed artifact points at an absolute host path, and so does
+/proc/self/mounts. So the tree now carries its own manifest at .prefix-manifest.tsv, outside
+what the container mounts, and scripts/buck-prefix-materialize.py follows only the links the
+manifest does not declare.
+
+**4. libc++abi was linked into libc++ as a plain dependency instead of a REEXPORT.** dyld
+aborted with "initializer in image (libc++.1.dylib) that does not link with libSystem.dylib"
+-- a misleading message: the real condition is that an initializer ran before libSystem's.
+The reference passes `-Wl,-reexport_library,<path>`; the generator's reexport detector only
+matched the other spelling, `-Wl,-reexport_library -Wl,<path>`, so the flag was silently
+dropped and libc++abi was demoted to an ordinary sibling. cmake emits both forms, and every
+Nix-built Darling in the store shows libc++abi as a reexport, which is what made the
+difference visible.
+
+The pattern in three of the four: a parser matched one spelling of something the reference
+writes two ways, and said nothing about the rest.
+
+### Where it stands, and what the abort turned out to be
+
+With all four fixed, the prefix builds (5,536 files, 72 layout links, 567 directories), the
+container comes up, the daemon serves its socket, the guest reaches darling_sigexc_self(),
+and dyld loads 39 images. It then aborts running libc++'s initializer.
+
+That abort is very likely NOT the port's. The evidence:
+
+  * the buck2-built libc++.1.dylib and the CURRENT source's Nix-built one are structurally
+    the same -- both carry an initializer section, both reexport libc++abi;
+  * the tree that works (an older ~/darling-rt) has a libc++.1.dylib with NO initializers at
+    all: there it is a stub that reexports libc++.2.dylib, a shape the current source no
+    longer builds;
+  * libobjc reaches libc++, and libdispatch, libsystem_trace and libxpc all pull in libobjc,
+    identically in both trees -- so libc++ sits inside libSystem's own closure and its
+    initializer necessarily runs before libSystem's, which is exactly what dyld refuses.
+
+So the port reproduces what the reference now builds, and what the reference now builds does
+not boot. That is a claim about the source, not about buck2, and it is not yet verified: a
+Nix build from the current source has to be run to the same point. Until that is done, this
+is stated as the likely reading and no more.
