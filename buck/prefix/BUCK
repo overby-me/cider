@@ -97,6 +97,7 @@ prefix_tree(
         "libexec/darling/usr/bin/plconvert": "//buck-src:plconvert",
         "libexec/darling/usr/bin/printf": "//buck-src:printf",
         "libexec/darling/usr/bin/redo_prebinding": "//buck-src:redo_prebinding",
+        "libexec/darling/usr/bin/sandbox-exec": "//src/sandbox-exec:sandbox-exec",
         "libexec/darling/usr/bin/sed": "//buck-src:sed",
         "libexec/darling/usr/bin/segedit": "//buck-src:segedit",
         "libexec/darling/usr/bin/seq": "//buck-src:seq",

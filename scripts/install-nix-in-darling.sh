@@ -181,7 +181,10 @@ trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDS
 "
 fi
 
-# Write via the prefix filesystem directly (more reliable than piping into dsh)
+# Write via the prefix filesystem directly (more reliable than piping into dsh).
+# The directory is created here rather than assumed: a prefix that has never had nix
+# in it has no etc/nix, and the redirect then fails before anything useful happens.
+mkdir -p "$DARLING_PREFIX/etc/nix"
 echo "$NIX_CONF" > "$DARLING_PREFIX/etc/nix/nix.conf"
 
 log "  Wrote /etc/nix/nix.conf"
@@ -227,7 +230,10 @@ log "  Extracting..."
 tar -xf "$INSTALLER_HOST_TMP/installer.tar.xz" -C "$INSTALLER_HOST_TMP"
 
 # Find the extracted directory (nix-<version>-x86_64-darwin/)
-INSTALLER_DIR=$(find "$INSTALLER_HOST_TMP" -maxdepth 1 -type d -name 'nix-*' | head -1)
+# -mindepth 1: without it find matches the START directory too, and the temp dir is
+# itself called nix-darling-install.XXXXXX -- so `head -1` picked the temp dir, whose
+# `install` does not exist, and a perfectly good extraction was reported as a failure.
+INSTALLER_DIR=$(find "$INSTALLER_HOST_TMP" -mindepth 1 -maxdepth 1 -type d -name 'nix-*' | head -1)
 if [ -z "$INSTALLER_DIR" ] || [ ! -f "$INSTALLER_DIR/install" ]; then
     fatal "Installer extraction failed — cannot find install script."
 fi
