@@ -21,7 +21,37 @@
   pkgs,
   graph,
   # The project, for the SOURCE paths an argv names (src/libsimple/src/lock.c and such).
-  src ? ../..,
+  # FILTERED, the same way the graph derivation filters its own source. Unfiltered, every
+  # lowered target took the whole project as an input, so editing a line of plan/ or of the
+  # Nix that CONSUMES this graph invalidated all 259 derivations and rebuilt the port. For an
+  # endpoint whose entire purpose is that people do not rebuild what they did not touch,
+  # that was the most expensive bug in it -- and it cost a full relower after every commit
+  # made while working on it.
+  #
+  # This is the coarse half of the fix. The precise version is to depend on the SOURCES THE
+  # ACTIONS NAME, which the graph already records per action; see plan/buck2-port.md.
+  srcRaw ? ../..,
+  src ?
+    builtins.path {
+      name = "darling-buck2-lower-project";
+      path = srcRaw;
+      filter = path: _type: let
+        rel = pkgs.lib.removePrefix (toString srcRaw + "/") (toString path);
+        top = pkgs.lib.head (pkgs.lib.splitString "/" rel);
+      in
+        !(builtins.elem top [
+          "plan"
+          "docs"
+          "nix"
+          ".git"
+          ".jj"
+          ".direnv"
+          "buck-out"
+          "result-graph-ref"
+          "flake.nix"
+          "flake.lock"
+        ]);
+    },
   # The pins, exactly as the graph derivation staged them: an argv that names
   # buck-src/<pin>/... has to find it here too.
   darlingSrc ? null,
