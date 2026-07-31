@@ -288,6 +288,7 @@ def main(argv: list[str]) -> int:
     os.makedirs(os.path.join(outdir, "staged"), exist_ok=True)
     copied = {}
     trees = {}
+    tree_deps = {}
     for path in sorted(staged):
         if not os.path.exists(path) and not os.path.islink(path):
             print(f"  MISSING artifact {path}", file=sys.stderr)
@@ -320,6 +321,18 @@ def main(argv: list[str]) -> int:
                     shutil.copy(os.path.join(path, rel), d, follow_symlinks=True)
                 copied[path] = os.path.relpath(dest, outdir)
             trees[path] = links
+            # Where those links POINT, resolved here rather than in Nix. A link value is
+            # relative and full of "..", and the consumer has to know which buck-out
+            # artifacts a farm depends on. Doing it in Nix cost 25% of a two-minute
+            # evaluation: lib.splitString is filter isString over builtins.split, and
+            # folding "..") with lib.init is quadratic. os.path.normpath is one call.
+            deps = set()
+            for rel, target in links.items():
+                r = os.path.normpath(os.path.join(os.path.dirname(os.path.join(path, rel)), target))
+                if r.startswith("buck-out/"):
+                    deps.add(r)
+            if deps:
+                tree_deps[path] = sorted(deps)
         else:
             dest = os.path.join(outdir, "staged", re.sub(r"[^A-Za-z0-9_.-]+", "_", path))
             os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -334,6 +347,8 @@ def main(argv: list[str]) -> int:
         "actions": ran,
         "staged": copied,
         "stagedTrees": trees,
+        # {staged tree: [buck-out paths its links resolve to]}, precomputed.
+        "stagedTreeDeps": tree_deps,
         "producers": producer,
         "kinds": kinds,
         "targetOutputs": target_outputs,

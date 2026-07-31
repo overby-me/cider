@@ -101,7 +101,15 @@
   # Recreating a staged farm, from the map the dump recorded instead of a copy of what the
   # links pointed at. The link VALUES are verbatim from buck2, so they resolve here exactly
   # as they did there: the directory sits at the same place in this working tree.
-  stagedTreeScript = path: links:
+  # MEMOISED per tree. A staged farm is consumed by many targets, and this rebuilt the same
+  # script text -- two escapeShellArg calls per link, across 1,115 trees -- once for every
+  # consumer. Nix deduplicates the resulting derivations but not the string building, which
+  # the profiler put at about a quarter of the evaluation once link resolution had moved to
+  # the dumper.
+  stagedTreeScripts = lib.mapAttrs stagedTreeScriptFor (g.stagedTrees or {});
+  stagedTreeScript = path: links: stagedTreeScripts.${path} or (stagedTreeScriptFor path links);
+
+  stagedTreeScriptFor = path: links:
     pkgs.writeShellScript "buck2-stage-tree" (''
         mkdir -p ${lib.escapeShellArg path}
       ''
@@ -139,25 +147,21 @@
   # another buck2 output (rtsig_header's gen_include holds rtsig.h -> ../rtsig.h, and that
   # file is written by a command in another target), and recreating the link without staging
   # what it aims at leaves it dangling, which surfaces as a header not found.
-  linkTargets = path: links:
-    lib.filter (x: x != null) (lib.mapAttrsToList (rel: target: let
-      dir = builtins.dirOf (path + "/" + rel);
-      resolved = lib.removePrefix "/" (builtins.toString (
-        # Normalise dir/target by hand: Nix has no realpath, and the link values are
-        # relative with plenty of "..".
-        let
-          segs = lib.filter (x: x != "" && x != ".") (lib.splitString "/" (dir + "/" + target));
-          step = acc: seg:
-            if seg == ".."
-            then lib.init acc
-            else acc ++ [seg];
-        in
-          lib.concatStringsSep "/" (lib.foldl' step [] segs)));
-    in
-      if lib.hasPrefix "buck-out/" resolved
-      then resolved
-      else null)
-    links);
+  # PRECOMPUTED by the dump (stagedTreeDeps), not resolved here.
+  #
+  # This used to normalise every link value in Nix -- split on "/", fold "..") away with
+  # lib.init, join back -- and it was the single most expensive thing in the evaluation:
+  # roughly a quarter of it directly, plus most of the 21% that the profiler attributed to
+  # primop isString, since lib.splitString is filter isString over builtins.split. The fold
+  # was quadratic too, because lib.init copies. In the dumper the same thing is one
+  # os.path.normpath per link.
+  linkTargets = path: _links: (g.stagedTreeDeps or {}).${path} or [];
+
+  # {producing target: [staged paths it owns]}, built once so needsOf can look up instead
+  # of scanning every staged path per target.
+  stagedByTarget =
+    lib.groupBy (o: producerTarget.${o} or "")
+    (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
 
   # What a target consumes from OUTSIDE itself.
   needsOf = label: let
@@ -179,9 +183,9 @@
     # all -- a header root, a staged include tree -- and there is no derivation to copy for
     # those; what they own travels as staged data instead, picked up just below.
     declaredWithActions = lib.filter (t: targets ? ${t}) declared;
-    declaredStaged =
-      lib.filter (o: lib.elem (producerTarget.${o} or null) declared)
-      (lib.attrNames (g.staged or {}) ++ lib.attrNames (g.stagedTrees or {}));
+    # A lookup, not a scan. This used to test every one of the ~1,230 staged paths against
+    # the declared list for every target; stagedByTarget inverts it once.
+    declaredStaged = lib.concatMap (t: stagedByTarget.${t} or []) declared;
   in {
     fromTargets =
       lib.unique (lib.filter (t: t != null && t != label)

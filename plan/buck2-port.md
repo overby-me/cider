@@ -1768,3 +1768,43 @@ builds some object targets -- a libarchive compile is what surfaced it -- so the
 "zero compiles in the graph derivation" is no longer exactly true. Minutes, not the hours a
 full build would be, but it is a real change and worth stating rather than leaving as a
 stale claim.
+
+## Profiling the evaluation: 152s of CPU down to 9s
+
+Nix 2.34 has a sampling eval profiler (`--eval-profiler flamegraph`), and pointing it at
+`nix eval .#darling-buck2-prefix.drvPath` answered in one run what had been guesswork.
+
+Before: 2m08s wall, 152s CPU, 200M thunks, 376M function calls, 28.8 GB allocated -- to
+compute ONE derivation path. After: 14s wall, 9.3s CPU, 19M function calls, 6.3 GB.
+
+Three costs, in the order the profile ranked them:
+
+**Path normalisation, ~25% directly plus most of the 21% the profiler charged to
+`primop isString`.** `linkTargets` resolved every relative symlink value by hand: split on
+"/", fold away each "..", join back. `lib.splitString` is `filter isString (builtins.split
+...)`, which is where the isString time came from, and `lib.init` copies, so the fold was
+quadratic in the path depth. It ran over every link in every staged tree -- the SDK farm
+alone is 3,591 -- once per consuming target. It is now one `os.path.normpath` per link in
+the dumper, recorded as `stagedTreeDeps`, and Nix just reads the list.
+
+**A scan where an index belonged.** `declaredStaged` tested all ~1,230 staged paths against
+the declared-inputs list for every target. `stagedByTarget` inverts it once.
+
+**The same script text, rebuilt per consumer.** A staged farm is consumed by many targets,
+and `stagedTreeScript` rebuilt its shell script -- two `escapeShellArg` calls per link,
+across 1,115 trees -- every time. Memoised per tree.
+
+### A wrong turn worth recording
+
+Midway I concluded the memoisation had changed behaviour, because the derivation hash moved
+between a memo-off and a memo-on evaluation. It had not. The lowering interpolates
+`${src}/...`, so every lowered derivation depends on the whole project source, and I had
+edited that very file between the two runs. Appending a bare comment to
+darlingBuck2Lower.nix changes the hash too; two evaluations with no edit between them are
+identical. The memo was reverted on that bad reading and then restored.
+
+The misreading exposed something real, though, and it is not fixed: **editing any byte of
+the project invalidates every lowered target derivation**, a comment included. For an
+endpoint whose whole purpose is that other people do not rebuild what they did not touch,
+that is a serious weakness -- the graph is already keyed on build DEFINITION rather than
+file contents, but the lowering is not. Worth its own work.
