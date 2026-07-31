@@ -11029,6 +11029,490 @@ darwin_dylib(
 )
 # END generated: util dylibs
 
+# BEGIN generated: pcre
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pcre   -- review before committing.
+# cmake target: pcre  ->  src/external/pcre/libpcre.0.dylib
+
+cc_header_root(
+    name = "pcre_inc_pcre_pcre",
+    headers = glob(["pcre/pcre/**/*"]),
+    root = "pcre/pcre",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pcre_obj",
+    srcs = [
+        "pcre/pcre/pcre_byte_order.c",
+        "pcre/pcre/pcre_chartables.c",
+        "pcre/pcre/pcre_compile.c",
+        "pcre/pcre/pcre_config.c",
+        "pcre/pcre/pcre_dfa_exec.c",
+        "pcre/pcre/pcre_exec.c",
+        "pcre/pcre/pcre_fullinfo.c",
+        "pcre/pcre/pcre_get.c",
+        "pcre/pcre/pcre_globals.c",
+        "pcre/pcre/pcre_jit_compile.c",
+        "pcre/pcre/pcre_maketables.c",
+        "pcre/pcre/pcre_newline.c",
+        "pcre/pcre/pcre_ord2utf8.c",
+        "pcre/pcre/pcre_refcount.c",
+        "pcre/pcre/pcre_string_utils.c",
+        "pcre/pcre/pcre_study.c",
+        "pcre/pcre/pcre_tables.c",
+        "pcre/pcre/pcre_ucd.c",
+        "pcre/pcre/pcre_valid_utf8.c",
+        "pcre/pcre/pcre_version.c",
+        "pcre/pcre/pcre_xclass.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpcre_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":pcre_inc_pcre_pcre",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pcre
+
+# BEGIN generated: pcre dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pcre   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pcre_dylib",
+    dylib_name = "libpcre.0.dylib",
+    install_name = "/usr/lib/libpcre.0.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pcre
+        ":pcre_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pcre dylibs
+
+# BEGIN generated: awk binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries awk   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "awk",
+    objs = [
+        # awkexe
+        ":awkexe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: awk binary
+
+# BEGIN generated: diff
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py diff   -- review before committing.
+# cmake target: diff  ->  src/external/gnudiff/diff
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "diff_inc_gnudiff_diffutils",
+    headers = glob([
+        "gnudiff/diffutils/**/*",
+        "gnudiff/diffutils/lib/posix/*.h",
+        "gnudiff/diffutils/lib/posix/**/*.h",
+        "gnudiff/diffutils/lib/posix/*.c",
+        "gnudiff/diffutils/lib/*.h",
+        "gnudiff/diffutils/lib/**/*.h",
+        "gnudiff/diffutils/lib/*.c",
+    ]),
+    root = "gnudiff/diffutils",
+    include_subdirs = [
+        ".",
+        "lib/posix",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "diff_obj",
+    srcs = [
+        "gnudiff/diffutils/src/analyze.c",
+        "gnudiff/diffutils/src/context.c",
+        "gnudiff/diffutils/src/diff.c",
+        "gnudiff/diffutils/src/dir.c",
+        "gnudiff/diffutils/src/ed.c",
+        "gnudiff/diffutils/src/ifdef.c",
+        "gnudiff/diffutils/src/io.c",
+        "gnudiff/diffutils/src/normal.c",
+        "gnudiff/diffutils/src/side.c",
+        "gnudiff/diffutils/src/util.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-nostdinc",
+        "-fPIC",
+        "-Wno-tautological-compare",
+        "-Wno-format-security",
+        "-Wno-string-plus-int",
+        "-Wno-shift-negative-value",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":diff_inc_gnudiff_diffutils",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: diff
+
+# BEGIN generated: diff binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries diff   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+
+darwin_binary(
+    name = "diff",
+    objs = [
+        # diffutils
+        ":diffutils_obj",
+        # diff
+        ":diff_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: diff binary
 
 
 
+
+
+# BEGIN generated: test binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries test   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "test",
+    objs = [
+        # test-bin
+        ":test-bin_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: test binary
+
+# BEGIN generated: grep
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py grep   -- review before committing.
+# cmake target: grep  ->  src/external/grep/grep
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "grep_inc_grep_grep",
+    headers = glob([
+        "grep/grep/**/*",
+        "grep/grep/lib/*.h",
+        "grep/grep/lib/**/*.h",
+        "grep/grep/lib/*.c",
+    ]),
+    root = "grep/grep",
+    include_subdirs = [
+        ".",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "grep_inc_pcre_pcre",
+    headers = glob(["pcre/pcre/**/*"]),
+    root = "pcre/pcre",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "grep_obj",
+    srcs = [
+        "grep/grep/lib/alloca.c",
+        "grep/grep/lib/closeout.c",
+        "grep/grep/lib/error.c",
+        "grep/grep/lib/exclude.c",
+        "grep/grep/lib/fnmatch.c",
+        "grep/grep/lib/getopt.c",
+        "grep/grep/lib/getopt1.c",
+        "grep/grep/lib/hard-locale.c",
+        "grep/grep/lib/isdir.c",
+        "grep/grep/lib/malloc.c",
+        "grep/grep/lib/memchr.c",
+        "grep/grep/lib/obstack.c",
+        "grep/grep/lib/quotearg.c",
+        "grep/grep/lib/realloc.c",
+        "grep/grep/lib/regex.c",
+        "grep/grep/lib/savedir.c",
+        "grep/grep/lib/stpcpy.c",
+        "grep/grep/lib/strtol.c",
+        "grep/grep/lib/strtoul.c",
+        "grep/grep/lib/strtoull.c",
+        "grep/grep/lib/strtoumax.c",
+        "grep/grep/lib/xmalloc.c",
+        "grep/grep/lib/xstrtol.c",
+        "grep/grep/lib/xstrtoumax.c",
+        "grep/grep/src/dfa.c",
+        "grep/grep/src/grep.c",
+        "grep/grep/src/grepmat.c",
+        "grep/grep/src/kwset.c",
+        "grep/grep/src/search.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-nostdinc",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-pointer-sign",
+        "-Wno-shift-negative-value",
+        "-Wno-format-security",
+        "-Wno-implicit-function-declaration",
+        "-Wno-format",
+    ],
+    prefix_headers = [
+        "grep/grep/config.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":grep_inc_grep_grep",
+        "//darwin:sdk_env",
+        ":grep_inc_pcre_pcre",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grep
+
+# BEGIN generated: grep binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries grep   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "grep",
+    objs = [
+        # grep
+        ":grep_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:pcre_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: grep binary
+
+
+
+# BEGIN generated: awkexe
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py awkexe   -- review before committing.
+# cmake target: awkexe  ->  awkexe
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/awk/awk
+
+cc_objects(
+    name = "awkexe_obj",
+    srcs = [
+        "awk/src/awkgram.tab.c",
+        "awk/src/b.c",
+        "awk/src/lex.c",
+        "awk/src/lib.c",
+        "awk/src/main.c",
+        "awk/src/parse.c",
+        "awk/src/proctab.c",
+        "awk/src/run.c",
+        "awk/src/tran.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-nostdinc",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-pointer-sign",
+        "-Wno-format",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: awkexe
+
+# BEGIN generated: diffutils
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py diffutils   -- review before committing.
+# cmake target: diffutils  ->  src/external/gnudiff/diffutils
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "diffutils_inc_gnudiff_diffutils",
+    headers = glob([
+        "gnudiff/diffutils/**/*",
+        "gnudiff/diffutils/lib/posix/*.h",
+        "gnudiff/diffutils/lib/posix/**/*.h",
+        "gnudiff/diffutils/lib/posix/*.c",
+        "gnudiff/diffutils/lib/*.h",
+        "gnudiff/diffutils/lib/**/*.h",
+        "gnudiff/diffutils/lib/*.c",
+    ]),
+    root = "gnudiff/diffutils",
+    include_subdirs = [
+        ".",
+        "lib/posix",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "diffutils_obj",
+    srcs = [
+        "gnudiff/diffutils/lib/basename.c",
+        "gnudiff/diffutils/lib/c-stack.c",
+        "gnudiff/diffutils/lib/cmpbuf.c",
+        "gnudiff/diffutils/lib/error.c",
+        "gnudiff/diffutils/lib/exclude.c",
+        "gnudiff/diffutils/lib/exitfail.c",
+        "gnudiff/diffutils/lib/fnmatch.c",
+        "gnudiff/diffutils/lib/freesoft.c",
+        "gnudiff/diffutils/lib/getopt.c",
+        "gnudiff/diffutils/lib/getopt1.c",
+        "gnudiff/diffutils/lib/hard-locale.c",
+        "gnudiff/diffutils/lib/imaxtostr.c",
+        "gnudiff/diffutils/lib/offtostr.c",
+        "gnudiff/diffutils/lib/posixver.c",
+        "gnudiff/diffutils/lib/prepargs.c",
+        "gnudiff/diffutils/lib/quotesys.c",
+        "gnudiff/diffutils/lib/regex.c",
+        "gnudiff/diffutils/lib/setmode.c",
+        "gnudiff/diffutils/lib/strftime.c",
+        "gnudiff/diffutils/lib/umaxtostr.c",
+        "gnudiff/diffutils/lib/xmalloc.c",
+        "gnudiff/diffutils/lib/xstrtoumax.c",
+        "gnudiff/diffutils/src/version.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-nostdinc",
+        "-fPIC",
+        "-Wno-tautological-compare",
+        "-Wno-format-security",
+        "-Wno-string-plus-int",
+        "-Wno-shift-negative-value",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":diffutils_inc_gnudiff_diffutils",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: diffutils
+
+# BEGIN generated: test-bin
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py test-bin   -- review before committing.
+# cmake target: test-bin  ->  test-bin
+
+cc_objects(
+    name = "test-bin_obj",
+    srcs = [
+        "shell_cmds/test/test.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: test-bin

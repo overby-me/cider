@@ -190,7 +190,14 @@ def repo_path(p: str):
         rel = p[len("src/external/"):]
         if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
             real = deref(os.path.join(BUCK_SRC, rel))
-            if real.startswith(BUCK_SRC + "/"):
+            # ...but NOT when following the link would change what the file IS. pcre ships
+            # pcre_chartables.c as a link to pcre_chartables.c.dist, and clang decides how
+            # to treat an input from its EXTENSION: given the .dist name it calls the file a
+            # linker input, compiles nothing, and -- because these compiles pass -w -- says
+            # so silently and exits 0. buck2 then reports only that the output is missing.
+            SRC_EXT = (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".S", ".s")
+            keeps_kind = not (rel.endswith(SRC_EXT) and not real.endswith(SRC_EXT))
+            if real.startswith(BUCK_SRC + "/") and keeps_kind:
                 rel = real[len(BUCK_SRC) + 1:]
             return ("buck-src", rel)
     if os.path.exists(os.path.join(REPO, p)):
