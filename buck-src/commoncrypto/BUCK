@@ -96,7 +96,7 @@ cc_objects(
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-nostdinc",
         "-Wno-unused-command-line-argument",
-        "-Wl,-exported_symbols_list,/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/commoncrypto/exports.exp-in",
+        "-Wl,-exported_symbols_list,src/external/commoncrypto/exports.exp-in",
         "-Wno-error=incompatible-pointer-types",
     ],
     toolchain = "toolchains//:darwin_cc",

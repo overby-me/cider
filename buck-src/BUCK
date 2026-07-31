@@ -6163,7 +6163,11 @@ cc_objects(
     ],
     compiler_flags = [
         "-DHAVE_CONFIG_H",
-        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        # Just the basename: this is a QUOTED include, resolved relative to the file doing
+        # the including and then along the include path, so a project-relative path never
+        # resolves. The reference can name it absolutely because cmake knows its source
+        # dir; the port reaches it through the staged include root that already carries it.
+        "-DPLATFORM_CONFIG_H=\"config.h\"",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-Darchive_EXPORTS",
         "-fPIC",
@@ -6505,7 +6509,11 @@ cc_objects(
     ],
     compiler_flags = [
         "-DHAVE_CONFIG_H",
-        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        # Just the basename: this is a QUOTED include, resolved relative to the file doing
+        # the including and then along the include path, so a project-relative path never
+        # resolves. The reference can name it absolutely because cmake knows its source
+        # dir; the port reaches it through the staged include root that already carries it.
+        "-DPLATFORM_CONFIG_H=\"config.h\"",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-fPIC",
         "-Wno-error=int-conversion",
@@ -6564,7 +6572,11 @@ cc_objects(
     ],
     compiler_flags = [
         "-DHAVE_CONFIG_H",
-        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        # Just the basename: this is a QUOTED include, resolved relative to the file doing
+        # the including and then along the include path, so a project-relative path never
+        # resolves. The reference can name it absolutely because cmake knows its source
+        # dir; the port reaches it through the staged include root that already carries it.
+        "-DPLATFORM_CONFIG_H=\"config.h\"",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-fPIC",
         "-Wno-error=int-conversion",
@@ -6620,7 +6632,11 @@ cc_objects(
     ],
     compiler_flags = [
         "-DHAVE_CONFIG_H",
-        "-DPLATFORM_CONFIG_H=\"/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/external/libarchive/libarchive/../config.h\"",
+        # Just the basename: this is a QUOTED include, resolved relative to the file doing
+        # the including and then along the include path, so a project-relative path never
+        # resolves. The reference can name it absolutely because cmake knows its source
+        # dir; the port reaches it through the staged include root that already carries it.
+        "-DPLATFORM_CONFIG_H=\"config.h\"",
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-fPIC",
         "-Wno-error=int-conversion",
@@ -7181,7 +7197,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -7245,7 +7261,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -7287,7 +7303,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -7327,7 +7343,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -7367,7 +7383,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -7413,7 +7429,7 @@ cc_objects(
         "-nostdinc",
         "-w",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -7479,7 +7495,7 @@ cc_objects(
         "-ggdb",
         "-O0",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -8717,7 +8733,7 @@ cc_objects(
         "-ggdb",
         "-O0",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -8781,7 +8797,7 @@ cc_objects(
         "-ggdb",
         "-O0",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -8824,7 +8840,7 @@ cc_objects(
         "-w",
         "-nostdinc",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",

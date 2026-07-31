@@ -59,13 +59,6 @@
         # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
         # longer has a typedef). One relative symlink per pin makes the farm resolve, and
         # points at the copy that is already there rather than a second one.
-        # The same normalisation scripts/buck-src.sh applies on the daemon path: the
-        # upstream trees contain symlinks with a "." component and ones whose relative
-        # target leaves the cell, and buck2 refuses both. Without this the analysis dies on
-        # libnotify's notify.defs, whose link was written for src/external/<pin> and points
-        # one level above the root from buck-src/<pin>.
-        python3 ${../../scripts/buck-src-normalise.py} buck-src/${name}
-
         mkdir -p ${builtins.dirOf p}
         rmdir ${p} 2>/dev/null || true
         ln -sfn ../../buck-src/${name} ${p}
@@ -162,6 +155,19 @@ in
       done
       chmod -R u+w buck-rust
       echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
+
+      # The same normalisation scripts/buck-src.sh applies on the daemon path: the upstream
+      # trees contain symlinks with a "." component and ones whose relative target leaves
+      # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
+      # notify.defs, whose link was written for src/external/<pin> and reaches one level
+      # above the root from buck-src/<pin>.
+      #
+      # AFTER every pin, not per pin: the rewrite follows the SDK farm's own links to find
+      # what the escaping link means, and those point into src/external/<pin>, which only
+      # exists once the pin loop has made all of them.
+      # --repo: the script runs from the store here, so it cannot find the project by
+      # looking above itself, and the rewrite that needs it would quietly do nothing.
+      python3 ${../../scripts/buck-src-normalise.py} --repo "$PWD" buck-src/*
 
       # The machine-local config scripts/buck-setup.sh writes by hand, here from the
       # store paths this derivation was given -- the whole point of running in Nix.

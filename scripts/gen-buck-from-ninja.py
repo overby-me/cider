@@ -1544,6 +1544,14 @@ def generate_binary(target: str, edges):
 
 
 def write_block(pkg: str, marker: str, text: str) -> None:
+    # LAST LINE OF DEFENCE against a store path reaching a committed file. The reference's
+    # build.ninja names the cmake source tree by its store path, and while the two helpers
+    # that build paths strip it, flags and include lists reach here as raw tokens: 36 of
+    # them had been committed across five packages, and they built only because that store
+    # path still happened to exist. Inside the graph derivation it does not, and the
+    # libarchive compile died looking for a config.h under it.
+    text = SRC_STORE_RE.sub("", text).replace('"/src/', '"src/')
+
     """Splice a generated block into a package's BUCK file, replacing any old one."""
     f = os.path.join(REPO, pkg, "BUCK")
     begin, end = f"# BEGIN generated: {marker}\n", f"# END generated: {marker}\n"

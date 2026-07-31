@@ -22,8 +22,19 @@ import os
 import stat
 import sys
 
+# The project root. Derived from this file's location for a normal checkout, but
+# overridable with --repo, because the Nix endpoint runs this script FROM THE STORE: there
+# the script's parent directory is a store path with no project under it, and the rewrite
+# that needs the project (an escaping link, resolved through the SDK farm) silently found
+# nothing to point at while the "." case kept working.
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUCK_SRC = os.path.join(REPO, "buck-src")
+
+
+def set_repo(root: str) -> None:
+    global REPO, BUCK_SRC
+    REPO = os.path.abspath(root)
+    BUCK_SRC = os.path.join(REPO, "buck-src")
 
 
 def in_tree_target(link: str, target: str) -> str | None:
@@ -71,7 +82,12 @@ def in_tree_target(link: str, target: str) -> str | None:
 
 
 def main(argv: list[str]) -> int:
-    roots = argv[1:] or [BUCK_SRC]
+    argv = argv[1:]
+    if "--repo" in argv:
+        i = argv.index("--repo")
+        set_repo(argv[i + 1])
+        del argv[i:i + 2]
+    roots = argv or [BUCK_SRC]
     fixed = skipped = 0
     for root in roots:
         for dirpath, dirnames, filenames in os.walk(root, followlinks=False):

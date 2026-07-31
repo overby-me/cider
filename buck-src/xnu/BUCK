@@ -2000,7 +2000,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2118,7 +2118,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2236,7 +2236,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2298,7 +2298,7 @@ cc_objects(
         "-Wno-compare-distinct-pointer-types",
         "-fPIC",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -2407,7 +2407,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2525,7 +2525,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2643,7 +2643,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2705,7 +2705,7 @@ cc_objects(
         "-Wno-compare-distinct-pointer-types",
         "-fPIC",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -2814,7 +2814,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2932,7 +2932,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3050,7 +3050,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3168,7 +3168,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3286,7 +3286,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3404,7 +3404,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3522,7 +3522,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3640,7 +3640,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3758,7 +3758,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3876,7 +3876,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3994,7 +3994,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [

@@ -121,7 +121,7 @@ cc_objects(
         "-includestdio.h",
         "-includeobjc/objc.h",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",

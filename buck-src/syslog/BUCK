@@ -249,7 +249,7 @@ cc_objects(
         "-Dasl_ipc_xtrace_mig_EXPORTS",
         "-fPIC",
         "-I",
-        "/nix/store/aak5akb2nh881pgyqjz1qkzv725pml5m-darling-cmake-src/src/xtrace/include",
+        "src/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
