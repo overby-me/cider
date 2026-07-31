@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 
 # BEGIN generated: framework roots
 # One header root per framework, so a target declares the frameworks it includes
@@ -16,3 +17,52 @@ load("//buck/generated:sdk_framework_private_darwin_private_frameworks.bzl", FRA
     for _name, _map in FRAMEWORKS.items()
 ]
 # END generated: framework roots
+
+# BEGIN generated: AppleFSCompression
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AppleFSCompression   -- review before committing.
+# cmake target: AppleFSCompression  ->  src/private-frameworks/AppleFSCompression/AppleFSCompression
+
+cc_objects(
+    name = "AppleFSCompression_obj",
+    srcs = [
+        "AppleFSCompression/src/AppleFSCompression.c",
+    ],
+    compiler_flags = [
+        "-DAppleFSCompression_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/private-frameworks:fw_AppleFSCompression",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleFSCompression
+
+# BEGIN generated: AppleFSCompression dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AppleFSCompression   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "AppleFSCompression_dylib",
+    dylib_name = "AppleFSCompression",
+    install_name = "/System/Library/PrivateFrameworks/AppleFSCompression.framework/Versions/A/AppleFSCompression",
+    compatibility_version = "1.0.0",
+    current_version = "119.100.1",
+    objs = [
+        # AppleFSCompression
+        ":AppleFSCompression_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleFSCompression dylibs

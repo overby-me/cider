@@ -50,7 +50,11 @@ SPLIT_PINS = os.path.join(REPO, "buck", "generated", "split-pins.txt")
 EXTRA_DEPS = os.path.join(REPO, "buck", "generated", "extra-deps.json")
 SKIP_DIRS = ("buck-out", ".git", ".jj", ".direnv", "build")
 # Namespaces the SDK maps cover, in the order gen-sdk-header-roots.py expects them.
-NS = [".", "mach", "i386", "machine", "libkern", "sys"]
+# security_libDER is a namespace like the rest: <sdk>/usr/include/security_libDER links
+# into the security pin, and Security.framework's own SecCertificatePriv.h includes
+# <security_libDER/libDER/libDER.h> through it. Leaving it out meant every target that
+# reaches that header -- coretls_cfhelpers does -- failed on a file the SDK does export.
+NS = [".", "mach", "i386", "machine", "libkern", "sys", "security_libDER"]
 # Prefixes that are never a source path: a label, a compiler flag, or one of the typed
 # extra-dep instructions.
 NOT_A_PATH = ("//", ":", "-", "gen:", "dylib:", "dep:", "objs:", "ldflag:", "toolchains//")

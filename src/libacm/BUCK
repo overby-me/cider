@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -17,3 +17,50 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: acm archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives acm   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "acm",
+    lib_name = "libacm.a",
+    objs = [
+        # acm
+        ":acm_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: acm archive
+
+# BEGIN generated: acm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py acm   -- review before committing.
+# cmake target: acm  ->  src/libacm/libacm.a
+
+cc_header_root(
+    name = "acm_inc_src_libacm_include",
+    headers = glob(["include/*.h", "include/**/*.h", "include/*.c"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "acm_obj",
+    srcs = [
+        "acmstub.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":acm_inc_src_libacm_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: acm

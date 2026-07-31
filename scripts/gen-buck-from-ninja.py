@@ -85,6 +85,11 @@ CROSS_PACKAGE_ROOTS = {
     # launchd's core.h. The root staged there covers src/ and liblaunch/ both.
     "src/launchd/src": "//src/launchd:launchd_inc_src_launchd",
     "src/launchd/liblaunch": "//src/launchd:launchd_inc_src_launchd",
+    # CoreFoundation's tree, as Foundation includes it (-Isrc/external/corefoundation
+    # reaches NSMessageBuilder.h). corefoundation is a SPLIT pin, so a glob written into
+    # //buck-src cannot see its files -- it would stage empty and the miss would only
+    # show up as a missing header much later.
+    "corefoundation": "//buck-src/corefoundation:CoreFoundation_inc_corefoundation",
 }
 
 # Force-included headers (-include) owned by another package, mapped to the target
@@ -92,6 +97,17 @@ CROSS_PACKAGE_ROOTS = {
 # its own package.
 CROSS_PACKAGE_FILES = {
     "src/duct/include/CrashReporterClient.h": "//src/duct:CrashReporterClient.h",
+}
+
+# Include dirs whose staged headers reach OUT of the include path with a relative path,
+# mapped to the directories they reach. Those get staged in the same tree, rooted at the
+# common ancestor. The reference never needs this: it compiles against the source tree in
+# place, where every relative path resolves.
+ESCAPING_ROOTS = {
+    "OpenLDAP/OpenLDAP/include": ["OpenLDAP/OpenLDAP/libraries/liblunicode"],
+    # libldap's sources reach their sibling library's private header the same way
+    # (#include "../liblber/lber-int.h").
+    "OpenLDAP/OpenLDAP/libraries/libldap": ["OpenLDAP/OpenLDAP/libraries/liblber"],
 }
 
 # Include dirs //darwin:sdk_env covers, relative to the repo root.
@@ -136,7 +152,20 @@ def read_edges():
             cur[3][k] = v.replace("$$", "$").replace("$:", ":")
         elif line.strip() == "":
             cur = None
+    # Every artifact the reference links AS A DYLIB, by basename. A framework binary has
+    # no extension at all (IOKit, LocalAuthentication, CryptoTokenKit), so without this
+    # an unported one among a link's inputs is indistinguishable from a build tool -- and
+    # was silently skipped, which is how Security's link came to be missing 50 symbols
+    # with nothing reported.
+    DYLIB_ARTIFACTS.clear()
+    for outs, _rule, _inputs, vars in edges:
+        if "-dylib_install_name" in vars.get("LINK_FLAGS", ""):
+            for o in outs:
+                DYLIB_ARTIFACTS.add(os.path.basename(o))
     return edges
+
+
+DYLIB_ARTIFACTS: set = set()
 
 
 def orig_repo_rel(p: str) -> str:
@@ -253,22 +282,39 @@ def split_flags(s: str) -> list[str]:
     return out
 
 
+# Every extension the reference actually compiles. `.cp` is clang's older C++ spelling and
+# occurs exactly once in the whole build (libsecurity_keychain's CCallbackMgr.cp); leaving
+# it out dropped that translation unit from the archive.
+SOURCE_RE = re.compile(r"\.(c|cc|cp|cpp|cxx|c\+\+|C|m|mm|S|s)$")
+
+
 def collect(target: str, edges):
     """Per-source compile info for one cmake target, plus its link edge."""
     obj_re = re.compile(r"CMakeFiles/" + re.escape(target) + r"\.dir/")
     units, link = [], None
     for outs, rule, inputs, vars in edges:
         if any(obj_re.search(o) for o in outs) and any(o.endswith(".o") for o in outs):
+            got = False
             for i in inputs:
                 if i.startswith("|"):
                     break
-                if re.search(r"\.(c|cc|cpp|cxx|m|mm|S|s)$", i):
+                if SOURCE_RE.search(i):
+                    got = True
                     units.append({
                         "src": i,
                         "defines": split_flags(vars.get("DEFINES", "")),
                         "flags": split_flags(vars.get("FLAGS", "")),
                         "includes": split_flags(vars.get("INCLUDES", "")),
                     })
+            if not got:
+                # A compile edge whose source this does not RECOGNISE is a source silently
+                # left out of the library, and the only symptom is an undefined symbol at
+                # some consumer's link, arbitrarily far away. libsecurity_keychain's
+                # CCallbackMgr.cp -- the one .cp in the whole build -- was dropped exactly
+                # this way. Say so instead.
+                for o in outs:
+                    if o.endswith(".o"):
+                        print(f"WARNING: {target}: unrecognised source for {o}", file=sys.stderr)
         elif link is None:
             for o in outs:
                 base = os.path.basename(o)
@@ -398,15 +444,25 @@ def generate(target: str, edges):
     # Group sources by their exact flag set; each group becomes one cc_objects.
     groups: dict[tuple, dict] = {}
     gen_srcs, gen_includes = [], []
+    # The flag group each GENERATED source belongs to. A generated source is not emitted
+    # as a src -- it arrives through gen_srcs -- but the reference still compiles it with
+    # a specific flag set, and putting it in the wrong group is a real error rather than a
+    # cosmetic one: libsecurity_utilities is a C++ target with one generated C file, and
+    # its C++ group carries -std=gnu++14, which clang refuses on a .c input.
+    gen_keys: list[tuple] = []
     for unit in units:
         kind, srcp = repo_path(unit["src"])
-        if kind == "generated":
-            gen_srcs.append(srcp)
-            continue
         flags, prefix = own_flags_of(unit)
         ordered_inc, gi = includes_of(unit)
-        gen_includes.extend(gi)
         key = (tuple(flags), tuple(prefix), tuple(ordered_inc))
+        if kind == "generated":
+            gen_srcs.append(srcp)
+            gen_keys.append(key)
+            # The group has to EXIST even if every source in it is generated, so that
+            # gen_srcs has somewhere to attach that carries the right flags.
+            groups.setdefault(key, {"flags": flags, "prefix": prefix, "inc": ordered_inc, "srcs": []})
+            continue
+        gen_includes.extend(gi)
         groups.setdefault(key, {"flags": flags, "prefix": prefix, "inc": ordered_inc, "srcs": []})
         groups[key]["srcs"].append((kind, srcp))
     if not groups and gen_srcs:
@@ -515,6 +571,18 @@ def generate(target: str, edges):
     for p in own_roots:
         if not has_headers(p):
             continue
+        # An include dir whose headers escape into a directory that is NOT itself on the
+        # include path. OpenLDAP's ldap_pvt_uc.h does exactly that
+        # (#include "../libraries/liblunicode/ucdata/ucdata.h"), and since only include
+        # dirs get staged, the escape lands outside every staged tree. Naming the
+        # companion here stages both under their common ancestor, which is the same fix
+        # the sibling case gets -- it just cannot be inferred from the include dirs alone.
+        if p in ESCAPING_ROOTS:
+            group = [p] + ESCAPING_ROOTS[p]
+            anc = os.path.commonpath(group)
+            for q in group:
+                by_parent.setdefault(anc, []).append(q)
+            continue
         ancestor = next((q for q in own_roots
                          if q != p and p.startswith(q + "/") and has_headers(q)), None)
         if ancestor:
@@ -576,6 +644,18 @@ def generate(target: str, edges):
             # Name from the FULL path, and disambiguate: dropping the first
             # component collapsed cctools/include and cctools-port/include onto one
             # name, which buck2 rejects as a duplicate target.
+            owner = root_owner_package(p)
+            if owner and owner != pkg_for_files:
+                # A glob only sees files its OWN package owns, so a root written here for
+                # a directory another package owns stages EMPTY -- and an empty include
+                # root is invisible until some header it should have provided is missing,
+                # a long way from the cause. Refuse to emit it.
+                sys.exit(
+                    f"include dir {p!r} belongs to package //{owner}, but this block goes\n"
+                    f"into //{pkg_for_files}. A glob cannot cross a package boundary: add\n"
+                    f"    {p!r}: \"//{owner}:<its header root>\"\n"
+                    f"to CROSS_PACKAGE_ROOTS in {os.path.basename(__file__)}."
+                )
             base = target.removesuffix("_obj") + "_inc_" + sanitize(p)[-48:]
             name, n = base, 2
             while name in root_name.values():
@@ -606,6 +686,10 @@ def generate(target: str, edges):
     # sort key cannot index into it.
     ordered = sorted(groups.values(),
                      key=lambda g: (-len(g["srcs"]), g["srcs"][0][1] if g["srcs"] else ""))
+    # Which group the gen: sources belong to, by identity of the dict the generated
+    # source's flag key maps to. Falls back to the first group when nothing is generated.
+    gen_group = groups[gen_keys[0]] if gen_keys else None
+    gen_idx = next((i for i, g in enumerate(ordered) if g is gen_group), 0)
     for idx, g in enumerate(ordered):
         name = base if idx == 0 else f"{base}{idx + 1}"
         obj_names.append(name)
@@ -651,9 +735,10 @@ def generate(target: str, edges):
                 w(f'        "{name}",' if name.startswith("//") else f'        ":{name}",')
         w("    ],")
         gen = [d[len("gen:"):] for d in extra_deps(target) if d.startswith("gen:")]
-        if gen and idx == 0:
-            # Generated sources this target compiles. Only the first flag group
-            # takes them: they are one set of files, not one per group.
+        if gen and idx == gen_idx:
+            # Generated sources this target compiles. ONE flag group takes them --
+            # they are one set of files, not one per group -- and it is the group the
+            # reference compiles them in, which is not necessarily the first.
             w("    gen_srcs = [")
             for d in gen:
                 w(f'        "{d}",')
@@ -746,6 +831,21 @@ def file_label(path: str, pkg: str) -> str:
     return f"//{owner}:{export_target_name(rel)}"
 
 
+def root_owner_package(p: str) -> str:
+    """The buck2 package that owns an include dir, or "" if none does.
+
+    Same path space as CROSS_PACKAGE_ROOTS: repo-relative for in-tree dirs, pin-relative
+    (rooted at buck-src) for pinned ones. The owner is the nearest ancestor with a BUCK
+    file, which is exactly how buck2 assigns a file to a package.
+    """
+    d = os.path.join(REPO, p) if os.path.exists(os.path.join(REPO, p)) else os.path.join(REPO, BUCK_SRC, p)
+    while len(d) > len(REPO) + 1:
+        if os.path.exists(os.path.join(d, "BUCK")):
+            return os.path.relpath(d, REPO)
+        d = os.path.dirname(d)
+    return ""
+
+
 def package_of(src_paths) -> str:
     """The BUCK package that owns a target: the one holding its sources."""
     repo_srcs = [q for k, q in src_paths if k == "src"]
@@ -777,7 +877,11 @@ def dylib_edges(target: str, edges):
             base = os.path.basename(o)
             if "/" not in o or not (base.endswith(".dylib") or is_dylib_link):
                 continue
-            if base == f"lib{target}.dylib" and final is None:
+            # A FRAMEWORK binary is named after the target with no lib prefix and no
+            # extension (OpenLDAP builds src/external/OpenLDAP/LDAP), so neither the
+            # lib<t>.dylib spelling nor the object-library fallback finds it: LDAP's
+            # objects come from libldap_r and liblber, which share no name with it.
+            if base in (f"lib{target}.dylib", target) and final is None:
                 final = (o, inputs, vars)
             elif base == f"lib{target}_firstpass.dylib" and first is None:
                 first = (o, inputs, vars)
@@ -809,6 +913,19 @@ def dylib_edges(target: str, edges):
             if want & set(objlibs_of(cand)):
                 final = cand
                 break
+        # It may still be IN the cluster: CFNetwork_obj builds libCFNetwork.dylib, so the
+        # name-based test above misses libCFNetwork_firstpass.dylib entirely, and the pair
+        # then looks like a plain non-circular library. Everything that links its firstpass
+        # -- Foundation does -- would report it as unported. The firstpass is the dylib in
+        # the same directory built from the same object libraries.
+        if final is not None:
+            d, objs = os.path.dirname(final[0]), set(objlibs_of(final))
+            for cand in dylibs:
+                if cand is final or os.path.dirname(cand[0]) != d:
+                    continue
+                if "_firstpass" in os.path.basename(cand[0]) and set(objlibs_of(cand)) == objs:
+                    first = cand
+                    break
     return final, first
 
 
@@ -890,11 +1007,17 @@ def explicit_objects(edge, edges):
 
 
 def firstpass_registry() -> dict:
-    """cmake target -> buck label, for every firstpass dylib already declared.
+    """firstpass NAME -> buck label, for every firstpass dylib already declared.
 
     Read out of the committed BUCK files rather than assumed: a sibling can only be
     named if its target exists, and pretending otherwise produces a block that does
     not parse.
+
+    Keyed by BOTH the target stem and the artifact's stem, because they diverge: the
+    Security framework's target is Security_firstpass while what a consumer links is
+    libSecurity_x86_64_firstpass.dylib. Keying on the target alone made every consumer
+    of an arch-suffixed firstpass -- CFNetwork links Security's -- report it unported and
+    then fail on its symbols.
     """
     reg = {}
     for dirpath, dirnames, filenames in os.walk(REPO):
@@ -904,8 +1027,17 @@ def firstpass_registry() -> dict:
             continue
         pkg = os.path.relpath(dirpath, REPO)
         with open(os.path.join(dirpath, "BUCK")) as fh:
-            for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_firstpass"', fh.read()):
-                reg[m.group(1)] = f"//{pkg}:{m.group(1)}_firstpass"
+            text = fh.read()
+        for m in re.finditer(
+            r'name = "([A-Za-z0-9_.-]+)_firstpass",\s*\n\s*dylib_name = "([^"]+)"', text
+        ):
+            label = f"//{pkg}:{m.group(1)}_firstpass"
+            reg[m.group(1)] = label
+            stem = m.group(2).removeprefix("lib").removesuffix(".dylib").removesuffix("_firstpass")
+            reg[stem] = label
+        # A firstpass block with no dylib_name of its own takes the target's spelling.
+        for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_firstpass"', text):
+            reg.setdefault(m.group(1), f"//{pkg}:{m.group(1)}_firstpass")
     return reg
 
 
@@ -928,7 +1060,16 @@ def final_registry() -> dict:
         for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_(final|dylib)",\s*\n\s*dylib_name = "([^"]+)"', text):
             # Keep the suffix the target actually uses: a single-pass library is
             # <base>_dylib, and naming it <base>_final does not resolve.
-            reg[m.group(3)] = f"//{pkg}:{m.group(1)}_{m.group(2)}"
+            label = f"//{pkg}:{m.group(1)}_{m.group(2)}"
+            artifact = m.group(3)
+            reg[artifact] = label
+            # A framework's per-arch slice and the lipo'd binary are two names for one
+            # library, and a consumer may use either: cmake builds CoreFoundation_x86_64
+            # but Foundation REEXPORTS plain CoreFoundation. setdefault, so a target that
+            # really is named CoreFoundation keeps the key if one exists.
+            stripped = re.sub(r"_(x86_64|i386|arm64|arm64e)(\.dylib)?$", r"\2", artifact)
+            if stripped != artifact:
+                reg.setdefault(stripped, label)
     return reg
 
 
@@ -1079,8 +1220,10 @@ def siblings_of(edge, reg, final_reg):
             name = f"lib{t}_firstpass.dylib"
         else:
             label = final_reg.get(base)
-            if label is None and not base.endswith(".dylib"):
-                # Extensionless and unknown: a tool or a phony, not a library.
+            if label is None and not base.endswith(".dylib") and base not in DYLIB_ARTIFACTS:
+                # Extensionless and unknown: a tool or a phony, not a library. A framework
+                # binary is also extensionless, so "does the reference link this as a
+                # dylib" is the test -- not the file name.
                 continue
             name = base
         if label:
@@ -1197,6 +1340,18 @@ def generate_dylibs(target: str, edges, only: str = ""):
     first_flags, _ = semantic_link_flags(first[2]) if first else ([], [])
     final_files, final_elsewhere = link_flag_files(final[2], pkg) if final else ({}, [])
     first_files, first_elsewhere = link_flag_files(first[2], pkg) if first else ({}, [])
+    # A file-bearing link flag whose file is GENERATED, supplied by hand as
+    # `linkfile:<flag>=<label>`. Security's -exported_symbols_list is the case: the list is
+    # preprocessed out of Security.exp-in at build time, so there is no source to name, and
+    # dropping the flag silently changes which archive members the link keeps.
+    for d in extra_deps(target):
+        if not d.startswith("linkfile:"):
+            continue
+        flag, _, label = d[len("linkfile:"):].partition("=")
+        final_files[flag] = label
+        first_files[flag] = label
+        final_elsewhere = [t for t in final_elsewhere if not t.startswith(flag + ",")]
+        first_elsewhere = [t for t in first_elsewhere if not t.startswith(flag + ",")]
 
     out = []
     w = out.append
@@ -1571,7 +1726,43 @@ def write_block(pkg: str, marker: str, text: str) -> None:
     else:
         new = existing.rstrip() + ("\n\n" if existing.strip() else "") + block
     with open(f, "w") as fh:
-        fh.write(new)
+        fh.write(ensure_loads(new, block))
+
+
+# Which .bzl each rule this generator emits comes from. A package that has only ever held
+# header roots does not load cc_objects, and a block that lands in it fails to PARSE --
+# which reads as "the target does not exist" three steps later. Emitting the block and its
+# loads together is what keeps a generated file self-consistent.
+RULE_SOURCE = {
+    "//buck/rules:cc.bzl": ["cc_binary", "cc_header_root", "cc_library", "cc_objects", "cc_static_lib"],
+    "//buck/rules:codegen.bzl": ["bison_gen", "configure_file", "flex_gen", "mig_gen", "preprocess_gen", "script_gen"],
+    "//buck/rules:darwin.bzl": ["darwin_binary", "darwin_dylib"],
+    "//buck/rules:files.bzl": ["export_file"],
+}
+
+
+def ensure_loads(text: str, block: str) -> str:
+    """Add a load() for every rule the new block calls but the file does not load."""
+    used = {r for rules in RULE_SOURCE.values() for r in rules
+            if re.search(r"^\s*%s\(" % re.escape(r), block, re.M)}
+    for bzl, rules in RULE_SOURCE.items():
+        want = sorted(r for r in rules if r in used)
+        if not want:
+            continue
+        m = re.search(r'^load\("%s"((?:,\s*"[^"]+")*)\)$' % re.escape(bzl), text, re.M)
+        if m:
+            have = set(re.findall(r'"([^"]+)"', m.group(1)))
+            missing = [r for r in want if r not in have]
+            if not missing:
+                continue
+            merged = sorted(have | set(missing))
+            text = text[:m.start()] + 'load("%s", %s)' % (bzl, ", ".join('"%s"' % r for r in merged)) + text[m.end():]
+        else:
+            # Before the first existing load, so the loads stay together at the top.
+            first = re.search(r"^load\(", text, re.M)
+            line = 'load("%s", %s)\n' % (bzl, ", ".join('"%s"' % r for r in want))
+            text = (text[:first.start()] + line + text[first.start():]) if first else line + text
+    return text
 
 
 def main(argv: list[str]) -> int:

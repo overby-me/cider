@@ -1,26 +1,25 @@
 {
   "_comment": [
-    "Hand-added dependencies merged into GENERATED target blocks by",
-    "scripts/gen-buck-from-ninja.py. They live here rather than inside the block,",
-    "because --write replaces a block wholesale and would drop them.",
     "",
-    "Almost all of these are frameworks and codegen. The reference build puts all",
     "141 frameworks on every Darwin compile's include path; this port makes each",
-    "target name the ones it actually includes, so a target cannot silently start",
+    "Almost all of these are frameworks and codegen. The reference build puts all",
+    "Hand-added dependencies merged into GENERATED target blocks by",
+    "because --write replaces a block wholesale and would drop them.",
     "depending on a framework it never declared.",
-    ""
+    "scripts/gen-buck-from-ninja.py. They live here rather than inside the block,",
+    "target name the ones it actually includes, so a target cannot silently start"
   ],
   "system_asl_obj": [
     ":asl_ipc_mig",
     "gen::asl_ipc_mig"
   ],
   "system_coretls_obj": [
-    ":fw_Security",
-    ":fw_CoreFoundation"
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
   ],
   "system_trace_obj": [
-    "//buck-src:fw_Foundation",
-    "//buck-src:fw_CoreFoundation"
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation"
   ],
   "kqueue": [
     "//src/external/darlingserver:dserver_headers",
@@ -28,8 +27,8 @@
   ],
   "libsyscall": [
     "//buck-src:fw_CoreFoundation",
-    "//src/external/darlingserver:dserver_rpc",
     "//src/external/darlingserver:dserver_headers",
+    "//src/external/darlingserver:dserver_rpc",
     ":ksmig_mach_clock",
     ":ksmig_mach_clock_priv",
     ":ksmig_mach_clock_reply",
@@ -71,51 +70,51 @@
     "gen::ksmig_mach_vm_map_x86_64"
   ],
   "emulation": [
-    "gen::emmig_signal_mach_exc",
+    "//src/include:darling_config",
     "//src/startup:rtsig_header",
     ":emulation_included_sources",
-    "//src/include:darling_config"
+    "gen::emmig_signal_mach_exc"
   ],
   "libsyscall_dynamic": [
     "//src/external/darlingserver:dserver_rpc",
     "//src/startup:rtsig_header"
   ],
   "xpc_obj": [
+    "//buck-src:fw_AppKit",
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_CoreText",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_IOKit",
+    "//buck-src:fw_Metal",
+    "//buck-src:fw_Onyx2D",
+    "//buck-src:fw_QuartzCore",
+    "//buck-src:fw_Security",
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_ATS",
-    "//buck-src:fw_AppKit",
     "//darwin/frameworks:fw_ApplicationServices",
-    "//buck-src:fw_CFNetwork",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_ColorSync",
     "//darwin/frameworks:fw_ColorSyncLegacy",
-    "//buck-src:fw_CoreFoundation",
-    "//buck-src:fw_CoreGraphics",
     "//darwin/frameworks:fw_CoreServices",
-    "//buck-src:fw_CoreText",
     "//darwin/frameworks:fw_CoreVideo",
     "//darwin/frameworks:fw_FSEvents",
-    "//buck-src:fw_Foundation",
     "//darwin/frameworks:fw_HIServices",
-    "//buck-src:fw_IOKit",
     "//darwin/frameworks:fw_ImageIO",
     "//darwin/frameworks:fw_LangAnalysis",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_LocalAuthentication",
-    "//buck-src:fw_Metal",
-    "//buck-src:fw_Onyx2D",
     "//darwin/frameworks:fw_OpenGL",
     "//darwin/frameworks:fw_PrintCore",
     "//darwin/frameworks:fw_QD",
-    "//buck-src:fw_QuartzCore",
     "//darwin/frameworks:fw_SearchKit",
-    "//buck-src:fw_Security",
     "//darwin/frameworks:fw_SpeechSynthesis"
   ],
   "libdispatch_shared_obj": [
-    "//buck-src:fw_Foundation",
-    "//buck-src:fw_CoreFoundation",
     "//buck-src:dispatchmig_protocol",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation",
     "gen://buck-src:dispatchmig_protocol"
   ],
   "system_notify_obj": [
@@ -124,61 +123,61 @@
   ],
   "launch_obj": [
     "//buck-src:dispatchmig_protocol",
-    ":launchmig_job",
     ":launchmig_helper",
-    "gen::launchmig_job",
-    "gen::launchmig_helper"
+    ":launchmig_job",
+    "gen::launchmig_helper",
+    "gen::launchmig_job"
   ],
   "system_kernel": [
-    "objs::emulation_rpc_obj",
-    "dep://src/libsimple:libsimple_darling"
+    "dep://src/libsimple:libsimple_darling",
+    "objs::emulation_rpc_obj"
   ],
   "plconvert": [
-    "//darwin/frameworks:fw_AE",
     "//buck-src:fw_CFNetwork",
-    "//darwin/frameworks:fw_CarbonCore",
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
-    "//darwin/frameworks:fw_CoreServices",
-    "//darwin/frameworks:fw_FSEvents",
     "//buck-src:fw_Foundation",
     "//buck-src:fw_IOKit",
+    "//buck-src:fw_Onyx2D",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_LocalAuthentication",
-    "//buck-src:fw_Onyx2D",
     "//darwin/frameworks:fw_OpenGL",
-    "//darwin/frameworks:fw_SearchKit",
-    "//buck-src:fw_Security"
+    "//darwin/frameworks:fw_SearchKit"
   ],
   "emulation_dyld": [
-    "gen::emmig_signal_mach_exc",
+    "//src/external/darlingserver:dserver_headers",
+    "//src/include:darling_config",
     "//src/startup:rtsig_header",
     ":emulation_included_sources",
-    "//src/include:darling_config",
-    "//src/external/darlingserver:dserver_headers"
+    "gen::emmig_signal_mach_exc"
   ],
   "libsystem_kernel_static64.a": [
     "objs::emulation_dyld_rpc_obj"
   ],
   "memberd": [
-    ":odmig_memberd",
-    "gen::odmig_memberd",
-    "//darwin/frameworks:fw_AE",
     "//buck-src:fw_CFNetwork",
-    "//darwin/frameworks:fw_CarbonCore",
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
-    "//darwin/frameworks:fw_CoreServices",
     "//buck-src:fw_DirectoryService",
-    "//darwin/frameworks:fw_FSEvents",
     "//buck-src:fw_Foundation",
     "//buck-src:fw_IOKit",
+    "//buck-src:fw_Onyx2D",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_LocalAuthentication",
-    "//buck-src:fw_Onyx2D",
     "//darwin/frameworks:fw_OpenGL",
     "//darwin/frameworks:fw_SearchKit",
-    "//buck-src:fw_Security"
+    ":odmig_memberd",
+    "gen::odmig_memberd"
   ],
   "syslog": [
     ":asl_ipc_mig",
@@ -188,45 +187,45 @@
     "dylib://buck-src:cxxabi_dylib"
   ],
   "CoreFoundation_obj": [
-    "//darwin/frameworks:fw_AE",
     "//buck-src:fw_CFNetwork",
-    "//darwin/frameworks:fw_CarbonCore",
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
-    "//darwin/frameworks:fw_CoreServices",
-    "//darwin/frameworks:fw_FSEvents",
     "//buck-src:fw_Foundation",
     "//buck-src:fw_IOKit",
+    "//buck-src:fw_Onyx2D",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_LocalAuthentication",
-    "//buck-src:fw_Onyx2D",
     "//darwin/frameworks:fw_OpenGL",
-    "//darwin/frameworks:fw_SearchKit",
-    "//buck-src:fw_Security"
+    "//darwin/frameworks:fw_SearchKit"
   ],
   "icucore": [
     "dylib://buck-src:cxxabi_dylib"
   ],
   "launchd": [
+    "//buck-src:launchdmig_mach_exc",
+    "//buck-src:launchdmig_notify",
+    ":launchdmig_helper",
     ":launchdmig_internal",
+    ":launchdmig_job",
     ":launchdmig_job_forward",
     ":launchdmig_job_reply",
-    ":launchdmig_job",
-    ":launchdmig_helper",
-    "gen::launchdmig_internal",
-    "gen::launchdmig_job_forward",
-    "gen::launchdmig_job_reply",
-    "gen::launchdmig_job",
-    "gen::launchdmig_helper",
-    "//buck-src:launchdmig_notify",
+    "gen://buck-src:launchdmig_mach_exc",
     "gen://buck-src:launchdmig_notify",
-    "//buck-src:launchdmig_mach_exc",
-    "gen://buck-src:launchdmig_mach_exc"
+    "gen::launchdmig_helper",
+    "gen::launchdmig_internal",
+    "gen::launchdmig_job",
+    "gen::launchdmig_job_forward",
+    "gen::launchdmig_job_reply"
   ],
   "notifyd": [
     "//buck-src:notifymig_notifyd_notify_ipc",
-    "gen://buck-src:notifymig_notifyd_notify_ipc",
     ":notifydmig_notify",
+    "gen://buck-src:notifymig_notifyd_notify_ipc",
     "gen::notifydmig_notify"
   ],
   "aslmanager": [
@@ -238,149 +237,149 @@
     "gen::asl_ipc_server_mig"
   ],
   "launchctl": [
-    "//darwin/frameworks:fw_AE",
     "//buck-src:fw_CFNetwork",
-    "//darwin/frameworks:fw_CarbonCore",
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
-    "//darwin/frameworks:fw_CoreServices",
-    "//darwin/frameworks:fw_FSEvents",
     "//buck-src:fw_Foundation",
     "//buck-src:fw_IOKit",
+    "//buck-src:fw_Onyx2D",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_LocalAuthentication",
-    "//buck-src:fw_Onyx2D",
     "//darwin/frameworks:fw_OpenGL",
-    "//darwin/frameworks:fw_SearchKit",
-    "//buck-src:fw_Security"
+    "//darwin/frameworks:fw_SearchKit"
   ],
   "job_xtrace_mig": [
-    "gen://src/launchd:launchmig_job[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://src/launchd:launchmig_job[xtrace]"
   ],
   "asl_ipc_xtrace_mig": [
-    "gen://buck-src:asl_ipc_mig[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:asl_ipc_mig[xtrace]"
   ],
   "clock_priv_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_clock_priv[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_clock_priv[xtrace]"
   ],
   "clock_reply_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_clock_reply[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_clock_reply[xtrace]"
   ],
   "clock_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_clock[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_clock[xtrace]"
   ],
   "exc_xtrace_mig": [
-    "gen://buck-src:emmig_signal_exc[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:emmig_signal_exc[xtrace]"
   ],
   "helper_xtrace_mig": [
-    "gen://src/launchd:launchmig_helper[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://src/launchd:launchmig_helper[xtrace]"
   ],
   "host_priv_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_host_priv[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_host_priv[xtrace]"
   ],
   "host_security_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_host_security[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_host_security[xtrace]"
   ],
   "internal_xtrace_mig": [
-    "gen://src/launchd:launchdmig_internal[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://src/launchd:launchdmig_internal[xtrace]"
   ],
   "job_forward_xtrace_mig": [
-    "gen://src/launchd:launchdmig_job_forward[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://src/launchd:launchdmig_job_forward[xtrace]"
   ],
   "job_reply_xtrace_mig": [
-    "gen://src/launchd:launchdmig_job_reply[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://src/launchd:launchdmig_job_reply[xtrace]"
   ],
   "lock_set_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_lock_set[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_lock_set[xtrace]"
   ],
   "mach_exc_xtrace_mig": [
-    "gen://buck-src:emmig_signal_mach_exc[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:emmig_signal_mach_exc[xtrace]"
   ],
   "mach_host_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_mach_host[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_mach_host[xtrace]"
   ],
   "mach_port_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_mach_port[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_mach_port[xtrace]"
   ],
   "mach_vm_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_mach_vm[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_mach_vm[xtrace]"
   ],
   "mach_voucher_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_mach_voucher[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_mach_voucher[xtrace]"
   ],
   "memberd_xtrace_mig": [
-    "gen://buck-src:odmig_memberd[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:odmig_memberd[xtrace]"
   ],
   "memory_entry_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_memory_entry[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_memory_entry[xtrace]"
   ],
   "netname_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_servers_netname[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_servers_netname[xtrace]"
   ],
   "notify_ipc_xtrace_mig": [
-    "gen://buck-src:notifymig_notify_ipc[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:notifymig_notify_ipc[xtrace]"
   ],
   "processor_set_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_processor_set[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_processor_set[xtrace]"
   ],
   "processor_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_processor[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_processor[xtrace]"
   ],
   "protocol_xtrace_mig": [
-    "gen://buck-src:dispatchmig_protocol[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:dispatchmig_protocol[xtrace]"
   ],
   "task_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_task[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_task[xtrace]"
   ],
   "thread_act_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_thread_act[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_thread_act[xtrace]"
   ],
   "vm_map_xtrace_mig": [
-    "gen://buck-src:ksmig_mach_vm_map[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:ksmig_mach_vm_map[xtrace]"
   ],
   "bash": [
     ":bash_parser",
     "gen::bash_parser"
   ],
   "firehose_reply_xtrace_mig": [
-    "gen://buck-src:fhmig_firehose_reply[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:fhmig_firehose_reply[xtrace]"
   ],
   "firehose_xtrace_mig": [
-    "gen://buck-src:fhmig_firehose[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:fhmig_firehose[xtrace]"
   ],
   "notify_xtrace_mig": [
-    "gen://buck-src:launchdmig_notify[xtrace]",
-    "//src/xtrace:xtrace_headers"
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:launchdmig_notify[xtrace]"
   ],
   "curl": [
     "//buck-src:fw_CoreFoundation",
@@ -397,6 +396,322 @@
     "//buck-src:fw_Foundation",
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_SecurityFoundation",
+    "//darwin/private-frameworks:fw_CoreAnalytics"
+  ],
+  "Security_x86_64_only_stuff": [
+    "//buck-src:fw_AppKit",
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_CoreText",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_QuartzCore",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_ATS",
+    "//darwin/frameworks:fw_ApplicationServices",
+    "//darwin/frameworks:fw_AuthenticationServices",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_ColorSync",
+    "//darwin/frameworks:fw_ColorSyncLegacy",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_HIServices",
+    "//darwin/frameworks:fw_ImageIO",
+    "//darwin/frameworks:fw_LangAnalysis",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_PrintCore",
+    "//darwin/frameworks:fw_QD",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "logging": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_utilities": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_PCSC",
+    "//buck-src:security_utilities_mig_notify",
+    "gen://buck-src:security_utilities_mig_notify"
+  ],
+  "security_asn1": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "SecOtrOSX": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "SecTrustOSX": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices"
+  ],
+  "SecureObjectSyncFramework": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "security_apple_csp": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_apple_cspdl": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_apple_file_dl": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_apple_x509_cl": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_apple_x509_tp": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_authorization": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cdsa_client": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cdsa_plugin": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cdsa_utilities": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cdsa_utils": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cms": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CarbonCore"
+  ],
+  "security_codesigning": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/private-frameworks:fw_AppleFSCompression",
+    "//darwin/private-frameworks:fw_DiskImages"
+  ],
+  "security_cryptkit": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_cssm": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_filedb": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_keychain": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//darwin/private-frameworks:fw_login"
+  ],
+  "security_manifest": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_mds": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_ocspd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:security_ocspd_mig",
+    "gen://buck-src:security_ocspd_mig"
+  ],
+  "security_pkcs12": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_sd_cspdl": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "security_ssl": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "security_transform": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit"
+  ],
+  "security_translocate": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_DiskArbitration",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit"
+  ],
+  "securityd_client": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:securityd_client_mig_ucsp",
+    "//buck-src:securityd_client_mig_ucspnotify",
+    "gen://buck-src:securityd_client_mig_ucsp",
+    "gen://buck-src:securityd_client_mig_ucspnotify"
+  ],
+  "aks": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_LocalAuthentication"
+  ],
+  "acm": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "SecItemShimOSX_64bit_only": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "utilities_x86_64": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "SecItemShimOSX": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_LocalAuthentication"
+  ],
+  "utilities": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_PowerLog"
+  ],
+  "xar": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "MobileGestalt": [
+    "//buck-src:fw_CoreFoundation",
+    "//src/libMobileGestalt:mobilegestalt_include",
+    "//src/libMobileGestalt:sdk_src_libMobileGestalt_headers"
+  ],
+  "Foundation_obj": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_OpenGL"
+  ],
+  "CFNetwork_obj": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "SystemConfiguration": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration"
+  ],
+  "coretls_cfhelpers_obj": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "AppleFSCompression": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/private-frameworks:fw_AppleFSCompression"
+  ],
+  "LocalAuthentication": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "CryptoTokenKit": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "IOKit": [
+    "//buck-src:IOKit_mig_iokitmig32",
+    "//buck-src:IOKit_mig_iokitmig64",
+    "//buck-src:IOKit_mig_kextmanager",
+    "//buck-src:IOKit_mig_powermanagement",
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Kernel",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "gen://buck-src:IOKit_mig_kextmanager",
+    "gen://buck-src:IOKit_mig_powermanagement"
+  ],
+  "Security": [
+    "linkfile:-Wl,-exported_symbols_list=//buck-src:security_exp"
+  ],
+  "Kerberos": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Kerberos",
+    "//buck-src:fw_Security",
+    "//buck-src:fwp_Heimdal",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit"
+  ],
+  "libldap_r": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration"
   ]
 }

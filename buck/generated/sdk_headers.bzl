@@ -4,9 +4,9 @@
 # (darwin/Developer/.../MacOSX.sdk/usr/include), which is the authority on how
 # Darwin's header namespaces are assembled from the pinned upstream trees.
 # Regenerate after materializing more pins:
-#   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys > buck-src/sdk_headers.bzl
+#   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys security_libDER > buck-src/sdk_headers.bzl
 
-# ./: 3591 headers
+# ./: 3602 headers
 SDK_ROOT = {
     "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
     "BerkeleyDB/db.h": "BerkeleyDB/db/build_unix/db.h",
@@ -2575,6 +2575,17 @@ SDK_ROOT = {
     "security/pam_constants.h": "openpam/openpam/include/security/pam_constants.h",
     "security/pam_modules.h": "openpam/openpam/include/security/pam_modules.h",
     "security/pam_types.h": "openpam/openpam/include/security/pam_types.h",
+    "security_libDER/libDER/DERItem.h": "security/darling/include/macOS/security_libDER/libDER/DERItem.h",
+    "security_libDER/libDER/DER_CertCrl.h": "security/darling/include/macOS/security_libDER/libDER/DER_CertCrl.h",
+    "security_libDER/libDER/DER_Decode.h": "security/darling/include/macOS/security_libDER/libDER/DER_Decode.h",
+    "security_libDER/libDER/DER_Digest.h": "security/darling/include/macOS/security_libDER/libDER/DER_Digest.h",
+    "security_libDER/libDER/DER_Encode.h": "security/darling/include/macOS/security_libDER/libDER/DER_Encode.h",
+    "security_libDER/libDER/DER_Keys.h": "security/darling/include/macOS/security_libDER/libDER/DER_Keys.h",
+    "security_libDER/libDER/asn1Types.h": "security/darling/include/macOS/security_libDER/libDER/asn1Types.h",
+    "security_libDER/libDER/libDER.h": "security/darling/include/macOS/security_libDER/libDER/libDER.h",
+    "security_libDER/libDER/libDER_config.h": "security/darling/include/macOS/security_libDER/libDER/libDER_config.h",
+    "security_libDER/libDER/oids.h": "security/darling/include/macOS/security_libDER/libDER/oids.h",
+    "security_libDER/libDER/oidsPriv.h": "security/darling/include/macOS/security_libDER/libDER/oidsPriv.h",
     "security_tokend_client/SecTokend.h": "SecurityTokend/lib/SecTokend.h",
     "security_tokend_client/server.h": "SecurityTokend/lib/server.h",
     "security_tokend_client/tdclient.h": "SecurityTokend/lib/tdclient.h",
@@ -4233,6 +4244,10 @@ SDK_SYS = {
     "sys/wait.h": "//buck-src/xnu:bsd_sys_wait.h",
     "sys/work_interval.h": "//buck-src/xnu:bsd_sys_work_interval.h",
     "sys/xattr.h": "//buck-src/xnu:bsd_sys_xattr.h",
+}
+
+# security_libDER/: 0 headers
+SDK_SECURITY_LIBDER = {
 }
 
 # Real files committed inside the SDK tree (not links into a pinned tree).

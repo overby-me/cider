@@ -1,3 +1,4 @@
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -4060,3 +4061,92 @@ load("//buck/generated:exports_xnu.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# BEGIN generated: kxld dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs kxld   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "kxld_dylib",
+    dylib_name = "libkxld.dylib",
+    install_name = "/usr/lib/system/libkxld.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libkxld
+        ":libkxld_obj",
+    ],
+    siblings = [
+        "//buck-src:cxxabi_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: kxld dylibs
+
+# BEGIN generated: libkxld
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libkxld   -- review before committing.
+# cmake target: libkxld  ->  libkxld
+
+cc_objects(
+    name = "libkxld_obj",
+    srcs = [
+        "libkern/kxld/kxld.c",
+        "libkern/kxld/kxld_array.c",
+        "libkern/kxld/kxld_copyright.c",
+        "libkern/kxld/kxld_demangle.c",
+        "libkern/kxld/kxld_dict.c",
+        "libkern/kxld/kxld_kext.c",
+        "libkern/kxld/kxld_object.c",
+        "libkern/kxld/kxld_reloc.c",
+        "libkern/kxld/kxld_sect.c",
+        "libkern/kxld/kxld_seg.c",
+        "libkern/kxld/kxld_splitinfolc.c",
+        "libkern/kxld/kxld_srcversion.c",
+        "libkern/kxld/kxld_sym.c",
+        "libkern/kxld/kxld_symtab.c",
+        "libkern/kxld/kxld_util.c",
+        "libkern/kxld/kxld_uuid.c",
+        "libkern/kxld/kxld_versionmin.c",
+        "libkern/kxld/kxld_vtable.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dlibkxld_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libkxld
+
+# BEGIN generated: libkxld dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs libkxld   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "libkxld_dylib",
+    dylib_name = "libkxld.dylib",
+    install_name = "/usr/lib/system/libkxld.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libkxld
+        ":libkxld_obj",
+    ],
+    siblings = [
+        "//buck-src:cxxabi_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: libkxld dylibs

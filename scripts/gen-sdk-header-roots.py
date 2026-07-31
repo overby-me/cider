@@ -260,10 +260,21 @@ def main(argv: list[str]) -> int:
                             continue
                         sub = os.path.relpath(os.path.join(dirpath, f), src_dir)
                         include_path = os.path.normpath(os.path.join(name, sub))
-                        value = os.path.relpath(os.path.join(dirpath, f), os.path.join(REPO, pkg))
-                        if pkg == BUCK_SRC:
-                            value = pin_value(value, split_pins())
-                        by_pkg.setdefault(pkg, []).append((include_path, value))
+                        fpath = os.path.join(dirpath, f)
+                        # A committed framework tree can be a farm of its OWN: every
+                        # SystemConfiguration header is a link into src/external/configd,
+                        # which is a pin and therefore lives in buck-src, not at that path
+                        # at all. Following it decides the owning package, and skipping
+                        # that step produced a map naming 52 files that do not exist --
+                        # which buck2 only reports when something first depends on them.
+                        owner, rel_in_owner = pkg, os.path.relpath(fpath, os.path.join(REPO, pkg))
+                        if os.path.islink(fpath) and not os.path.exists(fpath):
+                            resolved = link_target_repo_rel(fpath)
+                            in_pin = to_buck_src(resolved) if resolved else None
+                            if in_pin:
+                                owner, rel_in_owner = BUCK_SRC, in_pin
+                        value = pin_value(rel_in_owner, split_pins()) if owner == BUCK_SRC else rel_in_owner
+                        by_pkg.setdefault(owner, []).append((include_path, value))
             # One dict per FRAMEWORK, not one giant map: a target then declares the
             # frameworks it actually includes, instead of getting all 17k headers on
             # its search path the way the reference build does. Written per owning

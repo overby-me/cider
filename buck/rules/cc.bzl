@@ -42,7 +42,10 @@ CcObjectsInfo = provider(fields = ["objects"])
 # here rather than in codegen.bzl so cc.bzl needs no import from it.
 GeneratedSourcesInfo = provider(fields = ["sources", "headers"])
 
-_CXX_EXTS = [".cpp", ".cc", ".cxx", ".C"]
+# Every extension clang treats as C++. `.cp` is in the list because the reference compiles
+# libsecurity_keychain/lib/CCallbackMgr.cp with CXX_COMPILER and -std=gnu++14; without it
+# here the same file would be handed to the C driver and fail on the first `class`.
+_CXX_EXTS = [".cpp", ".cc", ".cxx", ".cp", ".c++", ".C"]
 
 def _is_cxx(src):
     for ext in _CXX_EXTS:

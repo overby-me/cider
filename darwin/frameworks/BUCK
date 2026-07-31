@@ -84,3 +84,211 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: DirectoryService dylibs
+
+# BEGIN generated: SystemConfiguration
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py SystemConfiguration   -- review before committing.
+# cmake target: SystemConfiguration  ->  src/frameworks/SystemConfiguration/SystemConfiguration
+# 5 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/frameworks/SystemConfiguration
+
+cc_objects(
+    name = "SystemConfiguration_obj",
+    srcs = [
+        "SystemConfiguration/SCNetworkConnection.c",
+        "SystemConfiguration/SCNetworkReachability.c",
+        "SystemConfiguration/SCSchemaDefinitions.c",
+        "SystemConfiguration/stubs.c",
+    ],
+    compiler_flags = [
+        "-DSystemConfiguration_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "SystemConfiguration_obj2",
+    srcs = [
+        "SystemConfiguration/SCDynamicStoreCopySpecific.cpp",
+    ],
+    compiler_flags = [
+        "-DSystemConfiguration_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu++11",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: SystemConfiguration
+
+# BEGIN generated: SystemConfiguration dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs SystemConfiguration   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "SystemConfiguration_dylib",
+    dylib_name = "SystemConfiguration",
+    install_name = "/System/Library/Frameworks/SystemConfiguration.framework/Versions/A/SystemConfiguration",
+    compatibility_version = "1.0.0",
+    objs = [
+        # SystemConfiguration
+        ":SystemConfiguration_obj",
+        ":SystemConfiguration_obj2",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: SystemConfiguration dylibs
+
+# BEGIN generated: LocalAuthentication
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py LocalAuthentication   -- review before committing.
+# cmake target: LocalAuthentication  ->  src/frameworks/LocalAuthentication/LocalAuthentication
+
+cc_header_root(
+    name = "LocalAuthentication_inc_darwin_frameworks_LocalAuthentication_include",
+    headers = glob(["LocalAuthentication/include/*.h", "LocalAuthentication/include/**/*.h", "LocalAuthentication/include/*.c"]),
+    root = "LocalAuthentication/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "LocalAuthentication_obj",
+    srcs = [
+        "LocalAuthentication/src/LACFSupport.c",
+        "LocalAuthentication/src/LAContext.m",
+        "LocalAuthentication/src/stubs.c",
+    ],
+    compiler_flags = [
+        "-DLocalAuthentication_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        ":LocalAuthentication_inc_darwin_frameworks_LocalAuthentication_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: LocalAuthentication
+
+# BEGIN generated: LocalAuthentication dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs LocalAuthentication   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "LocalAuthentication_dylib",
+    dylib_name = "LocalAuthentication",
+    install_name = "/System/Library/Frameworks/LocalAuthentication.framework/Versions/A/LocalAuthentication",
+    compatibility_version = "1.0.0",
+    current_version = "240.50.25",
+    objs = [
+        # LocalAuthentication
+        ":LocalAuthentication_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: LocalAuthentication dylibs
+
+# BEGIN generated: CryptoTokenKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CryptoTokenKit   -- review before committing.
+# cmake target: CryptoTokenKit  ->  src/frameworks/CryptoTokenKit/CryptoTokenKit
+
+cc_header_root(
+    name = "CryptoTokenKit_inc_darwin_frameworks_CryptoTokenKit_include",
+    headers = glob(["CryptoTokenKit/include/*.h", "CryptoTokenKit/include/**/*.h", "CryptoTokenKit/include/*.c"]),
+    root = "CryptoTokenKit/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CryptoTokenKit_obj",
+    srcs = [
+        "CryptoTokenKit/src/ctkclient.c",
+        "CryptoTokenKit/src/ctkclient_test.c",
+        "CryptoTokenKit/src/ctkloginhelper.c",
+    ],
+    compiler_flags = [
+        "-DCryptoTokenKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":CryptoTokenKit_inc_darwin_frameworks_CryptoTokenKit_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CryptoTokenKit
+
+# BEGIN generated: CryptoTokenKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CryptoTokenKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CryptoTokenKit_dylib",
+    dylib_name = "CryptoTokenKit",
+    install_name = "/System/Library/Frameworks/CryptoTokenKit.framework/Versions/A/CryptoTokenKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CryptoTokenKit
+        ":CryptoTokenKit_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CryptoTokenKit dylibs

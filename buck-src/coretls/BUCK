@@ -1,3 +1,4 @@
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -118,3 +119,84 @@ load("//buck/generated:exports_coretls.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# BEGIN generated: coretls_cfhelpers_obj
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py coretls_cfhelpers_obj   -- review before committing.
+# cmake target: coretls_cfhelpers_obj  ->  src/external/coretls/coretls_cfhelpers_obj
+
+cc_header_root(
+    name = "coretls_cfhelpers_inc_coretls_lib",
+    headers = glob(["lib/*.h", "lib/**/*.h", "lib/*.c"]),
+    root = "lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "coretls_cfhelpers_obj",
+    srcs = [
+        "coretls_cfhelpers/tls_helpers.c",
+        "coretls_cfhelpers/tls_helpers_identity.c",
+        "lib/sslMemory.c",
+    ],
+    compiler_flags = [
+        "-DCCCBC_RETURN_INT",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-nostdinc",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        ":coretls_cfhelpers_inc_coretls_lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls_cfhelpers_obj
+
+# BEGIN generated: coretls_cfhelpers_obj dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs coretls_cfhelpers_obj   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "coretls_cfhelpers_firstpass",
+    dylib_name = "libcoretls_cfhelpers_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/libcoretls_cfhelpers.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "167.0.0",
+    objs = [
+        # coretls_cfhelpers_obj
+        ":coretls_cfhelpers_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "coretls_cfhelpers_final",
+    dylib_name = "libcoretls_cfhelpers.dylib",
+    install_name = "/usr/lib/libcoretls_cfhelpers.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "167.0.0",
+    objs = [
+        # coretls_cfhelpers_obj
+        ":coretls_cfhelpers_obj",
+    ],
+    siblings = [
+        "//buck-src:coretls_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: coretls_cfhelpers_obj dylibs

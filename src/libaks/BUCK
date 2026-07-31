@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -17,3 +17,51 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: aks archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives aks   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "aks",
+    lib_name = "libaks.a",
+    objs = [
+        # aks
+        ":aks_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: aks archive
+
+# BEGIN generated: aks
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py aks   -- review before committing.
+# cmake target: aks  ->  src/libaks/libaks.a
+
+cc_header_root(
+    name = "aks_inc_src_libaks_include",
+    headers = glob(["include/*.h", "include/**/*.h", "include/*.c"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "aks_obj",
+    srcs = [
+        "libaks.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        ":aks_inc_src_libaks_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: aks

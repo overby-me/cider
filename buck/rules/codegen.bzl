@@ -120,8 +120,20 @@ flex_gen = rule(
 # $7 arch    $8 target-triplet        $9 defs    ${10}+ cpp flags
 _MIG_RUNNER = '''set -euo pipefail
 outdir="$1"; subdir="$2"; migsh="$3"; stem="$4"; migcom="$5"; cc="$6"
-arch="$7"; target="$8"; defs="$9"; shift 9
+arch="$7"; target="$8"; defs="$9"; links="${10}"; shift 10
 mkdir -p "$outdir/$subdir"
+# Alias links INSIDE the output dir, mirroring the cmake create_symlink() calls that
+# put a generated header under a second name. libsecurityd is the case that needs it:
+# consumers include <securityd_client/ucsp.h> while mig writes plain ucsp.h, and cmake
+# bridges the two with mig/securityd_client/ucsp.h -> ../ucsp.h. The link is made BEFORE
+# mig runs, which is fine: nothing reads it until the header exists.
+if [ -n "$links" ]; then
+  while IFS=$'\\t' read -r dest src; do
+    [ -n "$dest" ] || continue
+    mkdir -p "$outdir/$(dirname "$dest")"
+    ln -sfn "$src" "$outdir/$dest"
+  done <<< "$links"
+fi
 # The xtrace output is passed (and pre-created) for the same reason cmake
 # touches it: mig only writes it for definitions that produce one, and a
 # missing file would look like a failed action.
@@ -181,6 +193,7 @@ def _mig_gen_impl(ctx):
         ctx.attrs.arch,
         ctx.attrs.target,
         ctx.attrs.defs,
+        "\n".join(["%s\t%s" % (d, s) for d, s in ctx.attrs.alias_links.items()]),
     ])
     # mig runs the C preprocessor over the .defs, so it needs the SAME defines
     # and include roots as the compiles that consume its output. cmake achieves
@@ -238,6 +251,9 @@ def _mig_gen_impl(ctx):
 mig_gen = rule(
     impl = _mig_gen_impl,
     attrs = {
+        # Extra names for generated files, as {link path: link target}, both relative to
+        # the output dir. A port of cmake's create_symlink() in the same directory.
+        "alias_links": attrs.dict(attrs.string(), attrs.string(), default = {}),
         "arch": attrs.string(default = "x86_64"),
         "compiler_flags": attrs.list(attrs.string(), default = []),
         # Generated files (relative to the output dir) exported as sources, for
@@ -436,5 +452,50 @@ stdout_gen = rule(
         # Input files, appended last and materialized for the action.
         "srcs": attrs.list(attrs.source(), default = []),
         "tool": attrs.string(),
+    },
+)
+
+# ---- preprocess_gen: run the C preprocessor over a file ----
+
+def _preprocess_gen_impl(ctx):
+    """cmake's `clang -E -P` custom commands, as a rule.
+
+    Security builds its exported-symbols list this way: Security.exp-in is a header that
+    #includes CSSMOID.exp-in and expands, under the target's own defines, into the list of
+    symbols the framework exports. The list is not cosmetic -- an -exported_symbols_list
+    FORCES those symbols, which is what pulls libsecurity_ssl's members into the link.
+    Without it the archive contributes nothing and every consumer of SSLRead is undefined.
+    """
+    tc = ctx.attrs.toolchain[CcToolchainInfo]
+    merged = merge_dep_libs(ctx.attrs.deps)
+    out = ctx.actions.declare_output(ctx.attrs.out)
+    cmd = cmd_args([tc.cc, "-E", "-Xpreprocessor", "-P"])
+    if ctx.attrs.language:
+        cmd.add(["-x", ctx.attrs.language])
+    cmd.add(["-target", ctx.attrs.target])
+    cmd.add(merged.exported_flags)
+    for inc in merged.include_dirs:
+        cmd.add(cmd_args(inc, format = "-I{}"))
+    cmd.add(ctx.attrs.flags)
+    # The includes it pulls in are declared, not discovered: buck2 has to know them to
+    # rebuild when they change.
+    cmd.add(cmd_args(hidden = ctx.attrs.srcs))
+    cmd.add([ctx.attrs.src, "-o", out.as_output()])
+    ctx.actions.run(cmd, category = "preprocess", identifier = ctx.attrs.out)
+    return [DefaultInfo(default_output = out)]
+
+preprocess_gen = rule(
+    impl = _preprocess_gen_impl,
+    attrs = {
+        "deps": attrs.list(attrs.dep(), default = []),
+        "flags": attrs.list(attrs.string(), default = []),
+        # -x <language>; cmake passes objective-c so ObjC-only sections expand.
+        "language": attrs.string(default = ""),
+        "out": attrs.string(),
+        "src": attrs.source(),
+        # Files the input #includes.
+        "srcs": attrs.list(attrs.source(), default = []),
+        "target": attrs.string(default = "x86_64-apple-darwin20"),
+        "toolchain": attrs.toolchain_dep(default = "toolchains//:darwin_cc"),
     },
 )
