@@ -1,5 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects", "cc_static_lib")
-load("//buck/rules:codegen.bzl", "bison_gen", "flex_gen", "mig_gen")
+load("//buck/rules:codegen.bzl", "bison_gen", "configure_file", "flex_gen", "mig_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
@@ -11516,3 +11516,327 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: test-bin
+
+# BEGIN generated: sqlite3
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sqlite3   -- review before committing.
+# cmake target: sqlite3  ->  src/external/sqlite/libsqlite3.0.dylib
+
+cc_header_root(
+    name = "sqlite3_inc_sqlite",
+    headers = glob(["sqlite/*.h", "sqlite/**/*.h", "sqlite/*.c"]),
+    root = "sqlite",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "sqlite3_obj",
+    srcs = [
+        "sqlite/sqlite3.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DSQLITE_ENABLE_FTS5",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dsqlite3_EXPORTS",
+        "-msse",
+        "-msse2",
+        "-msse3",
+        "-w",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":sqlite3_inc_sqlite",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sqlite3
+
+# BEGIN generated: sqlite3 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs sqlite3   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "sqlite3_dylib",
+    dylib_name = "libsqlite3.0.dylib",
+    install_name = "/usr/lib/libsqlite3.0.dylib",
+    compatibility_version = "9.0.0",
+    current_version = "252.0.0",
+    objs = [
+        # sqlite3
+        ":sqlite3_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: sqlite3 dylibs
+
+# BEGIN generated: xml2
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xml2   -- review before committing.
+# cmake target: xml2  ->  src/external/libxml2/libxml2.2.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "xml2_inc_libxml2",
+    headers = glob([
+        "libxml2/libxml2/**/*",
+        "libxml2/Pregenerated Files/**/*",
+    ]),
+    root = "libxml2",
+    include_subdirs = [
+        "libxml2",
+        "Pregenerated Files",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "xml2_inc_libxml2_Pregenerated_Files",
+    headers = glob([
+        "libxml2/Pregenerated Files/**/*",
+        "libxml2/Pregenerated Files/include/*.h",
+        "libxml2/Pregenerated Files/include/**/*.h",
+        "libxml2/Pregenerated Files/include/*.c",
+    ]),
+    root = "libxml2/Pregenerated Files",
+    include_subdirs = [
+        ".",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "xml2_inc_libxml2_libxml2",
+    headers = glob([
+        "libxml2/libxml2/**/*",
+        "libxml2/libxml2/include/*.h",
+        "libxml2/libxml2/include/**/*.h",
+        "libxml2/libxml2/include/*.c",
+    ]),
+    root = "libxml2/libxml2",
+    include_subdirs = [
+        ".",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "xml2_obj",
+    srcs = [
+        "libxml2/libxml2/DOCBparser.c",
+        "libxml2/libxml2/HTMLparser.c",
+        "libxml2/libxml2/HTMLtree.c",
+        "libxml2/libxml2/SAX.c",
+        "libxml2/libxml2/SAX2.c",
+        "libxml2/libxml2/buf.c",
+        "libxml2/libxml2/c14n.c",
+        "libxml2/libxml2/catalog.c",
+        "libxml2/libxml2/chvalid.c",
+        "libxml2/libxml2/debugXML.c",
+        "libxml2/libxml2/dict.c",
+        "libxml2/libxml2/encoding.c",
+        "libxml2/libxml2/entities.c",
+        "libxml2/libxml2/error.c",
+        "libxml2/libxml2/globals.c",
+        "libxml2/libxml2/hash.c",
+        "libxml2/libxml2/legacy.c",
+        "libxml2/libxml2/list.c",
+        "libxml2/libxml2/nanoftp.c",
+        "libxml2/libxml2/nanohttp.c",
+        "libxml2/libxml2/parser.c",
+        "libxml2/libxml2/parserInternals.c",
+        "libxml2/libxml2/pattern.c",
+        "libxml2/libxml2/relaxng.c",
+        "libxml2/libxml2/schematron.c",
+        "libxml2/libxml2/threads.c",
+        "libxml2/libxml2/tree.c",
+        "libxml2/libxml2/uri.c",
+        "libxml2/libxml2/valid.c",
+        "libxml2/libxml2/xinclude.c",
+        "libxml2/libxml2/xlink.c",
+        "libxml2/libxml2/xmlIO.c",
+        "libxml2/libxml2/xmlmemory.c",
+        "libxml2/libxml2/xmlmodule.c",
+        "libxml2/libxml2/xmlreader.c",
+        "libxml2/libxml2/xmlregexp.c",
+        "libxml2/libxml2/xmlsave.c",
+        "libxml2/libxml2/xmlschemas.c",
+        "libxml2/libxml2/xmlschemastypes.c",
+        "libxml2/libxml2/xmlstring.c",
+        "libxml2/libxml2/xmlunicode.c",
+        "libxml2/libxml2/xmlwriter.c",
+        "libxml2/libxml2/xpath.c",
+        "libxml2/libxml2/xpointer.c",
+        "libxml2/libxml2/xzlib.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-Dxml2_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-Wno-error=incompatible-function-pointer-types",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":xml2_inc_libxml2_libxml2",
+        ":xml2_inc_libxml2_Pregenerated_Files",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xml2
+
+# BEGIN generated: xml2 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs xml2   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "xml2_dylib",
+    dylib_name = "libxml2.2.dylib",
+    install_name = "/usr/lib/libxml2.2.dylib",
+    compatibility_version = "10.0.0",
+    current_version = "10.9.0",
+    objs = [
+        # xml2
+        ":xml2_obj",
+    ],
+    siblings = [
+        "//buck-src:icucore_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: xml2 dylibs
+
+
+
+# nghttp2ver.h, which cmake writes at CONFIGURE time rather than building: two version
+# placeholders, and curl includes it through the SDK's nghttp2 directory. Hand-written
+# because the generator reads build edges and this is not one -- the same shape as
+# src/include's darling-config.h.
+configure_file(
+    name = "nghttp2ver",
+    out = "nghttp2/nghttp2ver.h",
+    src = "nghttp2/lib/includes/nghttp2/nghttp2ver.h.in",
+    values = {
+        # From nghttp2's own project() version, 1.41.90, and cmake's HexVersion of it:
+        # (major << 16) | (minor << 8) | patch.
+        "PACKAGE_VERSION": "1.41.90",
+        "PACKAGE_VERSION_NUM": "0x01295a",
+    },
+    visibility = ["PUBLIC"],
+)
+
+
+
+# BEGIN generated: nghttp2
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py nghttp2   -- review before committing.
+# cmake target: nghttp2  ->  nghttp2
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/nghttp2/lib/includes
+
+cc_header_root(
+    name = "nghttp2_inc_nghttp2_lib_includes",
+    headers = glob(["nghttp2/lib/includes/*.h", "nghttp2/lib/includes/**/*.h", "nghttp2/lib/includes/*.c"]),
+    root = "nghttp2/lib/includes",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "nghttp2_obj",
+    srcs = [
+        "nghttp2/lib/nghttp2_buf.c",
+        "nghttp2/lib/nghttp2_callbacks.c",
+        "nghttp2/lib/nghttp2_debug.c",
+        "nghttp2/lib/nghttp2_frame.c",
+        "nghttp2/lib/nghttp2_hd.c",
+        "nghttp2/lib/nghttp2_hd_huffman.c",
+        "nghttp2/lib/nghttp2_hd_huffman_data.c",
+        "nghttp2/lib/nghttp2_helper.c",
+        "nghttp2/lib/nghttp2_http.c",
+        "nghttp2/lib/nghttp2_map.c",
+        "nghttp2/lib/nghttp2_mem.c",
+        "nghttp2/lib/nghttp2_npn.c",
+        "nghttp2/lib/nghttp2_option.c",
+        "nghttp2/lib/nghttp2_outbound_item.c",
+        "nghttp2/lib/nghttp2_pq.c",
+        "nghttp2/lib/nghttp2_priority_spec.c",
+        "nghttp2/lib/nghttp2_queue.c",
+        "nghttp2/lib/nghttp2_rcbuf.c",
+        "nghttp2/lib/nghttp2_session.c",
+        "nghttp2/lib/nghttp2_stream.c",
+        "nghttp2/lib/nghttp2_submit.c",
+        "nghttp2/lib/nghttp2_version.c",
+    ],
+    compiler_flags = [
+        "-DBUILDING_NGHTTP2",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dnghttp2_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:nghttp2ver",
+        ":nghttp2_inc_nghttp2_lib_includes",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nghttp2
+
+# BEGIN generated: nghttp2 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs nghttp2   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "nghttp2_dylib",
+    dylib_name = "libapple_nghttp2.dylib",
+    install_name = "/usr/lib/libapple_nghttp2.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.41.90",
+    objs = [
+        # nghttp2
+        ":nghttp2_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: nghttp2 dylibs

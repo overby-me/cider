@@ -381,5 +381,13 @@
   "notify_xtrace_mig": [
     "gen://buck-src:launchdmig_notify[xtrace]",
     "//src/xtrace:xtrace_headers"
+  ],
+  "curl": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//buck-src:nghttp2ver"
+  ],
+  "nghttp2": [
+    "//buck-src:nghttp2ver"
   ]
 }
