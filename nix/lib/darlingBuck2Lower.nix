@@ -71,6 +71,9 @@
     builtins.unsafeDiscardStringContext (builtins.readFile "${graph}/graph.json")
   );
 
+  # The same crate sources the graph derivation analysed against, from the same lock files.
+  rustVendor = import ./rust-vendor.nix {inherit pkgs;};
+
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins
@@ -201,8 +204,23 @@
   stageProject = pkgs.writeShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${src}/${name}"} ${lib.escapeShellArg name}
-      '') (lib.filterAttrs (name: _: name != "buck-src" && name != "buck-out" && name != "src")
+      '') (lib.filterAttrs (name: _:
+        name != "buck-src" && name != "buck-out" && name != "src" && name != "buck-rust")
         (builtins.readDir src)))}
+
+    # buck-rust/ is a REAL directory for the same reason src/ is: its BUCK file is
+    # committed and travels in `src`, while the crate sources are gitignored and come from
+    # the vendor derivation, so the two have to be planted side by side. Without it rustc
+    # opens buck-rust/libc-0.2.189/src/lib.rs and finds nothing there.
+    mkdir -p buck-rust
+    ${lib.optionalString (builtins.pathExists (src + "/buck-rust")) (
+      lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
+          ln -s ${lib.escapeShellArg "${src}/buck-rust/${name}"} ${lib.escapeShellArg "buck-rust/${name}"}
+        '') (builtins.readDir (src + "/buck-rust")))
+    )}
+    for _c in ${rustVendor}/*/; do
+      ln -sfn "$_c" "buck-rust/$(basename "$_c")"
+    done
 
     # src/ and src/external/ are REAL directories here, not symlinks into the store: the
     # pins get planted at src/external/<pin> so the SDK's symlink farm resolves, and

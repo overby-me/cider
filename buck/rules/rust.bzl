@@ -45,13 +45,6 @@ def _closure(ctx):
             deps[name] = art
     return deps
 
-def _env(ctx):
-    """The action's environment, with OUT_DIR filled in from the generated-code target."""
-    env = dict(ctx.attrs.env)
-    if ctx.attrs.out_dir:
-        env["OUT_DIR"] = cmd_args(ctx.attrs.out_dir[DefaultInfo].default_outputs[0])
-    return env
-
 # rustc, through a runner that makes OUT_DIR absolute.
 #
 # buck2 hands out project-relative paths, and `include!(concat!(env!("OUT_DIR"), ...))`
@@ -59,15 +52,26 @@ def _env(ctx):
 # looking for the bindings under linux/server/src/buck-out/... Cargo always passes an
 # absolute OUT_DIR, which is why the crate never had to care.
 _RUSTC_RUNNER = """set -euo pipefail
+# The compile-time environment travels in the ARGV, not in the action's env dict. Nothing
+# outside buck2 can see that dict -- aquery does not report it -- so the Nix endpoint, which
+# replays recorded command lines, compiled the launcher without DARLING_GIT_COMMIT and the
+# crate failed on its own env!(). Putting it here keeps the command self-describing.
+while [ "${1:-}" = "--env" ]; do export "$2"; shift 2; done
 if [ -n "${OUT_DIR:-}" ]; then export OUT_DIR="$PWD/$OUT_DIR"; fi
 exec "$@"
 """
 
 def _rustc(ctx, crate_type, out, deps):
     runner = ctx.actions.write(ctx.label.name + "__rustc.sh", _RUSTC_RUNNER, is_executable = True)
-    cmd = cmd_args([
-        "bash",
-        runner,
+    cmd = cmd_args(["bash", runner])
+    for k in sorted(ctx.attrs.env):
+        cmd.add("--env", "%s=%s" % (k, ctx.attrs.env[k]))
+    if ctx.attrs.out_dir:
+        cmd.add("--env", cmd_args(
+            ctx.attrs.out_dir[DefaultInfo].default_outputs[0],
+            format = "OUT_DIR={}",
+        ))
+    cmd.add([
         _RUSTC,
         "--edition",
         ctx.attrs.edition,
@@ -106,13 +110,6 @@ def _rustc(ctx, crate_type, out, deps):
 
     cmd.add(ctx.attrs.rustc_flags)
 
-    # A build script's OUT_DIR, for a crate that include!()s generated code. The daemon's
-    # dtape bindings arrive this way, so the directory has to exist before rustc reads
-    # lib.rs -- naming it here is what makes it an input.
-    if ctx.attrs.out_dir:
-        out_dir = ctx.attrs.out_dir[DefaultInfo].default_outputs[0]
-        cmd.add(cmd_args(hidden = out_dir))
-
     # Every other file of the crate. rustc reads them by following `mod` from the root, so
     # they are inputs without ever appearing on the command line -- and a crate that
     # recompiles when they change is the entire point of declaring them.
@@ -129,7 +126,7 @@ def _rust_library_impl(ctx):
     cmd = _rustc(ctx, "proc-macro" if is_proc_macro else "rlib", out, deps)
     if is_proc_macro:
         cmd.add("--extern", "proc_macro")
-    ctx.actions.run(cmd, category = "rustc", identifier = ctx.label.name, env = _env(ctx))
+    ctx.actions.run(cmd, category = "rustc", identifier = ctx.label.name)
 
     return [
         DefaultInfo(default_output = out),
@@ -180,7 +177,7 @@ def _rust_binary_impl(ctx):
         cmd.add(cmd_args(a[DefaultInfo].default_outputs[0], format = "-Clink-arg={}"))
     cmd.add(ctx.attrs.link_flags)
 
-    ctx.actions.run(cmd, category = "rustc_link", identifier = ctx.label.name, env = _env(ctx))
+    ctx.actions.run(cmd, category = "rustc_link", identifier = ctx.label.name)
     return [DefaultInfo(default_output = out), RunInfo(args = cmd_args(out))]
 
 rust_binary = rule(
