@@ -311,3 +311,81 @@ export_file(
 )
 
 # END generated: prefix exports
+
+# BEGIN generated: CoreServices
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreServices   -- review before committing.
+# cmake target: CoreServices  ->  src/frameworks/CoreServices/CoreServices
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "CoreServices_obj",
+    srcs = [
+        "CoreServices/constants.m",
+    ],
+    compiler_flags = [
+        "-DCoreServices_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreServices
+
+# BEGIN generated: CoreServices dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreServices   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   FSEvents
+#   LaunchServices
+#   CarbonCore
+#   AE
+#   DictionaryServices
+#   Metadata
+#   SearchKit
+#   SharedFileList
+#   OSServices
+# TODO the final pass REEXPORTS 9 more dylibs whose final
+# pass is not ported yet; without them its symbol surface is incomplete:
+#   FSEvents
+#   LaunchServices
+#   AE
+#   CarbonCore
+#   DictionaryServices
+#   Metadata
+#   SearchKit
+#   SharedFileList
+#   OSServices
+
+darwin_dylib(
+    name = "CoreServices_dylib",
+    dylib_name = "CoreServices",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/CoreServices",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # CoreServices
+        ":CoreServices_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    reexport = [
+        "//buck-src:CFNetwork_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-reexported_symbols_list": "CoreServices/reexport.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreServices dylibs

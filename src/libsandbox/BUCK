@@ -1,0 +1,49 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# BEGIN generated: sandbox_not_system
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sandbox_not_system   -- review before committing.
+# cmake target: sandbox_not_system  ->  sandbox_not_system
+
+cc_objects(
+    name = "sandbox_not_system_obj",
+    srcs = [
+        "src/sandbox.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dsandbox_not_system_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sandbox_not_system
+
+# BEGIN generated: sandbox_not_system dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs sandbox_not_system   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "sandbox_not_system_dylib",
+    dylib_name = "libsandbox.1.dylib",
+    install_name = "/usr/lib/libsandbox.1.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # sandbox_not_system
+        ":sandbox_not_system_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: sandbox_not_system dylibs

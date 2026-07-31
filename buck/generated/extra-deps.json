@@ -813,5 +813,8 @@
   ],
   "sw_vers": [
     "//buck-src:fw_CoreFoundation"
+  ],
+  "CoreServices": [
+    "//buck-src:fw_CoreFoundation"
   ]
 }

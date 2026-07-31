@@ -266,6 +266,24 @@ if grep -q 'case "$(uname -s)"' "$INSTALL_SCRIPT" 2>/dev/null || \
     PATCHES=$((PATCHES + 1))
 fi
 
+# Patch 1b: Drop the installer's REFUSAL of --no-daemon on Darwin.
+# Since 2.24 the installer does not merely default to multi-user on Darwin, it rejects the
+# flag outright, inside the --no-daemon case:
+#     if [ "$(uname -s)" = "Darwin" ]; then
+#         printf 'Error: --no-daemon installs are no-longer supported...' >&2
+#         exit 1
+#     fi
+# Patch 1 only rewrites INSTALL_MODE, so the flag we pass still reaches this and exits 1.
+# A multi-user install is not an option here: it wants launchd and Directory Services to
+# create the build users, and Darling provides neither. The edit is scoped to the lines
+# BETWEEN `--no-daemon)` and its `fi`, so it cannot disturb the rest of the script.
+if grep -q 'no-longer supported on Darwin' "$INSTALL_SCRIPT" 2>/dev/null; then
+    sed -i.bak \
+        -e '/--no-daemon)/,/^ *fi$/{/uname -s/d; /no-longer supported/d; /exit 1/d; /^ *fi$/d}' \
+        "$INSTALL_SCRIPT"
+    PATCHES=$((PATCHES + 1))
+fi
+
 # Patch 2: Remove diskutil dependency.
 # The installer calls `diskutil info /` or `/usr/sbin/diskutil info -plist /`
 # to detect APFS. Our diskutil stub now handles this, but if the installer

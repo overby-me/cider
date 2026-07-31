@@ -90,6 +90,10 @@ CROSS_PACKAGE_ROOTS = {
     # //buck-src cannot see its files -- it would stage empty and the miss would only
     # show up as a missing header much later.
     "corefoundation": "//buck-src/corefoundation:CoreFoundation_inc_corefoundation",
+    # The reverse direction: CoreFoundation compiles against Foundation's sources
+    # (NSObject internals), and foundation is NOT a split pin, so its files belong to
+    # the buck-src mega-package.
+    "foundation/src": "//buck-src:Foundation_inc_foundation_src",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
     # per-app-VPN types. src/networkextension is its own package.
     "src/networkextension/include":
@@ -1113,7 +1117,13 @@ def link_flag_files(link_vars, pkg) -> tuple:
         # a hundred lines of framework mappings.
         if tok.startswith(_LINK_FLAG_HANDLED):
             continue
-        m = re.match(r"(-Wl,-[a-z_]+),(/\S+)$", tok)
+        # The flag is everything up to the LAST comma, the path is what follows. Matching
+        # only a single comma missed -Wl,-sectcreate,<seg>,<sect>,<file>, and CoreFoundation
+        # embeds its Unicode tables that way: three sections, one file each. Dropped, the
+        # __UNICODE segment is empty and the first CFUniChar lookup segfaults -- which is
+        # what took sw_vers (and with it the Nix installer's macOS version check) down,
+        # while plist parsing kept working because it never reaches those tables.
+        m = re.match(r"(-Wl,-[a-z_]+(?:,[A-Za-z0-9_]+)*),(/\S+)$", tok)
         if not m:
             continue
         flag, path = m.group(1), m.group(2)
@@ -1123,6 +1133,14 @@ def link_flag_files(link_vars, pkg) -> tuple:
             continue
         if kind == "buck-src" and pkg == BUCK_SRC:
             files[flag] = rel
+        elif kind == "buck-src" and pkg.startswith(BUCK_SRC + "/") and \
+                rel.startswith(pkg[len(BUCK_SRC) + 1:] + "/"):
+            # A SPLIT pin: the path is pin-relative (corefoundation/x.bitmap) while the
+            # block lives in that pin's own package, so the pin name comes off. Without
+            # this the file looked like it belonged to another package and the flag was
+            # reported as unpassable -- which is how CoreFoundation lost its three
+            # -sectcreate flags and shipped an empty __UNICODE segment.
+            files[flag] = rel[len(pkg) - len(BUCK_SRC):]
         elif kind == "src" and rel.startswith(pkg + "/"):
             files[flag] = rel[len(pkg) + 1:]
         else:
