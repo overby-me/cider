@@ -55,6 +55,8 @@ darwin_dylib(
         "//buck-src:unwind_firstpass",
         "//buck-src/libplatform:platform_firstpass",
         "//buck-src:compiler_rt_firstpass",
+    ],
+    upward = [
         "//buck-src/objc4:objc_firstpass",
     ],
     link_flag_files = {

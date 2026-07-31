@@ -125,6 +125,15 @@ def _darwin_dylib_impl(ctx):
     # Siblings are linked through their FIRSTPASS dylib, which is what makes the
     # mutual dependency expressible.
     link_libs = []
+
+    # REEXPORTS FIRST, because ld64 records LC_LOAD_DYLIB in command-line order and the
+    # reference puts them first: its -Wl,-reexport_library lives in LINK_FLAGS, which cmake
+    # emits ahead of LINK_LIBRARIES. Ordering libSystem ahead of libc++abi gave libc++ a
+    # different dependency order than the reference build, and the guest then aborted in
+    # libc++'s initializer -- the one difference left between this port's libc++ and a
+    # Nix-built one once the reexport itself was restored.
+    for r in ctx.attrs.reexport:
+        link_libs.append(cmd_args(r[DarwinDylibInfo].dylib, format = "-Wl,-reexport_library,{}"))
     for sib in ctx.attrs.siblings:
         link_libs.append(sib[DarwinDylibInfo].dylib)
     for up in ctx.attrs.upward:
@@ -132,8 +141,6 @@ def _darwin_dylib_impl(ctx):
         # is fully loaded; dyld requires it when a libSystem sublibrary depends on
         # something that itself depends on libSystem and has initializers.
         link_libs.append(cmd_args(up[DarwinDylibInfo].dylib, format = "-Wl,-upward_library,{}"))
-    for r in ctx.attrs.reexport:
-        link_libs.append(cmd_args(r[DarwinDylibInfo].dylib, format = "-Wl,-reexport_library,{}"))
     link_libs.extend(merged.static_libs)
     link_libs.extend(merged.linker_flags)
 

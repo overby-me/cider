@@ -37,8 +37,16 @@ art=$(buck2 build //buck/prefix:darling_prefix --show-output 2>/dev/null | tail 
 	exit 1
 }
 
+# Anything still running from a previous run holds the old prefix mounted, and removing the
+# tree underneath a live daemon leaves it wedged -- so this comes FIRST.
+for p in /proc/[0-9]*; do
+	ex=$(readlink "$p/exe" 2>/dev/null) || continue
+	case "$ex" in "$root"/*) kill -9 "${p#/proc/}" 2>/dev/null || true ;; esac
+done
+
 say "== materializing into $rt =="
 # Only ever removes what this script created.
+chmod -R u+w "$rt" 2>/dev/null || true
 rm -rf "$rt" "$prefix" "$prefix.workdir"
 mkdir -p "$rt" "$prefix"
 # Not `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /, and dereferencing
@@ -46,12 +54,6 @@ mkdir -p "$rt" "$prefix"
 # point into buck-out (the installed artifacts) and keeps the layout's own links verbatim.
 ./scripts/buck-prefix-materialize.py "$art" "$rt"
 chmod -R u+w "$rt"
-
-# Anything still running from a previous run holds the old prefix mounted.
-for p in /proc/[0-9]*; do
-	ex=$(readlink "$p/exe" 2>/dev/null) || continue
-	case "$ex" in "$root"/*) kill -9 "${p#/proc/}" 2>/dev/null || true ;; esac
-done
 
 say "== booting the container and running bash =="
 # DARLING_NO_LAUNCHD: run the command directly instead of bringing launchd up, which is the
@@ -61,17 +63,20 @@ out=$(
 		DARLING_NO_LAUNCHD=1 \
 		DSERVER_LIBEXEC_PATH="$rt/libexec/darling" \
 		DSERVER_MLDR_PATH="$rt/libexec/darling/usr/libexec/darling/mldr" \
-		timeout 180 "$rt/bin/darling" shell /bin/bash -c 'echo BUCK2_BASH_OK; uname -s' 2>&1
+		timeout 180 "$rt/bin/darling" shell /bin/bash -c 'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE' 2>&1
 ) || true
 
 printf '%s\n' "$out"
+# What is asserted is BASH ITSELF, not a coreutil: uname lives in the cli component, which
+# this milestone deliberately does not build (task #3 -- bash links libSystem and nothing
+# else), and the Nix-built reference cannot run it here either.
 case "$out" in
-*BUCK2_BASH_OK*Darwin*)
+*BUCK2_BASH_OK*darwin*)
 	say "PASS: the buck2-built Darling boots and runs bash"
 	exit 0
 	;;
 *BUCK2_BASH_OK*)
-	say "PARTIAL: bash ran but uname did not report Darwin"
+	say "PARTIAL: bash ran but did not report a Darwin build"
 	exit 1
 	;;
 *)

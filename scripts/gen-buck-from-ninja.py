@@ -1007,6 +1007,34 @@ def reexports_of(edge, reg):
     return labels, missing
 
 
+def upwards_of(edge, reg, final_reg):
+    """(upward labels, unported names) from -Wl,-upward_library flags.
+
+    An UPWARD dependency is one dyld links but does NOT descend into when running
+    initializers, and Darling needs it for the five libSystem sublibraries that depend on
+    something which itself sits above libSystem: libdispatch, libsystem_trace, libxpc,
+    libsystem_malloc and libdyld all reach libobjc or libsystem_c this way.
+
+    Treating them as ordinary dependencies is not a subtle difference. dyld walks the
+    dependency graph depth-first and refuses to run any initializer before libSystem's; with
+    libobjc linked plainly, the walk reaches libc++ first and the guest dies at every boot
+    with "initializer in image (libc++.1.dylib) that does not link with libSystem.dylib".
+    """
+    flags = edge[2].get("LINK_FLAGS", "") + " " + edge[2].get("LINK_LIBRARIES", "")
+    paths = re.findall(r"-Wl,-upward_library[,\s]+(?:-Wl,)?(\S+)", flags)
+    labels, missing = [], []
+    for path in paths:
+        base = os.path.basename(path)
+        m = re.match(r"lib([A-Za-z0-9_.-]+)_firstpass\.dylib$", base)
+        label = reg.get(m.group(1)) if m else final_reg.get(base)
+        if label:
+            if label not in labels:
+                labels.append(label)
+        elif base not in missing:
+            missing.append(base)
+    return labels, missing
+
+
 def siblings_of(edge, reg, final_reg):
     """(sibling labels, unported names) from a link edge's dylib inputs.
 
@@ -1016,8 +1044,21 @@ def siblings_of(edge, reg, final_reg):
     the _firstpass spelling silently dropped them, and the link then failed on
     symbols as basic as _free.
     """
+    # ORDER MATTERS, and it is LINK_LIBRARIES' order, not the ninja edge's input order.
+    # ld64 records LC_LOAD_DYLIB in command-line order, dyld initializes depth-first through
+    # that order, and the first initializer it reaches must be libSystem's. With the inputs
+    # in ninja's order instead, libsystem_trace named libplatform before libobjc where the
+    # reference names libobjc first, dyld walked into libc++ before libSystem, and the guest
+    # aborted with "initializer in image ... that does not link with libSystem.dylib".
+    rank = {}
+    for n, tok in enumerate(edge[2].get("LINK_LIBRARIES", "").split()):
+        b = os.path.basename(tok)
+        if b.endswith(".dylib") and b not in rank:
+            rank[b] = n
+
     sibs, missing = [], []
-    for i in edge[1]:
+    ordered = sorted(edge[1], key=lambda i: rank.get(os.path.basename(i), 1 << 30))
+    for i in ordered:
         base = os.path.basename(i)
         # A framework binary has NO extension (CoreFoundation, DirectoryService), and
         # it is as much a library input as any .dylib -- memberd's _ds* symbols live in

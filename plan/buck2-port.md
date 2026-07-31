@@ -1661,7 +1661,66 @@ That abort is very likely NOT the port's. The evidence:
     identically in both trees -- so libc++ sits inside libSystem's own closure and its
     initializer necessarily runs before libSystem's, which is exactly what dyld refuses.
 
-So the port reproduces what the reference now builds, and what the reference now builds does
-not boot. That is a claim about the source, not about buck2, and it is not yet verified: a
-Nix build from the current source has to be run to the same point. Until that is done, this
-is stated as the likely reading and no more.
+That reading was WRONG, and the control build disproved it. `nix build .#default` from the
+same source produces a Darling that boots past dyld's initializers on this machine, with a
+libc++ that is structurally identical to the port's -- same initializer section, same
+reexport, same dependency set. So the abort is the port's, not the source's.
+
+Two more differences fell out of comparing the two trees, and only one of them mattered:
+
+  * the port emitted libc++'s dependencies in the order (libSystem, libc++abi) while the
+    reference emits (libc++abi, libSystem), because ld64 records LC_LOAD_DYLIB in
+    command-line order and cmake puts LINK_FLAGS, where -Wl,-reexport_library lives, ahead
+    of LINK_LIBRARIES. Fixed by ordering reexports first; it did not change the abort, but
+    it is what the reference does.
+  * every one of the 39 images the guest loads is otherwise IDENTICAL between the two trees
+    in initializer size and dependency set. So the defect was never in the metadata.
+
+Swapping files between the two trees found it. With libSystem.B.dylib AND usr/lib/system
+taken from the control build and everything else from buck2, **bash runs inside the
+container**. Either alone still fails, and so does every individually loaded top-level dylib
+(libc++, libc++abi, libobjc, libresolv) -- the umbrella and its sublibraries have to be
+consistent with each other, which is what makes this a build-level difference rather than a
+single bad artifact.
+
+Everything else the port produces is therefore correct: the 5,536-file prefix, its layout,
+the Rust daemon, launcher and loader, and the materialization.
+
+### The cause: UPWARD dependencies, which the port had never expressed
+
+dyld links an upward library but does NOT descend into it when running initializers. That is
+the whole point of the flag, and it is what lets libSystem's own initializer run first: five
+of its sublibraries depend on something that sits ABOVE libSystem, so a plain dependency
+would make dyld initialize that thing before libSystem itself.
+
+The reference passes `-Wl,-upward_library` for exactly those five edges:
+
+    libsystem_trace.dylib   -> libobjc
+    libdispatch.dylib       -> libobjc
+    libxpc.dylib            -> libobjc
+    libsystem_malloc.dylib  -> libsystem_c
+    libdyld.dylib           -> libsystem_c and eight more
+
+The port had never emitted an upward dependency anywhere. The rule supported them --
+darwin_dylib has had an `upward` attribute all along -- but the generator listed
+`-Wl,-upward_library` only in the set of flags it deliberately IGNORES, so every one of them
+became an ordinary sibling. dyld then walked libSystem -> libsystem_trace -> libobjc ->
+libc++, found libc++'s initializer first, and aborted the process before libSystem had ever
+been initialized. The error it prints for that is "initializer in image (libc++.1.dylib)
+that does not link with libSystem.dylib", which is why the first three days of this looked
+like a problem with libc++.
+
+With the five edges marked upward, the buck2-built Darling boots and runs bash:
+
+    BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19
+
+Three runs, three passes. That is bash 3.2.57 -- Darwin's bash, not the host's 5.3 -- with a
+Darwin machine type, in a container whose every part came from buck2: the prefix, the
+daemon, the launcher and the guest loader.
+
+`uname` is not there, and that is correct: it belongs to the cli component, which this
+milestone deliberately does not build. The Nix-built reference cannot run it here either.
+
+scripts/buck-fix-link-model.py is what applies both corrections (order and upward) to
+existing blocks, and it has a --check mode, because regenerating the blocks wholesale still
+loses things the generator cannot reproduce.

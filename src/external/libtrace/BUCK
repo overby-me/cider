@@ -100,6 +100,8 @@ darwin_dylib(
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_blocks_firstpass",
         "//buck-src/libplatform:platform_firstpass",
+    ],
+    upward = [
         "//buck-src/objc4:objc_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
