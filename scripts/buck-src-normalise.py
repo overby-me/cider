@@ -45,9 +45,23 @@ def in_tree_target(link: str, target: str) -> str | None:
 
     if os.path.isabs(target):
         return None
-    resolved = os.path.normpath(os.path.join(os.path.dirname(link), target))
+    # ABSOLUTE, because BUCK_SRC and REPO are: with a relative tree argument the
+    # comparisons below silently never matched, and the in-tree cases fell through to the
+    # escape handling.
+    resolved = os.path.abspath(os.path.join(os.path.dirname(link), target))
     if resolved.startswith(BUCK_SRC + os.sep):
-        return None  # already inside the tree
+        if os.path.lexists(resolved):
+            return None  # already inside the tree and resolving
+        # Inside buck-src but DANGLING: the link names a sibling pin that is not
+        # materialized here because it lives in the repo proper. security's
+        # darling/submodules/xnu points at darlingserver/duct-tape/xnu that way, and
+        # darlingserver is at src/external/darlingserver, not a pin. A dangling link is
+        # not merely unused -- a glob that picks it up fails the whole package load.
+        rel = resolved[len(BUCK_SRC) + 1:]
+        cand = os.path.join(REPO, "src", "external", rel)
+        if os.path.lexists(cand):
+            return os.path.relpath(cand, os.path.dirname(link))
+        return None
     if not resolved.startswith(REPO + os.sep):
         # The link escapes the repo entirely: it was written for a tree of a different
         # depth (libnotify's darling/src/notify.defs climbs five levels to reach what

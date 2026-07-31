@@ -389,5 +389,9 @@
   ],
   "nghttp2": [
     "//buck-src:nghttp2ver"
+  ],
+  "Security_obj": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation"
   ]
 }
