@@ -45,13 +45,28 @@ in
           machine.succeed("command -v darling-buck2")
 
       with machine.nested("the container boots and bash runs"):
-          # First run also creates the prefix, which is the slow part.
-          out = machine.succeed(
+          # execute(), not succeed(): a hang here is the interesting case, and succeed()
+          # raises with the output thrown away. The prefix is given explicitly and SHORT --
+          # the daemon's control socket lives inside it and a Unix socket path is capped at
+          # 108 bytes.
+          status, out = machine.execute(
+              "DPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
               "darling-buck2 shell /bin/bash -c "
               "'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE'",
               timeout=300,
           )
-          assert "BUCK2_BASH_OK" in out, f"bash did not run: {out}"
+          if "BUCK2_BASH_OK" not in out:
+              # Everything a diagnosis needs, in ONE run: a VM test round trip is minutes.
+              machine.execute("tail -40 /tmp/dp/darlingserver.log > /tmp/ds.log 2>&1")
+              # Not `_`: the test driver already binds that name to its logger, and the
+              # type check rejects the assignment before the VM ever starts.
+              log_st, log = machine.execute("cat /tmp/ds.log 2>&1")
+              ps_st, ps = machine.execute("ps aux | grep -E 'darling|mldr' | grep -v grep")
+              ns_st, ns = machine.execute("sysctl kernel.unprivileged_userns_clone 2>&1; id")
+              raise Exception(
+                  f"status={status}\noutput={out!r}\n"
+                  f"--- daemon log ---\n{log}\n--- processes ---\n{ps}\n--- env ---\n{ns}"
+              )
           # Darwin's bash is 3.2.57; the host's is 5.x, so the version is also the proof
           # that this is the GUEST binary and not the one that launched it.
           assert "3.2.57" in out, f"not the Darwin bash: {out}"

@@ -39,7 +39,11 @@
         rel = pkgs.lib.removePrefix (toString srcRaw + "/") (toString path);
         top = pkgs.lib.head (pkgs.lib.splitString "/" rel);
       in
-        !(builtins.elem top [
+        # tests/ cannot go wholesale -- buck2 has real targets under tests/buck2 -- but the
+        # NixOS VM tests in there are Nix that buck2 never reads, and editing one of them
+        # was relowering all 259 derivations.
+        !(top == "tests" && pkgs.lib.hasSuffix ".nix" rel)
+        && !(builtins.elem top [
           "plan"
           "docs"
           "nix"

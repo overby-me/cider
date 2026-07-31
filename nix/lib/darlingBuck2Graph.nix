@@ -95,7 +95,11 @@ in
         rel = lib.removePrefix (toString src + "/") (toString path);
         top = lib.head (lib.splitString "/" rel);
       in
-        !(builtins.elem top [
+        # Same exclusion as the lowering: buck2 has targets under tests/buck2, but the NixOS
+        # VM tests are Nix it never reads, and editing one changed the graph -- and so every
+        # derivation lowered from it.
+        !(top == "tests" && lib.hasSuffix ".nix" rel)
+        && !(builtins.elem top [
           "plan"
           "docs"
           "nix"
