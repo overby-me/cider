@@ -31,12 +31,23 @@ SKIP_DIRS = ("buck-out", ".git", ".jj", ".direnv", "build")
 # What can be a FILE label rather than a rule target. A rule target is named after a
 # cmake target and never carries a source extension, so the extension is what tells them
 # apart -- and the name is only accepted once it resolves to a file that really exists.
+# NOT a filter any more, and deliberately so: which names are FILES is decided by whether
+# the name resolves to one in the pin, not by a list of extensions kept up to date by hand.
+# The list version silently treated an unlisted extension as a target, so the export it
+# needed went unwritten and the failure surfaced as "unknown target" at the prefix build --
+# once for .lua, again for .mgc, and once more for a file with no extension at all. What
+# does not resolve is now REPORTED instead. Kept only for reference.
 FILE_EXTS = (".h", ".hpp", ".hh", ".hxx", ".inc", ".defs", ".c", ".cc", ".cpp", ".cxx",
              ".m", ".mm", ".S", ".s", ".y", ".l", ".tcc", ".mdh", ".mdhi", ".mdhs",
              ".pro", ".epro", ".sh", ".plist", ".txt", ".in", ".sym", ".exp", ".def",
              # Prefix DATA, added with the install rules: configs, an asl policy, iconv's
              # charset table and the man pages, which are sections 1 through 9.
              ".conf", ".asl", ".alias",
+             # More prefix DATA, from the cli scope: zprint's lua script, file's compiled
+             # magic database, openssl's config, groff's tmac library and a perl helper.
+             # A name that is not in this list is silently treated as a TARGET rather than
+             # a file, and the export it needed never gets written.
+             ".lua", ".mgc", ".cnf", ".lib", ".pl",
              ".1", ".2", ".3", ".4", ".5", ".6", ".7", ".8", ".9")
 
 # The same, for files that carry no extension at all. The rule above cannot see these --
@@ -86,8 +97,7 @@ def scan_labels() -> dict[str, set]:
             except (UnicodeDecodeError, OSError):
                 continue
             for pkg, name in pat.findall(text):
-                if name.endswith(FILE_EXTS) or name.endswith(FILE_NAMES):
-                    wanted.setdefault(pkg, set()).add(name)
+                wanted.setdefault(pkg, set()).add(name)
     return wanted
 
 
@@ -209,6 +219,16 @@ def main(argv: list[str]) -> int:
         index = dict(hints.get(pkg, {}))
         if pin and names:
             index = {**pin_index(pin), **index}
+        else:
+            # buck-src itself cannot be walked (it holds every materialized pin), so its
+            # index is the hints and "does not resolve" says nothing. Worse, its framework
+            # roots are declared by a COMPREHENSION over a generated map, so their names
+            # do not appear textually and cannot be recognised as targets either. For that
+            # one package the name has to look like a file to be treated as one.
+            # A name the install generator recorded a HINT for is known to be a file, so
+            # it counts whatever it is called: ssh-copy-id has no extension at all.
+            names = {n for n in names
+                     if n in index or n.endswith(FILE_EXTS) or n.endswith(FILE_NAMES)}
         already = target_names(buck)
         exports, unresolved = {}, []
         for name in sorted(names):

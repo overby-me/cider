@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:files.bzl", "export_file")
 
 # xtrace's public headers, staged with the package structure INTACT: the per-protocol
 # XtraceMig stubs include <xtrace/xtrace-mig-types.h>, and that header reaches back out
@@ -10,3 +11,15 @@ cc_header_root(
     include_subdirs = ["include"],
     visibility = ["PUBLIC"],
 )
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "xtrace",
+    src = "xtrace",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

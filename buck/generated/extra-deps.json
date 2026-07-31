@@ -802,5 +802,16 @@
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices"
+  ],
+  "expr": [
+    "//buck-src:shell_cmds_expr_parser",
+    "gen://buck-src:shell_cmds_expr_parser"
+  ],
+  "find": [
+    "//buck-src:shell_cmds_find_getdate",
+    "gen://buck-src:shell_cmds_find_getdate"
+  ],
+  "sw_vers": [
+    "//buck-src:fw_CoreFoundation"
   ]
 }

@@ -5,14 +5,12 @@ load("//buck/rules:install.bzl", "prefix_dir")
 # scripts/gen-install-from-manifests.py -- review before committing.
 
 prefix_dir(
-    name = "prefix_Non_localized",
+    name = "prefix_gen_usr",
     srcs = glob(
-        ["Non_localized/**"],
-        exclude = [
-            "**/.gitignore",
-        ],
+        ["gen/usr/**"],
+        exclude = [],
     ),
-    strip = "Non_localized",
+    strip = "gen/usr",
     visibility = ["PUBLIC"],
 )
 # END generated: prefix dirs

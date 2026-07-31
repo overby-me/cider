@@ -1,6 +1,6 @@
-load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_header_root")
 load("//buck/rules:codegen.bzl", "script_gen")
+load("//buck/rules:files.bzl", "export_file")
 
 # The host-side daemon itself is the Rust crate linux/server; what remains here
 # for the Buck2 port is the shared header surface and the generated RPC wrappers

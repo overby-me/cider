@@ -41,6 +41,10 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ARCH = "x86_64"
+# The prefix the reference configures with. cmake writes it into DESTINATION paths two
+# ways -- as ${CMAKE_INSTALL_PREFIX} and, for a few targets, literally -- and both
+# spellings have to come off before a path can be used as a prefix-relative one.
+INSTALL_PREFIX = "/usr/local"
 ENTRY = re.compile(
     r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)(?:\s+\w+)*\s+FILES? (.*?)\)\n',
     re.S)
@@ -102,6 +106,11 @@ def read_entries(root: str):
         text = open(os.path.join(dirpath, "cmake_install.cmake")).read()
         for dest, kind, blob in ENTRY.findall(text):
             dest = dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/")
+            # Not every DESTINATION keeps the variable: unzip installs to a literal
+            # /usr/local/libexec/... (cmake even warns about the absolute path). Left as
+            # is, the entry lands in the prefix under a top-level usr/local, and its
+            # symlinks point outside the tree.
+            dest = dest.removeprefix(INSTALL_PREFIX + "/").rstrip("/")
             # The excludes are quoted strings too, so the file list is what comes BEFORE the
             # first REGEX. Splitting there keeps `/Makefile$` from being read as a file.
             head = blob.split(" REGEX ", 1)[0]
@@ -215,14 +224,20 @@ def target_for(path: str, gen, binaries: dict) -> str | None:
 
 
 def source_rel(path: str) -> str | None:
-    """A source path relative to the repo, or None if it is not from the source tree."""
+    """A source path relative to the repo, or None if it is not from the source tree.
+
+    NORMALISED here, once, so nothing downstream has to. cmake installs several files by
+    a path with a `..` in the middle (securityd's plist is named
+    security/keychain/securityd/../../OSX/sec/ipc/com.apple.secd.plist), and buck2 refuses
+    such a source -- both as a label's target name and as an export_file's src.
+    """
     # The manifests name the cmake source as a store path; everything after the store
     # entry's name is repo-relative.
     m = re.match(r"/nix/store/[a-z0-9]{32}-[^/]+/(.*)", path)
     if m:
-        return m.group(1)
+        return os.path.normpath(m.group(1))
     if path.startswith(REPO + "/"):
-        return path[len(REPO) + 1:]
+        return os.path.normpath(path[len(REPO) + 1:])
     return None
 
 
@@ -272,8 +287,13 @@ def file_label(rel: str):
 
 
 def pin_of(rel: str):
-    """(pin, path within the pin) for a src/external/<pin>/... source path."""
-    m = re.match(r"src/external/([^/]+)/(.*)", rel)
+    """(pin, path within the pin) for a src/external/<pin>/... source path.
+
+    NORMALISED: cmake happily installs a path with a `..` in the middle of it (file's man
+    page is named .../file/file/../gen/file.1), and buck2 rejects such a source outright.
+    The path on disk is the same file either way.
+    """
+    m = re.match(r"src/external/([^/]+)/(.*)", os.path.normpath(rel))
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
@@ -354,7 +374,7 @@ def main(argv: list[str]) -> int:
     entries = read_entries(root)
     # The reference configures with CMAKE_INSTALL_PREFIX=/usr/local, which the install(CODE)
     # blocks bake into absolute paths while file(INSTALL ...) keeps the variable.
-    empty_dirs, abs_links = read_layout(root, "/usr/local")
+    empty_dirs, abs_links = read_layout(root, INSTALL_PREFIX)
 
     # Where each installed source ends up, so a symlink can be expressed against the
     # DESTINATION of the thing it points at rather than against a build path.
@@ -431,6 +451,20 @@ def main(argv: list[str]) -> int:
                 unmapped.append((full, f"unhandled install type {kind}"))
 
     built.update(EXTRA)
+
+    # A symlink whose destination did not SURVIVE. The check inside the loop asks whether
+    # the target is an install entry at all, which it can be while still being dropped a
+    # few lines later for having no target that builds it: lsbom links to installer, and
+    # installer is not ported. Left in, the prefix rule fails on a link into nothing.
+    present = set(built) | set(sources) | set(dirs) | set(empty_dirs)
+    while True:
+        dangling = {d: t for d, t in symlinks.items()
+                    if t not in present and t not in symlinks}
+        if not dangling:
+            break
+        for d, t in sorted(dangling.items()):
+            unmapped.append((d, f"links to {t}, which is not in the prefix"))
+            del symlinks[d]
 
     print(f"install entries: {len(entries)}")
     print(f"  built artifacts mapped to targets: {len(built)}")

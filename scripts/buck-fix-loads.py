@@ -16,19 +16,29 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Which .bzl provides which rule.
-RULES = {
-    "//buck/rules:cc.bzl": [
-        "cc_header_root", "cc_objects", "cc_static_lib", "cc_library",
-        "cc_binary", "cc_lib_dir",
-    ],
-    "//buck/rules:codegen.bzl": [
-        "bison_gen", "flex_gen", "mig_gen", "host_gen", "script_gen",
-        "configure_file",
-    ],
-    "//buck/rules:darwin.bzl": ["darwin_dylib", "darwin_binary"],
-    "//buck/rules:files.bzl": ["export_file"],
-}
+# Which .bzl provides which rule -- READ FROM THE RULE FILES, not listed here.
+#
+# This script STRIPS every //buck/rules: load and re-adds only the rules it knows about,
+# so a rule missing from the map has its load silently deleted from any file the script
+# touches. A hand-kept list guarantees that happens every time a rule is added: it took
+# out buck/prefix/BUCK's prefix_tree load, and then src/tools' stdout_gen. Deriving the
+# map from `<name> = rule(` in buck/rules/*.bzl cannot drift.
+def _rules_map() -> dict:
+    out = {}
+    d = os.path.join(REPO, "buck", "rules")
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".bzl"):
+            continue
+        text = open(os.path.join(d, fn)).read()
+        names = sorted(set(re.findall(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*rule\(", text, re.M)))
+        if names:
+            out[f"//buck/rules:{fn}"] = names
+    if not out:
+        sys.exit("no rules found under buck/rules -- refusing to strip every load")
+    return out
+
+
+RULES = _rules_map()
 
 SKIP_DIRS = ("buck-out", ".git", ".jj", ".direnv", "build")
 

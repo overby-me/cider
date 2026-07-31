@@ -1,5 +1,5 @@
-load("//buck/rules:install.bzl", "prefix_dir")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:install.bzl", "prefix_dir")
 
 # Targets over the zsh pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is

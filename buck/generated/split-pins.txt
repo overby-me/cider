@@ -17,6 +17,8 @@ coretls
 crontabs
 csu
 dyld
+file
+groff
 icu
 keymgr
 libc
@@ -36,10 +38,14 @@ libstdcxx
 libsystem
 libunwind
 libxpc
+misc_cmds
 ncurses
 objc4
+openpam
 removefile
+screen
 syslog
+system_cmds
 tcsh
 xnu
 zlib

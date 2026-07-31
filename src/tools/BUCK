@@ -1,3 +1,6 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
 # BEGIN generated: sw_vers
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py sw_vers   -- review before committing.
@@ -14,6 +17,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
     ],
     visibility = ["PUBLIC"],
 )

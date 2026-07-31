@@ -11263,15 +11263,15 @@ darwin_binary(
 cc_header_root(
     name = "grep_inc_grep_grep",
     headers = glob([
-        "grep/grep/**/*",
         "grep/grep/lib/*.h",
         "grep/grep/lib/**/*.h",
         "grep/grep/lib/*.c",
+        "grep/grep/**/*",
     ]),
     root = "grep/grep",
     include_subdirs = [
-        ".",
         "lib",
+        ".",
     ],
     visibility = ["PUBLIC"],
 )
@@ -12099,7 +12099,7 @@ darwin_dylib(
 
 darwin_dylib(
     name = "Security_final",
-    dylib_name = "Security_x86_64",
+    dylib_name = "Security",
     install_name = "/System/Library/Frameworks/Security.framework/Versions/A/Security",
     compatibility_version = "1.0.0",
     current_version = "59306.61.1",
@@ -12116,7 +12116,7 @@ darwin_dylib(
         "//src/libMobileGestalt:MobileGestalt_dylib",
         "//buck-src:bsm.0_dylib",
         "//buck-src:coretls_dylib",
-        "//buck-src:pam.2_dylib",
+        "//buck-src/openpam:pam.2_dylib",
         "//buck-src:sqlite3_dylib",
         "//buck-src:xar_dylib",
         "//buck-src/objc4:objc_final",
@@ -13373,6 +13373,24 @@ mig_gen(
         "//buck-src:fw_CoreFoundation",
     ],
     visibility = ["PUBLIC"],
+)
+
+# shell_cmds' two yacc parsers. Both are built with `bison -d`, which writes the parser
+# and its token header together; the consumer compiles the .c and includes the .h.
+bison_gen(
+    name = "shell_cmds_expr_parser",
+    src = "shell_cmds/expr/expr.y",
+    out_c = "expr.c",
+    out_h = "expr.h",
+)
+
+# find's date parser keeps the find_ prefix cmake gives it, because shell_cmds builds
+# every tool into one directory and getdate.c would collide.
+bison_gen(
+    name = "shell_cmds_find_getdate",
+    src = "shell_cmds/find/getdate.y",
+    out_c = "find_getdate.c",
+    out_h = "find_getdate.h",
 )
 
 # BEGIN generated: security_utilities archive
@@ -19542,118 +19560,6 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: utilities_x86_64
-
-# BEGIN generated: pam.2
-# GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam.2   -- review before committing.
-# cmake target: pam.2  ->  src/external/openpam/libpam.2.dylib
-
-# Sibling include dirs, staged as ONE tree with -I into each: headers here
-# reach each other with `#include "../<dir>/x.h"`, which only resolves if
-# the sibling is in the same staged tree.
-cc_header_root(
-    name = "pam.2_inc_openpam_openpam",
-    headers = glob([
-        "openpam/openpam/**/*",
-        "openpam/openpam/include/*.h",
-        "openpam/openpam/include/**/*.h",
-        "openpam/openpam/include/*.c",
-    ]),
-    root = "openpam/openpam",
-    include_subdirs = [
-        ".",
-        "include",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-cc_objects(
-    name = "pam.2_obj",
-    srcs = [
-        "openpam/openpam/lib/openpam_borrow_cred.c",
-        "openpam/openpam/lib/openpam_configure.c",
-        "openpam/openpam/lib/openpam_dispatch.c",
-        "openpam/openpam/lib/openpam_dynamic.c",
-        "openpam/openpam/lib/openpam_findenv.c",
-        "openpam/openpam/lib/openpam_free_data.c",
-        "openpam/openpam/lib/openpam_free_envlist.c",
-        "openpam/openpam/lib/openpam_get_option.c",
-        "openpam/openpam/lib/openpam_load.c",
-        "openpam/openpam/lib/openpam_log.c",
-        "openpam/openpam/lib/openpam_nullconv.c",
-        "openpam/openpam/lib/openpam_readline.c",
-        "openpam/openpam/lib/openpam_restore_cred.c",
-        "openpam/openpam/lib/openpam_set_option.c",
-        "openpam/openpam/lib/openpam_static.c",
-        "openpam/openpam/lib/openpam_ttyconv.c",
-        "openpam/openpam/lib/pam_acct_mgmt.c",
-        "openpam/openpam/lib/pam_authenticate.c",
-        "openpam/openpam/lib/pam_chauthtok.c",
-        "openpam/openpam/lib/pam_close_session.c",
-        "openpam/openpam/lib/pam_end.c",
-        "openpam/openpam/lib/pam_error.c",
-        "openpam/openpam/lib/pam_get_authtok.c",
-        "openpam/openpam/lib/pam_get_data.c",
-        "openpam/openpam/lib/pam_get_item.c",
-        "openpam/openpam/lib/pam_get_user.c",
-        "openpam/openpam/lib/pam_getenv.c",
-        "openpam/openpam/lib/pam_getenvlist.c",
-        "openpam/openpam/lib/pam_info.c",
-        "openpam/openpam/lib/pam_open_session.c",
-        "openpam/openpam/lib/pam_prompt.c",
-        "openpam/openpam/lib/pam_putenv.c",
-        "openpam/openpam/lib/pam_set_data.c",
-        "openpam/openpam/lib/pam_set_item.c",
-        "openpam/openpam/lib/pam_setcred.c",
-        "openpam/openpam/lib/pam_setenv.c",
-        "openpam/openpam/lib/pam_start.c",
-        "openpam/openpam/lib/pam_strerror.c",
-        "openpam/openpam/lib/pam_unsetenv.c",
-        "openpam/openpam/lib/pam_verror.c",
-        "openpam/openpam/lib/pam_vinfo.c",
-        "openpam/openpam/lib/pam_vprompt.c",
-    ],
-    compiler_flags = [
-        "-DLIB_MAJ=2",
-        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
-        "-D_GNU_SOURCE",
-        "-D_LIBC_NO_FEATURE_VERIFICATION",
-        "-Dpam_2_EXPORTS",
-        "-fPIC",
-        "-nostdinc",
-        "-fblocks",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = [
-        ":pam.2_inc_openpam_openpam",
-        "//darwin:sdk_env",
-    ],
-    visibility = ["PUBLIC"],
-)
-# END generated: pam.2
-
-# BEGIN generated: pam.2 dylibs
-# GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam.2   -- review before committing.
-# Links 1 cmake object library/ies, 1 flag groups in total.
-
-darwin_dylib(
-    name = "pam.2_dylib",
-    dylib_name = "libpam.2.dylib",
-    install_name = "/usr/lib/libpam.2.dylib",
-    compatibility_version = "1.0.0",
-    objs = [
-        # pam.2
-        ":pam.2_obj",
-    ],
-    siblings = [
-        "//buck-src:system_final",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
-    visibility = ["PUBLIC"],
-)
-# END generated: pam.2 dylibs
 
 # BEGIN generated: xar
 # GENERATED from the reference build.ninja by
@@ -26410,3 +26316,126 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: curl dylibs
+
+# BEGIN generated: expr
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py expr   -- review before committing.
+# cmake target: expr  ->  src/external/shell_cmds/expr
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/shell_cmds/expr.c
+
+cc_objects(
+    name = "expr_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:shell_cmds_expr_parser",
+    ],
+    gen_srcs = [
+        "//buck-src:shell_cmds_expr_parser",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: expr
+
+# BEGIN generated: expr binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries expr   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "expr",
+    objs = [
+        # expr
+        ":expr_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: expr binary
+
+# BEGIN generated: find
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py find   -- review before committing.
+# cmake target: find  ->  src/external/shell_cmds/find
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/shell_cmds/find_getdate.c
+
+cc_objects(
+    name = "find_obj",
+    srcs = [
+        "shell_cmds/find/find.c",
+        "shell_cmds/find/function.c",
+        "shell_cmds/find/ls.c",
+        "shell_cmds/find/main.c",
+        "shell_cmds/find/misc.c",
+        "shell_cmds/find/operator.c",
+        "shell_cmds/find/option.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:shell_cmds_find_getdate",
+    ],
+    gen_srcs = [
+        "//buck-src:shell_cmds_find_getdate",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: find
+
+# BEGIN generated: find binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries find   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "find",
+    objs = [
+        # find
+        ":find_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: find binary

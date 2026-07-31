@@ -1,5 +1,5 @@
-load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring

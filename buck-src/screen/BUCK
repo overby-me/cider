@@ -1,0 +1,28 @@
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_screen_utf8encodings",
+    srcs = glob(
+        ["screen/utf8encodings/**"],
+        exclude = [],
+    ),
+    strip = "screen/utf8encodings",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_screen.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

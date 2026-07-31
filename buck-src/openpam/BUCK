@@ -1,0 +1,142 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_pam_d",
+    srcs = glob(
+        ["pam.d/**"],
+        exclude = [],
+    ),
+    strip = "pam.d",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_openpam.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
+
+# BEGIN generated: pam.2
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam.2   -- review before committing.
+# cmake target: pam.2  ->  src/external/openpam/libpam.2.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam.2_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam.2_obj",
+    srcs = [
+        "openpam/lib/openpam_borrow_cred.c",
+        "openpam/lib/openpam_configure.c",
+        "openpam/lib/openpam_dispatch.c",
+        "openpam/lib/openpam_dynamic.c",
+        "openpam/lib/openpam_findenv.c",
+        "openpam/lib/openpam_free_data.c",
+        "openpam/lib/openpam_free_envlist.c",
+        "openpam/lib/openpam_get_option.c",
+        "openpam/lib/openpam_load.c",
+        "openpam/lib/openpam_log.c",
+        "openpam/lib/openpam_nullconv.c",
+        "openpam/lib/openpam_readline.c",
+        "openpam/lib/openpam_restore_cred.c",
+        "openpam/lib/openpam_set_option.c",
+        "openpam/lib/openpam_static.c",
+        "openpam/lib/openpam_ttyconv.c",
+        "openpam/lib/pam_acct_mgmt.c",
+        "openpam/lib/pam_authenticate.c",
+        "openpam/lib/pam_chauthtok.c",
+        "openpam/lib/pam_close_session.c",
+        "openpam/lib/pam_end.c",
+        "openpam/lib/pam_error.c",
+        "openpam/lib/pam_get_authtok.c",
+        "openpam/lib/pam_get_data.c",
+        "openpam/lib/pam_get_item.c",
+        "openpam/lib/pam_get_user.c",
+        "openpam/lib/pam_getenv.c",
+        "openpam/lib/pam_getenvlist.c",
+        "openpam/lib/pam_info.c",
+        "openpam/lib/pam_open_session.c",
+        "openpam/lib/pam_prompt.c",
+        "openpam/lib/pam_putenv.c",
+        "openpam/lib/pam_set_data.c",
+        "openpam/lib/pam_set_item.c",
+        "openpam/lib/pam_setcred.c",
+        "openpam/lib/pam_setenv.c",
+        "openpam/lib/pam_start.c",
+        "openpam/lib/pam_strerror.c",
+        "openpam/lib/pam_unsetenv.c",
+        "openpam/lib/pam_verror.c",
+        "openpam/lib/pam_vinfo.c",
+        "openpam/lib/pam_vprompt.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_2_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam.2_inc_openpam_openpam",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam.2
+
+# BEGIN generated: pam.2 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam.2   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam.2_dylib",
+    dylib_name = "libpam.2.dylib",
+    install_name = "/usr/lib/libpam.2.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam.2
+        ":pam.2_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam.2 dylibs

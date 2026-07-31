@@ -1,5 +1,5 @@
-load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:files.bzl", "export_file")
 
 # Targets over the crontabs pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is

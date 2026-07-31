@@ -1,5 +1,6 @@
-load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: framework roots
 # One header root per framework, so a target declares the frameworks it includes
@@ -66,3 +67,15 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: AppleFSCompression dylibs
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "CoreSymbolication_resources_com.apple.coresymbolicationd.plist",
+    src = "CoreSymbolication/resources/com.apple.coresymbolicationd.plist",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

@@ -928,19 +928,20 @@ def dylib_edges(target: str, edges):
             if want & set(objlibs_of(cand)):
                 final = cand
                 break
-        # It may still be IN the cluster: CFNetwork_obj builds libCFNetwork.dylib, so the
-        # name-based test above misses libCFNetwork_firstpass.dylib entirely, and the pair
-        # then looks like a plain non-circular library. Everything that links its firstpass
-        # -- Foundation does -- would report it as unported. The firstpass is the dylib in
-        # the same directory built from the same object libraries.
-        if final is not None:
-            d, objs = os.path.dirname(final[0]), set(objlibs_of(final))
-            for cand in dylibs:
-                if cand is final or os.path.dirname(cand[0]) != d:
-                    continue
-                if "_firstpass" in os.path.basename(cand[0]) and set(objlibs_of(cand)) == objs:
-                    first = cand
-                    break
+    # A final found by NAME may still be half of a circular pair whose firstpass is spelled
+    # differently: CFNetwork_obj builds libCFNetwork.dylib next to libCFNetwork_firstpass.dylib,
+    # and Security's framework binary sits next to libSecurity_x86_64_firstpass.dylib. Neither
+    # matches lib<target>_firstpass.dylib, so without this the pair reads as a plain
+    # non-circular library and everything that links its firstpass reports it unported.
+    # The firstpass is the dylib in the same directory built from the same object libraries.
+    if final is not None and first is None:
+        d, objs = os.path.dirname(final[0]), set(objlibs_of(final))
+        for cand in dylibs:
+            if cand is final or os.path.dirname(cand[0]) != d:
+                continue
+            if "_firstpass" in os.path.basename(cand[0]) and set(objlibs_of(cand)) == objs:
+                first = cand
+                break
     return final, first
 
 
@@ -1884,12 +1885,18 @@ def main(argv: list[str]) -> int:
         # to come off is the pin name, not the whole package path.
         if pkg.startswith(BUCK_SRC + "/"):
             pin = pkg[len(BUCK_SRC) + 1:]
-            text = text.replace('"' + pin + "/", '"')
-            # The pin DIRECTORY itself, which the trailing-slash form cannot match: an
-            # include root or a mig out_base can be exactly the pin, and package-relative
-            # that is the package itself.
+            # The pin DIRECTORY itself FIRST, which the trailing-slash form cannot match:
+            # an include root or a mig out_base can be exactly the pin, and
+            # package-relative that is the package itself.
+            #
+            # Before the prefix strip, not after: openpam's tree is nested one deeper
+            # (buck-src/openpam/openpam/...), so a root of "openpam/openpam" becomes
+            # "openpam" under the strip and would then match this rule a SECOND time and
+            # collapse to "". The root and the globs then disagreed about where the tree
+            # is, and buck2 refused to project a subdir that was not there.
             text = re.sub(r'^(\s*(?:root|out_base) = )"' + re.escape(pin) + '"',
                           r'\1""', text, flags=re.M)
+            text = text.replace('"' + pin + "/", '"')
         elif pkg != BUCK_SRC:
             text = text.replace('"' + pkg + "/", '"')
 

@@ -1,6 +1,6 @@
-load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: shellspawn
 # GENERATED from the reference build.ninja by

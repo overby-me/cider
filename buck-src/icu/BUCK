@@ -1,6 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:codegen.bzl", "stdout_gen")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
 # Targets over the icu pin, materialized by scripts/buck-src.sh. The tree
