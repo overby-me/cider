@@ -78,7 +78,7 @@ nixos-lib.runTest {
         assert "x86_64" in result, f"Expected 'x86_64', got: {result}"
 
         result = machine.succeed("darling shell sw_vers -productName")
-        assert result.strip(), f"sw_vers productName was empty"
+        assert result.strip(), "sw_vers productName was empty"
 
         result = machine.succeed("darling shell sw_vers -productVersion")
         assert re.search(r"\d+\.\d+", result), f"Bad version format: {result}"

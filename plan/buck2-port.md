@@ -1808,3 +1808,38 @@ the project invalidates every lowered target derivation**, a comment included. F
 endpoint whose whole purpose is that other people do not rebuild what they did not touch,
 that is a serious weakness -- the graph is already keyed on build DEFINITION rather than
 file contents, but the lowering is not. Worth its own work.
+
+## The VM harness: Darling does not run in a NixOS test VM at all
+
+Task #10 was meant to be the easy one: run the bash milestone in the same harness
+tests/darling-smoke.nix uses. tests/darling-buck2-smoke.nix boots the VM, finds the
+launcher, and then `darling-buck2 shell /bin/bash -c ...` times out with no output, where
+the identical command takes seconds on the host through both endpoints.
+
+Diagnosed, not guessed. The test now dumps the daemon log, the process list and the
+uid/userns state on failure, and the log says the container BOOTS: full dtape init,
+`execve expand /usr/libexec/shellspawn`, `darling_sigexc_self()`. Then it hangs. The
+difference from a working host run is one line:
+
+    host (works):  [guest kprintf] dtype for fd 2 -> /Volumes/SystemRootpipe:[94095524]
+    VM   (hangs):  [guest kprintf] dtype for fd 2 -> /darlingserver.log
+
+The guest never resolves its stderr through the host-root mount and falls back to the
+daemon's own log. Two cheaper explanations were tested and eliminated: running without a TTY
+reproduces fine on the host, and giving the VM 4 cores and 4 GB instead of 2 and 2 changes
+nothing.
+
+**It is not the port.** The REFERENCE Nix-built Darling fails the same way in the same
+harness: `nix build .#checks.x86_64-linux.darling-smoke` gets to `darling shell true` and
+times out with exit code 124, at the same place. (That check also had to be repaired first
+to run at all -- it fails its own linter on an f-string with no placeholders, which says it
+has not been run in a while.)
+
+So two things are now known that were not:
+
+  * the buck2 port's Darling is fine -- it boots and runs bash on the host, from the daemon
+    path and from the Nix endpoint, repeatedly;
+  * `tests/darling-smoke.nix` does not pass on this machine with the reference build, so
+    task #5 was never "port more components until it goes green". Whatever is wrong with
+    Darling inside a NixOS test VM has to be fixed first, and it belongs to Darling's
+    container plumbing rather than to this port.

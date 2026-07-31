@@ -26,9 +26,12 @@ in
 
     nodes.machine = {...}: {
       virtualisation = {
-        memorySize = 2048;
+        # More than the 2 cores and 2 GB the other VM tests use. The daemon runs the guest
+        # on microthreads and the boot is timing-sensitive -- it flakes about one run in six
+        # even on the host -- so a starved VM is the wrong place to find that out.
+        memorySize = 4096;
         diskSize = 8192;
-        cores = 2;
+        cores = 4;
       };
 
       environment.systemPackages = [darling];
@@ -58,14 +61,15 @@ in
           if "BUCK2_BASH_OK" not in out:
               # Everything a diagnosis needs, in ONE run: a VM test round trip is minutes.
               machine.execute("tail -40 /tmp/dp/darlingserver.log > /tmp/ds.log 2>&1")
-              # Not `_`: the test driver already binds that name to its logger, and the
-              # type check rejects the assignment before the VM ever starts.
-              log_st, log = machine.execute("cat /tmp/ds.log 2>&1")
-              ps_st, ps = machine.execute("ps aux | grep -E 'darling|mldr' | grep -v grep")
-              ns_st, ns = machine.execute("sysctl kernel.unprivileged_userns_clone 2>&1; id")
+              # `log` is the test driver's OWN logger object, so binding it here fails the
+              # driver's type check before the VM ever starts. Distinct names throughout.
+              st_a, dslog = machine.execute("cat /tmp/ds.log 2>&1")
+              st_b, procs = machine.execute("ps aux | grep -E 'darling|mldr' | grep -v grep")
+              st_c, envinfo = machine.execute("sysctl kernel.unprivileged_userns_clone 2>&1; id")
               raise Exception(
                   f"status={status}\noutput={out!r}\n"
-                  f"--- daemon log ---\n{log}\n--- processes ---\n{ps}\n--- env ---\n{ns}"
+                  f"--- daemon log ---\n{dslog}\n--- processes ---\n{procs}\n"
+                  f"--- env ---\n{envinfo}"
               )
           # Darwin's bash is 3.2.57; the host's is 5.x, so the version is also the proof
           # that this is the GUEST binary and not the one that launched it.
