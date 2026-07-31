@@ -417,6 +417,18 @@
       # sandbox-exec, diskutil and dscl -- everything tests/darling-smoke.nix exercises
       # besides bash -- are absent from it. This is what says how much bigger cli is.
       #   nix build .#darling-graph-cli
+      # And at the STOCK scope, the full build. Needed to size what "Nix running under
+      # Darling" costs: the guest has to host a real userland, and cli does not carry
+      # everything (libcurl and libsqlite3 among the gaps).
+      #   nix build .#darling-graph-stock
+      packages.darling-graph-stock =
+        pkgs:
+        import ./nix/lib/darling-graph.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+          components = "stock";
+        };
+
       packages.darling-graph-cli =
         pkgs:
         import ./nix/lib/darling-graph.nix {

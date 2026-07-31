@@ -64,8 +64,18 @@ in
               # `log` is the test driver's OWN logger object, so binding it here fails the
               # driver's type check before the VM ever starts. Distinct names throughout.
               st_a, dslog = machine.execute("cat /tmp/ds.log 2>&1")
-              st_b, procs = machine.execute("ps aux | grep -E 'darling|mldr' | grep -v grep")
-              st_c, envinfo = machine.execute("sysctl kernel.unprivileged_userns_clone 2>&1; id")
+              # WHAT IS STILL ALIVE and what it is blocked on. The first dump showed one
+              # surviving process and told us nothing about why the caller never returned.
+              st_b, procs = machine.execute(
+                  "ps -eo pid,ppid,stat,wchan:24,args | "
+                  "grep -E 'darling|mldr|shellspawn' | grep -v grep"
+              )
+              st_c, envinfo = machine.execute(
+                  "id; echo ---; ls -la /tmp/dp 2>&1 | head -20; echo ---; "
+                  "ls -ld /tmp/dp/Volumes/SystemRoot 2>&1; echo ---; "
+                  "mount | grep -E 'overlay|/tmp/dp' 2>&1; echo ---; "
+                  "dmesg | tail -15"
+              )
               raise Exception(
                   f"status={status}\noutput={out!r}\n"
                   f"--- daemon log ---\n{dslog}\n--- processes ---\n{procs}\n"

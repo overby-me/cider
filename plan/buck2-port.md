@@ -1843,3 +1843,42 @@ So two things are now known that were not:
     task #5 was never "port more components until it goes green". Whatever is wrong with
     Darling inside a NixOS test VM has to be fixed first, and it belongs to Darling's
     container plumbing rather than to this port.
+
+
+## The actual goal: Nix running INSIDE Darling, building bash
+
+Running bash was never the destination. The target is Nix running inside the buck2-built
+Darling and building bash there, which is a different order of capability: it needs the
+guest to be a usable macOS userland, not just a loader and a shell.
+
+Sized, by counting link edges per component scope the same way coverage does:
+
+    scope     dylibs  exes  archives  modules  total
+    system       121    61        37       35    254   <- what the port covers today
+    cli          249   460       128       43    880   (+626)
+    stock        610   528       134       96   1368   (+488 over cli)
+
+What the goal actually requires, measured rather than assumed:
+
+**The userland.** Today's prefix is bash, sh, zsh, tcsh, csh, bzip2, launchctl, bsdtar,
+cpio, xz, openssl, syslog, notifyutil, plconvert, the terminfo tools, and launchd. There are
+NO coreutils -- no ls, cat, cp, mkdir, rm, env, sed, grep, install, mktemp. Of the 48
+binaries a Nix installation exercises, cli provides 44; the remaining four (tar, readlink,
+whoami, install) are BSD-style install symlinks rather than separate link edges, which the
+install-manifest generator already handles.
+
+**The libraries Nix links.** libcurl, libsqlite3 and libxml2 are absent from system and
+present in cli. libz, libarchive, libc++, libSystem, libiconv and libssl are already here.
+
+So cli is the prerequisite and stock is probably not needed for the goal itself.
+tests/nix-in-darling.nix additionally calls /usr/sbin/dseditgroup to create the nixbld
+group, which is stock -- but a single-user Nix install does not need it, and the goal is
+the capability, not that particular test.
+
+**The daemon side already works.** linux/server/src/container.rs carries the
+.enable-writable-nix path, which overlays the host /nix/store into the container because
+Nix refuses to build in a diverted store. That daemon is buck2-built and running.
+
+So the path is: port cli (+626 edges), regenerate the install rules at that scope, install
+Nix into the guest ON THE HOST -- the VM is blocked on the pre-existing hang -- and build
+bash inside it.
