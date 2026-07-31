@@ -59,11 +59,23 @@
         # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
         # longer has a typedef). One relative symlink per pin makes the farm resolve, and
         # points at the copy that is already there rather than a second one.
+        # The same normalisation scripts/buck-src.sh applies on the daemon path: the
+        # upstream trees contain symlinks with a "." component and ones whose relative
+        # target leaves the cell, and buck2 refuses both. Without this the analysis dies on
+        # libnotify's notify.defs, whose link was written for src/external/<pin> and points
+        # one level above the root from buck-src/<pin>.
+        python3 ${../../scripts/buck-src-normalise.py} buck-src/${name}
+
         mkdir -p ${builtins.dirOf p}
         rmdir ${p} 2>/dev/null || true
         ln -sfn ../../buck-src/${name} ${p}
       '') wantedPins
   );
+  # The vendored Rust crates, which buck-rust/BUCK globs and which are gitignored like the
+  # pins: without them the analysis fails on the first crate it loads, since a source
+  # attribute has to name a file that exists.
+  rustVendor = import ./rust-vendor.nix {inherit pkgs;};
+
   # As a LIST built in Nix, not as an inline fragment: an optional piece inside the shell
   # line leaves a dangling continuation when it is empty, and the targets end up on a line
   # of their own where the dumper never sees them.
@@ -97,6 +109,10 @@ in
       [
         pkgs.buck2
         pkgs.clang
+        # The Rust side of the port: rustc for the three crates, bindgen for the daemon's
+        # dtape vtable. Both are TOOLS here, exactly as on the daemon path.
+        pkgs.rustc
+        pkgs.rust-bindgen
         pkgs.bison
         pkgs.flex
         pkgs.python3
@@ -133,6 +149,19 @@ in
       chmod -R u+w .
 
       ${materializePins}
+
+      # The Rust crate sources, the same set scripts/buck-rust-vendor.sh materializes for
+      # the daemon path. Copied rather than symlinked, because buck2 reads them as package
+      # files and a glob across a link into the store either misses them or drags the
+      # closure in.
+      mkdir -p buck-rust
+      for c in ${rustVendor}/*/; do
+        name=$(basename "$c")
+        mkdir -p "buck-rust/$name"
+        cp -a --reflink=auto "$c"/. "buck-rust/$name/"
+      done
+      chmod -R u+w buck-rust
+      echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
 
       # The machine-local config scripts/buck-setup.sh writes by hand, here from the
       # store paths this derivation was given -- the whole point of running in Nix.

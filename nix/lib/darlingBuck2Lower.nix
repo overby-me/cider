@@ -167,10 +167,15 @@
       map ownerOf (linkTargets o links))
     directOwners);
     owners = lib.unique (directOwners ++ lib.filter (x: x != null) viaLinks);
+    # Targets the actions DECLARE as inputs, which the argv-derived owners above cannot
+    # always find: an action that reads its inputs from a file names none of them on the
+    # command line. The prefix is the case that needs it -- one manifest argument standing
+    # for 5,537 inputs -- and aquery is where the declaration comes from.
+    declared = lib.unique (lib.concatMap (a: a.input_targets or []) targets.${label});
   in {
     fromTargets =
       lib.unique (lib.filter (t: t != null && t != label)
-        (map (o: producerTarget.${o} or null) owners));
+        (map (o: producerTarget.${o} or null) owners ++ declared));
     # Either kind: a farm recorded as a link MAP, or content buck2 generated and the dump
     # copied out. Filtering on `staged` alone silently produced no farms at all once the
     # maps replaced the copies.
@@ -236,6 +241,11 @@
           pkgs.flex
           pkgs.coreutils
           pkgs.bash
+          # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
+          # generates the daemon's dtape vtable. Both appear in the recorded argv as bare
+          # command names, exactly as on the daemon path, so they have to be on PATH here.
+          pkgs.rustc
+          pkgs.rust-bindgen
         ]
         ++ extraTools
         ++ lib.optional (ld64 != null) ld64;

@@ -202,11 +202,38 @@ def main(argv: list[str]) -> int:
         for ident in unjoined[:5]:
             print(f"    {ident}", file=sys.stderr)
 
+    # 3b. An action's DECLARED inputs, which argv does not always name.
+    #
+    # Scraping buck-out paths out of the command line works for a compile or a link, where
+    # every input is an argument. It fails completely for an action that reads its inputs
+    # from a FILE: the prefix passes a manifest and nothing else, so its 5,537 inputs are
+    # invisible to argv, and lowering it would run the builder against a staging tree that
+    # holds none of them. aquery does declare them, together with the action that produces
+    # each, which is what makes the dependency recoverable at all.
+    INPUT = re.compile(r"action: \(target: `([^`]+)`, id: `?\d+`?\)")
+    input_targets = {}
+    for node, attrs in aq.items():
+        decl = attrs.get("buck.all_ineligible_for_dedup_inputs")
+        if not decl:
+            continue
+        seen = []
+        for target in INPUT.findall(decl):
+            # Same spelling the rest of the dump uses: aquery writes the configuration
+            # after the label, and everything downstream groups actions by the bare label.
+            target = target.split(" (")[0]
+            if target not in seen:
+                seen.append(target)
+        if seen:
+            input_targets[node] = seen
+
     staged = {}
     for a in ran:
         paths = sorted({m for arg in a["argv"] for m in BUCK_OUT.findall(arg)})
         a["outputs"] = [p for p in paths if owns(a, p)]
         a["inputs"] = [p for p in paths if not owns(a, p)]
+        node = node_by_identity.get(a["identity"])
+        own = a["identity"].split(" (")[0]
+        a["input_targets"] = [t for t in input_targets.get(node, []) if t != own]
         for p in a["inputs"]:
             prod = producer.get(p) or ""
             if kinds.get(prod, "").lower() not in ("run",):

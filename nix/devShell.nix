@@ -4,23 +4,9 @@
 # integration (clangd, nil, nixfmt) so that `nix develop` or
 # direnv gives a fully-equipped environment.
 pkgs: let
-  # Every third-party crate the three Rust crates lock, unpacked into one directory.
-  #
-  # The buck2 port drives rustc directly, with no cargo anywhere in the build graph, so a
-  # rule cannot fetch a dependency: the sources have to be on disk before the build starts,
-  # exactly like the pinned upstream trees under buck-src. importCargoLock takes one lock
-  # file, so the three are merged crate by crate rather than with symlinkJoin, which would
-  # collide on the Cargo.lock each of them ships.
-  rustVendor = pkgs.runCommand "darling-rust-vendor" { } ''
-    mkdir -p $out
-    for d in ${pkgs.rustPlatform.importCargoLock { lockFile = ../linux/server/Cargo.lock; }} \
-             ${pkgs.rustPlatform.importCargoLock { lockFile = ../linux/launcher/Cargo.lock; }} \
-             ${pkgs.rustPlatform.importCargoLock { lockFile = ../darwin/loader/Cargo.lock; }}; do
-      for c in "$d"/*/; do
-        ln -sfn "$c" "$out/$(basename "$c")"
-      done
-    done
-  '';
+  # Every locked third-party crate, unpacked. Shared with the Nix endpoint's graph
+  # derivation, so both see the same crate sources.
+  rustVendor = import ./lib/rust-vendor.nix {inherit pkgs;};
 in {
   stdenv = pkgs.clangStdenv;
 
