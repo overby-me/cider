@@ -341,6 +341,32 @@
         in
         lowered.named."root//buck/prefix:darling_prefix";
 
+      # The buck2-built Darling as something installable: the lowered prefix plus the one
+      # launcher script that supplies the two paths the daemon reads from the environment.
+      #   nix build .#darling-buck2 && ./result/bin/darling-buck2 shell /bin/bash -c ...
+      packages.darling-buck2 =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets.nix;
+            };
+          };
+        in
+        pkgs.callPackage ./nix/buck2-package.nix {
+          # The lowered target's output holds the tree under its own name.
+          prefix = "${lowered.named."root//buck/prefix:darling_prefix"}/darling_prefix__prefix";
+        };
+
       packages.darling-buck2-all-graph =
         pkgs:
         import ./nix/lib/darlingBuck2Graph.nix {
@@ -384,6 +410,19 @@
         import ./nix/lib/darling-graph.nix {
           inherit pkgs;
           overby = inputs.overby;
+        };
+
+      # The same graph at the CLI component scope. The buck2 port is generated from the
+      # system scope, which builds no userland at all: uname, sw_vers, the coreutils,
+      # sandbox-exec, diskutil and dscl -- everything tests/darling-smoke.nix exercises
+      # besides bash -- are absent from it. This is what says how much bigger cli is.
+      #   nix build .#darling-graph-cli
+      packages.darling-graph-cli =
+        pkgs:
+        import ./nix/lib/darling-graph.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+          components = "cli";
         };
 
       # darling-base (#26): the shared foundation (toolchain + SDK header staging
@@ -764,6 +803,14 @@
           # No network access required — completes in a few minutes.
           darling-smoke = import ./tests/darling-smoke.nix {
             inherit pkgs darling;
+          };
+
+          # ── The BUCK2-built Darling, in the same harness ───────────────
+          # The bash milestone in a VM. darling-smoke above cannot run against the port
+          # yet: it exercises a userland the system component scope does not build.
+          darling-buck2-smoke = import ./tests/darling-buck2-smoke.nix {
+            inherit pkgs;
+            darling = pkgs.darling-buck2;
           };
 
           # ── Nix-in-Darling integration test (Phase 6.1) ────────────────

@@ -35,6 +35,8 @@ tests/*
 !tests/syscall/
 !tests/dirserv/
 !tests/darling-smoke.nix
+# The VM-side twin of scripts/buck-bash-check.sh: the bash milestone for the buck2 port.
+!tests/darling-buck2-smoke.nix
 !tests/darling-builder.nix
 !tests/nix-in-darling.nix
 !tests/nix/

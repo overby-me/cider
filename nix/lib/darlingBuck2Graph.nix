@@ -95,7 +95,21 @@ in
         rel = lib.removePrefix (toString src + "/") (toString path);
         top = lib.head (lib.splitString "/" rel);
       in
-        !(builtins.elem top ["plan" "docs" "nix" ".git" ".jj" ".direnv" "buck-out" "result-graph-ref"]);
+        !(builtins.elem top [
+          "plan"
+          "docs"
+          "nix"
+          ".git"
+          ".jj"
+          ".direnv"
+          "buck-out"
+          "result-graph-ref"
+          # The flake describes how this derivation is INVOKED, never what buck2 reads.
+          # Leaving them in meant every edit to an unrelated flake output invalidated the
+          # graph and re-ran a three-minute analysis plus the whole lowering behind it.
+          "flake.nix"
+          "flake.lock"
+        ]);
     };
 
     nativeBuildInputs =
