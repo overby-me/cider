@@ -90,6 +90,10 @@ CROSS_PACKAGE_ROOTS = {
     # //buck-src cannot see its files -- it would stage empty and the miss would only
     # show up as a missing header much later.
     "corefoundation": "//buck-src/corefoundation:CoreFoundation_inc_corefoundation",
+    # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
+    # per-app-VPN types. src/networkextension is its own package.
+    "src/networkextension/include":
+        "//src/networkextension:system_networkextension_inc_src_networkextension_include",
 }
 
 # Force-included headers (-include) owned by another package, mapped to the target
@@ -583,7 +587,14 @@ def generate(target: str, edges):
             for q in group:
                 by_parent.setdefault(anc, []).append(q)
             continue
-        ancestor = next((q for q in own_roots
+        # The OUTERMOST enclosing include dir, not the first one found. Heimdal has both
+        # lib and lib/gssapi on the path; grouping lib/gssapi/ns under lib/gssapi built a
+        # second staged tree, and the two trees' -I blocks no longer interleave the way
+        # the reference's do. That decides which file an include resolves to:
+        # lib/gssapi comes before lib/gssapi/gssapi in the port but after it in the
+        # reference, so <gssapi.h> found lib/gssapi/gssapi.h instead of
+        # lib/gssapi/gssapi/gssapi.h and every OM_uint32 was an unknown type.
+        ancestor = next((q for q in sorted(own_roots, key=len)
                          if q != p and p.startswith(q + "/") and has_headers(q)), None)
         if ancestor:
             by_parent.setdefault(ancestor, []).append(p)
@@ -591,10 +602,14 @@ def generate(target: str, edges):
         parent = os.path.dirname(p)
         if parent:
             by_parent.setdefault(parent, []).append(p)
-    # A group keyed by an actual root must include that root itself.
+    # A group keyed by an actual root must include that root itself -- IN THE REFERENCE'S
+    # POSITION. Putting it first hoists its -I ahead of every subdir's: Heimdal/lib is
+    # 23rd on the reference's include path, and moved to 1st it shadowed the gssapi
+    # headers that come before it.
     for anc in list(by_parent):
         if anc in own_roots and anc not in by_parent[anc]:
-            by_parent[anc].insert(0, anc)
+            members = set(by_parent[anc]) | {anc}
+            by_parent[anc] = [p for p in own_roots if p in members]
     merged_parent = {p: parent for parent, ps in by_parent.items() if len(ps) > 1 for p in ps}
 
     root_name: dict[str, str] = {}

@@ -13329,6 +13329,52 @@ preprocess_gen(
     visibility = ["PUBLIC"],
 )
 
+# Heimdal's IPC protocols. heim_ipc-client compiles the sync USER stub and the async
+# SERVER stub, which is why each definition names a different generated source.
+mig_gen(
+    name = "heimdal_mig_ipc",
+    defs = "Heimdal/lib/ipc/heim_ipc.defs",
+    out_base = "Heimdal/lib/ipc",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "heim_ipcUser.c",
+    ],
+    xtrace_srcs = ["heim_ipcXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "heimdal_mig_ipc_async",
+    defs = "Heimdal/lib/ipc/heim_ipc_async.defs",
+    out_base = "Heimdal/lib/ipc",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "heim_ipc_asyncServer.c",
+    ],
+    xtrace_srcs = ["heim_ipc_asyncXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # BEGIN generated: security_utilities archive
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --archives security_utilities   -- review before committing.
@@ -20690,7 +20736,6 @@ darwin_dylib(
 cc_header_root(
     name = "curl_inc_curl",
     headers = glob([
-        "curl/**/*",
         "curl/config_mac/*.h",
         "curl/config_mac/**/*.h",
         "curl/config_mac/*.c",
@@ -20698,13 +20743,14 @@ cc_header_root(
         "curl/curl/lib/*.h",
         "curl/curl/lib/**/*.h",
         "curl/curl/lib/*.c",
+        "curl/**/*",
     ]),
     root = "curl",
     include_subdirs = [
-        ".",
         "config_mac",
         "curl/include",
         "curl/lib",
+        ".",
     ],
     visibility = ["PUBLIC"],
 )
@@ -20886,15 +20932,15 @@ cc_objects(
 cc_header_root(
     name = "Kerberos_inc_MITKerberosShim",
     headers = glob([
-        "MITKerberosShim/**/*",
         "MITKerberosShim/include/*.h",
         "MITKerberosShim/include/**/*.h",
         "MITKerberosShim/include/*.c",
+        "MITKerberosShim/**/*",
     ]),
     root = "MITKerberosShim",
     include_subdirs = [
-        ".",
         "include",
+        ".",
     ],
     visibility = ["PUBLIC"],
 )
@@ -21186,3 +21232,5181 @@ cc_objects(
 )
 # END generated: liblber
 
+# BEGIN generated: LDAP dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs LDAP   -- review before committing.
+# Links 2 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "LDAP_dylib",
+    dylib_name = "LDAP",
+    install_name = "/System/Library/Frameworks/LDAP.framework/Versions/A/LDAP",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libldap_r
+        ":libldap_r_obj",
+        # liblber
+        ":liblber_obj",
+    ],
+    siblings = [
+        "//buck-src:sasl_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:system_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src:Security_final",
+        "//buck-src:IOKit_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "OpenLDAP/AppleExtras/ldap.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: LDAP dylibs
+
+# BEGIN generated: Heimdal
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Heimdal   -- review before committing.
+# cmake target: Heimdal  ->  src/external/Heimdal/Heimdal
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Heimdal_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Heimdal_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Heimdal_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "Heimdal_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "Heimdal_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "Heimdal_obj",
+    srcs = [
+        "Heimdal/base/test_base.c",
+        "Heimdal/gen/build-export-data/sym_asn1.c",
+        "Heimdal/gen/build-export-data/sym_base.c",
+        "Heimdal/gen/build-export-data/sym_hcrypto.c",
+        "Heimdal/gen/build-export-data/sym_hx509.c",
+        "Heimdal/gen/build-export-data/sym_krb5.c",
+        "Heimdal/gen/build-export-data/sym_pkinit.c",
+        "Heimdal/gen/build-export-data/sym_roken.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DHeimdal_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-fPIC",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":Heimdal_inc_Heimdal_gen",
+        ":Heimdal_inc_en_asn1_generate_template_asn1_generate_template",
+        ":Heimdal_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":Heimdal_inc_Heimdal_lib",
+        ":Heimdal_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Heimdal
+
+# BEGIN generated: Heimdal dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Heimdal   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "Heimdal_dylib",
+    dylib_name = "Heimdal",
+    install_name = "/System/Library/PrivateFrameworks/Heimdal.framework/Versions/A/Heimdal",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # Heimdal
+        ":Heimdal_obj",
+    ],
+    siblings = [
+        "//buck-src:sqlite3_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:icucore_dylib",
+        "//buck-src:heimdal-asn1_dylib",
+        "//buck-src:libnetwork_dylib",
+        "//buck-src:bsm.0_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Security_final",
+        "//buck-src:CFNetwork_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "Heimdal/gen/build-export-data/heimdal.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:heim_heimcred",
+        "//buck-src:heim_krb5",
+        "//buck-src:heim_wind",
+        "//buck-src:heim_asn1-defs",
+        "//buck-src:heim_com_err",
+        "//buck-src:heim_roken",
+        "//buck-src:heim_vers",
+        "//buck-src:heim_error-tables",
+        "//buck-src:heim_hx509",
+        "//buck-src:heim_ipc-client",
+        "//buck-src:heim_hcrypto",
+        "//buck-src:heim_heimbase",
+        "//buck-src:heim_asn1-hx509",
+        "//buck-src:heim_asn1-digest",
+        "//buck-src:heim_roken-application",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Heimdal dylibs
+
+# BEGIN generated: GSS
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py GSS   -- review before committing.
+# cmake target: GSS  ->  src/external/Heimdal/lib/gssapi/GSS
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "GSS_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "GSS_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "GSS_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "GSS_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "GSS_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "GSS_obj",
+    srcs = [
+        "Heimdal/gen/build-export-data/sym_gss.c",
+        "Heimdal/lib/gssapi/cf/credential.c",
+        "Heimdal/lib/gssapi/cf/item.c",
+        "Heimdal/lib/gssapi/cf/ntlm.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DGSS_EXPORTS",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-fPIC",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":GSS_inc_Heimdal_gen",
+        ":GSS_inc_Heimdal_lib",
+        ":GSS_inc_en_asn1_generate_template_asn1_generate_template",
+        ":GSS_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":GSS_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: GSS
+
+# BEGIN generated: GSS dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs GSS   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "GSS_dylib",
+    dylib_name = "GSS",
+    install_name = "/System/Library/Frameworks/GSS.framework/Versions/A/GSS",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # GSS
+        ":GSS_obj",
+    ],
+    siblings = [
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:heimdal-asn1_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Heimdal_dylib",
+        "//buck-src:CommonAuth_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "Heimdal/gen/build-export-data/gss.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:heim_asn1-defs",
+        "//buck-src:heim_asn1-digest",
+        "//buck-src:heim_hcrypto",
+        "//buck-src:gss-krb5",
+        "//buck-src:gss-mechglue",
+        "//buck-src:gss-spnego",
+        "//buck-src:gss-ntlm",
+        "//buck-src:gss-digest",
+        "//buck-src:gss-netlogon",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: GSS dylibs
+
+# BEGIN generated: HeimdalProxy
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py HeimdalProxy   -- review before committing.
+# cmake target: HeimdalProxy  ->  src/external/MITKerberosShim/libHeimdalProxy.dylib
+
+cc_objects(
+    name = "HeimdalProxy_obj",
+    srcs = [
+        "MITKerberosShim/heim-proxy.c",
+    ],
+    compiler_flags = [
+        "-DHeimdalProxy_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: HeimdalProxy
+
+# BEGIN generated: HeimdalProxy dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs HeimdalProxy   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "HeimdalProxy_dylib",
+    dylib_name = "libHeimdalProxy.dylib",
+    install_name = "/System/Library/Frameworks/Kerberos.framework/Versions/A/Libraries/libHeimdalProxy.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # HeimdalProxy
+        ":HeimdalProxy_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:GSS_dylib",
+        "//buck-src:Heimdal_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-alias_list": "MITKerberosShim/stubs/reexport-stubs.txt",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: HeimdalProxy dylibs
+
+# BEGIN generated: heim_heimcred
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_heimcred   -- review before committing.
+# cmake target: heim_heimcred  ->  src/external/Heimdal/libheim_heimcred.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimcred_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimcred_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimcred_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_heimcred_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_heimcred_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_heimcred_obj",
+    srcs = [
+        "Heimdal/lib/heimcred/client.c",
+        "Heimdal/lib/heimcred/common.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_heimcred_inc_Heimdal_gen",
+        ":heim_heimcred_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_heimcred_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_heimcred_inc_Heimdal_lib",
+        ":heim_heimcred_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_heimcred
+
+# BEGIN generated: heim_heimcred archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_heimcred   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_heimcred",
+    lib_name = "libheim_heimcred.a",
+    objs = [
+        # heim_heimcred
+        ":heim_heimcred_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_heimcred archive
+
+# BEGIN generated: heim_krb5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_krb5   -- review before committing.
+# cmake target: heim_krb5  ->  src/external/Heimdal/libheim_krb5.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_krb5_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_krb5_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_krb5_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_krb5_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_krb5_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_krb5_obj",
+    srcs = [
+        "Heimdal/lib/krb5/add_et_list.c",
+        "Heimdal/lib/krb5/addr_families.c",
+        "Heimdal/lib/krb5/aname_to_localname.c",
+        "Heimdal/lib/krb5/appdefault.c",
+        "Heimdal/lib/krb5/asn1_glue.c",
+        "Heimdal/lib/krb5/auth_context.c",
+        "Heimdal/lib/krb5/build_ap_req.c",
+        "Heimdal/lib/krb5/build_auth.c",
+        "Heimdal/lib/krb5/cache.c",
+        "Heimdal/lib/krb5/changepw.c",
+        "Heimdal/lib/krb5/codec.c",
+        "Heimdal/lib/krb5/config_file.c",
+        "Heimdal/lib/krb5/constants.c",
+        "Heimdal/lib/krb5/context.c",
+        "Heimdal/lib/krb5/convert_creds.c",
+        "Heimdal/lib/krb5/copy_host_realm.c",
+        "Heimdal/lib/krb5/crc.c",
+        "Heimdal/lib/krb5/creds.c",
+        "Heimdal/lib/krb5/crypto-aes.c",
+        "Heimdal/lib/krb5/crypto-algs.c",
+        "Heimdal/lib/krb5/crypto-arcfour.c",
+        "Heimdal/lib/krb5/crypto-des-common.c",
+        "Heimdal/lib/krb5/crypto-des.c",
+        "Heimdal/lib/krb5/crypto-des3.c",
+        "Heimdal/lib/krb5/crypto-evp.c",
+        "Heimdal/lib/krb5/crypto-null.c",
+        "Heimdal/lib/krb5/crypto-pk.c",
+        "Heimdal/lib/krb5/crypto-rand.c",
+        "Heimdal/lib/krb5/crypto-stubs.c",
+        "Heimdal/lib/krb5/crypto.c",
+        "Heimdal/lib/krb5/data.c",
+        "Heimdal/lib/krb5/deprecated.c",
+        "Heimdal/lib/krb5/derived-key-test.c",
+        "Heimdal/lib/krb5/doxygen.c",
+        "Heimdal/lib/krb5/eai_to_heim_errno.c",
+        "Heimdal/lib/krb5/error_string.c",
+        "Heimdal/lib/krb5/expand_hostname.c",
+        "Heimdal/lib/krb5/expand_path.c",
+        "Heimdal/lib/krb5/fast.c",
+        "Heimdal/lib/krb5/fcache.c",
+        "Heimdal/lib/krb5/free.c",
+        "Heimdal/lib/krb5/free_host_realm.c",
+        "Heimdal/lib/krb5/generate_seq_number.c",
+        "Heimdal/lib/krb5/generate_subkey.c",
+        "Heimdal/lib/krb5/get_addrs.c",
+        "Heimdal/lib/krb5/get_cred.c",
+        "Heimdal/lib/krb5/get_default_principal.c",
+        "Heimdal/lib/krb5/get_default_realm.c",
+        "Heimdal/lib/krb5/get_for_creds.c",
+        "Heimdal/lib/krb5/get_host_realm.c",
+        "Heimdal/lib/krb5/get_in_tkt.c",
+        "Heimdal/lib/krb5/get_port.c",
+        "Heimdal/lib/krb5/init_creds.c",
+        "Heimdal/lib/krb5/init_creds_pw.c",
+        "Heimdal/lib/krb5/kcm.c",
+        "Heimdal/lib/krb5/keyblock.c",
+        "Heimdal/lib/krb5/keytab.c",
+        "Heimdal/lib/krb5/keytab_any.c",
+        "Heimdal/lib/krb5/keytab_file.c",
+        "Heimdal/lib/krb5/keytab_keyfile.c",
+        "Heimdal/lib/krb5/keytab_memory.c",
+        "Heimdal/lib/krb5/kkdcp.m",
+        "Heimdal/lib/krb5/krbhst-test.c",
+        "Heimdal/lib/krb5/krbhst.c",
+        "Heimdal/lib/krb5/kuserok.c",
+        "Heimdal/lib/krb5/log.c",
+        "Heimdal/lib/krb5/mcache.c",
+        "Heimdal/lib/krb5/misc.c",
+        "Heimdal/lib/krb5/mit_glue.c",
+        "Heimdal/lib/krb5/mk_error.c",
+        "Heimdal/lib/krb5/mk_priv.c",
+        "Heimdal/lib/krb5/mk_rep.c",
+        "Heimdal/lib/krb5/mk_req.c",
+        "Heimdal/lib/krb5/mk_req_ext.c",
+        "Heimdal/lib/krb5/mk_safe.c",
+        "Heimdal/lib/krb5/n-fold.c",
+        "Heimdal/lib/krb5/net_read.c",
+        "Heimdal/lib/krb5/net_write.c",
+        "Heimdal/lib/krb5/pac.c",
+        "Heimdal/lib/krb5/padata.c",
+        "Heimdal/lib/krb5/pcache.c",
+        "Heimdal/lib/krb5/pfs.c",
+        "Heimdal/lib/krb5/pkinit.c",
+        "Heimdal/lib/krb5/plugin.c",
+        "Heimdal/lib/krb5/principal.c",
+        "Heimdal/lib/krb5/prompter_posix.c",
+        "Heimdal/lib/krb5/rd_cred.c",
+        "Heimdal/lib/krb5/rd_error.c",
+        "Heimdal/lib/krb5/rd_priv.c",
+        "Heimdal/lib/krb5/rd_rep.c",
+        "Heimdal/lib/krb5/rd_req.c",
+        "Heimdal/lib/krb5/rd_safe.c",
+        "Heimdal/lib/krb5/read_message.c",
+        "Heimdal/lib/krb5/recvauth.c",
+        "Heimdal/lib/krb5/replay.c",
+        "Heimdal/lib/krb5/salt-aes.c",
+        "Heimdal/lib/krb5/salt-arcfour.c",
+        "Heimdal/lib/krb5/salt-des.c",
+        "Heimdal/lib/krb5/salt-des3.c",
+        "Heimdal/lib/krb5/salt.c",
+        "Heimdal/lib/krb5/send_to_kdc.c",
+        "Heimdal/lib/krb5/sendauth.c",
+        "Heimdal/lib/krb5/set_default_realm.c",
+        "Heimdal/lib/krb5/sock_principal.c",
+        "Heimdal/lib/krb5/stat-kerberos.m",
+        "Heimdal/lib/krb5/stat.m",
+        "Heimdal/lib/krb5/store-int.c",
+        "Heimdal/lib/krb5/store.c",
+        "Heimdal/lib/krb5/store_emem.c",
+        "Heimdal/lib/krb5/store_fd.c",
+        "Heimdal/lib/krb5/store_mem.c",
+        "Heimdal/lib/krb5/test_rfc3961.c",
+        "Heimdal/lib/krb5/ticket.c",
+        "Heimdal/lib/krb5/time.c",
+        "Heimdal/lib/krb5/tkt.c",
+        "Heimdal/lib/krb5/transited.c",
+        "Heimdal/lib/krb5/verify_init.c",
+        "Heimdal/lib/krb5/verify_user.c",
+        "Heimdal/lib/krb5/version.c",
+        "Heimdal/lib/krb5/warn.c",
+        "Heimdal/lib/krb5/write_message.c",
+        "Heimdal/lib/krb5/xcache.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_krb5_inc_Heimdal_gen",
+        ":heim_krb5_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_krb5_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_krb5_inc_Heimdal_lib",
+        ":heim_krb5_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_krb5
+
+# BEGIN generated: heim_krb5 archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_krb5   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_krb5",
+    lib_name = "libheim_krb5.a",
+    objs = [
+        # heim_krb5
+        ":heim_krb5_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_krb5 archive
+
+# BEGIN generated: heim_wind
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_wind   -- review before committing.
+# cmake target: heim_wind  ->  src/external/Heimdal/libheim_wind.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_wind_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_wind_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_wind_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_wind_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_wind_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_wind_obj",
+    srcs = [
+        "Heimdal/lib/wind/icu.c",
+        "Heimdal/lib/wind/utf8.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_wind_inc_Heimdal_gen",
+        ":heim_wind_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_wind_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_wind_inc_Heimdal_lib",
+        ":heim_wind_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_wind
+
+# BEGIN generated: heim_wind archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_wind   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_wind",
+    lib_name = "libheim_wind.a",
+    objs = [
+        # heim_wind
+        ":heim_wind_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_wind archive
+
+# BEGIN generated: heim_asn1-defs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_asn1-defs   -- review before committing.
+# cmake target: heim_asn1-defs  ->  src/external/Heimdal/libheim_asn1-defs.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-defs_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-defs_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-defs_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-defs_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-defs_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_asn1-defs_obj",
+    srcs = [
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_gssapi_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_krb5_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pkcs12_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pkcs8_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pkcs9_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pkinit_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pku2u_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_spnego_asn1.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_asn1-defs_inc_Heimdal_gen",
+        ":heim_asn1-defs_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_asn1-defs_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_asn1-defs_inc_Heimdal_lib",
+        ":heim_asn1-defs_inc_Heimdal",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-defs
+
+# BEGIN generated: heim_asn1-defs archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_asn1-defs   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_asn1-defs",
+    lib_name = "libheim_asn1-defs.a",
+    objs = [
+        # heim_asn1-defs
+        ":heim_asn1-defs_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-defs archive
+
+# BEGIN generated: heim_com_err
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_com_err   -- review before committing.
+# cmake target: heim_com_err  ->  src/external/Heimdal/libheim_com_err.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_com_err_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_com_err_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_com_err_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_com_err_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_com_err_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_com_err_obj",
+    srcs = [
+        "Heimdal/lib/com_err/com_err.c",
+        "Heimdal/lib/com_err/error.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_com_err_inc_Heimdal_gen",
+        ":heim_com_err_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_com_err_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_com_err_inc_Heimdal_lib",
+        ":heim_com_err_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_com_err
+
+# BEGIN generated: heim_com_err archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_com_err   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_com_err",
+    lib_name = "libheim_com_err.a",
+    objs = [
+        # heim_com_err
+        ":heim_com_err_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_com_err archive
+
+# BEGIN generated: heim_roken
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_roken   -- review before committing.
+# cmake target: heim_roken  ->  src/external/Heimdal/libheim_roken.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_roken_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_roken_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_roken_obj",
+    srcs = [
+        "Heimdal/lib/roken/base64.c",
+        "Heimdal/lib/roken/bswap.c",
+        "Heimdal/lib/roken/cloexec.c",
+        "Heimdal/lib/roken/closefrom.c",
+        "Heimdal/lib/roken/concat.c",
+        "Heimdal/lib/roken/ct.c",
+        "Heimdal/lib/roken/dumpdata.c",
+        "Heimdal/lib/roken/ecalloc.c",
+        "Heimdal/lib/roken/emalloc.c",
+        "Heimdal/lib/roken/environment.c",
+        "Heimdal/lib/roken/eread.c",
+        "Heimdal/lib/roken/erealloc.c",
+        "Heimdal/lib/roken/esetenv.c",
+        "Heimdal/lib/roken/estrdup.c",
+        "Heimdal/lib/roken/ewrite.c",
+        "Heimdal/lib/roken/get_default_username.c",
+        "Heimdal/lib/roken/getnameinfo_verified.c",
+        "Heimdal/lib/roken/hex.c",
+        "Heimdal/lib/roken/issuid.c",
+        "Heimdal/lib/roken/net_read.c",
+        "Heimdal/lib/roken/net_write.c",
+        "Heimdal/lib/roken/parse_bytes.c",
+        "Heimdal/lib/roken/parse_time.c",
+        "Heimdal/lib/roken/parse_units.c",
+        "Heimdal/lib/roken/rand.c",
+        "Heimdal/lib/roken/resolve.c",
+        "Heimdal/lib/roken/rkcf.c",
+        "Heimdal/lib/roken/roken_gethostby.c",
+        "Heimdal/lib/roken/rtbl.c",
+        "Heimdal/lib/roken/socket.c",
+        "Heimdal/lib/roken/strlwr.c",
+        "Heimdal/lib/roken/strpool.c",
+        "Heimdal/lib/roken/strsep_copy.c",
+        "Heimdal/lib/roken/strupr.c",
+        "Heimdal/lib/roken/xfree.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_roken_inc_Heimdal_gen",
+        ":heim_roken_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_roken_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_roken_inc_Heimdal_lib",
+        ":heim_roken_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_roken
+
+# BEGIN generated: heim_roken archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_roken   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_roken",
+    lib_name = "libheim_roken.a",
+    objs = [
+        # heim_roken
+        ":heim_roken_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_roken archive
+
+# BEGIN generated: heim_vers
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_vers   -- review before committing.
+# cmake target: heim_vers  ->  src/external/Heimdal/libheim_vers.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_vers_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_vers_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_vers_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_vers_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_vers_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_vers_obj",
+    srcs = [
+        "Heimdal/lib/vers/print_version.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_vers_inc_Heimdal_gen",
+        ":heim_vers_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_vers_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_vers_inc_Heimdal_lib",
+        ":heim_vers_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_vers
+
+# BEGIN generated: heim_vers archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_vers   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_vers",
+    lib_name = "libheim_vers.a",
+    objs = [
+        # heim_vers
+        ":heim_vers_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_vers archive
+
+# BEGIN generated: heim_error-tables
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_error-tables   -- review before committing.
+# cmake target: heim_error-tables  ->  src/external/Heimdal/libheim_error-tables.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_error-tables_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_error-tables_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_error-tables_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_error-tables_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_error-tables_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_error-tables_obj",
+    srcs = [
+        "Heimdal/gen/error-tables/error-tables/asn1_err.c",
+        "Heimdal/gen/error-tables/error-tables/gkrb5_err.c",
+        "Heimdal/gen/error-tables/error-tables/hc_err.c",
+        "Heimdal/gen/error-tables/error-tables/hdb_err.c",
+        "Heimdal/gen/error-tables/error-tables/heim_err.c",
+        "Heimdal/gen/error-tables/error-tables/hx509_err.c",
+        "Heimdal/gen/error-tables/error-tables/k524_err.c",
+        "Heimdal/gen/error-tables/error-tables/kadm5_err.c",
+        "Heimdal/gen/error-tables/error-tables/krb5_err.c",
+        "Heimdal/gen/error-tables/error-tables/krb_err.c",
+        "Heimdal/gen/error-tables/error-tables/wind_err.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_error-tables_inc_Heimdal_gen",
+        ":heim_error-tables_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_error-tables_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_error-tables_inc_Heimdal_lib",
+        ":heim_error-tables_inc_Heimdal",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_error-tables
+
+# BEGIN generated: heim_error-tables archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_error-tables   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_error-tables",
+    lib_name = "libheim_error-tables.a",
+    objs = [
+        # heim_error-tables
+        ":heim_error-tables_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_error-tables archive
+
+# BEGIN generated: heim_hx509
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_hx509   -- review before committing.
+# cmake target: heim_hx509  ->  src/external/Heimdal/libheim_hx509.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hx509_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hx509_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hx509_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_hx509_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_hx509_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_hx509_obj",
+    srcs = [
+        "Heimdal/lib/hx509/ca.c",
+        "Heimdal/lib/hx509/cert.c",
+        "Heimdal/lib/hx509/cms.c",
+        "Heimdal/lib/hx509/collector.c",
+        "Heimdal/lib/hx509/crypto.c",
+        "Heimdal/lib/hx509/doxygen.c",
+        "Heimdal/lib/hx509/env.c",
+        "Heimdal/lib/hx509/error.c",
+        "Heimdal/lib/hx509/file.c",
+        "Heimdal/lib/hx509/keyset.c",
+        "Heimdal/lib/hx509/ks_dir.c",
+        "Heimdal/lib/hx509/ks_file.c",
+        "Heimdal/lib/hx509/ks_keychain.c",
+        "Heimdal/lib/hx509/ks_mem.c",
+        "Heimdal/lib/hx509/ks_null.c",
+        "Heimdal/lib/hx509/ks_p11.c",
+        "Heimdal/lib/hx509/ks_p12.c",
+        "Heimdal/lib/hx509/lock.c",
+        "Heimdal/lib/hx509/name.c",
+        "Heimdal/lib/hx509/peer.c",
+        "Heimdal/lib/hx509/print.c",
+        "Heimdal/lib/hx509/req.c",
+        "Heimdal/lib/hx509/revoke.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_hx509_inc_Heimdal_gen",
+        ":heim_hx509_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_hx509_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_hx509_inc_Heimdal_lib",
+        ":heim_hx509_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_hx509
+
+# BEGIN generated: heim_hx509 archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_hx509   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_hx509",
+    lib_name = "libheim_hx509.a",
+    objs = [
+        # heim_hx509
+        ":heim_hx509_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_hx509 archive
+
+# BEGIN generated: heim_ipc-client
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_ipc-client   -- review before committing.
+# cmake target: heim_ipc-client  ->  src/external/Heimdal/libheim_ipc-client.a
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/Heimdal/lib/ipc/heim_ipcUser.c
+#   src/external/Heimdal/lib/ipc/heim_ipc_asyncServer.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_ipc-client_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_ipc-client_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_ipc-client_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_ipc-client_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_ipc-client_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_ipc-client_obj",
+    srcs = [
+        "Heimdal/lib/ipc/client.c",
+        "Heimdal/lib/ipc/common.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_ipc-client_inc_Heimdal_gen",
+        ":heim_ipc-client_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_ipc-client_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_ipc-client_inc_Heimdal_lib",
+        ":heim_ipc-client_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:heimdal_mig_ipc",
+        "//buck-src:heimdal_mig_ipc_async",
+    ],
+    gen_srcs = [
+        "//buck-src:heimdal_mig_ipc",
+        "//buck-src:heimdal_mig_ipc_async",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_ipc-client
+
+# BEGIN generated: heim_ipc-client archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_ipc-client   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_ipc-client",
+    lib_name = "libheim_ipc-client.a",
+    objs = [
+        # heim_ipc-client
+        ":heim_ipc-client_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_ipc-client archive
+
+# BEGIN generated: heim_hcrypto
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_hcrypto   -- review before committing.
+# cmake target: heim_hcrypto  ->  src/external/Heimdal/libheim_hcrypto.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hcrypto_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hcrypto_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_hcrypto_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_hcrypto_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_hcrypto_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_hcrypto_obj",
+    srcs = [
+        "Heimdal/lib/hcrypto/bn.c",
+        "Heimdal/lib/hcrypto/common.c",
+        "Heimdal/lib/hcrypto/dh-cdsa.c",
+        "Heimdal/lib/hcrypto/dh-sf.c",
+        "Heimdal/lib/hcrypto/dh.c",
+        "Heimdal/lib/hcrypto/ecdsa.c",
+        "Heimdal/lib/hcrypto/engine.c",
+        "Heimdal/lib/hcrypto/evp-cc.c",
+        "Heimdal/lib/hcrypto/evp.c",
+        "Heimdal/lib/hcrypto/pkcs12.c",
+        "Heimdal/lib/hcrypto/pkcs5.c",
+        "Heimdal/lib/hcrypto/rsa-cdsa.c",
+        "Heimdal/lib/hcrypto/rsa-sf.c",
+        "Heimdal/lib/hcrypto/rsa.c",
+        "Heimdal/lib/hcrypto/ui.c",
+        "Heimdal/lib/hcrypto/validate.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_hcrypto_inc_Heimdal_gen",
+        ":heim_hcrypto_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_hcrypto_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_hcrypto_inc_Heimdal_lib",
+        ":heim_hcrypto_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_hcrypto
+
+# BEGIN generated: heim_hcrypto archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_hcrypto   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_hcrypto",
+    lib_name = "libheim_hcrypto.a",
+    objs = [
+        # heim_hcrypto
+        ":heim_hcrypto_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_hcrypto archive
+
+# BEGIN generated: heim_heimbase
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_heimbase   -- review before committing.
+# cmake target: heim_heimbase  ->  src/external/Heimdal/libheim_heimbase.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimbase_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimbase_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_heimbase_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_heimbase_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_heimbase_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_heimbase_obj",
+    srcs = [
+        "Heimdal/base/abort.c",
+        "Heimdal/base/cf.c",
+        "Heimdal/base/json.c",
+        "Heimdal/base/log.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_heimbase_inc_Heimdal_gen",
+        ":heim_heimbase_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_heimbase_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_heimbase_inc_Heimdal_lib",
+        ":heim_heimbase_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_heimbase
+
+# BEGIN generated: heim_heimbase archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_heimbase   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_heimbase",
+    lib_name = "libheim_heimbase.a",
+    objs = [
+        # heim_heimbase
+        ":heim_heimbase_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_heimbase archive
+
+# BEGIN generated: heim_asn1-hx509
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_asn1-hx509   -- review before committing.
+# cmake target: heim_asn1-hx509  ->  src/external/Heimdal/libheim_asn1-hx509.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-hx509_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-hx509_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-hx509_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-hx509_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-hx509_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_asn1-hx509_obj",
+    srcs = [
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_cms_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_ocsp_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_pkcs10_asn1.c",
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_rfc2459_asn1.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_asn1-hx509_inc_Heimdal_gen",
+        ":heim_asn1-hx509_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_asn1-hx509_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_asn1-hx509_inc_Heimdal_lib",
+        ":heim_asn1-hx509_inc_Heimdal",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-hx509
+
+# BEGIN generated: heim_asn1-hx509 archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_asn1-hx509   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_asn1-hx509",
+    lib_name = "libheim_asn1-hx509.a",
+    objs = [
+        # heim_asn1-hx509
+        ":heim_asn1-hx509_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-hx509 archive
+
+# BEGIN generated: heim_asn1-digest
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_asn1-digest   -- review before committing.
+# cmake target: heim_asn1-digest  ->  src/external/Heimdal/libheim_asn1-digest.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-digest_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-digest_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_asn1-digest_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-digest_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_asn1-digest_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_asn1-digest_obj",
+    srcs = [
+        "Heimdal/gen/asn1-generate-template/asn1-generate-template/asn1_digest_asn1.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_asn1-digest_inc_Heimdal_gen",
+        ":heim_asn1-digest_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_asn1-digest_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_asn1-digest_inc_Heimdal_lib",
+        ":heim_asn1-digest_inc_Heimdal",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-digest
+
+# BEGIN generated: heim_asn1-digest archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_asn1-digest   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_asn1-digest",
+    lib_name = "libheim_asn1-digest.a",
+    objs = [
+        # heim_asn1-digest
+        ":heim_asn1-digest_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_asn1-digest archive
+
+# BEGIN generated: heim_roken-application
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heim_roken-application   -- review before committing.
+# cmake target: heim_roken-application  ->  src/external/Heimdal/libheim_roken-application.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken-application_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken-application_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heim_roken-application_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_roken-application_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heim_roken-application_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heim_roken-application_obj",
+    srcs = [
+        "Heimdal/lib/roken/closefrom.c",
+        "Heimdal/lib/roken/ct.c",
+        "Heimdal/lib/roken/ecalloc.c",
+        "Heimdal/lib/roken/emalloc.c",
+        "Heimdal/lib/roken/erealloc.c",
+        "Heimdal/lib/roken/get_default_username.c",
+        "Heimdal/lib/roken/get_window_size.c",
+        "Heimdal/lib/roken/getarg.c",
+        "Heimdal/lib/roken/k_getpwnam.c",
+        "Heimdal/lib/roken/k_getpwuid.c",
+        "Heimdal/lib/roken/mini_inetd.c",
+        "Heimdal/lib/roken/rand.c",
+        "Heimdal/lib/roken/simple_exec.c",
+        "Heimdal/lib/roken/strcollect.c",
+        "Heimdal/lib/roken/timeval.c",
+        "Heimdal/lib/roken/tm2time.c",
+        "Heimdal/lib/roken/write_pid.c",
+        "Heimdal/lib/roken/xfree.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heim_roken-application_inc_Heimdal_gen",
+        ":heim_roken-application_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heim_roken-application_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heim_roken-application_inc_Heimdal_lib",
+        ":heim_roken-application_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_roken-application
+
+# BEGIN generated: heim_roken-application archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives heim_roken-application   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "heim_roken-application",
+    lib_name = "libheim_roken-application.a",
+    objs = [
+        # heim_roken-application
+        ":heim_roken-application_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_roken-application archive
+
+# BEGIN generated: gss-mechglue
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-mechglue   -- review before committing.
+# cmake target: gss-mechglue  ->  src/external/Heimdal/lib/gssapi/libgss-mechglue.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-mechglue_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-mechglue_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-mechglue_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-mechglue_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-mechglue_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-mechglue_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/mech/context.c",
+        "Heimdal/lib/gssapi/mech/cred.c",
+        "Heimdal/lib/gssapi/mech/gss_accept_sec_context.c",
+        "Heimdal/lib/gssapi/mech/gss_acquire_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_acquire_cred_ex.c",
+        "Heimdal/lib/gssapi/mech/gss_acquire_cred_ext.c",
+        "Heimdal/lib/gssapi/mech/gss_acquire_cred_with_password.c",
+        "Heimdal/lib/gssapi/mech/gss_add_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_add_cred_with_password.c",
+        "Heimdal/lib/gssapi/mech/gss_add_oid_set_member.c",
+        "Heimdal/lib/gssapi/mech/gss_aeap.c",
+        "Heimdal/lib/gssapi/mech/gss_authorize_localname.c",
+        "Heimdal/lib/gssapi/mech/gss_buffer_set.c",
+        "Heimdal/lib/gssapi/mech/gss_canonicalize_name.c",
+        "Heimdal/lib/gssapi/mech/gss_cb.c",
+        "Heimdal/lib/gssapi/mech/gss_compare_name.c",
+        "Heimdal/lib/gssapi/mech/gss_context_time.c",
+        "Heimdal/lib/gssapi/mech/gss_create_empty_oid_set.c",
+        "Heimdal/lib/gssapi/mech/gss_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_cred_hold.c",
+        "Heimdal/lib/gssapi/mech/gss_decapsulate_token.c",
+        "Heimdal/lib/gssapi/mech/gss_delete_name_attribute.c",
+        "Heimdal/lib/gssapi/mech/gss_delete_sec_context.c",
+        "Heimdal/lib/gssapi/mech/gss_destroy_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_display_name.c",
+        "Heimdal/lib/gssapi/mech/gss_display_name_ext.c",
+        "Heimdal/lib/gssapi/mech/gss_display_status.c",
+        "Heimdal/lib/gssapi/mech/gss_duplicate_name.c",
+        "Heimdal/lib/gssapi/mech/gss_duplicate_oid.c",
+        "Heimdal/lib/gssapi/mech/gss_encapsulate_token.c",
+        "Heimdal/lib/gssapi/mech/gss_export_name.c",
+        "Heimdal/lib/gssapi/mech/gss_export_name_composite.c",
+        "Heimdal/lib/gssapi/mech/gss_export_sec_context.c",
+        "Heimdal/lib/gssapi/mech/gss_get_mic.c",
+        "Heimdal/lib/gssapi/mech/gss_get_name_attribute.c",
+        "Heimdal/lib/gssapi/mech/gss_import_name.c",
+        "Heimdal/lib/gssapi/mech/gss_import_sec_context.c",
+        "Heimdal/lib/gssapi/mech/gss_indicate_mechs.c",
+        "Heimdal/lib/gssapi/mech/gss_init_sec_context.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_context.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_cred_by_mech.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_cred_by_oid.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_mechs_for_name.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_name.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_names_for_mech.c",
+        "Heimdal/lib/gssapi/mech/gss_inquire_sec_context_by_oid.c",
+        "Heimdal/lib/gssapi/mech/gss_iter_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_krb5.c",
+        "Heimdal/lib/gssapi/mech/gss_mech_switch.c",
+        "Heimdal/lib/gssapi/mech/gss_mo.c",
+        "Heimdal/lib/gssapi/mech/gss_names.c",
+        "Heimdal/lib/gssapi/mech/gss_oid.c",
+        "Heimdal/lib/gssapi/mech/gss_oid_equal.c",
+        "Heimdal/lib/gssapi/mech/gss_oid_to_str.c",
+        "Heimdal/lib/gssapi/mech/gss_pname_to_uid.c",
+        "Heimdal/lib/gssapi/mech/gss_process_context_token.c",
+        "Heimdal/lib/gssapi/mech/gss_pseudo_random.c",
+        "Heimdal/lib/gssapi/mech/gss_release_buffer.c",
+        "Heimdal/lib/gssapi/mech/gss_release_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_release_name.c",
+        "Heimdal/lib/gssapi/mech/gss_release_oid.c",
+        "Heimdal/lib/gssapi/mech/gss_release_oid_set.c",
+        "Heimdal/lib/gssapi/mech/gss_seal.c",
+        "Heimdal/lib/gssapi/mech/gss_set_cred_option.c",
+        "Heimdal/lib/gssapi/mech/gss_set_name_attribute.c",
+        "Heimdal/lib/gssapi/mech/gss_set_sec_context_option.c",
+        "Heimdal/lib/gssapi/mech/gss_sign.c",
+        "Heimdal/lib/gssapi/mech/gss_store_cred.c",
+        "Heimdal/lib/gssapi/mech/gss_test_oid_set_member.c",
+        "Heimdal/lib/gssapi/mech/gss_unseal.c",
+        "Heimdal/lib/gssapi/mech/gss_unwrap.c",
+        "Heimdal/lib/gssapi/mech/gss_utils.c",
+        "Heimdal/lib/gssapi/mech/gss_verify.c",
+        "Heimdal/lib/gssapi/mech/gss_verify_mic.c",
+        "Heimdal/lib/gssapi/mech/gss_wrap.c",
+        "Heimdal/lib/gssapi/mech/gss_wrap_size_limit.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-mechglue_inc_Heimdal_gen",
+        ":gss-mechglue_inc_Heimdal_lib",
+        ":gss-mechglue_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-mechglue_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-mechglue_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-mechglue
+
+# BEGIN generated: gss-mechglue archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-mechglue   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-mechglue",
+    lib_name = "libgss-mechglue.a",
+    objs = [
+        # gss-mechglue
+        ":gss-mechglue_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-mechglue archive
+
+# BEGIN generated: gss-spnego
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-spnego   -- review before committing.
+# cmake target: gss-spnego  ->  src/external/Heimdal/lib/gssapi/libgss-spnego.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-spnego_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-spnego_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-spnego_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-spnego_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-spnego_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-spnego_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/spnego/accept_sec_context.c",
+        "Heimdal/lib/gssapi/spnego/compat.c",
+        "Heimdal/lib/gssapi/spnego/context_stubs.c",
+        "Heimdal/lib/gssapi/spnego/cred_stubs.c",
+        "Heimdal/lib/gssapi/spnego/external.c",
+        "Heimdal/lib/gssapi/spnego/init_sec_context.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-spnego_inc_Heimdal_gen",
+        ":gss-spnego_inc_Heimdal_lib",
+        ":gss-spnego_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-spnego_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-spnego_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-spnego
+
+# BEGIN generated: gss-spnego archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-spnego   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-spnego",
+    lib_name = "libgss-spnego.a",
+    objs = [
+        # gss-spnego
+        ":gss-spnego_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-spnego archive
+
+# BEGIN generated: gss-ntlm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-ntlm   -- review before committing.
+# cmake target: gss-ntlm  ->  src/external/Heimdal/lib/gssapi/libgss-ntlm.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-ntlm_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-ntlm_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-ntlm_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-ntlm_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-ntlm_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-ntlm_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/ntlm/accept_sec_context.c",
+        "Heimdal/lib/gssapi/ntlm/acquire_cred.c",
+        "Heimdal/lib/gssapi/ntlm/add_cred.c",
+        "Heimdal/lib/gssapi/ntlm/canonicalize_name.c",
+        "Heimdal/lib/gssapi/ntlm/compare_name.c",
+        "Heimdal/lib/gssapi/ntlm/context_time.c",
+        "Heimdal/lib/gssapi/ntlm/creds.c",
+        "Heimdal/lib/gssapi/ntlm/crypto.c",
+        "Heimdal/lib/gssapi/ntlm/delete_sec_context.c",
+        "Heimdal/lib/gssapi/ntlm/digest.c",
+        "Heimdal/lib/gssapi/ntlm/display_name.c",
+        "Heimdal/lib/gssapi/ntlm/duplicate_name.c",
+        "Heimdal/lib/gssapi/ntlm/export_name.c",
+        "Heimdal/lib/gssapi/ntlm/export_sec_context.c",
+        "Heimdal/lib/gssapi/ntlm/external.c",
+        "Heimdal/lib/gssapi/ntlm/import_name.c",
+        "Heimdal/lib/gssapi/ntlm/import_sec_context.c",
+        "Heimdal/lib/gssapi/ntlm/indicate_mechs.c",
+        "Heimdal/lib/gssapi/ntlm/init_sec_context.c",
+        "Heimdal/lib/gssapi/ntlm/inquire_context.c",
+        "Heimdal/lib/gssapi/ntlm/inquire_cred_by_mech.c",
+        "Heimdal/lib/gssapi/ntlm/inquire_mechs_for_name.c",
+        "Heimdal/lib/gssapi/ntlm/inquire_names_for_mech.c",
+        "Heimdal/lib/gssapi/ntlm/inquire_sec_context_by_oid.c",
+        "Heimdal/lib/gssapi/ntlm/iter_cred.c",
+        "Heimdal/lib/gssapi/ntlm/process_context_token.c",
+        "Heimdal/lib/gssapi/ntlm/release_cred.c",
+        "Heimdal/lib/gssapi/ntlm/release_name.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-ntlm_inc_Heimdal_gen",
+        ":gss-ntlm_inc_Heimdal_lib",
+        ":gss-ntlm_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-ntlm_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-ntlm_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-ntlm
+
+# BEGIN generated: gss-ntlm archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-ntlm   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-ntlm",
+    lib_name = "libgss-ntlm.a",
+    objs = [
+        # gss-ntlm
+        ":gss-ntlm_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-ntlm archive
+
+# BEGIN generated: gss-digest
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-digest   -- review before committing.
+# cmake target: gss-digest  ->  src/external/Heimdal/lib/gssapi/libgss-digest.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-digest_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-digest_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-digest_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-digest_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-digest_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-digest_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/digest/accept_sec_context.c",
+        "Heimdal/lib/gssapi/digest/acquire_cred.c",
+        "Heimdal/lib/gssapi/digest/add_cred.c",
+        "Heimdal/lib/gssapi/digest/canonicalize_name.c",
+        "Heimdal/lib/gssapi/digest/compare_name.c",
+        "Heimdal/lib/gssapi/digest/context_time.c",
+        "Heimdal/lib/gssapi/digest/creds.c",
+        "Heimdal/lib/gssapi/digest/delete_sec_context.c",
+        "Heimdal/lib/gssapi/digest/display_name.c",
+        "Heimdal/lib/gssapi/digest/display_status.c",
+        "Heimdal/lib/gssapi/digest/duplicate_name.c",
+        "Heimdal/lib/gssapi/digest/export_name.c",
+        "Heimdal/lib/gssapi/digest/export_sec_context.c",
+        "Heimdal/lib/gssapi/digest/external.c",
+        "Heimdal/lib/gssapi/digest/import_name.c",
+        "Heimdal/lib/gssapi/digest/import_sec_context.c",
+        "Heimdal/lib/gssapi/digest/indicate_mechs.c",
+        "Heimdal/lib/gssapi/digest/init_sec_context.c",
+        "Heimdal/lib/gssapi/digest/inquire_context.c",
+        "Heimdal/lib/gssapi/digest/inquire_cred_by_mech.c",
+        "Heimdal/lib/gssapi/digest/inquire_mechs_for_name.c",
+        "Heimdal/lib/gssapi/digest/inquire_sec_context_by_oid.c",
+        "Heimdal/lib/gssapi/digest/iter_cred.c",
+        "Heimdal/lib/gssapi/digest/process_context_token.c",
+        "Heimdal/lib/gssapi/digest/release_cred.c",
+        "Heimdal/lib/gssapi/digest/release_name.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-digest_inc_Heimdal_gen",
+        ":gss-digest_inc_Heimdal_lib",
+        ":gss-digest_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-digest_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-digest_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-digest
+
+# BEGIN generated: gss-digest archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-digest   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-digest",
+    lib_name = "libgss-digest.a",
+    objs = [
+        # gss-digest
+        ":gss-digest_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-digest archive
+
+# BEGIN generated: gss-netlogon
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-netlogon   -- review before committing.
+# cmake target: gss-netlogon  ->  src/external/Heimdal/lib/gssapi/libgss-netlogon.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-netlogon_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-netlogon_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-netlogon_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-netlogon_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-netlogon_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-netlogon_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/netlogon/accept_sec_context.c",
+        "Heimdal/lib/gssapi/netlogon/acquire_cred.c",
+        "Heimdal/lib/gssapi/netlogon/add_cred.c",
+        "Heimdal/lib/gssapi/netlogon/canonicalize_name.c",
+        "Heimdal/lib/gssapi/netlogon/compare_name.c",
+        "Heimdal/lib/gssapi/netlogon/context_time.c",
+        "Heimdal/lib/gssapi/netlogon/crypto.c",
+        "Heimdal/lib/gssapi/netlogon/delete_sec_context.c",
+        "Heimdal/lib/gssapi/netlogon/display_name.c",
+        "Heimdal/lib/gssapi/netlogon/display_status.c",
+        "Heimdal/lib/gssapi/netlogon/duplicate_name.c",
+        "Heimdal/lib/gssapi/netlogon/export_name.c",
+        "Heimdal/lib/gssapi/netlogon/export_sec_context.c",
+        "Heimdal/lib/gssapi/netlogon/external.c",
+        "Heimdal/lib/gssapi/netlogon/import_name.c",
+        "Heimdal/lib/gssapi/netlogon/import_sec_context.c",
+        "Heimdal/lib/gssapi/netlogon/indicate_mechs.c",
+        "Heimdal/lib/gssapi/netlogon/init_sec_context.c",
+        "Heimdal/lib/gssapi/netlogon/inquire_context.c",
+        "Heimdal/lib/gssapi/netlogon/inquire_cred.c",
+        "Heimdal/lib/gssapi/netlogon/inquire_cred_by_mech.c",
+        "Heimdal/lib/gssapi/netlogon/inquire_mechs_for_name.c",
+        "Heimdal/lib/gssapi/netlogon/inquire_names_for_mech.c",
+        "Heimdal/lib/gssapi/netlogon/iter_cred.c",
+        "Heimdal/lib/gssapi/netlogon/process_context_token.c",
+        "Heimdal/lib/gssapi/netlogon/release_cred.c",
+        "Heimdal/lib/gssapi/netlogon/release_name.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-netlogon_inc_Heimdal_gen",
+        ":gss-netlogon_inc_Heimdal_lib",
+        ":gss-netlogon_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-netlogon_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-netlogon_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-netlogon
+
+# BEGIN generated: gss-netlogon archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-netlogon   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-netlogon",
+    lib_name = "libgss-netlogon.a",
+    objs = [
+        # gss-netlogon
+        ":gss-netlogon_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-netlogon archive
+
+# BEGIN generated: gss-krb5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gss-krb5   -- review before committing.
+# cmake target: gss-krb5  ->  src/external/Heimdal/lib/gssapi/libgss-krb5.a
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-krb5_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-krb5_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gss-krb5_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/ntlm/**/*",
+        "Heimdal/lib/gssapi/ns/*.h",
+        "Heimdal/lib/gssapi/ns/**/*.h",
+        "Heimdal/lib/gssapi/ns/*.c",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/gssapi/digest/*.h",
+        "Heimdal/lib/gssapi/digest/**/*.h",
+        "Heimdal/lib/gssapi/digest/*.c",
+        "Heimdal/lib/gssapi/netlogon/*.h",
+        "Heimdal/lib/gssapi/netlogon/**/*.h",
+        "Heimdal/lib/gssapi/netlogon/*.c",
+        "Heimdal/lib/gssapi/ntlm/*.h",
+        "Heimdal/lib/gssapi/ntlm/**/*.h",
+        "Heimdal/lib/gssapi/ntlm/*.c",
+        "Heimdal/lib/gssapi/mech/*.h",
+        "Heimdal/lib/gssapi/mech/**/*.h",
+        "Heimdal/lib/gssapi/mech/*.c",
+        "Heimdal/lib/gssapi/spnego/*.h",
+        "Heimdal/lib/gssapi/spnego/**/*.h",
+        "Heimdal/lib/gssapi/spnego/*.c",
+        "Heimdal/lib/gssapi/krb5/*.h",
+        "Heimdal/lib/gssapi/krb5/**/*.h",
+        "Heimdal/lib/gssapi/krb5/*.c",
+        "Heimdal/lib/gssapi/**/*",
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "ntlm",
+        "gssapi/ns",
+        "gssapi/cf",
+        "gssapi/gssapi",
+        "gssapi/digest",
+        "gssapi/netlogon",
+        "gssapi/ntlm",
+        "gssapi/mech",
+        "gssapi/spnego",
+        "gssapi/krb5",
+        "gssapi",
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        ".",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-krb5_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "gss-krb5_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gss-krb5_obj",
+    srcs = [
+        "Heimdal/lib/gssapi/krb5/8003.c",
+        "Heimdal/lib/gssapi/krb5/accept_sec_context.c",
+        "Heimdal/lib/gssapi/krb5/acquire_cred.c",
+        "Heimdal/lib/gssapi/krb5/add_cred.c",
+        "Heimdal/lib/gssapi/krb5/address_to_krb5addr.c",
+        "Heimdal/lib/gssapi/krb5/aeap.c",
+        "Heimdal/lib/gssapi/krb5/arcfour.c",
+        "Heimdal/lib/gssapi/krb5/authorize_localname.c",
+        "Heimdal/lib/gssapi/krb5/canonicalize_name.c",
+        "Heimdal/lib/gssapi/krb5/ccache_name.c",
+        "Heimdal/lib/gssapi/krb5/cfx.c",
+        "Heimdal/lib/gssapi/krb5/compare_name.c",
+        "Heimdal/lib/gssapi/krb5/compat.c",
+        "Heimdal/lib/gssapi/krb5/context_time.c",
+        "Heimdal/lib/gssapi/krb5/copy_ccache.c",
+        "Heimdal/lib/gssapi/krb5/creds.c",
+        "Heimdal/lib/gssapi/krb5/decapsulate.c",
+        "Heimdal/lib/gssapi/krb5/delete_sec_context.c",
+        "Heimdal/lib/gssapi/krb5/display_name.c",
+        "Heimdal/lib/gssapi/krb5/display_status.c",
+        "Heimdal/lib/gssapi/krb5/duplicate_name.c",
+        "Heimdal/lib/gssapi/krb5/encapsulate.c",
+        "Heimdal/lib/gssapi/krb5/export_name.c",
+        "Heimdal/lib/gssapi/krb5/export_sec_context.c",
+        "Heimdal/lib/gssapi/krb5/external.c",
+        "Heimdal/lib/gssapi/krb5/get_mic.c",
+        "Heimdal/lib/gssapi/krb5/import_name.c",
+        "Heimdal/lib/gssapi/krb5/import_sec_context.c",
+        "Heimdal/lib/gssapi/krb5/indicate_mechs.c",
+        "Heimdal/lib/gssapi/krb5/init.c",
+        "Heimdal/lib/gssapi/krb5/init_sec_context.c",
+        "Heimdal/lib/gssapi/krb5/inquire_context.c",
+        "Heimdal/lib/gssapi/krb5/inquire_cred.c",
+        "Heimdal/lib/gssapi/krb5/inquire_cred_by_mech.c",
+        "Heimdal/lib/gssapi/krb5/inquire_cred_by_oid.c",
+        "Heimdal/lib/gssapi/krb5/inquire_mechs_for_name.c",
+        "Heimdal/lib/gssapi/krb5/inquire_names_for_mech.c",
+        "Heimdal/lib/gssapi/krb5/inquire_sec_context_by_oid.c",
+        "Heimdal/lib/gssapi/krb5/iter_cred.c",
+        "Heimdal/lib/gssapi/krb5/pname_to_uid.c",
+        "Heimdal/lib/gssapi/krb5/prf.c",
+        "Heimdal/lib/gssapi/krb5/process_context_token.c",
+        "Heimdal/lib/gssapi/krb5/release_buffer.c",
+        "Heimdal/lib/gssapi/krb5/release_cred.c",
+        "Heimdal/lib/gssapi/krb5/release_name.c",
+        "Heimdal/lib/gssapi/krb5/sequence.c",
+        "Heimdal/lib/gssapi/krb5/set_cred_option.c",
+        "Heimdal/lib/gssapi/krb5/set_sec_context_option.c",
+        "Heimdal/lib/gssapi/krb5/store_cred.c",
+        "Heimdal/lib/gssapi/krb5/ticket_flags.c",
+        "Heimdal/lib/gssapi/krb5/unwrap.c",
+        "Heimdal/lib/gssapi/krb5/verify_mic.c",
+        "Heimdal/lib/gssapi/krb5/wrap.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":gss-krb5_inc_Heimdal_gen",
+        ":gss-krb5_inc_Heimdal_lib",
+        ":gss-krb5_inc_en_asn1_generate_template_asn1_generate_template",
+        ":gss-krb5_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":gss-krb5_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//src/networkextension:system_networkextension_inc_src_networkextension_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-krb5
+
+# BEGIN generated: gss-krb5 archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives gss-krb5   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "gss-krb5",
+    lib_name = "libgss-krb5.a",
+    objs = [
+        # gss-krb5
+        ":gss-krb5_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: gss-krb5 archive
+
+# BEGIN generated: heimdal-asn1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py heimdal-asn1   -- review before committing.
+# cmake target: heimdal-asn1  ->  src/external/Heimdal/libheimdal-asn1.dylib
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heimdal-asn1_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heimdal-asn1_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "heimdal-asn1_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heimdal-asn1_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "heimdal-asn1_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "heimdal-asn1_obj",
+    srcs = [
+        "Heimdal/lib/asn1/der.c",
+        "Heimdal/lib/asn1/der_cmp.c",
+        "Heimdal/lib/asn1/der_copy.c",
+        "Heimdal/lib/asn1/der_format.c",
+        "Heimdal/lib/asn1/der_free.c",
+        "Heimdal/lib/asn1/der_get.c",
+        "Heimdal/lib/asn1/der_length.c",
+        "Heimdal/lib/asn1/der_put.c",
+        "Heimdal/lib/asn1/extra.c",
+        "Heimdal/lib/asn1/fuzzer.c",
+        "Heimdal/lib/asn1/template.c",
+        "Heimdal/lib/asn1/timegm.c",
+        "Heimdal/lib/roken/hex.c",
+        "Heimdal/lib/roken/strpool.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-Dheimdal_asn1_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":heimdal-asn1_inc_Heimdal_gen",
+        ":heimdal-asn1_inc_en_asn1_generate_template_asn1_generate_template",
+        ":heimdal-asn1_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":heimdal-asn1_inc_Heimdal_lib",
+        ":heimdal-asn1_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heimdal-asn1
+
+# BEGIN generated: heimdal-asn1 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs heimdal-asn1   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "heimdal-asn1_dylib",
+    dylib_name = "libheimdal-asn1.dylib",
+    install_name = "/usr/lib/libheimdal-asn1.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # heimdal-asn1
+        ":heimdal-asn1_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "Heimdal/gen/build-export-data/heimdal-asn1.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: heimdal-asn1 dylibs
+
+# BEGIN generated: network dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs network   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "network_dylib",
+    dylib_name = "libnetwork.dylib",
+    install_name = "/usr/lib/libnetwork.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # libnetwork
+        ":libnetwork_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: network dylibs
+
+# BEGIN generated: CommonAuth
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CommonAuth   -- review before committing.
+# cmake target: CommonAuth  ->  src/external/Heimdal/CommonAuth
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/Heimdal/lib/ipc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "CommonAuth_inc_Heimdal",
+    headers = glob([
+        "Heimdal/lib/**/*",
+        "Heimdal/base/**/*",
+        "Heimdal/include/**/*",
+    ]),
+    root = "Heimdal",
+    include_subdirs = [
+        "lib",
+        "base",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "CommonAuth_inc_Heimdal_gen",
+    headers = glob([
+        "Heimdal/gen/build-export-data/*.h",
+        "Heimdal/gen/build-export-data/**/*.h",
+        "Heimdal/gen/build-export-data/*.c",
+        "Heimdal/gen/error-tables/*.h",
+        "Heimdal/gen/error-tables/**/*.h",
+        "Heimdal/gen/error-tables/*.c",
+    ]),
+    root = "Heimdal/gen",
+    include_subdirs = [
+        "build-export-data",
+        "error-tables",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "CommonAuth_inc_Heimdal_lib",
+    headers = glob([
+        "Heimdal/lib/hx509/ref/*.h",
+        "Heimdal/lib/hx509/ref/**/*.h",
+        "Heimdal/lib/hx509/ref/*.c",
+        "Heimdal/lib/wind/**/*",
+        "Heimdal/lib/hcrypto/**/*",
+        "Heimdal/lib/ipc/*.h",
+        "Heimdal/lib/ipc/**/*.h",
+        "Heimdal/lib/ipc/*.c",
+        "Heimdal/lib/hx509/**/*",
+        "Heimdal/lib/gssapi/cf/*.h",
+        "Heimdal/lib/gssapi/cf/**/*.h",
+        "Heimdal/lib/gssapi/cf/*.c",
+        "Heimdal/lib/**/*",
+        "Heimdal/lib/gssapi/gssapi/*.h",
+        "Heimdal/lib/gssapi/gssapi/**/*.h",
+        "Heimdal/lib/gssapi/gssapi/*.c",
+        "Heimdal/lib/krb5/**/*",
+        "Heimdal/lib/heimcred/*.h",
+        "Heimdal/lib/heimcred/**/*.h",
+        "Heimdal/lib/heimcred/*.c",
+        "Heimdal/lib/com_err/**/*",
+        "Heimdal/lib/asn1/**/*",
+        "Heimdal/lib/roken/**/*",
+        "Heimdal/lib/ntlm/**/*",
+    ]),
+    root = "Heimdal/lib",
+    include_subdirs = [
+        "hx509/ref",
+        "wind",
+        "hcrypto",
+        "ipc",
+        "hx509",
+        "gssapi/cf",
+        ".",
+        "gssapi/gssapi",
+        "krb5",
+        "heimcred",
+        "com_err",
+        "asn1",
+        "roken",
+        "ntlm",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "CommonAuth_inc_en_asn1_generate_template_asn1_generate_template",
+    headers = glob(["Heimdal/gen/asn1-generate-template/asn1-generate-template/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/**/*.h", "Heimdal/gen/asn1-generate-template/asn1-generate-template/*.c"]),
+    root = "Heimdal/gen/asn1-generate-template/asn1-generate-template",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "CommonAuth_inc_Heimdal_packages_mac_SnowLeopard10A",
+    headers = glob(["Heimdal/packages/mac/SnowLeopard10A/*.h", "Heimdal/packages/mac/SnowLeopard10A/**/*.h", "Heimdal/packages/mac/SnowLeopard10A/*.c"]),
+    root = "Heimdal/packages/mac/SnowLeopard10A",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CommonAuth_obj",
+    srcs = [
+        "Heimdal/gen/error-tables/error-tables/ntlm_err.c",
+        "Heimdal/lib/krb5/data.c",
+        "Heimdal/lib/krb5/error_string.c",
+        "Heimdal/lib/krb5/store-int.c",
+        "Heimdal/lib/krb5/store.c",
+        "Heimdal/lib/krb5/store_emem.c",
+        "Heimdal/lib/krb5/store_mem.c",
+        "Heimdal/lib/ntlm/apop.c",
+        "Heimdal/lib/ntlm/digest.c",
+        "Heimdal/lib/ntlm/ntlm.c",
+        "Heimdal/lib/ntlm/scram.c",
+    ],
+    compiler_flags = [
+        "-DBUILD_KRB5_LIB=1",
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DCommonAuth_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__GSSAPI_APPLE_API_PRIVATE",
+        "-fPIC",
+        "-nostdinc",
+        "-includeconfig.h",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":CommonAuth_inc_Heimdal_gen",
+        ":CommonAuth_inc_en_asn1_generate_template_asn1_generate_template",
+        ":CommonAuth_inc_Heimdal_packages_mac_SnowLeopard10A",
+        ":CommonAuth_inc_Heimdal_lib",
+        ":CommonAuth_inc_Heimdal",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CommonAuth
+
+# BEGIN generated: CommonAuth dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CommonAuth   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CommonAuth_dylib",
+    dylib_name = "CommonAuth",
+    install_name = "/System/Library/PrivateFrameworks/CommonAuth.framework/Versions/A/CommonAuth",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CommonAuth
+        ":CommonAuth_obj",
+    ],
+    siblings = [
+        "//buck-src:heimdal-asn1_dylib",
+        "//buck-src:icucore_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "Heimdal/gen/build-export-data/commonauth.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:heim_com_err",
+        "//buck-src:heim_hcrypto",
+        "//buck-src:heim_asn1-defs",
+        "//buck-src:heim_roken",
+        "//buck-src:heim_wind",
+        "//buck-src:heim_heimbase",
+        "//buck-src:heim_asn1-hx509",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CommonAuth dylibs
+
+# BEGIN generated: libnetwork
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libnetwork   -- review before committing.
+# cmake target: libnetwork  ->  libnetwork
+
+cc_objects(
+    name = "libnetwork_obj",
+    srcs = [
+        "libnetwork/src/nw/NW_URL_ENDPOINT_CLS.m",
+        "libnetwork/src/nw/activity.m",
+        "libnetwork/src/nw/address_endpoint.m",
+        "libnetwork/src/nw/advertise_descriptor.m",
+        "libnetwork/src/nw/array.m",
+        "libnetwork/src/nw/association.m",
+        "libnetwork/src/nw/authentication_challenge.m",
+        "libnetwork/src/nw/authentication_credential.m",
+        "libnetwork/src/nw/authentication_protection_space.m",
+        "libnetwork/src/nw/bonjour_service_endpoint.m",
+        "libnetwork/src/nw/browse_descriptor.m",
+        "libnetwork/src/nw/browse_result.m",
+        "libnetwork/src/nw/browser.m",
+        "libnetwork/src/nw/channel.m",
+        "libnetwork/src/nw/config.m",
+        "libnetwork/src/nw/connection.m",
+        "libnetwork/src/nw/content_context.m",
+        "libnetwork/src/nw/context.m",
+        "libnetwork/src/nw/custom_endpoint.m",
+        "libnetwork/src/nw/data_transfer_report.m",
+        "libnetwork/src/nw/dictionary.m",
+        "libnetwork/src/nw/endpoint.m",
+        "libnetwork/src/nw/endpoint_fallback.m",
+        "libnetwork/src/nw/endpoint_flow.m",
+        "libnetwork/src/nw/endpoint_handler.m",
+        "libnetwork/src/nw/endpoint_proxy.m",
+        "libnetwork/src/nw/endpoint_resolver.m",
+        "libnetwork/src/nw/endpoint_transform.m",
+        "libnetwork/src/nw/error.m",
+        "libnetwork/src/nw/establishment_report.m",
+        "libnetwork/src/nw/ethernet_channel.m",
+        "libnetwork/src/nw/fd_wrapper.m",
+        "libnetwork/src/nw/frame.m",
+        "libnetwork/src/nw/framer.m",
+        "libnetwork/src/nw/hash.m",
+        "libnetwork/src/nw/hostname_endpoint.m",
+        "libnetwork/src/nw/interface.m",
+        "libnetwork/src/nw/interface_status_monitor.m",
+        "libnetwork/src/nw/interpose.m",
+        "libnetwork/src/nw/interpose_flow.m",
+        "libnetwork/src/nw/ip.m",
+        "libnetwork/src/nw/ip_channel_inbox.m",
+        "libnetwork/src/nw/link_info.m",
+        "libnetwork/src/nw/listener.m",
+        "libnetwork/src/nw/listener_inbox.m",
+        "libnetwork/src/nw/listener_inbox_protocol.m",
+        "libnetwork/src/nw/listener_inbox_socket.m",
+        "libnetwork/src/nw/log.m",
+        "libnetwork/src/nw/nat64.m",
+        "libnetwork/src/nw/nat64_prefixes_resolver.m",
+        "libnetwork/src/nw/netcore.m",
+        "libnetwork/src/nw/network_agent.m",
+        "libnetwork/src/nw/network_proxy.m",
+        "libnetwork/src/nw/networkd.m",
+        "libnetwork/src/nw/nexus.m",
+        "libnetwork/src/nw/nw.m",
+        "libnetwork/src/nw/pac_resolver.m",
+        "libnetwork/src/nw/parallel_array.m",
+        "libnetwork/src/nw/parameters.m",
+        "libnetwork/src/nw/path.m",
+        "libnetwork/src/nw/path_evaluator.m",
+        "libnetwork/src/nw/path_flow.m",
+        "libnetwork/src/nw/path_flow_registration.m",
+        "libnetwork/src/nw/path_observer.m",
+        "libnetwork/src/nw/path_parameters.m",
+        "libnetwork/src/nw/protocol.m",
+        "libnetwork/src/nw/protocol_data_array.m",
+        "libnetwork/src/nw/protocol_definition.m",
+        "libnetwork/src/nw/protocol_establishment_report.m",
+        "libnetwork/src/nw/protocol_instance.m",
+        "libnetwork/src/nw/protocol_instance_stub.m",
+        "libnetwork/src/nw/protocol_metadata.m",
+        "libnetwork/src/nw/protocol_options.m",
+        "libnetwork/src/nw/protocol_socket.m",
+        "libnetwork/src/nw/protocol_stack.m",
+        "libnetwork/src/nw/protocol_transform.m",
+        "libnetwork/src/nw/proxy.m",
+        "libnetwork/src/nw/queue.m",
+        "libnetwork/src/nw/quic.m",
+        "libnetwork/src/nw/read_request.m",
+        "libnetwork/src/nw/resolver.m",
+        "libnetwork/src/nw/service_connector.m",
+        "libnetwork/src/nw/shoes_server.m",
+        "libnetwork/src/nw/socks5_connection.m",
+        "libnetwork/src/nw/socks5_server.m",
+        "libnetwork/src/nw/srv_endpoint.m",
+        "libnetwork/src/nw/stubs.m",
+        "libnetwork/src/nw/tcp.m",
+        "libnetwork/src/nw/tcp_connection.m",
+        "libnetwork/src/nw/tcp_listener.m",
+        "libnetwork/src/nw/tls.m",
+        "libnetwork/src/nw/txt_record.m",
+        "libnetwork/src/nw/udp.m",
+        "libnetwork/src/nw/unique_connection.m",
+        "libnetwork/src/nw/unique_connection_request.m",
+        "libnetwork/src/nw/utilities.m",
+        "libnetwork/src/nw/write_request.m",
+        "libnetwork/src/nw/ws.m",
+        "libnetwork/src/nw/ws_ping_request.m",
+        "libnetwork/src/nw/ws_request.m",
+        "libnetwork/src/nw/ws_response.m",
+        "network_cmds/mptcp_client/conn_lib.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dlibnetwork_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libnetwork
+
+# BEGIN generated: libnetwork dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs libnetwork   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "libnetwork_dylib",
+    dylib_name = "libnetwork.dylib",
+    install_name = "/usr/lib/libnetwork.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # libnetwork
+        ":libnetwork_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: libnetwork dylibs
+
+# BEGIN generated: sasl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sasl   -- review before committing.
+# cmake target: sasl  ->  src/external/passwordserver_sasl/libsasl2.2.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "sasl_inc_passwordserver_sasl_cyrus_sasl",
+    headers = glob([
+        "passwordserver_sasl/cyrus_sasl/**/*",
+        "passwordserver_sasl/cyrus_sasl/include/**/*",
+        "passwordserver_sasl/cyrus_sasl/lib/**/*",
+    ]),
+    root = "passwordserver_sasl/cyrus_sasl",
+    include_subdirs = [
+        ".",
+        "include",
+        "lib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "sasl_obj",
+    srcs = [
+        "passwordserver_sasl/cyrus_sasl/lib/auxprop.c",
+        "passwordserver_sasl/cyrus_sasl/lib/canonusr.c",
+        "passwordserver_sasl/cyrus_sasl/lib/checkpw.c",
+        "passwordserver_sasl/cyrus_sasl/lib/client.c",
+        "passwordserver_sasl/cyrus_sasl/lib/common.c",
+        "passwordserver_sasl/cyrus_sasl/lib/config.c",
+        "passwordserver_sasl/cyrus_sasl/lib/dlopen.c",
+        "passwordserver_sasl/cyrus_sasl/lib/external.c",
+        "passwordserver_sasl/cyrus_sasl/lib/md5.c",
+        "passwordserver_sasl/cyrus_sasl/lib/saslutil.c",
+        "passwordserver_sasl/cyrus_sasl/lib/server.c",
+        "passwordserver_sasl/cyrus_sasl/lib/seterror.c",
+        "passwordserver_sasl/cyrus_sasl/lib/snprintf.c",
+        "passwordserver_sasl/cyrus_sasl/plugins/plugin_common.c",
+    ],
+    compiler_flags = [
+        "-DAUTHDATA",
+        "-DHAVE_DLFCN_H",
+        "-DPIC",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dsasl_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":sasl_inc_passwordserver_sasl_cyrus_sasl",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sasl
+
+# BEGIN generated: sasl dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs sasl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "sasl_dylib",
+    dylib_name = "libsasl2.2.dylib",
+    install_name = "/usr/lib/libsasl2.2.dylib",
+    compatibility_version = "3.0.0",
+    current_version = "3.15",
+    objs = [
+        # sasl
+        ":sasl_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "passwordserver_sasl/cyrus_sasl/lib/sasl-lib.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: sasl dylibs
+
+# BEGIN generated: Kerberos dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Kerberos   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "Kerberos_dylib",
+    dylib_name = "Kerberos",
+    install_name = "/System/Library/Frameworks/Kerberos.framework/Versions/A/Kerberos",
+    compatibility_version = "1.0.0",
+    current_version = "6.0.0",
+    objs = [
+        # Kerberos
+        ":Kerberos_obj",
+    ],
+    siblings = [
+        "//buck-src:HeimdalProxy_dylib",
+        "//buck-src:system_final",
+        "//buck-src:GSS_dylib",
+        "//buck-src:Heimdal_dylib",
+        "//buck-src:Security_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-exported_symbols_list": "MITKerberosShim/exported-symbols",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: Kerberos dylibs
+
+# BEGIN generated: curl dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs curl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "curl_dylib",
+    dylib_name = "libcurl.4.dylib",
+    install_name = "/usr/lib/libcurl.4.dylib",
+    compatibility_version = "7.0.0",
+    current_version = "9.0.0",
+    objs = [
+        # curl
+        ":curl_obj",
+    ],
+    siblings = [
+        "//buck-src:ssl46_dylib",
+        "//buck-src:nghttp2_dylib",
+        "//buck-src:crypto44_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:LDAP_dylib",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:Security_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: curl dylibs

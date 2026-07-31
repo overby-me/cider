@@ -713,5 +713,94 @@
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_Security",
     "//buck-src:fw_SystemConfiguration"
+  ],
+  "Heimdal": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "GSS": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "heim_heimcred": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_krb5": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "heim_wind": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_com_err": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_roken": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_vers": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_hx509": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "heim_ipc-client": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:heimdal_mig_ipc",
+    "//buck-src:heimdal_mig_ipc_async",
+    "gen://buck-src:heimdal_mig_ipc",
+    "gen://buck-src:heimdal_mig_ipc_async"
+  ],
+  "heim_hcrypto": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "heim_heimbase": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "heim_roken-application": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-mechglue": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-spnego": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-ntlm": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-digest": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-netlogon": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "gss-krb5": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "heimdal-asn1": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "CommonAuth": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "libnetwork": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
   ]
 }
