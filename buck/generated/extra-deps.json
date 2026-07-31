@@ -70,10 +70,10 @@
     "gen::ksmig_mach_vm_map_x86_64"
   ],
   "emulation": [
+    "//buck-src/xnu:emulation_included_sources",
     "//src/include:darling_config",
     "//src/startup:rtsig_header",
-    ":emulation_included_sources",
-    "gen::emmig_signal_mach_exc"
+    "gen://buck-src:emmig_signal_mach_exc"
   ],
   "libsyscall_dynamic": [
     "//src/external/darlingserver:dserver_rpc",
@@ -130,7 +130,8 @@
   ],
   "system_kernel": [
     "dep://src/libsimple:libsimple_darling",
-    "objs::emulation_rpc_obj"
+    "objs://buck-src/xnu:exc_server_obj",
+    "objs://buck-src:emulation_rpc_obj"
   ],
   "plconvert": [
     "//buck-src:fw_CFNetwork",
@@ -816,5 +817,16 @@
   ],
   "CoreServices": [
     "//buck-src:fw_CoreFoundation"
+  ],
+  "Network": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_Network"
   ]
 }

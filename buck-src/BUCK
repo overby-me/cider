@@ -1686,6 +1686,13 @@ mig_gen(
     sheader_suffix = "Server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["signal/excXtraceMig.c"],
+    # The exception SERVER, which the reference's built libsystem_kernel.dylib contains
+    # (nm shows _exc_server and _exc_server_routine in __TEXT) while its cli-scope ninja
+    # has no compile edge for it and the emulation CMakeLists lists only mach_excUser.c.
+    # nix's boehm-gc binds _exc_server, so without this the guest nix cannot even load.
+    # Kept in scripts/gen-mig-from-ninja.py's EXTRA_COMPILE_SRCS so a regeneration of this
+    # block does not drop it.
+    compile_srcs = ["signal/excServer.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1728,10 +1735,11 @@ cc_objects(
         "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:darling_config",
-        "//buck-src/xnu:emulation_inc_darling_src_libsystem_kernel",
+        "//buck-src/xnu:emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/darlingserver:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
+    visibility = ["PUBLIC"],
 )
 
 # BEGIN generated: libdispatch_shared_obj
@@ -2026,7 +2034,7 @@ darwin_dylib(
         ":macho_obj",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_malloc_firstpass",
@@ -2071,7 +2079,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/libc:system_c_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//buck-src:system_blocks_final",
         "//src/launchd:launch_final",
         "//buck-src:system_dyld_final",
@@ -2534,7 +2542,7 @@ darwin_dylib(
         "//buck-src:macho_firstpass",
         "//buck-src:compiler_rt_firstpass",
         "//buck-src:system_dyld_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//src/libm:system_m_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_pthread_firstpass",
@@ -2620,7 +2628,7 @@ darwin_dylib(
         "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_blocks_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//src/duct:system_duct_firstpass",
         "//buck-src:system_pthread_firstpass",
@@ -2689,7 +2697,7 @@ darwin_dylib(
         "//buck-src:system_coretls_final",
         "//buck-src:system_malloc_final",
         "//buck-src/libc:system_c_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//src/external/libtrace:system_trace_final",
         "//buck-src:keymgr_final",
         "//src/libm:system_m_final",
@@ -2768,7 +2776,7 @@ darwin_dylib(
         "//src/libm:system_m_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src/libc:system_c_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src/libplatform:platform_firstpass",
     ],
@@ -2816,7 +2824,7 @@ darwin_dylib(
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_pthread_firstpass",
         "//buck-src/libplatform:platform_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
@@ -2862,7 +2870,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/libc:system_c_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_info_firstpass",
         "//buck-src/libdispatch:libdispatch_shared_firstpass",
         "//buck-src:system_malloc_firstpass",
@@ -2919,7 +2927,7 @@ darwin_dylib(
     siblings = [
         "//buck-src:system_dyld_firstpass",
         "//buck-src:compiler_rt_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_blocks_firstpass",
@@ -2975,7 +2983,7 @@ darwin_dylib(
     ],
     upward = [
         "//buck-src/libc:system_c_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_blocks_firstpass",
         "//buck-src:system_pthread_firstpass",
@@ -3023,7 +3031,7 @@ darwin_dylib(
         "//buck-src/libmalloc:system_malloc_obj2",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src/libplatform:platform_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:compiler_rt_firstpass",
@@ -3079,7 +3087,7 @@ darwin_dylib(
         "//buck-src/libpthread:system_pthread_obj7",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src/libc:system_c_firstpass",
         "//buck-src/libplatform:platform_firstpass",
@@ -3126,7 +3134,7 @@ darwin_dylib(
         "//buck-src/libclosure:system_blocks_obj2",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_pthread_firstpass",
         "//buck-src/libc:system_c_firstpass",
@@ -3140,74 +3148,6 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: system_blocks dylibs
-
-# BEGIN generated: system_kernel dylibs
-# GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_kernel   -- review before committing.
-# Links 4 cmake object library/ies, 8 flag groups in total.
-# Object libraries whose sources are compiled elsewhere in this port, so they
-# contribute no target here: libsyscall_64
-
-darwin_dylib(
-    name = "system_kernel_firstpass",
-    dylib_name = "libsystem_kernel_firstpass.dylib",
-    firstpass = True,
-    install_name = "/usr/lib/system/libsystem_kernel.dylib",
-    compatibility_version = "1.0.0",
-    objs = [
-        # libsyscall
-        "//buck-src/xnu:libsyscall_obj",
-        "//buck-src/xnu:libsyscall_obj2",
-        "//buck-src/xnu:libsyscall_obj3",
-        "//buck-src/xnu:libsyscall_obj4",
-        "//buck-src/xnu:libsyscall_obj5",
-        # libsyscall_dynamic
-        "//buck-src/xnu:libsyscall_dynamic_obj",
-        # emulation
-        "//buck-src/xnu:emulation_obj",
-        "//buck-src/xnu:emulation_obj2",
-        ":emulation_rpc_obj",  # added by this port (buck/generated/extra-deps.json)
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = [
-        "//darwin:sdk_env",
-        "//src/libsimple:libsimple_darling",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-darwin_dylib(
-    name = "system_kernel_final",
-    dylib_name = "libsystem_kernel.dylib",
-    install_name = "/usr/lib/system/libsystem_kernel.dylib",
-    compatibility_version = "1.0.0",
-    objs = [
-        # libsyscall
-        "//buck-src/xnu:libsyscall_obj",
-        "//buck-src/xnu:libsyscall_obj2",
-        "//buck-src/xnu:libsyscall_obj3",
-        "//buck-src/xnu:libsyscall_obj4",
-        "//buck-src/xnu:libsyscall_obj5",
-        # libsyscall_dynamic
-        "//buck-src/xnu:libsyscall_dynamic_obj",
-        # emulation
-        "//buck-src/xnu:emulation_obj",
-        "//buck-src/xnu:emulation_obj2",
-        ":emulation_rpc_obj",  # added by this port (buck/generated/extra-deps.json)
-    ],
-    siblings = [
-        "//buck-src/libc:system_c_firstpass",
-        "//buck-src:compiler_rt_firstpass",
-        "//buck-src:system_dyld_firstpass",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = [
-        "//darwin:sdk_env",
-        "//src/libsimple:libsimple_darling",
-    ],
-    visibility = ["PUBLIC"],
-)
-# END generated: system_kernel dylibs
 
 # BEGIN generated: resolv-darwin dylibs
 # GENERATED from the reference build.ninja by
@@ -3245,7 +3185,7 @@ darwin_dylib(
         "//buck-src:system_configuration_dylib",
         "//buck-src:system_notify_final",
         "//buck-src/libc:system_c_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//buck-src:system_pthread_final",
         "//buck-src:system_malloc_final",
         "//buck-src:system_dyld_final",
@@ -3490,7 +3430,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/libc:system_c_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//buck-src:system_dyld_final",
         "//buck-src:system_malloc_final",
         "//buck-src:compiler_rt_final",
@@ -3517,7 +3457,7 @@ darwin_dylib(
         "//buck-src/copyfile:system_copyfile_obj",
     ],
     siblings = [
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//buck-src:system_blocks_final",
         "//buck-src:system_info_final",
         "//buck-src/libxpc:xpc_final",

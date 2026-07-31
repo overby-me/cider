@@ -63,9 +63,9 @@ targets=(
 	//buck-src:system_malloc_firstpass
 	//buck-src:system_pthread_firstpass
 	//buck-src/libc:system_c_firstpass
-	//buck-src:system_kernel_firstpass
+	//buck-src/xnu:system_kernel_firstpass
 	//buck-src:system_blocks_final
-	//buck-src:system_kernel_final
+	//buck-src/xnu:system_kernel_final
 	//buck-src/libplatform:platform_firstpass
 	//buck-src:compiler_rt_firstpass
 	//buck-src:system_dyld_firstpass
@@ -227,7 +227,7 @@ for pair in \
 	"//buck-src:system_pthread_firstpass:/usr/lib/system/libsystem_pthread.dylib" \
 	"//buck-src:system_asl_firstpass:/usr/lib/system/libsystem_asl.dylib" \
 	"//buck-src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib" \
-	"//buck-src:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib" \
+	"//buck-src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib" \
 	"//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib" \
 	"//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib" \
 	"//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib" \
@@ -276,7 +276,7 @@ aslmig=$(out_of //buck-src:asl_ipc_mig)
 	bad "asl_ipc.h was not generated"
 
 say "== libsystem_kernel: the syscall boundary =="
-krn=$(out_of //buck-src:system_kernel_firstpass)
+krn=$(out_of //buck-src/xnu:system_kernel_firstpass)
 krn_syms=$(llvm-nm --defined-only --extern-only "$krn" 2>/dev/null | awk '{print $3}')
 kn=$(printf '%s\n' "$krn_syms" | wc -l)
 [ "$kn" -ge 1300 ] && ok "libsystem_kernel exports $kn symbols" ||
@@ -316,7 +316,7 @@ else
 	ok "final pass is flat-namespace, as the reference links it"
 fi
 # The kernel's final pass IS two-level, and there nothing may be left unbound.
-kfin=$(out_of //buck-src:system_kernel_final)
+kfin=$(out_of //buck-src/xnu:system_kernel_final)
 if llvm-objdump --macho --private-headers "$kfin" 2>/dev/null | grep -q TWOLEVEL; then
 	ok "the kernel's final pass is two-level"
 else
@@ -327,7 +327,7 @@ unbound=$(llvm-nm -m "$kfin" 2>/dev/null | grep -c "(undefined) external [^(]*$"
 	bad "the kernel's final pass leaves $unbound symbols unbound"
 
 say "== the kernel's FINAL pass (the syscall boundary) =="
-kf=$(out_of //buck-src:system_kernel_final)
+kf=$(out_of //buck-src/xnu:system_kernel_final)
 kfid=$(llvm-objdump --macho --dylib-id "$kf" 2>/dev/null | tail -1)
 [ "$kfid" = "/usr/lib/system/libsystem_kernel.dylib" ] && ok "install_name is $kfid" ||
 	bad "install_name is '$kfid'"

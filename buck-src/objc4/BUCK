@@ -169,7 +169,7 @@ darwin_dylib(
         "//src/libm:system_m_firstpass",
         "//buck-src:macho_firstpass",
         "//buck-src/libplatform:platform_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_pthread_firstpass",
         "//buck-src:compiler_rt_firstpass",
         "//buck-src/libdispatch:libdispatch_shared_firstpass",

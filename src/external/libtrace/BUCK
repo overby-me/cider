@@ -91,7 +91,7 @@ darwin_dylib(
         ":system_trace_obj",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_asl_firstpass",

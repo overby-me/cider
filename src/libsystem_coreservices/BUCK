@@ -82,7 +82,7 @@ darwin_dylib(
         "//buck-src:system_dyld_final",
         "//buck-src/libplatform:platform_final",
         "//buck-src:system_pthread_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],

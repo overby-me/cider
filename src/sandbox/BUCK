@@ -73,7 +73,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/libc:system_c_final",
-        "//buck-src:system_kernel_final",
+        "//buck-src/xnu:system_kernel_final",
         "//buck-src:system_malloc_final",
         "//buck-src:system_dyld_firstpass",
     ],

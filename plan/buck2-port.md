@@ -1106,7 +1106,7 @@ the mechanism is not that it links, but what it recorded:
 So the plan's "highest risk" item is now demonstrated on real libSystem members,
 not just a fixture.
 
-**The kernel's own FINAL pass links too** (`//buck-src:system_kernel_final`,
+**The kernel's own FINAL pass links too** (`//buck-src/xnu:system_kernel_final`,
 `libsystem_kernel.dylib`, 919 KB, 1357 exports): it records libsystem_c,
 libcompiler_rt and libdyld by install_name, and its remaining undefined symbols are
 two-level imports from those siblings. Getting there needed two things the

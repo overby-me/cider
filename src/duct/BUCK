@@ -101,7 +101,7 @@ darwin_dylib(
         ":system_duct_obj",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_dyld_firstpass",
     ],
     linker_flags = [

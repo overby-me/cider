@@ -108,6 +108,14 @@ def _rustc(ctx, crate_type, out, deps):
     if ctx.attrs.cap_lints:
         cmd.add("--cap-lints", ctx.attrs.cap_lints)
 
+    # RELEASE settings, because the reference builds these crates with cargo --release and
+    # the difference is not just speed: at rustc's defaults debug_assert! and overflow
+    # checks are ON, and each of them PANICS. mldr is loaded into every guest process, its
+    # panic aborts, and an abort surfaces as SIGILL -- which is exactly how a debug-built
+    # mldr killed `nix` while bash and sw_vers, whose Mach-O headers never reach the
+    # checked arithmetic, kept working. Listed before rustc_flags so a target can override.
+    cmd.add(["-C", "opt-level=3", "-C", "debug-assertions=off", "-C", "overflow-checks=off"])
+
     cmd.add(ctx.attrs.rustc_flags)
 
     # Every other file of the crate. rustc reads them by following `mod` from the root, so

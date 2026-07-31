@@ -197,13 +197,18 @@ log "${BOLD}Step 2: Downloading Nix installer...${RESET}"
 if [ -z "$NIX_VERSION" ]; then
     # Fetch the latest stable version from the releases page
     log "  Detecting latest Nix version..."
-    NIX_VERSION=$(curl -fsSL https://releases.nixos.org/nix/latest/install 2>/dev/null \
-        | grep -oP 'nix-\K[0-9]+\.[0-9]+\.[0-9]+' \
-        | head -1 || true)
+    # https://nixos.org/nix/install, not releases.nixos.org/nix/latest/install: the latter
+    # is a 404 now, and the failure was invisible -- detection just fell through to the
+    # fallback and installed a 2024-era Nix.
+    NIX_VERSION=$(curl -fsSL https://nixos.org/nix/install 2>/dev/null \
+        | grep -oE 'nix-[0-9]+\.[0-9]+\.[0-9]+' \
+        | head -1 | sed 's/^nix-//' || true)
 
     if [ -z "$NIX_VERSION" ]; then
-        # Fallback: a known-good version
-        NIX_VERSION="2.24.12"
+        # Fallback: the version this project has actually run inside Darling (PLAN.md,
+        # M1). Not simply "some older release" -- 2.24.12 was the previous fallback and it
+        # dies with SIGILL in the guest, under the reference build as much as this one.
+        NIX_VERSION="2.34.8"
         warn "Could not detect latest version, falling back to $NIX_VERSION"
     fi
 fi

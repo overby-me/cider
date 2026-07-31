@@ -718,9 +718,14 @@ def generate(target: str, edges):
         for _, p in sorted(g["srcs"]):
             w(f'        "{p}",')
         w("    ],")
-        if g["flags"]:
+        # `cflag:` entries in extra-deps.json, appended to what the reference gives this
+        # target. The one case is libsystem_kernel's mig exception server: Apple compiles
+        # excServer.c with catch_exception_raise redirected to the internal_ names that
+        # libsyscall's exc_catcher.c actually defines, and there is nowhere else to say so.
+        own_cflags = [d[len("cflag:"):] for d in extra_deps(target) if d.startswith("cflag:")]
+        if g["flags"] or own_cflags:
             w("    compiler_flags = [")
-            for f in g["flags"]:
+            for f in list(g["flags"]) + own_cflags:
                 w(f"        {starlark_str(f)},")
             w("    ],")
         if g["prefix"]:
@@ -983,14 +988,21 @@ def obj_groups(lib: str, edges):
     srcs = []
     for unit in units:
         kind, srcp = repo_path(unit["src"])
-        if kind == "generated":
-            continue
         flags, prefix = own_flags_of(unit)
         inc, _gi = includes_of(unit)
-        groups.setdefault((tuple(flags), tuple(prefix), tuple(inc)), []).append((kind, srcp))
+        key = (tuple(flags), tuple(prefix), tuple(inc))
+        # A generated source contributes NO src (it arrives through gen_srcs) but its flag
+        # group still becomes a target, exactly as in generate(). Skipping it here made the
+        # two disagree about how many groups exist, so a dylib linked emulation_obj and
+        # _obj2 while the sources had produced an _obj3 as well -- and everything that
+        # third group defined was silently absent from the library.
+        groups.setdefault(key, [])
+        if kind == "generated":
+            continue
+        groups[key].append((kind, srcp))
         srcs.append((kind, srcp))
     base = lib if lib.endswith("_obj") else lib + "_obj"
-    ordered = sorted(groups.values(), key=lambda g: (-len(g), sorted(g)[0][1]))
+    ordered = sorted(groups.values(), key=lambda g: (-len(g), sorted(g)[0][1] if g else ""))
     out = [(base if i == 0 else f"{base}{i + 1}", [p for _k, p in g])
            for i, g in enumerate(ordered)]
     if not out:

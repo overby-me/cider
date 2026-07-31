@@ -57,6 +57,35 @@ fn psynch_op<R>(mk: impl FnOnce(u32) -> R, f: impl FnOnce(*mut u32) -> i32) -> R
     }
 }
 
+/// Whether a fault signal should be dumped, from `DSERVER_TRACE_SIGNAL` (comma-separated
+/// LINUX signal numbers) plus `DSERVER_TRACE_SIGFPE` for 8 on its own.
+///
+/// A bitmask rather than a list, cached, because this is on the signal path: 64 bits covers
+/// every signal number there is.
+fn trace_signal(sig: i32) -> bool {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    const UNREAD: u64 = u64::MAX;
+    static MASK: AtomicU64 = AtomicU64::new(UNREAD);
+    let mut mask = MASK.load(Ordering::Relaxed);
+    if mask == UNREAD {
+        mask = 0;
+        if std::env::var_os("DSERVER_TRACE_SIGFPE").is_some() {
+            mask |= 1 << 8;
+        }
+        if let Some(v) = std::env::var_os("DSERVER_TRACE_SIGNAL") {
+            for part in v.to_string_lossy().split(',') {
+                if let Ok(n) = part.trim().parse::<u32>() {
+                    if n < 64 {
+                        mask |= 1 << n;
+                    }
+                }
+            }
+        }
+        MASK.store(mask, Ordering::Relaxed);
+    }
+    (0..64).contains(&sig) && mask & (1 << sig) != 0
+}
+
 /// Whether the `DSERVER_TRACE_PSYNCH` env var is set (cached after the first read, so the
 /// psynch hot path does no per-call env lookup). 0 = off, 1 = on, 2 = not-yet-read.
 fn psynch_trace() -> bool {
@@ -477,12 +506,15 @@ impl rpc_wire::RpcHandler for Handler {
         if dthread.is_null() {
             return Err(-libc::ESRCH);
         }
-        // SIGFPE diagnostic (task #51): capture the FP-fault kind + faulting instruction.
-        // linux si_code for SIGFPE: 1=INTDIV 2=INTOVF 3=FLTDIV 4=FLTOVF 5=FLTUND 6=FLTRES
-        // 7=FLTINV 8=FLTSUB. signal_address is the faulting RIP; dump 16 bytes there so we can
-        // disassemble the instruction that faulted (integer `idiv` => a wrongly-zero divisor;
-        // an FP op => corrupted float state). Gated so normal runs are quiet.
-        if call.linux_signal_number == 8 && std::env::var_os("DSERVER_TRACE_SIGFPE").is_some() {
+        // Fault diagnostic: the fault kind + the faulting instruction. signal_address is the
+        // faulting RIP; dumping 16 bytes there is what identifies the instruction -- an
+        // integer `idiv` means a wrongly-zero divisor (task #51's SIGFPE), a `ud2` means code
+        // that was compiled to trap, which is how an unimplemented stub announces itself.
+        //
+        // Which signals to trace comes from DSERVER_TRACE_SIGNAL (comma-separated LINUX
+        // numbers, e.g. "4,8,11"); DSERVER_TRACE_SIGFPE still means 8 on its own. Gated
+        // either way, so normal runs stay quiet.
+        if trace_signal(call.linux_signal_number) {
             let pid = self.cur().map(|p| p.host_pid);
             let mut insn = [0u8; 16];
             let got = pid
@@ -490,8 +522,9 @@ impl rpc_wire::RpcHandler for Handler {
                 .unwrap_or(false);
             let hex = if got { insn.iter().map(|b| format!("{b:02x} ")).collect::<String>() } else { "?".to_string() };
             eprintln!(
-                "darlingserver: SIGFPE_DIAG code={} rip={:#x} sender_pid={} insn=[{}]",
-                call.code, call.signal_address, call.sender_pid, hex.trim_end()
+                "darlingserver: SIGNAL_DIAG sig={} code={} rip={:#x} sender_pid={} insn=[{}]",
+                call.linux_signal_number, call.code, call.signal_address, call.sender_pid,
+                hex.trim_end()
             );
         }
         unsafe {

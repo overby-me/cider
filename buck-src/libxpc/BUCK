@@ -158,7 +158,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/libc:system_c_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:system_blocks_firstpass",
         "//buck-src/libdispatch:libdispatch_shared_firstpass",
         "//buck-src/libplatform:platform_firstpass",

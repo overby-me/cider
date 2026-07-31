@@ -12250,7 +12250,7 @@ darwin_dylib(
         ":libc-net_legacy_obj",
     ],
     siblings = [
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
         "//buck-src:compiler_rt_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_malloc_firstpass",

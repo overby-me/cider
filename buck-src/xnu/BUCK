@@ -1158,7 +1158,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py emulation   -- review before committing.
 # cmake target: emulation  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation
-# 295 sources in 2 flag groups: cmake gives individual
+# 295 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/darlingserver/src/rpc.c
@@ -1170,8 +1170,8 @@ cc_objects(
 #   src/startup
 
 cc_header_root(
-    name = "emulation_inc_darling_src_libsystem_kernel",
-    headers = glob(["darling/src/libsystem_kernel/*.h", "darling/src/libsystem_kernel/**/*.h"]),
+    name = "emulation_inc_xnu_darling_src_libsystem_kernel",
+    headers = glob(["darling/src/libsystem_kernel/**/*"]),
     root = "darling/src/libsystem_kernel",
     visibility = ["PUBLIC"],
 )
@@ -1485,10 +1485,10 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:darling_config",
-        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/startup:rtsig_header",
+        ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/darlingserver:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
@@ -1519,10 +1519,45 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:darling_config",
-        ":emulation_inc_darling_src_libsystem_kernel",
+        "//src/startup:rtsig_header",
+        ":emulation_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "emulation_obj3",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DBSDTHREAD_WRAP_LINUX_PTHREAD",
+        "-DEMULATED_OSPRODUCTVERSION=\"14.4.1\"",
+        "-DEMULATED_OSVERSION=\"23E224\"",
+        "-DEMULATED_RELEASE=\"23.4.0\"",
+        "-DEMULATED_SYSNAME=\"Darwin\"",
+        "-DEMULATED_VERSION=\"Darwin Kernel Version 23.4.0\"",
+        "-std=gnu99",
+        "-fvisibility=hidden",
+        "-fPIC",
+        "-fno-builtin",
+        "-ggdb",
+        "-Wno-int-conversion",
+        "-Wno-compare-distinct-pointer-types",
+    ],
+    prefix_headers = [
+        "darling/src/libsystem_kernel/emulation/include/linux_premigration/resources/dserver-rpc-defs.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/startup:rtsig_header",
+        ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/darlingserver:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
@@ -4150,3 +4185,111 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: libkxld dylibs
+
+# BEGIN generated: system_kernel dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs system_kernel   -- review before committing.
+# Links 4 cmake object library/ies, 9 flag groups in total.
+# Object libraries whose sources are compiled elsewhere in this port, so they
+# contribute no target here: libsyscall_64
+
+darwin_dylib(
+    name = "system_kernel_firstpass",
+    dylib_name = "libsystem_kernel_firstpass.dylib",
+    firstpass = True,
+    install_name = "/usr/lib/system/libsystem_kernel.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libsyscall
+        ":libsyscall_obj",
+        ":libsyscall_obj2",
+        ":libsyscall_obj3",
+        ":libsyscall_obj4",
+        ":libsyscall_obj5",
+        # libsyscall_dynamic
+        ":libsyscall_dynamic_obj",
+        # emulation
+        ":emulation_obj",
+        ":emulation_obj2",
+        ":emulation_obj3",
+        "//buck-src/xnu:exc_server_obj",  # added by this port (buck/generated/extra-deps.json)
+        "//buck-src:emulation_rpc_obj",  # added by this port (buck/generated/extra-deps.json)
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/libsimple:libsimple_darling",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "system_kernel_final",
+    dylib_name = "libsystem_kernel.dylib",
+    install_name = "/usr/lib/system/libsystem_kernel.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # libsyscall
+        ":libsyscall_obj",
+        ":libsyscall_obj2",
+        ":libsyscall_obj3",
+        ":libsyscall_obj4",
+        ":libsyscall_obj5",
+        # libsyscall_dynamic
+        ":libsyscall_dynamic_obj",
+        # emulation
+        ":emulation_obj",
+        ":emulation_obj2",
+        ":emulation_obj3",
+        "//buck-src/xnu:exc_server_obj",  # added by this port (buck/generated/extra-deps.json)
+        "//buck-src:emulation_rpc_obj",  # added by this port (buck/generated/extra-deps.json)
+    ],
+    siblings = [
+        "//buck-src/libc:system_c_firstpass",
+        "//buck-src:compiler_rt_firstpass",
+        "//buck-src:system_dyld_firstpass",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//src/libsimple:libsimple_darling",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: system_kernel dylibs
+
+# The mig exception SERVER, in its own object target for two reasons the emulation
+# target cannot satisfy at once:
+#
+#   * it must NOT be compiled -fvisibility=hidden. libsystem_kernel exports _exc_server
+#     (a cmake-built one does; nm shows it in __TEXT), and everything in emulation is
+#     hidden, so riding along there compiled the code in but exported nothing.
+#   * catch_exception_raise* must be redirected to the internal_ names that libsyscall's
+#     exc_catcher.c defines -- but ONLY here. exc_catcher.c itself calls
+#     catch_exception_raise (it dlsyms the user's handler), so defining the macro across
+#     libsyscall would rewrite that call into a recursive one.
+#
+# nix's boehm-gc binds _exc_server, so without this the guest nix cannot load at all.
+cc_objects(
+    name = "exc_server_obj",
+    srcs = [],
+    gen_srcs = ["//buck-src:emmig_signal_exc"],
+    compiler_flags = [
+        "-std=gnu99",
+        "-fPIC",
+        "-Dcatch_exception_raise=internal_catch_exception_raise",
+        "-Dcatch_exception_raise_state=internal_catch_exception_raise_state",
+        "-Dcatch_exception_raise_state_identity=internal_catch_exception_raise_state_identity",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src/xnu:emulation_included_sources",
+        "//src/include:darling_config",
+        "//src/startup:rtsig_header",
+        ":emulation_inc_xnu_darling_src_libsystem_kernel",
+        "//src/external/darlingserver:dserver_headers",
+        "//src/libsimple:libsimple_headers",
+    ],
+    visibility = ["PUBLIC"],
+)

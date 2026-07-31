@@ -29,6 +29,17 @@ SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-darling-cmake-src")
 BIN_DIR = "/build/build"
 
 
+# Generated mig sources the reference's built libraries CONTAIN but whose compile edge
+# does not appear in the graph. libsystem_kernel is the case: `nm -gU` on a cmake-built
+# libsystem_kernel.dylib shows _exc_server and _exc_server_routine in __TEXT, which are
+# excServer.c's, while the emulation CMakeLists lists only mach_excUser.c and the ninja
+# has no excServer.c.o. Without it, anything that binds _exc_server fails to load -- nix's
+# boehm-gc does, so guest nix could not start.
+EXTRA_COMPILE_SRCS = {
+    "emmig_signal_exc": ("signal/excServer.c",),
+}
+
+
 def mig_edges(match: str):
     """Yield (defs_repo_path, out_base, [output paths]) for build-mig edges."""
     with open(GRAPH) as f:
@@ -136,6 +147,13 @@ def main(argv: list[str]) -> int:
             # The per-arch User.c is a SOURCE the consumer compiles, so export it.
             print("    compile_srcs = [")
             print(f'        "{stem}{suffixes["user"]}",')
+            print("    ],")
+        for extra in EXTRA_COMPILE_SRCS.get(full, ()):
+            # A generated source the reference BUILD contains but its cli-scope ninja
+            # never shows a compile edge for. Kept in one place so regenerating this
+            # block does not drop it again.
+            print("    compile_srcs = [")
+            print(f'        "{extra}",')
             print("    ],")
         print('    mig_sh = "//buck-src:mig.sh",')
         print('    migcom = "//buck-src:migcom",')

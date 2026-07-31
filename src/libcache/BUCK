@@ -66,7 +66,7 @@ darwin_dylib(
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src/libplatform:platform_firstpass",
-        "//buck-src:system_kernel_firstpass",
+        "//buck-src/xnu:system_kernel_firstpass",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = ["//darwin:sdk_env"],
