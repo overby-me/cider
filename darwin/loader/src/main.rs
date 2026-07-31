@@ -313,6 +313,7 @@ fn main() {
             // (no __mldr_sockpath) stops here rather than abandoning the Rust runtime's stack.
             if special.sockpath.is_some() {
                 dlog!("[mldr] jumping to entry {final_entry:#x} with sp {sp:#x}");
+                unsafe { install_trap_diag() };
                 unsafe { jump::jump_to_entry(final_entry, sp) };
             } else {
                 eprintln!("[mldr] (test run; not jumping -- set __mldr_sockpath to run a guest)");
@@ -352,4 +353,66 @@ fn parse_special_env() -> SpecialEnv {
         }
     }
     s
+}
+
+/// Report a fault instead of dying silently, gated on `MLDR_TRAP_DIAG`.
+///
+/// The guest's own signal machinery is not up until libsystem initializes, so a fault before
+/// that point kills the process with nothing anywhere: the daemon's sigprocess never sees it
+/// (no SIGNAL_DIAG, no sigexc line) and the shell only reports "Illegal instruction". This
+/// installs a handler for the fault signals BEFORE the jump so the faulting RIP and the bytes
+/// there are printed. Everything it calls is async-signal-safe: a hand-rolled hex encoder and
+/// one `write`, no allocation and no formatting machinery.
+pub(crate) unsafe fn install_trap_diag() {
+    if std::env::var_os("MLDR_TRAP_DIAG").is_none() {
+        return;
+    }
+    unsafe extern "C" fn on_fault(sig: libc::c_int, _si: *mut libc::siginfo_t, uc: *mut libc::c_void) {
+        let mut buf = [0u8; 128];
+        let mut n = 0;
+        for b in b"[mldr] FAULT sig=" {
+            buf[n] = *b; n += 1;
+        }
+        buf[n] = b'0' + (sig as u8 % 10); n += 1;
+        for b in b" rip=0x" {
+            buf[n] = *b; n += 1;
+        }
+        // ucontext_t.uc_mcontext.gregs[REG_RIP]; REG_RIP is 16 on x86_64 Linux.
+        let rip = if uc.is_null() {
+            0u64
+        } else {
+            let ucp = uc as *const libc::ucontext_t;
+            (*ucp).uc_mcontext.gregs[16] as u64
+        };
+        for i in (0..16).rev() {
+            let nib = ((rip >> (i * 4)) & 0xf) as u8;
+            buf[n] = if nib < 10 { b'0' + nib } else { b'a' + nib - 10 };
+            n += 1;
+        }
+        for b in b" insn=" {
+            buf[n] = *b; n += 1;
+        }
+        if rip != 0 {
+            let p = rip as *const u8;
+            for i in 0..12 {
+                let byte = *p.add(i);
+                for nib in [byte >> 4, byte & 0xf] {
+                    buf[n] = if nib < 10 { b'0' + nib } else { b'a' + nib - 10 };
+                    n += 1;
+                }
+                buf[n] = b' '; n += 1;
+            }
+        }
+        buf[n] = b'\n'; n += 1;
+        libc::write(2, buf.as_ptr() as *const libc::c_void, n);
+        libc::_exit(132);
+    }
+    for sig in [libc::SIGILL, libc::SIGSEGV, libc::SIGBUS, libc::SIGFPE] {
+        let mut sa: libc::sigaction = std::mem::zeroed();
+        sa.sa_sigaction = on_fault as usize;
+        sa.sa_flags = libc::SA_SIGINFO;
+        libc::sigemptyset(&mut sa.sa_mask);
+        libc::sigaction(sig, &sa, std::ptr::null_mut());
+    }
+    eprintln!("[mldr] trap diagnostic armed");
 }
