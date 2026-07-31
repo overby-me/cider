@@ -76,6 +76,9 @@ pub extern "C" fn darling_thread_create(
     pth: *mut c_void,
 ) -> *mut c_void {
     let is_workqueue = real_entry_point == 0;
+    if std::env::var_os("MLDR_DEBUG").is_some() {
+        eprintln!("[mldr] thread_create wq={is_workqueue} stack_size={stack_size:#x} entry={entry_point:?} real={real_entry_point:#x}");
+    }
     let ssize = stack_size as usize;
 
     let (pth, stack_addr) = if pth.is_null() || is_workqueue {
@@ -154,6 +157,9 @@ extern "C" fn darling_thread_entry(p: *mut c_void) -> *mut c_void {
         unsafe { libc::abort() };
     }
 
+    if std::env::var_os("MLDR_DEBUG").is_some() {
+        eprintln!("[mldr] thread checked in fd={new_fd}");
+    }
     // Mach thread-self port -> tsd[3].
     let port = (cb.thread_self_trap)() as c_int;
     unsafe {
@@ -164,6 +170,12 @@ extern "C" fn darling_thread_entry(p: *mut c_void) -> *mut c_void {
     // Signal the parent that setup is done.
     unsafe { std::ptr::write_volatile(&mut (*in_args).pth, std::ptr::null_mut()) };
 
+    if std::env::var_os("MLDR_DEBUG").is_some() {
+        eprintln!(
+            "[mldr] thread jump entry={:#x} sp={:#x} port={} pth={:?}",
+            args.entry_point, align_16(args.stack_addr), port, args.pth
+        );
+    }
     // Switch to the Darwin stack + jump to the entry with the exact register ABI
     // (threads.c:262-323). No function calls past this point.
     let stack_ptr = align_16(args.stack_addr);

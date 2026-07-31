@@ -121,8 +121,19 @@ extern "C" fn ec_thread_create(
 ) -> *mut c_void {
     ptr::null_mut()
 }
-extern "C" fn ec_thread_terminate(_: *mut c_void, _: c_ulong, _: c_ulong) -> c_int {
-    0
+/// `__darling_thread_terminate` (threads.h): the last thing a guest thread does.
+///
+/// MUST NOT RETURN. libsystem_pthread calls this at the end of pthread_exit and, because the
+/// declaration is noreturn, the compiler emits a `ud2` immediately after the call -- so a stub
+/// that returns 0 lands on an illegal instruction. That is a SIGILL with no message, in a
+/// library, on a thread, long after mldr has handed control over: guest `nix` died exactly
+/// this way while single-threaded binaries were unaffected.
+///
+/// The stack is deliberately NOT unmapped here: this call is RUNNING on it. Whoever allocated
+/// it owns it -- the guest for a normal pthread, and for a workqueue thread the mapping is
+/// reclaimed when the process exits.
+extern "C" fn ec_thread_terminate(_stackaddr: *mut c_void, _freesize: c_ulong, _pthobj_size: c_ulong) -> c_int {
+    unsafe { libc::pthread_exit(ptr::null_mut()) }
 }
 extern "C" fn ec_thread_get_stack() -> *mut c_void {
     ptr::null_mut()
