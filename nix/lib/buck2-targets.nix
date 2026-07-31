@@ -32,4 +32,8 @@
   "//src/duct:system_duct_firstpass"
   "//src/external/libtrace:system_trace_firstpass"
   "//src/libsystem_coreservices:system_coreservices_firstpass"
+  # The PREFIX: what a Darling install actually is, and the target the bash milestone
+  # runs from. It pulls in every dylib, executable and data file the layout installs, so
+  # it is also by far the widest thing this endpoint is asked to lower.
+  "//buck/prefix:darling_prefix"
 ]

@@ -6,10 +6,9 @@
 # launcher and the guest Mach-O loader -- so a pass means the port produced a working Darling
 # and not just a pile of correct-looking artifacts.
 #
-# The prefix is DEREFERENCED into a scratch root first. buck2's prefix is a symlink farm
-# pointing back into buck-out through relative paths; the daemon overlay-mounts that
-# directory as the container's read-only lower, and inside the container's mount namespace
-# those paths lead nowhere.
+# The prefix is COPIED into a scratch root first, rather than mounted out of buck-out
+# directly: the container writes nothing to it, but a build tree is not a thing to hand a
+# daemon as a root filesystem.
 #
 # Usage:  scripts/buck-bash-check.sh [<scratch dir>]
 set -euo pipefail
@@ -49,10 +48,12 @@ say "== materializing into $rt =="
 chmod -R u+w "$rt" 2>/dev/null || true
 rm -rf "$rt" "$prefix" "$prefix.workdir"
 mkdir -p "$rt" "$prefix"
-# Not `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /, and dereferencing
-# indiscriminately walks the whole machine. The materializer follows only the links that
-# point into buck-out (the installed artifacts) and keeps the layout's own links verbatim.
-./scripts/buck-prefix-materialize.py "$art" "$rt"
+# `cp -a`, never `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /, so
+# dereferencing indiscriminately walks the whole machine (it copied 82 GB once). -a is
+# correct here because prefix_tree already resolved every installed artifact into a real
+# file; the only symlinks left are the 72 the layout itself declares, and those have to
+# survive as links.
+cp -a "$art"/. "$rt"/
 chmod -R u+w "$rt"
 
 say "== booting the container and running bash =="

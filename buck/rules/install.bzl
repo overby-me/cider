@@ -26,16 +26,21 @@ PrefixDirInfo = provider(fields = ["files"])
 
 # Three kinds of entry, in an order that matters: a directory before anything inside it, and
 # a link after whatever it points at, so that a link into the tree resolves as soon as it is
-# made. File entries link to an ABSOLUTE path, since a relative one computed for buck-out
-# would not survive being read from the prefix.
+# made.
+#
+# Installed artifacts are COPIED, not linked, which makes the tree SELF-CONTAINED. That is
+# what lets the same rule serve both consumers: the daemon overlay-mounts this directory as
+# the container's read-only root, where a link to a host path leads nowhere, and the Nix
+# endpoint turns it into a store path, where a link into a build directory dangles the
+# moment the build ends. 107 MB, and only when an input changes.
 _BUILD_PREFIX = """set -euo pipefail
 out="$1"; manifest="$2"
 mkdir -p "$out"
 # The manifest travels WITH the tree, at the prefix root rather than inside
-# libexec/darling, so it is never part of what the container mounts. A consumer that has to
-# turn this farm into a real directory cannot otherwise tell an installed artifact from a
-# link the layout itself declares: both are symlinks by then, and following the wrong one
-# means dereferencing Volumes/DarlingEmulatedDrive, which points at /.
+# libexec/darling, so it is never part of what the container mounts. Nothing depends on it
+# now that artifacts are copied and only the layout's own links remain symlinks, but it is
+# the one place that says what the prefix is MEANT to contain, which is worth having next
+# to what it does contain.
 cp "$manifest" "$out/.prefix-manifest.tsv"
 while IFS=$'\\t' read -r kind dest src; do
   case "$kind" in
@@ -53,7 +58,11 @@ while IFS=$'\\t' read -r kind dest src; do
         ln -sfn "$src" "$out/$dest"
       fi
       ;;
-    file) mkdir -p "$out/$(dirname "$dest")"; ln -sfn "$PWD/$src" "$out/$dest" ;;
+    # -L: a file entry's source may itself be a link -- a prefix_dir stages its tree as a
+    # symlink farm -- and it is the CONTENT that has to land in the prefix. Only `link`
+    # entries stay links, which is what keeps Volumes/DarlingEmulatedDrive from being
+    # followed to the root of the machine.
+    file) mkdir -p "$out/$(dirname "$dest")"; cp -L -p --reflink=auto "$src" "$out/$dest" ;;
     *)    echo "prefix_tree: unknown entry kind '$kind' for $dest" >&2; exit 1 ;;
   esac
 done < "$manifest"
