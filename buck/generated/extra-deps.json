@@ -391,7 +391,12 @@
     "//buck-src:nghttp2ver"
   ],
   "Security_obj": [
+    "//buck-src:fw_CFNetwork",
     "//buck-src:fw_CoreFoundation",
-    "//buck-src:fw_Foundation"
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
   ]
 }

@@ -95,6 +95,45 @@ def in_tree_target(link: str, target: str) -> str | None:
     return os.path.relpath(inside, os.path.dirname(link))
 
 
+def expand_dir_links(root: str) -> int:
+    """Replace a symlinked DIRECTORY with a real one holding a link per file.
+
+    buck2's globs do not descend into a symlinked directory, so a header behind one is
+    invisible: security ships darling/include/macOS/security_libDER/libDER as a link to
+    ../libDER, and `macOS/**/*.h` staged everything EXCEPT what lived behind it. The
+    compile then failed on security_libDER/libDER/libDER.h while the file was plainly
+    there on disk.
+
+    A directory of per-file links is the shape the repo's own SDK farm uses -- roughly
+    1,900 of them -- and buck2 globs and stages those without trouble.
+    """
+    changed = 0
+    for dirpath, dirnames, _files in os.walk(root, followlinks=False):
+        for name in list(dirnames):
+            link = os.path.join(dirpath, name)
+            if not os.path.islink(link):
+                continue
+            target = os.path.realpath(link)
+            if not os.path.isdir(target) or not os.path.exists(target):
+                continue
+            try:
+                os.chmod(dirpath, os.stat(dirpath).st_mode | stat.S_IWUSR)
+                os.remove(link)
+                for sub, _d, fs in os.walk(target):
+                    rel = os.path.relpath(sub, target)
+                    dest = os.path.join(link, rel) if rel != "." else link
+                    os.makedirs(dest, exist_ok=True)
+                    for f in fs:
+                        d = os.path.join(dest, f)
+                        if not os.path.lexists(d):
+                            os.symlink(os.path.relpath(os.path.join(sub, f), dest), d)
+                changed += 1
+            except OSError:
+                pass
+            dirnames.remove(name)
+    return changed
+
+
 def main(argv: list[str]) -> int:
     argv = argv[1:]
     if "--repo" in argv:
@@ -121,6 +160,9 @@ def main(argv: list[str]) -> int:
                     fixed += 1
                 except OSError:
                     skipped += 1
+    expanded = sum(expand_dir_links(r) for r in roots)
+    if expanded:
+        print(f"buck-src: expanded {expanded} symlinked director(ies) into per-file links")
     if fixed or skipped:
         print(f"buck-src: re-pointed {fixed} symlink(s) into the tree"
               + (f", {skipped} could not be written" if skipped else ""))
