@@ -16,10 +16,19 @@ cd "$(dirname "$0")/.."
 
 say() { printf '%s\n' "$*" >&2; }
 
-command -v buck2 >/dev/null || {
-	say "missing buck2 -- run inside \`nix develop\`"
-	exit 2
-}
+# An already-built prefix to test instead of building one. This is how the same check
+# covers BOTH endpoints: with no argument it builds through the buck2 daemon, and with one
+# it takes a tree the Nix endpoint produced
+# (nix build .#darling-buck2-prefix, then result/darling_prefix__prefix).
+art=""
+if [ "${1:-}" = "--prefix" ]; then
+	art=$2
+	shift 2
+	[ -d "$art" ] || {
+		say "not a directory: $art"
+		exit 2
+	}
+fi
 
 # SHORT by default, and that is not cosmetic: the daemon's control socket lives at
 # <prefix>/.darlingserver.sock and a Unix socket path is capped at 108 bytes, so a scratch
@@ -29,12 +38,18 @@ root=${1:-/tmp/darling-buck2-$(id -u)}
 rt="$root/rt"
 prefix="$root/prefix"
 
-say "== building the prefix =="
-art=$(buck2 build //buck/prefix:darling_prefix --show-output 2>/dev/null | tail -1 | awk '{print $2}')
-[ -d "$art" ] || {
-	say "the prefix did not build"
-	exit 1
-}
+if [ -z "$art" ]; then
+	command -v buck2 >/dev/null || {
+		say "missing buck2 -- run inside \`nix develop\`"
+		exit 2
+	}
+	say "== building the prefix =="
+	art=$(buck2 build //buck/prefix:darling_prefix --show-output 2>/dev/null | tail -1 | awk '{print $2}')
+	[ -d "$art" ] || {
+		say "the prefix did not build"
+		exit 1
+	}
+fi
 
 # Anything still running from a previous run holds the old prefix mounted, and removing the
 # tree underneath a live daemon leaves it wedged -- so this comes FIRST.

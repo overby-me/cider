@@ -1724,3 +1724,47 @@ milestone deliberately does not build. The Nix-built reference cannot run it her
 scripts/buck-fix-link-model.py is what applies both corrections (order and upward) to
 existing blocks, and it has a --check mode, because regenerating the blocks wholesale still
 loses things the generator cannot reproduce.
+
+## The Nix endpoint reaches the same milestone
+
+`nix build .#darling-buck2-prefix` now produces a Darling that boots and runs bash, built
+entirely through the endpoint: the graph dumped by real buck2 in a pure derivation, then one
+derivation per buck2 target, ending in the prefix.
+
+    BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19
+
+The store output is the same shape as the daemon's: 5,537 files, 72 layout links, 108 MB.
+scripts/buck-bash-check.sh takes --prefix now, so ONE check covers both endpoints -- with no
+argument it builds through the buck2 daemon, with one it boots a tree Nix produced.
+
+Getting there found five gaps, and four of them are the same gap wearing different clothes:
+the endpoint replays what buck2 RECORDS, so anything buck2 knows but does not record is
+invisible to it.
+
+  * AN ACTION'S INPUTS, when it reads them from a file. The prefix passes a manifest and
+    nothing else, so argv-scraping saw one path where there are 5,537. aquery declares them
+    (buck.all_ineligible_for_dedup_inputs), with the producing action for each, so the dump
+    records input TARGETS and the lowering stages them. General, not prefix-specific.
+  * AN ACTION'S ENVIRONMENT. The launcher bakes its install prefix and git branch and commit
+    through env!(), supplied as the action's env dict -- and aquery reports a command, its
+    inputs and its kind, but no environment. The Rust runner now takes --env KEY=VALUE ahead
+    of the compiler, so the command line is self-describing. OUT_DIR goes the same way.
+  * THE VENDORED CRATE SOURCES. buck-rust/ is gitignored, so it is in neither the project
+    source the endpoint copies nor the graph derivation's tree. nix/lib/rust-vendor.nix is
+    now shared by the dev shell, the graph and the lowering: a graph dumped against
+    different crate sources than the build uses is a graph of a different build.
+  * SYMLINK NORMALISATION. scripts/buck-src.sh runs buck-src-normalise.py on every pin and
+    the derivation did not, so buck2 refused libnotify's notify.defs. It has to run AFTER
+    every pin (it follows the SDK farm's links) and needs --repo, because from the store it
+    cannot find the project by looking above itself.
+
+The fifth was not about recording at all: 36 committed paths pointed into
+/nix/store/HASH-darling-cmake-src, and worked only because that store path still existed
+here. write_block now strips the prefix so no future block can carry one.
+
+What it costs: the graph derivation is 3m13s (5,709 actions, 115 staged artifacts, 31,124
+artifacts ensured). Adding the prefix widened the materialization step enough that it now
+builds some object targets -- a libarchive compile is what surfaced it -- so the earlier
+"zero compiles in the graph derivation" is no longer exactly true. Minutes, not the hours a
+full build would be, but it is a real change and worth stating rather than leaving as a
+stale claim.
