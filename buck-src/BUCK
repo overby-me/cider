@@ -8953,3 +8953,2082 @@ load("//buck/generated:exports_buck_src.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# BEGIN generated: echo
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py echo   -- review before committing.
+# cmake target: echo  ->  src/external/shell_cmds/echo
+
+cc_objects(
+    name = "echo_obj",
+    srcs = [
+        "shell_cmds/echo/echo.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: echo
+
+# BEGIN generated: echo binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries echo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "echo",
+    objs = [
+        # echo
+        ":echo_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: echo binary
+
+# BEGIN generated: ls
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ls   -- review before committing.
+# cmake target: ls  ->  src/external/file_cmds/ls
+
+cc_objects(
+    name = "ls_obj",
+    srcs = [
+        "file_cmds/ls/cmp.c",
+        "file_cmds/ls/ls.c",
+        "file_cmds/ls/print.c",
+        "file_cmds/ls/util.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ls
+
+# BEGIN generated: ls binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ls   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ls",
+    objs = [
+        # ls
+        ":ls_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:util_dylib",
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ls binary
+
+# BEGIN generated: cat
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cat   -- review before committing.
+# cmake target: cat  ->  src/external/text_cmds/cat
+
+cc_objects(
+    name = "cat_obj",
+    srcs = [
+        "text_cmds/cat/cat.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cat
+
+# BEGIN generated: cat binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cat",
+    objs = [
+        # cat
+        ":cat_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cat binary
+
+# BEGIN generated: cp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cp   -- review before committing.
+# cmake target: cp  ->  src/external/file_cmds/cp
+
+cc_objects(
+    name = "cp_obj",
+    srcs = [
+        "file_cmds/cp/cp.c",
+        "file_cmds/cp/utils.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cp
+
+# BEGIN generated: cp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cp",
+    objs = [
+        # cp
+        ":cp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cp binary
+
+# BEGIN generated: mv
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mv   -- review before committing.
+# cmake target: mv  ->  src/external/file_cmds/mv
+
+cc_objects(
+    name = "mv_obj",
+    srcs = [
+        "file_cmds/mv/mv.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mv
+
+# BEGIN generated: mv binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries mv   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mv",
+    objs = [
+        # mv
+        ":mv_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mv binary
+
+# BEGIN generated: rm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rm   -- review before committing.
+# cmake target: rm  ->  src/external/file_cmds/rm
+
+cc_objects(
+    name = "rm_obj",
+    srcs = [
+        "file_cmds/rm/rm.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rm
+
+# BEGIN generated: rm binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rm   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "rm",
+    objs = [
+        # rm
+        ":rm_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rm binary
+
+# BEGIN generated: mkdir
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mkdir   -- review before committing.
+# cmake target: mkdir  ->  src/external/file_cmds/mkdir
+
+cc_objects(
+    name = "mkdir_obj",
+    srcs = [
+        "file_cmds/mkdir/mkdir.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mkdir
+
+# BEGIN generated: mkdir binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries mkdir   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mkdir",
+    objs = [
+        # mkdir
+        ":mkdir_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mkdir binary
+
+# BEGIN generated: rmdir
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rmdir   -- review before committing.
+# cmake target: rmdir  ->  src/external/file_cmds/rmdir
+
+cc_objects(
+    name = "rmdir_obj",
+    srcs = [
+        "file_cmds/rmdir/rmdir.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rmdir
+
+# BEGIN generated: rmdir binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rmdir   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "rmdir",
+    objs = [
+        # rmdir
+        ":rmdir_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rmdir binary
+
+# BEGIN generated: ln
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ln   -- review before committing.
+# cmake target: ln  ->  src/external/file_cmds/ln
+
+cc_objects(
+    name = "ln_obj",
+    srcs = [
+        "file_cmds/ln/ln.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ln
+
+# BEGIN generated: ln binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ln   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ln",
+    objs = [
+        # ln
+        ":ln_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ln binary
+
+# BEGIN generated: chmod
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py chmod   -- review before committing.
+# cmake target: chmod  ->  src/external/file_cmds/chmod
+
+cc_objects(
+    name = "chmod_obj",
+    srcs = [
+        "file_cmds/chmod/chmod.c",
+        "file_cmds/chmod/chmod_acl.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chmod
+
+# BEGIN generated: chmod binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries chmod   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "chmod",
+    objs = [
+        # chmod
+        ":chmod_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chmod binary
+
+# BEGIN generated: chown
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py chown   -- review before committing.
+# cmake target: chown  ->  src/external/file_cmds/chown
+
+cc_objects(
+    name = "chown_obj",
+    srcs = [
+        "file_cmds/chown/chown.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chown
+
+# BEGIN generated: chown binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries chown   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "chown",
+    objs = [
+        # chown
+        ":chown_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chown binary
+
+# BEGIN generated: env
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py env   -- review before committing.
+# cmake target: env  ->  src/external/shell_cmds/env
+
+cc_objects(
+    name = "env_obj",
+    srcs = [
+        "shell_cmds/env/env.c",
+        "shell_cmds/env/envopts.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: env
+
+# BEGIN generated: env binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries env   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "env",
+    objs = [
+        # env
+        ":env_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: env binary
+
+# BEGIN generated: sed
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sed   -- review before committing.
+# cmake target: sed  ->  src/external/text_cmds/sed
+
+cc_objects(
+    name = "sed_obj",
+    srcs = [
+        "text_cmds/sed/compile.c",
+        "text_cmds/sed/main.c",
+        "text_cmds/sed/misc.c",
+        "text_cmds/sed/process.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sed
+
+# BEGIN generated: sed binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries sed   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sed",
+    objs = [
+        # sed
+        ":sed_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sed binary
+
+
+
+
+
+
+# BEGIN generated: xargs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xargs   -- review before committing.
+# cmake target: xargs  ->  src/external/shell_cmds/xargs
+
+cc_objects(
+    name = "xargs_obj",
+    srcs = [
+        "shell_cmds/xargs/strnsubst.c",
+        "shell_cmds/xargs/xargs.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xargs
+
+# BEGIN generated: xargs binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries xargs   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "xargs",
+    objs = [
+        # xargs
+        ":xargs_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xargs binary
+
+# BEGIN generated: uname
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py uname   -- review before committing.
+# cmake target: uname  ->  src/external/shell_cmds/uname
+
+cc_objects(
+    name = "uname_obj",
+    srcs = [
+        "shell_cmds/uname/uname.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: uname
+
+# BEGIN generated: uname binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries uname   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "uname",
+    objs = [
+        # uname
+        ":uname_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: uname binary
+
+# BEGIN generated: id
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py id   -- review before committing.
+# cmake target: id  ->  src/external/shell_cmds/id
+
+cc_objects(
+    name = "id_obj",
+    srcs = [
+        "shell_cmds/id/id.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: id
+
+# BEGIN generated: id binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries id   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "id",
+    objs = [
+        # id
+        ":id_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: id binary
+
+# BEGIN generated: mktemp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mktemp   -- review before committing.
+# cmake target: mktemp  ->  src/external/shell_cmds/mktemp
+
+cc_objects(
+    name = "mktemp_obj",
+    srcs = [
+        "shell_cmds/mktemp/mktemp.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mktemp
+
+# BEGIN generated: mktemp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries mktemp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "mktemp",
+    objs = [
+        # mktemp
+        ":mktemp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mktemp binary
+
+# BEGIN generated: dirname
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dirname   -- review before committing.
+# cmake target: dirname  ->  src/external/shell_cmds/dirname
+
+cc_objects(
+    name = "dirname_obj",
+    srcs = [
+        "shell_cmds/dirname/dirname.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dirname
+
+# BEGIN generated: dirname binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dirname   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dirname",
+    objs = [
+        # dirname
+        ":dirname_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dirname binary
+
+# BEGIN generated: basename
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py basename   -- review before committing.
+# cmake target: basename  ->  src/external/shell_cmds/basename
+
+cc_objects(
+    name = "basename_obj",
+    srcs = [
+        "shell_cmds/basename/basename.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: basename
+
+# BEGIN generated: basename binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries basename   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "basename",
+    objs = [
+        # basename
+        ":basename_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: basename binary
+
+# BEGIN generated: tr
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tr   -- review before committing.
+# cmake target: tr  ->  src/external/text_cmds/tr
+
+cc_objects(
+    name = "tr_obj",
+    srcs = [
+        "text_cmds/tr/cmap.c",
+        "text_cmds/tr/cset.c",
+        "text_cmds/tr/str.c",
+        "text_cmds/tr/tr.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tr
+
+# BEGIN generated: tr binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tr   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "tr",
+    objs = [
+        # tr
+        ":tr_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tr binary
+
+# BEGIN generated: sort
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sort   -- review before committing.
+# cmake target: sort  ->  src/external/text_cmds/sort
+
+cc_header_root(
+    name = "sort_inc_text_cmds_sort",
+    headers = glob(["text_cmds/sort/*.h", "text_cmds/sort/**/*.h", "text_cmds/sort/*.c"]),
+    root = "text_cmds/sort",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "sort_obj",
+    srcs = [
+        "text_cmds/sort/bwstring.c",
+        "text_cmds/sort/coll.c",
+        "text_cmds/sort/commoncrypto.c",
+        "text_cmds/sort/file.c",
+        "text_cmds/sort/mem.c",
+        "text_cmds/sort/radixsort.c",
+        "text_cmds/sort/sort.c",
+        "text_cmds/sort/vsort.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_CONFIG_H",
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-Wno-unknown-pragmas",
+        "-Wno-tautological-compare",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":sort_inc_text_cmds_sort",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sort
+
+# BEGIN generated: sort binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries sort   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "sort",
+    objs = [
+        # sort
+        ":sort_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sort binary
+
+# BEGIN generated: head
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py head   -- review before committing.
+# cmake target: head  ->  src/external/text_cmds/head
+
+cc_objects(
+    name = "head_obj",
+    srcs = [
+        "text_cmds/head/head.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: head
+
+# BEGIN generated: head binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries head   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "head",
+    objs = [
+        # head
+        ":head_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: head binary
+
+# BEGIN generated: tail
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tail   -- review before committing.
+# cmake target: tail  ->  src/external/text_cmds/tail
+
+cc_objects(
+    name = "tail_obj",
+    srcs = [
+        "text_cmds/tail/forward.c",
+        "text_cmds/tail/misc.c",
+        "text_cmds/tail/read.c",
+        "text_cmds/tail/reverse.c",
+        "text_cmds/tail/tail.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tail
+
+# BEGIN generated: tail binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tail   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "tail",
+    objs = [
+        # tail
+        ":tail_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tail binary
+
+# BEGIN generated: wc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py wc   -- review before committing.
+# cmake target: wc  ->  src/external/text_cmds/wc
+
+cc_objects(
+    name = "wc_obj",
+    srcs = [
+        "text_cmds/wc/wc.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wc
+
+# BEGIN generated: wc binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries wc   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "wc",
+    objs = [
+        # wc
+        ":wc_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wc binary
+
+# BEGIN generated: gzip
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gzip   -- review before committing.
+# cmake target: gzip  ->  src/external/file_cmds/gzip
+
+cc_objects(
+    name = "gzip_obj",
+    srcs = [
+        "file_cmds/gzip/futimens.c",
+        "file_cmds/gzip/gzip.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-DGZIP_APPLE_VERSION=\"264.30.2\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gzip
+
+# BEGIN generated: gzip binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries gzip   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "gzip",
+    objs = [
+        # gzip
+        ":gzip_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:lzma_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gzip binary
+
+# BEGIN generated: printf
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py printf   -- review before committing.
+# cmake target: printf  ->  src/external/shell_cmds/printf
+
+cc_objects(
+    name = "printf_obj",
+    srcs = [
+        "shell_cmds/printf/printf.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: printf
+
+# BEGIN generated: printf binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries printf   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "printf",
+    objs = [
+        # printf
+        ":printf_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: printf binary
+
+
+# BEGIN generated: true
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py true   -- review before committing.
+# cmake target: true  ->  src/external/shell_cmds/true
+
+cc_objects(
+    name = "true_obj",
+    srcs = [
+        "shell_cmds/true/true.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: true
+
+# BEGIN generated: true binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries true   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "true",
+    objs = [
+        # true
+        ":true_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: true binary
+
+# BEGIN generated: false
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py false   -- review before committing.
+# cmake target: false  ->  src/external/shell_cmds/false
+
+cc_objects(
+    name = "false_obj",
+    srcs = [
+        "shell_cmds/false/false.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: false
+
+# BEGIN generated: false binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries false   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "false",
+    objs = [
+        # false
+        ":false_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: false binary
+
+
+
+# BEGIN generated: touch
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py touch   -- review before committing.
+# cmake target: touch  ->  src/external/file_cmds/touch
+
+cc_objects(
+    name = "touch_obj",
+    srcs = [
+        "file_cmds/touch/touch.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: touch
+
+# BEGIN generated: touch binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries touch   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "touch",
+    objs = [
+        # touch
+        ":touch_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: touch binary
+
+# BEGIN generated: stat
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py stat   -- review before committing.
+# cmake target: stat  ->  src/external/file_cmds/stat
+
+cc_objects(
+    name = "stat_obj",
+    srcs = [
+        "file_cmds/stat/stat.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stat
+
+# BEGIN generated: stat binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries stat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "stat",
+    objs = [
+        # stat
+        ":stat_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stat binary
+
+# BEGIN generated: seq
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py seq   -- review before committing.
+# cmake target: seq  ->  src/external/shell_cmds/seq
+
+cc_objects(
+    name = "seq_obj",
+    srcs = [
+        "shell_cmds/seq/seq.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seq
+
+# BEGIN generated: seq binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries seq   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "seq",
+    objs = [
+        # seq
+        ":seq_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: seq binary
+
+# BEGIN generated: cut
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cut   -- review before committing.
+# cmake target: cut  ->  src/external/text_cmds/cut
+
+cc_objects(
+    name = "cut_obj",
+    srcs = [
+        "text_cmds/cut/cut.c",
+    ],
+    compiler_flags = [
+        "-DSORT_THREADS",
+        "-DSORT_VERSION=\"text_cmds-101.40.1\"",
+        "-DWITHOUT_NLS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cut
+
+# BEGIN generated: cut binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cut   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "cut",
+    objs = [
+        # cut
+        ":cut_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cut binary
+
+
+
+# BEGIN generated: hostname
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py hostname   -- review before committing.
+# cmake target: hostname  ->  src/external/shell_cmds/hostname
+
+cc_objects(
+    name = "hostname_obj",
+    srcs = [
+        "shell_cmds/hostname/hostname.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hostname
+
+# BEGIN generated: hostname binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries hostname   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "hostname",
+    objs = [
+        # hostname
+        ":hostname_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hostname binary
+
+# BEGIN generated: df
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py df   -- review before committing.
+# cmake target: df  ->  src/external/file_cmds/df
+
+cc_objects(
+    name = "df_obj",
+    srcs = [
+        "file_cmds/df/df.c",
+        "file_cmds/df/vfslist.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: df
+
+# BEGIN generated: df binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries df   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "df",
+    objs = [
+        # df
+        ":df_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:util_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: df binary
+
+# BEGIN generated: du
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py du   -- review before committing.
+# cmake target: du  ->  src/external/file_cmds/du
+
+cc_objects(
+    name = "du_obj",
+    srcs = [
+        "file_cmds/du/du.c",
+    ],
+    compiler_flags = [
+        "-DCOLORLS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__DARWIN_UNIX03",
+        "-U_POSIX_C_SOURCE",
+        "-D__DARWIN_UNIX03",
+        "-fblocks",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-U_POSIX_C_SOURCE",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: du
+
+# BEGIN generated: du binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries du   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "du",
+    objs = [
+        # du
+        ":du_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: du binary
+
+# BEGIN generated: which
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py which   -- review before committing.
+# cmake target: which  ->  src/external/shell_cmds/which
+
+cc_objects(
+    name = "which_obj",
+    srcs = [
+        "shell_cmds/which/which.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-ggdb",
+        "-O0",
+        "-Wno-incompatible-pointer-types",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: which
+
+# BEGIN generated: which binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries which   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "which",
+    objs = [
+        # which
+        ":which_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: which binary
+
+# BEGIN generated: util
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py util   -- review before committing.
+# cmake target: util  ->  src/external/libutil/libutil1.0.dylib
+# 10 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "util_inc_libutil",
+    headers = glob(["libutil/*.h", "libutil/**/*.h", "libutil/*.c"]),
+    root = "libutil",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "util_obj",
+    srcs = [
+        "libutil/expand_number.c",
+        "libutil/getmntopts.c",
+        "libutil/humanize_number.c",
+        "libutil/pidfile.c",
+        "libutil/realhostname.c",
+        "libutil/reexec_to_match_kernel.c",
+        "libutil/trimdomain.c",
+        "libutil/tzlink.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dutil_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":util_inc_libutil",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "util_obj2",
+    srcs = [
+        "libutil/ExtentManager.cpp",
+        "libutil/wipefs.cpp",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dutil_EXPORTS",
+        "-nostdinc",
+        "-nostdinc++",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":util_inc_libutil",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: util
+
+# BEGIN generated: util dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs util   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "util_dylib",
+    dylib_name = "libutil1.0.dylib",
+    install_name = "/usr/lib/libutil1.0.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # util
+        ":util_obj",
+        ":util_obj2",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: util dylibs
+
+
+
+
