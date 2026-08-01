@@ -860,7 +860,8 @@
   ],
   "ioclasscount": [
     "//buck-src:fw_CoreFoundation",
-    "//buck-src:fw_Kernel"
+    "//buck-src:fw_Kernel",
+    "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel"
   ],
   "ioreg": [
     "//buck-src:fw_CoreFoundation"

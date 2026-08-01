@@ -108,6 +108,11 @@ CROSS_PACKAGE_ROOTS = {
     # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
     # Mach-O out of the build tree from //src/buildtools, and the pin lives in //buck-src.
     "cctools-port/cctools/include": "//buck-src:libstuff_inc_cctools_include",
+    # The SDK's mach/ subtree as a root of its own, on top of the SDK root (zprint).
+    "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/mach":
+        "//buck-src:sdk_include_mach",
+    # libMobileKeyBag's headers, which secd reaches from //buck-src.
+    "src/MobileKeyBag/include": "//src/MobileKeyBag:MobileKeyBag_inc_src_MobileKeyBag_include",
     # icu is a SPLIT pin, so its common headers are named by label, not globbed from here.
     "icu/icuSources/common": "//buck-src/icu:icucore_inc_icu_icuSources_common",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the

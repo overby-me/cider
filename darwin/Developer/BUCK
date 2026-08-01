@@ -1,18 +1,13 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
-
-# BEGIN generated: framework roots
-# One header root per framework, so a target declares the frameworks it includes
-# instead of getting the whole surface. The reference build just puts
-# darwin/framework-include on every Darwin compile's path; being explicit here is
-# what stops a target compiling against a framework it never declared.
-load("//buck/generated:sdk_framework_darwin_Developer.bzl", FRAMEWORKS = "FRAMEWORKS")
-
-[
-    cc_header_root(
-        name = "fw_" + _name,
-        header_map = _map,
-        visibility = ["PUBLIC"],
-    )
-    for _name, _map in FRAMEWORKS.items()
-]
-# END generated: framework roots
+# Nothing is declared here.
+#
+# The SDK's per-framework header roots (fw_Kernel, fw_System) used to be, from the map
+# in //buck/generated:sdk_framework_darwin_Developer.bzl. Their headers live under
+# Platforms/.../MacOSX.sdk/usr/include, which is its own package, and a source
+# attribute cannot name a file across a package boundary -- so this package did not
+# parse AT ALL, and nothing could depend on either root. That is why zprint had no way
+# to reach <Kernel/IOKit/IOKitDebug.h>. They are declared where the files are now:
+#
+#   //darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel
+#
+# This file stays so the directory keeps a package of its own rather than folding into
+# //darwin, whose globs would then walk the whole SDK tree.

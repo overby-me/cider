@@ -2455,3 +2455,30 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: zlog
+
+# BEGIN generated: chpass binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries chpass   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "chpass",
+    objs = [
+        # chpass
+        ":chpass_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/frameworks:OpenDirectory_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chpass binary

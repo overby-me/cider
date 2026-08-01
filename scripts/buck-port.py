@@ -55,6 +55,9 @@ FRAMEWORK_PACKAGES = [
     "//buck-src:",
     "//darwin/frameworks:",
     "//darwin/private-frameworks:",
+    # Kernel and System, whose headers are the SDK's own rather than a framework tree.
+    # zprint includes <Kernel/IOKit/IOKitDebug.h>.
+    "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:",
 ]
 
 
@@ -67,20 +70,28 @@ def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 # the reference puts the SDK's usr/include/libxml2 on every Darwin compile's path, so
 # <libxml/tree.h> resolves there and nine targets in the cli component need it.
 NON_FRAMEWORK_ROOTS = {
-    "libxml": "//buck-src:sdk_libxml2",
+    "libxml": ["//buck-src:sdk_libxml2"],
 }
 
 
-def framework_map() -> dict[str, str]:
-    """Every fw_<name> target, by framework name."""
+def framework_map() -> dict[str, list[str]]:
+    """Every fw_<name> target, by framework name -- ALL of them, per name."""
     p = run(["buck2", "targets", *FRAMEWORK_PACKAGES])
-    out = dict(NON_FRAMEWORK_ROOTS)
+    out = {k: list(v) for k, v in NON_FRAMEWORK_ROOTS.items()}
     # fw_ and fwp_: //buck-src holds both the public and the PRIVATE framework maps, so it
     # prefixes the private ones to keep the two from colliding on a shared name. Heimdal
     # exists only as fwp_Heimdal, and looking for fw_ alone reported it as unported.
     found = 0
+    # EVERY package that declares a root for the framework, not the first one seen. A
+    # framework can be SPLIT: Kernel's headers are partly in the pins (//buck-src:fw_Kernel)
+    # and partly the SDK's own files, and a target that includes <Kernel/IOKit/IOKitDebug.h>
+    # needs the half that has it. Taking one and stopping made zprint's resolver add the
+    # same wrong root sixty times over.
     for m in re.finditer(r"(root)?(//[^\s:]+):(fwp?_[A-Za-z0-9_]+)", p.stdout):
-        out.setdefault(m.group(3).split("_", 1)[1], f"{m.group(2)}:{m.group(3)}")
+        label = f"{m.group(2)}:{m.group(3)}"
+        fw = m.group(3).split("_", 1)[1]
+        if label not in out.setdefault(fw, []):
+            out[fw].append(label)
         found += 1
     # Counted rather than testing `out`, which is never empty now. This is the guard that
     # catches a buck2 that will not run at all -- a broken tree makes `targets` fail, and
@@ -154,7 +165,7 @@ def package_from(msg: str) -> str | None:
     return "//" + m.group(1) if m else None
 
 
-def resolve(label: str, fwmap: dict[str, str], nj: str, rounds: int = 60) -> tuple[bool, str]:
+def resolve(label: str, fwmap: dict[str, list[str]], nj: str, rounds: int = 60) -> tuple[bool, str]:
     """Build `label`, adding framework roots until it builds or fails for another reason."""
     added: list[str] = []
     generated_objs: set[str] = set()
@@ -186,7 +197,8 @@ def resolve(label: str, fwmap: dict[str, str], nj: str, rounds: int = 60) -> tup
         key = cmake_target_for(who.group(2), nj)
         if not key:
             return False, f"no cmake target behind {who.group(2)}"
-        add_extra_dep(key, fwmap[fw])
+        for label in fwmap[fw]:
+            add_extra_dep(key, label)
         ok, msg = generate(key, None)
         if not ok:
             return False, f"regenerating {key}: {msg}"

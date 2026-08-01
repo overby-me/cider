@@ -172,6 +172,21 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 
+# The SDK's mach/ subtree, ALSO reachable as a root of its own. The reference puts
+# .../usr/include/mach on the include path of a few targets on top of the SDK root, so
+# that <mach_debug/mach_debug_types.h> resolves without the mach/ prefix -- zprint is one.
+# Derived from the same map rather than globbed, because these are symlinks into the pins
+# and only the map knows where each one really points.
+cc_header_root(
+    name = "sdk_include_mach",
+    header_map = {
+        k[len("mach/"):]: v
+        for k, v in SDK_ROOT.items()
+        if k.startswith("mach/")
+    },
+    visibility = ["PUBLIC"],
+)
+
 # Two more include dirs the reference build puts on every Darwin compile, both
 # from pinned trees.
 cc_header_root(
@@ -48194,6 +48209,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
         "//buck-src:fw_Kernel",
+        "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
     ],
     visibility = ["PUBLIC"],
 )
@@ -48693,3 +48709,192 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: powermanagement_xtrace_mig dylibs
+
+# BEGIN generated: secd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py secd   -- review before committing.
+# cmake target: secd  ->  src/external/security/keychain/securityd/secd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "secd_inc_security",
+    headers = glob([
+        "security/darling/include/**/*",
+        "security/darling/include/macOS/**/*",
+        "security/**/*",
+        "security/gen/*.h",
+        "security/gen/**/*.h",
+        "security/gen/*.c",
+        "security/OSX/libsecurity_asn1/**/*",
+        "security/OSX/libsecurity_keychain/lib/*.h",
+        "security/OSX/libsecurity_keychain/lib/**/*.h",
+        "security/OSX/libsecurity_keychain/lib/*.c",
+        "security/OSX/sec/*.h",
+        "security/OSX/sec/**/*.h",
+        "security/OSX/sec/*.c",
+        "security/OSX/sec/Security/*.h",
+        "security/OSX/sec/Security/**/*.h",
+        "security/OSX/sec/Security/*.c",
+        "security/OSX/utilities/*.h",
+        "security/OSX/utilities/**/*.h",
+        "security/OSX/utilities/*.c",
+        "security/OSX/**/*",
+        "security/darling/src/libDER/*.h",
+        "security/darling/src/libDER/**/*.h",
+        "security/darling/src/libDER/*.c",
+        "security/darling/include/Security/*.h",
+        "security/darling/include/Security/**/*.h",
+        "security/darling/include/Security/*.c",
+        "security/darling/include/macOS/Security/*.h",
+        "security/darling/include/macOS/Security/**/*.h",
+        "security/darling/include/macOS/Security/*.c",
+    ]),
+    root = "security",
+    include_subdirs = [
+        "darling/include",
+        "darling/include/macOS",
+        ".",
+        "gen",
+        "OSX/libsecurity_asn1",
+        "OSX/libsecurity_keychain/lib",
+        "OSX/sec",
+        "OSX/sec/Security",
+        "OSX/utilities",
+        "OSX",
+        "darling/src/libDER",
+        "darling/include/Security",
+        "darling/include/macOS/Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "secd_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "secd_obj",
+    srcs = [
+        "security/OSX/sec/ipc/SecdWatchdog.m",
+        "security/OSX/sec/ipc/server.c",
+        "security/OSX/sec/ipc/server_endpoint.m",
+        "security/OSX/sec/ipc/server_entitlement_helpers.c",
+        "security/OSX/sec/ipc/server_security_helpers.m",
+        "security/OSX/sec/ipc/server_xpc.m",
+        "security/keychain/securityd/PolicyReporter.m",
+        "security/keychain/securityd/spi.c",
+        "security/securityd/src/util.m",
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DNDEBUG=1",
+        "-DPLATFORM=macOS",
+        "-DPRIVATE",
+        "-DSECD_SERVER=1",
+        "-DSECITEM_SHIM_OSX=1",
+        "-DSECUREOBJECTSYNC=1",
+        "-DSECURITY_BUILD_VERSION=\"0\"",
+        "-DSEC_IOS_ON_OSX=1",
+        "-DSHAREDWEBCREDENTIALS=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__KEYCHAINCORE__=1",
+        "-w",
+        "-nostdinc",
+        "-fobjc-arc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":secd_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CloudKit",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_SecurityFoundation",
+        "//darwin/private-frameworks:fw_TrustedPeers",
+        "//darwin/private-frameworks:fw_login",
+        ":secd_inc_security",
+        "//src/MobileKeyBag:MobileKeyBag_inc_src_MobileKeyBag_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: secd
+
+# BEGIN generated: telnetd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py telnetd   -- review before committing.
+# cmake target: telnetd  ->  src/external/remote_cmds/telnetd.tproj/telnetd
+
+cc_objects(
+    name = "telnetd_obj",
+    srcs = [
+        "remote_cmds/telnetd.tproj/global.c",
+        "remote_cmds/telnetd.tproj/slc.c",
+        "remote_cmds/telnetd.tproj/state.c",
+        "remote_cmds/telnetd.tproj/sys_term.c",
+        "remote_cmds/telnetd.tproj/telnetd.c",
+        "remote_cmds/telnetd.tproj/termstat.c",
+        "remote_cmds/telnetd.tproj/utility.c",
+    ],
+    compiler_flags = [
+        "-DDIAGNOSTICS",
+        "-DENV_HACK",
+        "-DINET6",
+        "-DKLUDGELINEMODE",
+        "-DLINEMODE",
+        "-DNO_UTMP",
+        "-DOLD_ENVIRON",
+        "-DUSE_TERMIO",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__FBSDID=__RCSID",
+        "-w",
+        "-nostdinc",
+        "-fPIE",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: telnetd
+
+# BEGIN generated: telnetd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries telnetd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "telnetd",
+    objs = [
+        # telnetd
+        ":telnetd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:telnet",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: telnetd binary
