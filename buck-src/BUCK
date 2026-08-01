@@ -2,7 +2,7 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects", "cc_sta
 load("//buck/rules:codegen.bzl", "bison_gen", "configure_file", "flex_gen", "mig_gen", "preprocess_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
-load("//buck/rules:install.bzl", "prefix_dir")
+load("//buck/rules:install.bzl", "prefix_dir", "prefix_gen_dir")
 
 load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
@@ -48353,6 +48353,46 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: trustd binary
+
+# Security's Certificates.bundle: the trust store, in the form Security actually reads.
+#
+# The 159 .crt files are also installed one by one under System/Library/OpenSSL/certs (that
+# is what the hash links are for, and the generated prefix-dirs block below does not cover
+# them either -- they arrive as ordinary FILE entries). This is the other consumer: the same
+# certificates packed into the DER table and index that Security's trust evaluation opens,
+# next to the EV policy roots derived from evroot.config.
+#
+# Hand-written because the generator cannot reach it: the install(DIRECTORY) source is a
+# path in the BUILD tree, and prefix_dir globs the repo. The bundle's contents are fixed by
+# the script -- two plists at the bundle root, seven plus two data files under Resources --
+# so naming them costs nothing and makes the rule assert that the script still writes them.
+prefix_gen_dir(
+    name = "certificates_bundle",
+    script = "openssl_certificates/scripts/generate-ca-bundle.py",
+    # It locates its own inputs from path.realpath(__file__), so nothing on the command line
+    # names them.
+    srcs = glob([
+        "openssl_certificates/certs/*.crt",
+        "openssl_certificates/security-bundle-resources/*",
+    ]),
+    contents = [
+        "Certificates.bundle/Contents/Info.plist",
+        "Certificates.bundle/Contents/version.plist",
+        "Certificates.bundle/Contents/Resources/certsIndex.data",
+        "Certificates.bundle/Contents/Resources/certsTable.data",
+        "Certificates.bundle/Contents/Resources/EVRoots.plist",
+        "Certificates.bundle/Contents/Resources/Allowed.plist",
+        "Certificates.bundle/Contents/Resources/AssetVersion.plist",
+        "Certificates.bundle/Contents/Resources/Blocked.plist",
+        "Certificates.bundle/Contents/Resources/GrayListedKeys.plist",
+        "Certificates.bundle/Contents/Resources/AppleESCertificates.plist",
+    ],
+    # install(DIRECTORY .../Certificates.bundle DESTINATION .../Security) lands the bundle
+    # at .../Security/Certificates.bundle, so the destination already carries the bundle
+    # name and the tree merged in there starts inside it.
+    strip = "Certificates.bundle",
+    visibility = ["PUBLIC"],
+)
 
 # BEGIN generated: prefix dirs
 # GENERATED from the reference build's install entries by

@@ -78,12 +78,39 @@ EXTRA = {
     "libexec/darling/usr/libexec/darling/mldr": "//darwin/loader:mldr",
 }
 
+# install(DIRECTORY) entries whose source is a BUILD output, with the hand-written target
+# that produces the same tree. dir_target() can only reach a pin's own files -- it globs, and
+# a glob cannot see something no action has written yet -- so a GENERATED directory has to be
+# named here. Keyed by the prefix-relative destination the directory lands at.
+EXTRA_DIRS = {
+    # Security's trust store, built from the 159 .crt files and evroot.config by
+    # buck-src/openssl_certificates/scripts/generate-ca-bundle.py.
+    "libexec/darling/System/Library/Security/Certificates.bundle":
+        "//buck-src:certificates_bundle",
+}
+
 # Destinations deliberately left out of the prefix, with the reason. Counted apart from
 # UNMAPPED so "what is missing" stays a number that can reach zero.
 OUT_OF_SCOPE = {
     "libexec/darling/usr/lib/libstdc++.6.dylib":
         "libstdc++ is not ported (scripts/buck-coverage.py OUT_OF_SCOPE: GCC 4.2.1's "
         "vendored headers do not compile against this SDK), and nothing links it",
+    # Two links the REFERENCE build leaves dangling, so the port has nothing to point them
+    # at. buck-src/file_cmds/CMakeLists.txt:96 says
+    # InstallSymlink(zdiff libexec/darling/usr/bin/zcmp), but zdiff installs to
+    # libexec/darling/BIN (line 76), and a link value with no ../.. resolves next to the
+    # link -- in usr/bin, where no zdiff exists. Line 97 is worse: InstallSymlink(zless ...)
+    # names a file no install() in the tree mentions at all. Two lines above them,
+    # InstallSymlink(../sbin/chown libexec/darling/usr/bin/chgrp) shows the spelling that
+    # does cross directories, so this is a slip rather than a convention. Reproducing a
+    # broken link is not worth failing the prefix rule's consistency check over, and fixing
+    # it belongs upstream, not in a port whose whole discipline is matching the reference.
+    "libexec/darling/usr/bin/zcmp":
+        "the reference links it to zdiff, which installs to libexec/darling/bin rather "
+        "than the usr/bin the link resolves in (file_cmds/CMakeLists.txt:96)",
+    "libexec/darling/usr/bin/zmore":
+        "the reference links it to zless, which no install() in the tree provides "
+        "(file_cmds/CMakeLists.txt:97)",
 }
 
 
@@ -238,6 +265,24 @@ def binary_index() -> dict:
     return index
 
 
+# The tables target_for searches, built once per run.
+#
+# gen.final_registry() and gen.archive_registry() each WALK THE WHOLE REPO and re-read every
+# BUCK file, and target_for called both for EVERY install entry -- so a run did that walk
+# twice over for each of ~2,000 entries. Eight minutes, all of it recomputing an answer that
+# cannot change while the script runs. Long enough that the script read as hung rather than
+# slow, and long enough to discourage regenerating, which is how a generated file drifts
+# from the reference it is supposed to be derived from.
+_REGISTRIES: list = []
+
+
+def registries(gen, binaries: dict) -> list:
+    if not _REGISTRIES:
+        _REGISTRIES.extend(
+            [gen.final_registry(), gen.archive_registry(), binaries, GENERATED])
+    return _REGISTRIES
+
+
 def target_for(path: str, gen, binaries: dict) -> str | None:
     """The buck2 target that builds this artifact, by output basename.
 
@@ -246,7 +291,7 @@ def target_for(path: str, gen, binaries: dict) -> str | None:
     port's registries use.
     """
     base = os.path.basename(path)
-    for table in (gen.final_registry(), gen.archive_registry(), binaries, GENERATED):
+    for table in registries(gen, binaries):
         if base in table:
             return table[base]
     # cmake's POST_BUILD lipo renames the linker's output, and the port builds the linker's:
@@ -398,10 +443,30 @@ def write_block(pkg: str, blocks: list[str], kind: str = "prefix dirs",
                       flags=re.S)
     else:
         text = text.rstrip("\n") + ("\n\n" if text.strip() else "") + body
-    if load not in text:
-        text = load + "\n" + text
+    text = ensure_load(text, load)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     open(path, "w").write(text)
+
+
+def ensure_load(text: str, load: str) -> str:
+    """Make sure `load` is satisfied, without duplicating an existing load of that module.
+
+    A plain `if load not in text` compares the WHOLE line, so a BUCK file that already loads
+    the module and hand-adds a symbol to it -- buck-src/BUCK loads prefix_gen_dir next to
+    prefix_dir -- no longer matches, and a second load of the same module gets prepended.
+    Buck2 rejects that outright (`prefix_dir` would be defined twice), and it would happen
+    the next time anyone regenerated, not now, which is the worst time to find out.
+    """
+    module, symbols = re.match(r'load\("([^"]+)"(.*)\)', load).groups()
+    have = re.search(r'^load\("' + re.escape(module) + r'"([^)]*)\)$', text, re.M)
+    if not have:
+        return load + "\n" + text
+    missing = [s for s in re.findall(r'"([^"]+)"', symbols)
+               if f'"{s}"' not in have.group(1)]
+    if not missing:
+        return text
+    add = "".join(f', "{s}"' for s in missing)
+    return text[:have.end() - 1] + add + text[have.end() - 1:]
 
 
 def main(argv: list[str]) -> int:
@@ -495,15 +560,18 @@ def main(argv: list[str]) -> int:
                 else:
                     unmapped.append((full, "build output with no target"))
             elif kind == "DIRECTORY":
+                # A trailing slash means the CONTENTS go to the destination; without one the
+                # directory itself does, under its own name.
+                where = dest if src.endswith("/") else f"{dest}/{os.path.basename(src)}"
+                if where in EXTRA_DIRS:
+                    dirs[where] = EXTRA_DIRS[where]
+                    continue
                 rel = source_rel(src)
                 info = dir_target(rel, excludes) if rel else None
                 if info is None:
                     unmapped.append((dest, f"install(DIRECTORY) of {src[-50:]}, not a pin path"))
                     continue
                 label, pkg, block = info
-                # A trailing slash means the CONTENTS go to the destination; without one the
-                # directory itself does, under its own name.
-                where = dest if src.endswith("/") else f"{dest}/{os.path.basename(rel)}"
                 dirs[where] = label
                 blocks.setdefault(pkg, [])
                 if block not in blocks[pkg]:

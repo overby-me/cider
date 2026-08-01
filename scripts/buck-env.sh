@@ -52,7 +52,15 @@ command -v watchman >/dev/null 2>&1 || {
 unset _b _w
 
 # Sanity: name what is missing rather than letting an action fail obscurely.
-for _t in clang bison flex python3 ar buck2 watchman; do
+#
+# rustc and bindgen are on this list because the direnv cache goes STALE: it records the
+# buildInputs of the shell as it was when direnv last evaluated the flake, so a tool added to
+# the dev shell afterwards is simply absent, and the fallback to `nix develop` never fires
+# because there IS a cache. The failure then arrives from buck2 as
+# "exec: rustc: not found" on an action, several minutes into a build, which reads like a
+# toolchain bug rather than a stale environment. If these warn, run the command under
+# `nix develop --command bash -c '...'` (or re-enter the direnv shell to refresh the cache).
+for _t in clang bison flex python3 ar buck2 watchman rustc bindgen; do
 	command -v "$_t" >/dev/null 2>&1 || echo "buck-env: WARNING: $_t not on PATH" >&2
 done
 unset _t

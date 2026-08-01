@@ -716,6 +716,7 @@ prefix_tree(
         "libexec/darling": "//buck-src/zsh:prefix_gen_install_this",
         "libexec/darling/Library": "//buck-src/files:prefix_Library",
         "libexec/darling/System": "//buck-src/files:prefix_System",
+        "libexec/darling/System/Library/Security/Certificates.bundle": "//buck-src:certificates_bundle",
         "libexec/darling/System/Library/User Template": "//buck-src/usertemplate:prefix_Non_localized",
         "libexec/darling/private": "//buck-src/files:prefix_private",
         "libexec/darling/private/etc/pam.d": "//buck-src/openpam:prefix_pam_d",

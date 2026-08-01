@@ -48,18 +48,41 @@ security/darling/include/macOS is on mig's include path for its
 subdir that does not exist (every header there is generated), so it is held back again --
 one entry, and its framework is held back anyway.
 
-The remaining 18 are 15 held-back targets, the Certificates.bundle install(DIRECTORY)
-(generate-ca-bundle.py writes a tree, so it needs a rule that can produce one -- the
-contents are statically known, so declare_output(dir = True) plus project() should do it),
-and the zcmp/zmore links whose zdiff/zless are still not installed.
+Then the Certificates.bundle and the two z-links, which took UNMAPPED to 15.
 
-Two things worth knowing before touching this again. buck-port.py's framework resolver has
+The bundle is the only install(DIRECTORY) whose source is a BUILD output:
+generate-ca-bundle.py reads the 159 certs and evroot.config and writes a tree of DER tables
+and plists. `prefix_dir` cannot express that, because it globs and a glob cannot see
+something no action has written yet, so `prefix_gen_dir` (buck/rules/install.bzl) runs the
+generator into a `declare_output(dir = True)` and `project()`s the ten files it writes into
+a PrefixDirInfo. The contents are DECLARED rather than discovered -- a prefix_tree needs its
+path -> artifact mapping at analysis time -- which also makes the rule assert what the
+script produces instead of quietly shipping a bundle with a hole in it. EXTRA_DIRS in the
+generator points the destination at the hand-written target, the same way EXTRA already does
+for the three Rust binaries no manifest mentions.
+
+zcmp and zmore are OUT_OF_SCOPE, not missing: the REFERENCE leaves both links dangling.
+file_cmds/CMakeLists.txt:96 links usr/bin/zcmp to `zdiff`, but zdiff installs to
+libexec/darling/**bin**, and a value with no `../..` resolves next to the link; line 97 links
+usr/bin/zmore to `zless`, which no install() in the tree provides. Two lines above them,
+`InstallSymlink(../sbin/chown libexec/darling/usr/bin/chgrp)` shows the spelling that does
+cross directories, so it is a slip, and fixing it belongs upstream.
+
+The remaining 15 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
+plockstat, usdtheadergen), securityd and secd, SecurityTokend with its xtrace stub,
+launchservicesd, hdiutil, ioclasscount, zlog, zprint and darling-coredump.
+
+Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
 sources can still fail once they arrive, because the generated header drags in frameworks
 the original sources never named (kextmanager.h -> Security/Authorization.h ->
-CoreFoundation). And holdback.py matches markers as WHOLE LINES, so a target with both a
+CoreFoundation). The holdback markers match as WHOLE LINES, so a target with both a
 "<name>" and a "<name> dylibs" block needs both spelled out -- removing one leaves the
-other referencing a target that no longer exists.
+other referencing a target that no longer exists. And gen-install-from-manifests.py used to
+take EIGHT MINUTES a run because target_for called gen.final_registry() and
+gen.archive_registry() per entry, and each of those WALKS THE WHOLE REPO re-reading every
+BUCK file; they are built once now and it takes 1.6 seconds. If another generator in
+scripts/ feels hung, look for the same shape before assuming it is the ninja parse.
 
 ## Status (2026-07)
 

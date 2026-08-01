@@ -228,3 +228,62 @@ prefix_dir = rule(
         "strip": attrs.string(default = ""),
     },
 )
+
+# The same, for a directory the build GENERATES rather than one the repo ships.
+#
+# install(DIRECTORY) does not care where its source came from, but buck2 does: prefix_dir
+# globs, and a glob cannot see something no action has written yet. Security's
+# Certificates.bundle is the case -- generate-ca-bundle.py reads 159 .crt files plus eight
+# plists and writes a bundle of DER tables and property lists -- so the tree arrives as one
+# directory artifact and the paths inside it are named.
+#
+# `contents` is DECLARED rather than discovered because a prefix_tree needs its
+# path -> artifact mapping at analysis time, while what an action wrote is only knowable
+# after it has run. Declaring it also turns the rule into an assertion about the generator:
+# if the script stops writing one of these, the build fails here, instead of quietly
+# shipping a bundle with a hole in it that only surfaces when Security tries to verify a
+# certificate chain.
+def _prefix_gen_dir_impl(ctx):
+    out = ctx.actions.declare_output(ctx.label.name + "__gen", dir = True)
+
+    # The generator takes its output directory as argv, cmake-style, and creates it. Its
+    # inputs are reached through its own location on disk (path.realpath(__file__) and
+    # siblings), which buck2 cannot see, so they are declared hidden: nothing on the command
+    # line names them, but changing one still rebuilds the bundle.
+    cmd = cmd_args([ctx.attrs.interpreter, ctx.attrs.script, out.as_output()])
+    cmd.add(ctx.attrs.args)
+    cmd.add(cmd_args(hidden = ctx.attrs.srcs))
+    ctx.actions.run(cmd, category = "prefix_gen_dir", identifier = ctx.label.name)
+
+    mapping = {}
+    for rel in ctx.attrs.contents:
+        key = rel
+        if ctx.attrs.strip:
+            if not key.startswith(ctx.attrs.strip):
+                fail("prefix_gen_dir: %s is not under strip prefix %s" % (rel, ctx.attrs.strip))
+            key = key[len(ctx.attrs.strip):].lstrip("/")
+        mapping[key] = out.project(rel)
+
+    return [
+        DefaultInfo(default_output = out),
+        PrefixDirInfo(files = mapping),
+    ]
+
+prefix_gen_dir = rule(
+    impl = _prefix_gen_dir_impl,
+    attrs = {
+        # Trailing arguments after the output directory.
+        "args": attrs.list(attrs.string(), default = []),
+        # Every file the generator writes, relative to the output directory.
+        "contents": attrs.list(attrs.string()),
+        "interpreter": attrs.string(default = "python3"),
+        "script": attrs.source(),
+        # Inputs the script reads without being told where they are.
+        "srcs": attrs.list(attrs.source(), default = []),
+        # Prefix removed from each entry, so the tree is rooted where the install
+        # destination expects. install(DIRECTORY .../Certificates.bundle DESTINATION x)
+        # puts the bundle at x/Certificates.bundle, so the tree mapped in there must start
+        # INSIDE the bundle.
+        "strip": attrs.string(default = ""),
+    },
+)

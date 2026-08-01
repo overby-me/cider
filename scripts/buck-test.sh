@@ -588,6 +588,20 @@ done
 	ok "bin/sh is the same artifact as bin/bash" || bad "bin/sh does not point at bash"
 file -bL "$prefix/libexec/darling/bin/bash" | grep -q "Mach-O 64-bit x86_64 executable" &&
 	ok "prefix bash is a Mach-O x86_64 executable" || bad "prefix bash is not Mach-O x86_64"
+# The one install(DIRECTORY) whose source is a build output rather than a repo path, so the
+# only one that needs a prefix_gen_dir. Both halves matter: the DER tables are what Security
+# actually parses, and EVRoots.plist is derived from evroot.config rather than copied, so an
+# empty one would mean the generator ran but found no certificates.
+bundle="$prefix/libexec/darling/System/Library/Security/Certificates.bundle"
+n=$(find "$bundle/" -type f 2>/dev/null | wc -l)
+[ "${n:-0}" -eq 10 ] && ok "Certificates.bundle has its 10 files" ||
+	bad "Certificates.bundle has ${n:-0} files, expected 10"
+[ -s "$bundle/Contents/Resources/certsTable.data" ] &&
+	ok "Certificates.bundle certsTable.data is non-empty" ||
+	bad "Certificates.bundle certsTable.data is missing or empty"
+grep -q "<data>" "$bundle/Contents/Resources/EVRoots.plist" 2>/dev/null &&
+	ok "Certificates.bundle EVRoots.plist names EV roots" ||
+	bad "Certificates.bundle EVRoots.plist has no roots"
 
 say ""
 say "$pass passed, $fail failed"
