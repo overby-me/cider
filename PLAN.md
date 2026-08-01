@@ -96,9 +96,33 @@ a slice of its exported surface relative to the reference, and zlog is simply th
 target to notice. Fixing it changes the exports of the library the whole boot runs on, so it
 deserves its own change with the full check suite behind it.
 
-The remaining 13 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
+darling-coredump then took UNMAPPED to 12, and it is the interesting one because it is a
+HOST tool: a Linux program that reads Mach-O structures. The reference gives it
+-I src/startup/mldr/include, which turns out to be a hand-curated SHIM rather than an
+include path. Fourteen of its entries are symlinks into the SDK; the other four are REAL
+files, and they are real precisely so they can be EMPTY -- stubs for sys/_types.h,
+i386/_types.h, mach/i386/vm_param.h and mach/machine/thread_status.h, plus a single
+__darwin_natural_t typedef. Without them, including <mach-o/loader.h> from a host compile
+drags Darwin's type headers in on top of glibc's. So a host tool does not get "the SDK
+minus some of it"; it gets a deliberately tiny Darwin surface with the collisions stubbed
+out.
+
+That is now two roots: //src/startup:mldr_shim_headers (the four real files, named rather
+than globbed because a glob would also pick up the farm's symlinks, which dangle in a
+working copy) and //buck-src:mldr_include, whose header_map is built by INDEXING SDK_ROOT
+with the paths the farm exposes rather than by writing 47 values out again. A path that
+vanishes from the SDK then fails there with a missing key instead of silently resolving
+somewhere else. cc_binary already had link_cxx, which this target needs: main.cpp uses
+std::filesystem and the reference links it with CXX_EXECUTABLE_LINKER.
+
+The other four host tools (bsdln, elfdep, getuuid, wrapgen) are unblocked by the same
+understanding but are NOT install entries -- nothing in the prefix needs them, and the port
+does not run them -- so they stay low priority. elfdep and getuuid want
+src/buildtools/include plus cctools-port/cctools/include, bsdln links bsd, wrapgen links dl.
+
+The remaining 12 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
 plockstat, usdtheadergen), securityd and secd, SecurityTokend with its xtrace stub,
-launchservicesd, hdiutil, zlog and darling-coredump.
+launchservicesd, hdiutil and zlog.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated

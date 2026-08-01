@@ -6,6 +6,7 @@ prefix_tree(
     name = "darling_prefix",
     entries = {
         "bin/darling": "//linux/launcher:darling",
+        "bin/darling-coredump": "//src/hosttools:darling-coredump",
         "bin/darlingserver": "//linux/server:darlingserverd",
         "libexec/darling/Library/Developer/DarlingCLT/usr/bin/bitcode_strip": "//buck-src:bitcode_strip",
         "libexec/darling/Library/Developer/DarlingCLT/usr/bin/check_dylib": "//buck-src:check_dylib",

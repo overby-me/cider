@@ -41,6 +41,27 @@ cc_header_root(
 # END generated: sdk headers
 
 
+# The four SHIM headers inside mldr/include's symlink farm.
+#
+# Everything else in that farm is a symlink into the SDK, and //buck-src:mldr_include maps
+# those. These four are REAL files, and they are real precisely because they must NOT be
+# the SDK's versions: a host (Linux) compile that includes <mach-o/loader.h> would
+# otherwise pull in Darwin's sys/_types.h and i386/_types.h on top of glibc's. Three are
+# empty and the fourth defines one typedef, which is the entire Darwin type surface such a
+# compile is allowed. They are named rather than globbed because a glob here would also
+# pick up the farm's symlinks, which dangle in a working copy (they point at src/external
+# paths that only exist materialized under buck-src).
+cc_header_root(
+    name = "mldr_shim_headers",
+    header_map = {
+        "i386/_types.h": "mldr/include/i386/_types.h",
+        "mach/i386/vm_param.h": "mldr/include/mach/i386/vm_param.h",
+        "mach/machine/thread_status.h": "mldr/include/mach/machine/thread_status.h",
+        "sys/_types.h": "mldr/include/sys/_types.h",
+    },
+    visibility = ["PUBLIC"],
+)
+
 # The elfcalls ABI headers (elfcalls.h, threads.h, dthreads.h): the contract between the
 # loader and the guest's libsystem_kernel. Real files, unlike mldr/include's symlink farm,
 # so a glob is right here. Declared in this package because a header root can only glob

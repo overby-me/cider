@@ -196,6 +196,44 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 
+# The Darwin headers a HOST (Linux) compile is allowed to see.
+#
+# darling-coredump and the C mldr before it are Linux programs that still have to read
+# Mach-O structures, so they need <mach-o/loader.h> and the handful of Darwin types it
+# pulls in -- but they must NOT get the rest of the SDK, whose sys/_types.h and friends
+# would fight glibc's. src/startup/mldr/include is the reference's answer: a hand-curated
+# symlink farm holding exactly these paths, plus four SHIM headers that stub out what a
+# host compile must not see (//src/startup:mldr_shim_headers).
+#
+# The values are taken from SDK_ROOT rather than written out again, so this stays one
+# subset of one map: if a pin moves or splits, the SDK generator moves this with it, and a
+# path that vanishes from the SDK fails HERE with a missing key rather than silently
+# resolving to something else.
+_MLDR_HOST_HEADERS = [
+    "architecture/byte_order.h",
+    "i386/cpu_capabilities.h",
+    "libkern/OSByteOrder.h",
+    "libkern/_OSByteOrder.h",
+    "libkern/i386/OSByteOrder.h",
+    "libkern/i386/_OSByteOrder.h",
+    "mach/boolean.h",
+    "mach/i386/boolean.h",
+    "mach/i386/vm_types.h",
+    "mach/machine.h",
+    "mach/machine/boolean.h",
+    "mach/machine/vm_types.h",
+    "mach/vm_prot.h",
+    "sys/_types/_os_inline.h",
+    "sys/commpage.h",
+    # The farm links mach-o as a whole DIRECTORY, so the whole namespace comes with it.
+] + [_k for _k in SDK_ROOT if _k.startswith("mach-o/")]
+
+cc_header_root(
+    name = "mldr_include",
+    header_map = {_k: SDK_ROOT[_k] for _k in _MLDR_HOST_HEADERS},
+    visibility = ["PUBLIC"],
+)
+
 
 
 

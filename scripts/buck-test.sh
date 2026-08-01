@@ -551,14 +551,33 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # entry; it used to take eight minutes and now takes under two seconds.
 unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 	sed -n 's/^ *UNMAPPED: *//p')
-[ "${unmapped:-999}" -le 13 ] && ok "install UNMAPPED is $unmapped (ceiling 13)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 13"
+[ "${unmapped:-999}" -le 12 ] && ok "install UNMAPPED is $unmapped (ceiling 12)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 12"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do
 	[ -f "$dir/$a" ] && ok "staged $a" || bad "missing $a in DUCT_TAPE_LIB dir"
 done
+
+say "== darling-coredump (a HOST tool that reads Mach-O) =="
+# The first of the five host tools to land (task #8). It is worth its own check because
+# what it proves is the header slice, not the program: a Linux binary that includes
+# <mach-o/loader.h> without pulling in the SDK headers that would collide with glibc's.
+# Running it is the assertion that the slice produced a real program -- it prints usage and
+# exits 0 with no arguments.
+cdump=$(out_of //src/hosttools:darling-coredump)
+case "$(file -bL "$cdump")" in
+*"ELF 64-bit"*) ok "darling-coredump is a host ELF binary" ;;
+*) bad "darling-coredump is not a host ELF binary" ;;
+esac
+# Captured, not piped into `grep -q`: see the darlingserverd check below for why that
+# combination reports failure on a MATCH under `set -o pipefail`.
+usage=$("$cdump" 2>&1 || true)
+case "$usage" in
+"Usage:"*) ok "darling-coredump runs and prints usage" ;;
+*) bad "darling-coredump did not print usage" ;;
+esac
 
 say "== the Rust components (no cargo in the graph) =="
 # All three of Darling's Rust crates, built by rustc under buck2: the launcher, the guest
