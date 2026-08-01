@@ -223,9 +223,20 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
     * The container's mount namespace resolving the path differently. The host, the daemon's
       /proc/PID/root and the guest's /proc/PID/root all stat the SAME inode.
 
-  NEXT: start from MACH_SEND_INVALID_DEST in guest pid 4, not from the ECONNREFUSED. Which
-  port is it sending to, and why is that destination invalid this early in boot? The daemon
-  side of that exchange is the place to instrument. The guest also keeps its own RPC log at
+  ANSWERED: the destination is **MACH_PORT_NULL**. Instrumenting all three INVALID_DEST
+  exits of ipc_kmsg_copyin_header gives exactly one event per boot:
+
+        copyin_header: INVALID_DEST (name not valid) dest=0x0 reply=0x403 dest_type=19
+
+  dest=0x0 with a perfectly good reply port (0x403) and dest_type 19 (COPY_SEND). The job is
+  not sending to a stale or dead port; it is sending to a port it never got. That makes this
+  a BOOTSTRAP PORT problem, not an IPC one: a launchd job whose bootstrap_port is null fails
+  its first service lookup and exits, which is the exit(1) launchd sees.
+
+  TASK_BOOTSTRAP_PORT get and set are both implemented in ipc_tt.c against task->itk_bootstrap,
+  so the mechanism exists. NEXT: instrument task_set_special_port / task_get_special_port for
+  TASK_BOOTSTRAP_PORT and find out whether itk_bootstrap is ever SET for the job -- launchd is
+  the bootstrap server, so it should be handing its own port to each child it spawns. The guest also keeps its own RPC log at
   /tmp/dserver-client-rpc.log -- INSIDE the container's mount namespace, so it is not visible
   at that path on the host, which is why it reads as empty there.
 
