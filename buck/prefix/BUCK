@@ -31,6 +31,7 @@ prefix_tree(
         "libexec/darling/Library/Developer/DarlingCLT/usr/bin/usdtheadergen": "//buck-src:usdtheadergen",
         "libexec/darling/Library/Developer/DarlingCLT/usr/bin/vtool": "//buck-src:vtool",
         "libexec/darling/Library/Developer/DarlingCLT/usr/bin/xcrun": "//src/clt:xcrun_clt",
+        "libexec/darling/System/Library/CoreServices/launchservicesd": "//darwin/frameworks:launchservicesd",
         "libexec/darling/System/Library/Frameworks/Accounts.framework/Versions/A/Accounts": "//darwin/frameworks:Accounts_dylib",
         "libexec/darling/System/Library/Frameworks/CFNetwork.framework/Versions/A/CFNetwork": "//buck-src:CFNetwork_final",
         "libexec/darling/System/Library/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory": "//darwin/frameworks:CFOpenDirectory_dylib",

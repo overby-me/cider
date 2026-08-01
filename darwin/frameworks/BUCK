@@ -342,27 +342,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs CoreServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   FSEvents
-#   LaunchServices
-#   CarbonCore
-#   AE
-#   DictionaryServices
-#   Metadata
-#   SearchKit
-#   SharedFileList
-#   OSServices
-# TODO the final pass REEXPORTS 9 more dylibs whose final
-# pass is not ported yet; without them its symbol surface is incomplete:
-#   FSEvents
-#   LaunchServices
-#   AE
-#   CarbonCore
-#   DictionaryServices
-#   Metadata
-#   SearchKit
-#   SharedFileList
-#   OSServices
 
 darwin_dylib(
     name = "CoreServices_dylib",
@@ -378,14 +357,25 @@ darwin_dylib(
         "//buck-src:system_final",
     ],
     reexport = [
+        "//darwin/frameworks:FSEvents_dylib",
+        "//darwin/frameworks:LaunchServices_dylib",
         "//buck-src:CFNetwork_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/frameworks:AE_dylib",
+        "//darwin/frameworks:CarbonCore_dylib",
+        "//darwin/frameworks:DictionaryServices_dylib",
+        "//darwin/frameworks:Metadata_dylib",
+        "//darwin/frameworks:SearchKit_dylib",
+        "//darwin/frameworks:SharedFileList_dylib",
+        "//darwin/frameworks:OSServices_dylib",
     ],
     link_flag_files = {
         "-Wl,-reexported_symbols_list": "CoreServices/reexport.exp",
     },
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = [
+        "//darwin:sdk_env",
+    ],
     visibility = ["PUBLIC"],
 )
 # END generated: CoreServices dylibs
@@ -2162,3 +2152,34 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: fseventsd binary
+
+# BEGIN generated: launchservicesd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries launchservicesd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "launchservicesd",
+    objs = [
+        # launchservicesd
+        ":launchservicesd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:z_dylib",
+        "//buck-src:sqlite3_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:CoreServices_dylib",
+        "//buck-src:FMDB_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchservicesd binary

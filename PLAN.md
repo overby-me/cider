@@ -220,9 +220,24 @@ on. Both cases had the same cause, an archive whose every source is generated an
 generated sources were never wired. A survey of the 126 archives found no legitimate empty
 one, so the guard costs nothing.
 
-The remaining 2 are "no target builds it": launchservicesd and hdiutil. NOTE that UNMAPPED
-counts install entries whose TARGET EXISTS, not ones that build, so a target that does not
-build must have its block REMOVED, not left in place.
+launchservicesd took UNMAPPED to 1, and what blocked it was not launchservicesd. Its
+undefined symbols were FSEventStreamCreate and the kUTType* constants, which live in
+CoreServices SUB-FRAMEWORKS, and the reference links only the CoreServices umbrella because
+that umbrella reexports all nine of them (FSEvents, LaunchServices, AE, CarbonCore,
+DictionaryServices, Metadata, SearchKit, SharedFileList, OSServices) alongside CFNetwork and
+CoreFoundation. This port's CoreServices reexported TWO. reexports_of() resolves each
+-Wl,-reexport_library path through the final registry and drops what it cannot find, so the
+nine were silently lost when CoreServices was generated BEFORE the sub-framework dylibs were
+ported, and nothing has regenerated it since. Regenerating restored all eleven.
+
+That is a general hazard, not a one-off: a generated block is a SNAPSHOT of what the
+registry knew at the time, so a target generated early can be permanently poorer than the
+reference without anything noticing. Anything that resolves through a registry (reexports,
+siblings, upward links) has the same exposure.
+
+The remaining 1 is hdiutil. NOTE that UNMAPPED counts install entries whose TARGET EXISTS,
+not ones that build, so a target that does not build must have its block REMOVED, not left
+in place.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -774,11 +789,13 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
-   launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z) and
-   **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
-   supplies it before assuming this is portable). These are the last two cli install
-   entries.
+1. **hdiutil**, the LAST cli install entry, and it is blocked on **wrapgen**. The
+   darling-dmg CMakeLists does `wrap_elf(fuse libfuse.so)`: fuse is a HOST library, so the
+   build generates a Mach-O stub dylib that forwards to the host's libfuse.so through
+   libelfloader, and wrapgen (src/libelfloader/wrapgen, one line, links dl) is the tool
+   that writes it. So the host tool that this queue had filed as "not needed by the port"
+   is in fact the only thing standing between the port and a complete cli component. Port
+   wrapgen, add a wrap_elf rule, then hdiutil.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
@@ -834,12 +851,18 @@ has been true six times running, each time a check freshly written.
 - **Known flakes**, re-run before believing a failure: buck-bash-check.sh fails roughly 1 in
   5 with a core dump (shared SIGFPE); buck-smoke-check.sh failed once at 11/31 then passed
   3/3.
-- **Kill leftover containers BEFORE a check run**, especially after a guest-nix milestone,
-  which leaves its own prefix and daemon behind. All three runtime checks failed together
-  once from that, which reads like a regression: the first check failed on the stale state
-  and each one after inherited a dirtier machine. On a clean machine the same tree passed.
-  Three checks failing at once is a reason to run `pkill -9 -x
-  'mldr|darling|darlingserver|shellspawn'` and retry before believing any of it.
+- **All three runtime checks failing together is usually the MACHINE, not the tree**, and it
+  has had three separate causes so far, so work through them in order before believing a
+  regression. (1) Leftover containers, especially after a guest-nix milestone, which leaves
+  its own prefix and daemon behind: `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'`.
+  (2) A wrong ARTIFACT at a right path, which looks identical from outside: read the
+  `buck/prefix/BUCK` diff, which is how a dylib landing at usr/bin/login was found. (3) Load.
+  Running the checks immediately after a large rebuild fails them; the same scripts pass on
+  an idle machine minutes later. Boot the container by hand as the tiebreaker -- it takes
+  seconds and tells you at once whether the tree or the harness is at fault:
+  `DPREFIX=<fresh> DSERVER_LIBEXEC_PATH=$rt/libexec/darling
+  DSERVER_MLDR_PATH=$rt/libexec/darling/usr/libexec/darling/mldr DARLING_NO_LAUNCHD=1
+  $rt/bin/darling shell /bin/bash -c 'echo HELLO'`.
 - **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
   gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
   backtracking regex I first blamed.
