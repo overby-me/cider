@@ -172,48 +172,53 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   `overby` input.
 
 ### Multi-user / launchd / #47
-- **#47 launchd "deadlock" is an infinite SIGILL SPIN** [long-term] — root cause chain
-  established 2026-08-01 at three levels (strace, disassembly, source). It is NOT a deadlock
-  and NOT a portset/kqueue problem; both earlier diagnoses in this file were wrong and are
-  recorded below so they are not re-derived.
+- **#47 launchd: a guest RPC sendmsg gets ECONNREFUSED** [long-term] — narrowed 2026-08-01
+  from "launchd deadlocks" to a 15-line syscall reproduction. The SPIN half is FIXED
+  (patches/xnu/0008): a failed sigexc used to abort, and aborting needs the machinery that
+  just failed, so it looped on ud2 -- 56,676,502 SIGILLs at one address, ~50% CPU,
+  unkillable. It now exits with a diagnostic. launchd still does not work.
 
-  The chain, in order:
-    1. Some signal reaches launchd and `sigexc_handler()` runs (sigexc.c).
-    2. Its first act is `dserver_rpc_interrupt_enter()`, which returns **-111 = ECONNREFUSED**.
-       strace shows the failing call exactly: `sendmsg(513, {sun_path=".../.darlingserver.sock"},
-       iov="\16\0\0\0..." )` -- and 0x0e is RPC #14, interrupt_enter. The daemon receives
-       **zero** #14 calls, so the datagram never lands; the failure is entirely send-side.
-    3. sigexc_handler's error path is `__simple_abort()`, which is
-       `kill(getpid(), SIGABRT)` followed by `ud2` (offset 0x3f8fa in libsystem_kernel.dylib).
-    4. The SIGABRT does not terminate the process, because signal delivery is exactly what is
-       broken. Execution falls through to the `ud2`.
-    5. `ud2` raises SIGILL -> sigexc_handler -> interrupt_enter fails -> `__simple_abort()` ->
-       `ud2` -> SIGILL -> ... **56,676,502 SIGILLs at one address in a single run**, at ~50%
-       CPU. That is the "hang": the container never finishes because a process is spinning,
-       not because anything is waiting.
+  The whole failure, from `strace -ff -e trace=socket,connect,bind,close,fcntl,sendmsg,sendto`:
 
-  Two things to fix, and they are independent:
-    * **The root**: why does a guest RPC `sendmsg` to the daemon socket get ECONNREFUSED while
-      the daemon is alive, unconnected, and serving other calls on that same socket? (Measured
-      at hang time: `lsof` shows the socket healthy, `type=DGRAM (UNCONNECTED)`.) On Linux
-      that errno means the kernel saw the destination as dead at that instant. Start in the
-      guest RPC send path.
-    * **The robustness bug**: a failed sigexc must not become an unkillable 100%-CPU spin. Any
-      signal arriving while the RPC socket is unusable produces this loop, whatever the root
-      cause. `__simple_abort()` after a failed `interrupt_enter` cannot work, since aborting
-      needs the very machinery that just failed -- it should `_exit()` (or raw
-      `sys_exit_group`) instead of `kill()`+`ud2`.
+        socket(AF_UNIX, SOCK_DGRAM, 0)  = 10
+        bind(10, {AF_UNIX}, 2)          = 0        # autobind, NOT connected
+        fcntl(10, F_DUPFD_CLOEXEC, 512) = 513      # RPC fd parked high
+        close(10)
+        sendto (513, #1  checkin)            = 40  # ok
+        sendmsg(513, #35 thread_self_trap)         # ok
+        sendmsg(513, #8  set_thread_handles)       # ok
+        sendmsg(513, #31 pthread_canceled)         # ok
+        sendmsg(513, #36 mach_reply_port)          # ok
+        sendmsg(513, #38 mach_msg_overwrite)       # ok
+        sendmsg(513, #31 pthread_canceled)         # ok
+        sendmsg(513, #38 mach_msg_overwrite) = -1 ECONNREFUSED   <-- the bug
+        --- SIGABRT {si_code=SI_USER, si_pid=1} ---             # __simple_abort
+        sendmsg(513, #14 interrupt_enter)    = -1 ECONNREFUSED  # sigexc, same fault
+        +++ exited with 1 +++                                    # 0008 working
 
-  REFUTED, do not revisit: (a) "the dispatch kqueue watches an empty portset 0x707 while the
-  receive ports live in an unwatched 0xa03" -- there is ONE portset, it is not empty, and a
-  message on a member port DOES wake the kqchan waiter; (b) "18 messages are stranded on ports
-  with empty klists" -- posted == consumed, 18 for 18, ordinary reply-before-receive races.
+  So: the SECOND mach_msg_overwrite on a socket whose previous seven sends all succeeded,
+  same fd, same path, sender never connected. That is the entire open question.
 
-  Reproduce by dropping `DARLING_NO_LAUNCHD=1`. Tools that worked: `strace -ff -e trace=sendto,
-  sendmsg,recvmsg` to catch the errno with its payload; `/proc/PID/maps` to map si_addr to a
-  dylib + offset; `llvm-objdump -d --start-address=` to read the instruction. The daemon's own
-  log is `<prefix>/darlingserver.log`, NOT the launcher's stderr.
-  Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
+  ELIMINATED by measurement, do not re-investigate:
+    * The portset/kqueue linkage. One portset, not empty, and a message on a member port
+      DOES wake the kqchan waiter.
+    * "Stranded messages on ports with empty klists." Posted == consumed, 18 for 18.
+    * The daemon restarting or its socket being replaced. `Listener::bind` unlinks and binds
+      once; the socket inode is stable across a run and `lsof` shows it alive and
+      `type=DGRAM (UNCONNECTED)` at failure time.
+    * "Two daemons fighting over the path." The WORKING (DARLING_NO_LAUNCHD=1) run has
+      three darlingserver processes and the failing one has two, so the count is not it.
+
+  NEXT, and both are cheap: (a) the daemon is single-threaded -- check whether its socket
+  receive queue is full when the send is refused (net.unix.max_dgram_qlen is 512 here). `ss
+  -x` cannot see it from the host because unix sockets are netns-scoped and the daemon is in
+  the container's namespace; use `nsenter -t <daemon pid> -n ss -x`, or read
+  /proc/net/unix inside the namespace. (b) Confirm from the daemon side whether call #38 is
+  received the second time at all, by number, rather than inferring from behaviour.
+
+  Reproduce by dropping `DARLING_NO_LAUNCHD=1`. The daemon's own log is
+  `<prefix>/darlingserver.log`, NOT the launcher's stderr. Still bypassed by
+  `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
 - Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
   production-hardening, not on the critical path (single-user M1 sidesteps it).
 
