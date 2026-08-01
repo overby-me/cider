@@ -39,6 +39,7 @@ EXPORTS = {
     "proc_uuid_policy.tproj_proc_uuid_policy.1": "proc_uuid_policy.tproj/proc_uuid_policy.1",
     "purge.tproj_purge.8": "purge.tproj/purge.8",
     "pwd_mkdb.tproj_pwd_mkdb.8": "pwd_mkdb.tproj/pwd_mkdb.8",
+    "reboot.tproj_kextmanager.defs": "reboot.tproj/kextmanager.defs",
     "reboot.tproj_reboot.8": "reboot.tproj/reboot.8",
     "sa.tproj_sa.8": "sa.tproj/sa.8",
     "sc_usage.tproj_sc_usage.1": "sc_usage.tproj/sc_usage.1",

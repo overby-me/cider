@@ -39492,6 +39492,58 @@ cc_objects(
 )
 # END generated: kextmanager_mig_xtrace_mig
 
+# securityd's own MIG protocol. Its xtrace stub is C while its client and server are C++,
+# which is why the suffixes are spelled out rather than defaulted.
+mig_gen(
+    name = "securitydmig_self",
+    defs = "security/securityd/mig/self.defs",
+    out_base = "security/securityd/mig",
+    user_suffix = "User.cpp",
+    header_suffix = ".h",
+    server_suffix = "Server.cpp",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "selfUser.cpp",
+    ],
+    xtrace_srcs = ["selfXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# reboot and shutdown ask kextd to unload kexts over this MIG protocol, and xtrace
+# loads the generated stub as a dylib of its own. mig writes no XtraceMig.c for this
+# definition -- the reference `touch`es an empty one -- which the runner already handles
+# by pre-creating the file, so the dylib links from an empty object exactly as it does
+# in the reference.
+mig_gen(
+    name = "rebootmig_kextmanager",
+    defs = "//buck-src/system_cmds:reboot.tproj_kextmanager.defs",
+    # The defs lives in reboot.tproj/, but reboot includes the generated header bare
+    # (#include "kextmanager.h"), so the subdirectory is stripped from the stem and the
+    # outputs are staged flat -- the same shape the reference produces in that directory.
+    out_base = "reboot.tproj",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "kextmanagerUser.c",
+    ],
+    xtrace_srcs = ["kextmanagerXtraceMig.c"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # BEGIN generated: kextmanager_xtrace_mig
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py kextmanager_xtrace_mig   -- review before committing.
@@ -39519,6 +39571,12 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//src/xtrace:xtrace_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:rebootmig_kextmanager[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39926,80 +39984,15 @@ cc_objects(
     deps = [
         ":self_xtrace_mig_inc_libcxxabi_include",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":self_xtrace_mig_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:securitydmig_self[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
 # END generated: self_xtrace_mig
-
-# BEGIN generated: tokend_xtrace_mig
-# GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tokend_xtrace_mig   -- review before committing.
-# cmake target: tokend_xtrace_mig  ->  src/external/SecurityTokend/libtokend_xtrace_mig.dylib
-# TODO these sources are GENERATED; wire a codegen target for each:
-#   src/external/SecurityTokend/mig/tokendXtraceMig.cpp
-
-# Sibling include dirs, staged as ONE tree with -I into each: headers here
-# reach each other with `#include "../<dir>/x.h"`, which only resolves if
-# the sibling is in the same staged tree.
-cc_header_root(
-    name = "tokend_xtrace_mig_inc_SecurityTokend",
-    headers = glob([
-        "SecurityTokend/mig/*.h",
-        "SecurityTokend/mig/**/*.h",
-        "SecurityTokend/mig/*.c",
-        "SecurityTokend/lib/*.h",
-        "SecurityTokend/lib/**/*.h",
-        "SecurityTokend/lib/*.c",
-    ]),
-    root = "SecurityTokend",
-    include_subdirs = [
-        "mig",
-        "lib",
-    ],
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "tokend_xtrace_mig_inc_libcxxabi_include",
-    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
-    root = "libcxxabi/include",
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "tokend_xtrace_mig_inc_security_darling_include_macOS",
-    headers = glob(["security/darling/include/macOS/**/*"]),
-    root = "security/darling/include/macOS",
-    visibility = ["PUBLIC"],
-)
-
-cc_objects(
-    name = "tokend_xtrace_mig_obj",
-    srcs = [
-    ],
-    compiler_flags = [
-        "-DPRIVATE",
-        "-D_LIBC_NO_FEATURE_VERIFICATION",
-        "-Dtokend_xtrace_mig_EXPORTS",
-        "-fPIC",
-        "-w",
-        "-iquote",
-        "/build/build/src/external/SecurityTokend/mig",
-        "-I",
-        "src/xtrace/include",
-        "-Wno-extern-initializer",
-    ],
-    toolchain = "toolchains//:darwin_cc",
-    deps = [
-        ":tokend_xtrace_mig_inc_libcxxabi_include",
-        "//darwin:sdk_env",
-        ":tokend_xtrace_mig_inc_SecurityTokend",
-        ":tokend_xtrace_mig_inc_security_darling_include_macOS",
-    ],
-    visibility = ["PUBLIC"],
-)
-# END generated: tokend_xtrace_mig
 
 # BEGIN generated: ucspNotify_xtrace_mig
 # GENERATED from the reference build.ninja by
@@ -48898,3 +48891,47 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: telnetd binary
+
+# BEGIN generated: kextmanager_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs kextmanager_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "kextmanager_xtrace_mig_dylib",
+    dylib_name = "libkextmanager_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # kextmanager_xtrace_mig
+        ":kextmanager_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: kextmanager_xtrace_mig dylibs
+
+# BEGIN generated: self_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs self_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "self_xtrace_mig_dylib",
+    dylib_name = "libself_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # self_xtrace_mig
+        ":self_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: self_xtrace_mig dylibs

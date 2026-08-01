@@ -1403,5 +1403,25 @@
   "powermanagement_xtrace_mig": [
     "//src/xtrace:xtrace_headers",
     "gen://buck-src:IOKit_mig_powermanagement[xtrace]"
+  ],
+  "kextmanager_xtrace_mig": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:rebootmig_kextmanager[xtrace]"
+  ],
+  "reboot": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "gen://buck-src:rebootmig_kextmanager"
+  ],
+  "shutdown": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "gen://buck-src:rebootmig_kextmanager"
+  ],
+  "self_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:securitydmig_self[xtrace]"
   ]
 }

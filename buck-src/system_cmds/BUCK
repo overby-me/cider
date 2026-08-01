@@ -2128,6 +2128,11 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    gen_srcs = [
+        "//buck-src:rebootmig_kextmanager",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2158,6 +2163,11 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+    ],
+    gen_srcs = [
+        "//buck-src:rebootmig_kextmanager",
     ],
     visibility = ["PUBLIC"],
 )
@@ -2482,3 +2492,55 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: chpass binary
+
+# BEGIN generated: reboot binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries reboot   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "reboot",
+    objs = [
+        # reboot
+        ":reboot_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: reboot binary
+
+# BEGIN generated: shutdown binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries shutdown   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "shutdown",
+    objs = [
+        # shutdown
+        ":shutdown_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shutdown binary
