@@ -233,10 +233,31 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   a BOOTSTRAP PORT problem, not an IPC one: a launchd job whose bootstrap_port is null fails
   its first service lookup and exits, which is the exit(1) launchd sees.
 
-  TASK_BOOTSTRAP_PORT get and set are both implemented in ipc_tt.c against task->itk_bootstrap,
-  so the mechanism exists. NEXT: instrument task_set_special_port / task_get_special_port for
-  TASK_BOOTSTRAP_PORT and find out whether itk_bootstrap is ever SET for the job -- launchd is
-  the bootstrap server, so it should be handing its own port to each child it spawns. The guest also keeps its own RPC log at
+  ANSWERED TOO. Instrumenting the TASK_BOOTSTRAP_PORT get and set in ipc_tt.c gives, in one
+  boot, four lines out of 352 (line numbers from <prefix>/darlingserver.log):
+
+        239  SET bootstrap: task=0x..4f0e80 old=(nil) new=0x..4e3e50      launchd installs it
+        271  SET bootstrap: task=0x..4f0e80 old=0x..4e3e50 new=(nil)      and CLEARS it again
+        293  GET bootstrap: task=0x..4e40e0 itk_bootstrap=(nil) -> (nil)  the JOB, another task
+        300  copyin_header: INVALID_DEST (name not valid) dest=0x0 reply=0x403
+
+  launchd's own task installs a bootstrap port and then immediately sets it back to NULL. The
+  job it spawns has itk_bootstrap = nil, asks for it, gets nothing, sends to MACH_PORT_NULL
+  and exits.
+
+  ipc_task_init DOES inherit the parent's bootstrap port ("inherit exception and bootstrap
+  ports", ipc_port_copy_send(parent->itk_bootstrap)), so a child forked while launchd HAD one
+  would get it. Two things to settle next, in this order:
+    1. Why the SET-to-NULL at 271 happens at all. First mechanism worth testing:
+       task_set_special_port CONSUMES the supplied send right, so a second set with a right
+       that was already consumed would arrive as IP_NULL. Instrument the port NAME the guest
+       passes and what it translates to.
+    2. Whether the job's task is created before 239 or after 271. Either way it misses the
+       window in which launchd has a bootstrap port, and that ordering is the actual defect.
+
+  Do NOT misread launchd's console banner: "launchd[1] has started up" followed by "Shutdown
+  logging is enabled" is its STARTUP message, and the second line is about log configuration,
+  not a shutdown. The guest also keeps its own RPC log at
   /tmp/dserver-client-rpc.log -- INSIDE the container's mount namespace, so it is not visible
   at that path on the host, which is why it reads as empty there.
 
