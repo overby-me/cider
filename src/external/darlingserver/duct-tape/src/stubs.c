@@ -169,8 +169,13 @@ int proc_get_effective_thread_policy(thread_t thread, int flavor) {
 		case TASK_POLICY_LATENCY_QOS:
 			return 0;
 		default:
+			// EXPERIMENT (task #47): was `return -1`. Every caller of this in XNU treats
+			// the result as a boolean flag (DARWIN_BG, PASSIVE_IO) or a small non-negative
+			// tier/QoS class (IO, QOS, THROUGH_QOS), and -1 is TRUTHY -- so every thread
+			// read as "background" and every tier came back nonsense. 0 is the neutral
+			// answer in all of those: not background, no throttling, unspecified QoS.
 			dtape_stub("unimplemented flavor");
-			return -1;
+			return 0;
 	}
 };
 

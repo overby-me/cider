@@ -307,7 +307,21 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
     * launchd replies to pid 4 and the post finds a real receiver (`receiver=0x..247b60`).
   So bootstrap messaging is not broken. After that exchange everything simply goes idle.
 
-  NEXT: the job was woken at that reply and then issued NO further RPC. Find out whether its
+  THIRD FIX LANDED: proc_get_effective_thread_policy's stub returned -1 for every flavor
+  except LATENCY_QOS, and -1 is TRUTHY. Every XNU caller reads that result either as a
+  boolean flag (DARWIN_BG, PASSIVE_IO) or as a small non-negative tier/QoS class (IO, QOS,
+  THROUGH_QOS), so every thread read as "background" and every throttle tier came back
+  nonsense. The real implementation exists in xnu/osfmk/kern/thread_policy.c but is NOT in
+  the duct-tape build, so the stub wins. Returning 0 (not background, no throttling, QoS
+  unspecified) is the neutral answer for all of them. Measured across three runs each:
+  mldr processes surviving at t=32s went from 2 to 3, consistently. The stub line was the
+  LAST line of every boot log, in five runs out of five.
+
+  Run-to-run VARIANCE is real and has corrupted single-run readings before: the -111 count
+  per run is 0 to 4, while the end state (process counts, daemon log length 445-467) is
+  deterministic. Measure across at least three runs before believing a difference.
+
+  NEXT: the job was woken at a reply and then issued NO further RPC. Find out whether its
   RPC reply was actually SENT after the microthread was woken, or whether the wake and the
   reply have come apart. That is a narrow question about the daemon's parked-microthread
   resume path, and it is the last unexplained step.
