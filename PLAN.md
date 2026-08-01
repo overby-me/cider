@@ -259,7 +259,24 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   silence; that was an artifact of filtering the trace on one timestamp prefix and missing the
   intermediate cycles. Read gaps, do not eyeball a filtered tail.
 
-  The ECONNREFUSED cascade is separately an artifact of TEARDOWN, not the defect. `strace -ff -tt` across every
+  The ECONNREFUSED cascade is HALF a teardown artifact, and the other half is the real event.
+  Sampling process counts every 2 seconds against the guest's own RPC log (with that log
+  DELETED first -- see below) shows a sharp partial collapse mid-run:
+
+        t=22s  daemons=2  mldr=4  rpclog=0
+        t=24s  daemons=1  mldr=2  rpclog=3
+
+  Two mldr processes and one darlingserver disappear together at ~23 seconds, and all three
+  -111 lines (mach_reply_port, mach_msg_overwrite, interrupt_enter) appear in that same
+  instant, with 66 seconds of timeout still to run. In the earlier timestamped run the
+  refusal coincided with the harness's own SIGTERM, which is what led to calling the whole
+  cascade an artifact; it is better stated as: something in the container dies at ~23s, and
+  ONE process's -111 triple is its death rattle. Exactly 3 lines per run, then silence.
+
+  TRAP, and it cost a wrong reading: /tmp/dserver-client-rpc.log is the HOST's file. The guest
+  and the host resolve it to the SAME inode, and it is opened O_APPEND, so it accumulates
+  across every run. Thirty-one lines of repeating -111 look like a live retry loop and are
+  actually ten runs' worth of three. Delete it before every run. `strace -ff -tt` across every
   thread settles it by timestamp:
 
         11:59:32.5   all activity stops, about one second into the boot
