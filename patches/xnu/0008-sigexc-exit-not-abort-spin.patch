@@ -1,0 +1,58 @@
+A failed sigexc must not become an unkillable 100%-CPU spin.
+
+sigexc_handler and sigrt_handler both begin with dserver_rpc_interrupt_enter(),
+and both call __simple_abort() when it fails. __simple_abort is
+kill(getpid(), SIGABRT) followed by a ud2, and neither half can work here: the
+SIGABRT re-enters the same handler, interrupt_enter fails again, and control
+falls through to the ud2, whose SIGILL re-enters the handler once more.
+
+Measured on a live hang: 56,676,502 SIGILLs at one address
+(libsystem_kernel.dylib+0x3f8fa, the ud2 in __simple_abort) in a single run, at
+~50% CPU, forever. That spin is what made task #47 present as a launchd
+"deadlock" -- nothing was waiting on anything, a process was simply burning a
+core and never finishing.
+
+Exit directly instead. It does not fix whatever made interrupt_enter fail (a
+guest RPC sendmsg returning ECONNREFUSED while the daemon is alive and serving
+other calls), but it turns that failure into a dead process with a diagnostic
+on stderr rather than an unkillable spin -- which is both debuggable and
+honest about what happened.
+
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+@@ -152,7 +152,16 @@
+ 
+ 	if (status != 0) {
+ 		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
+-		__simple_abort();
++		// NOT __simple_abort(). Aborting is kill(getpid(), SIGABRT) followed by a ud2,
++		// and both halves need the very machinery that just failed: the SIGABRT
++		// re-enters this handler, interrupt_enter fails again, and control reaches the
++		// ud2 -- whose SIGILL re-enters this handler once more. That loop is not
++		// theoretical. It was measured at 56,676,502 SIGILLs on one address in a single
++		// run, spinning at ~50% CPU forever, and it is what made task #47 look like a
++		// launchd deadlock rather than the failed signal delivery it actually is.
++		// Leave the way a process can still leave when signal delivery is broken.
++		LINUX_SYSCALL(__NR_exit_group, 1);
++		__builtin_unreachable();
+ 	}
+ 
+ 	if (signum == SIGNAL_SIGEXC_SUSPEND) {
+@@ -273,7 +282,16 @@
+ 
+ 	if (status != 0) {
+ 		__simple_printf("*** dserver_rpc_interrupt_enter failed with code %d ***\n", status);
+-		__simple_abort();
++		// NOT __simple_abort(). Aborting is kill(getpid(), SIGABRT) followed by a ud2,
++		// and both halves need the very machinery that just failed: the SIGABRT
++		// re-enters this handler, interrupt_enter fails again, and control reaches the
++		// ud2 -- whose SIGILL re-enters this handler once more. That loop is not
++		// theoretical. It was measured at 56,676,502 SIGILLs on one address in a single
++		// run, spinning at ~50% CPU forever, and it is what made task #47 look like a
++		// launchd deadlock rather than the failed signal delivery it actually is.
++		// Leave the way a process can still leave when signal delivery is broken.
++		LINUX_SYSCALL(__NR_exit_group, 1);
++		__builtin_unreachable();
+ 	}
+ 
+ 	kern_printf("sigexc_handler(%d, %p, %p)\n", linux_signum, info, ctxt);
