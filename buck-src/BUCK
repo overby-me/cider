@@ -13113,6 +13113,8 @@ mig_gen(
     compile_srcs = [
         "ucspClient.cpp",
     ],
+    # libsecurityd_server archives the server end; libsecurityd_ucspc the client end.
+    server_srcs = ["ucspServer.cpp"],
     xtrace_srcs = ["ucspXtraceMig.c"],
     alias_links = {"securityd_client/ucsp.h": "../ucsp.h"},
     # ss_types.defs is #included by ucsp.defs, and mig resolves that through the C
@@ -13142,6 +13144,8 @@ mig_gen(
     compile_srcs = [
         "ucspNotifySender.cpp",
     ],
+    # Named Receiver rather than Server by this definition MIG_SERVER_SOURCE_SUFFIX.
+    server_srcs = ["ucspNotifyReceiver.cpp"],
     xtrace_srcs = ["ucspNotifyXtraceMig.c"],
     alias_links = {"securityd_client/ucspNotify.h": "../ucspNotify.h"},
     mig_sh = "//buck-src:mig.sh",
@@ -39960,6 +39964,9 @@ mig_gen(
     compile_srcs = [
         "selfUser.cpp",
     ],
+    # securityd is both ends of self.defs: the reference compiles selfUser.cpp and
+    # selfServer.cpp into the same binary.
+    server_srcs = ["selfServer.cpp"],
     xtrace_srcs = ["selfXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -44408,10 +44415,13 @@ cc_objects(
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
+        "//buck-src:securityd_client_mig_ucsp",
+        "//buck-src:securityd_client_mig_ucspnotify",
         ":securityd_exe_inc_security",
     ],
     gen_srcs = [
         "//buck-src:securitydmig_self",
+        "//buck-src:securitydmig_self[server]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -44451,6 +44461,8 @@ cc_objects(
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
+        "//buck-src:securityd_client_mig_ucsp",
+        "//buck-src:securityd_client_mig_ucspnotify",
         ":securityd_exe_inc_security",
     ],
     visibility = ["PUBLIC"],
@@ -50442,6 +50454,10 @@ cc_objects(
         "//darwin:sdk_env",
         ":securityd_server_inc_security",
     ],
+    gen_srcs = [
+        "//buck-src:securityd_client_mig_ucsp[server]",
+        "//buck-src:securityd_client_mig_ucspnotify[server]",
+    ],
     visibility = ["PUBLIC"],
 )
 # END generated: securityd_server
@@ -50609,3 +50625,60 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: tokend_xtrace_mig dylibs
+
+# BEGIN generated: securityd_exe binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries securityd_exe   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "securityd_exe",
+    exe_name = "securityd",
+    objs = [
+        # securityd_exe
+        ":securityd_exe_obj",
+        ":securityd_exe_obj2",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:sqlite3_dylib",
+        "//buck-src:bsm.0_dylib",
+        "//buck-src:xar_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:xml2_dylib",
+        "//buck-src:icucore_dylib",
+        "//buck-src/objc4:objc_final",
+        "//src/libDiagnosticMessagesClient:DiagnosticMessagesClient_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//darwin/private-frameworks:AppleFSCompression_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src:PCSC_dylib",
+        "//buck-src:Security_final",
+        "//buck-src:IOKit_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:securitydservice_client",
+        "//buck-src:security_codesigning",
+        "//buck-src:security_utilities",
+        "//buck-src:securityd_client",
+        "//buck-src:securityd_server",
+        "//buck-src:security_tokend_client",
+        "//buck-src:security_cdsa_utilities",
+        "//buck-src:security_cdsa_client",
+        "//buck-src:utilities",
+        "//buck-src:DER",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: securityd_exe binary

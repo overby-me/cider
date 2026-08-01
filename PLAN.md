@@ -180,10 +180,22 @@ both in compile_srcs gives each end the other's stub. mig_gen grew a `[server]` 
 alongside the existing `[xtrace]` one, which was already there for the same reason a level
 out.
 
-The remaining 4 are all "no target builds it": securityd, secd, launchservicesd and
-hdiutil. NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that
-build: securityd and secd are held back (their blocks removed) precisely so the number
-stays honest.
+securityd then landed, taking UNMAPPED to 3. It needed three things, each a different shape
+of the same problem, that a MIG protocol's generated output has to reach the right consumer:
+its own `<self.h>` (gen_srcs from securitydmig_self), the `securityd_client/` include
+directory (which the ucsp and ucspNotify mig targets already synthesize through
+`alias_links`, so they just had to be named as deps), and selfServer.cpp as well as
+selfUser.cpp, because securityd is both ends of self.defs.
+
+Underneath it, libsecurityd_server.a was EMPTY -- 8 bytes -- because its only two sources,
+ucspServer.cpp and ucspNotifyReceiver.cpp, are MIG output that nothing had wired. Nothing
+complained: ar writes a valid empty archive and buck2 called the target built. The failure
+came out at securityd's link as `ld: file too small (length=8)`, naming an archive that
+looked unrelated. libsecurityd_ucspc.a still has the same hole; see the queue.
+
+The remaining 3 are all "no target builds it": secd, launchservicesd and hdiutil. NOTE that
+UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a target that
+does not build must have its block REMOVED, not left in place. secd's is.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -735,17 +747,25 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **securityd and secd**, the last two Security install entries. Their four archives now
-   build (security_tokend_client, securityd_server, securityd_ucspc,
-   securitydservice_client), and SecurityTokend plus libtokend_xtrace_mig.dylib have
-   landed. securityd_exe gets past its generated `<self.h>` once securitydmig_self is in
-   its gen_srcs, and then stops on the NEXT generated include dir: the reference puts a
-   `securityd_client/` directory on the include path whose every header is MIG output,
-   exactly the shape SecurityTokend/mig had. buck-port.py reports that as "no framework
-   root for securityd_client" because its resolver only knows how to add FRAMEWORK roots.
-   secd fails differently, on undefined symbols, undiagnosed. Both want the treatment
-   SecurityTokend just got: a mig_gen for the definition, wired through extra-deps.json as
-   a `gen://` entry, with the include dir coming from the generated tree.
+1. **secd**, the last Security install entry, and **libsecurityd_ucspc.a, which is EMPTY**.
+   securityd has landed. secd fails on undefined symbols, undiagnosed.
+
+   The empty archive is the more interesting one and should go first, because an empty
+   archive is silent: `ar` writes a valid 8-byte file, buck2 calls the target built, and
+   the failure surfaces at some distant link as
+   `ld: file too small (length=8) file 'liblibsecurityd_ucspc.a.a'`, naming a target the
+   person did not touch. It happens when an archive's every source is GENERATED and the
+   generated sources were never wired: `securityd_server` had the same shape and is fixed.
+   securityd_ucspc's single source is `mig/ucspClientC.c`, which cmake makes with
+   `create_symlink("ucspClient.cpp", ...)` -- the same translation unit under a C name, so
+   the reference compiles it as C rather than C++. mig_gen has `alias_links` for exactly
+   that, but the alias then needs exporting to this one consumer without handing it to
+   everyone that already takes ucspClient.cpp.
+
+   A survey found exactly ONE empty archive among the 126 built, so a hard failure in
+   cc_static_lib on a zero-member archive is safe to add and would have caught both cases
+   at the source instead of at a link. Add it in the same change that fixes ucspc, not
+   before, or the suite goes red on a known-broken target.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
@@ -801,6 +821,12 @@ has been true six times running, each time a check freshly written.
 - **Known flakes**, re-run before believing a failure: buck-bash-check.sh fails roughly 1 in
   5 with a core dump (shared SIGFPE); buck-smoke-check.sh failed once at 11/31 then passed
   3/3.
+- **Kill leftover containers BEFORE a check run**, especially after a guest-nix milestone,
+  which leaves its own prefix and daemon behind. All three runtime checks failed together
+  once from that, which reads like a regression: the first check failed on the stale state
+  and each one after inherited a dirtier machine. On a clean machine the same tree passed.
+  Three checks failing at once is a reason to run `pkill -9 -x
+  'mldr|darling|darlingserver|shellspawn'` and retry before believing any of it.
 - **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
   gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
   backtracking regex I first blamed.

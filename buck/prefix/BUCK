@@ -710,6 +710,7 @@ prefix_tree(
         "libexec/darling/usr/sbin/rarpd": "//buck-src:rarpd",
         "libexec/darling/usr/sbin/rtadvd": "//buck-src:rtadvd",
         "libexec/darling/usr/sbin/sa": "//buck-src/system_cmds:sa",
+        "libexec/darling/usr/sbin/securityd": "//buck-src:securityd_exe",
         "libexec/darling/usr/sbin/softwareupdate": "//src/tools:softwareupdate",
         "libexec/darling/usr/sbin/spctl": "//src/tools:spctl",
         "libexec/darling/usr/sbin/sshd": "//buck-src:sshd",

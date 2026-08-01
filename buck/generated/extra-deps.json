@@ -1312,7 +1312,10 @@
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "gen://buck-src:securitydmig_self"
+    "gen://buck-src:securitydmig_self",
+    "gen://buck-src:securitydmig_self[server]",
+    "//buck-src:securityd_client_mig_ucsp",
+    "//buck-src:securityd_client_mig_ucspnotify"
   ],
   "securitytool_macos": [
     "//buck-src:fw_CFNetwork",
@@ -1459,5 +1462,9 @@
     "//buck-src:fw_PCSC",
     "//buck-src:fwp_SecurityTokend",
     "gen://buck-src:securitytokendmig_tokend[xtrace]"
+  ],
+  "securityd_server": [
+    "gen://buck-src:securityd_client_mig_ucsp[server]",
+    "gen://buck-src:securityd_client_mig_ucspnotify[server]"
   ]
 }
