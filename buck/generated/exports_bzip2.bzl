@@ -5,5 +5,9 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "bzip2_bzdiff.1": "bzip2/bzdiff.1",
+    "bzip2_bzgrep.1": "bzip2/bzgrep.1",
+    "bzip2_bzip2.1": "bzip2/bzip2.1",
     "bzip2_bzlib.h": "bzip2/bzlib.h",
+    "bzip2_bzmore.1": "bzip2/bzmore.1",
 }

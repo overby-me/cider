@@ -1,0 +1,19 @@
+load("//buck/rules:files.bzl", "export_file")
+
+# The diskutil stub, a shell script the reference installs with
+# install(FILES ... PERMISSIONS ...). This package exists so the file can be named;
+# scripts/buck-exports.py fills in the export_file rule.
+#
+# tests/darling-smoke.nix stage 6 drives it.
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "diskutil",
+    src = "diskutil",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

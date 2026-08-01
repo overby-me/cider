@@ -5,6 +5,15 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "doc_man_man1_dyld.1": "doc/man/man1/dyld.1",
+    "doc_man_man1_dyld_usage.1": "doc/man/man1/dyld_usage.1",
+    "doc_man_man3_dladdr.3": "doc/man/man3/dladdr.3",
+    "doc_man_man3_dlclose.3": "doc/man/man3/dlclose.3",
+    "doc_man_man3_dlerror.3": "doc/man/man3/dlerror.3",
+    "doc_man_man3_dlopen.3": "doc/man/man3/dlopen.3",
+    "doc_man_man3_dlopen_preflight.3": "doc/man/man3/dlopen_preflight.3",
+    "doc_man_man3_dlsym.3": "doc/man/man3/dlsym.3",
+    "doc_man_man3_dyld.3": "doc/man/man3/dyld.3",
     "include_dlfcn.h": "include/dlfcn.h",
     "include_mach-o_dyld-interposing.h": "include/mach-o/dyld-interposing.h",
     "include_mach-o_dyld.h": "include/mach-o/dyld.h",

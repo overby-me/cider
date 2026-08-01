@@ -2,6 +2,7 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects", "cc_sta
 load("//buck/rules:codegen.bzl", "bison_gen", "configure_file", "flex_gen", "mig_gen", "preprocess_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
 
 load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
@@ -48297,3 +48298,148 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: trustd binary
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_vim_runtime_autoload",
+    srcs = glob(
+        ["vim/runtime/autoload/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/autoload",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_colors",
+    srcs = glob(
+        ["vim/runtime/colors/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/colors",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_compiler",
+    srcs = glob(
+        ["vim/runtime/compiler/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/compiler",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_doc",
+    srcs = glob(
+        ["vim/runtime/doc/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/doc",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_ftplugin",
+    srcs = glob(
+        ["vim/runtime/ftplugin/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/ftplugin",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_indent",
+    srcs = glob(
+        ["vim/runtime/indent/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/indent",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_keymap",
+    srcs = glob(
+        ["vim/runtime/keymap/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/keymap",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_lang",
+    srcs = glob(
+        ["vim/runtime/lang/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/lang",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_macros",
+    srcs = glob(
+        ["vim/runtime/macros/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/macros",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_plugin",
+    srcs = glob(
+        ["vim/runtime/plugin/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/plugin",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_print",
+    srcs = glob(
+        ["vim/runtime/print/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/print",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_spell",
+    srcs = glob(
+        ["vim/runtime/spell/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/spell",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_syntax",
+    srcs = glob(
+        ["vim/runtime/syntax/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/syntax",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_vim_runtime_tutor",
+    srcs = glob(
+        ["vim/runtime/tutor/**"],
+        exclude = [],
+    ),
+    strip = "vim/runtime/tutor",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs

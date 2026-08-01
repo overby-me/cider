@@ -5,9 +5,15 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "files_LaunchDaemons_com.apple.newsyslog.plist": "files/LaunchDaemons/com.apple.newsyslog.plist",
+    "files_LaunchDaemons_com.apple.periodic-daily.plist": "files/LaunchDaemons/com.apple.periodic-daily.plist",
+    "files_LaunchDaemons_com.apple.periodic-monthly.plist": "files/LaunchDaemons/com.apple.periodic-monthly.plist",
+    "files_LaunchDaemons_com.apple.periodic-weekly.plist": "files/LaunchDaemons/com.apple.periodic-weekly.plist",
     "files_newsyslog.conf": "files/newsyslog.conf",
     "files_periodic.conf": "files/periodic.conf",
     "files_periodic.conf.5": "files/periodic.conf.5",
     "newsyslog_newsyslog.8": "newsyslog/newsyslog.8",
     "newsyslog_newsyslog.conf.5": "newsyslog/newsyslog.conf.5",
+    "periodic_periodic-wrapper.8": "periodic/periodic-wrapper.8",
+    "periodic_periodic.8": "periodic/periodic.8",
 }

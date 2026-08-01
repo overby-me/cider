@@ -5,5 +5,11 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "bash-3.2_doc_bash.1": "bash-3.2/doc/bash.1",
+    "bash-3.2_doc_bashbug.1": "bash-3.2/doc/bashbug.1",
+    "bash-3.2_doc_builtins.1": "bash-3.2/doc/builtins.1",
+    "bash-3.2_doc_rbash.1": "bash-3.2/doc/rbash.1",
     "bash-3.2_parse.y": "bash-3.2/parse.y",
+    "bashrc": "bashrc",
+    "profile": "profile",
 }

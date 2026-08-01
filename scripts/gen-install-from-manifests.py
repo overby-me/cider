@@ -45,8 +45,14 @@ ARCH = "x86_64"
 # ways -- as ${CMAKE_INSTALL_PREFIX} and, for a few targets, literally -- and both
 # spellings have to come off before a path can be used as a prefix-relative one.
 INSTALL_PREFIX = "/usr/local"
+# \s+ after FILES, not a literal space: cmake puts a SINGLE file on the same line
+# ("... FILES \"/nix/store/.../diskutil\"") and a LIST on the lines below it. Requiring a
+# space matched only the first spelling, so every multi-file install entry in the build was
+# read as no entry at all -- silently, since a manifest that parses to nothing looks exactly
+# like a manifest with nothing in it. dirserv's three Directory Services stubs went missing
+# that way, and they are what tests/darling-smoke.nix stage 7 drives.
 ENTRY = re.compile(
-    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)(?:\s+\w+)*\s+FILES? (.*?)\)\n',
+    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)(?:\s+\w+)*\s+FILES?\s+(.*?)\)\n',
     re.S)
 STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # `REGEX "..." EXCLUDE`, which follows the file list.
@@ -326,13 +332,22 @@ def dir_target(rel: str, excludes: list[str]):
     pin, within = pin_of(rel)
     if pin is None:
         return None
-    pkg = f"buck-src/{pin}"
-    if not os.path.isdir(os.path.join(REPO, pkg)):
+    if not os.path.isdir(os.path.join(REPO, "buck-src", pin)):
         return None
     # cmake reaches out of a source directory with .. (libc installs its sibling's assets).
     within = os.path.normpath(within)
     if within.startswith(".."):
         return None
+    # An UNSPLIT pin's directories go in the buck-src mega-package, with the pin in the
+    # path. Writing a BUCK into the pin instead would make it a package, and every
+    # already-generated block that names one of its files as a source -- vim's xxd is a
+    # source of //buck-src -- stops being able to see it. Splitting a pin is a deliberate
+    # act with its own tool (scripts/buck-split-pins.py); it must not happen as a side
+    # effect of the pin having an install(DIRECTORY) entry.
+    if os.path.isfile(os.path.join(REPO, "buck-src", pin, "BUCK")):
+        pkg, within = f"buck-src/{pin}", within
+    else:
+        pkg, within = "buck-src", f"{pin}/{within}"
     name = "prefix_" + re.sub(r"[^A-Za-z0-9_]", "_", within)
     ex = "".join(f'\n            "{regex_to_glob(r)}",' for r in excludes)
     block = (f'prefix_dir(\n'

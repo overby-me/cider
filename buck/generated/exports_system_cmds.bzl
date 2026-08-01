@@ -7,6 +7,8 @@
 EXPORTS = {
     "ac.tproj_ac.8": "ac.tproj/ac.8",
     "accton.tproj_accton.8": "accton.tproj/accton.8",
+    "arch.tproj_arch.1": "arch.tproj/arch.1",
+    "arch.tproj_machine.1": "arch.tproj/machine.1",
     "at.tproj_at.1": "at.tproj/at.1",
     "atrun.tproj_atrun.8": "atrun.tproj/atrun.8",
     "atrun.tproj_com.apple.atrun.plist": "atrun.tproj/com.apple.atrun.plist",
@@ -17,6 +19,8 @@ EXPORTS = {
     "gcore.tproj_gcore.1": "gcore.tproj/gcore.1",
     "getconf.tproj_getconf.1": "getconf.tproj/getconf.1",
     "getty.tproj_getty.8": "getty.tproj/getty.8",
+    "getty.tproj_gettytab.5": "getty.tproj/gettytab.5",
+    "getty.tproj_ttys.5": "getty.tproj/ttys.5",
     "hostinfo.tproj_hostinfo.8": "hostinfo.tproj/hostinfo.8",
     "iosim.tproj_iosim.1": "iosim.tproj/iosim.1",
     "iostat.tproj_iostat.8": "iostat.tproj/iostat.8",

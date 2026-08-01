@@ -5,5 +5,10 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "calendar_calendar.1": "calendar/calendar.1",
+    "leave_leave.1": "leave/leave.1",
+    "ncal_ncal.1": "ncal/ncal.1",
+    "tsort_tsort.1": "tsort/tsort.1",
+    "units_units.1": "units/units.1",
     "units_units.lib": "units/units.lib",
 }

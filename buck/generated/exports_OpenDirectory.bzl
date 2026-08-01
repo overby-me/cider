@@ -5,6 +5,12 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
+    "memberd-21.1_mbr_check_membership.3": "memberd-21.1/mbr_check_membership.3",
+    "memberd-21.1_mbr_gid_to_uuid.3": "memberd-21.1/mbr_gid_to_uuid.3",
+    "memberd-21.1_mbr_sid_to_uuid.3": "memberd-21.1/mbr_sid_to_uuid.3",
+    "memberd-21.1_mbr_uid_to_uuid.3": "memberd-21.1/mbr_uid_to_uuid.3",
+    "memberd-21.1_mbr_uuid_to_id.3": "memberd-21.1/mbr_uuid_to_id.3",
+    "memberd-21.1_mbr_uuid_to_sid.3": "memberd-21.1/mbr_uuid_to_sid.3",
     "memberd-21.1_memberd.8": "memberd-21.1/memberd.8",
     "memberd-21.1_memberd.defs": "memberd-21.1/memberd.defs",
     "memberd-21.1_memberd.plist": "memberd-21.1/memberd.plist",
