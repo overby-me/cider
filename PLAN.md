@@ -68,9 +68,37 @@ usr/bin/zmore to `zless`, which no install() in the tree provides. Two lines abo
 `InstallSymlink(../sbin/chown libexec/darling/usr/bin/chgrp)` shows the spelling that does
 cross directories, so it is a slip, and fixing it belongs upstream.
 
-The remaining 15 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
+zprint and ioclasscount then went in through buck-port.py --binaries, taking UNMAPPED to 13.
+Both needed <Kernel/IOKit/IOKitDebug.h>, which is the SDK spelling the same header twice:
+Kernel.framework/Versions/A/Headers/IOKit is a symlink to IOKit.framework/Headers, so
+<Kernel/IOKit/X.h> and <IOKit/X.h> are one file. gen-sdk-header-roots.py already had an
+ALIASES table for exactly this (Kernel/sys/decmpfs.h was there for copyfile); the IOKit
+entry joins it.
+
+buck-port.py was LYING about both of them first, and the bug is worth knowing about because
+it makes the tool's verdict untrustworthy in the most common case. Inside resolve(), the
+loop that adds framework roots was written `for label in fwmap[fw]`, rebinding the
+function's own `label` parameter. From the second round on it therefore built the framework
+HEADER ROOT it had just added rather than the target being ported. A header root always
+builds, so the run reported "ok zprint [CoreFoundation]" while zprint was still failing on
+the very header that round was meant to fix. Any target that needed exactly one framework
+added was reported ok. Fixed by renaming the loop variable.
+
+zlog was in the same batch and did NOT link, for a reason worth writing down because it is
+not a zlog problem: it wants _mach_zone_get_zlog_zones and _mach_zone_get_btlog_records,
+which are `#ifdef PRIVATE` routines in xnu/osfmk/mach/mach_host.defs, and this port's
+libsyscall ksmig targets run mig WITHOUT -DPRIVATE or -DLIBSYSCALL_INTERFACE while the
+reference passes both. The generated stub is the proof: it carries every UNGUARDED routine
+(mach_zone_info, mach_zone_info_for_zone, mach_memory_info) and none of the guarded ones
+(mach_zone_force_gc, mach_zone_info_for_largest_zone, host_get_atm_diagnostic_flag,
+host_get_multiuser_config_flags, host_check_multiuser_mode). So libsystem_kernel is missing
+a slice of its exported surface relative to the reference, and zlog is simply the first
+target to notice. Fixing it changes the exports of the library the whole boot runs on, so it
+deserves its own change with the full check suite behind it.
+
+The remaining 13 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
 plockstat, usdtheadergen), securityd and secd, SecurityTokend with its xtrace stub,
-launchservicesd, hdiutil, ioclasscount, zlog, zprint and darling-coredump.
+launchservicesd, hdiutil, zlog and darling-coredump.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated

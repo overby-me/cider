@@ -197,8 +197,15 @@ def resolve(label: str, fwmap: dict[str, list[str]], nj: str, rounds: int = 60) 
         key = cmake_target_for(who.group(2), nj)
         if not key:
             return False, f"no cmake target behind {who.group(2)}"
-        for label in fwmap[fw]:
-            add_extra_dep(key, label)
+        # `root`, not `label`: this loop used to rebind the function's OWN parameter, so
+        # every round after the first built the framework header root that had just been
+        # added instead of the target being ported. A header root always builds, so the
+        # next iteration saw BUILD SUCCEEDED and reported the target as ok -- with the added
+        # framework in the message, which made it read like a resolution rather than a
+        # mistake. zprint and ioclasscount were both reported ok while failing on the very
+        # header the round was supposed to fix.
+        for root in fwmap[fw]:
+            add_extra_dep(key, root)
         ok, msg = generate(key, None)
         if not ok:
             return False, f"regenerating {key}: {msg}"

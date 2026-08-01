@@ -6,7 +6,7 @@
 # Regenerate after materializing more pins:
 #   scripts/gen-sdk-header-roots.py . mach i386 machine libkern sys security_libDER > buck-src/sdk_headers.bzl
 
-# ./: 3602 headers
+# ./: 3603 headers
 SDK_ROOT = {
     "AvailabilityVersions.h": "AvailabilityVersions/AvailabilityVersions.h",
     "BerkeleyDB/db.h": "BerkeleyDB/db/build_unix/db.h",
@@ -376,6 +376,7 @@ SDK_ROOT = {
     "IOKit/usb/IOUSBUserClient.h": "IOKitUser/darling/include/IOKit/usb/IOUSBUserClient.h",
     "IOKit/usb/USB.h": "IOKitUser/darling/include/IOKit/usb/USB.h",
     "IOKit/usb/USBSpec.h": "IOKitUser/darling/include/IOKit/usb/USBSpec.h",
+    "Kernel/IOKit/IOKitDebug.h": "IOKitUser/darling/include/IOKit/IOKitDebug.h",
     "Kernel/sys/decmpfs.h": "//buck-src/xnu:bsd_sys_decmpfs.h",
     "SoftLinking/WeakLinking.h": "WTF/darling/include/wtf/darwin/WeakLinking.h",
     "System/IODataQueueDispatchSourceShared.h": "//buck-src/xnu:iokit_System_IODataQueueDispatchSourceShared.h",

@@ -192,6 +192,12 @@ ALIASES = {
     # includes <Kernel/sys/decmpfs.h> whenever VOL_CAP_FMT_DECMPFS_COMPRESSION is
     # defined, which sys/attr.h does.
     "Kernel/sys/decmpfs.h": "sys/decmpfs.h",
+    # The SDK spells the same thing a second way for IOKit:
+    #   Kernel.framework/Versions/A/Headers/IOKit -> IOKit.framework/Headers
+    # so <Kernel/IOKit/X.h> and <IOKit/X.h> are one header. zprint and ioclasscount
+    # both open the kernel's zone and IOKit debug interfaces through the Kernel/
+    # spelling, and neither builds without it.
+    "Kernel/IOKit/IOKitDebug.h": "IOKit/IOKitDebug.h",
 }
 
 

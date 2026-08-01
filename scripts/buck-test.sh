@@ -541,6 +541,19 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 [ "${cov:-0}" -ge 208 ] && ok "$cov of the reference's ${tot:-206} in-scope link edges are ported" ||
 	bad "coverage dropped to ${cov:-0} of ${tot:-248}"
 
+# The same question for the INSTALL side: link coverage says what builds, this says what
+# the port can actually lay out. UNMAPPED is every install entry that neither a target nor
+# a source file can supply, and it is a number that only ever goes down -- a ceiling here
+# catches a target quietly dropping out of the prefix, which no other check would notice
+# until something failed at runtime inside the container.
+#
+# Cheap enough to belong in the suite only since the registries stopped being rebuilt per
+# entry; it used to take eight minutes and now takes under two seconds.
+unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
+	sed -n 's/^ *UNMAPPED: *//p')
+[ "${unmapped:-999}" -le 13 ] && ok "install UNMAPPED is $unmapped (ceiling 13)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 13"
+
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do

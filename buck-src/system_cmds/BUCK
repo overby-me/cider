@@ -2544,3 +2544,82 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: shutdown binary
+
+# zlog is HELD BACK. Its block generates and its objects compile, but the link wants two
+# symbols this port's libsystem_kernel does not export:
+#
+#   _mach_zone_get_zlog_zones
+#   _mach_zone_get_btlog_records
+#
+# Both are `#ifdef PRIVATE` routines in xnu/osfmk/mach/mach_host.defs, and the libsyscall
+# ksmig targets here run mig WITHOUT -DPRIVATE or -DLIBSYSCALL_INTERFACE while the reference
+# passes both. The evidence is the generated stub itself: it has the unguarded routines
+# (mach_zone_info, mach_zone_info_for_zone) and is missing every guarded one
+# (mach_zone_force_gc, mach_zone_info_for_largest_zone, host_get_atm_diagnostic_flag,
+# host_get_multiuser_config_flags, host_check_multiuser_mode) as well as these two.
+#
+# So this is not a zlog problem -- it is a libsystem_kernel export gap that zlog happens to
+# be the first target to notice. Adding those defines changes the exported surface of the
+# library the whole boot runs on, so it wants its own change with the full check suite
+# behind it, not a drive-by while porting a diagnostic tool.
+
+# BEGIN generated: zprint
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py zprint   -- review before committing.
+# cmake target: zprint  ->  src/external/system_cmds/zprint.tproj/zprint
+
+cc_objects(
+    name = "zprint_obj",
+    srcs = [
+        "zprint.tproj/zprint.c",
+    ],
+    compiler_flags = [
+        "-DKERNEL_PRIVATE",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Kernel",
+        "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
+        "//darwin/private-frameworks:fw_CoreSymbolication",
+        "//buck-src:sdk_include_mach",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zprint
+
+# BEGIN generated: zprint binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries zprint   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "zprint",
+    objs = [
+        # zprint
+        ":zprint_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:util_dylib",
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zprint binary

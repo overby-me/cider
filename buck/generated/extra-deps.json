@@ -861,7 +861,8 @@
   "ioclasscount": [
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_Kernel",
-    "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel"
+    "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
+    "//darwin/private-frameworks:fw_CoreSymbolication"
   ],
   "ioreg": [
     "//buck-src:fw_CoreFoundation"
@@ -1423,5 +1424,11 @@
   "self_xtrace_mig": [
     "//src/xtrace:xtrace_headers",
     "gen://buck-src:securitydmig_self[xtrace]"
+  ],
+  "zprint": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Kernel",
+    "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
+    "//darwin/private-frameworks:fw_CoreSymbolication"
   ]
 }

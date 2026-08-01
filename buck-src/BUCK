@@ -48203,6 +48203,7 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//buck-src:fw_Kernel",
         "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
+        "//darwin/private-frameworks:fw_CoreSymbolication",
     ],
     visibility = ["PUBLIC"],
 )
@@ -48975,3 +48976,31 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: self_xtrace_mig dylibs
+
+# BEGIN generated: ioclasscount binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ioclasscount   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "ioclasscount",
+    objs = [
+        # ioclasscount
+        ":ioclasscount_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ioclasscount binary
