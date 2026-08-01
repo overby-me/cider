@@ -674,6 +674,96 @@ concrete failure justifies it:
 
 ---
 
+## The goal: full parity with upstream Darling
+
+Everything upstream Darling supports, this project supports. Same libraries, same
+frameworks, same features. What changes is only HOW it is built: buck2 instead of cmake,
+Rust instead of the C daemon/launcher/loader, Nix instead of a system install. The port is
+not a subset and is not finished when something merely boots.
+
+Darling's own COMPONENTS hierarchy (cmake/darling_parse_components.cmake) is the measure,
+because it is upstream's own decomposition:
+
+    core -> system -> cli
+    stock = cli + python + ruby + perl + dev_gui_common + dev_gui_frameworks_common
+                  + dev_gui_stubs_common + gui_frameworks + gui_stubs
+    all   = stock + jsc + webkit + cli_extra + cli_dev_gui_stubs
+
+Where the port stands: `result-graph-ref` is the **cli** graph, and against it the port
+covers 759 of 871 link edges (87%) with 6 unmapped install entries. So "87%" means 87% of
+`cli`, not of Darling. `cli` is the current front; `stock` (which is what an ordinary
+Darling install is) adds the GUI framework and stub trees plus the three scripting
+languages; `all` adds WebKit and JavaScriptCore on top.
+
+Order of attack, each stage gated on the one before:
+
+1. **cli to 100%** -- close the last install entries and link edges, keep every check green.
+2. **stock**. The flake already builds a `stock` graph (`packages.darling-graph`), so
+   coverage can be measured against it the day cli is done. Expect the GUI frameworks to be
+   the bulk of the work and dev-stubs to be cheap.
+3. **all** -- jsc and webkit last; they are the largest single consumers and depend on
+   everything before them.
+
+Two things to hold onto while working the near term. Coverage numbers are always relative
+to the graph in `result-graph-ref`, so state which component a percentage refers to.
+And the reference build is a wasting asset: gen-mig-from-ninja.py, gen-buck-from-ninja.py
+and gen-install-from-manifests.py all read it, and it disappears when cmake does, so every
+generator needs to be re-runnable before that happens.
+
+---
+
+## Harness traps (read before writing a check or blaming the port)
+
+Every one of these presented as "the port is broken" when it was the harness. The rule that
+falls out: when a script and an identical hand-run disagree, the SCRIPT is the suspect. That
+has been true six times running, each time a check freshly written.
+
+- **`llvm-nm`, never bare `nm`, for Mach-O.** Inside `nix develop` the bare name is the
+  clang wrapper's binutils nm, which answers "file format not recognized" and, with stderr
+  discarded, yields an empty symbol list indistinguishable from a library missing
+  everything.
+- **Never `cmd | grep -q` in buck-test.sh.** grep -q exits on the first match, the writer
+  takes SIGPIPE, and under `set -o pipefail` the pipeline reports FAILURE on a match.
+  Capture into a variable and match with `case`.
+- **file(1) strings**: `Mach-O 64-bit x86_64 dynamically linked shared library` and
+  `Mach-O 64-bit x86_64 executable`. x86_64 comes BEFORE "dynamically". Copy an existing
+  case rather than writing it from memory.
+- **A whole-tree glob over a vendored pin dies on one dangling symlink**, failing the whole
+  package with an error naming a subtree unrelated to what you built. Check with
+  `find buck-src/<pin> -xtype l`; fix in `GLOB_EXCLUDE` in gen-buck-from-ninja.py.
+- **MIG runs the C preprocessor over the .defs**, so its -D flags decide which routines
+  EXIST. A mysteriously absent symbol from a MIG-generated library is a mig_flags question
+  first.
+- **Confirm a port with a direct `buck2 build <label>`**, never with buck-port.py's verdict.
+  It also says "failed (no recognisable error)" when the cause is a package-level file
+  error.
+- **buck2 runs**: `nix develop --command bash -c 'source scripts/buck-env.sh; buck2 ...'`.
+  Sourcing buck-env.sh alone is not enough: the direnv cache goes stale (rustc and bindgen
+  went missing that way), and buck2's daemon inherits the client PATH at daemon START, so
+  `buck2 killall` after fixing PATH.
+- **Never pre-create DPREFIX.** darling treats an existing prefix as already set up, and
+  launchd then boots into an unpopulated filesystem and stalls deterministically.
+- **`pkill -f <pattern>` matches the command you are about to run** (exit 144). For
+  containers use one ERE pattern: `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'`.
+- **A `jj git push` "Could not read from remote repository" is the remote**, not you
+  (`ssh -o BatchMode=yes git@tangled.org` shows an IPv6 connect timeout). Retry.
+- **Rebuild costs**: touching buck/generated/sdk_headers.bzl or the ksmig mig_flags rebuilds
+  essentially everything, roughly 14,000 actions, about 20 minutes.
+- **Known flakes**, re-run before believing a failure: buck-bash-check.sh fails roughly 1 in
+  5 with a core dump (shared SIGFPE); buck-smoke-check.sh failed once at 11/31 then passed
+  3/3.
+- **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
+  gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
+  backtracking regex I first blamed.
+
+Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then
+`DSERVER_LIBEXEC_PATH=$rt/libexec/darling
+DSERVER_MLDR_PATH=$rt/libexec/darling/usr/libexec/darling/mldr bash
+scripts/build-hello-bypass.sh --mono $rt --prefix /tmp/darling-hello-m1-buck2`. Expect
+`build_rc=0` and "Hello, world!".
+
+---
+
 ## Working agreements
 
 - **Verification is execution in a clean prefix**, not inspection. A task is done when its
