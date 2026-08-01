@@ -251,9 +251,26 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
         before   dtape_task_create: nsid=4 parent=(nil)      GET bootstrap -> (nil)   INVALID_DEST dest=0x0
         after    dtape_task_create: nsid=4 parent=0x..d8e10  GET bootstrap -> 0x..cbe50   INVALID_DEST count 0
 
-  launchd STILL does not complete: the boot gets further (352 to 459 log lines) and then hits
-  the -111 cascade (mach_msg_overwrite, then interrupt_enter). That is the next thing to chase,
-  and it is now the FIRST failure rather than the fourth.
+  launchd STILL does not complete, and the failure MOVED. Before the parent fix the JOB (guest
+  pid 4) died first; now the job survives 16,420 syscalls and is still running when the
+  container is torn down, while LAUNCHD ITSELF dies. Its whole trace is 70 lines: seven RPCs
+  succeed, a select on fd 8 returns readable, and then #36 mach_reply_port gets ECONNREFUSED
+  -- followed by mach_msg_overwrite and interrupt_enter, both refused, then exit_group(1).
+
+  The refusal is still unexplained and is now the only thing between here and a launchd boot.
+  What has been ruled out for it, all measured on the failing run:
+    * The daemon closing its socket. Its own strace shows it binds fd 3 once and NEVER closes
+      it; at the end it is still in epoll_wait with recvmsg returning EAGAIN, i.e. healthy and
+      idle. It dies only to the launcher's SIGTERM.
+    * The path resolving differently after vchroot. The host, and EVERY live guest process's
+      /proc/PID/root, stat the same inode, and lsof shows the socket open and
+      type=DGRAM (UNCONNECTED) at that moment.
+  So a send to a live, open, unconnected DGRAM socket is being refused, which is not what
+  ECONNREFUSED is supposed to mean. One untested idea worth trying first next time: launchd is
+  MULTITHREADED and threads share an fd table, while each guest process parks its RPC socket at
+  512/513/514 with F_DUPFD_CLOEXEC after closing whatever was there (pid 4's trace opens with
+  close(512), close(513), close(514) then re-parks its own at 512). If that re-parking ever
+  races a thread that is mid-send on 513, the send goes out on someone else's socket.
 
   Still open and worth understanding even so: launchd sets its own bootstrap port and then
   immediately sets it back to NULL (SET nil->P, then SET P->nil, on its own task). The job
