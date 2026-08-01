@@ -265,10 +265,34 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   They are what any process gets for talking to a daemon that has just been killed. Do not
   chase them again; use a timeout longer than the observed hang and look at the QUIET period.
 
-  At the quiet point everyone is waiting on someone: launchd's threads are in recvmsg on 513
-  and 514, the container's mldr processes are in recvmsg on 512, and the daemon is in
-  epoll_wait with recvmsg returning EAGAIN. Nothing is spinning and nothing is refused. The
-  question is which message was never sent.
+  WHO IS WAITING, from the daemon's own RECV trace (DSERVER_TRACE_CALLS=1), last call parked
+  per (nsid, tid):
+
+        nsid=1 tid=1  #38 mach_msg_overwrite   launchd's dispatch thread, blocked on the PORTSET
+        nsid=1 tid=3  #62 semaphore_timedwait  a launchd worker in a timed wait
+        nsid=4 tid=4  #38 mach_msg_overwrite   the JOB, blocked in a mach_msg
+
+  And guest pid 4 is `launchctl bootstrap -S System` (from its execve). So the ORIGINAL entry
+  named the right victim after all, even though its portset explanation was wrong.
+
+  THE IPC ITSELF WORKS. Measured in one round trip, lines 793-808 of the daemon log:
+    * the job sends to launchd; the message lands on a port that IS in the portset and
+      `wq_prepost_do_post_locked` preposts it to set 0x40001;
+    * launchd's receive CONSUMES that prepost (`waitq_clear_prepost_locked: invalidate
+      prepost 0x280000`);
+    * launchd replies to pid 4 and the post finds a real receiver (`receiver=0x..247b60`).
+  So bootstrap messaging is not broken. After that exchange everything simply goes idle.
+
+  NEXT: the job was woken at that reply and then issued NO further RPC. Find out whether its
+  RPC reply was actually SENT after the microthread was woken, or whether the wake and the
+  reply have come apart. That is a narrow question about the daemon's parked-microthread
+  resume path, and it is the last unexplained step.
+
+  Not a lead: shellspawn is PRESENT in the prefix, at usr/libexec/shellspawn (NOT
+  usr/libexec/darling/shellspawn, where I looked first and wrongly concluded it was missing),
+  together with System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist. `launchctl
+  bootstrap -S System` is what should load that plist, which is why nothing runs the command:
+  the launcher waits for a shellspawn that never starts because bootstrap never finishes.
 
   ELIMINATED for the ECONNREFUSED before it turned out to be a teardown artifact, kept because
   the same ideas will tempt the next reader: the daemon closing its socket (it binds fd 3 once
