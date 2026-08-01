@@ -259,6 +259,20 @@ def _cc_static_lib_impl(ctx):
     objects = []
     for group in ctx.attrs.objs:
         objects.extend(group[CcObjectsInfo].objects)
+
+    # An archive with no members is never what anyone meant, and it is SILENT: ar writes a
+    # valid 8-byte file, buck2 calls the target built, and the mistake only surfaces at some
+    # later link as "ld: file too small (length=8)", naming a library the person was not
+    # working on. It happens when every source of an archive is GENERATED and the generated
+    # sources were never wired -- libsecurityd_server and libsecurityd_ucspc were both
+    # exactly that. A survey of the 126 archives this port builds found no legitimate empty
+    # one, so failing here costs nothing and moves the diagnosis to where the cause is.
+    if not objects:
+        fail("cc_static_lib: %s would archive ZERO objects. Its object groups (%s) are " %
+             (ctx.label, ", ".join([str(g.label) for g in ctx.attrs.objs])) +
+             "empty, which usually means the target's sources are all GENERATED and no " +
+             "gen_srcs entry supplies them (see buck/generated/extra-deps.json).")
+
     lib = _archive(ctx, tc, ctx.attrs.lib_name or ctx.label.name, objects)
 
     exported_include_dirs = []

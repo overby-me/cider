@@ -227,14 +227,23 @@ def read_symlinks(graph: str) -> dict:
 
 
 def binary_index() -> dict:
-    """{output name: label} for every executable and framework binary the port builds.
+    """{kind: {output name: label}} for every executable and framework binary the port builds.
 
     The registries cover dylibs and archives only, but half the prefix is executables (dyld,
     notifyd, syslogd) and framework binaries (CoreFoundation), whose artifact name is the
     TARGET name. Scanning the BUCK files for those rules is how buck-coverage.py already
     identifies them.
+
+    Split by KIND rather than merged into one namespace, because the two collide and the
+    collision is silent. `login` is both an executable (system_cmds' login program, which
+    installs to usr/bin/login) and a private FRAMEWORK whose dylib_name is also "login". In
+    one dict, whichever os.walk() reached first won -- so porting the framework silently
+    repointed usr/bin/login at a dylib, and the prefix shipped a shared library where a
+    program belonged. Every runtime check failed and nothing said why. An install entry
+    knows whether it wants an EXECUTABLE or a SHARED_LIBRARY, so target_for asks for the
+    matching kind first.
     """
-    index = {}
+    index = {"exe": {}, "lib": {}}
     for dirpath, dirnames, files in os.walk(REPO):
         dirnames[:] = [d for d in dirnames
                        if d not in ("buck-out", ".git", ".jj", ".direnv", "build")]
@@ -248,20 +257,22 @@ def binary_index() -> dict:
             name = re.search(r'name = "([^"]+)"', block)
             if not name:
                 continue
+            kind = "lib" if m.group(1) == "darwin_dylib" else "exe"
+            into = index[kind]
             label = f"//{pkg}:{name.group(1)}"
-            index.setdefault(name.group(1), label)
+            into.setdefault(name.group(1), label)
             # A dylib rule names its own output, which for a framework is not <name>.dylib.
             out = re.search(r'dylib_name = "([^"]+)"', block)
             if out:
-                index.setdefault(out.group(1), label)
-                index.setdefault(out.group(1).removesuffix(".dylib"), label)
+                into.setdefault(out.group(1), label)
+                into.setdefault(out.group(1).removesuffix(".dylib"), label)
             # And a binary rule does the same through exe_name, for the 92 targets whose
             # cmake name is not the file name -- clang_shim installs as clang, curlexe as
             # curl. Indexing only the rule name leaves every one of them UNMAPPED, with
             # the block built and sitting right there.
             exe = re.search(r'exe_name = "([^"]+)"', block)
             if exe:
-                index.setdefault(exe.group(1), label)
+                into.setdefault(exe.group(1), label)
     return index
 
 
@@ -279,26 +290,37 @@ _REGISTRIES: list = []
 def registries(gen, binaries: dict) -> list:
     if not _REGISTRIES:
         _REGISTRIES.extend(
-            [gen.final_registry(), gen.archive_registry(), binaries, GENERATED])
+            [gen.final_registry(), gen.archive_registry(), binaries["lib"],
+             binaries["exe"], GENERATED])
     return _REGISTRIES
 
 
-def target_for(path: str, gen, binaries: dict) -> str | None:
+def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     """The buck2 target that builds this artifact, by output basename.
 
     The reference paths are build-dir absolute (/build/build/src/libm/libsystem_m.dylib);
     what identifies the artifact across both builds is its NAME, which is also the key the
     port's registries use.
+
+    `kind` is the install entry's cmake TYPE. It matters when one name means two artifacts:
+    `login` is both system_cmds' program and a private framework, and without the kind the
+    executable entry usr/bin/login can resolve to the framework's dylib.
     """
     base = os.path.basename(path)
-    for table in registries(gen, binaries):
+    tables = registries(gen, binaries)
+    if kind == "EXECUTABLE":
+        tables = [binaries["exe"]] + tables
+    for table in tables:
         if base in table:
             return table[base]
     # cmake's POST_BUILD lipo renames the linker's output, and the port builds the linker's:
     # CoreFoundation is what gets installed, CoreFoundation_x86_64 is what exists. A
     # single-arch lipo -create is a rename here, so the thin file is the same artifact under
     # the name the install destination gives it.
-    return binaries.get(f"{base}_{ARCH}")
+    for table in (binaries["lib"], binaries["exe"]):
+        if f"{base}_{ARCH}" in table:
+            return table[f"{base}_{ARCH}"]
+    return None
 
 
 def source_rel(path: str) -> str | None:
@@ -510,7 +532,7 @@ def main(argv: list[str]) -> int:
                 skipped.append(full)
                 continue
             if kind in ("SHARED_LIBRARY", "EXECUTABLE", "STATIC_LIBRARY"):
-                t = target_for(src, gen, binaries)
+                t = target_for(src, gen, binaries, kind)
                 if t:
                     built[full] = t
                 else:

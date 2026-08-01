@@ -152,6 +152,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//darwin/private-frameworks:fw_login",
         ":login_inc_darwin_private_frameworks_login",
     ],
     visibility = ["PUBLIC"],
@@ -1011,3 +1012,29 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: CoreSymbolication dylibs
+
+# BEGIN generated: login dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs login   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "login_dylib",
+    dylib_name = "login",
+    install_name = "/System/Library/PrivateFrameworks/login.framework/Versions/A/login",
+    compatibility_version = "1.0.0",
+    current_version = "137.0.0",
+    objs = [
+        # login
+        ":login_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: login dylibs

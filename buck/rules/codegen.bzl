@@ -229,6 +229,14 @@ def _mig_gen_impl(ctx):
     # gives each end the other's stub and duplicate symbols follow.
     server_srcs = [outdir.project(s) for s in ctx.attrs.server_srcs]
 
+    # And a third: the ALIASES. alias_links already gives a generated file a second name in
+    # the output dir, mirroring cmake's create_symlink; this exports those names as sources.
+    # ucsp is the case -- libsecurityd_client compiles mig/ucspClient.cpp as C++ while
+    # libsecurityd_ucspc compiles mig/ucspClientC.c, which IS ucspClient.cpp under a name
+    # that makes the compiler treat it as C. Same translation unit, two consumers, two
+    # languages, so neither can take the other's spelling.
+    alias_srcs = [outdir.project(s) for s in ctx.attrs.alias_srcs]
+
     return [
         DefaultInfo(default_output = outdir, sub_targets = {
             "xtrace": [
@@ -244,6 +252,16 @@ def _mig_gen_impl(ctx):
             "server": [
                 DefaultInfo(default_outputs = server_srcs),
                 GeneratedSourcesInfo(sources = server_srcs, headers = []),
+                CcLibInfo(
+                    include_dirs = merged.include_dirs + [outdir],
+                    exported_flags = merged.exported_flags,
+                    static_libs = [],
+                    linker_flags = [],
+                ),
+            ],
+            "alias": [
+                DefaultInfo(default_outputs = alias_srcs),
+                GeneratedSourcesInfo(sources = alias_srcs, headers = []),
                 CcLibInfo(
                     include_dirs = merged.include_dirs + [outdir],
                     exported_flags = merged.exported_flags,
@@ -271,6 +289,8 @@ mig_gen = rule(
         # Extra names for generated files, as {link path: link target}, both relative to
         # the output dir. A port of cmake's create_symlink() in the same directory.
         "alias_links": attrs.dict(attrs.string(), attrs.string(), default = {}),
+        # Which of those alias_links are exported as SOURCES, through [alias] (see above).
+        "alias_srcs": attrs.list(attrs.string(), default = []),
         "arch": attrs.string(default = "x86_64"),
         "compiler_flags": attrs.list(attrs.string(), default = []),
         # Generated files (relative to the output dir) exported as sources, for

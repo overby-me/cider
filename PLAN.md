@@ -193,9 +193,36 @@ complained: ar writes a valid empty archive and buck2 called the target built. T
 came out at securityd's link as `ld: file too small (length=8)`, naming an archive that
 looked unrelated. libsecurityd_ucspc.a still has the same hole; see the queue.
 
-The remaining 3 are all "no target builds it": secd, launchservicesd and hdiutil. NOTE that
-UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a target that
-does not build must have its block REMOVED, not left in place. secd's is.
+secd closed the Security cone, taking UNMAPPED to 2, and it took two more steps. Its
+undefined symbols (_SASSessionStateForUser, _kSA_SessionStateChangedNotification) were not a
+Security problem at all: they live in the `login` PRIVATE FRAMEWORK, which had a login_obj
+but no dylib block, so nothing built the library secd links. And libsecurityd_ucspc.a was
+the second EMPTY archive: its single source is mig/ucspClientC.c, which cmake makes with
+create_symlink from ucspClient.cpp -- one translation unit compiled as C++ for
+libsecurityd_client and as C for libsecurityd_ucspc, so neither consumer can take the
+other's spelling. mig_gen already had `alias_links` to create such a name; it grew an
+`[alias]` subtarget to export them as sources, the third of the same shape after `[xtrace]`
+and `[server]`.
+
+Porting the `login` framework also broke every runtime check, and the way it broke is worth
+knowing. binary_index() in gen-install-from-manifests.py merged executables and dylibs into
+ONE name-to-label map, and `login` is both: system_cmds' login program, which installs to
+usr/bin/login, and a private framework whose dylib_name is also "login". Whichever os.walk()
+reached first won. Porting the framework therefore repointed usr/bin/login at a DYLIB, the
+prefix shipped a shared library where a program belonged, and all three runtime checks failed
+with nothing saying why. The index is split by kind now, and an install entry asks for the
+kind it wants -- it always knew, since cmake records TYPE EXECUTABLE.
+
+cc_static_lib now FAILS on a zero-member archive rather than writing one. That is the real
+lesson here: an empty archive is silent, ar writes a valid 8-byte file, buck2 calls the
+target built, and the mistake surfaces at a distant link naming a library nobody was working
+on. Both cases had the same cause, an archive whose every source is generated and whose
+generated sources were never wired. A survey of the 126 archives found no legitimate empty
+one, so the guard costs nothing.
+
+The remaining 2 are "no target builds it": launchservicesd and hdiutil. NOTE that UNMAPPED
+counts install entries whose TARGET EXISTS, not ones that build, so a target that does not
+build must have its block REMOVED, not left in place.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -747,25 +774,11 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **secd**, the last Security install entry, and **libsecurityd_ucspc.a, which is EMPTY**.
-   securityd has landed. secd fails on undefined symbols, undiagnosed.
-
-   The empty archive is the more interesting one and should go first, because an empty
-   archive is silent: `ar` writes a valid 8-byte file, buck2 calls the target built, and
-   the failure surfaces at some distant link as
-   `ld: file too small (length=8) file 'liblibsecurityd_ucspc.a.a'`, naming a target the
-   person did not touch. It happens when an archive's every source is GENERATED and the
-   generated sources were never wired: `securityd_server` had the same shape and is fixed.
-   securityd_ucspc's single source is `mig/ucspClientC.c`, which cmake makes with
-   `create_symlink("ucspClient.cpp", ...)` -- the same translation unit under a C name, so
-   the reference compiles it as C rather than C++. mig_gen has `alias_links` for exactly
-   that, but the alias then needs exporting to this one consumer without handing it to
-   everyone that already takes ucspClient.cpp.
-
-   A survey found exactly ONE empty archive among the 126 built, so a hard failure in
-   cc_static_lib on a zero-member archive is safe to add and would have caught both cases
-   at the source instead of at a link. Add it in the same change that fixes ucspc, not
-   before, or the suite goes red on a known-broken target.
+1. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
+   launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z) and
+   **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
+   supplies it before assuming this is portable). These are the last two cli install
+   entries.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference

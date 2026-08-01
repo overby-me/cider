@@ -1466,5 +1466,11 @@
   "securityd_server": [
     "gen://buck-src:securityd_client_mig_ucsp[server]",
     "gen://buck-src:securityd_client_mig_ucspnotify[server]"
+  ],
+  "securityd_ucspc": [
+    "gen://buck-src:securityd_client_mig_ucsp[alias]"
+  ],
+  "login": [
+    "//darwin/private-frameworks:fw_login"
   ]
 }
