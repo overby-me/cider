@@ -47,6 +47,14 @@
           "plan"
           "docs"
           "nix"
+          # The generators. They run BEFORE buck2 and write the BUCK files; buck2 itself
+          # never opens one, and no action's argv names one -- the only mentions across
+          # every BUCK and .bzl in the tree are comments saying which generator wrote the
+          # block. (The scripts/*.exp symbol lists that DO get read are inside pins, at
+          # buck-src/<pin>/scripts/, which arrive through `pins` rather than through here.)
+          # Without this, editing any generator relowers all 259 derivations, and this port
+          # is largely a matter of editing generators.
+          "scripts"
           ".git"
           ".jj"
           ".direnv"
