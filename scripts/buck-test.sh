@@ -562,13 +562,36 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # entry; it used to take eight minutes and now takes under two seconds.
 unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 	sed -n 's/^ *UNMAPPED: *//p')
-[ "${unmapped:-999}" -le 11 ] && ok "install UNMAPPED is $unmapped (ceiling 11)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 11"
+[ "${unmapped:-999}" -le 6 ] && ok "install UNMAPPED is $unmapped (ceiling 6)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 6"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)
 for a in libdarlingserver_duct_tape.a liblibsimple_darlingserver.a; do
 	[ -f "$dir/$a" ] && ok "staged $a" || bad "missing $a in DUCT_TAPE_LIB dir"
+done
+
+say "== the dtrace cone =="
+# Three static libraries (ctf, elf, dwarf), one dylib and four binaries: the largest
+# single block of install entries left, landed together because they only ever build
+# together. libdtrace also carries the committed lex/yacc output (gen/libdtrace), so a
+# build here proves those staged as sources rather than being regenerated.
+for t in //buck-src:ctf //buck-src:elf //buck-src:dwarf; do
+	a=$(out_of "$t")
+	[ -s "$a" ] && ok "built ${t##*:} archive" || bad "$t did not build"
+done
+dtl=$(out_of //buck-src:libdtrace_dylib)
+case "$(file -bL "$dtl")" in
+*"Mach-O 64-bit x86_64 dynamically linked shared library"*)
+	ok "libdtrace.dylib is a Mach-O x86_64 dylib" ;;
+*) bad "libdtrace.dylib is not a Mach-O x86_64 dylib" ;;
+esac
+for t in //buck-src:dtrace //buck-src:lockstat //buck-src:plockstat //buck-src:usdtheadergen; do
+	b=$(out_of "$t")
+	case "$(file -bL "$b")" in
+	*"Mach-O 64-bit x86_64 executable"*) ok "built ${t##*:}" ;;
+	*) bad "$t is not a Mach-O x86_64 executable" ;;
+	esac
 done
 
 say "== darling-coredump (a HOST tool that reads Mach-O) =="

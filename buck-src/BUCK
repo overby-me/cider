@@ -38831,6 +38831,12 @@ cc_header_root(
         "dtrace/compat/opensolaris/**/*.h",
         "dtrace/compat/opensolaris/*.c",
         "dtrace/**/*",
+    ], exclude = [
+        # DTraceToolkit: .d scripts, docs and man pages, no headers at all -- and it ships
+        # two DANGLING symlinks upstream (DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d, both
+        # pointing at siblings the pin does not carry). buck2 refuses to glob a link that
+        # resolves to nothing, so the catch-all above cannot see this subtree.
+        "dtrace/DTTk/**",
     ]),
     root = "dtrace",
     include_subdirs = [
@@ -43183,6 +43189,12 @@ cc_header_root(
         "dtrace/compat/opensolaris/**/*.h",
         "dtrace/compat/opensolaris/*.c",
         "dtrace/**/*",
+    ], exclude = [
+        # DTraceToolkit: .d scripts, docs and man pages, no headers at all -- and it ships
+        # two DANGLING symlinks upstream (DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d, both
+        # pointing at siblings the pin does not carry). buck2 refuses to glob a link that
+        # resolves to nothing, so the catch-all above cannot see this subtree.
+        "dtrace/DTTk/**",
     ]),
     root = "dtrace",
     include_subdirs = [
@@ -43307,6 +43319,12 @@ cc_header_root(
         "dtrace/compat/opensolaris/**/*.h",
         "dtrace/compat/opensolaris/*.c",
         "dtrace/**/*",
+    ], exclude = [
+        # DTraceToolkit: .d scripts, docs and man pages, no headers at all -- and it ships
+        # two DANGLING symlinks upstream (DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d, both
+        # pointing at siblings the pin does not carry). buck2 refuses to glob a link that
+        # resolves to nothing, so the catch-all above cannot see this subtree.
+        "dtrace/DTTk/**",
     ]),
     root = "dtrace",
     include_subdirs = [
@@ -43427,6 +43445,12 @@ cc_header_root(
         "dtrace/compat/opensolaris/**/*.h",
         "dtrace/compat/opensolaris/*.c",
         "dtrace/**/*",
+    ], exclude = [
+        # DTraceToolkit: .d scripts, docs and man pages, no headers at all -- and it ships
+        # two DANGLING symlinks upstream (DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d, both
+        # pointing at siblings the pin does not carry). buck2 refuses to glob a link that
+        # resolves to nothing, so the catch-all above cannot see this subtree.
+        "dtrace/DTTk/**",
     ]),
     root = "dtrace",
     include_subdirs = [
@@ -44634,6 +44658,8 @@ cc_header_root(
         "dtrace/compat/opensolaris/**/*.h",
         "dtrace/compat/opensolaris/*.c",
         "dtrace/**/*",
+    ], exclude = [
+        "dtrace/DTTk/**",
     ]),
     root = "dtrace",
     include_subdirs = [
@@ -49452,3 +49478,509 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: ioclasscount binary
+
+# BEGIN generated: ctf archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives ctf   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "ctf",
+    lib_name = "libctf.a",
+    objs = [
+        # ctf
+        ":ctf_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: ctf archive
+
+# BEGIN generated: elf archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives elf   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "elf",
+    lib_name = "libelf.a",
+    objs = [
+        # elf
+        ":elf_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: elf archive
+
+# BEGIN generated: dwarf archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives dwarf   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "dwarf",
+    lib_name = "libdwarf.a",
+    objs = [
+        # dwarf
+        ":dwarf_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: dwarf archive
+
+# BEGIN generated: libdtrace dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs libdtrace   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "libdtrace_dylib",
+    dylib_name = "libdtrace.dylib",
+    install_name = "/usr/lib/libdtrace.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "130.0.0",
+    objs = [
+        # libdtrace
+        ":libdtrace_obj",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dwarf",
+        "//buck-src:elf",
+        "//buck-src:ctf",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libdtrace dylibs
+
+# BEGIN generated: dtrace
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dtrace   -- review before committing.
+# cmake target: dtrace  ->  src/external/dtrace/libdtrace.dylib
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dtrace/head
+#   src/external/dtrace/sys
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "dtrace_inc_dtrace",
+    headers = glob([
+        "dtrace/scripts/*.h",
+        "dtrace/scripts/**/*.h",
+        "dtrace/scripts/*.c",
+        "dtrace/lib/libproc/*.h",
+        "dtrace/lib/libproc/**/*.h",
+        "dtrace/lib/libproc/*.c",
+        "dtrace/lib/libdtrace/common/*.h",
+        "dtrace/lib/libdtrace/common/**/*.h",
+        "dtrace/lib/libdtrace/common/*.c",
+        "dtrace/lib/libdwarf/cmplrs/*.h",
+        "dtrace/lib/libdwarf/cmplrs/**/*.h",
+        "dtrace/lib/libdwarf/cmplrs/*.c",
+        "dtrace/lib/libdwarf/**/*",
+        "dtrace/lib/libdtrace/i386/*.h",
+        "dtrace/lib/libdtrace/i386/**/*.h",
+        "dtrace/lib/libdtrace/i386/*.c",
+        "dtrace/lib/libelf/*.h",
+        "dtrace/lib/libelf/**/*.h",
+        "dtrace/lib/libelf/*.c",
+        "dtrace/lib/libctf/common/*.h",
+        "dtrace/lib/libctf/common/**/*.h",
+        "dtrace/lib/libctf/common/*.c",
+        "dtrace/gen/libdtrace/*.h",
+        "dtrace/gen/libdtrace/**/*.h",
+        "dtrace/gen/libdtrace/*.c",
+        "dtrace/compat/opensolaris/sys/*.h",
+        "dtrace/compat/opensolaris/sys/**/*.h",
+        "dtrace/compat/opensolaris/sys/*.c",
+        "dtrace/compat/opensolaris/*.h",
+        "dtrace/compat/opensolaris/**/*.h",
+        "dtrace/compat/opensolaris/*.c",
+        "dtrace/**/*",
+    ], exclude = [
+        "dtrace/DTTk/**",
+    ]),
+    root = "dtrace",
+    include_subdirs = [
+        "scripts",
+        "lib/libproc",
+        "lib/libdtrace/common",
+        "lib/libdwarf/cmplrs",
+        "lib/libdwarf",
+        "lib/libdtrace/i386",
+        "lib/libelf",
+        "lib/libctf/common",
+        "gen/libdtrace",
+        "compat/opensolaris/sys",
+        "compat/opensolaris",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "dtrace_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "dtrace_obj",
+    srcs = [
+        "dtrace/cmd/dtrace/dtrace.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dyydebug=",
+        "-nostdinc",
+        "-Wno-shift-op-parentheses",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":dtrace_inc_dtrace",
+        ":dtrace_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dtrace
+
+# BEGIN generated: dtrace binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dtrace   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dtrace",
+    objs = [
+        # dtrace
+        ":dtrace_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:libdtrace_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dwarf",
+        "//buck-src:elf",
+        "//buck-src:ctf",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dtrace binary
+
+# BEGIN generated: lockstat
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lockstat   -- review before committing.
+# cmake target: lockstat  ->  src/external/dtrace/lockstat
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dtrace/head
+#   src/external/dtrace/sys
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lockstat_inc_dtrace",
+    headers = glob([
+        "dtrace/scripts/*.h",
+        "dtrace/scripts/**/*.h",
+        "dtrace/scripts/*.c",
+        "dtrace/lib/libproc/*.h",
+        "dtrace/lib/libproc/**/*.h",
+        "dtrace/lib/libproc/*.c",
+        "dtrace/lib/libdtrace/common/*.h",
+        "dtrace/lib/libdtrace/common/**/*.h",
+        "dtrace/lib/libdtrace/common/*.c",
+        "dtrace/lib/libdwarf/cmplrs/*.h",
+        "dtrace/lib/libdwarf/cmplrs/**/*.h",
+        "dtrace/lib/libdwarf/cmplrs/*.c",
+        "dtrace/lib/libdwarf/**/*",
+        "dtrace/lib/libdtrace/i386/*.h",
+        "dtrace/lib/libdtrace/i386/**/*.h",
+        "dtrace/lib/libdtrace/i386/*.c",
+        "dtrace/lib/libelf/*.h",
+        "dtrace/lib/libelf/**/*.h",
+        "dtrace/lib/libelf/*.c",
+        "dtrace/lib/libctf/common/*.h",
+        "dtrace/lib/libctf/common/**/*.h",
+        "dtrace/lib/libctf/common/*.c",
+        "dtrace/gen/libdtrace/*.h",
+        "dtrace/gen/libdtrace/**/*.h",
+        "dtrace/gen/libdtrace/*.c",
+        "dtrace/compat/opensolaris/sys/*.h",
+        "dtrace/compat/opensolaris/sys/**/*.h",
+        "dtrace/compat/opensolaris/sys/*.c",
+        "dtrace/compat/opensolaris/*.h",
+        "dtrace/compat/opensolaris/**/*.h",
+        "dtrace/compat/opensolaris/*.c",
+        "dtrace/**/*",
+    ], exclude = [
+        "dtrace/DTTk/**",
+    ]),
+    root = "dtrace",
+    include_subdirs = [
+        "scripts",
+        "lib/libproc",
+        "lib/libdtrace/common",
+        "lib/libdwarf/cmplrs",
+        "lib/libdwarf",
+        "lib/libdtrace/i386",
+        "lib/libelf",
+        "lib/libctf/common",
+        "gen/libdtrace",
+        "compat/opensolaris/sys",
+        "compat/opensolaris",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "lockstat_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lockstat_obj",
+    srcs = [
+        "dtrace/cmd/lockstat/lockstat.c",
+        "dtrace/cmd/lockstat/sym.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dyydebug=",
+        "-nostdinc",
+        "-Wno-shift-op-parentheses",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":lockstat_inc_dtrace",
+        ":lockstat_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/private-frameworks:fw_CoreSymbolication",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lockstat
+
+# BEGIN generated: lockstat binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lockstat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "lockstat",
+    objs = [
+        # lockstat
+        ":lockstat_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:libdtrace_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dwarf",
+        "//buck-src:elf",
+        "//buck-src:ctf",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lockstat binary
+
+# BEGIN generated: plockstat
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py plockstat   -- review before committing.
+# cmake target: plockstat  ->  src/external/dtrace/plockstat
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/dtrace/head
+#   src/external/dtrace/sys
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "plockstat_inc_dtrace",
+    headers = glob([
+        "dtrace/scripts/*.h",
+        "dtrace/scripts/**/*.h",
+        "dtrace/scripts/*.c",
+        "dtrace/lib/libproc/*.h",
+        "dtrace/lib/libproc/**/*.h",
+        "dtrace/lib/libproc/*.c",
+        "dtrace/lib/libdtrace/common/*.h",
+        "dtrace/lib/libdtrace/common/**/*.h",
+        "dtrace/lib/libdtrace/common/*.c",
+        "dtrace/lib/libdwarf/cmplrs/*.h",
+        "dtrace/lib/libdwarf/cmplrs/**/*.h",
+        "dtrace/lib/libdwarf/cmplrs/*.c",
+        "dtrace/lib/libdwarf/**/*",
+        "dtrace/lib/libdtrace/i386/*.h",
+        "dtrace/lib/libdtrace/i386/**/*.h",
+        "dtrace/lib/libdtrace/i386/*.c",
+        "dtrace/lib/libelf/*.h",
+        "dtrace/lib/libelf/**/*.h",
+        "dtrace/lib/libelf/*.c",
+        "dtrace/lib/libctf/common/*.h",
+        "dtrace/lib/libctf/common/**/*.h",
+        "dtrace/lib/libctf/common/*.c",
+        "dtrace/gen/libdtrace/*.h",
+        "dtrace/gen/libdtrace/**/*.h",
+        "dtrace/gen/libdtrace/*.c",
+        "dtrace/compat/opensolaris/sys/*.h",
+        "dtrace/compat/opensolaris/sys/**/*.h",
+        "dtrace/compat/opensolaris/sys/*.c",
+        "dtrace/compat/opensolaris/*.h",
+        "dtrace/compat/opensolaris/**/*.h",
+        "dtrace/compat/opensolaris/*.c",
+        "dtrace/**/*",
+    ], exclude = [
+        "dtrace/DTTk/**",
+    ]),
+    root = "dtrace",
+    include_subdirs = [
+        "scripts",
+        "lib/libproc",
+        "lib/libdtrace/common",
+        "lib/libdwarf/cmplrs",
+        "lib/libdwarf",
+        "lib/libdtrace/i386",
+        "lib/libelf",
+        "lib/libctf/common",
+        "gen/libdtrace",
+        "compat/opensolaris/sys",
+        "compat/opensolaris",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "plockstat_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "plockstat_obj",
+    srcs = [
+        "dtrace/cmd/plockstat/plockstat.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dyydebug=",
+        "-nostdinc",
+        "-Wno-shift-op-parentheses",
+        "-Wno-error=int-conversion",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":plockstat_inc_dtrace",
+        ":plockstat_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: plockstat
+
+# BEGIN generated: plockstat binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries plockstat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "plockstat",
+    objs = [
+        # plockstat
+        ":plockstat_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:libdtrace_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dwarf",
+        "//buck-src:elf",
+        "//buck-src:ctf",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: plockstat binary
+
+# BEGIN generated: usdtheadergen binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries usdtheadergen   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "usdtheadergen",
+    objs = [
+        # usdtheadergen
+        ":usdtheadergen_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:libdtrace_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//darwin/private-frameworks:CoreSymbolication_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:dwarf",
+        "//buck-src:elf",
+        "//buck-src:ctf",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: usdtheadergen binary

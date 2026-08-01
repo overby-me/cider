@@ -1430,5 +1430,12 @@
     "//buck-src:fw_Kernel",
     "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:fw_Kernel",
     "//darwin/private-frameworks:fw_CoreSymbolication"
+  ],
+  "dtrace": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "lockstat": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/private-frameworks:fw_CoreSymbolication"
   ]
 }

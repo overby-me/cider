@@ -74,6 +74,32 @@ ENV_FLAGS = {
 TOOLCHAIN_FLAGS = {
     "-target", "x86_64-apple-darwin20", "-arch", "x86_64", "-mmacosx-version-min=11.0",
 }
+# Subtrees a glob must never walk into, with the reason. buck2 refuses to glob a symlink
+# that resolves to nothing and fails the whole package with
+# "File not found: ... Included in BUCK but does not exist", and a whole-tree pattern
+# (`<dir>/**/*`) otherwise walks straight into these.
+GLOB_EXCLUDE = {
+    # DTraceToolkit: .d scripts, docs and man pages, zero headers, and two DANGLING
+    # symlinks upstream (DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d both point at siblings
+    # the pin does not carry). Every dtrace include root stages the pin ROOT, because the
+    # reference puts ${CMAKE_CURRENT_SOURCE_DIR} first on the include path, so every one
+    # of them hits these two links.
+    "dtrace/DTTk",
+}
+
+
+def glob_excludes(paths) -> list:
+    """Exclude patterns a glob over `paths` needs, from GLOB_EXCLUDE."""
+    out = set()
+    for bad in GLOB_EXCLUDE:
+        for p in paths:
+            p = p.rstrip("/")
+            if bad == p or bad.startswith(p + "/"):
+                out.add(bad + "/**")
+                break
+    return sorted(out)
+
+
 # Include dirs owned by another buck2 package, mapped to the target that already
 # declares them. A glob in one package cannot reach into another, so without this
 # the root would silently stage empty.
@@ -739,7 +765,14 @@ def generate(target: str, edges):
                 w(f'        "{p}/*.h",')
                 w(f'        "{p}/**/*.h",')
                 w(f'        "{p}/*.c",')
-        w("    ]),")
+        ex = glob_excludes(ps)
+        if ex:
+            w("    ], exclude = [")
+            for e in ex:
+                w(f'        "{e}",')
+            w("    ]),")
+        else:
+            w("    ]),")
         w(f'    root = "{parent}",')
         w("    include_subdirs = [")
         for sub in subs:
@@ -779,17 +812,19 @@ def generate(target: str, edges):
             root_name[p] = name
             w("cc_header_root(")
             w(f'    name = "{name}",')
+            ex = glob_excludes([p])
+            exarg = f", exclude = {ex}" if ex else ""
             # BOTH patterns: buck2's "dir/**/*.h" does not match dir/x.h, so a
             # root whose headers sit directly in it would stage EMPTY.
             if extensionless_headers(p) or unusual_header_exts(p):
                 # Everything: the headers here carry no extension (libstdc++) or an
                 # extension no fixed pattern would guess (zsh's .mdh/.pro).
-                w(f'    headers = glob(["{p}/**/*"]),')
+                w(f'    headers = glob(["{p}/**/*"]{exarg}),')
             else:
                 # *.c at the root level too: some sources are #included rather than
                 # compiled (ncurses' capdefaults.c, libedit's history.c), and they
                 # resolve through an -I of the source dir like any header.
-                w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]),')
+                w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]{exarg}),')
             w(f'    root = "{p}",')
             w('    visibility = ["PUBLIC"],')
             w(")")

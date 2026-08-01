@@ -143,9 +143,27 @@ understanding but are NOT install entries -- nothing in the prefix needs them, a
 does not run them -- so they stay low priority. elfdep and getuuid want
 src/buildtools/include plus cctools-port/cctools/include, bsdln links bsd, wrapgen links dl.
 
-The remaining 11 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
-plockstat, usdtheadergen), securityd and secd, SecurityTokend with its xtrace stub,
-launchservicesd and hdiutil.
+The dtrace cone then took UNMAPPED from 11 to 6 in one go: three static libraries (ctf, elf,
+dwarf), libdtrace.dylib, and dtrace, lockstat, plockstat and usdtheadergen. They only ever
+build together, so they landed together. libdtrace's lex and yacc output is COMMITTED in the
+pin (gen/libdtrace/lex.yy.c and y.tab.c) rather than generated, so no bison or flex target
+was needed.
+
+The thing that blocked it was not dtrace at all. Every dtrace include root stages the pin
+ROOT, because the reference puts ${CMAKE_CURRENT_SOURCE_DIR} first on the include path, and
+the generator writes that as a catch-all `dtrace/**/*` glob. The pin ships two DANGLING
+symlinks upstream, DTTk/Bin/dvmstat and DTTk/Bin/intbycpu.d, both pointing at siblings it
+does not carry, and buck2 refuses to glob a link that resolves to nothing: it fails the
+whole package with "File not found: root//buck-src/dtrace/DTTk/dvmstat. Included in
+buck-src/BUCK but does not exist". It had been latent for as long as those blocks existed,
+because nothing had ever built a dtrace target. gen-buck-from-ninja.py now carries a
+GLOB_EXCLUDE table (DTTk is .d scripts, docs and man pages, with zero headers) and emits the
+exclusion itself, so a regenerated block cannot reintroduce it. Worth remembering the
+shape: a whole-tree glob over a vendored pin is one bad symlink away from failing a package
+that has nothing to do with it.
+
+The remaining 6 are all "no target builds it": securityd and secd, SecurityTokend with its
+xtrace stub, launchservicesd and hdiutil.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
