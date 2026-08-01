@@ -69,6 +69,9 @@
  */
 
 #include <mach/mach_types.h>
+#ifdef __DARLING__
+#include <darlingserver/duct-tape/log.h>
+#endif
 #include <mach/boolean.h>
 #include <mach/kern_return.h>
 #include <mach/mach_param.h>
@@ -1708,6 +1711,14 @@ task_get_special_port_internal(
 
 	case TASK_BOOTSTRAP_PORT:
 		port = ipc_port_copy_send(task->itk_bootstrap);
+#ifdef __DARLING__
+		/*
+		 * Task #47: a job whose bootstrap port is null sends its first service lookup
+		 * to MACH_PORT_NULL and exits. This says whether the task HAS one to hand out.
+		 */
+		dtape_log_debug("special_port GET bootstrap: task=%p itk_bootstrap=%p -> port=%p",
+		    task, task->itk_bootstrap, port);
+#endif
 		itk_unlock(task);
 		break;
 
@@ -1957,6 +1968,9 @@ task_set_special_port_internal(
 	case TASK_BOOTSTRAP_PORT:
 		old = task->itk_bootstrap;
 		task->itk_bootstrap = port;
+#ifdef __DARLING__
+		dtape_log_debug("special_port SET bootstrap: task=%p old=%p new=%p", task, old, port);
+#endif
 		break;
 
 	/* Never allow overwrite of seatbelt port */
