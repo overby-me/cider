@@ -251,8 +251,15 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
         before   dtape_task_create: nsid=4 parent=(nil)      GET bootstrap -> (nil)   INVALID_DEST dest=0x0
         after    dtape_task_create: nsid=4 parent=0x..d8e10  GET bootstrap -> 0x..cbe50   INVALID_DEST count 0
 
-  launchd STILL does not complete, but the CURRENT failure is a quiescent deadlock, not the
-  ECONNREFUSED cascade earlier revisions of this entry chased. `strace -ff -tt` across every
+  launchd STILL does not complete. It is NOT a deadlock: it is a 30-SECOND POLL LOOP.
+  Timestamping the daemon's own strace and measuring the gaps gives 29.555s, 30.001s, 30.001s,
+  each ending with a reply to call #62 semaphore_timedwait. launchd waits on a semaphore with
+  a 30 second timeout, times out, does two or three RPCs, and waits again -- forever. An
+  earlier revision of this entry called it a quiescent deadlock with ninety seconds of
+  silence; that was an artifact of filtering the trace on one timestamp prefix and missing the
+  intermediate cycles. Read gaps, do not eyeball a filtered tail.
+
+  The ECONNREFUSED cascade is separately an artifact of TEARDOWN, not the defect. `strace -ff -tt` across every
   thread settles it by timestamp:
 
         11:59:32.5   all activity stops, about one second into the boot
