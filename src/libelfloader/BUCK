@@ -1,0 +1,1 @@
+load("//buck/rules:cc.bzl", "cc_objects")

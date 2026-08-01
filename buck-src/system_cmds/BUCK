@@ -2052,3 +2052,406 @@ darwin_binary(
 )
 # END generated: zic binary
 
+# BEGIN generated: wordexp-helper
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py wordexp-helper   -- review before committing.
+# cmake target: wordexp-helper  ->  src/external/system_cmds/wordexp-helper.tproj/wordexp-helper
+
+cc_objects(
+    name = "wordexp-helper_obj",
+    srcs = [
+        "wordexp-helper.tproj/wordexp-helper.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wordexp-helper
+
+# BEGIN generated: wordexp-helper binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries wordexp-helper   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "wordexp-helper",
+    objs = [
+        # wordexp-helper
+        ":wordexp-helper_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: wordexp-helper binary
+
+# BEGIN generated: reboot
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py reboot   -- review before committing.
+# cmake target: reboot  ->  src/external/system_cmds/reboot.tproj/reboot
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/system_cmds/reboot.tproj/kextmanagerUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/system_cmds/reboot.tproj
+
+cc_objects(
+    name = "reboot_obj",
+    srcs = [
+        "reboot.tproj/reboot.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: reboot
+
+# BEGIN generated: shutdown
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py shutdown   -- review before committing.
+# cmake target: shutdown  ->  src/external/system_cmds/shutdown.tproj/shutdown
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/system_cmds/shutdown.tproj/kextmanagerUser.c
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/system_cmds/shutdown.tproj
+
+cc_objects(
+    name = "shutdown_obj",
+    srcs = [
+        "shutdown.tproj/shutdown.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: shutdown
+
+# BEGIN generated: nologin
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py nologin   -- review before committing.
+# cmake target: nologin  ->  src/external/system_cmds/nologin.tproj/nologin
+
+cc_objects(
+    name = "nologin_obj",
+    srcs = [
+        "nologin.tproj/nologin.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nologin
+
+# BEGIN generated: nologin binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries nologin   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "nologin",
+    objs = [
+        # nologin
+        ":nologin_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: nologin binary
+
+# BEGIN generated: dmesg
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dmesg   -- review before committing.
+# cmake target: dmesg  ->  src/external/system_cmds/dmesg.tproj/dmesg
+
+cc_objects(
+    name = "dmesg_obj",
+    srcs = [
+        "dmesg.tproj/dmesg.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dmesg
+
+# BEGIN generated: dmesg binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dmesg   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dmesg",
+    objs = [
+        # dmesg
+        ":dmesg_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dmesg binary
+
+# BEGIN generated: dynamic_pager
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dynamic_pager   -- review before committing.
+# cmake target: dynamic_pager  ->  src/external/system_cmds/dynamic_pager.tproj/dynamic_pager
+
+cc_objects(
+    name = "dynamic_pager_obj",
+    srcs = [
+        "dynamic_pager.tproj/dynamic_pager.c",
+    ],
+    compiler_flags = [
+        "-DNO_DIRECT_RPC",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dynamic_pager
+
+# BEGIN generated: dynamic_pager binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dynamic_pager   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "dynamic_pager",
+    objs = [
+        # dynamic_pager
+        ":dynamic_pager_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dynamic_pager binary
+
+# BEGIN generated: chpass
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py chpass   -- review before committing.
+# cmake target: chpass  ->  src/external/system_cmds/chpass.tproj/chpass
+
+cc_header_root(
+    name = "chpass_inc_system_cmds_vipw_tproj",
+    headers = glob(["vipw.tproj/*.h", "vipw.tproj/**/*.h", "vipw.tproj/*.c"]),
+    root = "vipw.tproj",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "chpass_obj",
+    srcs = [
+        "chpass.tproj/chpass.c",
+        "chpass.tproj/edit.c",
+        "chpass.tproj/field.c",
+        "chpass.tproj/open_directory.c",
+        "chpass.tproj/pw_copy.c",
+        "chpass.tproj/table.c",
+        "chpass.tproj/util.c",
+        "vipw.tproj/pw_util.c",
+    ],
+    compiler_flags = [
+        "-DOPEN_DIRECTORY",
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_OpenDirectory",
+        ":chpass_inc_system_cmds_vipw_tproj",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: chpass
+
+# BEGIN generated: gcore
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gcore   -- review before committing.
+# cmake target: gcore  ->  src/external/system_cmds/gcore.tproj/gcore
+
+cc_objects(
+    name = "gcore_obj",
+    srcs = [
+        "gcore.tproj/convert.c",
+        "gcore.tproj/corefile.c",
+        "gcore.tproj/dyld.c",
+        "gcore.tproj/dyld_shared_cache.c",
+        "gcore.tproj/main.c",
+        "gcore.tproj/sparse.c",
+        "gcore.tproj/threads.c",
+        "gcore.tproj/utils.c",
+        "gcore.tproj/vanilla.c",
+        "gcore.tproj/vm.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gcore
+
+# BEGIN generated: gcore binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries gcore   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "gcore",
+    objs = [
+        # gcore
+        ":gcore_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:util_dylib",
+        "//src/libcompression:compression_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gcore binary
+
+# BEGIN generated: zlog
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py zlog   -- review before committing.
+# cmake target: zlog  ->  src/external/system_cmds/zlog.tproj/zlog
+
+cc_objects(
+    name = "zlog_obj",
+    srcs = [
+        "zlog.tproj/SymbolicationHelper.c",
+        "zlog.tproj/zlog.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-fPIC",
+        "-fblocks",
+        "-Wno-error=int-conversion",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/private-frameworks:fw_CoreSymbolication",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: zlog

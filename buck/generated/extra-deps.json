@@ -925,5 +925,445 @@
   "zlog": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/private-frameworks:fw_CoreSymbolication"
+  ],
+  "sysmon": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "pam_akm": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "pam_krb5": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//buck-src:fwp_Heimdal",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_OpenDirectory",
+    "//darwin/private-frameworks:fw_ServerInformation"
+  ],
+  "pam_localauthentication": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_LocalAuthentication"
+  ],
+  "pam_mount": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_NetFS",
+    "//darwin/frameworks:fw_OpenDirectory",
+    "//darwin/private-frameworks:fw_ServerInformation"
+  ],
+  "pam_ntlm": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//buck-src:fw_GSS",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_OpenDirectory",
+    "//darwin/private-frameworks:fw_ServerInformation"
+  ],
+  "pam_opendirectory": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_DirectoryService",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_OpenDirectory",
+    "//darwin/private-frameworks:fw_ConfigurationProfiles",
+    "//darwin/private-frameworks:fw_ServerInformation"
+  ],
+  "pam_smartcard": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_OpenDirectory",
+    "//darwin/private-frameworks:fw_ServerInformation"
+  ],
+  "pam_tid": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//darwin/frameworks:fw_OpenDirectory"
+  ],
+  "sasl_gs2": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS"
+  ],
+  "xslt": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "exslt": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "FMDB": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "PCSC": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_PCSC"
+  ],
+  "AE": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "CarbonCore": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit"
+  ],
+  "FSEvents": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_FSEvents"
+  ],
+  "LaunchServices": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_LaunchServices"
+  ],
+  "Metadata": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "SearchKit": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_SearchKit"
+  ],
+  "SharedFileList": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_SharedFileList"
+  ],
+  "Accounts": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_Accounts",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "CloudKit": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CloudKit",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "NetFS": [
+    "//darwin/frameworks:fw_NetFS"
+  ],
+  "OpenDirectory": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_OpenDirectory"
+  ],
+  "CFOpenDirectory": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//darwin/frameworks:fw_CFOpenDirectory"
+  ],
+  "SecurityFoundation": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_SecurityFoundation"
+  ],
+  "JavaVM": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_JavaVM"
+  ],
+  "JavaRuntimeSupport": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_JavaRuntimeSupport"
+  ],
+  "AppleAccount": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_Accounts",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_AppleAccount"
+  ],
+  "AppleSystemInfo": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/private-frameworks:fw_AppleSystemInfo"
+  ],
+  "AuthKit": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_Accounts",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_AuthKit"
+  ],
+  "ConfigurationProfiles": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_ConfigurationProfiles"
+  ],
+  "CrashReporterSupport": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_CrashReporterSupport"
+  ],
+  "MobileAsset": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_MobileAsset"
+  ],
+  "ProtocolBuffer": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_ProtocolBuffer"
+  ],
+  "TrustedPeers": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/private-frameworks:fw_TrustedPeers"
+  ],
+  "CoreSymbolication": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/private-frameworks:fw_CoreSymbolication"
+  ],
+  "launchservicesd": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices"
+  ],
+  "MobileKeyBag": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "SecureObjectSyncServer": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_Accounts",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_SecurityFoundation",
+    "//darwin/private-frameworks:fw_AppleAccount",
+    "//darwin/private-frameworks:fw_AppleSystemInfo",
+    "//darwin/private-frameworks:fw_AuthKit",
+    "//darwin/private-frameworks:fw_ProtocolBuffer"
+  ],
+  "bind9_dns": [
+    "//buck-src:fw_Kerberos",
+    "//buck-src:sdk_libxml2"
+  ],
+  "bind9_irs": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "bind9_isccfg": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "bind9_isc": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "bind9_base": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "libsecurityd_ios": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreData",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_LocalAuthentication",
+    "//darwin/frameworks:fw_SecurityFoundation",
+    "//darwin/private-frameworks:fw_ProtocolBuffer"
+  ],
+  "libtrustd": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_Network",
+    "//darwin/private-frameworks:fw_MobileAsset"
+  ],
+  "securityd_exe": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_PCSC",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "securitytool_macos": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_Network",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/frameworks:fw_SecurityFoundation"
+  ],
+  "xarexe": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "delv": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "dig": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "host": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "nslookup": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "nsupdate": [
+    "//buck-src:fw_Kerberos",
+    "//buck-src:sdk_libxml2"
+  ],
+  "ddns-confgen": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "hdiutil": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "installer": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//buck-src:sdk_libxml2",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "confgen_base": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "dighost": [
+    "//buck-src:sdk_libxml2"
   ]
 }

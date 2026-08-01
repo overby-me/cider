@@ -62,17 +62,32 @@ def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=REPO, capture_output=True, text=True, errors="replace", **kw)
 
 
+# Include roots that are not frameworks but arrive here looking like one, because what a
+# missing <a/b.h> names first is a directory either way. libxml2's headers are the case:
+# the reference puts the SDK's usr/include/libxml2 on every Darwin compile's path, so
+# <libxml/tree.h> resolves there and nine targets in the cli component need it.
+NON_FRAMEWORK_ROOTS = {
+    "libxml": "//buck-src:sdk_libxml2",
+}
+
+
 def framework_map() -> dict[str, str]:
     """Every fw_<name> target, by framework name."""
     p = run(["buck2", "targets", *FRAMEWORK_PACKAGES])
-    out = {}
+    out = dict(NON_FRAMEWORK_ROOTS)
     # fw_ and fwp_: //buck-src holds both the public and the PRIVATE framework maps, so it
     # prefixes the private ones to keep the two from colliding on a shared name. Heimdal
     # exists only as fwp_Heimdal, and looking for fw_ alone reported it as unported.
+    found = 0
     for m in re.finditer(r"(root)?(//[^\s:]+):(fwp?_[A-Za-z0-9_]+)", p.stdout):
         out.setdefault(m.group(3).split("_", 1)[1], f"{m.group(2)}:{m.group(3)}")
-    if not out:
-        sys.exit("no framework roots found -- is buck2 on PATH and buck-env sourced?")
+        found += 1
+    # Counted rather than testing `out`, which is never empty now. This is the guard that
+    # catches a buck2 that will not run at all -- a broken tree makes `targets` fail, and
+    # without the check every target in the batch fails for the wrong reason.
+    if not found:
+        sys.exit("no framework roots found -- is buck2 on PATH and does the tree parse?\n"
+                 + (p.stdout + p.stderr)[-800:])
     return out
 
 
@@ -212,6 +227,29 @@ def object_label(target: str) -> str:
     return target if target.endswith("_obj") else target + "_obj"
 
 
+def archive_label(target: str, nj: str) -> str:
+    """The buck name of a cmake archive target, which is named after its ARTIFACT.
+
+    The generator calls the block after lib<x>.a minus the lib and the .a, and an
+    archive's file name is not always its target's: libgroff builds libgroff.a (so:
+    `groff`) but groff_driver builds libdriver.a (so: `driver`). The reference's phony
+    edges are the mapping, so it is read rather than guessed -- without it the block
+    generates fine and the build then asks for a name nothing defines.
+    """
+    m = re.search(r"^build %s: phony ([^\n]*)$" % re.escape(target), nj, re.M)
+    name = target.removeprefix("lib") if target.startswith("lib") else target
+    for art in (m.group(1).split() if m else []):
+        if art.endswith(".a"):
+            name = os.path.basename(art).removeprefix("lib").removesuffix(".a")
+            break
+    # ...unless a BINARY of that name exists, in which case the generator keeps the cmake
+    # target's name to avoid registering two targets under one label (libgroff.a and the
+    # groff executable both want `groff`).
+    if re.search(r"_EXECUTABLE_LINKER__%s_[\s:]" % re.escape(name), nj):
+        return target
+    return name
+
+
 def dylib_label(target: str) -> str:
     """<cmake>_dylib, with a cmake target already named ..._obj losing that suffix.
 
@@ -262,6 +300,8 @@ def main() -> int:
             name = object_label(t)
         elif args.mode == "dylibs":
             name = dylib_label(t)
+        elif args.mode == "archives":
+            name = archive_label(t, nj)
         else:
             name = label_fmt.format(t)
         label = f"{package_from(msg) or args.package}:{name}"

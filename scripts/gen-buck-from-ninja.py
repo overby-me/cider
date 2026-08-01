@@ -101,6 +101,13 @@ CROSS_PACKAGE_ROOTS = {
     # links that dangle in the current layout.
     "src/startup/mldr/include": "//darwin:sdk_env",
     "src/startup/mldr/elfcalls": "//src/startup:mldr_elfcalls",
+    # darling-config.h, cmake's configure_file output. Every Darwin compile reaches it
+    # through //darwin:sdk_env, but a HOST tool has no sdk_env, so it names the
+    # generator directly -- src/include holds nothing else.
+    "src/include": "//src/include:darling_config",
+    # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
+    # Mach-O out of the build tree from //src/buildtools, and the pin lives in //buck-src.
+    "cctools-port/cctools/include": "//buck-src:libstuff_inc_cctools_include",
     # icu is a SPLIT pin, so its common headers are named by label, not globbed from here.
     "icu/icuSources/common": "//buck-src/icu:icucore_inc_icu_icuSources_common",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
@@ -125,6 +132,15 @@ ESCAPING_ROOTS = {
     # libldap's sources reach their sibling library's private header the same way
     # (#include "../liblber/lber-int.h").
     "OpenLDAP/OpenLDAP/libraries/libldap": ["OpenLDAP/OpenLDAP/libraries/liblber"],
+    # xtrace-mig-types.h is on the include path as <xtrace/xtrace-mig-types.h> and
+    # reaches back over its own root with #include "../../base.h", so the package root
+    # has to be in the same staged tree. Every XtraceMig stub goes through that header.
+    "src/xtrace/include": ["src/xtrace"],
+    # bind9's generated code.h is a list of #includes of the rdata IMPLEMENTATIONS, by a
+    # path relative to the pin root ("../../../bind9/lib/dns/rdata/in_1/a_1.c"). The
+    # generated tree and the source tree are siblings under the pin, so both have to be
+    # staged from there for the walk back up to land anywhere.
+    "bind9/gen/lib/dns": ["bind9/bind9/lib/dns/rdata"],
 }
 
 # Include dirs //darwin:sdk_env covers, relative to the repo root.
@@ -179,10 +195,54 @@ def read_edges():
         if "-dylib_install_name" in vars.get("LINK_FLAGS", ""):
             for o in outs:
                 DYLIB_ARTIFACTS.add(os.path.basename(o))
+    note_host_targets(edges)
+    note_exe_targets(edges)
     return edges
 
 
 DYLIB_ARTIFACTS: set = set()
+
+# Every cmake target the reference compiles for the BUILD MACHINE rather than for Darling:
+# the five host tools (bsdln, elfdep, getuuid, wrapgen, darling-coredump) plus the build
+# tools cmake runs during the build (migcom, lipo, ld64, ar, ranlib). They get the native
+# toolchain and no SDK -- linking them against the Darwin SDK would produce a Mach-O the
+# host cannot execute.
+HOST_TARGETS: set = set()
+
+
+def note_host_targets(edges) -> None:
+    """Fill HOST_TARGETS from the compile edges.
+
+    The reference says so by OMISSION: all 13,528 Darwin compiles carry
+    -target x86_64-apple-darwin20 and the 192 host ones carry no triple at all. That is
+    a stronger signal than any list of names, and it stays right when a target is added.
+    """
+    HOST_TARGETS.clear()
+    for outs, _rule, _inputs, vars in edges:
+        if "-target" in vars.get("FLAGS", ""):
+            continue
+        for o in outs:
+            m = re.search(r"CMakeFiles/([^/]+)\.dir/", o)
+            if m and o.endswith(".o"):
+                HOST_TARGETS.add(m.group(1))
+
+
+def toolchain_of(target: str) -> str:
+    return "toolchains//:native_cc" if target in HOST_TARGETS else "toolchains//:darwin_cc"
+
+
+# Every cmake EXECUTABLE target, by name. A binary block is named after its cmake target
+# and an archive block after its artifact, and the two namespaces meet: libgroff.a becomes
+# `groff`, which is also the name of the groff BINARY, in the same package.
+EXE_TARGETS: set = set()
+
+
+def note_exe_targets(edges) -> None:
+    EXE_TARGETS.clear()
+    for _outs, rule, _inputs, _vars in edges:
+        m = re.search(r"_EXECUTABLE_LINKER__(.+?)_$", rule)
+        if m:
+            EXE_TARGETS.add(m.group(1))
 
 
 def orig_repo_rel(p: str) -> str:
@@ -322,6 +382,11 @@ def collect(target: str, edges):
                         "defines": split_flags(vars.get("DEFINES", "")),
                         "flags": split_flags(vars.get("FLAGS", "")),
                         "includes": split_flags(vars.get("INCLUDES", "")),
+                        # A HOST compile, built to run on the build machine rather than
+                        # under Darling. The reference marks it by omission: every one of
+                        # the 13,528 Darwin compiles carries -target x86_64-apple-darwin20
+                        # and the 192 host ones carry no target triple at all.
+                        "host": "-target" not in vars.get("FLAGS", ""),
                     })
             if not got:
                 # A compile edge whose source this does not RECOGNISE is a source silently
@@ -402,12 +467,18 @@ def includes_of(unit):
 
     So this returns a list of ("own", path) entries and a single ("env", None)
     marker at the position the environment block occupies.
+
+    A HOST tool has no environment: //darwin:sdk_env is the Darwin SDK, and elfdep
+    compiles against the build machine's headers. Its include dirs are all its own,
+    including the ones that would otherwise be recognised as part of the environment
+    (src/include is on both paths, and means the repo's copy in either).
     """
+    host = unit.get("host", False)
     ordered, gen, seen_env = [], [], False
     for i in unit["includes"]:
         if not i.startswith("-I"):
             continue
-        if orig_repo_rel(i[2:]) in ENV_INCLUDES:
+        if not host and orig_repo_rel(i[2:]) in ENV_INCLUDES:
             if not seen_env:
                 ordered.append(("env", None))
                 seen_env = True
@@ -417,7 +488,7 @@ def includes_of(unit):
             gen.append(p)
         else:
             ordered.append(("own", p))
-    if not seen_env:
+    if not seen_env and not host:
         ordered.append(("env", None))
     return ordered, gen
 
@@ -742,7 +813,7 @@ def generate(target: str, edges):
             for _, hp in g["prefix"]:
                 w(f'        "{file_label(hp, pkg_for_files)}",')
             w("    ],")
-        w('    toolchain = "toolchains//:darwin_cc",')
+        w(f'    toolchain = "{toolchain_of(target)}",')
         w("    deps = [")
         # Dep ORDER is the include order, and the environment sits where the
         # reference puts it -- not first, not last.
@@ -904,8 +975,12 @@ def dylib_edges(target: str, edges):
     for outs, _rule, inputs, vars in edges:
         # A FRAMEWORK binary is a Mach-O dylib with no extension at all
         # (CoreFoundation, DirectoryService), so the install_name flag is what
-        # identifies a dylib link -- not the file name.
-        is_dylib_link = "-dylib_install_name" in vars.get("LINK_FLAGS", "")
+        # identifies a dylib link -- not the file name. And a LOADABLE MODULE has
+        # neither: zsh's 43 modules link with -shared and no install_name, because
+        # nothing ever links them -- zsh dlopens zutil.so by path. -shared is what
+        # every shared link has in common, install_name or not.
+        link_flags = vars.get("LINK_FLAGS", "")
+        is_dylib_link = "-dylib_install_name" in link_flags or "-shared" in link_flags
         for o in outs:
             base = os.path.basename(o)
             if "/" not in o or not (base.endswith(".dylib") or is_dylib_link):
@@ -1497,15 +1572,15 @@ def generate_dylibs(target: str, edges, only: str = ""):
             for flag, rel in sorted(kind_files.items()):
                 w(f'        "{flag}": "{rel}",')
             w("    },")
-        w('    toolchain = "toolchains//:darwin_cc",')
-        if extra_dylib_deps:
+        w(f'    toolchain = "{toolchain_of(target)}",')
+        env_dep = [] if target in HOST_TARGETS else ['        "//darwin:sdk_env",']
+        if extra_dylib_deps or env_dep:
             w("    deps = [")
-            w('        "//darwin:sdk_env",')
+            for line in env_dep:
+                w(line)
             for d in extra_dylib_deps:
                 w(f'        "{d}",')
             w("    ],")
-        else:
-            w('    deps = ["//darwin:sdk_env"],')
         w('    visibility = ["PUBLIC"],')
         w(")")
         w("")
@@ -1517,13 +1592,24 @@ def generate_dylibs(target: str, edges, only: str = ""):
 
 
 def archive_edge(name: str, edges):
-    """The archive link edge producing `name` (libfoo_static.a, or just foo_static)."""
+    """The archive link edge producing `name` (libfoo_static.a, or just foo_static).
+
+    By RULE name first, for the same reason exe_edge does it: a cmake target and its
+    archive are often spelled differently, and groff's are unrecognisable from each
+    other -- groff_driver builds libdriver.a and groff_bib builds libbib.a.
+    """
+    want_rule = "_STATIC_LIBRARY_LINKER__" + ninja_rule_name(name) + "_"
     cands = {name, f"lib{name}.a", f"{name}.a"}
-    for outs, _rule, inputs, vars in edges:
+    by_name = None
+    for outs, rule, inputs, vars in edges:
+        if not any(i.endswith(".o") for i in inputs):
+            continue
+        if want_rule in rule:
+            return (outs[0], inputs, vars)
         for o in outs:
-            if "/" in o and os.path.basename(o) in cands and any(i.endswith(".o") for i in inputs):
-                return (o, inputs, vars)
-    return None
+            if "/" in o and os.path.basename(o) in cands and by_name is None:
+                by_name = (o, inputs, vars)
+    return by_name
 
 
 def archive_target_name(artifact: str) -> str:
@@ -1593,6 +1679,12 @@ def generate_archive(name: str, edges):
     pkg = max(pkgs, key=lambda k: pkgs[k])
     artifact = os.path.basename(edge[0])
     target = archive_target_name(artifact)
+    if target in EXE_TARGETS:
+        # A BINARY block already owns this name, and both land in the same package:
+        # libgroff.a would be `groff` next to the groff executable, libssh.a `ssh` next
+        # to ssh. The archive takes the cmake target's name instead -- nothing looks it
+        # up by name anyway, since consumers find archives through lib_name below.
+        target = name
     # Object groups this port adds that no cmake object library corresponds to, keyed
     # by ARTIFACT name (the static kernel needs the generated rpc.c in its own group).
     extra_objs = [x[len("objs:"):] for x in extra_deps(artifact) if x.startswith("objs:")]
@@ -1619,10 +1711,19 @@ def generate_archive(name: str, edges):
     for extra in extra_objs:
         w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
     w("    ],")
-    w('    toolchain = "toolchains//:darwin_cc",')
+    w(f'    toolchain = "{toolchain_of(name)}",')
     w('    visibility = ["PUBLIC"],')
     w(")")
     return "\n".join(out).rstrip() + "\n", pkg
+
+
+def ninja_rule_name(target: str) -> str:
+    """cmake's spelling of a target inside a ninja RULE name.
+
+    ninja identifiers admit only [A-Za-z0-9_.-], so cmake hex-escapes anything else:
+    clang++_shim's linker rule is C_EXECUTABLE_LINKER__clang.2b.2b_shim_.
+    """
+    return "".join(c if (c.isalnum() or c in "_.-") else ".%02x" % ord(c) for c in target)
 
 
 def exe_edge(target: str, edges):
@@ -1630,17 +1731,33 @@ def exe_edge(target: str, edges):
 
     An executable has no extension and no -dylib_install_name, and it links object
     files; that is enough to tell it from the dylib and utility edges.
+
+    Matched by RULE name first, because a cmake target and the file it produces are
+    often spelled differently -- clang_shim builds `clang`, curlexe builds `curl`,
+    securityd_exe builds `securityd`. The rule name is cmake's own record of which
+    target a link belongs to, so it answers where the output name cannot. 92 of the
+    cli component's binaries are named that way.
     """
-    for outs, _rule, inputs, vars in edges:
+    want_rule = "_EXECUTABLE_LINKER__" + ninja_rule_name(target) + "_"
+    by_name = None
+    for outs, rule, inputs, vars in edges:
+        if not any(i.endswith(".o") for i in inputs):
+            continue
+        # The rule already says this is an executable link for this target, so neither
+        # test below applies. A HOST tool's link carries no LINK_FLAGS at all (nothing
+        # to say: no -target, no SDK, no install_name), which the emptiness test would
+        # otherwise read as "not a link".
+        if want_rule in rule:
+            return (outs[0], inputs, vars)
         lf = vars.get("LINK_FLAGS", "")
         if not lf or "dylib_install_name" in lf:
             continue
         for o in outs:
             if "/" not in o or os.path.basename(o) != target or "." in os.path.basename(o):
                 continue
-            if any(i.endswith(".o") for i in inputs):
-                return (o, inputs, vars)
-    return None
+            if by_name is None:
+                by_name = (o, inputs, vars)
+    return by_name
 
 
 def generate_binary(target: str, edges):
@@ -1722,6 +1839,12 @@ def generate_binary(target: str, edges):
     w("")
     w("darwin_binary(")
     w(f'    name = "{target}",')
+    # The block keeps the CMAKE target's name so the generator stays addressable by it,
+    # but the FILE has to come out under the name the reference installs -- clang_shim
+    # installs as clang. exe_name is what carries that across.
+    exe_base = os.path.basename(edge[0])
+    if exe_base != target:
+        w(f'    exe_name = "{exe_base}",')
     w("    objs = [")
     last = None
     for op, on, lib in objs:
@@ -1747,9 +1870,10 @@ def generate_binary(target: str, edges):
         for flag, rel in sorted(files.items()):
             w(f'        "{flag}": "{rel}",')
         w("    },")
-    w('    toolchain = "toolchains//:darwin_cc",')
+    w(f'    toolchain = "{toolchain_of(target)}",')
     w("    deps = [")
-    w('        "//darwin:sdk_env",')
+    if target not in HOST_TARGETS:
+        w('        "//darwin:sdk_env",')
     for a in archives:
         w(f'        "{a}",')
     for d in extra_dylib_deps:

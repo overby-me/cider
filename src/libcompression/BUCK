@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -15,3 +16,50 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: compression
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py compression   -- review before committing.
+# cmake target: compression  ->  src/libcompression/libcompression.dylib
+
+cc_objects(
+    name = "compression_obj",
+    srcs = [
+        "src/compression.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dcompression_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: compression
+
+# BEGIN generated: compression dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs compression   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "compression_dylib",
+    dylib_name = "libcompression.dylib",
+    install_name = "/usr/lib/libcompression.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # compression
+        ":compression_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: compression dylibs

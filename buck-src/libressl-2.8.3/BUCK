@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 load("//buck/rules:files.bzl", "export_file")
 
 # Targets over the libressl-2.8.3 pin, materialized by scripts/buck-src.sh. The tree
@@ -13,17 +13,24 @@ load("//buck/rules:files.bzl", "export_file")
 # 5 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
 cc_header_root(
     name = "libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
-    headers = glob(["include/*.h", "include/**/*.h", "include/*.c"]),
+    headers = glob([
+        "include/*.h",
+        "include/**/*.h",
+        "include/*.c",
+        "include/compat/*.h",
+        "include/compat/**/*.h",
+        "include/compat/*.c",
+    ]),
     root = "include",
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
-    headers = glob(["include/compat/*.h", "include/compat/**/*.h", "include/compat/*.c"]),
-    root = "include/compat",
+    include_subdirs = [
+        ".",
+        "compat",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -63,7 +70,6 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
-        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -103,7 +109,6 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include",
-        ":libressl_2_8_3_libcompat_inc_libressl_2_8_3_include_compat",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1144,3 +1149,21 @@ load("//buck/generated:exports_libressl-2.8.3.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# BEGIN generated: libressl_2_8_3_libcompat archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libressl_2_8_3_libcompat   -- review before committing.
+# Archives 1 cmake object library/ies, 2 flag groups.
+
+cc_static_lib(
+    name = "libressl_2_8_3_libcompat",
+    lib_name = "liblibressl_2_8_3_libcompat.a",
+    objs = [
+        # libressl_2_8_3_libcompat
+        ":libressl_2_8_3_libcompat_obj",
+        ":libressl_2_8_3_libcompat_obj2",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libressl_2_8_3_libcompat archive

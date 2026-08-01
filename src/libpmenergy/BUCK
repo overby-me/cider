@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -16,3 +17,107 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: pmenergy
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pmenergy   -- review before committing.
+# cmake target: pmenergy  ->  src/libpmenergy/libpmenergy.dylib
+
+cc_objects(
+    name = "pmenergy_obj",
+    srcs = [
+        "src/pmenergy.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpmenergy_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pmenergy
+
+# BEGIN generated: pmenergy dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pmenergy   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pmenergy_dylib",
+    dylib_name = "libpmenergy.dylib",
+    install_name = "/usr/lib/libpmenergy.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # pmenergy
+        ":pmenergy_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pmenergy dylibs
+
+# BEGIN generated: pmsample
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pmsample   -- review before committing.
+# cmake target: pmsample  ->  src/libpmenergy/libpmsample.dylib
+
+cc_objects(
+    name = "pmsample_obj",
+    srcs = [
+        "src/pmsample.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpmsample_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-ggdb",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pmsample
+
+# BEGIN generated: pmsample dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pmsample   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pmsample_dylib",
+    dylib_name = "libpmsample.dylib",
+    install_name = "/usr/lib/libpmsample.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # pmsample
+        ":pmsample_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pmsample dylibs

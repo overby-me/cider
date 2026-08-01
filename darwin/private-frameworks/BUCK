@@ -157,3 +157,857 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: login
+
+# BEGIN generated: AppleAccount
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AppleAccount   -- review before committing.
+# cmake target: AppleAccount  ->  src/private-frameworks/AppleAccount/AppleAccount
+
+cc_objects(
+    name = "AppleAccount_obj",
+    srcs = [
+        "AppleAccount/src/AAAbsintheContext.m",
+        "AppleAccount/src/AAAbsintheSigner.m",
+        "AppleAccount/src/AAAbsintheSignerContextCache.m",
+        "AppleAccount/src/AAAcceptedTermsController.m",
+        "AppleAccount/src/AAAccount.m",
+        "AppleAccount/src/AAAccountBeneficiaryManagementViewModel.m",
+        "AppleAccount/src/AAAccountContactPromptModel.m",
+        "AppleAccount/src/AAAccountManagementUIResponse.m",
+        "AppleAccount/src/AAAccountManager.m",
+        "AppleAccount/src/AAAccountRecoveryManagementViewModel.m",
+        "AppleAccount/src/AAAccountUserNotificationContext.m",
+        "AppleAccount/src/AAAccountUserNotificationDaemonConnection.m",
+        "AppleAccount/src/AAAccountUserNotificationDaemonInterface.m",
+        "AppleAccount/src/AAAccountUserNotificationPublisher.m",
+        "AppleAccount/src/AAAddEmailUIRequest.m",
+        "AppleAccount/src/AAAppleIDSettingsRequest.m",
+        "AppleAccount/src/AAAppleTVRequest.m",
+        "AppleAccount/src/AAAttestationSigner.m",
+        "AppleAccount/src/AAAuthenticateRequest.m",
+        "AppleAccount/src/AAAuthenticationResponse.m",
+        "AppleAccount/src/AAAutoAccountVerifier.m",
+        "AppleAccount/src/AAAvailabilityRequest.m",
+        "AppleAccount/src/AAAvailabilityResponse.m",
+        "AppleAccount/src/AABenefactorInfo.m",
+        "AppleAccount/src/AABeneficiary.m",
+        "AppleAccount/src/AABeneficiaryClaimUIRequest.m",
+        "AppleAccount/src/AABeneficiaryInfo.m",
+        "AppleAccount/src/AACertificatePinner.m",
+        "AppleAccount/src/AACloudKitDevicesListRequest.m",
+        "AppleAccount/src/AACloudKitDevicesListResponse.m",
+        "AppleAccount/src/AACloudKitMigrationStateRequest.m",
+        "AppleAccount/src/AACloudKitMigrationStateResponse.m",
+        "AppleAccount/src/AACloudKitStartMigrationRequest.m",
+        "AppleAccount/src/AACloudKitStartMigrationResponse.m",
+        "AppleAccount/src/AACompleteEmailVettingRequest.m",
+        "AppleAccount/src/AACompleteEmailVettingResponse.m",
+        "AppleAccount/src/AAContactsManager.m",
+        "AppleAccount/src/AAContactsProvider.m",
+        "AppleAccount/src/AACustodianChooseContactViewModel.m",
+        "AppleAccount/src/AACustodianController.m",
+        "AppleAccount/src/AACustodianDaemonConnection.m",
+        "AppleAccount/src/AACustodianDaemonInterface.m",
+        "AppleAccount/src/AACustodianDataRecoveryKeys.m",
+        "AppleAccount/src/AACustodianInvitationResponseContext.m",
+        "AppleAccount/src/AACustodianMessageInviteContext.m",
+        "AppleAccount/src/AACustodianPasswordResetInformation.m",
+        "AppleAccount/src/AACustodianRecoveryConfiguration.m",
+        "AppleAccount/src/AACustodianRecoveryRequestContext.m",
+        "AppleAccount/src/AACustodianSetupRequestContext.m",
+        "AppleAccount/src/AACustodianshipInfo.m",
+        "AppleAccount/src/AADaemonController.m",
+        "AppleAccount/src/AADataclassManager.m",
+        "AppleAccount/src/AADependentAuthenticationUIRequest.m",
+        "AppleAccount/src/AADevice.m",
+        "AppleAccount/src/AADeviceInfo.m",
+        "AppleAccount/src/AADeviceList.m",
+        "AppleAccount/src/AADeviceListRequest.m",
+        "AppleAccount/src/AADeviceListResponse.m",
+        "AppleAccount/src/AADeviceProvisioningRequest.m",
+        "AppleAccount/src/AADeviceProvisioningResponse.m",
+        "AppleAccount/src/AADeviceProvisioningSession.m",
+        "AppleAccount/src/AAEmailVettingRequest.m",
+        "AppleAccount/src/AAFMIPAuthenticateRequest.m",
+        "AppleAccount/src/AAFMIPAuthenticateResponse.m",
+        "AppleAccount/src/AAFamilyDetailsRequest.m",
+        "AppleAccount/src/AAFamilyDetailsResponse.m",
+        "AppleAccount/src/AAFamilyEligibilityRequest.m",
+        "AppleAccount/src/AAFamilyEligibilityResponse.m",
+        "AppleAccount/src/AAFamilyInvite.m",
+        "AppleAccount/src/AAFamilyMember.m",
+        "AppleAccount/src/AAFamilyRequest.m",
+        "AppleAccount/src/AAFlowPresenter.m",
+        "AppleAccount/src/AAFlowPresenterHostInterface.m",
+        "AppleAccount/src/AAFollowUpController.m",
+        "AppleAccount/src/AAFollowUpUtilities.m",
+        "AppleAccount/src/AAGenericTermsUIRequest.m",
+        "AppleAccount/src/AAGenericTermsUIResponse.m",
+        "AppleAccount/src/AAGrandSlamSigner.m",
+        "AppleAccount/src/AAInheritance.m",
+        "AppleAccount/src/AAInheritanceContactController.m",
+        "AppleAccount/src/AAInheritanceContactsViewModel.m",
+        "AppleAccount/src/AAInheritanceController.m",
+        "AppleAccount/src/AAInheritanceInvitation.m",
+        "AppleAccount/src/AAInheritanceMessageInviteContext.m",
+        "AppleAccount/src/AAInitiateEmailVettingRequest.m",
+        "AppleAccount/src/AAInviteCompletionInfo.m",
+        "AppleAccount/src/AAKeychainManager.m",
+        "AppleAccount/src/AALocalContactInfo.m",
+        "AppleAccount/src/AALocalization.m",
+        "AppleAccount/src/AALoginAccountRequest.m",
+        "AppleAccount/src/AALoginAccountResponse.m",
+        "AppleAccount/src/AALoginContextManager.m",
+        "AppleAccount/src/AALoginContextTransientStorage.m",
+        "AppleAccount/src/AALoginDelegatesRequest.m",
+        "AppleAccount/src/AALoginDelegatesResponse.m",
+        "AppleAccount/src/AALoginOrCreateDelegatesRequest.m",
+        "AppleAccount/src/AALoginPluginManager.m",
+        "AppleAccount/src/AALoginResponseAppleAccountInfo.m",
+        "AppleAccount/src/AALoginResponseDataclasses.m",
+        "AppleAccount/src/AALoginResponseiCloudTokens.m",
+        "AppleAccount/src/AAMessage.m",
+        "AppleAccount/src/AAMessagesInviteContext.m",
+        "AppleAccount/src/AAMessagingAccount.m",
+        "AppleAccount/src/AAMessagingCapability.m",
+        "AppleAccount/src/AAMessagingContext.m",
+        "AppleAccount/src/AAMessagingDestination.m",
+        "AppleAccount/src/AAMessagingDevice.m",
+        "AppleAccount/src/AAMessagingService.m",
+        "AppleAccount/src/AAMobileMeOfferResponse.m",
+        "AppleAccount/src/AAMyPhotoRequest.m",
+        "AppleAccount/src/AAOBAddTrustedContactsModel.m",
+        "AppleAccount/src/AAOBBulletPointModel.m",
+        "AppleAccount/src/AAOBCustodianContactSelectorModel.m",
+        "AppleAccount/src/AAOBCustodianHelpNowModel.m",
+        "AppleAccount/src/AAOBCustodianInvitationModel.m",
+        "AppleAccount/src/AAOBCustodiansListViewModel.m",
+        "AppleAccount/src/AAOBInheritanceContactPickerModel.m",
+        "AppleAccount/src/AAOBInheritanceInvitationModel.m",
+        "AppleAccount/src/AAOBInheritanceInviteMessageModel.m",
+        "AppleAccount/src/AAOBInheritanceSetupCompleteModel.m",
+        "AppleAccount/src/AAOBInheritanceShareAccessKeyOptionsModel.m",
+        "AppleAccount/src/AAOBInheritanceShareDataModel.m",
+        "AppleAccount/src/AAOBInvitationSentModel.m",
+        "AppleAccount/src/AAOBModelHelper.m",
+        "AppleAccount/src/AAOBTrustedContactInviteMessageModel.m",
+        "AppleAccount/src/AAPasswordSecurityUIRequest.m",
+        "AppleAccount/src/AAPaymentSummaryRequest.m",
+        "AppleAccount/src/AAPaymentSummaryResponse.m",
+        "AppleAccount/src/AAPaymentUIRequest.m",
+        "AppleAccount/src/AAPendingIDSMessage.m",
+        "AppleAccount/src/AAPersonaUtility.m",
+        "AppleAccount/src/AAPersonalInfoUIRequest.m",
+        "AppleAccount/src/AAPhotoResponse.m",
+        "AppleAccount/src/AAPreferences.m",
+        "AppleAccount/src/AAPrimaryAccountUpdater.m",
+        "AppleAccount/src/AAProvisioningResponse.m",
+        "AppleAccount/src/AAQuotaDepletionAlert.m",
+        "AppleAccount/src/AAQuotaInfoRequest.m",
+        "AppleAccount/src/AAQuotaInfoResponse.m",
+        "AppleAccount/src/AARecoveryFactorController.m",
+        "AppleAccount/src/AARegionInfo.m",
+        "AppleAccount/src/AARegisterRequest.m",
+        "AppleAccount/src/AARemoteServer.m",
+        "AppleAccount/src/AARemoteServerConfigurationCache.m",
+        "AppleAccount/src/AARequest.m",
+        "AppleAccount/src/AARequester.m",
+        "AppleAccount/src/AAResponse.m",
+        "AppleAccount/src/AASecondaryAuthenticationRequest.m",
+        "AppleAccount/src/AASecondaryAuthenticationResponse.m",
+        "AppleAccount/src/AASetupAssistantAuthenticateRequest.m",
+        "AppleAccount/src/AASetupAssistantConfigRequest.m",
+        "AppleAccount/src/AASetupAssistantConfigResponse.m",
+        "AppleAccount/src/AASetupAssistantCreateRequest.m",
+        "AppleAccount/src/AASetupAssistantCreateResponse.m",
+        "AppleAccount/src/AASetupAssistantService.m",
+        "AppleAccount/src/AASetupAssistantSetupDelegatesRequest.m",
+        "AppleAccount/src/AASetupAssistantSetupDelegatesResponse.m",
+        "AppleAccount/src/AASetupAssistantTermsFetchRequest.m",
+        "AppleAccount/src/AASetupAssistantUpdateRequest.m",
+        "AppleAccount/src/AASetupAssistantUpgradeStatusRequest.m",
+        "AppleAccount/src/AASetupAssistantUpgradeStatusResponse.m",
+        "AppleAccount/src/AASignInFlowController.m",
+        "AppleAccount/src/AASignInOperationHelper.m",
+        "AppleAccount/src/AASignOutFlowController.m",
+        "AppleAccount/src/AASigningSession.m",
+        "AppleAccount/src/AASigningSessionRequest.m",
+        "AppleAccount/src/AASigningSessionResponse.m",
+        "AppleAccount/src/AAStorableLoginContext.m",
+        "AppleAccount/src/AASuspensionInfo.m",
+        "AppleAccount/src/AATermsReportUserActionRequest.m",
+        "AppleAccount/src/AATermsReportUserActionResponse.m",
+        "AppleAccount/src/AATermsUserActionReporter.m",
+        "AppleAccount/src/AATrustedContact.m",
+        "AppleAccount/src/AATrustedContactDetailsViewModel.m",
+        "AppleAccount/src/AATrustedContactDetailsViewModelFactory.m",
+        "AppleAccount/src/AATrustedContactFlowPresenter.m",
+        "AppleAccount/src/AATrustedContactHealthInfo.m",
+        "AppleAccount/src/AATrustedContactNotificationPublisher.m",
+        "AppleAccount/src/AATrustedContactStringProvider.m",
+        "AppleAccount/src/AATrustedContactsCustodianSplashScreenModel.m",
+        "AppleAccount/src/AATrustedContactsInheritanceSplashScreenModel.m",
+        "AppleAccount/src/AATrustedDevice.m",
+        "AppleAccount/src/AATrustedDeviceListRequest.m",
+        "AppleAccount/src/AATrustedDeviceListResponse.m",
+        "AppleAccount/src/AAURLConfiguration.m",
+        "AppleAccount/src/AAURLConfigurationRequest.m",
+        "AppleAccount/src/AAURLProtocol.m",
+        "AppleAccount/src/AAURLSession.m",
+        "AppleAccount/src/AAURLSessionContext.m",
+        "AppleAccount/src/AAUniversalLinkHelper.m",
+        "AppleAccount/src/AAUpdateAccountUIRequest.m",
+        "AppleAccount/src/AAUpdateNameRequest.m",
+        "AppleAccount/src/AAUpdateProvisioningRequest.m",
+        "AppleAccount/src/AAUpgradeiOSTermsResponse.m",
+        "AppleAccount/src/AAUserNotification.m",
+        "AppleAccount/src/AAVersionUpdater.m",
+        "AppleAccount/src/AAWalrusPCSAuthRequest.m",
+        "AppleAccount/src/AAWalrusRecoveryContactRemovalAlertModel.m",
+        "AppleAccount/src/AAWalrusRecoveryContactRemovedScreenModel.m",
+        "AppleAccount/src/AAWalrusRecoveryKeyRemovalViewModel.m",
+        "AppleAccount/src/AAWalrusStringProvider.m",
+        "AppleAccount/src/AAiCloudLoginAccountRequester.m",
+        "AppleAccount/src/AAiCloudTermsAgreeRequest.m",
+        "AppleAccount/src/AAiCloudTermsAgreeResponse.m",
+        "AppleAccount/src/AAiCloudTermsStringRequest.m",
+        "AppleAccount/src/AAiCloudTermsStringResponse.m",
+        "AppleAccount/src/ACAccount+AppleID.m",
+        "AppleAccount/src/ACAccountStore+AppleID.m",
+        "AppleAccount/src/ACDataclassAction+AppleAccount.m",
+        "AppleAccount/src/ATVHighSecurityAccountDeviceList.m",
+        "AppleAccount/src/ATVHighSecurityAccountDeviceListResponse.m",
+        "AppleAccount/src/ATVHighSecurityAccountSendCode.m",
+        "AppleAccount/src/ATVHighSecurityAccountSendCodeResponse.m",
+        "AppleAccount/src/ATVHighSecurityAccountVerifyCode.m",
+        "AppleAccount/src/ATVHighSecurityAccountVerifyCodeResponse.m",
+        "AppleAccount/src/AppleAccount.m",
+        "AppleAccount/src/NSArray+AppleAccount.m",
+        "AppleAccount/src/NSData+AppleAccount.m",
+        "AppleAccount/src/NSDictionary+AppleAccount.m",
+        "AppleAccount/src/NSError+AppleAccount.m",
+        "AppleAccount/src/NSHTTPCookieStorage+AppleAccount.m",
+        "AppleAccount/src/NSMutableArray+AppleAccount.m",
+        "AppleAccount/src/NSMutableDictionary+AppleAccount.m",
+        "AppleAccount/src/NSMutableURLRequest+AppleAccount.m",
+        "AppleAccount/src/NSOperationQueue+AppleAccount.m",
+        "AppleAccount/src/NSSet+AppleAccount.m",
+        "AppleAccount/src/NSString+AAMessage.m",
+        "AppleAccount/src/NSURL+AppleAccount.m",
+        "AppleAccount/src/NSURLRequest+AppleAccount.m",
+        "AppleAccount/src/NSURLResponse+AppleAccount.m",
+        "AppleAccount/src/NSURLSessionConfiguration+AppleAccount.m",
+        "AppleAccount/src/_AABasicGetRequest.m",
+        "AppleAccount/src/_AAURLSessionConfigurationTask.m",
+        "AppleAccount/src/_AAURLSessionDelegate.m",
+        "AppleAccount/src/_AAURLSessionOperation.m",
+    ],
+    compiler_flags = [
+        "-DAppleAccount_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_Accounts",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_AppleAccount",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleAccount
+
+# BEGIN generated: AppleAccount dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AppleAccount   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "AppleAccount_dylib",
+    dylib_name = "AppleAccount",
+    install_name = "/System/Library/PrivateFrameworks/AppleAccount.framework/Versions/A/AppleAccount",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AppleAccount
+        ":AppleAccount_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//darwin/frameworks:Accounts_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleAccount dylibs
+
+# BEGIN generated: AppleSystemInfo
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AppleSystemInfo   -- review before committing.
+# cmake target: AppleSystemInfo  ->  src/private-frameworks/AppleSystemInfo/AppleSystemInfo
+
+cc_objects(
+    name = "AppleSystemInfo_obj",
+    srcs = [
+        "AppleSystemInfo/src/AppleSystemInfo.c",
+        "AppleSystemInfo/src/functions.c",
+    ],
+    compiler_flags = [
+        "-DAppleSystemInfo_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+        "//darwin/private-frameworks:fw_AppleSystemInfo",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleSystemInfo
+
+# BEGIN generated: AppleSystemInfo dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AppleSystemInfo   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "AppleSystemInfo_dylib",
+    dylib_name = "AppleSystemInfo",
+    install_name = "/System/Library/PrivateFrameworks/AppleSystemInfo.framework/Versions/A/AppleSystemInfo",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AppleSystemInfo
+        ":AppleSystemInfo_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppleSystemInfo dylibs
+
+# BEGIN generated: AuthKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AuthKit   -- review before committing.
+# cmake target: AuthKit  ->  src/private-frameworks/AuthKit/AuthKit
+
+cc_objects(
+    name = "AuthKit_obj",
+    srcs = [
+        "AuthKit/src/AKAbsintheSigner.m",
+        "AuthKit/src/AKAccountManager.m",
+        "AuthKit/src/AKAnisetteData.m",
+        "AuthKit/src/AKAnisetteProvisioningController.m",
+        "AuthKit/src/AKAnisetteProvisioningDaemonInterface.m",
+        "AuthKit/src/AKAppleIDAuthenticationClientInterface.m",
+        "AuthKit/src/AKAppleIDAuthenticationContext.m",
+        "AuthKit/src/AKAppleIDAuthenticationController.m",
+        "AuthKit/src/AKAppleIDAuthenticationDaemonInterface.m",
+        "AuthKit/src/AKAppleIDServerResourceLoadDelegate.m",
+        "AuthKit/src/AKAppleIDSession.m",
+        "AuthKit/src/AKCDPFactory.m",
+        "AuthKit/src/AKCertificatePinning.m",
+        "AuthKit/src/AKCircleRequestContext.m",
+        "AuthKit/src/AKCircleRequestPayload.m",
+        "AuthKit/src/AKConfiguration.m",
+        "AuthKit/src/AKDevice.m",
+        "AuthKit/src/AKDeviceListRequestContext.m",
+        "AuthKit/src/AKFollowUpFactoryImpl.m",
+        "AuthKit/src/AKFollowUpProviderImpl.m",
+        "AuthKit/src/AKFollowUpTearDownContext.m",
+        "AuthKit/src/AKMasterToken.m",
+        "AuthKit/src/AKToken.m",
+        "AuthKit/src/AKURLBag.m",
+        "AuthKit/src/AKURLDataTask.m",
+        "AuthKit/src/AKURLSession.m",
+        "AuthKit/src/_AKAppleIDAuthenticationContextManager.m",
+        "AuthKit/src/functions.c",
+    ],
+    compiler_flags = [
+        "-DAuthKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_Accounts",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_AuthKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AuthKit
+
+# BEGIN generated: AuthKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AuthKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "AuthKit_dylib",
+    dylib_name = "AuthKit",
+    install_name = "/System/Library/PrivateFrameworks/AuthKit.framework/Versions/A/AuthKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AuthKit
+        ":AuthKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: AuthKit dylibs
+
+# BEGIN generated: ConfigurationProfiles
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ConfigurationProfiles   -- review before committing.
+# cmake target: ConfigurationProfiles  ->  src/private-frameworks/ConfigurationProfiles/ConfigurationProfiles
+
+cc_objects(
+    name = "ConfigurationProfiles_obj",
+    srcs = [
+        "ConfigurationProfiles/constants.m",
+        "ConfigurationProfiles/src/CPCompositorWatcher.m",
+        "ConfigurationProfiles/src/CPIdentificationPayloads.m",
+        "ConfigurationProfiles/src/CPMCXTools.m",
+        "ConfigurationProfiles/src/CPProfile.m",
+        "ConfigurationProfiles/src/CPProfileAdditionalWarningsHelper.m",
+        "ConfigurationProfiles/src/CPProfileDomainService.m",
+        "ConfigurationProfiles/src/CPProfileDomainServiceConnectionHandler.m",
+        "ConfigurationProfiles/src/CPProfileManager.m",
+        "ConfigurationProfiles/src/CPProfileMissingFieldHelper.m",
+        "ConfigurationProfiles/src/CPProvisioningManager.m",
+        "ConfigurationProfiles/src/CPProvisioningProfile.m",
+        "ConfigurationProfiles/src/ConfigurationProfiles.m",
+        "ConfigurationProfiles/src/MCTeslaConfiguration.m",
+        "ConfigurationProfiles/src/MCXPlugInKitManagement.m",
+        "ConfigurationProfiles/src/MCXPlugInKitManagementCache.m",
+    ],
+    compiler_flags = [
+        "-DConfigurationProfiles_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_ConfigurationProfiles",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ConfigurationProfiles
+
+# BEGIN generated: ConfigurationProfiles dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ConfigurationProfiles   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "ConfigurationProfiles_dylib",
+    dylib_name = "ConfigurationProfiles",
+    install_name = "/System/Library/PrivateFrameworks/ConfigurationProfiles.framework/Versions/A/ConfigurationProfiles",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # ConfigurationProfiles
+        ":ConfigurationProfiles_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: ConfigurationProfiles dylibs
+
+# BEGIN generated: CrashReporterSupport
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CrashReporterSupport   -- review before committing.
+# cmake target: CrashReporterSupport  ->  src/private-frameworks/CrashReporterSupport/CrashReporterSupport
+
+cc_objects(
+    name = "CrashReporterSupport_obj",
+    srcs = [
+        "CrashReporterSupport/src/OSALogWriter.m",
+        "CrashReporterSupport/src/functions.c",
+    ],
+    compiler_flags = [
+        "-DCrashReporterSupport_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_CrashReporterSupport",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CrashReporterSupport
+
+# BEGIN generated: CrashReporterSupport dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CrashReporterSupport   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CrashReporterSupport_dylib",
+    dylib_name = "CrashReporterSupport",
+    install_name = "/System/Library/PrivateFrameworks/CrashReporterSupport.framework/Versions/A/CrashReporterSupport",
+    compatibility_version = "1.0.0",
+    current_version = "827.0.0",
+    objs = [
+        # CrashReporterSupport
+        ":CrashReporterSupport_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CrashReporterSupport dylibs
+
+# BEGIN generated: MobileAsset
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py MobileAsset   -- review before committing.
+# cmake target: MobileAsset  ->  src/private-frameworks/MobileAsset/MobileAsset
+
+cc_objects(
+    name = "MobileAsset_obj",
+    srcs = [
+        "MobileAsset/src/ASAsset.m",
+        "MobileAsset/src/ASAssetQuery.m",
+        "MobileAsset/src/MAAbsoluteAssetId.m",
+        "MobileAsset/src/MAAsset.m",
+        "MobileAsset/src/MAAssetQuery.m",
+        "MobileAsset/src/MADownloadConfig.m",
+        "MobileAsset/src/MADownloadOptions.m",
+        "MobileAsset/src/MAMsuDownloadOptions.m",
+        "MobileAsset/src/MAProgressHandler.m",
+        "MobileAsset/src/MAProgressNotification.m",
+        "MobileAsset/src/MAXpcConnection.m",
+        "MobileAsset/src/MAXpcManager.m",
+        "MobileAsset/src/MobileAsset.m",
+    ],
+    compiler_flags = [
+        "-DMobileAsset_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_MobileAsset",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: MobileAsset
+
+# BEGIN generated: MobileAsset dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs MobileAsset   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "MobileAsset_dylib",
+    dylib_name = "MobileAsset",
+    install_name = "/System/Library/PrivateFrameworks/MobileAsset.framework/Versions/A/MobileAsset",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # MobileAsset
+        ":MobileAsset_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: MobileAsset dylibs
+
+# BEGIN generated: ProtocolBuffer
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ProtocolBuffer   -- review before committing.
+# cmake target: ProtocolBuffer  ->  src/private-frameworks/ProtocolBuffer/ProtocolBuffer
+
+cc_objects(
+    name = "ProtocolBuffer_obj",
+    srcs = [
+        "ProtocolBuffer/src/PBCodable.m",
+        "ProtocolBuffer/src/PBDataReader.m",
+        "ProtocolBuffer/src/PBDataWriter.m",
+        "ProtocolBuffer/src/PBMessageStreamReader.m",
+        "ProtocolBuffer/src/PBMessageStreamWriter.m",
+        "ProtocolBuffer/src/PBMutableData.m",
+        "ProtocolBuffer/src/PBRequest.m",
+        "ProtocolBuffer/src/PBSessionRequester.m",
+        "ProtocolBuffer/src/PBStreamReader.m",
+        "ProtocolBuffer/src/PBStreamWriter.m",
+        "ProtocolBuffer/src/PBTextReader.m",
+        "ProtocolBuffer/src/PBTextWriter.m",
+        "ProtocolBuffer/src/PBUnknownFields.m",
+        "ProtocolBuffer/src/ProtocolBuffer.m",
+        "ProtocolBuffer/src/_PBProperty.m",
+    ],
+    compiler_flags = [
+        "-DProtocolBuffer_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_ProtocolBuffer",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ProtocolBuffer
+
+# BEGIN generated: ProtocolBuffer dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ProtocolBuffer   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "ProtocolBuffer_dylib",
+    dylib_name = "ProtocolBuffer",
+    install_name = "/System/Library/PrivateFrameworks/ProtocolBuffer.framework/Versions/A/ProtocolBuffer",
+    compatibility_version = "1.0.0",
+    current_version = "274.24.9",
+    objs = [
+        # ProtocolBuffer
+        ":ProtocolBuffer_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: ProtocolBuffer dylibs
+
+# BEGIN generated: TrustedPeers
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py TrustedPeers   -- review before committing.
+# cmake target: TrustedPeers  ->  src/private-frameworks/TrustedPeers/TrustedPeers
+
+cc_objects(
+    name = "TrustedPeers_obj",
+    srcs = [
+        "TrustedPeers/src/TPCachedViableBottles.m",
+        "TrustedPeers/src/TPCategoryRule.m",
+        "TrustedPeers/src/TPDictionaryMatchingRule.m",
+        "TrustedPeers/src/TPECPublicKeyFactory.m",
+        "TrustedPeers/src/TPHashBuilder.m",
+        "TrustedPeers/src/TPMachineID.m",
+        "TrustedPeers/src/TPMachineIDList.m",
+        "TrustedPeers/src/TPModel.m",
+        "TrustedPeers/src/TPPBAncientEpoch.m",
+        "TrustedPeers/src/TPPBDictionaryMatchingRule.m",
+        "TrustedPeers/src/TPPBDictionaryMatchingRuleFieldExists.m",
+        "TrustedPeers/src/TPPBDictionaryMatchingRuleFieldRegexMatch.m",
+        "TrustedPeers/src/TPPBDisposition.m",
+        "TrustedPeers/src/TPPBDispositionDisallowedMachineID.m",
+        "TrustedPeers/src/TPPBDispositionDuplicateMachineID.m",
+        "TrustedPeers/src/TPPBDispositionEntry.m",
+        "TrustedPeers/src/TPPBPeerDynamicInfo.m",
+        "TrustedPeers/src/TPPBPeerPermanentInfo.m",
+        "TrustedPeers/src/TPPBPeerStableInfo.m",
+        "TrustedPeers/src/TPPBPolicyCategoriesByView.m",
+        "TrustedPeers/src/TPPBPolicyDocument.m",
+        "TrustedPeers/src/TPPBPolicyIntroducersByCategory.m",
+        "TrustedPeers/src/TPPBPolicyKeyViewMapping.m",
+        "TrustedPeers/src/TPPBPolicyModelToCategory.m",
+        "TrustedPeers/src/TPPBPolicyProhibits.m",
+        "TrustedPeers/src/TPPBPolicyRedaction.m",
+        "TrustedPeers/src/TPPBPolicySecret.m",
+        "TrustedPeers/src/TPPBUnknownMachineID.m",
+        "TrustedPeers/src/TPPBVoucher.m",
+        "TrustedPeers/src/TPPeer.m",
+        "TrustedPeers/src/TPPeerDynamicInfo.m",
+        "TrustedPeers/src/TPPeerPermanentInfo.m",
+        "TrustedPeers/src/TPPeerStableInfo.m",
+        "TrustedPeers/src/TPPolicy.m",
+        "TrustedPeers/src/TPPolicyDocument.m",
+        "TrustedPeers/src/TPPolicyVersion.m",
+        "TrustedPeers/src/TPRecoveryKeyPair.m",
+        "TrustedPeers/src/TPStringTable.m",
+        "TrustedPeers/src/TPVoucher.m",
+        "TrustedPeers/src/TrustedPeers.m",
+    ],
+    compiler_flags = [
+        "-DTrustedPeers_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/private-frameworks:fw_TrustedPeers",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: TrustedPeers
+
+# BEGIN generated: TrustedPeers dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs TrustedPeers   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "TrustedPeers_dylib",
+    dylib_name = "TrustedPeers",
+    install_name = "/System/Library/PrivateFrameworks/TrustedPeers.framework/Versions/A/TrustedPeers",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # TrustedPeers
+        ":TrustedPeers_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: TrustedPeers dylibs
+
+# BEGIN generated: CoreSymbolication
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreSymbolication   -- review before committing.
+# cmake target: CoreSymbolication  ->  src/private-frameworks/CoreSymbolication/CoreSymbolication
+
+cc_objects(
+    name = "CoreSymbolication_obj",
+    srcs = [
+        "CoreSymbolication/src/functions.c",
+    ],
+    compiler_flags = [
+        "-DCoreSymbolication_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/private-frameworks:fw_CoreSymbolication",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreSymbolication
+
+# BEGIN generated: CoreSymbolication dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreSymbolication   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CoreSymbolication_dylib",
+    dylib_name = "CoreSymbolication",
+    install_name = "/System/Library/PrivateFrameworks/CoreSymbolication.framework/Versions/A/CoreSymbolication",
+    compatibility_version = "1.0.0",
+    current_version = "62046.0.0",
+    objs = [
+        # CoreSymbolication
+        ":CoreSymbolication_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreSymbolication dylibs

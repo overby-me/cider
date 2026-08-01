@@ -140,3 +140,1447 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: pam.2 dylibs
+
+# BEGIN generated: pam_deny
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_deny   -- review before committing.
+# cmake target: pam_deny  ->  pam_deny
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_deny_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_deny_obj",
+    srcs = [
+        "openpam/modules/pam_deny/pam_deny.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_deny_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_deny_inc_openpam_openpam",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_deny
+
+# BEGIN generated: pam_deny dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_deny   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_deny_dylib",
+    dylib_name = "pam_deny.so.2",
+    install_name = "/usr/lib/pam/pam_deny.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_deny
+        ":pam_deny_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_deny dylibs
+
+# BEGIN generated: pam.1
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam.1   -- review before committing.
+# cmake target: pam.1  ->  src/external/openpam/libpam.1.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam.1_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam.1_obj",
+    srcs = [
+        "compat/pam_shim.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_1_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam.1_inc_openpam_openpam",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam.1
+
+# BEGIN generated: pam.1 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam.1   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam.1_dylib",
+    dylib_name = "libpam.1.dylib",
+    install_name = "/usr/lib/libpam.1.dylib",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam.1
+        ":pam.1_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam.1 dylibs
+
+# BEGIN generated: pam_akm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_akm   -- review before committing.
+# cmake target: pam_akm  ->  pam_akm
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_akm_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_akm_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_akm_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_aks/pam_aks.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_akm_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_akm_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":pam_akm_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_akm
+
+# BEGIN generated: pam_akm dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_akm   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_akm_dylib",
+    dylib_name = "pam_akm.so.2",
+    install_name = "/usr/lib/pam/pam_akm.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_akm
+        ":pam_akm_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_akm dylibs
+
+# BEGIN generated: pam_env
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_env   -- review before committing.
+# cmake target: pam_env  ->  pam_env
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_env_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_env_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_env_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_env/pam_env.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_env_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_env_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_env_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_env
+
+# BEGIN generated: pam_env dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_env   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_env_dylib",
+    dylib_name = "pam_env.so.2",
+    install_name = "/usr/lib/pam/pam_env.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_env
+        ":pam_env_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_env dylibs
+
+# BEGIN generated: pam_group
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_group   -- review before committing.
+# cmake target: pam_group  ->  pam_group
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_group_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_group_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_group_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_group/pam_group.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_group_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_group_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_group_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_group
+
+# BEGIN generated: pam_group dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_group   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_group_dylib",
+    dylib_name = "pam_group.so.2",
+    install_name = "/usr/lib/pam/pam_group.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_group
+        ":pam_group_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_group dylibs
+
+# BEGIN generated: pam_krb5
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_krb5   -- review before committing.
+# cmake target: pam_krb5  ->  pam_krb5
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_krb5_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_krb5_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_krb5_obj",
+    srcs = [
+        "darling/submodules/pam_modules/common/Common.c",
+        "darling/submodules/pam_modules/modules/pam_krb5/pam_krb5.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_krb5_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_krb5_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//buck-src:fwp_Heimdal",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_OpenDirectory",
+        "//darwin/private-frameworks:fw_ServerInformation",
+        ":pam_krb5_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_krb5
+
+# BEGIN generated: pam_launchd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_launchd   -- review before committing.
+# cmake target: pam_launchd  ->  pam_launchd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_launchd_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_launchd_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_launchd_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_launchd/pam_launchd.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_launchd_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_launchd_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_launchd_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_launchd
+
+# BEGIN generated: pam_launchd dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_launchd   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "pam_launchd_dylib",
+    dylib_name = "pam_launchd.so.2",
+    install_name = "/usr/lib/pam/pam_launchd.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_launchd
+        ":pam_launchd_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Security_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_launchd dylibs
+
+# BEGIN generated: pam_localauthentication
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_localauthentication   -- review before committing.
+# cmake target: pam_localauthentication  ->  pam_localauthentication
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_localauthentication_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_localauthentication_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_localauthentication_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_localauthentication/pam_localauthentication.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_localauthentication_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_localauthentication_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        ":pam_localauthentication_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_localauthentication
+
+# BEGIN generated: pam_localauthentication dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_localauthentication   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "pam_localauthentication_dylib",
+    dylib_name = "pam_localauthentication.so.2",
+    install_name = "/usr/lib/pam/pam_localauthentication.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_localauthentication
+        ":pam_localauthentication_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:LocalAuthentication_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_localauthentication dylibs
+
+# BEGIN generated: pam_mount
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_mount   -- review before committing.
+# cmake target: pam_mount  ->  pam_mount
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_mount_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_mount_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_mount_obj",
+    srcs = [
+        "darling/submodules/pam_modules/common/Common.c",
+        "darling/submodules/pam_modules/modules/pam_mount/pam_mount.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_mount_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_mount_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_NetFS",
+        "//darwin/frameworks:fw_OpenDirectory",
+        "//darwin/private-frameworks:fw_ServerInformation",
+        ":pam_mount_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_mount
+
+# BEGIN generated: pam_nologin
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_nologin   -- review before committing.
+# cmake target: pam_nologin  ->  pam_nologin
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_nologin_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_nologin_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_nologin_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_nologin/pam_nologin.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_nologin_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_nologin_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_nologin_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_nologin
+
+# BEGIN generated: pam_nologin dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_nologin   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_nologin_dylib",
+    dylib_name = "pam_nologin.so.2",
+    install_name = "/usr/lib/pam/pam_nologin.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_nologin
+        ":pam_nologin_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_nologin dylibs
+
+# BEGIN generated: pam_ntlm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_ntlm   -- review before committing.
+# cmake target: pam_ntlm  ->  pam_ntlm
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_ntlm_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_ntlm_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_ntlm_obj",
+    srcs = [
+        "darling/submodules/pam_modules/common/Common.c",
+        "darling/submodules/pam_modules/modules/pam_ntlm/pam_ntlm.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_ntlm_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_ntlm_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//buck-src:fw_GSS",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_OpenDirectory",
+        "//darwin/private-frameworks:fw_ServerInformation",
+        ":pam_ntlm_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_ntlm
+
+# BEGIN generated: pam_opendirectory
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_opendirectory   -- review before committing.
+# cmake target: pam_opendirectory  ->  pam_opendirectory
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_opendirectory_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_opendirectory_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_opendirectory_obj",
+    srcs = [
+        "darling/submodules/pam_modules/common/Common.c",
+        "darling/submodules/pam_modules/modules/pam_opendirectory/pam_opendirectory.m",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_opendirectory_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_opendirectory_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_DirectoryService",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_OpenDirectory",
+        "//darwin/private-frameworks:fw_ConfigurationProfiles",
+        "//darwin/private-frameworks:fw_ServerInformation",
+        ":pam_opendirectory_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_opendirectory
+
+# BEGIN generated: pam_permit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_permit   -- review before committing.
+# cmake target: pam_permit  ->  pam_permit
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_permit_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_permit_obj",
+    srcs = [
+        "openpam/modules/pam_permit/pam_permit.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_permit_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_permit_inc_openpam_openpam",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_permit
+
+# BEGIN generated: pam_permit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_permit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_permit_dylib",
+    dylib_name = "pam_permit.so.2",
+    install_name = "/usr/lib/pam/pam_permit.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_permit
+        ":pam_permit_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_permit dylibs
+
+# BEGIN generated: pam_rootok
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_rootok   -- review before committing.
+# cmake target: pam_rootok  ->  pam_rootok
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_rootok_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_rootok_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_rootok_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_rootok/pam_rootok.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_rootok_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_rootok_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_rootok_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_rootok
+
+# BEGIN generated: pam_rootok dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_rootok   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_rootok_dylib",
+    dylib_name = "pam_rootok.so.2",
+    install_name = "/usr/lib/pam/pam_rootok.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_rootok
+        ":pam_rootok_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_rootok dylibs
+
+# BEGIN generated: pam_sacl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_sacl   -- review before committing.
+# cmake target: pam_sacl  ->  pam_sacl
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_sacl_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_sacl_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_sacl_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_sacl/pam_sacl.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_sacl_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_sacl_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_sacl_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_sacl
+
+# BEGIN generated: pam_sacl dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_sacl   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_sacl_dylib",
+    dylib_name = "pam_sacl.so.2",
+    install_name = "/usr/lib/pam/pam_sacl.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_sacl
+        ":pam_sacl_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_sacl dylibs
+
+# BEGIN generated: pam_self
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_self   -- review before committing.
+# cmake target: pam_self  ->  pam_self
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_self_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_self_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_self_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_self/pam_self.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_self_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_self_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_self_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_self
+
+# BEGIN generated: pam_self dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_self   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_self_dylib",
+    dylib_name = "pam_self.so.2",
+    install_name = "/usr/lib/pam/pam_self.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_self
+        ":pam_self_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_self dylibs
+
+# BEGIN generated: pam_smartcard
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_smartcard   -- review before committing.
+# cmake target: pam_smartcard  ->  pam_smartcard
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_smartcard_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_smartcard_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_smartcard_obj",
+    srcs = [
+        "darling/submodules/pam_modules/common/Common.c",
+        "darling/submodules/pam_modules/modules/pam_smartcard/attribute_matching.c",
+        "darling/submodules/pam_modules/modules/pam_smartcard/hash_matching.c",
+        "darling/submodules/pam_modules/modules/pam_smartcard/pam_smartcard.c",
+        "darling/submodules/pam_modules/modules/pam_smartcard/scmatch_evaluation.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_smartcard_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_smartcard_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_OpenDirectory",
+        "//darwin/private-frameworks:fw_ServerInformation",
+        ":pam_smartcard_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_smartcard
+
+# BEGIN generated: pam_tid
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_tid   -- review before committing.
+# cmake target: pam_tid  ->  pam_tid
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_tid_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_tid_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_tid_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_tid/pam_tid.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_tid_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_tid_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//darwin/frameworks:fw_OpenDirectory",
+        ":pam_tid_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_tid
+
+# BEGIN generated: pam_tid dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_tid   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   OpenDirectory
+#   Security_x86_64
+
+darwin_dylib(
+    name = "pam_tid_dylib",
+    dylib_name = "pam_tid.so.2",
+    install_name = "/usr/lib/pam/pam_tid.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_tid
+        ":pam_tid_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:LocalAuthentication_dylib",
+        "//darwin/frameworks:DirectoryService_dylib",
+        "//buck-src:Security_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_tid dylibs
+
+# BEGIN generated: pam_uwtmp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pam_uwtmp   -- review before committing.
+# cmake target: pam_uwtmp  ->  pam_uwtmp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pam_uwtmp_inc_openpam_openpam",
+    headers = glob([
+        "openpam/include/*.h",
+        "openpam/include/**/*.h",
+        "openpam/include/*.c",
+        "openpam/**/*",
+    ]),
+    root = "openpam",
+    include_subdirs = [
+        "include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "pam_uwtmp_inc_openpam_darling_submodules_pam_modules_common",
+    headers = glob(["darling/submodules/pam_modules/common/*.h", "darling/submodules/pam_modules/common/**/*.h", "darling/submodules/pam_modules/common/*.c"]),
+    root = "darling/submodules/pam_modules/common",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pam_uwtmp_obj",
+    srcs = [
+        "darling/submodules/pam_modules/modules/pam_uwtmp/pam_uwtmp.c",
+    ],
+    compiler_flags = [
+        "-DLIB_MAJ=2",
+        "-DOPENPAM_MODULES_DIR=\"/usr/lib/pam/;/usr/local/lib/pam/\"",
+        "-D_GNU_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpam_uwtmp_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":pam_uwtmp_inc_openpam_openpam",
+        "//darwin:sdk_env",
+        ":pam_uwtmp_inc_openpam_darling_submodules_pam_modules_common",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_uwtmp
+
+# BEGIN generated: pam_uwtmp dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_uwtmp   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_uwtmp_dylib",
+    dylib_name = "pam_uwtmp.so.2",
+    install_name = "/usr/lib/pam/pam_uwtmp.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_uwtmp
+        ":pam_uwtmp_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_uwtmp dylibs

@@ -1,4 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: sdk headers
 # SDK headers this package owns: the Darwin SDK tree reaches them by
@@ -16,3 +17,64 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: sysmon
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py sysmon   -- review before committing.
+# cmake target: sysmon  ->  src/libsysmon/libsysmon.dylib
+
+cc_objects(
+    name = "sysmon_obj",
+    srcs = [
+        "src/OS_sysmon_object.m",
+        "src/OS_sysmon_request.m",
+        "src/OS_sysmon_row.m",
+        "src/OS_sysmon_table.m",
+        "src/sysmon.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dsysmon_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: sysmon
+
+# BEGIN generated: sysmon dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs sysmon   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "sysmon_dylib",
+    dylib_name = "libsysmon.dylib",
+    install_name = "/usr/lib/libsysmon.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # sysmon
+        ":sysmon_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: sysmon dylibs

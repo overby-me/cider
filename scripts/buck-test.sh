@@ -367,23 +367,31 @@ for t in $all_dylibs; do
 	# like the run stopping for no reason.
 	id=$(llvm-objdump --macho --dylib-id "$f" 2>/dev/null | tail -1 || true)
 	case "$id" in
-	# A framework binary's id lives under /System/Library, not /usr/lib. xtrace's
-	# per-protocol stubs have NO install_name at all in the reference -- xtrace
-	# dlopens them by path -- so for those the assertion is the Mach-O type.
-	*_xtrace_mig.dylib | "")
-		ft=$(llvm-objdump --macho --private-headers "$f" 2>/dev/null | grep -m1 MH_MAGIC || true)
-		case "$ft" in
-		*DYLIB*) n_linked=$((n_linked + 1)) ;;
-		*) bad "$name is not a Mach-O dylib ($ft)" ;;
-		esac
-		;;
+	# A framework binary's id lives under /System/Library, not /usr/lib.
 	/usr/lib/* | /System/Library/*)
 		n_linked=$((n_linked + 1))
 		case "$name" in
 		*_firstpass) n_first=$((n_first + 1)) ;;
 		esac
 		;;
-	*) bad "$name has no install_name (got '$id')" ;;
+	# No install_name. An install_name is always an ABSOLUTE path, so anything that
+	# is not one means the Mach-O carries no LC_ID_DYLIB -- llvm-objdump then echoes
+	# the file's own header line ("<path>:") or nothing at all. That is not a defect
+	# here: xtrace's per-protocol stubs and every LOADABLE MODULE (zsh's 35, sasl's 8)
+	# are dlopened by path, and the reference links them with no -dylib_install_name.
+	# For those the assertion is the Mach-O type instead.
+	/*) bad "$name has an unexpected install_name (got '$id')" ;;
+	*)
+		ft=$(llvm-objdump --macho --private-headers "$f" 2>/dev/null | grep -m1 MH_MAGIC || true)
+		case "$ft" in
+		# BUNDLE as well as DYLIB, because that is what the reference builds these as:
+		# zsh's and sasl's module links carry -Wl,-bundle -Wl,-flat_namespace
+		# -Wl,-undefined,suppress, which is a MH_BUNDLE by definition. A module is
+		# dlopened, never linked against, so it needs no LC_ID_DYLIB and gets none.
+		*DYLIB* | *BUNDLE*) n_linked=$((n_linked + 1)) ;;
+		*) bad "$name is neither a Mach-O dylib nor a bundle ($ft)" ;;
+		esac
+		;;
 	esac
 done
 [ "$n_first" -ge 30 ] && ok "$n_first firstpass dylibs link" ||

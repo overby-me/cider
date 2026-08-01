@@ -1,5 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
@@ -545,3 +545,1620 @@ darwin_dylib(
 )
 # END generated: Network dylibs
 
+# BEGIN generated: AE
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AE   -- review before committing.
+# cmake target: AE  ->  src/frameworks/CoreServices/src/AE/AE
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "AE_obj",
+    srcs = [
+        "CoreServices/src/AE/empty.c",
+        "CoreServices/src/AE/stub.c",
+    ],
+    compiler_flags = [
+        "-DAE_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AE
+
+# BEGIN generated: AE dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AE   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "AE_dylib",
+    dylib_name = "AE",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/AE.framework/Versions/A/AE",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # AE
+        ":AE_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: AE dylibs
+
+# BEGIN generated: CarbonCore
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CarbonCore   -- review before committing.
+# cmake target: CarbonCore  ->  src/frameworks/CoreServices/src/CarbonCore/CarbonCore
+# 29 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "CarbonCore_obj",
+    srcs = [
+        "CoreServices/src/CarbonCore/ComponentManager.cpp",
+        "CoreServices/src/CarbonCore/Components.cpp",
+        "CoreServices/src/CarbonCore/CoreEndian.cpp",
+        "CoreServices/src/CarbonCore/CoreServicesPriv.cpp",
+        "CoreServices/src/CarbonCore/DateTimeUtils.cpp",
+        "CoreServices/src/CarbonCore/Debugging.cpp",
+        "CoreServices/src/CarbonCore/DriverServices.cpp",
+        "CoreServices/src/CarbonCore/DriverSynchronization.cpp",
+        "CoreServices/src/CarbonCore/FileManager.cpp",
+        "CoreServices/src/CarbonCore/Files.cpp",
+        "CoreServices/src/CarbonCore/FixMath.cpp",
+        "CoreServices/src/CarbonCore/Gestalt.cpp",
+        "CoreServices/src/CarbonCore/MacErrors.cpp",
+        "CoreServices/src/CarbonCore/MacLocales.cpp",
+        "CoreServices/src/CarbonCore/MacMemory.cpp",
+        "CoreServices/src/CarbonCore/Math64.cpp",
+        "CoreServices/src/CarbonCore/Multiprocessing.cpp",
+        "CoreServices/src/CarbonCore/OpenTransport.cpp",
+        "CoreServices/src/CarbonCore/Resources.cpp",
+        "CoreServices/src/CarbonCore/ResourcesImpl.cpp",
+        "CoreServices/src/CarbonCore/TextCommon.cpp",
+        "CoreServices/src/CarbonCore/TextEncodingConverter.cpp",
+        "CoreServices/src/CarbonCore/TextUtils.cpp",
+        "CoreServices/src/CarbonCore/Timer.cpp",
+        "CoreServices/src/CarbonCore/ToolUtils.cpp",
+        "CoreServices/src/CarbonCore/UnicodeConverter.cpp",
+        "CoreServices/src/CarbonCore/UnicodeUtilities.cpp",
+        "CoreServices/src/CarbonCore/UserBreak.cpp",
+    ],
+    compiler_flags = [
+        "-DCarbonCore_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_SearchKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CarbonCore_obj2",
+    srcs = [
+        "CoreServices/src/CarbonCore/BackupCore.c",
+    ],
+    compiler_flags = [
+        "-DCarbonCore_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_SearchKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CarbonCore
+
+# BEGIN generated: CarbonCore dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CarbonCore   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "CarbonCore_dylib",
+    dylib_name = "CarbonCore",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/CarbonCore.framework/Versions/A/CarbonCore",
+    compatibility_version = "1.0.0",
+    current_version = "945.0.0",
+    objs = [
+        # CarbonCore
+        ":CarbonCore_obj",
+        ":CarbonCore_obj2",
+    ],
+    siblings = [
+        "//buck-src:icucore_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CarbonCore dylibs
+
+# BEGIN generated: DictionaryServices
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py DictionaryServices   -- review before committing.
+# cmake target: DictionaryServices  ->  src/frameworks/CoreServices/src/DictionaryServices/DictionaryServices
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "DictionaryServices_obj",
+    srcs = [
+        "CoreServices/src/DictionaryServices/empty.c",
+    ],
+    compiler_flags = [
+        "-DDictionaryServices_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: DictionaryServices
+
+# BEGIN generated: DictionaryServices dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs DictionaryServices   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "DictionaryServices_dylib",
+    dylib_name = "DictionaryServices",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/DictionaryServices.framework/Versions/A/DictionaryServices",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # DictionaryServices
+        ":DictionaryServices_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: DictionaryServices dylibs
+
+# BEGIN generated: FSEvents
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py FSEvents   -- review before committing.
+# cmake target: FSEvents  ->  src/frameworks/CoreServices/src/FSEvents/FSEvents
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "FSEvents_obj",
+    srcs = [
+        "CoreServices/src/FSEvents/FSEvents.m",
+        "CoreServices/src/FSEvents/FSEventsImpl.m",
+    ],
+    compiler_flags = [
+        "-DFSEvents_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Foundation",
+        "//darwin/frameworks:fw_FSEvents",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: FSEvents
+
+# BEGIN generated: FSEvents dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs FSEvents   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "FSEvents_dylib",
+    dylib_name = "FSEvents",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/FSEvents.framework/Versions/A/FSEvents",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # FSEvents
+        ":FSEvents_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: FSEvents dylibs
+
+# BEGIN generated: LaunchServices
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py LaunchServices   -- review before committing.
+# cmake target: LaunchServices  ->  src/frameworks/CoreServices/src/LaunchServices/LaunchServices
+# 9 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "LaunchServices_obj",
+    srcs = [
+        "CoreServices/src/LaunchServices/LSApplicationProxy.m",
+        "CoreServices/src/LaunchServices/LSApplicationWorkspace.m",
+        "CoreServices/src/LaunchServices/LSInfo.m",
+        "CoreServices/src/LaunchServices/LSOpen.m",
+        "CoreServices/src/LaunchServices/LSRunning.m",
+        "CoreServices/src/LaunchServices/LaunchServices.c",
+        "CoreServices/src/LaunchServices/UTType.m",
+        "CoreServices/src/LaunchServices/constants.c",
+    ],
+    compiler_flags = [
+        "-DLaunchServices_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_LaunchServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "LaunchServices_obj2",
+    srcs = [
+        "CoreServices/src/LaunchServices/LaunchServices.cpp",
+    ],
+    compiler_flags = [
+        "-DLaunchServices_EXPORTS",
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_LaunchServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: LaunchServices
+
+# BEGIN generated: LaunchServices dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs LaunchServices   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_dylib(
+    name = "LaunchServices_dylib",
+    dylib_name = "LaunchServices",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/LaunchServices",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # LaunchServices
+        ":LaunchServices_obj",
+        ":LaunchServices_obj2",
+    ],
+    siblings = [
+        "//buck-src:icucore_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:CarbonCore_dylib",
+        "//buck-src:FMDB_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: LaunchServices dylibs
+
+# BEGIN generated: Metadata
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Metadata   -- review before committing.
+# cmake target: Metadata  ->  src/frameworks/CoreServices/src/Metadata/Metadata
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "Metadata_obj",
+    srcs = [
+        "CoreServices/src/Metadata/MDItem.c",
+        "CoreServices/src/Metadata/MDQuery.c",
+    ],
+    compiler_flags = [
+        "-DMetadata_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Metadata
+
+# BEGIN generated: Metadata dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Metadata   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "Metadata_dylib",
+    dylib_name = "Metadata",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/Metadata.framework/Versions/A/Metadata",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # Metadata
+        ":Metadata_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: Metadata dylibs
+
+# BEGIN generated: OSServices
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py OSServices   -- review before committing.
+# cmake target: OSServices  ->  src/frameworks/CoreServices/src/OSServices/OSServices
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "OSServices_obj",
+    srcs = [
+        "CoreServices/src/OSServices/empty.c",
+    ],
+    compiler_flags = [
+        "-DOSServices_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: OSServices
+
+# BEGIN generated: OSServices dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs OSServices   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "OSServices_dylib",
+    dylib_name = "OSServices",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/OSServices.framework/Versions/A/OSServices",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # OSServices
+        ":OSServices_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: OSServices dylibs
+
+# BEGIN generated: SearchKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py SearchKit   -- review before committing.
+# cmake target: SearchKit  ->  src/frameworks/CoreServices/src/SearchKit/SearchKit
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "SearchKit_obj",
+    srcs = [
+        "CoreServices/src/SearchKit/SKAnalysis.c",
+        "CoreServices/src/SearchKit/SKIndex.c",
+    ],
+    compiler_flags = [
+        "-DSearchKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_SearchKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: SearchKit
+
+# BEGIN generated: SearchKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs SearchKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "SearchKit_dylib",
+    dylib_name = "SearchKit",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/SearchKit.framework/Versions/A/SearchKit",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # SearchKit
+        ":SearchKit_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: SearchKit dylibs
+
+# BEGIN generated: SharedFileList
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py SharedFileList   -- review before committing.
+# cmake target: SharedFileList  ->  src/frameworks/CoreServices/src/SharedFileList/SharedFileList
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "SharedFileList_obj",
+    srcs = [
+        "CoreServices/src/SharedFileList/constants.c",
+    ],
+    compiler_flags = [
+        "-DSharedFileList_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//darwin/frameworks:fw_SharedFileList",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: SharedFileList
+
+# BEGIN generated: SharedFileList dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs SharedFileList   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "SharedFileList_dylib",
+    dylib_name = "SharedFileList",
+    install_name = "/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/SharedFileList.framework/Versions/A/SharedFileList",
+    compatibility_version = "1.0.0",
+    current_version = "1239.200.12",
+    objs = [
+        # SharedFileList
+        ":SharedFileList_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: SharedFileList dylibs
+
+# BEGIN generated: Accounts
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Accounts   -- review before committing.
+# cmake target: Accounts  ->  src/frameworks/Accounts/Accounts
+
+cc_objects(
+    name = "Accounts_obj",
+    srcs = [
+        "Accounts/src/ACAccount.m",
+        "Accounts/src/ACAccountCredential.m",
+        "Accounts/src/ACAccountMigrationLock.m",
+        "Accounts/src/ACAccountStore.m",
+        "Accounts/src/ACAccountStoreClientSideListener.m",
+        "Accounts/src/ACAccountType.m",
+        "Accounts/src/ACCredentialItem.m",
+        "Accounts/src/ACDManagedAccessOptionsKey.m",
+        "Accounts/src/ACDManagedAccount.m",
+        "Accounts/src/ACDManagedAccountProperty.m",
+        "Accounts/src/ACDManagedAccountType.m",
+        "Accounts/src/ACDManagedAuthorization.m",
+        "Accounts/src/ACDManagedCredentialItem.m",
+        "Accounts/src/ACDManagedDataclass.m",
+        "Accounts/src/ACDPropertyEncryption.m",
+        "Accounts/src/ACDataclassAction.m",
+        "Accounts/src/ACDispatchCerberus.m",
+        "Accounts/src/ACManagedDefaults.m",
+        "Accounts/src/ACMutableTrackedSet.m",
+        "Accounts/src/ACNotificationRebroadcaster.m",
+        "Accounts/src/ACOAuthSigner.m",
+        "Accounts/src/ACPersonaManager.m",
+        "Accounts/src/ACProtobufAccount.m",
+        "Accounts/src/ACProtobufAccountCredential.m",
+        "Accounts/src/ACProtobufAccountType.m",
+        "Accounts/src/ACProtobufCredentialItem.m",
+        "Accounts/src/ACProtobufDataclassAction.m",
+        "Accounts/src/ACProtobufDate.m",
+        "Accounts/src/ACProtobufKeyValuePair.m",
+        "Accounts/src/ACProtobufURL.m",
+        "Accounts/src/ACProtobufUUID.m",
+        "Accounts/src/ACProtobufVariableKeyValuePair.m",
+        "Accounts/src/ACProtobufVariableValue.m",
+        "Accounts/src/ACProtobufVariableValueDictionary.m",
+        "Accounts/src/ACProtobufVariableValueList.m",
+        "Accounts/src/ACRateLimiter.m",
+        "Accounts/src/ACRemoteAccountStoreInterface.m",
+        "Accounts/src/ACRemoteAccountStoreSession.m",
+        "Accounts/src/ACSimpleRateLimiter.m",
+        "Accounts/src/ACSystemConfigManager.m",
+        "Accounts/src/ACTrackedSet.m",
+        "Accounts/src/ACZeroingString.m",
+        "Accounts/src/Accounts.m",
+    ],
+    compiler_flags = [
+        "-DAccounts_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_Accounts",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Accounts
+
+# BEGIN generated: Accounts dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Accounts   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "Accounts_dylib",
+    dylib_name = "Accounts",
+    install_name = "/System/Library/Frameworks/Accounts.framework/Versions/A/Accounts",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # Accounts
+        ":Accounts_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: Accounts dylibs
+
+# BEGIN generated: CloudKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CloudKit   -- review before committing.
+# cmake target: CloudKit  ->  src/frameworks/CloudKit/CloudKit
+
+cc_objects(
+    name = "CloudKit_obj",
+    srcs = [
+        "CloudKit/src/CKAPSMachServiceConnectionDelegate.m",
+        "CloudKit/src/CKAPSMachServiceConnectionKey.m",
+        "CloudKit/src/CKAcceptSharesOperation.m",
+        "CloudKit/src/CKAcceptSharesOperationInfo.m",
+        "CloudKit/src/CKAccountInfo.m",
+        "CloudKit/src/CKAccountOverrideInfo.m",
+        "CloudKit/src/CKAggregateExpressionValidator.m",
+        "CloudKit/src/CKAggregateZonePCSOperation.m",
+        "CloudKit/src/CKAggregateZonePCSOperationInfo.m",
+        "CloudKit/src/CKAllPredicateValidator.m",
+        "CloudKit/src/CKAnyPredicateValidator.m",
+        "CloudKit/src/CKApplicationPermissionGroup.m",
+        "CloudKit/src/CKArchiveRecordsOperation.m",
+        "CloudKit/src/CKArchiveRecordsOperationInfo.m",
+        "CloudKit/src/CKArchivedAnchoredPackage.m",
+        "CloudKit/src/CKAsset.m",
+        "CloudKit/src/CKAssetCopyInfo.m",
+        "CloudKit/src/CKAssetDownloadPreauthorization.m",
+        "CloudKit/src/CKAssetReference.m",
+        "CloudKit/src/CKAssetRepairOperationUtilities.m",
+        "CloudKit/src/CKAssetRepairScheduler.m",
+        "CloudKit/src/CKAssetRereferenceInfo.m",
+        "CloudKit/src/CKAssetReuploadExpectedProperties.m",
+        "CloudKit/src/CKAssetTransferOptions.m",
+        "CloudKit/src/CKAssetUploadRequestMetadata.m",
+        "CloudKit/src/CKAutoBugCaptureMetadata.m",
+        "CloudKit/src/CKBehaviorOptions.m",
+        "CloudKit/src/CKBlockingAsyncQueue.m",
+        "CloudKit/src/CKCodeFunctionInvokeOperation.m",
+        "CloudKit/src/CKCodeFunctionInvokeOperationInfo.m",
+        "CloudKit/src/CKComparisonModifierValidator.m",
+        "CloudKit/src/CKComparisonOperatorValidator.m",
+        "CloudKit/src/CKComparisonOptionsValidator.m",
+        "CloudKit/src/CKComparisonPredicateValidator.m",
+        "CloudKit/src/CKCompleteParticipantVettingOperation.m",
+        "CloudKit/src/CKCompleteParticipantVettingOperationInfo.m",
+        "CloudKit/src/CKCompoundSubpredicateValidator.m",
+        "CloudKit/src/CKCompoundTypePredicateValidator.m",
+        "CloudKit/src/CKConstantValueExpressionValidator.m",
+        "CloudKit/src/CKContactsSupport.m",
+        "CloudKit/src/CKContainer.m",
+        "CloudKit/src/CKContainerID.m",
+        "CloudKit/src/CKContainerOptions.m",
+        "CloudKit/src/CKContainerSetupInfo.m",
+        "CloudKit/src/CKContainerXPCProxy.m",
+        "CloudKit/src/CKCustomBlockValidator.m",
+        "CloudKit/src/CKDCancelToken.m",
+        "CloudKit/src/CKDPDate.m",
+        "CloudKit/src/CKDPIdentifier.m",
+        "CloudKit/src/CKDPLocationCoordinate.m",
+        "CloudKit/src/CKDPRecordFieldValueEncryptedValue.m",
+        "CloudKit/src/CKDPRecordIdentifier.m",
+        "CloudKit/src/CKDPRecordReference.m",
+        "CloudKit/src/CKDPRecordZoneIdentifier.m",
+        "CloudKit/src/CKDPStreamingAssetFooter.m",
+        "CloudKit/src/CKDatabase.m",
+        "CloudKit/src/CKDatabaseNotification.m",
+        "CloudKit/src/CKDatabaseOperation.m",
+        "CloudKit/src/CKDatabaseOperationInfo.m",
+        "CloudKit/src/CKDatabaseSubscription.m",
+        "CloudKit/src/CKDeclarativePredicateValidator.m",
+        "CloudKit/src/CKDeviceToDeviceShareInvitationToken.m",
+        "CloudKit/src/CKDiscoverAllContactsOperation.m",
+        "CloudKit/src/CKDiscoverAllUserIdentitiesOperation.m",
+        "CloudKit/src/CKDiscoverUserIdentitiesOperation.m",
+        "CloudKit/src/CKDiscoverUserIdentitiesOperationInfo.m",
+        "CloudKit/src/CKDiscoverUserInfosOperation.m",
+        "CloudKit/src/CKDiscoveredUserInfo.m",
+        "CloudKit/src/CKDiscretionaryOptions.m",
+        "CloudKit/src/CKEncryptedData.m",
+        "CloudKit/src/CKEncryptedDate.m",
+        "CloudKit/src/CKEncryptedDateArray.m",
+        "CloudKit/src/CKEncryptedDouble.m",
+        "CloudKit/src/CKEncryptedDoubleArray.m",
+        "CloudKit/src/CKEncryptedEmptyArray.m",
+        "CloudKit/src/CKEncryptedLocation.m",
+        "CloudKit/src/CKEncryptedLocationArray.m",
+        "CloudKit/src/CKEncryptedLongLong.m",
+        "CloudKit/src/CKEncryptedLongLongArray.m",
+        "CloudKit/src/CKEncryptedRecordValueStore.m",
+        "CloudKit/src/CKEncryptedReference.m",
+        "CloudKit/src/CKEncryptedString.m",
+        "CloudKit/src/CKEncryptedStringArray.m",
+        "CloudKit/src/CKEvaluatedObjectExpressionValidator.m",
+        "CloudKit/src/CKEventMetric.m",
+        "CloudKit/src/CKEventMetricInfo.m",
+        "CloudKit/src/CKEventOperationGroupInfo.m",
+        "CloudKit/src/CKEventOperationInfo.m",
+        "CloudKit/src/CKException.m",
+        "CloudKit/src/CKFetchArchivedRecordsOperation.m",
+        "CloudKit/src/CKFetchArchivedRecordsOperationInfo.m",
+        "CloudKit/src/CKFetchArchivedRecordsOptions.m",
+        "CloudKit/src/CKFetchDatabaseChangesOperation.m",
+        "CloudKit/src/CKFetchDatabaseChangesOperationInfo.m",
+        "CloudKit/src/CKFetchDatabaseChangesOperationResult.m",
+        "CloudKit/src/CKFetchNotificationChangesOperation.m",
+        "CloudKit/src/CKFetchNotificationChangesOperationInfo.m",
+        "CloudKit/src/CKFetchNotificationChangesOperationResult.m",
+        "CloudKit/src/CKFetchRecordChangesOperation.m",
+        "CloudKit/src/CKFetchRecordChangesOperationResult.m",
+        "CloudKit/src/CKFetchRecordVersionsOperation.m",
+        "CloudKit/src/CKFetchRecordVersionsOperationInfo.m",
+        "CloudKit/src/CKFetchRecordZoneChangesConfiguration.m",
+        "CloudKit/src/CKFetchRecordZoneChangesOperation.m",
+        "CloudKit/src/CKFetchRecordZoneChangesOperationInfo.m",
+        "CloudKit/src/CKFetchRecordZoneChangesOptions.m",
+        "CloudKit/src/CKFetchRecordZonesOperation.m",
+        "CloudKit/src/CKFetchRecordZonesOperationInfo.m",
+        "CloudKit/src/CKFetchRecordsAssetInfo.m",
+        "CloudKit/src/CKFetchRecordsOperation.m",
+        "CloudKit/src/CKFetchRecordsOperationInfo.m",
+        "CloudKit/src/CKFetchShareMetadataOperation.m",
+        "CloudKit/src/CKFetchShareMetadataOperationInfo.m",
+        "CloudKit/src/CKFetchShareParticipantKeyOperation.m",
+        "CloudKit/src/CKFetchShareParticipantKeyOperationInfo.m",
+        "CloudKit/src/CKFetchShareParticipantsOperation.m",
+        "CloudKit/src/CKFetchShareParticipantsOperationInfo.m",
+        "CloudKit/src/CKFetchSubscriptionsOperation.m",
+        "CloudKit/src/CKFetchSubscriptionsOperationInfo.m",
+        "CloudKit/src/CKFetchUserQuotaOperation.m",
+        "CloudKit/src/CKFetchUserQuotaOperationResult.m",
+        "CloudKit/src/CKFetchWebAuthTokenOperation.m",
+        "CloudKit/src/CKFetchWebAuthTokenOperationInfo.m",
+        "CloudKit/src/CKFetchWebAuthTokenOperationResult.m",
+        "CloudKit/src/CKFetchWhitelistedBundleIDsOperation.m",
+        "CloudKit/src/CKFetchWhitelistedBundleIDsOperationResult.m",
+        "CloudKit/src/CKFileMetadata.m",
+        "CloudKit/src/CKFileOpenInfo.m",
+        "CloudKit/src/CKFileOpenResult.m",
+        "CloudKit/src/CKFlipFlopPredicateValidator.m",
+        "CloudKit/src/CKFlowControl.m",
+        "CloudKit/src/CKFunctionExpressionValidator.m",
+        "CloudKit/src/CKInitiateParticipantVettingOperation.m",
+        "CloudKit/src/CKInitiateParticipantVettingOperationInfo.m",
+        "CloudKit/src/CKInternalError.m",
+        "CloudKit/src/CKKeyPathExpressionValidator.m",
+        "CloudKit/src/CKKindOfClassValidator.m",
+        "CloudKit/src/CKKindOfCollectionClassValidator.m",
+        "CloudKit/src/CKLegacyPredicateValidator.m",
+        "CloudKit/src/CKLocationSortDescriptor.m",
+        "CloudKit/src/CKLogFacilityWrapper.m",
+        "CloudKit/src/CKMarkAssetBrokenOperation.m",
+        "CloudKit/src/CKMarkAssetBrokenOperationInfo.m",
+        "CloudKit/src/CKMarkNotificationsReadOperation.m",
+        "CloudKit/src/CKMarkNotificationsReadOperationInfo.m",
+        "CloudKit/src/CKMetric.m",
+        "CloudKit/src/CKModifyBadgeOperation.m",
+        "CloudKit/src/CKModifyBadgeOperationInfo.m",
+        "CloudKit/src/CKModifyRecordAccessOperation.m",
+        "CloudKit/src/CKModifyRecordAccessOperationInfo.m",
+        "CloudKit/src/CKModifyRecordZonesOperation.m",
+        "CloudKit/src/CKModifyRecordZonesOperationInfo.m",
+        "CloudKit/src/CKModifyRecordsOperation.m",
+        "CloudKit/src/CKModifyRecordsOperationInfo.m",
+        "CloudKit/src/CKModifySubscriptionsOperation.m",
+        "CloudKit/src/CKModifySubscriptionsOperationInfo.m",
+        "CloudKit/src/CKModifyWebSharingOperation.m",
+        "CloudKit/src/CKModifyWebSharingOperationInfo.m",
+        "CloudKit/src/CKNilValidator.m",
+        "CloudKit/src/CKNotification.m",
+        "CloudKit/src/CKNotificationID.m",
+        "CloudKit/src/CKNotificationInfo.m",
+        "CloudKit/src/CKNotificationListener.m",
+        "CloudKit/src/CKObjCClass.m",
+        "CloudKit/src/CKObjCProperty.m",
+        "CloudKit/src/CKObjCType.m",
+        "CloudKit/src/CKObject.m",
+        "CloudKit/src/CKOperation.m",
+        "CloudKit/src/CKOperationCallbackManager.m",
+        "CloudKit/src/CKOperationConfiguration.m",
+        "CloudKit/src/CKOperationFlowControlInfo.m",
+        "CloudKit/src/CKOperationFlowControlManager.m",
+        "CloudKit/src/CKOperationGroup.m",
+        "CloudKit/src/CKOperationGroupSystemImposedInfo.m",
+        "CloudKit/src/CKOperationGroupSystemImposedInfoConfiguration.m",
+        "CloudKit/src/CKOperationInfo.m",
+        "CloudKit/src/CKOperationMMCSRequestOptions.m",
+        "CloudKit/src/CKOperationMetrics.m",
+        "CloudKit/src/CKOperationResult.m",
+        "CloudKit/src/CKPCSDiagnosticInformation.m",
+        "CloudKit/src/CKPackage.m",
+        "CloudKit/src/CKPackageDB.m",
+        "CloudKit/src/CKPackageDBDelegate.m",
+        "CloudKit/src/CKPackageItem.m",
+        "CloudKit/src/CKPackageSection.m",
+        "CloudKit/src/CKPackageUploadRequestMetadata.m",
+        "CloudKit/src/CKPlaceholderOperation.m",
+        "CloudKit/src/CKPredicateValidator.m",
+        "CloudKit/src/CKPredicateValidatorInstance.m",
+        "CloudKit/src/CKPrettyError.m",
+        "CloudKit/src/CKPublicKey.m",
+        "CloudKit/src/CKPublishAssetsOperation.m",
+        "CloudKit/src/CKPublishAssetsOperationInfo.m",
+        "CloudKit/src/CKQuery.m",
+        "CloudKit/src/CKQueryCursor.m",
+        "CloudKit/src/CKQueryNotification.m",
+        "CloudKit/src/CKQueryOperation.m",
+        "CloudKit/src/CKQueryOperationInfo.m",
+        "CloudKit/src/CKQueryOperationResult.m",
+        "CloudKit/src/CKQuerySubscription.m",
+        "CloudKit/src/CKRecord.m",
+        "CloudKit/src/CKRecordGraph.m",
+        "CloudKit/src/CKRecordGraphNode.m",
+        "CloudKit/src/CKRecordID.m",
+        "CloudKit/src/CKRecordValueStore.m",
+        "CloudKit/src/CKRecordZone.m",
+        "CloudKit/src/CKRecordZoneID.m",
+        "CloudKit/src/CKRecordZoneNotification.m",
+        "CloudKit/src/CKRecordZoneSubscription.m",
+        "CloudKit/src/CKRecursivePredicateValidator.m",
+        "CloudKit/src/CKReference.m",
+        "CloudKit/src/CKRepairAssetsOperation.m",
+        "CloudKit/src/CKRepairAssetsOperationInfo.m",
+        "CloudKit/src/CKRepairZonePCSOperation.m",
+        "CloudKit/src/CKRepairZonePCSOperationInfo.m",
+        "CloudKit/src/CKRequestAssetOperation.m",
+        "CloudKit/src/CKRequestInfo.m",
+        "CloudKit/src/CKSQLite.m",
+        "CloudKit/src/CKSQLiteError.m",
+        "CloudKit/src/CKSQLitePool.m",
+        "CloudKit/src/CKSQLiteStatement.m",
+        "CloudKit/src/CKSQLiteStatementEnumerator.m",
+        "CloudKit/src/CKScheduler.m",
+        "CloudKit/src/CKSchedulerActivity.m",
+        "CloudKit/src/CKServerChangeToken.m",
+        "CloudKit/src/CKShare.m",
+        "CloudKit/src/CKShareMetadata.m",
+        "CloudKit/src/CKShareParticipant.m",
+        "CloudKit/src/CKSignatureGenerator.m",
+        "CloudKit/src/CKStreamingAsset.m",
+        "CloudKit/src/CKStreamingAssetAppendContext.m",
+        "CloudKit/src/CKStringValueValidator.m",
+        "CloudKit/src/CKSubscription.m",
+        "CloudKit/src/CKSubscriptionInfo.m",
+        "CloudKit/src/CKSyncEngine.m",
+        "CloudKit/src/CKSyncEngineBatch.m",
+        "CloudKit/src/CKSyncEngineFetchChangesOperation.m",
+        "CloudKit/src/CKSyncEngineMetadata.m",
+        "CloudKit/src/CKSyncEngineModifyRecordBatchesOperation.m",
+        "CloudKit/src/CKSyncEngineRecordModification.m",
+        "CloudKit/src/CKSyncRequestOperation.m",
+        "CloudKit/src/CKSyncingClientInfo.m",
+        "CloudKit/src/CKTruePredicateValidator.m",
+        "CloudKit/src/CKTrueValidator.m",
+        "CloudKit/src/CKUploadRequestConfiguration.m",
+        "CloudKit/src/CKUploadRequestManager.m",
+        "CloudKit/src/CKUploadRequestManagerInternals.m",
+        "CloudKit/src/CKUploadRequestManagerResponseActionThrottler.m",
+        "CloudKit/src/CKUploadRequestManagerResponseActionThrottlerMetadata.m",
+        "CloudKit/src/CKUploadRequestManagerStateMachine.m",
+        "CloudKit/src/CKUploadRequestMetadata.m",
+        "CloudKit/src/CKUploadRequestPersistentStore.m",
+        "CloudKit/src/CKUserIdentity.m",
+        "CloudKit/src/CKUserIdentityLookupInfo.m",
+        "CloudKit/src/CKUserNotificationUtilities.m",
+        "CloudKit/src/CKZonePCSDiagnosticInformation.m",
+        "CloudKit/src/CloudKit.m",
+    ],
+    compiler_flags = [
+        "-DCloudKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CloudKit",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CloudKit
+
+# BEGIN generated: CloudKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CloudKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CloudKit_dylib",
+    dylib_name = "CloudKit",
+    install_name = "/System/Library/Frameworks/CloudKit.framework/Versions/A/CloudKit",
+    compatibility_version = "1.0.0",
+    current_version = "867.0.0",
+    objs = [
+        # CloudKit
+        ":CloudKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CloudKit dylibs
+
+# BEGIN generated: NetFS
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py NetFS   -- review before committing.
+# cmake target: NetFS  ->  src/frameworks/NetFS/NetFS
+
+cc_objects(
+    name = "NetFS_obj",
+    srcs = [
+        "NetFS/src/NetFS.m",
+    ],
+    compiler_flags = [
+        "-DNetFS_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//darwin/frameworks:fw_NetFS",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: NetFS
+
+# BEGIN generated: NetFS dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs NetFS   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "NetFS_dylib",
+    dylib_name = "NetFS",
+    install_name = "/System/Library/Frameworks/NetFS.framework/Versions/A/NetFS",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # NetFS
+        ":NetFS_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: NetFS dylibs
+
+# BEGIN generated: OpenDirectory
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py OpenDirectory   -- review before committing.
+# cmake target: OpenDirectory  ->  src/frameworks/OpenDirectory/OpenDirectory
+
+cc_objects(
+    name = "OpenDirectory_obj",
+    srcs = [
+        "OpenDirectory/src/NSODContext.m",
+        "OpenDirectory/src/NSODNode.m",
+        "OpenDirectory/src/NSODQuery.m",
+        "OpenDirectory/src/NSODRecord.m",
+        "OpenDirectory/src/NSODSession.m",
+        "OpenDirectory/src/ODAttributeMap.m",
+        "OpenDirectory/src/ODConfiguration.m",
+        "OpenDirectory/src/ODContext.m",
+        "OpenDirectory/src/ODMappings.m",
+        "OpenDirectory/src/ODModuleEntry.m",
+        "OpenDirectory/src/ODNode.m",
+        "OpenDirectory/src/ODQuery.m",
+        "OpenDirectory/src/ODRecord.m",
+        "OpenDirectory/src/ODRecordMap.m",
+        "OpenDirectory/src/ODSession.m",
+        "OpenDirectory/src/OpenDirectory.m",
+    ],
+    compiler_flags = [
+        "-DOpenDirectory_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_OpenDirectory",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: OpenDirectory
+
+# BEGIN generated: OpenDirectory dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs OpenDirectory   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   CFOpenDirectory
+# TODO the final pass REEXPORTS 1 more dylibs whose final
+# pass is not ported yet; without them its symbol surface is incomplete:
+#   CFOpenDirectory
+
+darwin_dylib(
+    name = "OpenDirectory_dylib",
+    dylib_name = "OpenDirectory",
+    install_name = "/System/Library/Frameworks/OpenDirectory.framework/Versions/A/OpenDirectory",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # OpenDirectory
+        ":OpenDirectory_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: OpenDirectory dylibs
+
+# BEGIN generated: CFOpenDirectory
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CFOpenDirectory   -- review before committing.
+# cmake target: CFOpenDirectory  ->  src/frameworks/OpenDirectory/CFOpenDirectory/CFOpenDirectory
+
+cc_objects(
+    name = "CFOpenDirectory_obj",
+    srcs = [
+        "OpenDirectory/CFOpenDirectory/src/CFOpenDirectory.c",
+        "OpenDirectory/CFOpenDirectory/src/constants.c",
+    ],
+    compiler_flags = [
+        "-DCFOpenDirectory_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DirectoryService",
+        "//darwin/frameworks:fw_CFOpenDirectory",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CFOpenDirectory
+
+# BEGIN generated: CFOpenDirectory dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CFOpenDirectory   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "CFOpenDirectory_dylib",
+    dylib_name = "CFOpenDirectory",
+    install_name = "/System/Library/Frameworks/CFOpenDirectory.framework/Versions/A/CFOpenDirectory",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CFOpenDirectory
+        ":CFOpenDirectory_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: CFOpenDirectory dylibs
+
+# BEGIN generated: SecurityFoundation
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py SecurityFoundation   -- review before committing.
+# cmake target: SecurityFoundation  ->  src/frameworks/SecurityFoundation/SecurityFoundation
+
+cc_objects(
+    name = "SecurityFoundation_obj",
+    srcs = [
+        "SecurityFoundation/src/CAAdditionalCertInfo.m",
+        "SecurityFoundation/src/CABasicConstraintsExtension.m",
+        "SecurityFoundation/src/CACertInfo.m",
+        "SecurityFoundation/src/CAExtendedKeyUsageExtension.m",
+        "SecurityFoundation/src/CAIdentityName.m",
+        "SecurityFoundation/src/CAKeyPairAttributes.m",
+        "SecurityFoundation/src/CAKeyUsageExtension.m",
+        "SecurityFoundation/src/CASubjectAltNameExtension.m",
+        "SecurityFoundation/src/OIDStringCache.m",
+        "SecurityFoundation/src/SFAESEncryptionOperation.m",
+        "SecurityFoundation/src/SFAESKeySpecifier_Ivars.m",
+        "SecurityFoundation/src/SFAccessControlEntry.m",
+        "SecurityFoundation/src/SFAccessControlEntry_Ivars.m",
+        "SecurityFoundation/src/SFAuthenticatedCiphertext_Ivars.m",
+        "SecurityFoundation/src/SFAuthenticatedEncryptionOperation_Ivars.m",
+        "SecurityFoundation/src/SFAuthorization.m",
+        "SecurityFoundation/src/SFCMACOperation.m",
+        "SecurityFoundation/src/SFCMACOperation_Ivars.m",
+        "SecurityFoundation/src/SFCSR.m",
+        "SecurityFoundation/src/SFCertAuthorityInvitation.m",
+        "SecurityFoundation/src/SFCertAuthorityInvitationSigner.m",
+        "SecurityFoundation/src/SFCertificateAuthority.m",
+        "SecurityFoundation/src/SFCertificateAuthorityClient.m",
+        "SecurityFoundation/src/SFCertificateAuthority_ivars.m",
+        "SecurityFoundation/src/SFCertificateData.m",
+        "SecurityFoundation/src/SFCertificateData_ivars.m",
+        "SecurityFoundation/src/SFCertificate_Ivars.m",
+        "SecurityFoundation/src/SFCiphertext_Ivars.m",
+        "SecurityFoundation/src/SFCoder.m",
+        "SecurityFoundation/src/SFCoder_Ivars.m",
+        "SecurityFoundation/src/SFCodingOptions.m",
+        "SecurityFoundation/src/SFCodingOptions_Ivars.m",
+        "SecurityFoundation/src/SFCredentialSearchFilter.m",
+        "SecurityFoundation/src/SFCredentialSearchFilter_Ivars.m",
+        "SecurityFoundation/src/SFDecoder.m",
+        "SecurityFoundation/src/SFDecoder_Ivars.m",
+        "SecurityFoundation/src/SFECDHKeySource_Ivars.m",
+        "SecurityFoundation/src/SFECDHOperation_Ivars.m",
+        "SecurityFoundation/src/SFECKeySpecifier_Ivars.m",
+        "SecurityFoundation/src/SFEC_X962SigningOperation_Ivars.m",
+        "SecurityFoundation/src/SFHMACOperation.m",
+        "SecurityFoundation/src/SFHMACOperation_Ivars.m",
+        "SecurityFoundation/src/SFHMACPseudoRandomFunction.m",
+        "SecurityFoundation/src/SFHMACPseudoRandomFunction_Ivars.m",
+        "SecurityFoundation/src/SFIESCiphertext_Ivars.m",
+        "SecurityFoundation/src/SFIESOperation_Ivars.m",
+        "SecurityFoundation/src/SFIdentityAttributes.m",
+        "SecurityFoundation/src/SFIdentityAttributes_Ivars.m",
+        "SecurityFoundation/src/SFIdentitySearchFilter.m",
+        "SecurityFoundation/src/SFIdentitySearchFilter_Ivars.m",
+        "SecurityFoundation/src/SFIdentity_Ivars.m",
+        "SecurityFoundation/src/SFIncrementingIVGenerator.m",
+        "SecurityFoundation/src/SFIncrementingIVGenerator_Ivars.m",
+        "SecurityFoundation/src/SFKeyPair_Ivars.m",
+        "SecurityFoundation/src/SFKeySearchFilter.m",
+        "SecurityFoundation/src/SFKeySearchFilter_Ivars.m",
+        "SecurityFoundation/src/SFKey_Ivars.m",
+        "SecurityFoundation/src/SFKeychain.m",
+        "SecurityFoundation/src/SFKeychainData.m",
+        "SecurityFoundation/src/SFKeychainDataAttributes.m",
+        "SecurityFoundation/src/SFKeychainDataAttributes_Ivars.m",
+        "SecurityFoundation/src/SFKeychainDataFetchResult.m",
+        "SecurityFoundation/src/SFKeychainData_Ivars.m",
+        "SecurityFoundation/src/SFKeychainFetchResult_Ivars.m",
+        "SecurityFoundation/src/SFKeychainManager_Ivars.m",
+        "SecurityFoundation/src/SFMD5DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFMachPort.m",
+        "SecurityFoundation/src/SFMaskGenerationFunction1.m",
+        "SecurityFoundation/src/SFMaskGenerationFunction1_Ivars.m",
+        "SecurityFoundation/src/SFMessageAuthenticationCodeOperation.m",
+        "SecurityFoundation/src/SFOidParser.m",
+        "SecurityFoundation/src/SFPBKDF2Operation.m",
+        "SecurityFoundation/src/SFPBKDF2Operation_Ivars.m",
+        "SecurityFoundation/src/SFPublicKey_Ivars.m",
+        "SecurityFoundation/src/SFRSAEncryptionOperation.m",
+        "SecurityFoundation/src/SFRSAEncryptionOperation_Ivars.m",
+        "SecurityFoundation/src/SFRSAKeyPair.m",
+        "SecurityFoundation/src/SFRSAKeySpecifier_Ivars.m",
+        "SecurityFoundation/src/SFRSAPublicKey.m",
+        "SecurityFoundation/src/SFRSASigningOperation.m",
+        "SecurityFoundation/src/SFRSASigningOperation_Ivars.m",
+        "SecurityFoundation/src/SFRSA_OAEPEncryptionOperation.m",
+        "SecurityFoundation/src/SFRSA_OAEPEncryptionOperation_Ivars.m",
+        "SecurityFoundation/src/SFRSA_PKCS1EncryptionOperation.m",
+        "SecurityFoundation/src/SFRSA_PSSSigningOperation.m",
+        "SecurityFoundation/src/SFRSA_PSSSigningOperation_Ivars.m",
+        "SecurityFoundation/src/SFRSA_WrappedKeyEncryptionOperation.m",
+        "SecurityFoundation/src/SFRSA_WrappedKeyEncryptionOperation_Ivars.m",
+        "SecurityFoundation/src/SFRevocationPolicy.m",
+        "SecurityFoundation/src/SFRevocationPolicy_Ivars.m",
+        "SecurityFoundation/src/SFSHA1DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFSHA224DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFSHA256DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFSHA384DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFSHA512DigestOperation_Ivars.m",
+        "SecurityFoundation/src/SFSSLClientTrustPolicy.m",
+        "SecurityFoundation/src/SFSSLClientTrustPolicy_Ivars.m",
+        "SecurityFoundation/src/SFSSLServerTrustPolicy.m",
+        "SecurityFoundation/src/SFSSLServerTrustPolicy_Ivars.m",
+        "SecurityFoundation/src/SFServiceIdentifier_Ivars.m",
+        "SecurityFoundation/src/SFSignedData_Ivars.m",
+        "SecurityFoundation/src/SFSymmetricEncryptionOperation.m",
+        "SecurityFoundation/src/SFSymmetricEncryptionOperation_Ivars.m",
+        "SecurityFoundation/src/SFSymmetricKeyAttributes.m",
+        "SecurityFoundation/src/SFSymmetricKeyAttributes_Ivars.m",
+        "SecurityFoundation/src/SFSymmetricKey_Ivars.m",
+        "SecurityFoundation/src/SFSyncManager.m",
+        "SecurityFoundation/src/SFSyncManager_ivars.m",
+        "SecurityFoundation/src/SFTripleDESEncryptionOperation.m",
+        "SecurityFoundation/src/SFTripleDESKey.m",
+        "SecurityFoundation/src/SFTrustEvaluator.m",
+        "SecurityFoundation/src/SFTrustEvaluator_Ivars.m",
+        "SecurityFoundation/src/SFTrustPolicy.m",
+        "SecurityFoundation/src/SFWrappedKeyCiphertext.m",
+        "SecurityFoundation/src/SFWrappedKeyCiphertext_Ivars.m",
+        "SecurityFoundation/src/SFX509TrustPolicy.m",
+        "SecurityFoundation/src/SFX963KeyDerivationOperation.m",
+        "SecurityFoundation/src/SFX963KeyDerivationOperation_Ivars.m",
+        "SecurityFoundation/src/SecFoundationModVector.m",
+        "SecurityFoundation/src/SecurityFoundation.m",
+        "SecurityFoundation/src/_SFAESKey.m",
+        "SecurityFoundation/src/_SFAESKeySpecifier.m",
+        "SecurityFoundation/src/_SFAccessPolicy.m",
+        "SecurityFoundation/src/_SFAsymmetricKeyAttributes.m",
+        "SecurityFoundation/src/_SFAsymmetricKeySpecifier.m",
+        "SecurityFoundation/src/_SFAuthenticatedCiphertext.m",
+        "SecurityFoundation/src/_SFAuthenticatedEncryptionOperation.m",
+        "SecurityFoundation/src/_SFCertificate.m",
+        "SecurityFoundation/src/_SFCiphertext.m",
+        "SecurityFoundation/src/_SFCredential.m",
+        "SecurityFoundation/src/_SFCredentialStore.m",
+        "SecurityFoundation/src/_SFECDHKeySource.m",
+        "SecurityFoundation/src/_SFECDHOperation.m",
+        "SecurityFoundation/src/_SFECKeyPair.m",
+        "SecurityFoundation/src/_SFECKeySpecifier.m",
+        "SecurityFoundation/src/_SFECPublicKey.m",
+        "SecurityFoundation/src/_SFEC_X962SigningOperation.m",
+        "SecurityFoundation/src/_SFIESCiphertext.m",
+        "SecurityFoundation/src/_SFIESOperation.m",
+        "SecurityFoundation/src/_SFIdentity.m",
+        "SecurityFoundation/src/_SFKey.m",
+        "SecurityFoundation/src/_SFKeyPair.m",
+        "SecurityFoundation/src/_SFKeySpecifier.m",
+        "SecurityFoundation/src/_SFKeychainFetchResult.m",
+        "SecurityFoundation/src/_SFKeychainIdentityFetchResult.m",
+        "SecurityFoundation/src/_SFKeychainKeyFetchResult.m",
+        "SecurityFoundation/src/_SFKeychainManager.m",
+        "SecurityFoundation/src/_SFMD5DigestOperation.m",
+        "SecurityFoundation/src/_SFPasswordCredential.m",
+        "SecurityFoundation/src/_SFPublicKey.m",
+        "SecurityFoundation/src/_SFRSAKeySpecifier.m",
+        "SecurityFoundation/src/_SFSHA1DigestOperation.m",
+        "SecurityFoundation/src/_SFSHA224DigestOperation.m",
+        "SecurityFoundation/src/_SFSHA256DigestOperation.m",
+        "SecurityFoundation/src/_SFSHA384DigestOperation.m",
+        "SecurityFoundation/src/_SFSHA512DigestOperation.m",
+        "SecurityFoundation/src/_SFServiceIdentifier.m",
+        "SecurityFoundation/src/_SFSignedData.m",
+        "SecurityFoundation/src/_SFSymmetricKey.m",
+        "SecurityFoundation/src/_SFSymmetricKeySpecifier.m",
+        "SecurityFoundation/src/_SFTripleDESKeySpecifier.m",
+    ],
+    compiler_flags = [
+        "-DSecurityFoundation_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_SecurityFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: SecurityFoundation
+
+# BEGIN generated: SecurityFoundation dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs SecurityFoundation   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "SecurityFoundation_dylib",
+    dylib_name = "SecurityFoundation",
+    install_name = "/System/Library/Frameworks/SecurityFoundation.framework/Versions/A/SecurityFoundation",
+    compatibility_version = "1.0.0",
+    current_version = "55185.200.14",
+    objs = [
+        # SecurityFoundation
+        ":SecurityFoundation_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: SecurityFoundation dylibs
+
+# BEGIN generated: JavaVM
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py JavaVM   -- review before committing.
+# cmake target: JavaVM  ->  src/frameworks/JavaVM/JavaVM
+
+cc_objects(
+    name = "JavaVM_obj",
+    srcs = [
+        "JavaVM/src/JavaVM.m",
+        "JavaVM/src/NSJavaConfiguration.m",
+        "JavaVM/src/NSJavaVirtualMachine.m",
+    ],
+    compiler_flags = [
+        "-DJavaVM_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_JavaVM",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaVM
+
+# BEGIN generated: JavaVM dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs JavaVM   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "JavaVM_dylib",
+    dylib_name = "JavaVM",
+    install_name = "/System/Library/Frameworks/JavaVM.framework/Versions/A/JavaVM",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # JavaVM
+        ":JavaVM_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaVM dylibs
+
+# BEGIN generated: JavaRuntimeSupport
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py JavaRuntimeSupport   -- review before committing.
+# cmake target: JavaRuntimeSupport  ->  src/frameworks/JavaRuntimeSupport/JavaRuntimeSupport
+
+cc_objects(
+    name = "JavaRuntimeSupport_obj",
+    srcs = [
+        "JavaRuntimeSupport/src/JRSAppKitAWT.m",
+        "JavaRuntimeSupport/src/JRSDrag.m",
+        "JavaRuntimeSupport/src/JRSInputMethodController.m",
+        "JavaRuntimeSupport/src/JRSMenu.m",
+        "JavaRuntimeSupport/src/JRSRenderServer.m",
+        "JavaRuntimeSupport/src/JRSSecurity.m",
+        "JavaRuntimeSupport/src/JRSSymbolicator.m",
+        "JavaRuntimeSupport/src/JRSSymbolicatorImpl.m",
+        "JavaRuntimeSupport/src/JavaRuntimeSupport.m",
+        "JavaRuntimeSupport/src/MIGThread.m",
+        "JavaRuntimeSupport/src/_JRSUIRenderer.m",
+    ],
+    compiler_flags = [
+        "-DJavaRuntimeSupport_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_JavaRuntimeSupport",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaRuntimeSupport
+
+# BEGIN generated: JavaRuntimeSupport dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs JavaRuntimeSupport   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "JavaRuntimeSupport_dylib",
+    dylib_name = "JavaRuntimeSupport",
+    install_name = "/System/Library/Frameworks/JavaVM.framework/Versions/A/Frameworks/JavaRuntimeSupport.framework/Versions/A/JavaRuntimeSupport",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # JavaRuntimeSupport
+        ":JavaRuntimeSupport_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaRuntimeSupport dylibs
+
+# BEGIN generated: launchservicesd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py launchservicesd   -- review before committing.
+# cmake target: launchservicesd  ->  src/frameworks/CoreServices/src/LaunchServices/launchservicesd/launchservicesd
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "launchservicesd_obj",
+    srcs = [
+        "CoreServices/src/LaunchServices/launchservicesd/LSBundle.m",
+        "CoreServices/src/LaunchServices/launchservicesd/launchservicesd.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_LaunchServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: launchservicesd
+
+# BEGIN generated: fseventsd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py fseventsd   -- review before committing.
+# cmake target: fseventsd  ->  src/frameworks/CoreServices/src/FSEvents/fseventsd
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+
+cc_objects(
+    name = "fseventsd_obj",
+    srcs = [
+        "CoreServices/src/FSEvents/fseventsd.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Foundation",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: fseventsd
+
+# BEGIN generated: fseventsd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries fseventsd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "fseventsd",
+    objs = [
+        # fseventsd
+        ":fseventsd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:CarbonCore_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: fseventsd binary
