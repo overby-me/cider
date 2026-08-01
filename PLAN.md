@@ -199,6 +199,15 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   So: the SECOND mach_msg_overwrite on a socket whose previous seven sends all succeeded,
   same fd, same path, sender never connected. That is the entire open question.
 
+  The FIRST failure in the system is not launchd's, though. A launchd JOB (guest pid 4)
+  starts, closes the inherited RPC fds 512/513/514, opens its own, checks in, runs ~20 RPCs
+  fine, and then its last mach_msg_overwrite comes back with reply status **0x10000003 =
+  MACH_SEND_INVALID_DEST**, whereupon it exit_group(1). launchd sees that as
+  `SIGCHLD {si_pid=4, si_status=1}`, keeps going for another dozen successful RPCs, and only
+  THEN gets ECONNREFUSED. So MACH_SEND_INVALID_DEST is the earliest thing that goes wrong and
+  is the better thread to pull; the ECONNREFUSED may well be downstream of whatever state
+  that leaves behind.
+
   ELIMINATED by measurement, do not re-investigate:
     * The portset/kqueue linkage. One portset, not empty, and a message on a member port
       DOES wake the kqchan waiter.
@@ -209,12 +218,20 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
     * "Two daemons fighting over the path." The WORKING (DARLING_NO_LAUNCHD=1) run has
       three darlingserver processes and the failing one has two, so the count is not it.
 
-  NEXT, and both are cheap: (a) the daemon is single-threaded -- check whether its socket
-  receive queue is full when the send is refused (net.unix.max_dgram_qlen is 512 here). `ss
-  -x` cannot see it from the host because unix sockets are netns-scoped and the daemon is in
-  the container's namespace; use `nsenter -t <daemon pid> -n ss -x`, or read
-  /proc/net/unix inside the namespace. (b) Confirm from the daemon side whether call #38 is
-  received the second time at all, by number, rather than inferring from behaviour.
+    * The socket being replaced mid-run. Sampled at 100 Hz for 6s: the inode at
+      <prefix>/.darlingserver.sock never changes.
+    * The container's mount namespace resolving the path differently. The host, the daemon's
+      /proc/PID/root and the guest's /proc/PID/root all stat the SAME inode.
+
+  NEXT: start from MACH_SEND_INVALID_DEST in guest pid 4, not from the ECONNREFUSED. Which
+  port is it sending to, and why is that destination invalid this early in boot? The daemon
+  side of that exchange is the place to instrument. The guest also keeps its own RPC log at
+  /tmp/dserver-client-rpc.log -- INSIDE the container's mount namespace, so it is not visible
+  at that path on the host, which is why it reads as empty there.
+
+  A note on tools: `ss -x` cannot see the daemon socket from the host, because unix sockets
+  are netns-scoped and the daemon lives in the container's namespace. `lsof -U` can (it walks
+  /proc/*/fd), and /proc/<daemon pid>/net/unix reads that namespace's table directly.
 
   Reproduce by dropping `DARLING_NO_LAUNCHD=1`. The daemon's own log is
   `<prefix>/darlingserver.log`, NOT the launcher's stderr. Still bypassed by
