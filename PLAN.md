@@ -172,30 +172,38 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   `overby` input.
 
 ### Multi-user / launchd / #47
-- **#47 launchd bootstrap deadlock** [long-term] — **the earlier diagnosis was wrong and is
-  refuted by measurement** (2026-08-01). It said the dispatch kqueue watches an empty portset
-  (0x707) while the receive ports live in a different, unwatched portset (0xa03). What the
-  daemon log actually shows, with `DSERVER_TRACE_CALLS=1` and the `#ifdef __DARLING__`
-  diagnostics now in `ipc_mqueue.c` and `mach_port.c`:
-    * There is ONE portset (name 0xd03, wqset id 0x40001), it is not empty, and **the portset
-      path works**: launchd calls `mach_port_move_member` exactly three times, all returning
-      KERN_SUCCESS, and the one message that lands on a member port DOES find and wake the
-      kqchan's waiter thread (`ipc_mqueue_post` returns a non-NULL receiver).
-    * The 18 messages that go nowhere land on **7 other ports that are in no portset at all**
-      (`set_id=0x0`). For those, `ipc_mqueue_post` finds no receiver, so the only remaining
-      wake path is `KNOTE(&mqueue->imq_klist, 0)` on the port's OWN klist. Every guard on
-      that call passes (`active=1 recv_active=1 has_klist=1`), it is called 18 times, and
-      `knote_post` never runs once — **the klists are empty. No knote is attached to any of
-      those ports.**
-    * Consequently the kqchan waiter thread enters once and never unblocks (0 wakeups), which
-      is the hang: `darling shell true` never returns.
-  So the fix locus is NOT the portset/kqueue linkage. It is: why does launchd end up with
-  seven actively-used receive ports that are neither in its portset nor carrying a knote? The
-  next question to answer is what launchd *thinks* it registered for them -- the three threads
-  are parked in `recvmsg` (RPC #38 MACH_MSG_OVERWRITE) and `select`, so one of them is doing a
-  mach_msg receive that the traffic never satisfies. Reproduce by dropping
-  `DARLING_NO_LAUNCHD=1`; the diagnostics are `dtape_log_debug`, so they are already on.
-  Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
+- **#47 launchd hang** [long-term] — **the recorded portset diagnosis is refuted, and so is
+  the first replacement for it.** Measured 2026-08-01 with the `#ifdef __DARLING__`
+  diagnostics now in `ipc_mqueue.c` / `mach_port.c` plus `DSERVER_TRACE_CALLS=1`. The daemon
+  writes all of it to `<prefix>/darlingserver.log`, NOT the launcher's stderr.
+
+  What is established:
+    * **The portset path works.** There is ONE portset (name 0xd03, wqset id 0x40001), not
+      two and not empty. `mach_port_move_member` is called 3 times, all KERN_SUCCESS, and a
+      message landing on a member port makes `ipc_mqueue_post` return a non-NULL receiver --
+      the set linkage is walked and the kqchan waiter is found. The old entry's claim of an
+      empty 0x707 watched while ports sat in an unwatched 0xa03 does not hold.
+    * **The 18 messages that post with no receiver are BENIGN.** They are ordinary
+      reply-before-receive races: posted == consumed, 18 for 18, across 6 ports. An earlier
+      revision of this entry called them stranded and blamed empty klists; that was wrong,
+      and the `mqueue_receive: immediate` counter is what disproves it. Do not re-derive it.
+    * **The terminal event is signal delivery, not IPC.** `sigexc.c` calls
+      `dserver_rpc_interrupt_enter()` and gets **-111 = ECONNREFUSED**, after which nothing
+      moves. The daemon receives **zero** interrupt_enter (#14) calls, so the failure is on
+      the SEND side in the guest -- the RPC datagram never reaches the socket. The daemon's
+      own `interrupt_enter` can only ever return -ESRCH, so -111 cannot have come from it.
+    * Before that, thread tid=3 loops: #38 MACH_MSG_OVERWRITE (round trip to launchd, reply
+      consumed immediately), #31, #62 SEMAPHORE_TIMEDWAIT, repeat. `darling_sigexc_self()`
+      runs 4 times. launchd's three threads end parked in recvmsg, recvmsg and select.
+
+  So the open question is: why does the guest's RPC `sendto` return ECONNREFUSED during
+  sigexc, when the daemon is alive and serving other calls on the same socket? Start at the
+  guest's RPC send path in `sigexc.c` / libsystem_kernel and the socket a thread uses while
+  entering sigexc -- not at the portset or kqueue code, which is exonerated.
+
+  Reproduce by dropping `DARLING_NO_LAUNCHD=1`; the diagnostics are `dtape_log_debug` and
+  are already on. Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical
+  path.
 - Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
   production-hardening, not on the critical path (single-user M1 sidesteps it).
 

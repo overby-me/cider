@@ -1182,6 +1182,15 @@ ipc_mqueue_receive_on_thread(
 		 */
 		kmsgs = &mqueue->imq_messages;
 		if (ipc_kmsg_queue_first(kmsgs) != IKM_NULL) {
+#ifdef __DARLING__
+			/*
+			 * Task #47: a message was ALREADY queued on this port when the receive
+			 * ran. That is the ordinary reply-before-receive race and is benign --
+			 * it is what distinguishes a queued message that gets consumed from one
+			 * that is genuinely stranded.
+			 */
+			dtape_log_debug("mqueue_receive: immediate on mq=%p (was queued)", mqueue);
+#endif
 			if (option & MACH_PEEK_MSG) {
 				ipc_mqueue_peek_on_thread(mqueue, option, thread);
 			} else {
@@ -1195,6 +1204,17 @@ ipc_mqueue_receive_on_thread(
 		panic("Unknown mqueue type 0x%x: likely memory corruption!\n",
 		    mqueue->imq_wait_queue.waitq_type);
 	}
+
+#ifdef __DARLING__
+	/*
+	 * Task #47. Nothing was ready, so this thread is about to block. Which mqueue it
+	 * blocks on is the whole question: a SET only ever sees its MEMBERS' preposts, so a
+	 * thread blocked on the set cannot be woken by a message to a port that is not in it.
+	 */
+	dtape_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d",
+	    mqueue, imq_is_set(mqueue) ? 1 : 0,
+	    (unsigned long long)mqueue->imq_wait_queue.waitq_set_id, mqueue->imq_msgcount);
+#endif
 
 	/*
 	 * Looks like we'll have to block.  The mqueue we will
