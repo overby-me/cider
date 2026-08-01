@@ -891,6 +891,7 @@ EXPORTS = {
     "zip_unzip_unzip60_man_unzipsfx.1": "zip/unzip/unzip60/man/unzipsfx.1",
     "zip_unzip_unzip60_man_zipgrep.1": "zip/unzip/unzip60/man/zipgrep.1",
     "zip_unzip_unzip60_man_zipinfo.1": "zip/unzip/unzip60/man/zipinfo.1",
+    "zip_unzip_unzip60_unix_zipgrep": "zip/unzip/unzip60/unix/zipgrep",
     "zip_zip_zip30_man_zip.1": "zip/zip/zip30/man/zip.1",
     "zip_zip_zip30_man_zipcloak.1": "zip/zip/zip30/man/zipcloak.1",
     "zip_zip_zip30_man_zipnote.1": "zip/zip/zip30/man/zipnote.1",

@@ -134,6 +134,12 @@ def read_entries(root: str):
             # shell scripts the guest cannot run.
             if "EXECUTE" in perms:
                 EXEC_SOURCES.update(srcs)
+            # cmake's `file(INSTALL ... TYPE PROGRAM ...)` is a FILE that lands executable --
+            # it is how the shell wrappers ship (zipgrep, unxip, clt_install.py). Treating it
+            # as its own kind left them unmapped, and because zdiff and zless arrive this way
+            # too, the zcmp and zmore links pointing at them could not resolve either.
+            if kind == "PROGRAM":
+                EXEC_SOURCES.update(srcs)
             out.append((dest, kind, srcs, EXCLUDE.findall(blob)))
     # Loudly, because an empty walk is indistinguishable from a prefix with nothing in it,
     # and a manifest directory that has been garbage-collected or moved is the likely cause.
@@ -421,6 +427,10 @@ def main(argv: list[str]) -> int:
                 base = os.path.basename(src)
                 dest_of[src] = f"{dest}/{base}" if dest else base
 
+    # Every destination anything installs to, so a relative link value can be resolved
+    # against the destination directory it lands in.
+    all_dests = set(dest_of.values())
+
     built, sources, symlinks, dirs, unmapped, skipped = {}, {}, {}, {}, [], []
     exec_files: dict[str, str] = {}
     blocks: dict[str, list[str]] = {}
@@ -440,7 +450,7 @@ def main(argv: list[str]) -> int:
                     built[full] = t
                 else:
                     unmapped.append((full, "no target builds it"))
-            elif kind == "FILE":
+            elif kind in ("FILE", "PROGRAM"):
                 brel = build_rel(src)
                 if brel is not None and brel in links:
                     # A symlink InstallSymlink left in the build tree. Its value is relative
@@ -449,7 +459,21 @@ def main(argv: list[str]) -> int:
                     if target in dest_of:
                         symlinks[full] = dest_of[target]
                     else:
-                        unmapped.append((full, f"links to {links[brel]}, which is not installed"))
+                        # The link value is relative to the LINK, and cmake installs a link
+                        # and the thing it points at into the SAME destination -- but the
+                        # target may be installed from the SOURCE tree while the link
+                        # resolves inside the BUILD tree, so the build-dir path it resolves
+                        # to appears in no manifest. Resolving the value against the
+                        # DESTINATION instead is what a relative symlink actually means.
+                        # This is openssl_certificates' 159 hash links (3c9a4d3b.0 ->
+                        # ACCVRAIZ1.crt): configure-time execute_process(create_symlink)
+                        # makes them, so no ninja edge builds them and nothing else can
+                        # map them.
+                        cand = os.path.normpath(f"{dest}/{links[brel]}") if dest else links[brel]
+                        if cand in all_dests:
+                            symlinks[full] = cand
+                        else:
+                            unmapped.append((full, f"links to {links[brel]}, which is not installed"))
                     continue
                 rel = source_rel(src)
                 if rel:

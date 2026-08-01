@@ -1,5 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: xip_extract_cpio
 # GENERATED from the reference build.ninja by
@@ -55,3 +56,15 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: xip_extract_cpio binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "unxip",
+    src = "unxip",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports
