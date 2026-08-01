@@ -172,38 +172,48 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   `overby` input.
 
 ### Multi-user / launchd / #47
-- **#47 launchd hang** [long-term] — **the recorded portset diagnosis is refuted, and so is
-  the first replacement for it.** Measured 2026-08-01 with the `#ifdef __DARLING__`
-  diagnostics now in `ipc_mqueue.c` / `mach_port.c` plus `DSERVER_TRACE_CALLS=1`. The daemon
-  writes all of it to `<prefix>/darlingserver.log`, NOT the launcher's stderr.
+- **#47 launchd "deadlock" is an infinite SIGILL SPIN** [long-term] — root cause chain
+  established 2026-08-01 at three levels (strace, disassembly, source). It is NOT a deadlock
+  and NOT a portset/kqueue problem; both earlier diagnoses in this file were wrong and are
+  recorded below so they are not re-derived.
 
-  What is established:
-    * **The portset path works.** There is ONE portset (name 0xd03, wqset id 0x40001), not
-      two and not empty. `mach_port_move_member` is called 3 times, all KERN_SUCCESS, and a
-      message landing on a member port makes `ipc_mqueue_post` return a non-NULL receiver --
-      the set linkage is walked and the kqchan waiter is found. The old entry's claim of an
-      empty 0x707 watched while ports sat in an unwatched 0xa03 does not hold.
-    * **The 18 messages that post with no receiver are BENIGN.** They are ordinary
-      reply-before-receive races: posted == consumed, 18 for 18, across 6 ports. An earlier
-      revision of this entry called them stranded and blamed empty klists; that was wrong,
-      and the `mqueue_receive: immediate` counter is what disproves it. Do not re-derive it.
-    * **The terminal event is signal delivery, not IPC.** `sigexc.c` calls
-      `dserver_rpc_interrupt_enter()` and gets **-111 = ECONNREFUSED**, after which nothing
-      moves. The daemon receives **zero** interrupt_enter (#14) calls, so the failure is on
-      the SEND side in the guest -- the RPC datagram never reaches the socket. The daemon's
-      own `interrupt_enter` can only ever return -ESRCH, so -111 cannot have come from it.
-    * Before that, thread tid=3 loops: #38 MACH_MSG_OVERWRITE (round trip to launchd, reply
-      consumed immediately), #31, #62 SEMAPHORE_TIMEDWAIT, repeat. `darling_sigexc_self()`
-      runs 4 times. launchd's three threads end parked in recvmsg, recvmsg and select.
+  The chain, in order:
+    1. Some signal reaches launchd and `sigexc_handler()` runs (sigexc.c).
+    2. Its first act is `dserver_rpc_interrupt_enter()`, which returns **-111 = ECONNREFUSED**.
+       strace shows the failing call exactly: `sendmsg(513, {sun_path=".../.darlingserver.sock"},
+       iov="\16\0\0\0..." )` -- and 0x0e is RPC #14, interrupt_enter. The daemon receives
+       **zero** #14 calls, so the datagram never lands; the failure is entirely send-side.
+    3. sigexc_handler's error path is `__simple_abort()`, which is
+       `kill(getpid(), SIGABRT)` followed by `ud2` (offset 0x3f8fa in libsystem_kernel.dylib).
+    4. The SIGABRT does not terminate the process, because signal delivery is exactly what is
+       broken. Execution falls through to the `ud2`.
+    5. `ud2` raises SIGILL -> sigexc_handler -> interrupt_enter fails -> `__simple_abort()` ->
+       `ud2` -> SIGILL -> ... **56,676,502 SIGILLs at one address in a single run**, at ~50%
+       CPU. That is the "hang": the container never finishes because a process is spinning,
+       not because anything is waiting.
 
-  So the open question is: why does the guest's RPC `sendto` return ECONNREFUSED during
-  sigexc, when the daemon is alive and serving other calls on the same socket? Start at the
-  guest's RPC send path in `sigexc.c` / libsystem_kernel and the socket a thread uses while
-  entering sigexc -- not at the portset or kqueue code, which is exonerated.
+  Two things to fix, and they are independent:
+    * **The root**: why does a guest RPC `sendmsg` to the daemon socket get ECONNREFUSED while
+      the daemon is alive, unconnected, and serving other calls on that same socket? (Measured
+      at hang time: `lsof` shows the socket healthy, `type=DGRAM (UNCONNECTED)`.) On Linux
+      that errno means the kernel saw the destination as dead at that instant. Start in the
+      guest RPC send path.
+    * **The robustness bug**: a failed sigexc must not become an unkillable 100%-CPU spin. Any
+      signal arriving while the RPC socket is unusable produces this loop, whatever the root
+      cause. `__simple_abort()` after a failed `interrupt_enter` cannot work, since aborting
+      needs the very machinery that just failed -- it should `_exit()` (or raw
+      `sys_exit_group`) instead of `kill()`+`ud2`.
 
-  Reproduce by dropping `DARLING_NO_LAUNCHD=1`; the diagnostics are `dtape_log_debug` and
-  are already on. Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical
-  path.
+  REFUTED, do not revisit: (a) "the dispatch kqueue watches an empty portset 0x707 while the
+  receive ports live in an unwatched 0xa03" -- there is ONE portset, it is not empty, and a
+  message on a member port DOES wake the kqchan waiter; (b) "18 messages are stranded on ports
+  with empty klists" -- posted == consumed, 18 for 18, ordinary reply-before-receive races.
+
+  Reproduce by dropping `DARLING_NO_LAUNCHD=1`. Tools that worked: `strace -ff -e trace=sendto,
+  sendmsg,recvmsg` to catch the errno with its payload; `/proc/PID/maps` to map si_addr to a
+  dylib + offset; `llvm-objdump -d --start-address=` to read the instruction. The daemon's own
+  log is `<prefix>/darlingserver.log`, NOT the launcher's stderr.
+  Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
 - Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
   production-hardening, not on the critical path (single-user M1 sidesteps it).
 
