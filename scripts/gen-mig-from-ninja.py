@@ -19,8 +19,10 @@ Usage:
 """
 from __future__ import annotations
 
+import json
 import os
 import re
+import shlex
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,8 +42,24 @@ EXTRA_COMPILE_SRCS = {
 }
 
 
+def sdk_env_flags() -> set:
+    """The flags //darwin:sdk_env already exports, read from darwin/BUCK.
+
+    Read rather than listed, because the point is to emit the DIFFERENCE: a mig target
+    should carry only what its own directory adds on top of the shared Darwin environment.
+    Duplicating the shared list here would mean a flag moving into sdk_env silently starts
+    appearing twice on every mig command line.
+    """
+    text = open(os.path.join(REPO, "darwin", "BUCK")).read()
+    i = text.find('name = "sdk_env"')
+    if i < 0:
+        sys.exit("no sdk_env target in darwin/BUCK")
+    j = text.index("exported_flags = [", i)
+    return set(re.findall(r'"([^"]+)"', text[j:text.index("]", j)]))
+
+
 def mig_edges(match: str):
-    """Yield (defs_repo_path, out_base, [output paths]) for build-mig edges."""
+    """Yield (defs_repo_path, [output paths], command) for build-mig edges."""
     with open(GRAPH) as f:
         text = f.read()
     cur_head, cur_cmd = None, None
@@ -57,7 +75,7 @@ def mig_edges(match: str):
             if not m:
                 continue
             defs = SRC_STORE_RE.sub("", m.group(1)).lstrip("/")
-            yield defs, cur_head
+            yield defs, cur_head, cur_cmd
             cur_head = None
 
 
@@ -85,7 +103,38 @@ def main(argv: list[str]) -> int:
     print("# mig several times with different suffix sets. Multiarch rides in the")
     print("# suffix (-x86_64-User.c), so the rule needs no arch concept of its own.")
     print()
-    for defs, outs in mig_edges(match):
+    shared = sdk_env_flags()
+    for defs, outs, cmd in mig_edges(match):
+        # mig runs the C PREPROCESSOR over the .defs, so a -D the reference passes is not
+        # decoration: it decides which routines exist. libsyscall's directory adds
+        # PRIVATE=1 on top of the shared Darwin environment, and every `#ifdef PRIVATE`
+        # routine in mach_host.defs and friends -- mach_zone_get_zlog_zones,
+        # mach_zone_force_gc, host_get_multiuser_config_flags -- is simply ABSENT from
+        # libsystem_kernel without it. Nothing fails at build time; the symbol goes missing
+        # and the first program to want it fails to link, a long way from here (zlog).
+        # LIBSYSCALL_INTERFACE=1 is the same story and appears on only ONE of libsyscall's
+        # three passes, which is exactly why these are read per edge rather than assumed.
+        # shlex, not split(): the emulation directory passes
+        # -DEMULATED_VERSION="Darwin Kernel Version 23.4.0", and a whitespace split turns
+        # that one flag into five broken ones.
+        try:
+            words = shlex.split(cmd)
+        except ValueError:
+            words = cmd.split()
+        migdefs = sorted({
+            f for f in words
+            if f.startswith("-D") and f not in shared
+        })
+        # A define whose VALUE carries whitespace or a quote is reported rather than
+        # trusted. The emulation directory has several (-DEMULATED_VERSION is a C string
+        # literal with spaces in it), and how many levels of quoting survive the trip from
+        # cmake through ninja through the shell is not something to guess at: emitted
+        # wrong, the macro silently becomes bare tokens instead of a string. The value is
+        # still printed, escaped so the Starlark stays valid, with a warning naming it.
+        for d in migdefs:
+            if any(c in d for c in ' \t"'):
+                print(f"WARNING: {defs}: check {d!r} against the reference quoting "
+                      f"before committing", file=sys.stderr)
         rel_outs = []
         for o in outs:
             o = o.replace(BIN_DIR, "").lstrip("/")
@@ -154,6 +203,13 @@ def main(argv: list[str]) -> int:
             # block does not drop it again.
             print("    compile_srcs = [")
             print(f'        "{extra}",')
+            print("    ],")
+        if migdefs:
+            print("    mig_flags = [")
+            for d in migdefs:
+                # Escaped, so a value that contains a quote cannot break the file it is
+                # pasted into. json.dumps is Starlark-compatible for plain strings.
+                print(f"        {json.dumps(d)},")
             print("    ],")
         print('    mig_sh = "//buck-src:mig.sh",')
         print('    migcom = "//buck-src:migcom",')

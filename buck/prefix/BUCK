@@ -447,6 +447,7 @@ prefix_tree(
         "libexec/darling/usr/bin/zipcloak": "//buck-src:zipcloak",
         "libexec/darling/usr/bin/zipnote": "//buck-src:zipnote",
         "libexec/darling/usr/bin/zipsplit": "//buck-src:zipsplit",
+        "libexec/darling/usr/bin/zlog": "//buck-src/system_cmds:zlog",
         "libexec/darling/usr/bin/zprint": "//buck-src/system_cmds:zprint",
         "libexec/darling/usr/lib/darling/libxtrace.dylib": "//src/xtrace:xtracelib_dylib",
         "libexec/darling/usr/lib/darling/xtrace-mig/libasl_ipc_xtrace_mig.dylib": "//buck-src:asl_ipc_xtrace_mig_dylib",

@@ -91,10 +91,33 @@ libsyscall ksmig targets run mig WITHOUT -DPRIVATE or -DLIBSYSCALL_INTERFACE whi
 reference passes both. The generated stub is the proof: it carries every UNGUARDED routine
 (mach_zone_info, mach_zone_info_for_zone, mach_memory_info) and none of the guarded ones
 (mach_zone_force_gc, mach_zone_info_for_largest_zone, host_get_atm_diagnostic_flag,
-host_get_multiuser_config_flags, host_check_multiuser_mode). So libsystem_kernel is missing
-a slice of its exported surface relative to the reference, and zlog is simply the first
-target to notice. Fixing it changes the exports of the library the whole boot runs on, so it
-deserves its own change with the full check suite behind it.
+host_get_multiuser_config_flags, host_check_multiuser_mode). So libsystem_kernel was missing
+a slice of its exported surface relative to the reference, and zlog was simply the first
+target to notice.
+
+That is now fixed, and the fix is worth reading as a general lesson: MIG RUNS THE C
+PREPROCESSOR OVER THE .defs, so a -D the reference passes is not decoration, it decides
+which routines exist. scripts/gen-mig-from-ninja.py emitted the suffixes and the outputs
+from each build-mig edge but silently dropped that edge's DEFINES, so all 56 libsyscall
+mig targets ran without the five its directory adds (PRIVATE=1, LIBSYSCALL_INTERFACE=1 on
+one of the three passes only, IOKIT=1, IOKIT_ALL_IPC=1, __DARWIN_C_LEVEL=20150101). The
+generator now extracts them per edge and emits the DIFFERENCE against what //darwin:sdk_env
+already exports, reading that list out of darwin/BUCK rather than restating it. The failure
+mode this closes is the nastiest kind: nothing errors, a symbol simply is not there, and the
+first program to want it fails to link a long way from the cause.
+
+Two details found on the way. The flags had to be SPLICED into the committed blocks rather
+than regenerated, because buck-split-pins.py has since rewritten their defs to labels and
+changed out_base -- a generator you can no longer run end to end is only half a generator,
+and that is worth fixing before the reference graph goes away. And the extraction needs
+shlex, not split(): the emulation directory passes
+-DEMULATED_VERSION="Darwin Kernel Version 23.4.0", which a whitespace split turns into five
+broken flags. Any define whose value carries whitespace or a quote is now WARNED about
+rather than trusted, because how many levels of quoting survive cmake to ninja to the shell
+is not something to guess at.
+
+libsystem_kernel went from exporting two mach_zone routines to six; buck-test.sh asserts all
+six by name so the flags cannot quietly fall off again.
 
 darling-coredump then took UNMAPPED to 12, and it is the interesting one because it is a
 HOST tool: a Linux program that reads Mach-O structures. The reference gives it
@@ -120,9 +143,9 @@ understanding but are NOT install entries -- nothing in the prefix needs them, a
 does not run them -- so they stay low priority. elfdep and getuuid want
 src/buildtools/include plus cctools-port/cctools/include, bsdln links bsd, wrapgen links dl.
 
-The remaining 12 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
+The remaining 11 are all "no target builds it": the dtrace cone (libdtrace, dtrace, lockstat,
 plockstat, usdtheadergen), securityd and secd, SecurityTokend with its xtrace stub,
-launchservicesd, hdiutil and zlog.
+launchservicesd and hdiutil.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -135,6 +158,14 @@ take EIGHT MINUTES a run because target_for called gen.final_registry() and
 gen.archive_registry() per entry, and each of those WALKS THE WHOLE REPO re-reading every
 BUCK file; they are built once now and it takes 1.6 seconds. If another generator in
 scripts/ feels hung, look for the same shape before assuming it is the ninja parse.
+
+One more for buck-test.sh specifically: read Mach-O symbols with llvm-nm, never plain nm.
+Inside `nix develop` the bare name resolves to the clang wrapper's binutils nm, which
+answers "file format not recognized" on a Darwin dylib and, with 2>/dev/null, an empty
+symbol list that looks exactly like a library missing every symbol. Six freshly added
+checks all failed that way while the same command outside the dev shell found all six. The
+file already used llvm-nm everywhere else; the lesson is to follow the surrounding code
+rather than reach for the obvious name.
 
 ## Status (2026-07)
 

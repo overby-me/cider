@@ -285,6 +285,17 @@ for sym in _mach_msg _mach_task_self_ ___syscall _mmap _kevent; do
 	grep -qxF "$sym" <<<"$krn_syms" && ok "libsystem_kernel exports $sym" ||
 		bad "libsystem_kernel is missing $sym"
 done
+# The mach_zone family, which is really a check on the MIG FLAGS. mig runs the C
+# preprocessor over the .defs, so the -D flags the reference passes decide which routines
+# exist: without -DPRIVATE=1 on the ksmig_* targets, every `#ifdef PRIVATE` routine is
+# silently absent and nothing fails until some program tries to link one. zlog was the
+# program that did. The first two here are unguarded and were always exported; the last
+# four are the guarded ones, and they are what proves the flags are still being passed.
+for sym in _mach_zone_info _mach_zone_info_for_zone _mach_zone_force_gc \
+	_mach_zone_info_for_largest_zone _mach_zone_get_zlog_zones _mach_zone_get_btlog_records; do
+	grep -qxF "$sym" <<<"$krn_syms" && ok "libsystem_kernel exports $sym" ||
+		bad "libsystem_kernel is missing $sym (is -DPRIVATE=1 still on the ksmig targets?)"
+done
 
 say "== THE FINAL PASS (phase 2's objective) =="
 # libsystem_blocks linked against its four siblings' FIRSTPASS dylibs, the way
@@ -551,8 +562,8 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # entry; it used to take eight minutes and now takes under two seconds.
 unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 	sed -n 's/^ *UNMAPPED: *//p')
-[ "${unmapped:-999}" -le 12 ] && ok "install UNMAPPED is $unmapped (ceiling 12)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 12"
+[ "${unmapped:-999}" -le 11 ] && ok "install UNMAPPED is $unmapped (ceiling 11)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 11"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

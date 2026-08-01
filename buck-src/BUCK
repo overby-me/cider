@@ -464,6 +464,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/clockXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -484,6 +492,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/clock_privXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -504,6 +520,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/clock_replyXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -524,6 +548,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/host_privXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -544,6 +576,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/host_securityXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -564,6 +604,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/lock_setXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -584,6 +632,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/mach_hostXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -604,6 +660,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/mach_portXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -624,6 +688,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/mach_voucherXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -644,6 +716,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/memory_entryXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -664,6 +744,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/processorXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -684,6 +772,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/processor_setXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -704,6 +800,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/taskXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -724,6 +828,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/thread_actXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -744,6 +856,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/vm_mapXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -764,6 +884,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/mach_vmXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -784,6 +912,14 @@ mig_gen(
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
     xtrace_srcs = ["mach/servers/netnameXtraceMig.c"],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -803,6 +939,14 @@ mig_gen(
     server_suffix = "_unused_server.c",
     sheader_suffix = "_unused_server.h",
     xtrace_suffix = "XtraceMig.c",
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DLIBSYSCALL_INTERFACE=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -822,6 +966,13 @@ mig_gen(
     server_suffix = "_unused_internal_server.c",
     sheader_suffix = "_unused_internal_server.h",
     xtrace_suffix = "_unused_xtrace2.c",
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -841,6 +992,13 @@ mig_gen(
     server_suffix = "_unused_internal_server.c",
     sheader_suffix = "_unused_internal_server.h",
     xtrace_suffix = "_unused_xtrace2.c",
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -860,6 +1018,13 @@ mig_gen(
     server_suffix = "_unused_internal_server.c",
     sheader_suffix = "_unused_internal_server.h",
     xtrace_suffix = "_unused_xtrace2.c",
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -879,6 +1044,13 @@ mig_gen(
     server_suffix = "_unused_internal_server.c",
     sheader_suffix = "_unused_internal_server.h",
     xtrace_suffix = "_unused_xtrace2.c",
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -901,6 +1073,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/clock-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -925,6 +1104,13 @@ mig_gen(
     compile_srcs = [
         "mach/clock_priv-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -947,6 +1133,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/clock_reply-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -971,6 +1164,13 @@ mig_gen(
     compile_srcs = [
         "mach/exc-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -993,6 +1193,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/host_priv-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1017,6 +1224,13 @@ mig_gen(
     compile_srcs = [
         "mach/host_security-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1039,6 +1253,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/lock_set-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1063,6 +1284,13 @@ mig_gen(
     compile_srcs = [
         "mach/mach_host-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1085,6 +1313,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/mach_port-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1109,6 +1344,13 @@ mig_gen(
     compile_srcs = [
         "mach/mach_voucher-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1131,6 +1373,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/memory_entry-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1155,6 +1404,13 @@ mig_gen(
     compile_srcs = [
         "mach/processor-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1177,6 +1433,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/processor_set-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1201,6 +1464,13 @@ mig_gen(
     compile_srcs = [
         "mach/task-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1223,6 +1493,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/thread_act-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1247,6 +1524,13 @@ mig_gen(
     compile_srcs = [
         "mach/vm_map-i386-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1269,6 +1553,13 @@ mig_gen(
     arch = "i386",
     compile_srcs = [
         "mach/mach_vm-i386-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1293,6 +1584,13 @@ mig_gen(
     compile_srcs = [
         "mach/clock-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1315,6 +1613,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/clock_priv-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1339,6 +1644,13 @@ mig_gen(
     compile_srcs = [
         "mach/clock_reply-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1361,6 +1673,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/exc-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1385,6 +1704,13 @@ mig_gen(
     compile_srcs = [
         "mach/host_priv-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1407,6 +1733,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/host_security-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1431,6 +1764,13 @@ mig_gen(
     compile_srcs = [
         "mach/lock_set-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1453,6 +1793,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/mach_host-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1477,6 +1824,13 @@ mig_gen(
     compile_srcs = [
         "mach/mach_port-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1499,6 +1853,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/mach_voucher-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1523,6 +1884,13 @@ mig_gen(
     compile_srcs = [
         "mach/memory_entry-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1545,6 +1913,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/processor-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1569,6 +1944,13 @@ mig_gen(
     compile_srcs = [
         "mach/processor_set-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1591,6 +1973,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/task-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
@@ -1615,6 +2004,13 @@ mig_gen(
     compile_srcs = [
         "mach/thread_act-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1638,6 +2034,13 @@ mig_gen(
     compile_srcs = [
         "mach/vm_map-x86_64-User.c",
     ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
+    ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
@@ -1660,6 +2063,13 @@ mig_gen(
     arch = "x86_64",
     compile_srcs = [
         "mach/mach_vm-x86_64-User.c",
+    ],
+    mig_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DPRIVATE=1",
+        "-D__DARWIN_C_LEVEL=20150101",
     ],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
