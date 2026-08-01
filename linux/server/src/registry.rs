@@ -53,7 +53,27 @@ impl Registry {
         let host_pid = self.host_pids.get(&pid).copied().unwrap_or(pid as libc::pid_t);
         let mut ctx = Box::new(TaskCtx { pid: host_pid });
         let ctx_ptr = ctx.as_mut() as *mut TaskCtx as *mut c_void;
-        let t = dtape_task_create(std::ptr::null_mut(), pid, ctx_ptr, arch);
+        // The PARENT task, found through /proc/<host pid>/PPid. This has to be right, and
+        // for a long time it was simply NULL: ipc_task_init's parent==TASK_NULL branch sets
+        // itk_bootstrap = IP_NULL, so a task created without a parent can never inherit
+        // launchd's bootstrap port. Every launchd JOB then asks for its bootstrap port, gets
+        // nothing, sends its first service lookup to MACH_PORT_NULL and exits -- which is the
+        // whole of task #47. With a parent, ipc_task_init also inherits the exception ports,
+        // the registered ports and the security/audit tokens, which is what XNU does.
+        //
+        // The lookup happens HERE rather than in Handler::set_current because the task is
+        // created before the first call is dispatched, so set_current's parent link comes
+        // too late to be passed to dtape_task_create.
+        let parent = crate::task::read_ppid(host_pid)
+            .and_then(|ppid| {
+                self.host_pids
+                    .iter()
+                    .find(|(_, &hp)| hp == ppid)
+                    .map(|(&pnsid, _)| pnsid)
+            })
+            .and_then(|pnsid| self.tasks.get(&pnsid).copied())
+            .unwrap_or(std::ptr::null_mut());
+        let t = dtape_task_create(parent, pid, ctx_ptr, arch);
         assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
         self.tasks.insert(pid, t);
         self.ctxs.insert(pid, ctx);

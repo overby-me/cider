@@ -233,27 +233,33 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   a BOOTSTRAP PORT problem, not an IPC one: a launchd job whose bootstrap_port is null fails
   its first service lookup and exits, which is the exit(1) launchd sees.
 
-  ANSWERED TOO. Instrumenting the TASK_BOOTSTRAP_PORT get and set in ipc_tt.c gives, in one
-  boot, four lines out of 352 (line numbers from <prefix>/darlingserver.log):
+  ROOT CAUSE FOUND AND FIXED (the first cause, not the whole task). Every guest task was
+  created with NO PARENT: Registry::ensure_task passed std::ptr::null_mut() to
+  dtape_task_create, which its own comment admitted ("Parent is NULL for now"). ipc_task_init's
+  parent==TASK_NULL branch sets itk_bootstrap = IP_NULL, so a launchd JOB could never inherit
+  launchd's bootstrap port however correct everything else was. It asked, got nil, sent its
+  first service lookup to MACH_PORT_NULL and exited.
 
-        239  SET bootstrap: task=0x..4f0e80 old=(nil) new=0x..4e3e50      launchd installs it
-        271  SET bootstrap: task=0x..4f0e80 old=0x..4e3e50 new=(nil)      and CLEARS it again
-        293  GET bootstrap: task=0x..4e40e0 itk_bootstrap=(nil) -> (nil)  the JOB, another task
-        300  copyin_header: INVALID_DEST (name not valid) dest=0x0 reply=0x403
+  ensure_task now finds the parent through /proc/<host pid>/PPid and passes its task. The
+  lookup has to happen there rather than in Handler::set_current, because the task is created
+  before the first call is dispatched and set_current's parent link comes too late. With a
+  parent, ipc_task_init also inherits the exception ports, the registered ports and the
+  security/audit tokens, which is what XNU does.
 
-  launchd's own task installs a bootstrap port and then immediately sets it back to NULL. The
-  job it spawns has itk_bootstrap = nil, asks for it, gets nothing, sends to MACH_PORT_NULL
-  and exits.
+  Measured, same boot, before and after:
 
-  ipc_task_init DOES inherit the parent's bootstrap port ("inherit exception and bootstrap
-  ports", ipc_port_copy_send(parent->itk_bootstrap)), so a child forked while launchd HAD one
-  would get it. Two things to settle next, in this order:
-    1. Why the SET-to-NULL at 271 happens at all. First mechanism worth testing:
-       task_set_special_port CONSUMES the supplied send right, so a second set with a right
-       that was already consumed would arrive as IP_NULL. Instrument the port NAME the guest
-       passes and what it translates to.
-    2. Whether the job's task is created before 239 or after 271. Either way it misses the
-       window in which launchd has a bootstrap port, and that ordering is the actual defect.
+        before   dtape_task_create: nsid=4 parent=(nil)      GET bootstrap -> (nil)   INVALID_DEST dest=0x0
+        after    dtape_task_create: nsid=4 parent=0x..d8e10  GET bootstrap -> 0x..cbe50   INVALID_DEST count 0
+
+  launchd STILL does not complete: the boot gets further (352 to 459 log lines) and then hits
+  the -111 cascade (mach_msg_overwrite, then interrupt_enter). That is the next thing to chase,
+  and it is now the FIRST failure rather than the fourth.
+
+  Still open and worth understanding even so: launchd sets its own bootstrap port and then
+  immediately sets it back to NULL (SET nil->P, then SET P->nil, on its own task). The job
+  inherits at fork time, before the clear, which is why the fix works, but the clear itself is
+  unexplained. First mechanism to test: task_set_special_port CONSUMES the supplied send right,
+  so a second set with an already-consumed right would arrive as IP_NULL.
 
   Do NOT misread launchd's console banner: "launchd[1] has started up" followed by "Shutdown
   logging is enabled" is its STARTUP message, and the second line is about log configuration,

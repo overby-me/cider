@@ -250,6 +250,17 @@ ipc_task_init(
 
 		/* inherit exception and bootstrap ports */
 
+#ifdef __DARLING__
+		/*
+		 * Task #47: the ORDERING question. A child forked while launchd holds a
+		 * bootstrap port inherits it here; one forked before launchd installs it, or
+		 * after launchd clears it, inherits nil and dies on its first service lookup.
+		 * This says which window this task was created in.
+		 */
+		dtape_log_debug("ipc_task_init: task=%p parent=%p parent_bootstrap=%p",
+		    task, parent, parent->itk_bootstrap);
+#endif
+
 		for (i = FIRST_EXCEPTION; i < EXC_TYPES_COUNT; i++) {
 			task->exc_actions[i].port =
 			    ipc_port_copy_send(parent->exc_actions[i].port);

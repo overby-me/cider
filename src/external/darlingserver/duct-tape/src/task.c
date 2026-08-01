@@ -89,6 +89,15 @@ dtape_task_t* dtape_task_create(dtape_task_t* parent_task, uint32_t nsid, void* 
 
 	queue_init(&task->xnu_task.semaphore_list);
 
+#ifdef __DARLING__
+	/*
+	 * Task #47: a task created with NO parent takes ipc_task_init's parent==TASK_NULL
+	 * branch, which sets itk_bootstrap = IP_NULL. It can then never inherit launchd's
+	 * bootstrap port, and its first service lookup goes to MACH_PORT_NULL.
+	 */
+	dtape_log_debug("dtape_task_create: nsid=%u parent=%p parent_bootstrap=%p", nsid,
+	    parent_task, parent_task ? parent_task->xnu_task.itk_bootstrap : NULL);
+#endif
 	ipc_task_init(&task->xnu_task, parent_task ? &parent_task->xnu_task : NULL);
 
 	if (parent_task) {
