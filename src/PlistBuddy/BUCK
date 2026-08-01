@@ -1,0 +1,63 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:files.bzl", "export_file")
+
+# BEGIN generated: PlistBuddy
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py PlistBuddy   -- review before committing.
+# cmake target: PlistBuddy  ->  src/PlistBuddy/PlistBuddy
+
+cc_objects(
+    name = "PlistBuddy_obj",
+    srcs = [
+        "PlistBuddy.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: PlistBuddy
+
+# BEGIN generated: PlistBuddy binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries PlistBuddy   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "PlistBuddy",
+    objs = [
+        # PlistBuddy
+        ":PlistBuddy_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: PlistBuddy binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "PlistBuddy.8",
+    src = "PlistBuddy.8",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

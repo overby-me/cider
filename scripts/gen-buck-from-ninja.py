@@ -94,6 +94,15 @@ CROSS_PACKAGE_ROOTS = {
     # (NSObject internals), and foundation is NOT a split pin, so its files belong to
     # the buck-src mega-package.
     "foundation/src": "//buck-src:Foundation_inc_foundation_src",
+    # mldr's include tree is a symlink farm into the pins for headers the SDK already
+    # carries (mach/, sys/, i386/, libkern/, architecture/): 15 of its 19 entries are links
+    # into xnu and architecture, and every target that gets this -I also depends on sdk_env.
+    # So it maps to the SDK rather than to a second copy -- a glob here would only pick up
+    # links that dangle in the current layout.
+    "src/startup/mldr/include": "//darwin:sdk_env",
+    "src/startup/mldr/elfcalls": "//src/startup:mldr_elfcalls",
+    # icu is a SPLIT pin, so its common headers are named by label, not globbed from here.
+    "icu/icuSources/common": "//buck-src/icu:icucore_inc_icu_icuSources_common",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
     # per-app-VPN types. src/networkextension is its own package.
     "src/networkextension/include":

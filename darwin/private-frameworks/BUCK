@@ -1,5 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
-load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: framework roots
@@ -79,3 +79,81 @@ export_file(
 )
 
 # END generated: prefix exports
+
+# BEGIN generated: coresymbolicationd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py coresymbolicationd   -- review before committing.
+# cmake target: coresymbolicationd  ->  src/private-frameworks/CoreSymbolication/coresymbolicationd
+
+cc_objects(
+    name = "coresymbolicationd_obj",
+    srcs = [
+        "CoreSymbolication/src/daemon.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coresymbolicationd
+
+# BEGIN generated: coresymbolicationd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries coresymbolicationd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "coresymbolicationd",
+    objs = [
+        # coresymbolicationd
+        ":coresymbolicationd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: coresymbolicationd binary
+
+# BEGIN generated: login
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py login   -- review before committing.
+# cmake target: login  ->  src/external/system_cmds/login.tproj/login
+
+cc_header_root(
+    name = "login_inc_darwin_private_frameworks_login",
+    headers = glob(["login/*.h", "login/**/*.h", "login/*.c"]),
+    root = "login",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "login_obj",
+    srcs = [
+        "login/functions.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dlogin_EXPORTS",
+        "-fPIC",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":login_inc_darwin_private_frameworks_login",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: login

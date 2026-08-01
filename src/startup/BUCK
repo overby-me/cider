@@ -39,3 +39,15 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+
+# The elfcalls ABI headers (elfcalls.h, threads.h, dthreads.h): the contract between the
+# loader and the guest's libsystem_kernel. Real files, unlike mldr/include's symlink farm,
+# so a glob is right here. Declared in this package because a header root can only glob
+# files its own package owns.
+cc_header_root(
+    name = "mldr_elfcalls",
+    headers = glob(["mldr/elfcalls/*.h"]),
+    root = "mldr/elfcalls",
+    visibility = ["PUBLIC"],
+)

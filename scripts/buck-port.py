@@ -141,12 +141,26 @@ def package_from(msg: str) -> str | None:
 
 def resolve(label: str, fwmap: dict[str, str], nj: str, rounds: int = 60) -> tuple[bool, str]:
     """Build `label`, adding framework roots until it builds or fails for another reason."""
-    added = []
+    added: list[str] = []
+    generated_objs: set[str] = set()
     for _ in range(rounds):
         p = run(["buck2", "build", label])
         blob = p.stdout + p.stderr
         if "BUILD SUCCEEDED" in blob or p.returncode == 0:
             return True, ", ".join(added)
+        # A sibling OBJECT LIBRARY the block references but nothing has generated yet. The
+        # generator writes a TODO for it rather than failing, so it surfaces here as an
+        # unknown target -- Security's x86_64_only_stuff and libbc's bcstatic are both this
+        # shape. Generate it and retry; each one unlocks its consumer.
+        unknown = re.search(r"Unknown target `([A-Za-z0-9_.+-]+?)(_obj\d*)`", blob)
+        if unknown and unknown.group(1) not in generated_objs:
+            name = unknown.group(1)
+            generated_objs.add(name)
+            ok, msg = generate(name, None)
+            if ok:
+                added.append(f"objs:{name}")
+                continue
+            return False, f"generating objects for {name}: {msg}"
         miss = re.search(r"fatal error: '([A-Za-z0-9_]+)/[^']*' file not found", blob)
         who = re.search(r"Action failed: root(//[^\s:]+):(\S+)", blob)
         if not miss or not who:

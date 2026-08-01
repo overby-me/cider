@@ -1,0 +1,57 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# BEGIN generated: xip_extract_cpio
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py xip_extract_cpio   -- review before committing.
+# cmake target: xip_extract_cpio  ->  src/unxip/xip_extract_cpio
+
+cc_objects(
+    name = "xip_extract_cpio_obj",
+    srcs = [
+        "xip_extract_cpio.c",
+    ],
+    compiler_flags = [
+        "-DU_SHOW_CPLUSPLUS_API=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xip_extract_cpio
+
+# BEGIN generated: xip_extract_cpio binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries xip_extract_cpio   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "xip_extract_cpio",
+    objs = [
+        # xip_extract_cpio
+        ":xip_extract_cpio_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:lzma_dylib",
+        "//buck-src:xar_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:xml2_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:icucore_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: xip_extract_cpio binary

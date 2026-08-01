@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_header_root")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 
 # SDK headers this package owns: the Darwin SDK tree reaches them by
 # symlink, and a header_map's values must be sources in the declaring
@@ -15,3 +15,37 @@ cc_header_root(
     visibility = ["PUBLIC"],
 )
 # END generated: sdk headers
+
+# BEGIN generated: ranlib_shim
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ranlib_shim   -- review before committing.
+# cmake target: ranlib_shim  ->  ranlib_shim
+
+cc_header_root(
+    name = "ranlib_shim_inc_src_xcselect_include",
+    headers = glob(["include/*.h", "include/**/*.h", "include/*.c"]),
+    root = "include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ranlib_shim_obj",
+    srcs = [
+        "xcrun-shim.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+        "-nostdinc",
+        "-DTOOL_NAME=\"ranlib\"",
+        "-DREQUIRE_XCODE=0",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":ranlib_shim_inc_src_xcselect_include",
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ranlib_shim
+

@@ -828,5 +828,102 @@
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
     "//darwin/frameworks:fw_Network"
+  ],
+  "PlistBuddy": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "arch": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "chpass": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DirectoryService",
+    "//darwin/frameworks:fw_CFOpenDirectory",
+    "//darwin/frameworks:fw_OpenDirectory"
+  ],
+  "defaults": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation"
+  ],
+  "filecoordinationd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation"
+  ],
+  "fseventsd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "ioalloccount": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "ioclasscount": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Kernel"
+  ],
+  "ioreg": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "iosim": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "iostat": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "ltop": [
+    "//buck-src:fw_Kernel"
+  ],
+  "nc": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security"
+  ],
+  "nvram": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "secd": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CloudKit",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_SecurityFoundation",
+    "//darwin/private-frameworks:fw_TrustedPeers",
+    "//darwin/private-frameworks:fw_login"
+  ],
+  "ssh": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "ssh-add": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "top-static": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "trustd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation",
+    "//darwin/private-frameworks:fw_login"
+  ],
+  "zlog": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/private-frameworks:fw_CoreSymbolication"
   ]
 }
