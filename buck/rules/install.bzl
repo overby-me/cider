@@ -63,6 +63,10 @@ while IFS=$'\\t' read -r kind dest src; do
     # entries stay links, which is what keeps Volumes/DarlingEmulatedDrive from being
     # followed to the root of the machine.
     file) mkdir -p "$out/$(dirname "$dest")"; cp -L -p --reflink=auto "$src" "$out/$dest" ;;
+    # install(FILES ... PERMISSIONS ... OWNER_EXECUTE): the mode comes from the install
+    # entry, not from the source tree. chmod is safe because the entry is a COPY -- the
+    # dirserv stubs are 644 in the repo and have to be 755 in the prefix.
+    exec) mkdir -p "$out/$(dirname "$dest")"; cp -L -p --reflink=auto "$src" "$out/$dest"; chmod 0755 "$out/$dest" ;;
     *)    echo "prefix_tree: unknown entry kind '$kind' for $dest" >&2; exit 1 ;;
   esac
 done < "$manifest"
@@ -85,6 +89,13 @@ def _prefix_tree_impl(ctx):
     # producing target, so they arrive as sources.
     for dest, src in ctx.attrs.files.items():
         mapping[dest] = src
+
+    # The same, for entries whose install() grants an EXECUTE permission. Kept apart from
+    # `files` because the difference is the MODE the file lands with, which the manifest has
+    # to carry through to the builder.
+    exec_mapping = {}
+    for dest, src in ctx.attrs.exec_files.items():
+        exec_mapping[dest] = src
 
     # Second names for things already in the tree. Darling installs these through
     # cmake/InstallSymlink.cmake, which creates the link in the build directory and then
@@ -127,6 +138,8 @@ def _prefix_tree_impl(ctx):
         lines.append(cmd_args("dir", dest, "", delimiter = "\t"))
     for dest in sorted(mapping):
         lines.append(cmd_args("file", dest, mapping[dest], delimiter = "\t"))
+    for dest in sorted(exec_mapping):
+        lines.append(cmd_args("exec", dest, exec_mapping[dest], delimiter = "\t"))
     for dest in sorted(ctx.attrs.links):
         lines.append(cmd_args("link", dest, ctx.attrs.links[dest], delimiter = "\t"))
 
@@ -158,6 +171,10 @@ prefix_tree = rule(
         "entries": attrs.dict(attrs.string(), attrs.dep(), default = {}),
         # {prefix-relative destination: source file that goes there}
         "files": attrs.dict(attrs.string(), attrs.source(), default = {}),
+        # The same, for a source file whose install() grants an EXECUTE permission: it
+        # lands 0755 whatever mode it has in the repo. The Directory Services stubs are
+        # 644 here and 755 once installed.
+        "exec_files": attrs.dict(attrs.string(), attrs.source(), default = {}),
         # {prefix-relative destination: another destination in this tree it names}
         "symlinks": attrs.dict(attrs.string(), attrs.string(), default = {}),
         # {prefix-relative destination: prefix_dir target whose tree is merged in there}

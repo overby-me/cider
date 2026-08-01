@@ -52,7 +52,7 @@ INSTALL_PREFIX = "/usr/local"
 # like a manifest with nothing in it. dirserv's three Directory Services stubs went missing
 # that way, and they are what tests/darling-smoke.nix stage 7 drives.
 ENTRY = re.compile(
-    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)(?:\s+\w+)*\s+FILES?\s+(.*?)\)\n',
+    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)((?:\s+\w+)*)\s+FILES?\s+(.*?)\)\n',
     re.S)
 STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # `REGEX "..." EXCLUDE`, which follows the file list.
@@ -101,6 +101,12 @@ def graph_dir(argv: list[str]) -> str:
     return os.path.realpath(os.path.join(REPO, "result-graph-ref"))
 
 
+# Sources whose install entry grants an EXECUTE permission. Kept beside the entries rather
+# than in them because only the FILE branch cares, and every other reader of an entry would
+# have to carry a field it ignores.
+EXEC_SOURCES: set = set()
+
+
 def read_entries(root: str):
     """[(destination, type, [sources], [exclude regexes])] over every manifest."""
     out = []
@@ -110,7 +116,7 @@ def read_entries(root: str):
             continue
         seen += 1
         text = open(os.path.join(dirpath, "cmake_install.cmake")).read()
-        for dest, kind, blob in ENTRY.findall(text):
+        for dest, kind, perms, blob in ENTRY.findall(text):
             dest = dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/")
             # Not every DESTINATION keeps the variable: unzip installs to a literal
             # /usr/local/libexec/... (cmake even warns about the absolute path). Left as
@@ -120,7 +126,15 @@ def read_entries(root: str):
             # The excludes are quoted strings too, so the file list is what comes BEFORE the
             # first REGEX. Splitting there keeps `/Makefile$` from being read as a file.
             head = blob.split(" REGEX ", 1)[0]
-            out.append((dest, kind, STRING.findall(head), EXCLUDE.findall(blob)))
+            srcs = STRING.findall(head)
+            # install(FILES ... PERMISSIONS ... OWNER_EXECUTE) means the file lands
+            # EXECUTABLE whatever mode it has in the source tree. The Directory Services
+            # stubs are the case that matters: dscl, dseditgroup and sysadminctl are 644
+            # in the repo and 755 once installed, and copying the source mode leaves three
+            # shell scripts the guest cannot run.
+            if "EXECUTE" in perms:
+                EXEC_SOURCES.update(srcs)
+            out.append((dest, kind, srcs, EXCLUDE.findall(blob)))
     # Loudly, because an empty walk is indistinguishable from a prefix with nothing in it,
     # and a manifest directory that has been garbage-collected or moved is the likely cause.
     if not seen:
@@ -408,6 +422,7 @@ def main(argv: list[str]) -> int:
                 dest_of[src] = f"{dest}/{base}" if dest else base
 
     built, sources, symlinks, dirs, unmapped, skipped = {}, {}, {}, {}, [], []
+    exec_files: dict[str, str] = {}
     blocks: dict[str, list[str]] = {}
     exports: dict[str, dict] = {}
     hints: dict[str, dict] = {}
@@ -442,7 +457,7 @@ def main(argv: list[str]) -> int:
                     if label is None:
                         unmapped.append((full, f"{rel} is in no package"))
                         continue
-                    sources[full] = label
+                    (exec_files if src in EXEC_SOURCES else sources)[full] = label
                     if needs_export == "buck-src":
                         hints.setdefault("buck-src", {})[label.split(":", 1)[1]] = \
                             rel.removeprefix("src/external/")
@@ -478,7 +493,7 @@ def main(argv: list[str]) -> int:
     # the target is an install entry at all, which it can be while still being dropped a
     # few lines later for having no target that builds it: lsbom links to installer, and
     # installer is not ported. Left in, the prefix rule fails on a link into nothing.
-    present = set(built) | set(sources) | set(dirs) | set(empty_dirs)
+    present = set(built) | set(sources) | set(exec_files) | set(dirs) | set(empty_dirs)
     while True:
         dangling = {d: t for d, t in symlinks.items()
                     if t not in present and t not in symlinks}
@@ -491,6 +506,7 @@ def main(argv: list[str]) -> int:
     print(f"install entries: {len(entries)}")
     print(f"  built artifacts mapped to targets: {len(built)}")
     print(f"  source files:                      {len(sources)}")
+    print(f"  source files (executable):         {len(exec_files)}")
     print(f"  symlinks:                          {len(symlinks)}")
     print(f"  directories:                       {len(dirs)}")
     print(f"  empty directories:                 {len(empty_dirs)}")
@@ -540,6 +556,9 @@ def main(argv: list[str]) -> int:
     lines += ["    },", "    files = {"]
     for dest in sorted(sources):
         lines.append(f'        "{dest}": "{sources[dest]}",')
+    lines += ["    },", "    exec_files = {"]
+    for dest in sorted(exec_files):
+        lines.append(f'        "{dest}": "{exec_files[dest]}",')
     lines += ["    },", "    symlinks = {"]
     for dest in sorted(symlinks):
         lines.append(f'        "{dest}": "{symlinks[dest]}",')
