@@ -356,6 +356,24 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   t=36s 3 -> 6/10/14 (launchd is spawning jobs now); launchctl RECV=71 SEND=71, balanced.
   The container still does not finish -- see the next entry for where it gets to now.
 
+  #47 IS DONE. The container now boots through launchd -- launchd as guest pid 1, launchctl
+  bootstrap -S System loading the system jobs, memberd and shellspawn running, 21 guest
+  threads where there used to be 3 -- and runs a command to completion. Locked in by
+  scripts/buck-launchd-check.sh, which is the no-launchd check's counterpart and exists
+  because "bash runs" never implied "init works": the no-launchd path skips init entirely.
+
+  TWO OPS TRAPS, both of which cost real time here and will cost it again:
+
+    * `pkill -9 -x a b c` is a USAGE ERROR ("only one pattern can be provided") and kills
+      NOTHING, silently, exiting 2. Every cleanup written that way is a no-op. 22 stale mldr
+      processes from earlier runs had accumulated and were competing with live measurements.
+      Use `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'` -- one ERE pattern.
+    * Do NOT pre-create DPREFIX. darling treats an existing prefix directory as one it has
+      already set up, so `mkdir -p` before booting skips first-time setup and launchd boots
+      into an unpopulated filesystem and stalls deterministically at ~509 lines of daemon
+      log. This masqueraded as a port bug for a while: the check failed 3/3 while the same
+      command by hand passed 8/8, and the only difference was the mkdir.
+
   A SEPARATE bug found along the way, not yet fixed: a guest fd that is a SOCKET gets the
   vchroot prefix pasted onto readlink's output, producing the path
   "/Volumes/SystemRootsocket:[100816751]". Visible as a [guest kprintf] "dtype for fd 2"
