@@ -1584,3 +1584,154 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: pam_uwtmp dylibs
+
+# BEGIN generated: pam_mount dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_mount   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_mount_dylib",
+    dylib_name = "pam_mount.so.2",
+    install_name = "/usr/lib/pam/pam_mount.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_mount
+        ":pam_mount_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//src/libsandbox:sandbox_not_system_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenDirectory_dylib",
+        "//darwin/frameworks:NetFS_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_mount dylibs
+
+# BEGIN generated: pam_krb5 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_krb5   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_krb5_dylib",
+    dylib_name = "pam_krb5.so.2",
+    install_name = "/usr/lib/pam/pam_krb5.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_krb5
+        ":pam_krb5_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenDirectory_dylib",
+        "//buck-src:Heimdal_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_krb5 dylibs
+
+# BEGIN generated: pam_ntlm dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_ntlm   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_ntlm_dylib",
+    dylib_name = "pam_ntlm.so.2",
+    install_name = "/usr/lib/pam/pam_ntlm.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_ntlm
+        ":pam_ntlm_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenDirectory_dylib",
+        "//buck-src:GSS_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_ntlm dylibs
+
+# BEGIN generated: pam_opendirectory dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_opendirectory   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "pam_opendirectory_dylib",
+    dylib_name = "pam_opendirectory.so.2",
+    install_name = "/usr/lib/pam/pam_opendirectory.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_opendirectory
+        ":pam_opendirectory_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenDirectory_dylib",
+        "//darwin/private-frameworks:ConfigurationProfiles_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_opendirectory dylibs
+
+# BEGIN generated: pam_smartcard dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pam_smartcard   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "pam_smartcard_dylib",
+    dylib_name = "pam_smartcard.so.2",
+    install_name = "/usr/lib/pam/pam_smartcard.so.2",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pam_smartcard
+        ":pam_smartcard_obj",
+    ],
+    siblings = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:DirectoryService_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:OpenDirectory_dylib",
+        "//darwin/frameworks:CryptoTokenKit_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pam_smartcard dylibs

@@ -1365,5 +1365,42 @@
   ],
   "dighost": [
     "//buck-src:sdk_libxml2"
+  ],
+  "ucsp_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:securityd_client_mig_ucsp[xtrace]"
+  ],
+  "ucspNotify_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:securityd_client_mig_ucspnotify[xtrace]"
+  ],
+  "ocspd_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:security_ocspd_mig[xtrace]"
+  ],
+  "mach_notify_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:security_utilities_mig_notify[xtrace]"
+  ],
+  "heim_ipc_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:heimdal_mig_ipc[xtrace]"
+  ],
+  "heim_ipc_async_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:heimdal_mig_ipc_async[xtrace]"
+  ],
+  "iokitmig_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:IOKit_mig_iokitmig64[xtrace]"
+  ],
+  "kextmanager_mig_xtrace_mig": [
+    "//buck-src:fw_Security",
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:IOKit_mig_kextmanager[xtrace]"
+  ],
+  "powermanagement_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:IOKit_mig_powermanagement[xtrace]"
   ]
 }

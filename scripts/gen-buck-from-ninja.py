@@ -594,10 +594,21 @@ def generate(target: str, edges):
     # One header root per distinct include dir, shared across groups -- except that
     # SIBLING dirs are staged as one tree (see below), because a staged header's
     # own `#include "../sibling/x.h"` resolves relative to the staged copy.
+    #
+    # A CROSS_PACKAGE_ROOTS entry exists so OTHER packages can name a root by label. It must
+    # NOT apply to a block in the package that DEFINES that label, or the block stops
+    # emitting the root and starts depending on it -- naming a target it no longer produces,
+    # and taking every other consumer of the label down with it. icucore is the case:
+    # //buck-src/icu:icucore_inc_icu_icuSources_common is icucore's OWN root, and four pam
+    # modules reach it through the entry.
+    def cross_package(p: str) -> bool:
+        label = CROSS_PACKAGE_ROOTS.get(p)
+        return label is not None and not label.startswith(f"//{pkg_for_files}:")
+
     own_roots: list[str] = []
     for g in groups.values():
         for kind, p in g["inc"]:
-            if kind == "own" and p not in own_roots and p not in CROSS_PACKAGE_ROOTS:
+            if kind == "own" and p not in own_roots and not cross_package(p):
                 own_roots.append(p)
     def root_dir(rel: str) -> str:
         """Where an include root actually lives: pin roots are buck-src-relative."""

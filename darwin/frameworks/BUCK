@@ -1650,11 +1650,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs OpenDirectory   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   CFOpenDirectory
-# TODO the final pass REEXPORTS 1 more dylibs whose final
-# pass is not ported yet; without them its symbol surface is incomplete:
-#   CFOpenDirectory
 
 darwin_dylib(
     name = "OpenDirectory_dylib",
@@ -1671,8 +1666,13 @@ darwin_dylib(
         "//buck-src:system_final",
         "//buck-src:Foundation_dylib",
     ],
+    reexport = [
+        "//darwin/frameworks:CFOpenDirectory_dylib",
+    ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = [
+        "//darwin:sdk_env",
+    ],
     visibility = ["PUBLIC"],
 )
 # END generated: OpenDirectory dylibs

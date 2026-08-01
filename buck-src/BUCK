@@ -12838,6 +12838,9 @@ mig_gen(
     xtrace_suffix = "XtraceMig64.c",
     compile_srcs = [
     ],
+    # The XtraceMig stub, which is what makes the [xtrace] output non-empty --
+    # //buck-src:iokitmig64_dylib links exactly this one file.
+    xtrace_srcs = ["iokitmigXtraceMig64.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     # The directory's COMPILE_DEFINITIONS, which mig runs the preprocessor with. Without
@@ -12878,6 +12881,9 @@ mig_gen(
     compile_srcs = [
         "kextmanager_migUser.c",
     ],
+    # The XtraceMig stub, which is what makes the [xtrace] output non-empty --
+    # //buck-src:kextmanager_dylib links exactly this one file.
+    xtrace_srcs = ["kextmanager_migXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     # The directory's COMPILE_DEFINITIONS, which mig runs the preprocessor with. Without
@@ -12918,6 +12924,9 @@ mig_gen(
     compile_srcs = [
         "powermanagementUser.c",
     ],
+    # The XtraceMig stub, which is what makes the [xtrace] output non-empty --
+    # //buck-src:powermanagement_dylib links exactly this one file.
+    xtrace_srcs = ["powermanagementXtraceMig.c"],
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     # The directory's COMPILE_DEFINITIONS, which mig runs the preprocessor with. Without
@@ -39180,6 +39189,10 @@ cc_objects(
         ":heim_ipc_async_xtrace_mig_inc_Heimdal_lib",
         ":heim_ipc_async_xtrace_mig_inc_Heimdal",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:heimdal_mig_ipc_async[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39322,6 +39335,10 @@ cc_objects(
         ":heim_ipc_xtrace_mig_inc_Heimdal_lib",
         ":heim_ipc_xtrace_mig_inc_Heimdal",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
+    ],
+    gen_srcs = [
+        "//buck-src:heimdal_mig_ipc[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39383,7 +39400,11 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":iokitmig_xtrace_mig_inc_IOKitUser",
+    ],
+    gen_srcs = [
+        "//buck-src:IOKit_mig_iokitmig64[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39445,7 +39466,12 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_Security",
+        "//src/xtrace:xtrace_headers",
         ":kextmanager_mig_xtrace_mig_inc_IOKitUser",
+    ],
+    gen_srcs = [
+        "//buck-src:IOKit_mig_kextmanager[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39589,7 +39615,11 @@ cc_objects(
     deps = [
         ":mach_notify_xtrace_mig_inc_libcxxabi_include",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":mach_notify_xtrace_mig_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:security_utilities_mig_notify[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39697,7 +39727,11 @@ cc_objects(
     deps = [
         ":ocspd_xtrace_mig_inc_libcxxabi_include",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":ocspd_xtrace_mig_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:security_ocspd_mig[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -39759,7 +39793,11 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":powermanagement_xtrace_mig_inc_IOKitUser",
+    ],
+    gen_srcs = [
+        "//buck-src:IOKit_mig_powermanagement[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -40054,7 +40092,11 @@ cc_objects(
     deps = [
         ":ucspNotify_xtrace_mig_inc_libcxxabi_include",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":ucspNotify_xtrace_mig_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:securityd_client_mig_ucspnotify[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -40166,7 +40208,11 @@ cc_objects(
     deps = [
         ":ucsp_xtrace_mig_inc_libcxxabi_include",
         "//darwin:sdk_env",
+        "//src/xtrace:xtrace_headers",
         ":ucsp_xtrace_mig_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:securityd_client_mig_ucsp[xtrace]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -48443,3 +48489,207 @@ prefix_dir(
     visibility = ["PUBLIC"],
 )
 # END generated: prefix dirs
+
+# BEGIN generated: ucsp_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ucsp_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "ucsp_xtrace_mig_dylib",
+    dylib_name = "libucsp_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # ucsp_xtrace_mig
+        ":ucsp_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ucsp_xtrace_mig dylibs
+
+# BEGIN generated: ucspNotify_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ucspNotify_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "ucspNotify_xtrace_mig_dylib",
+    dylib_name = "libucspNotify_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # ucspNotify_xtrace_mig
+        ":ucspNotify_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ucspNotify_xtrace_mig dylibs
+
+# BEGIN generated: ocspd_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ocspd_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "ocspd_xtrace_mig_dylib",
+    dylib_name = "libocspd_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # ocspd_xtrace_mig
+        ":ocspd_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ocspd_xtrace_mig dylibs
+
+# BEGIN generated: mach_notify_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs mach_notify_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "mach_notify_xtrace_mig_dylib",
+    dylib_name = "libmach_notify_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # mach_notify_xtrace_mig
+        ":mach_notify_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mach_notify_xtrace_mig dylibs
+
+# BEGIN generated: heim_ipc_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs heim_ipc_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "heim_ipc_xtrace_mig_dylib",
+    dylib_name = "libheim_ipc_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # heim_ipc_xtrace_mig
+        ":heim_ipc_xtrace_mig_obj",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_ipc_xtrace_mig dylibs
+
+# BEGIN generated: heim_ipc_async_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs heim_ipc_async_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "heim_ipc_async_xtrace_mig_dylib",
+    dylib_name = "libheim_ipc_async_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # heim_ipc_async_xtrace_mig
+        ":heim_ipc_async_xtrace_mig_obj",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: heim_ipc_async_xtrace_mig dylibs
+
+# BEGIN generated: iokitmig_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs iokitmig_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "iokitmig_xtrace_mig_dylib",
+    dylib_name = "libiokitmig_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # iokitmig_xtrace_mig
+        ":iokitmig_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iokitmig_xtrace_mig dylibs
+
+# BEGIN generated: kextmanager_mig_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs kextmanager_mig_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "kextmanager_mig_xtrace_mig_dylib",
+    dylib_name = "libkextmanager_mig_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # kextmanager_mig_xtrace_mig
+        ":kextmanager_mig_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: kextmanager_mig_xtrace_mig dylibs
+
+# BEGIN generated: powermanagement_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs powermanagement_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "powermanagement_xtrace_mig_dylib",
+    dylib_name = "libpowermanagement_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # powermanagement_xtrace_mig
+        ":powermanagement_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: powermanagement_xtrace_mig dylibs
