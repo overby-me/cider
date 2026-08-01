@@ -90,7 +90,30 @@ void (ipc_kmsg_trace_send)(ipc_kmsg_t kmsg, mach_msg_option_t option) {
 
 	dest_pid = ipc_port_get_receiver_task(dest, NULL);
 
-	dtape_log_debug("sending kmsg %p to pid %d", kmsg, dest_pid);
+	// The msgh_id is the MIG routine number, which is what actually identifies the
+	// operation. Without it every message in the log looks alike and a stalled
+	// request cannot be told from a healthy one (task #47).
+	// For a COMPLEX message, also report the descriptor count and the first descriptor's
+	// type. Port descriptors copy out entirely inside the daemon; OOL descriptors have to
+	// map memory INTO the guest, which is a very different (and much more failure-prone)
+	// path. Telling them apart from a log is the difference between a guess and a fact.
+	int ndesc = -1, dtype = -1;
+	if (kmsg->ikm_header->msgh_bits & MACH_MSGH_BITS_COMPLEX) {
+		mach_msg_body_t* body = (mach_msg_body_t*)(kmsg->ikm_header + 1);
+		ndesc = body->msgh_descriptor_count;
+		if (ndesc > 0) {
+			dtype = ((mach_msg_type_descriptor_t*)(body + 1))->type;
+		}
+	}
+
+	dtape_log_debug("sending kmsg %p to pid %d id=%d size=%u bits=0x%x remote=%p local=%p ndesc=%d dtype=%d",
+		kmsg, dest_pid,
+		kmsg->ikm_header->msgh_id,
+		kmsg->ikm_header->msgh_size,
+		kmsg->ikm_header->msgh_bits,
+		kmsg->ikm_header->msgh_remote_port,
+		kmsg->ikm_header->msgh_local_port,
+		ndesc, dtype);
 };
 
 void Assert(const char* file, int line, const char* expression) {

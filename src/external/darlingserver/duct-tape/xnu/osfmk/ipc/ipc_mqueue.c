@@ -1211,9 +1211,10 @@ ipc_mqueue_receive_on_thread(
 	 * blocks on is the whole question: a SET only ever sees its MEMBERS' preposts, so a
 	 * thread blocked on the set cannot be woken by a message to a port that is not in it.
 	 */
-	dtape_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d",
+	dtape_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d thread=%p",
 	    mqueue, imq_is_set(mqueue) ? 1 : 0,
-	    (unsigned long long)mqueue->imq_wait_queue.waitq_set_id, mqueue->imq_msgcount);
+	    (unsigned long long)mqueue->imq_wait_queue.waitq_set_id, mqueue->imq_msgcount,
+	    thread);
 #endif
 
 	/*

@@ -123,7 +123,14 @@ pub fn set_listener_fd(fd: RawFd) {
 }
 
 /// Set the guest whose RPC is about to be dispatched (so an S2C op it triggers can reach it).
+/// Records it on the running MICROTHREAD as well as in the global slot: the global is only
+/// correct while that dispatch is on top, and a microthread resumed later (inside a different
+/// thread's dispatch) would otherwise read the wrong guest. See Microthread::s2c_peer.
 pub fn set_current(nsid: u32, tid: u64, peer: PeerAddr) {
+    let mt = sched::current();
+    if !mt.is_null() {
+        unsafe { (*mt).set_s2c_peer(Some((nsid, tid, peer.clone()))) };
+    }
     CURRENT.with(|c| *c.borrow_mut() = Some((nsid, tid, peer)));
 }
 
@@ -156,7 +163,15 @@ unsafe fn perform_raw(call_bytes: &[u8], min_reply: usize) -> Option<Vec<u8>> {
 /// Like `perform_raw` but also passes `fds` to the guest via SCM_RIGHTS -- for the S2C mmap of
 /// a real file, which hands the guest a dup of the file descriptor to map. See perform_map_file.
 unsafe fn perform_raw_fds(call_bytes: &[u8], fds: &[RawFd], min_reply: usize) -> Option<Vec<u8>> {
-    let (nsid, tid, peer) = CURRENT.with(|c| c.borrow().clone())?;
+    // Prefer the identity bound to THIS microthread. The global slot names whichever call the
+    // serve loop dispatched last, which is not us when we were resumed as a side effect of
+    // another thread's call (task #47); falling back to it keeps pre-existing behaviour for
+    // any microthread that never had one bound.
+    let (nsid, tid, peer) = {
+        let mt = sched::current();
+        let bound = if mt.is_null() { None } else { unsafe { (*mt).s2c_peer() } };
+        bound.or_else(|| CURRENT.with(|c| c.borrow().clone()))
+    }?;
     let listener = LISTENER_FD.with(|f| *f.borrow());
     if listener < 0 {
         return None;

@@ -579,7 +579,7 @@ unsafe fn start_interrupt(
     }
     sched::run(mt);
     sched::drain();
-    flush_mailbox(listener, &imb, &peer);
+    flush_mailbox(listener, &imb, &peer, (nsid, tid));
 }
 
 /// Route an RPC to the in-progress nested interrupt on (nsid,tid), run it on the thread's OWN
@@ -616,7 +616,7 @@ unsafe fn run_interrupt_call(
     };
     sched::run(mt);
     sched::drain();
-    flush_mailbox(listener, &imb, &peer);
+    flush_mailbox(listener, &imb, &peer, (nsid, tid));
     if base_number == 15 {
         // interrupt_exit: stop the interrupt activation so its doWork loop breaks and it
         // finishes; pop it to restore the blocked call; then run the microthread so the blocked
@@ -654,8 +654,8 @@ unsafe fn reap_thread(reg: &mut Registry, slots: &mut HashMap<(u32, u64), Slot>,
 /// Send a mailbox's pending reply (or a continuation-deferred code-reply) to `peer`,
 /// attaching + closing any reply fds. Shared by the normal per-thread flush and the
 /// nested-interrupt flush.
-unsafe fn flush_mailbox(listener: &Listener, mb: &Rc<RefCell<Mailbox>>, peer: &PeerAddr) {
-    let (reply, rfds) = {
+unsafe fn flush_mailbox(listener: &Listener, mb: &Rc<RefCell<Mailbox>>, peer: &PeerAddr, who: (u32, u64)) {
+    let (reply, rfds, callnum) = {
         let mut m = mb.borrow_mut();
         // A continuation-based blocking call's result (reply_code) takes precedence: its
         // dispatch never assigned `reply`, so build the code-only reply from the stashed
@@ -665,9 +665,18 @@ unsafe fn flush_mailbox(listener: &Listener, mb: &Rc<RefCell<Mailbox>>, peer: &P
         } else {
             m.reply.take()
         };
-        (reply, std::mem::take(&mut m.reply_fds))
+        (reply, std::mem::take(&mut m.reply_fds), m.call_number)
     };
     if let Some(reply) = reply {
+        // The counterpart to the RECV trace. Without it a call that is received and parked
+        // forever looks exactly like one that was received and answered, which is the whole
+        // question when a guest thread is stuck in recvmsg (task #47).
+        if trace_calls() {
+            eprintln!(
+                "darlingserver: SEND reply #{} nsid={} tid={} fds={}",
+                callnum, who.0, who.1, rfds.len()
+            );
+        }
         if let Err(e) = listener.send(&reply, &rfds, peer) {
             if trace_calls() {
                 eprintln!("darlingserver: SEND reply failed: {} (raw={:?})", e, e.raw_os_error());
@@ -680,11 +689,11 @@ unsafe fn flush_mailbox(listener: &Listener, mb: &Rc<RefCell<Mailbox>>, peer: &P
 }
 
 unsafe fn flush_replies(listener: &Listener, slots: &mut HashMap<(u32, u64), Slot>) {
-    for slot in slots.values_mut() {
-        flush_mailbox(listener, &slot.mailbox, &slot.peer);
+    for (&(nsid, tid), slot) in slots.iter_mut() {
+        flush_mailbox(listener, &slot.mailbox, &slot.peer, (nsid, tid));
         // A nested signal interrupt in progress on this thread has its own mailbox.
         if let Some(ref imb) = slot.interrupt {
-            flush_mailbox(listener, imb, &slot.peer);
+            flush_mailbox(listener, imb, &slot.peer, (nsid, tid));
         }
     }
 }

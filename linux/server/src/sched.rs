@@ -170,6 +170,13 @@ pub struct Microthread {
     // The guest thread's host tid (tgkill tid), derived lazily via the /proc NSpid scan; -1 =
     // not derived. C++ Thread::_tid.
     host_tid: libc::pid_t,
+    // The guest identity + socket address this microthread's S2C ops must target. Bound to the
+    // MICROTHREAD rather than to the dispatch because a parked microthread can be resumed
+    // inside ANOTHER thread's dispatch (a mach_msg reply waking a blocked receiver), and it
+    // still has to send its S2C calls -- e.g. the mmap that copies out an OOL descriptor -- to
+    // its OWN guest process. A single global "current guest" sends them to the wrong one, and
+    // the reply is then filed under the wrong (pid,tid), so the receiver never wakes. Task #47.
+    s2c_peer: Option<(u32, u64, crate::rpc_io::PeerAddr)>,
     // Saved activations for nested signal interrupts (task #58). When a signal interrupts this
     // thread while it is blocked mid-call, push_activation saves the blocked call's live state
     // (stack, resume_ctx, loop_top, ...) here and installs a fresh activation to run the guest's
@@ -221,6 +228,10 @@ impl Microthread {
     pub fn is_canceled(&self) -> bool { self.canceled }
     /// Mark this thread canceled (pthread_markcancel); pthread_canceled later observes it.
     pub fn set_canceled(&mut self) { self.canceled = true; }
+    /// The guest identity + peer address this microthread's S2C ops target (task #47).
+    pub fn s2c_peer(&self) -> Option<(u32, u64, crate::rpc_io::PeerAddr)> { self.s2c_peer.clone() }
+    /// Bind this microthread's S2C target; set when a call is dispatched onto it.
+    pub fn set_s2c_peer(&mut self, v: Option<(u32, u64, crate::rpc_io::PeerAddr)>) { self.s2c_peer = v; }
     /// True while parked at the doWork top waiting for the next call (vs blocked mid-call).
     pub fn is_at_dowork_top(&self) -> bool { self.at_dowork_top }
     /// Set by the doWork loop around its idle wait so the serve loop can tell a ready thread
@@ -341,6 +352,7 @@ pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dt
         at_dowork_top: false,
         host_pid: -1,
         host_tid: -1,
+        s2c_peer: None,
         activations: Vec::new(),
     }));
     // NOTE: no dtape_thread_create -- we deliberately reuse the caller's dtape_thread.
@@ -491,6 +503,7 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         at_dowork_top: false,
         host_pid: -1,
         host_tid: -1,
+        s2c_peer: None,
         activations: Vec::new(),
     }));
     (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);

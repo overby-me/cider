@@ -321,7 +321,45 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   per run is 0 to 4, while the end state (process counts, daemon log length 445-467) is
   deterministic. Measure across at least three runs before believing a difference.
 
-  NEXT: the job was woken at a reply and then issued NO further RPC. Find out whether its
+  ROOT CAUSE FOUND AND FIXED. An S2C call (the daemon asking a guest to do something, e.g.
+  the mmap that copies out an OOL memory descriptor) was addressed using a single global
+  "current guest", set by the serve loop from the call it was dispatching. That is only
+  correct while that dispatch is on top. A microthread parked in a blocking mach_msg receive
+  is resumed as a SIDE EFFECT of another thread's call -- the reply that wakes it arrives on
+  the SENDER's dispatch -- so when it resumed and needed an S2C, it read the sender's identity
+  and sent its mmap request to the wrong process. The reply was then filed under the wrong
+  (pid,tid) key, so the waiting microthread was never rescheduled: a permanent hang, with the
+  guest thread stuck in recvmsg and the daemon showing a RECV with no matching reply.
+
+  The identity now lives on the Microthread (sched.rs s2c_peer), bound when a call is
+  dispatched onto it, so a resumed microthread still targets its OWN guest. The global slot
+  remains as a fallback for microthreads that never had one bound.
+
+  How it was found, because the method is the transferable part:
+    * /proc/PID/task/*/syscall on the guest processes. gdb is useless here (guest Mach-O has
+      no host symbols, every frame is "?? ()"), but the raw syscall number + args showed all
+      three threads blocked in recvmsg(512) -- waiting for the daemon, not deadlocked on
+      each other.
+    * A SEND-reply trace to pair with the existing RECV trace. Received-and-parked-forever
+      and received-and-answered look identical without it. That gave the decisive count:
+      every thread parked in exactly ONE unanswered call.
+    * The Mach msgh_id, which is the MIG routine number. 420 in subsystem "job" (base 400,
+      src/launchd/src/job.defs) is job_mig_kickstart, and its reply is 520. That named the
+      operation instead of leaving it as "some message".
+    * The descriptor type. Every complex message in the boot carried dtype=0 (a port
+      descriptor, which copies out entirely inside the daemon) EXCEPT kickstart's request and
+      reply, which carry dtype=1 (MACH_MSG_OOL_DESCRIPTOR). The first message needing OOL
+      copyout to a BLOCKED guest thread was exactly the one that hung. That is what turned a
+      structural coincidence into a mechanism.
+
+  Result, measured over three runs: daemon log 445-467 lines -> 4181-4210; mldr processes at
+  t=36s 3 -> 6/10/14 (launchd is spawning jobs now); launchctl RECV=71 SEND=71, balanced.
+  The container still does not finish -- see the next entry for where it gets to now.
+
+  A SEPARATE bug found along the way, not yet fixed: a guest fd that is a SOCKET gets the
+  vchroot prefix pasted onto readlink's output, producing the path
+  "/Volumes/SystemRootsocket:[100816751]". Visible as a [guest kprintf] "dtype for fd 2"
+  line. It blinds launchctl's stderr, which is its own reason to care. Find out whether its
   RPC reply was actually SENT after the microthread was woken, or whether the wake and the
   reply have come apart. That is a narrow question about the daemon's parked-microthread
   resume path, and it is the last unexplained step.
