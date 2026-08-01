@@ -222,11 +222,28 @@ def _mig_gen_impl(ctx):
     # hand it to the protocol's real consumer, which must not have it.
     xtrace_srcs = [outdir.project(s) for s in ctx.attrs.xtrace_srcs]
 
+    # The SERVER stub is a subtarget for the same reason, one level up: a protocol's two
+    # ends are usually two different targets. tokend is the case -- SecurityTokend
+    # implements the server and links tokendServer.cpp, while libsecurity_tokend_client
+    # is the caller and must link only tokendClient.cpp. Putting both in compile_srcs
+    # gives each end the other's stub and duplicate symbols follow.
+    server_srcs = [outdir.project(s) for s in ctx.attrs.server_srcs]
+
     return [
         DefaultInfo(default_output = outdir, sub_targets = {
             "xtrace": [
                 DefaultInfo(default_outputs = xtrace_srcs),
                 GeneratedSourcesInfo(sources = xtrace_srcs, headers = []),
+                CcLibInfo(
+                    include_dirs = merged.include_dirs + [outdir],
+                    exported_flags = merged.exported_flags,
+                    static_libs = [],
+                    linker_flags = [],
+                ),
+            ],
+            "server": [
+                DefaultInfo(default_outputs = server_srcs),
+                GeneratedSourcesInfo(sources = server_srcs, headers = []),
                 CcLibInfo(
                     include_dirs = merged.include_dirs + [outdir],
                     exported_flags = merged.exported_flags,
@@ -272,6 +289,8 @@ mig_gen = rule(
         # Output paths are relative to this package-relative dir, mirroring
         # cmake's CMAKE_CURRENT_BINARY_DIR layout.
         "out_base": attrs.string(default = ""),
+        # Generated files exported through the [server] subtarget (see above).
+        "server_srcs": attrs.list(attrs.string(), default = []),
         "server_suffix": attrs.string(default = "Server.c"),
         "sheader_suffix": attrs.string(default = "Server.h"),
         "target": attrs.string(default = "x86_64-apple-darwin20"),

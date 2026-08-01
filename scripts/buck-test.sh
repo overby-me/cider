@@ -562,8 +562,8 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # entry; it used to take eight minutes and now takes under two seconds.
 unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 	sed -n 's/^ *UNMAPPED: *//p')
-[ "${unmapped:-999}" -le 6 ] && ok "install UNMAPPED is $unmapped (ceiling 6)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 6"
+[ "${unmapped:-999}" -le 4 ] && ok "install UNMAPPED is $unmapped (ceiling 4)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 4"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

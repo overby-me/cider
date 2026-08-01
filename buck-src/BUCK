@@ -39969,6 +39969,38 @@ mig_gen(
     visibility = ["PUBLIC"],
 )
 
+# tokend: the protocol Security speaks to a smartcard token daemon. Its whole mig/
+# directory is GENERATED except the definition itself and a makefile, which is why the
+# generated header root for SecurityTokend/mig staged empty and the archive that includes
+# <tokend.h> could not be built. The generated dir is the include root instead.
+#
+# The -I of security/darling/include/macOS is what lets tokend.defs resolve its own
+# <securityd_client/ss_types.defs>.
+mig_gen(
+    name = "securitytokendmig_tokend",
+    defs = "SecurityTokend/mig/tokend.defs",
+    out_base = "SecurityTokend/mig",
+    user_suffix = "Client.cpp",
+    header_suffix = ".h",
+    server_suffix = "Server.cpp",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.cpp",
+    compile_srcs = [
+        "tokendClient.cpp",
+    ],
+    # The server end goes through the [server] subtarget: SecurityTokend implements the
+    # protocol and links this, while libsecurity_tokend_client is the caller and must not.
+    server_srcs = ["tokendServer.cpp"],
+    xtrace_srcs = ["tokendXtraceMig.cpp"],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+        ":security_tokend_client_inc_security_darling_include_macOS",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # reboot and shutdown ask kextd to unload kexts over this MIG protocol, and xtrace
 # loads the generated stub as a dylib of its own. mig writes no XtraceMig.c for this
 # definition -- the reference `touch`es an empty one -- which the runner already handles
@@ -41227,31 +41259,24 @@ darwin_dylib(
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/SecurityTokend/mig/tokendServer.cpp
 
-# Sibling include dirs, staged as ONE tree with -I into each: headers here
-# reach each other with `#include "../<dir>/x.h"`, which only resolves if
-# the sibling is in the same staged tree.
-cc_header_root(
-    name = "SecurityTokend_inc_SecurityTokend",
-    headers = glob([
-        "SecurityTokend/mig/*.h",
-        "SecurityTokend/mig/**/*.h",
-        "SecurityTokend/mig/*.c",
-        "SecurityTokend/lib/*.h",
-        "SecurityTokend/lib/**/*.h",
-        "SecurityTokend/lib/*.c",
-    ]),
-    root = "SecurityTokend",
-    include_subdirs = [
-        "mig",
-        "lib",
-    ],
-    visibility = ["PUBLIC"],
-)
-
 cc_header_root(
     name = "SecurityTokend_inc_libcxxabi_include",
     headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
     root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "SecurityTokend_inc_SecurityTokend_mig",
+    headers = glob(["SecurityTokend/mig/*.h", "SecurityTokend/mig/**/*.h", "SecurityTokend/mig/*.c"]),
+    root = "SecurityTokend/mig",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "SecurityTokend_inc_SecurityTokend_lib",
+    headers = glob(["SecurityTokend/lib/*.h", "SecurityTokend/lib/**/*.h", "SecurityTokend/lib/*.c"]),
+    root = "SecurityTokend/lib",
     visibility = ["PUBLIC"],
 )
 
@@ -41283,8 +41308,15 @@ cc_objects(
     deps = [
         ":SecurityTokend_inc_libcxxabi_include",
         "//darwin:sdk_env",
-        ":SecurityTokend_inc_SecurityTokend",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_PCSC",
+        "//buck-src:fwp_SecurityTokend",
+        ":SecurityTokend_inc_SecurityTokend_mig",
+        ":SecurityTokend_inc_SecurityTokend_lib",
         ":SecurityTokend_inc_security_darling_include_macOS",
+    ],
+    gen_srcs = [
+        "//buck-src:securitytokendmig_tokend[server]",
     ],
     visibility = ["PUBLIC"],
 )
@@ -44372,10 +44404,14 @@ cc_objects(
         "//buck-src:fw_CoreGraphics",
         "//buck-src:fw_Foundation",
         "//buck-src:fw_PCSC",
+        "//buck-src:fwp_SecurityTokend",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         ":securityd_exe_inc_security",
+    ],
+    gen_srcs = [
+        "//buck-src:securitydmig_self",
     ],
     visibility = ["PUBLIC"],
 )
@@ -44411,6 +44447,7 @@ cc_objects(
         "//buck-src:fw_CoreGraphics",
         "//buck-src:fw_Foundation",
         "//buck-src:fw_PCSC",
+        "//buck-src:fwp_SecurityTokend",
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
@@ -49984,3 +50021,591 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: usdtheadergen binary
+
+# BEGIN generated: security_tokend_client
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py security_tokend_client   -- review before committing.
+# cmake target: security_tokend_client  ->  src/external/SecurityTokend/libsecurity_tokend_client.a
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/SecurityTokend/mig/tokendClient.cpp
+
+cc_header_root(
+    name = "security_tokend_client_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "security_tokend_client_inc_SecurityTokend_mig",
+    headers = glob(["SecurityTokend/mig/*.h", "SecurityTokend/mig/**/*.h", "SecurityTokend/mig/*.c"]),
+    root = "SecurityTokend/mig",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "security_tokend_client_inc_SecurityTokend_lib",
+    headers = glob(["SecurityTokend/lib/*.h", "SecurityTokend/lib/**/*.h", "SecurityTokend/lib/*.c"]),
+    root = "SecurityTokend/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "security_tokend_client_inc_security_darling_include_macOS",
+    headers = glob(["security/darling/include/macOS/**/*"]),
+    root = "security/darling/include/macOS",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "security_tokend_client_obj",
+    srcs = [
+        "SecurityTokend/lib/tdclient.cpp",
+        "SecurityTokend/lib/tdtransit.cpp",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-w",
+        "-iquote",
+        "/build/build/src/external/SecurityTokend/mig",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":security_tokend_client_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_PCSC",
+        "//buck-src:fwp_SecurityTokend",
+        "//buck-src:security_tokend_client_inc_security_darling_include_macOS",
+        "//darwin/frameworks:fw_CarbonCore",
+        ":security_tokend_client_inc_SecurityTokend_mig",
+        ":security_tokend_client_inc_SecurityTokend_lib",
+        ":security_tokend_client_inc_security_darling_include_macOS",
+    ],
+    gen_srcs = [
+        "//buck-src:securitytokendmig_tokend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: security_tokend_client
+
+# BEGIN generated: security_tokend_client archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives security_tokend_client   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "security_tokend_client",
+    lib_name = "libsecurity_tokend_client.a",
+    objs = [
+        # security_tokend_client
+        ":security_tokend_client_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: security_tokend_client archive
+
+# BEGIN generated: securityd_ucspc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py securityd_ucspc   -- review before committing.
+# cmake target: securityd_ucspc  ->  src/external/security/OSX/libsecurityd/libsecurityd_ucspc.a
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/security/OSX/libsecurityd/mig/ucspClientC.c
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "securityd_ucspc_inc_security",
+    headers = glob([
+        "security/darling/include/**/*",
+        "security/darling/include/macOS/**/*",
+        "security/**/*",
+        "security/gen/*.h",
+        "security/gen/**/*.h",
+        "security/gen/*.c",
+        "security/OSX/libsecurity_asn1/**/*",
+        "security/OSX/libsecurity_keychain/lib/*.h",
+        "security/OSX/libsecurity_keychain/lib/**/*.h",
+        "security/OSX/libsecurity_keychain/lib/*.c",
+        "security/OSX/sec/*.h",
+        "security/OSX/sec/**/*.h",
+        "security/OSX/sec/*.c",
+        "security/OSX/sec/Security/*.h",
+        "security/OSX/sec/Security/**/*.h",
+        "security/OSX/sec/Security/*.c",
+        "security/OSX/utilities/*.h",
+        "security/OSX/utilities/**/*.h",
+        "security/OSX/utilities/*.c",
+        "security/OSX/**/*",
+        "security/darling/src/libDER/*.h",
+        "security/darling/src/libDER/**/*.h",
+        "security/darling/src/libDER/*.c",
+        "security/darling/include/Security/*.h",
+        "security/darling/include/Security/**/*.h",
+        "security/darling/include/Security/*.c",
+        "security/darling/include/macOS/Security/*.h",
+        "security/darling/include/macOS/Security/**/*.h",
+        "security/darling/include/macOS/Security/*.c",
+        "security/OSX/libsecurity_cssm/lib/*.h",
+        "security/OSX/libsecurity_cssm/lib/**/*.h",
+        "security/OSX/libsecurity_cssm/lib/*.c",
+        "security/OSX/libsecurity_apple_csp/open_ssl/**/*",
+    ]),
+    root = "security",
+    include_subdirs = [
+        "darling/include",
+        "darling/include/macOS",
+        ".",
+        "gen",
+        "OSX/libsecurity_asn1",
+        "OSX/libsecurity_keychain/lib",
+        "OSX/sec",
+        "OSX/sec/Security",
+        "OSX/utilities",
+        "OSX",
+        "darling/src/libDER",
+        "darling/include/Security",
+        "darling/include/macOS/Security",
+        "OSX/libsecurity_cssm/lib",
+        "OSX/libsecurity_apple_csp/open_ssl",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "securityd_ucspc_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "securityd_ucspc_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DNDEBUG=1",
+        "-DPLATFORM=macOS",
+        "-DPRIVATE",
+        "-DSECUREOBJECTSYNC=1",
+        "-DSECURITY_BUILD_VERSION=\"0\"",
+        "-DSHAREDWEBCREDENTIALS=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__KEYCHAINCORE__=1",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":securityd_ucspc_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        ":securityd_ucspc_inc_security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: securityd_ucspc
+
+# BEGIN generated: securityd_ucspc archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives securityd_ucspc   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "securityd_ucspc",
+    lib_name = "libsecurityd_ucspc.a",
+    objs = [
+        # securityd_ucspc
+        ":securityd_ucspc_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: securityd_ucspc archive
+
+# BEGIN generated: securitydservice_client
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py securitydservice_client   -- review before committing.
+# cmake target: securitydservice_client  ->  src/external/security/securityd/securityd_service/libsecuritydservice_client.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "securitydservice_client_inc_security",
+    headers = glob([
+        "security/darling/include/**/*",
+        "security/darling/include/macOS/**/*",
+        "security/**/*",
+        "security/gen/*.h",
+        "security/gen/**/*.h",
+        "security/gen/*.c",
+        "security/OSX/libsecurity_asn1/**/*",
+        "security/OSX/libsecurity_keychain/lib/*.h",
+        "security/OSX/libsecurity_keychain/lib/**/*.h",
+        "security/OSX/libsecurity_keychain/lib/*.c",
+        "security/OSX/sec/*.h",
+        "security/OSX/sec/**/*.h",
+        "security/OSX/sec/*.c",
+        "security/OSX/sec/Security/*.h",
+        "security/OSX/sec/Security/**/*.h",
+        "security/OSX/sec/Security/*.c",
+        "security/OSX/utilities/*.h",
+        "security/OSX/utilities/**/*.h",
+        "security/OSX/utilities/*.c",
+        "security/OSX/**/*",
+        "security/darling/src/libDER/*.h",
+        "security/darling/src/libDER/**/*.h",
+        "security/darling/src/libDER/*.c",
+        "security/darling/include/Security/*.h",
+        "security/darling/include/Security/**/*.h",
+        "security/darling/include/Security/*.c",
+        "security/darling/include/macOS/Security/*.h",
+        "security/darling/include/macOS/Security/**/*.h",
+        "security/darling/include/macOS/Security/*.c",
+    ]),
+    root = "security",
+    include_subdirs = [
+        "darling/include",
+        "darling/include/macOS",
+        ".",
+        "gen",
+        "OSX/libsecurity_asn1",
+        "OSX/libsecurity_keychain/lib",
+        "OSX/sec",
+        "OSX/sec/Security",
+        "OSX/utilities",
+        "OSX",
+        "darling/src/libDER",
+        "darling/include/Security",
+        "darling/include/macOS/Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "securitydservice_client_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "securitydservice_client_obj",
+    srcs = [
+        "security/securityd/securityd_service/securityd_service/securityd_service_client.c",
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DNDEBUG=1",
+        "-DPLATFORM=macOS",
+        "-DPRIVATE",
+        "-DSECUREOBJECTSYNC=1",
+        "-DSECURITY_BUILD_VERSION=\"0\"",
+        "-DSHAREDWEBCREDENTIALS=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__KEYCHAINCORE__=1",
+        "-std=gnu99",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":securitydservice_client_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        ":securitydservice_client_inc_security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: securitydservice_client
+
+# BEGIN generated: securitydservice_client archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives securitydservice_client   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "securitydservice_client",
+    lib_name = "libsecuritydservice_client.a",
+    objs = [
+        # securitydservice_client
+        ":securitydservice_client_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: securitydservice_client archive
+
+# BEGIN generated: securityd_server
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py securityd_server   -- review before committing.
+# cmake target: securityd_server  ->  src/external/security/OSX/libsecurityd/libsecurityd_server.a
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/security/OSX/libsecurityd/mig/ucspNotifyReceiver.cpp
+#   src/external/security/OSX/libsecurityd/mig/ucspServer.cpp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "securityd_server_inc_security",
+    headers = glob([
+        "security/darling/include/**/*",
+        "security/darling/include/macOS/**/*",
+        "security/**/*",
+        "security/gen/*.h",
+        "security/gen/**/*.h",
+        "security/gen/*.c",
+        "security/OSX/libsecurity_asn1/**/*",
+        "security/OSX/libsecurity_keychain/lib/*.h",
+        "security/OSX/libsecurity_keychain/lib/**/*.h",
+        "security/OSX/libsecurity_keychain/lib/*.c",
+        "security/OSX/sec/*.h",
+        "security/OSX/sec/**/*.h",
+        "security/OSX/sec/*.c",
+        "security/OSX/sec/Security/*.h",
+        "security/OSX/sec/Security/**/*.h",
+        "security/OSX/sec/Security/*.c",
+        "security/OSX/utilities/*.h",
+        "security/OSX/utilities/**/*.h",
+        "security/OSX/utilities/*.c",
+        "security/OSX/**/*",
+        "security/darling/src/libDER/*.h",
+        "security/darling/src/libDER/**/*.h",
+        "security/darling/src/libDER/*.c",
+        "security/darling/include/Security/*.h",
+        "security/darling/include/Security/**/*.h",
+        "security/darling/include/Security/*.c",
+        "security/darling/include/macOS/Security/*.h",
+        "security/darling/include/macOS/Security/**/*.h",
+        "security/darling/include/macOS/Security/*.c",
+        "security/OSX/libsecurity_cssm/lib/*.h",
+        "security/OSX/libsecurity_cssm/lib/**/*.h",
+        "security/OSX/libsecurity_cssm/lib/*.c",
+        "security/OSX/libsecurity_apple_csp/open_ssl/**/*",
+    ]),
+    root = "security",
+    include_subdirs = [
+        "darling/include",
+        "darling/include/macOS",
+        ".",
+        "gen",
+        "OSX/libsecurity_asn1",
+        "OSX/libsecurity_keychain/lib",
+        "OSX/sec",
+        "OSX/sec/Security",
+        "OSX/utilities",
+        "OSX",
+        "darling/src/libDER",
+        "darling/include/Security",
+        "darling/include/macOS/Security",
+        "OSX/libsecurity_cssm/lib",
+        "OSX/libsecurity_apple_csp/open_ssl",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "securityd_server_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "securityd_server_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DNDEBUG=1",
+        "-DPLATFORM=macOS",
+        "-DPRIVATE",
+        "-DSECUREOBJECTSYNC=1",
+        "-DSECURITY_BUILD_VERSION=\"0\"",
+        "-DSHAREDWEBCREDENTIALS=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__KEYCHAINCORE__=1",
+        "-std=gnu++14",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":securityd_server_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        ":securityd_server_inc_security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: securityd_server
+
+# BEGIN generated: securityd_server archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives securityd_server   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "securityd_server",
+    lib_name = "libsecurityd_server.a",
+    objs = [
+        # securityd_server
+        ":securityd_server_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: securityd_server archive
+
+# securityd and secd are HELD BACK, and they are the last two Security install entries.
+#
+# Their archives all build now (security_tokend_client, securityd_server, securityd_ucspc,
+# securitydservice_client), and securityd_exe gets past its generated <self.h> once
+# securitydmig_self is in its gen_srcs. What stops it is the NEXT generated include dir:
+# the reference puts a securityd_client/ directory on its include path whose every header
+# is MIG output, the same shape SecurityTokend/mig had. buck-port.py reports it as
+# "no framework root for securityd_client" because its resolver only knows how to add
+# FRAMEWORK roots, and this is not one.
+#
+# secd fails differently, on undefined symbols, and has not been diagnosed.
+#
+# Both want the same treatment SecurityTokend just got: a mig_gen for the definition, wired
+# in through extra-deps.json as a gen:// entry, with the include dir coming from the
+# generated tree rather than from a source glob.
+
+
+
+# BEGIN generated: SecurityTokend dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs SecurityTokend   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "SecurityTokend_dylib",
+    dylib_name = "SecurityTokend",
+    install_name = "/System/Library/PrivateFrameworks/SecurityTokend.framework/Versions/A/SecurityTokend",
+    compatibility_version = "1.0.0",
+    current_version = "57740.51.3",
+    objs = [
+        # SecurityTokend
+        ":SecurityTokend_obj",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Security_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-dead_strip",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:security_tokend_client",
+        "//buck-src:security_cdsa_utilities",
+        "//buck-src:securityd_client",
+        "//buck-src:security_utilities",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: SecurityTokend dylibs
+
+# BEGIN generated: tokend_xtrace_mig
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tokend_xtrace_mig   -- review before committing.
+# cmake target: tokend_xtrace_mig  ->  src/external/SecurityTokend/libtokend_xtrace_mig.dylib
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/SecurityTokend/mig/tokendXtraceMig.cpp
+
+cc_header_root(
+    name = "tokend_xtrace_mig_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tokend_xtrace_mig_inc_SecurityTokend_mig",
+    headers = glob(["SecurityTokend/mig/*.h", "SecurityTokend/mig/**/*.h", "SecurityTokend/mig/*.c"]),
+    root = "SecurityTokend/mig",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tokend_xtrace_mig_inc_SecurityTokend_lib",
+    headers = glob(["SecurityTokend/lib/*.h", "SecurityTokend/lib/**/*.h", "SecurityTokend/lib/*.c"]),
+    root = "SecurityTokend/lib",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "tokend_xtrace_mig_inc_security_darling_include_macOS",
+    headers = glob(["security/darling/include/macOS/**/*"]),
+    root = "security/darling/include/macOS",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tokend_xtrace_mig_obj",
+    srcs = [
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dtokend_xtrace_mig_EXPORTS",
+        "-fPIC",
+        "-w",
+        "-iquote",
+        "/build/build/src/external/SecurityTokend/mig",
+        "-I",
+        "src/xtrace/include",
+        "-Wno-extern-initializer",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":tokend_xtrace_mig_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_PCSC",
+        "//buck-src:fwp_SecurityTokend",
+        ":tokend_xtrace_mig_inc_SecurityTokend_mig",
+        ":tokend_xtrace_mig_inc_SecurityTokend_lib",
+        ":tokend_xtrace_mig_inc_security_darling_include_macOS",
+    ],
+    gen_srcs = [
+        "//buck-src:securitytokendmig_tokend[xtrace]",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tokend_xtrace_mig
+
+# BEGIN generated: tokend_xtrace_mig dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs tokend_xtrace_mig   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+
+darwin_dylib(
+    name = "tokend_xtrace_mig_dylib",
+    dylib_name = "libtokend_xtrace_mig.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # tokend_xtrace_mig
+        ":tokend_xtrace_mig_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tokend_xtrace_mig dylibs

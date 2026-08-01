@@ -1308,9 +1308,11 @@
     "//buck-src:fw_CoreGraphics",
     "//buck-src:fw_Foundation",
     "//buck-src:fw_PCSC",
+    "//buck-src:fwp_SecurityTokend",
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
-    "//darwin/frameworks:fw_CoreServices"
+    "//darwin/frameworks:fw_CoreServices",
+    "gen://buck-src:securitydmig_self"
   ],
   "securitytool_macos": [
     "//buck-src:fw_CFNetwork",
@@ -1437,5 +1439,25 @@
   "lockstat": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/private-frameworks:fw_CoreSymbolication"
+  ],
+  "SecurityTokend": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_PCSC",
+    "//buck-src:fwp_SecurityTokend",
+    "gen://buck-src:securitytokendmig_tokend[server]"
+  ],
+  "security_tokend_client": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_PCSC",
+    "//buck-src:fwp_SecurityTokend",
+    "//buck-src:security_tokend_client_inc_security_darling_include_macOS",
+    "//darwin/frameworks:fw_CarbonCore",
+    "gen://buck-src:securitytokendmig_tokend"
+  ],
+  "tokend_xtrace_mig": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_PCSC",
+    "//buck-src:fwp_SecurityTokend",
+    "gen://buck-src:securitytokendmig_tokend[xtrace]"
   ]
 }

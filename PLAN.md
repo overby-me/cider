@@ -162,8 +162,28 @@ exclusion itself, so a regenerated block cannot reintroduce it. Worth rememberin
 shape: a whole-tree glob over a vendored pin is one bad symlink away from failing a package
 that has nothing to do with it.
 
-The remaining 6 are all "no target builds it": securityd and secd, SecurityTokend with its
-xtrace stub, launchservicesd and hdiutil.
+SecurityTokend and its xtrace stub then took UNMAPPED to 4, and they exposed two bugs one
+level down.
+
+The first: `has_headers()` in gen-buck-from-ninja.py decided whether an include dir gets
+listed in a merged root's `include_subdirs`, and it counted `.defs` as a header while the
+glob it guards matches only `*.h`, `**/*.h` and `*.c`. SecurityTokend/mig holds exactly
+tokend.defs and a makefile, because its every real header is MIG output, so the dir was
+listed, staged EMPTY, and the build failed with "The path `mig` does not exist in the
+artifact" -- an error that says nothing about why. The predicate now asks what it should
+have asked all along: would the emitted glob match anything. Keep the two in step.
+
+The second: a MIG protocol's two ends are usually two different targets, and mig_gen could
+only export one set of sources. SecurityTokend implements tokend and links tokendServer.cpp
+while libsecurity_tokend_client is the caller and must link only tokendClient.cpp; putting
+both in compile_srcs gives each end the other's stub. mig_gen grew a `[server]` subtarget
+alongside the existing `[xtrace]` one, which was already there for the same reason a level
+out.
+
+The remaining 4 are all "no target builds it": securityd, secd, launchservicesd and
+hdiutil. NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that
+build: securityd and secd are held back (their blocks removed) precisely so the number
+stays honest.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -715,13 +735,17 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **The Security tail**, four of the six remaining install entries: securityd, secd,
-   SecurityTokend and its libtokend_xtrace_mig.dylib. tokend.defs generates once
-   security/darling/include/macOS is on mig's include path for its
-   `<securityd_client/ss_types.defs>`, but the dylib block wants a SecurityTokend/mig
-   include subdir where every header is generated. Unported archives that belong here:
-   libsecurity_tokend_client.a, libsecurityd_server.a, libsecurityd_ucspc.a,
-   libsecuritydservice_client.a.
+1. **securityd and secd**, the last two Security install entries. Their four archives now
+   build (security_tokend_client, securityd_server, securityd_ucspc,
+   securitydservice_client), and SecurityTokend plus libtokend_xtrace_mig.dylib have
+   landed. securityd_exe gets past its generated `<self.h>` once securitydmig_self is in
+   its gen_srcs, and then stops on the NEXT generated include dir: the reference puts a
+   `securityd_client/` directory on the include path whose every header is MIG output,
+   exactly the shape SecurityTokend/mig had. buck-port.py reports that as "no framework
+   root for securityd_client" because its resolver only knows how to add FRAMEWORK roots.
+   secd fails differently, on undefined symbols, undiagnosed. Both want the treatment
+   SecurityTokend just got: a mig_gen for the definition, wired through extra-deps.json as
+   a `gen://` entry, with the include dir coming from the generated tree.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference

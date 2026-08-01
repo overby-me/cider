@@ -678,19 +678,32 @@ def generate(target: str, edges):
         return False
 
     def has_headers(rel: str) -> bool:
-        """Whether an include dir actually holds headers in this tree.
+        """Whether the GLOB THIS FUNCTION'S CALLER EMITS would stage anything.
 
-        A merged root projects one subdir per member, and buck2 errors out on a
-        projection that does not exist -- which is what an include dir with no
-        headers of its own produces (launchd's `support` is on the include path but
-        holds only sources).
+        A merged root projects one subdir per member and buck2 errors out on a
+        projection that does not exist, so an include dir that stages nothing must not
+        be listed (launchd's `support` is on the include path but holds only sources).
+
+        The question is deliberately "would the glob match", not "are there header-shaped
+        files": those two answered differently for SecurityTokend/mig, which holds only
+        tokend.defs and a makefile because its every real header is MIG-GENERATED. .defs
+        counted as a header, the emitted glob (*.h, **/*.h, *.c) matched nothing, and the
+        projection failed at BUILD time with "The path `mig` does not exist in the
+        artifact" -- an error that says nothing about the cause. Keep this in step with
+        the patterns below or the same class of bug comes back.
         """
         base = root_dir(rel)
         if not os.path.isdir(base):
             return False
-        for _dirpath, _dirs, files in os.walk(base):
-            if any(f.endswith((".h", ".hpp", ".hh", ".inc", ".defs")) for f in files):
-                return True
+        if extensionless_headers(rel) or unusual_header_exts(rel):
+            # Those two make the caller emit `<dir>/**/*`, which stages anything at all.
+            return any(files for _d, _s, files in os.walk(base))
+        for dirpath, _dirs, files in os.walk(base):
+            for f in files:
+                if f.endswith(".h"):
+                    return True
+                if f.endswith(".c") and dirpath == base:
+                    return True
         return False
 
     # Group roots that must share ONE staged tree: siblings (a header reaching its
