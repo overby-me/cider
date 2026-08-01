@@ -202,6 +202,13 @@ def binary_index() -> dict:
             if out:
                 index.setdefault(out.group(1), label)
                 index.setdefault(out.group(1).removesuffix(".dylib"), label)
+            # And a binary rule does the same through exe_name, for the 92 targets whose
+            # cmake name is not the file name -- clang_shim installs as clang, curlexe as
+            # curl. Indexing only the rule name leaves every one of them UNMAPPED, with
+            # the block built and sitting right there.
+            exe = re.search(r'exe_name = "([^"]+)"', block)
+            if exe:
+                index.setdefault(exe.group(1), label)
     return index
 
 
