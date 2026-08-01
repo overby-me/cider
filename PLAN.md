@@ -172,14 +172,30 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   `overby` input.
 
 ### Multi-user / launchd / #47
-- **#47 launchd portset kqueue deadlock** [long-term] — launchd's dispatch kqueue watches an
-  empty portset (0x707) while its receive ports live in a different, unwatched portset
-  (0xa03), so bootstrap messages never wake the dispatch loop and
-  `launchctl bootstrap -S System` deadlocks. Fix locus: `kqchan_waitq_waiter_entry` /
-  `filt_machportattach` / portset linkage (does launchd allocate one portset that darling
-  hands out as two inconsistent names, or two it fails to link?). Bypassed by
-  `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path. Likely an upstream
-  darlingserver rootless-maturity gap (issues #1173/#1093/#610; the LKM path needs root).
+- **#47 launchd bootstrap deadlock** [long-term] — **the earlier diagnosis was wrong and is
+  refuted by measurement** (2026-08-01). It said the dispatch kqueue watches an empty portset
+  (0x707) while the receive ports live in a different, unwatched portset (0xa03). What the
+  daemon log actually shows, with `DSERVER_TRACE_CALLS=1` and the `#ifdef __DARLING__`
+  diagnostics now in `ipc_mqueue.c` and `mach_port.c`:
+    * There is ONE portset (name 0xd03, wqset id 0x40001), it is not empty, and **the portset
+      path works**: launchd calls `mach_port_move_member` exactly three times, all returning
+      KERN_SUCCESS, and the one message that lands on a member port DOES find and wake the
+      kqchan's waiter thread (`ipc_mqueue_post` returns a non-NULL receiver).
+    * The 18 messages that go nowhere land on **7 other ports that are in no portset at all**
+      (`set_id=0x0`). For those, `ipc_mqueue_post` finds no receiver, so the only remaining
+      wake path is `KNOTE(&mqueue->imq_klist, 0)` on the port's OWN klist. Every guard on
+      that call passes (`active=1 recv_active=1 has_klist=1`), it is called 18 times, and
+      `knote_post` never runs once — **the klists are empty. No knote is attached to any of
+      those ports.**
+    * Consequently the kqchan waiter thread enters once and never unblocks (0 wakeups), which
+      is the hang: `darling shell true` never returns.
+  So the fix locus is NOT the portset/kqueue linkage. It is: why does launchd end up with
+  seven actively-used receive ports that are neither in its portset nor carrying a knote? The
+  next question to answer is what launchd *thinks* it registered for them -- the three threads
+  are parked in `recvmsg` (RPC #38 MACH_MSG_OVERWRITE) and `select`, so one of them is doing a
+  mach_msg receive that the traffic never satisfies. Reproduce by dropping
+  `DARLING_NO_LAUNCHD=1`; the diagnostics are `dtape_log_debug`, so they are already on.
+  Still bypassed by `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
 - Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
   production-hardening, not on the critical path (single-user M1 sidesteps it).
 

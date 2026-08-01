@@ -86,6 +86,9 @@
 
 #include <ipc/port.h>
 #include <ipc/ipc_mqueue.h>
+#ifdef __DARLING__
+#include <darlingserver/duct-tape/log.h>
+#endif
 #include <ipc/ipc_kmsg.h>
 #include <ipc/ipc_port.h>
 #include <ipc/ipc_pset.h>
@@ -786,6 +789,23 @@ ipc_mqueue_post(
 		    WAITQ_KEEP_LOCKED);
 		/* waitq still locked, thread locked */
 
+#ifdef __DARLING__
+		/*
+		 * Task #47. A knote on a PORTSET is woken ONLY here: the message lands on a
+		 * MEMBER port, and the kqchan's waiter thread is blocked on the SET's waitq,
+		 * so this call has to find it by walking the port's set linkage. If it does
+		 * not, the message is merely enqueued and KNOTE() below posts to the PORT's
+		 * klist -- which a portset knote is not on -- and launchd's dispatch loop
+		 * never learns the message arrived.
+		 *
+		 * So: receiver=NULL together with a non-zero set id is the deadlock, stated.
+		 */
+		dtape_log_debug("mqueue_post: mqueue=%p is_set=%d set_id=0x%llx msgcount=%d -> receiver=%p",
+		    mqueue, imq_is_set(mqueue) ? 1 : 0,
+		    (unsigned long long)waitq->waitq_set_id, mqueue->imq_msgcount,
+		    receiver);
+#endif
+
 		if (receiver == THREAD_NULL) {
 			/*
 			 * no receivers; queue kmsg if space still reserved
@@ -808,6 +828,17 @@ ipc_mqueue_post(
 					ipc_object_t object = imq_to_object(mqueue);
 					assert(io_otype(object) == IOT_PORT);
 					ipc_port_t port = ip_object_to_port(object);
+#ifdef __DARLING__
+					/*
+					 * Task #47. With no receiver and no portset, THIS is the only
+					 * thing left that can tell a watcher a message arrived: a knote
+					 * on the port's own klist. If there is no klist, nobody learns.
+					 */
+					dtape_log_debug("mqueue_post: no receiver on mq=%p; active=%d recv_name=0x%x recv_active=%d has_klist=%d",
+					    mqueue, ip_active(port) ? 1 : 0, port->ip_receiver_name,
+					    (port->ip_receiver_name != MACH_PORT_NULL && is_active(port->ip_receiver)) ? 1 : 0,
+					    ipc_mqueue_has_klist(mqueue) ? 1 : 0);
+#endif
 					if (ip_active(port) &&
 					    port->ip_receiver_name != MACH_PORT_NULL &&
 					    is_active(port->ip_receiver) &&
