@@ -710,6 +710,31 @@ And the reference build is a wasting asset: gen-mig-from-ninja.py, gen-buck-from
 and gen-install-from-manifests.py all read it, and it disappears when cmake does, so every
 generator needs to be re-runnable before that happens.
 
+### Near-term queue (stage 1, cli)
+
+Re-derive before trusting: `scripts/buck-coverage.py --missing` and
+`scripts/gen-install-from-manifests.py`.
+
+1. **The Security tail**, four of the six remaining install entries: securityd, secd,
+   SecurityTokend and its libtokend_xtrace_mig.dylib. tokend.defs generates once
+   security/darling/include/macOS is on mig's include path for its
+   `<securityd_client/ss_types.defs>`, but the dylib block wants a SecurityTokend/mig
+   include subdir where every header is generated. Unported archives that belong here:
+   libsecurity_tokend_client.a, libsecurityd_server.a, libsecurityd_ucspc.a,
+   libsecuritydservice_client.a.
+2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
+   launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
+3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
+   supplies it before assuming this is portable).
+4. **Make the generators re-runnable** before the reference graph goes away.
+   gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
+   committed blocks' `defs` to labels and changed `out_base`, so regenerating would clobber
+   them and the last fix had to be spliced in by hand.
+5. The other four host tools (bsdln, elfdep, getuuid, wrapgen). Not install entries and not
+   used by the port, so low priority.
+6. Task #11 per-action source filtering; #10/#12 NixOS VM; #63 exec-cross-arch; #57 linker;
+   #26/#39 nix-ninja.
+
 ---
 
 ## Harness traps (read before writing a check or blaming the port)
