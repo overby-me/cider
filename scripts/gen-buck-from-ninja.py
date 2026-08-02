@@ -145,6 +145,10 @@ CROSS_PACKAGE_ROOTS = {
     # per-app-VPN types. src/networkextension is its own package.
     "src/networkextension/include":
         "//src/networkextension:system_networkextension_inc_src_networkextension_include",
+    # cocotron's Core Animation headers, which the four frameworks layered on it reach
+    # from //darwin/frameworks (IconServices, ImageKit, QuartzComposer, SceneKit).
+    "cocotron/QuartzCore/include":
+        "//buck-src:QuartzCore_inc_cocotron_QuartzCore_include",
 }
 
 # Force-included headers (-include) owned by another package, mapped to the target

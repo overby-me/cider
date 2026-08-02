@@ -283,6 +283,31 @@ Verified by export count, not just by linking: an elf_wrapper whose dlopen faile
 produces a valid EMPTY dylib, so the suite asserts each stub forwards a plausible number of
 symbols (GL 3470, X11 1230, cairo 473, gif 61).
 
+### Stage 2: the GUI frameworks (138 of 144)
+
+buck-port.py handled them almost uniformly: 133 of 144 in one batch, then 4 more once a
+cross-package include root was registered. Stock coverage went 63 percent to 73 percent,
+dylibs 243 to 383. cli is untouched at 862/871.
+
+Three things the batch taught.
+
+The generator needed ONE new cross-package root: cocotron's QuartzCore headers, which
+IconServices, ImageKit, QuartzComposer and SceneKit reach from //darwin/frameworks while
+cocotron is an unsplit pin in //buck-src. The refusal was correct and loud ("include dir
+belongs to package //buck-src, but this block goes ..."), which is the behaviour to want --
+a glob written into the consuming package would have staged nothing and failed much later.
+
+SIX are held back, and not for an ordering reason. AVKit, CoreVideo, HIServices, ImageIO,
+OpenGL and Quartz compile but do not link: they want CGDisplayCopyDisplayMode and friends
+from COCOTRON's CoreGraphics, which the reference links as
+src/external/cocotron/CoreGraphics/CoreGraphics. That whole cone (cocotron CoreGraphics,
+CoreText, Onyx2D, QuartzCore) is unported and belongs to the src/external group, so those
+six unblock when it lands and not before. Their blocks are REMOVED rather than left broken.
+
+And `lp` is not a dylib at all -- buck-port reported "Unknown target lp_dylib" because the
+coverage missing-list entry is an executable that happens to sit under src/frameworks.
+A name in the missing list is not a promise about what kind of thing it is.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:

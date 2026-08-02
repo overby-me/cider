@@ -48930,6 +48930,22 @@ prefix_gen_dir(
     visibility = ["PUBLIC"],
 )
 
+# cocotron's QuartzCore headers, reached from ANOTHER package: the four frameworks that
+# layer on Core Animation (IconServices, ImageKit, QuartzComposer, SceneKit) live in
+# //darwin/frameworks and compile against these, and cocotron is an unsplit pin so its files
+# belong to //buck-src. Without a root here the generator refuses the include dir outright,
+# which is the correct refusal -- a glob written into the consuming package would silently
+# stage nothing.
+cc_header_root(
+    name = "QuartzCore_inc_cocotron_QuartzCore_include",
+    headers = glob([
+        "cocotron/QuartzCore/include/*.h",
+        "cocotron/QuartzCore/include/**/*.h",
+    ]),
+    root = "cocotron/QuartzCore/include",
+    visibility = ["PUBLIC"],
+)
+
 # The guest-side bridge to the HOST's libfuse, which is what lets hdiutil mount a DMG.
 #
 # cmake spells this wrap_elf(fuse libfuse.so) in darling-dmg/CMakeLists.txt; here it is the
@@ -50802,3 +50818,51 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: hdiutil binary
+
+# BEGIN generated: lp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lp   -- review before committing.
+# cmake target: lp  ->  src/external/cups/cups/systemv/lp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lp_obj",
+    srcs = [
+        "cups/cups/systemv/lp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":lp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lp
