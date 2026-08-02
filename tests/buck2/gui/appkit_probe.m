@@ -24,6 +24,16 @@ int main(int argc, const char **argv) {
 	printf("APPKIT_PROBE after-nslog\n");
 	fflush(stdout);
 
+	// CoreGraphics FIRST, on purpose. Its X11 backend is a separate bundle from AppKit's,
+	// with its own principal class (CGSConnectionX11), and touching a CG display is what
+	// forces it to load. Bracketing it here says whether NSApplication dies in its own
+	// backend or in this one.
+	printf("APPKIT_PROBE cg-begin\n");
+	fflush(stdout);
+	CGDirectDisplayID disp = CGMainDisplayID();
+	printf("APPKIT_PROBE cg-display=%u\n", (unsigned) disp);
+	fflush(stdout);
+
 	@autoreleasepool {
 		// Bringing NSApplication up is what pulls in the display connection: cocotron's
 		// backend opens the X display here, so a missing or broken DISPLAY dies at this

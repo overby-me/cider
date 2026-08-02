@@ -898,6 +898,26 @@ binary defining the principal class its own Info.plist declares -- so this is a 
 bug a wrong file was hiding, not a mapping regression. Reverting a correct fix to keep a
 probe green would have buried it again.
 
+### CoreGraphics can never find its X11 backend, and the reference cannot either
+
+Chasing the AppKit probe turned this up. `CGMainDisplayID()` returns 0 because CoreGraphics
+has no display backend, and the reason is a layout split the port reproduces faithfully:
+
+```
+CoreGraphics.framework/Versions/A/CoreGraphics          <- the binary
+CoreGraphics.framework/Versions/C/Resources/Backends/   <- the backend
+CoreGraphics.framework/Versions/Current -> A
+```
+
+Both destinations come straight out of the reference's own cmake_install.cmake.
+`_CGSLoadBackend` asks `[NSBundle bundleForClass: [CGSConnection class]]` for
+`pathsForResourcesOfType:@"backend" inDirectory:@"Backends"`, which resolves against the
+LOADED IMAGE -- `Versions/A/Resources/Backends` -- and that directory does not exist.
+AppKit is unaffected: its framework and its backend are both under `Versions/C`.
+
+So this is upstream's bug, not the port's, and it is worth knowing before anyone spends a
+day on the GUI stack. Task #33.
+
 ### The runtime checks CANNOT be chained in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes
