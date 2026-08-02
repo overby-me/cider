@@ -981,6 +981,53 @@ with a measurement, and the pattern in all seven is the same: a real observation
 untested explanation attached to it, and the explanation written into the plan as though it
 were the observation.
 
+### jsc's empty StackBounds: the main thread has no stackaddr, measured end to end
+
+`tests/buck2/guest/stack_probe.c` is a plain-C guest program that measures exactly what
+WTF's StackBounds reads. It turns a theory into four numbers:
+
+```
+STACK_PROBE rlimit rc=0 rlim_cur=8388608
+STACK_PROBE main   main_np=1 stackaddr=0x0            stacksize=8388608
+STACK_PROBE usrstack rc=0 len=8 value=0x0
+STACK_PROBE worker main_np=0 stackaddr=0x7263ca5c9000 stacksize=524288
+```
+
+**`pthread_get_stackaddr_np` returns NULL on the MAIN thread and a real address on a spawned
+one.** That is the whole of jsc's assertion: `currentThreadStackBoundsInternal()` takes the
+`pthread_main_np()` branch, gets a null origin, and `ASSERT(m_origin && m_bound)` fires.
+Spawned threads are fine because their stack comes from the pthread attrs.
+
+The chain underneath, in order, each step measured or read rather than assumed:
+
+1. libpthread's `__pthread_init` asks `parse_main_stack_params(apple, ...)` first and falls
+   back to `sysctl(CTL_KERN, KERN_USRSTACK)`, and only if THAT fails to the `USRSTACK64`
+   constant.
+2. The sysctl returns **success with a value of zero**, so the constant fallback never runs
+   and stackaddr stays NULL. `stacksize` becomes DFLSSIZ (8MB), which is what the fallback
+   hardcodes and is visible in the numbers above.
+3. That sysctl is `handle_usrstack64` in xnu's emulation, which returns
+   `__darling_thread_get_stack()`, which elfcalls into the loader, where
+   `ec_thread_get_stack()` in darwin/loader/src/elfcalls.rs is **a stub returning null**.
+4. So mldr now passes `main_stack=<stackaddr>,<stacksize>,<allocaddr>,<allocsize>` in
+   `apple[]`, which is what XNU itself does. That is better than fixing the sysctl, because
+   it also carries the SIZE: the sysctl path hardcodes 8MB for a stack that is 16 pages
+   here, which would leave WTF believing it had 8MB of room below the commpage.
+
+**libpthread demonstrably CONSUMES it** -- `parse_main_stack_params` ends with
+`bzero((char *)p, strlen(p))`, and the guest's own `apple[]` now reads `main_stack=` with
+the value blanked, which is that bzero and nothing else.
+
+**And stackaddr is still 0.** One layer remains between libpthread parsing the value and
+`pthread_get_stackaddr_np` reporting it, and the next increment starts there rather than
+guessing at it. The mldr change is correct regardless and is verified not to regress
+anything: all four runtime checks pass and buck-test is 143 of 143.
+
+One refinement to the note below: the false "kernel's final pass is not two-level" failure
+correlates with a leftover **darlingserver**, not only with a concurrent buck2 build.
+`llvm-objdump` on the same artifact says TWOLEVEL, and the suite is 143 of 143 once the
+stray daemons are killed.
+
 ### The runtime checks CANNOT be chained in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes

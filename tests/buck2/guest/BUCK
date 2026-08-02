@@ -1,0 +1,31 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# Guest probes that measure the C library rather than a framework. Like tests/buck2/gui,
+# these have no counterpart in the reference build.ninja, which is why they live under
+# tests/ -- nothing installs them and the coverage metric never sees them.
+
+cc_objects(
+    name = "stack_probe_obj",
+    srcs = ["stack_probe.c"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "stack_probe",
+    objs = [
+        ":stack_probe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//buck-src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

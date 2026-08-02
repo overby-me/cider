@@ -65,6 +65,26 @@ pub unsafe fn setup_stack(
         format!("executable_path={exe_path}"),
         format!("kernfd={kernfd}"),
         format!("elf_calls={elfcalls_addr:x}"),
+        // main_stack=<stackaddr>,<stacksize>,<allocaddr>,<allocsize>, all hex. This is what
+        // XNU passes and what libpthread's parse_main_stack_params() reads to fill in the
+        // MAIN thread's pthread struct.
+        //
+        // Without it libpthread takes its fallback path: sysctl(CTL_KERN, KERN_USRSTACK),
+        // which Darling answers with SUCCESS and a value of ZERO, so the USRSTACK64 constant
+        // fallback never runs and the main thread ends up with stackaddr == NULL. Measured
+        // with tests/buck2/guest/stack_probe.c:
+        //
+        //   main   main_np=1 stackaddr=0x0            stacksize=8388608
+        //   worker main_np=0 stackaddr=0x7263ca5c9000 stacksize=524288
+        //
+        // Spawned threads were fine because their stack comes from the pthread attrs. The
+        // main thread is the only one that needs this, and telling libpthread directly is
+        // better than fixing the sysctl: it also carries the SIZE, and the sysctl path
+        // hardcodes DFLSSIZ (8MB) for a stack that is 16 pages here, which would have left
+        // WTF believing it had 8MB of room below the commpage.
+        //
+        // stackaddr is the HIGH address, per Darwin's pthread_get_stackaddr_np.
+        format!("main_stack={stack_top:x},{size:x},{base:x},{size:x}"),
     ];
 
     // Strings high, from stack_top downward.
