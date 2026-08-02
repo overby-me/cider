@@ -262,6 +262,27 @@ UNMAPPED reaches 0 without them. Five more are documented out of scope. buck-cov
 now resolves exe_name aliases, so it reports the honest number: **862 of 871, 98 percent**,
 with those 9 gaps visible instead of buried among 106.
 
+### Stage 2: the src/native ELF wrappers (done)
+
+Sixteen host libraries the gui component reaches through libelfloader, one wrap_elf() each:
+FreeType, jpeg, png, tiff, gif, EGL, fontconfig, X11, Xext, XRandR, Xcursor, xkbfile, cairo,
+dbus, GL and GLU. They are the natural first stock increment because they share one
+mechanism, the one hdiutil already proved, and nothing else depends on them.
+
+Written as a TABLE in src/native/BUCK rather than sixteen generated blocks. They differ only
+in name, SONAME and (for GL and GLU) install directory, and the generator cannot be driven
+by name here anyway because of the X11 collision above.
+
+The one thing that needed real care is where the host libraries come from. buck-setup.sh
+resolves each SONAME against the dev shell's OWN -L directories (NIX_LDFLAGS) and falls back
+to pkg-config. Not the other way round, and not by globbing /nix/store: giflib ships no .pc
+file at all, and several of these libraries have more than one version in the store, where a
+stub generated against the wrong one would export the wrong symbols silently.
+
+Verified by export count, not just by linking: an elf_wrapper whose dlopen failed still
+produces a valid EMPTY dylib, so the suite asserts each stub forwards a plausible number of
+symbols (GL 3470, X11 1230, cairo 473, gif 61).
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
@@ -842,7 +863,15 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    checked.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
-   everything else in stock sits downstream of them.
+   everything else in stock sits downstream of them. The 16 src/native ELF wrappers are
+   already done, see below; the rest are Darling's own framework implementations under
+   src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
+   mostly python, ruby, perl and their extension modules.
+
+   Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
+   graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in
+   src/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
+   cli was small enough that names were unique; stock is not.
 
 2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
    csparser.bundle, lzfse, ping, vifs, libbind9_isccc.a, libopendirectory_internal.a. None

@@ -596,6 +596,25 @@ for t in //buck-src:dtrace //buck-src:lockstat //buck-src:plockstat //buck-src:u
 	esac
 done
 
+say "== the src/native ELF wrappers (stage 2, gui) =="
+# Sixteen Mach-O stubs that forward to HOST libraries through libelfloader, one per
+# wrap_elf() in src/native. They belong to the gui component, so they are NOT in the cli
+# graph this suite otherwise measures; they are checked here because they build today and a
+# break would otherwise go unnoticed until the stock switch.
+#
+# The export count is the real assertion. An elf_wrapper whose dlopen failed would still
+# produce a valid, EMPTY dylib, so a stub with no exports is the failure mode to catch.
+for n in X11 cairo GL FreeType gif; do
+	w=$(out_of "//src/native:${n}_dylib")
+	case "$(file -bL "$w")" in
+	*"Mach-O 64-bit x86_64 dynamically linked shared library"*) ;;
+	*) bad "lib$n.dylib is not a Mach-O dylib"; continue ;;
+	esac
+	nex=$(llvm-nm --defined-only --extern-only "$w" 2>/dev/null | wc -l)
+	[ "${nex:-0}" -ge 50 ] && ok "lib$n.dylib forwards $nex host symbols" ||
+		bad "lib$n.dylib exports only ${nex:-0} symbols (did wrapgen's dlopen fail?)"
+done
+
 say "== wrapgen (the host-ELF bridge generator) =="
 # The second host tool (task #8), and the one hdiutil is blocked on: cmake's
 # wrap_elf(<name> lib<name>.so) runs it over a HOST library's dynamic symbol table and emits

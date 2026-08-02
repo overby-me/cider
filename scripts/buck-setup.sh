@@ -44,15 +44,35 @@ echo "clang resource dir: $clang_resource_dir"
 
 # Darling reaches HOST libraries through libelfloader, and wrapgen builds the Mach-O stub
 # for each one by dlopen()ing the real .so at BUILD time to read its dynamic symbol table.
-# dlopen goes through the loader's search path, so the library's directory has to be on it:
-# fuse is the case (hdiutil links it), and `dlopen("libfuse.so")` fails without this even
-# though the dev shell contains fuse. pkg-config knows where it is.
-elf_lib_dirs="$(pkg-config --variable=libdir fuse 2>/dev/null || true)"
-if [ -n "$elf_lib_dirs" ]; then
-	echo "host ELF lib dirs: $elf_lib_dirs"
-else
-	echo "WARNING: pkg-config cannot find fuse; hdiutil's wrap_elf stub will not generate" >&2
-fi
+# dlopen goes through the loader's search path, so every such library's directory has to be
+# on it: `dlopen("libfuse.so")` fails without this even though the dev shell contains fuse.
+#
+# One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), and the sixteen
+# src/native ones the gui component wraps. Looked up by SONAME against the dev shell's own
+# -L directories (NIX_LDFLAGS), because that is the authoritative list of what this shell
+# declares. pkg-config is not enough on its own: giflib ships no .pc file at all, and
+# globbing /nix/store is worse than either, since several of these libraries have more than
+# one version there and a stub generated against the wrong one exports the wrong symbols.
+elf_sonames="libfuse.so libfreetype.so libjpeg.so libpng.so libtiff.so libgif.so libEGL.so
+libfontconfig.so libX11.so libXext.so libXrandr.so libXcursor.so libxkbfile.so libcairo.so
+libdbus-1.so libGL.so libGLU.so"
+_ldirs="$(printf '%s\n' $NIX_LDFLAGS | sed -n 's/^-L//p' | sort -u)"
+elf_lib_dirs=""
+elf_missing=""
+for _so in $elf_sonames; do
+	_hit=""
+	for _d in $_ldirs; do
+		[ -e "$_d/$_so" ] && { _hit="$_d"; break; }
+	done
+	[ -n "$_hit" ] || _hit="$(pkg-config --variable=libdir "${_so#lib}" 2>/dev/null || true)"
+	if [ -n "$_hit" ]; then
+		case ":$elf_lib_dirs:" in *":$_hit:"*) ;; *) elf_lib_dirs="${elf_lib_dirs:+$elf_lib_dirs:}$_hit" ;; esac
+	else
+		elf_missing="$elf_missing $_so"
+	fi
+done
+echo "host ELF lib dirs: $(printf '%s' "$elf_lib_dirs" | tr ':' '\n' | wc -l) entries"
+[ -n "$elf_missing" ] && echo "WARNING: cannot locate:$elf_missing -- those wrap_elf stubs will not generate" >&2
 
 # The store path is immutable, so an absolute reference to it is stable; rerun
 # this script after bumping the sources that ld64 is built from.
