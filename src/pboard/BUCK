@@ -1,0 +1,137 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# BEGIN generated: pbcopy
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pbcopy   -- review before committing.
+# cmake target: pbcopy  ->  src/pboard/pbcopy
+
+cc_objects(
+    name = "pbcopy_obj",
+    srcs = [
+        "pbcopy.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pbcopy
+
+# BEGIN generated: pbcopy binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries pbcopy   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/pboard/pbcopy = pbcopy
+
+darwin_binary(
+    name = "pbcopy",
+    objs = [
+        # pbcopy
+        ":pbcopy_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pbcopy binary
+
+# BEGIN generated: pbpaste
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pbpaste   -- review before committing.
+# cmake target: pbpaste  ->  src/pboard/pbpaste
+
+cc_objects(
+    name = "pbpaste_obj",
+    srcs = [
+        "pbpaste.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pbpaste
+
+# BEGIN generated: pbpaste binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries pbpaste   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/pboard/pbpaste = pbpaste
+
+darwin_binary(
+    name = "pbpaste",
+    objs = [
+        # pbpaste
+        ":pbpaste_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pbpaste binary

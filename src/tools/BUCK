@@ -278,3 +278,65 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: sudo binary
+
+# BEGIN generated: open
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py open   -- review before committing.
+# cmake target: open  ->  src/tools/open
+
+cc_objects(
+    name = "open_obj",
+    srcs = [
+        "open.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_SearchKit",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: open
+
+# BEGIN generated: open binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries open   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/tools/open = open
+
+darwin_binary(
+    name = "open",
+    objs = [
+        # open
+        ":open_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//darwin/frameworks:CoreServices_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: open binary

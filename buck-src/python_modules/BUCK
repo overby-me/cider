@@ -1,5 +1,6 @@
-load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+
 # Targets over the python_modules pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
 # committed. One package per pin keeps what the Nix-lowered path has to parse
@@ -94,8 +95,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs py2app_bundletemplate   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
 # buck-registry: src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/libpy2app_bundletemplate.dylib = py2app_bundletemplate_dylib
 
 darwin_dylib(
@@ -109,6 +108,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
         "//buck-src:Foundation_dylib",
     ],
     linker_flags = [

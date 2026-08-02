@@ -1,1 +1,5 @@
-load("//buck/rules:cc.bzl", "cc_objects")
+# No targets yet. getuuid and elfdep are HOST tools that read Mach-O out of the build tree;
+# both blocks were removed because they did not build -- the generator resolves their
+# <mach/...> includes to a framework root, and a host compile has no frameworks. See
+# PLAN.md. The package is kept so the directory keeps its own package boundary rather than
+# folding into the parent's globs.

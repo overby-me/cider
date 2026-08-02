@@ -507,15 +507,54 @@ def own_flags_of(unit):
                 if kind != "generated":
                     if (kind, hp) not in prefix:
                         prefix.append((kind, hp))
-                elif "/" not in arg:
-                    # A bare NAME, not a path: `-include __dirent.h` is resolved
-                    # through the include path (libc/gen, a declared root), so it
-                    # stays a flag rather than becoming an artifact.
+                elif not arg.startswith("/") and not arg.startswith("../"):
+                    # RELATIVE, so the compiler resolves it through the include path and
+                    # it stays a flag rather than becoming an artifact. Both a bare name
+                    # (`-include __dirent.h`, found in libc/gen, a declared root) and a
+                    # framework-style spelling (`-include Foundation/Foundation.h`, found
+                    # through the framework roots) are this case.
+                    #
+                    # `../` is NOT, and is handled below as a file instead.
+                    #
+                    # The test used to be "no slash in it", which dropped every
+                    # framework-style one on the floor. That is what parked the cocotron
+                    # cone: the reference force-includes CoreFoundation/CoreFoundation.h
+                    # AND Foundation/Foundation.h into all six of Onyx2D, CoreGraphics,
+                    # CoreText, QuartzCore, CoreData and AppKit, which is where their
+                    # headers get NSMutableArray and friends from without importing
+                    # anything that declares them. Dropped, CoreData failed on
+                    # "unknown type name 'NSMutableArray'" with no missing header to
+                    # point at -- see the correction in PLAN.md.
                     flags.extend(["-include", arg])
                 else:
-                    # Dropping a force-included header silently changes what the
-                    # source compiles to, so record it for the block's TODO list.
-                    UNRESOLVED_PREFIX.add(orig_repo_rel(arg))
+                    # `../` resolves against the include dir's PARENT, and a staged root
+                    # has no parent to speak of, so it cannot stay a flag. It CAN become a
+                    # FILE though: prefix_headers passes the artifact path straight to
+                    # -include, so where the header sits in a staged tree stops mattering.
+                    # Resolve it the way the compiler would, against this unit's own
+                    # include dirs in order. vim force-includes ../gen/vim_dynamic_config.h
+                    # next to -Ivim/src, and without it every dll_* macro for dynamic ruby
+                    # is undefined ("use of undeclared identifier 'dll_ruby_init_stack'").
+                    hit = None
+                    if arg.startswith("../"):
+                        for inc in unit["includes"]:
+                            if not inc.startswith("-I"):
+                                continue
+                            k, rel = repo_path(os.path.normpath(
+                                os.path.join(inc[2:], arg)))
+                            if k == "generated":
+                                continue
+                            root = REPO if k == "src" else os.path.join(REPO, BUCK_SRC)
+                            if os.path.exists(os.path.join(root, rel)):
+                                hit = (k, rel)
+                                break
+                    if hit:
+                        if hit not in prefix:
+                            prefix.append(hit)
+                    else:
+                        # Dropping a force-included header silently changes what the
+                        # source compiles to, so record it for the block's TODO list.
+                        UNRESOLVED_PREFIX.add(orig_repo_rel(arg))
             continue
         if f in ("-B", "-isystem"):
             skip = True

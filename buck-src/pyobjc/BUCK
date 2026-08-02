@@ -791,8 +791,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_inlines_py27.dylib = pyobjc_appkit_inlines_py27_dylib
 
 darwin_dylib(
@@ -806,6 +804,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
     ],
     linker_flags = [
         "-Wl,-bundle",
@@ -888,8 +887,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_py27.dylib = pyobjc_appkit_py27_dylib
 
 darwin_dylib(
@@ -903,6 +900,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
     ],
     linker_flags = [
         "-Wl,-bundle",

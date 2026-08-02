@@ -3929,27 +3929,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs ApplicationServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   CoreGraphics
-#   CoreText
-#   ColorSyncLegacy
-#   HIServices
-#   LangAnalysis
-#   PrintCore
-#   QD
-#   SpeechSynthesis
-#   ImageIO
-# TODO the final pass REEXPORTS 9 more dylibs whose final
-# pass is not ported yet; without them its symbol surface is incomplete:
-#   CoreGraphics
-#   CoreText
-#   ImageIO
-#   ColorSyncLegacy
-#   HIServices
-#   LangAnalysis
-#   PrintCore
-#   QD
-#   SpeechSynthesis
+# buck-registry: src/frameworks/ApplicationServices/ApplicationServices = ApplicationServices_dylib
 
 darwin_dylib(
     name = "ApplicationServices_dylib",
@@ -3966,9 +3946,18 @@ darwin_dylib(
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
     reexport = [
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:CoreText_dylib",
+        "//darwin/frameworks:ImageIO_dylib",
         "//darwin/frameworks:ColorSync_dylib",
         "//darwin/frameworks:ATS_dylib",
+        "//darwin/frameworks:ColorSyncLegacy_dylib",
         "//darwin/frameworks:CoreServices_dylib",
+        "//darwin/frameworks:HIServices_dylib",
+        "//darwin/frameworks:LangAnalysis_dylib",
+        "//darwin/frameworks:PrintCore_dylib",
+        "//darwin/frameworks:QD_dylib",
+        "//darwin/frameworks:SpeechSynthesis_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -4355,8 +4344,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs AuthenticationServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
+# buck-registry: src/frameworks/AuthenticationServices/AuthenticationServices = AuthenticationServices_dylib
 
 darwin_dylib(
     name = "AuthenticationServices_dylib",
@@ -4371,6 +4359,7 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
         "//buck-src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -10372,8 +10361,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs PDFKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
+# buck-registry: src/frameworks/PDFKit/PDFKit = PDFKit_dylib
 
 darwin_dylib(
     name = "PDFKit_dylib",
@@ -10388,6 +10376,7 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
         "//buck-src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -15106,9 +15095,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs ImageKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
-#   QuartzCore
+# buck-registry: src/frameworks/Quartz/ImageKit/ImageKit = ImageKit_dylib
 
 darwin_dylib(
     name = "ImageKit_dylib",
@@ -15123,6 +15110,8 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:QuartzCore_dylib",
         "//darwin/frameworks:ImageCaptureCore_dylib",
         "//buck-src:Foundation_dylib",
     ],
@@ -15706,9 +15695,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs QuartzComposer   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
-#   QuartzCore
+# buck-registry: src/frameworks/Quartz/QuartzComposer/QuartzComposer = QuartzComposer_dylib
 
 darwin_dylib(
     name = "QuartzComposer_dylib",
@@ -15723,6 +15710,8 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:QuartzCore_dylib",
         "//buck-src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -16043,9 +16032,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs SceneKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
-#   QuartzCore
+# buck-registry: src/frameworks/SceneKit/SceneKit = SceneKit_dylib
 
 darwin_dylib(
     name = "SceneKit_dylib",
@@ -16060,6 +16047,8 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:QuartzCore_dylib",
         "//darwin/frameworks:ModelIO_dylib",
         "//buck-src:Foundation_dylib",
     ],
@@ -16078,3 +16067,197 @@ darwin_dylib(
 # CoreGraphics, CoreText, Onyx2D and QuartzCore -- is unported and belongs to the
 # src/external group rather than to the frameworks, so these six unblock when it lands
 # rather than through anything in this package.
+
+# BEGIN generated: OpenGL dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs OpenGL   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/OpenGL/OpenGL = OpenGL_dylib
+
+darwin_dylib(
+    name = "OpenGL_dylib",
+    dylib_name = "OpenGL",
+    install_name = "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # OpenGL
+        ":OpenGL_obj",
+    ],
+    siblings = [
+        "//src/native:EGL_dylib",
+        "//buck-src:system_final",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    reexport = [
+        "//src/native:GL_dylib",
+        "//src/native:GLU_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: OpenGL dylibs
+
+# BEGIN generated: HIServices dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs HIServices   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/ApplicationServices/HIServices/HIServices = HIServices_dylib
+
+darwin_dylib(
+    name = "HIServices_dylib",
+    dylib_name = "HIServices",
+    install_name = "/System/Library/Frameworks/ApplicationServices.framework/Versions/A/Frameworks/HIServices.framework/Versions/A/HIServices",
+    compatibility_version = "1.0.0",
+    current_version = "628.0.0",
+    objs = [
+        # HIServices
+        ":HIServices_obj",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:LaunchServices_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: HIServices dylibs
+
+# BEGIN generated: CoreVideo dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreVideo   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/CoreVideo/CoreVideo = CoreVideo_dylib
+
+darwin_dylib(
+    name = "CoreVideo_dylib",
+    dylib_name = "CoreVideo",
+    install_name = "/System/Library/Frameworks/CoreVideo.framework/Versions/A/CoreVideo",
+    compatibility_version = "1.2.0",
+    current_version = "1.5.0",
+    objs = [
+        # CoreVideo
+        ":CoreVideo_obj",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreVideo dylibs
+
+# BEGIN generated: ImageIO dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ImageIO   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/ImageIO/ImageIO = ImageIO_dylib
+
+darwin_dylib(
+    name = "ImageIO_dylib",
+    dylib_name = "ImageIO",
+    install_name = "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # ImageIO
+        ":ImageIO_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ImageIO dylibs
+
+# BEGIN generated: Quartz dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Quartz   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/Quartz/Quartz = Quartz_dylib
+
+darwin_dylib(
+    name = "Quartz_dylib",
+    dylib_name = "Quartz",
+    install_name = "/System/Library/Frameworks/Quartz.framework/Versions/A/Quartz",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # Quartz
+        ":Quartz_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    reexport = [
+        "//darwin/frameworks:QuickLook_dylib",
+        "//darwin/frameworks:ImageKit_dylib",
+        "//darwin/frameworks:QuartzComposer_dylib",
+        "//darwin/frameworks:QuartzFilters_dylib",
+        "//darwin/frameworks:PDFKit_dylib",
+        "//buck-src:QuartzCore_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Quartz dylibs
+
+# BEGIN generated: AVKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AVKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/AVKit/AVKit = AVKit_dylib
+
+darwin_dylib(
+    name = "AVKit_dylib",
+    dylib_name = "AVKit",
+    install_name = "/System/Library/Frameworks/AVKit.framework/Versions/A/AVKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AVKit
+        ":AVKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AVKit dylibs

@@ -33374,9 +33374,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py xxd   -- review before committing.
 # cmake target: xxd  ->  src/external/vim/src/xxd
-# TODO these headers are FORCE-INCLUDED (-include) but could not be
-# resolved to a file in this tree; the sources need them:
-#   ../gen/vim_dynamic_config.h
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
 # reach each other with `#include "../<dir>/x.h"`, which only resolves if
@@ -33419,6 +33416,9 @@ cc_objects(
         "-w",
         "-DDYNAMIC_RUBY_DLL=\"/System/Library/Frameworks/Ruby.framework/Ruby\"",
     ],
+    prefix_headers = [
+        "vim/gen/vim_dynamic_config.h",
+    ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
@@ -33433,6 +33433,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries xxd   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/vim/src/xxd = xxd
 
 darwin_binary(
     name = "xxd",
@@ -50913,9 +50914,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs Cocoa   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
-#   CoreData
+# buck-registry: src/external/cocotron/Cocoa/Cocoa = Cocoa_dylib
 
 darwin_dylib(
     name = "Cocoa_dylib",
@@ -50930,6 +50929,8 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:CoreData_dylib",
         "//buck-src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -56200,3 +56201,2491 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: ffi dylibs
+
+# BEGIN generated: CoreData
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreData   -- review before committing.
+# cmake target: CoreData  ->  src/external/cocotron/CoreData/CoreData
+
+cc_header_root(
+    name = "CoreData_inc_cocotron_CoreData",
+    headers = glob(["cocotron/CoreData/*.h", "cocotron/CoreData/**/*.h", "cocotron/CoreData/*.c"]),
+    root = "cocotron/CoreData",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CoreData_obj",
+    srcs = [
+        "cocotron/CoreData/CoreDataErrors.m",
+        "cocotron/CoreData/NSAtomicStore.m",
+        "cocotron/CoreData/NSAtomicStoreCacheNode.m",
+        "cocotron/CoreData/NSAttributeDescription.m",
+        "cocotron/CoreData/NSEntityDescription.m",
+        "cocotron/CoreData/NSEntityMapping.m",
+        "cocotron/CoreData/NSFetchRequest.m",
+        "cocotron/CoreData/NSFetchRequestExpression.m",
+        "cocotron/CoreData/NSFetchedPropertyDescription.m",
+        "cocotron/CoreData/NSInMemoryPersistentStore.m",
+        "cocotron/CoreData/NSManagedObject.m",
+        "cocotron/CoreData/NSManagedObjectContext.m",
+        "cocotron/CoreData/NSManagedObjectID.m",
+        "cocotron/CoreData/NSManagedObjectModel.m",
+        "cocotron/CoreData/NSManagedObjectMutableSet.m",
+        "cocotron/CoreData/NSManagedObjectSet.m",
+        "cocotron/CoreData/NSManagedObjectSetEnumerator.m",
+        "cocotron/CoreData/NSMappingModel.m",
+        "cocotron/CoreData/NSMergeConflict.m",
+        "cocotron/CoreData/NSMergePolicy.m",
+        "cocotron/CoreData/NSPersistentStore.m",
+        "cocotron/CoreData/NSPersistentStoreCoordinator.m",
+        "cocotron/CoreData/NSPropertyDescription.m",
+        "cocotron/CoreData/NSPropertyMapping.m",
+        "cocotron/CoreData/NSRelationshipDescription.m",
+        "cocotron/CoreData/NSXMLPersistentStore.m",
+    ],
+    compiler_flags = [
+        "-DCoreData_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-include",
+        "Foundation/Foundation.h",
+        "-Wno-nonportable-include-path",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":CoreData_inc_cocotron_CoreData",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreData
+
+# BEGIN generated: CoreData dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreData   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/CoreData/CoreData = CoreData_dylib
+
+darwin_dylib(
+    name = "CoreData_dylib",
+    dylib_name = "CoreData",
+    install_name = "/System/Library/Frameworks/CoreData.framework/Versions/A/CoreData",
+    compatibility_version = "1.0.0",
+    current_version = "752.0.0",
+    objs = [
+        # CoreData
+        ":CoreData_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreData dylibs
+
+# BEGIN generated: Onyx2D
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Onyx2D   -- review before committing.
+# cmake target: Onyx2D  ->  src/external/cocotron/Onyx2D/Onyx2D
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+#   nix/store/bas84nj6r6mmf2hcwnfcl8n3nbaxly9p-giflib-5.2.2/include
+#   nix/store/bnv7zg3f9mczqy50s0syi2y8srmfvklj-fontconfig-2.17.1-dev/include
+#   nix/store/c0aknb3309z44jvz8yc1aifn9ga1kh6n-zlib-1.3.2-dev/include
+#   nix/store/gjdsaiz6amcjn4965cv2fpgn1b7sm87p-libpng-apng-1.6.58-dev/include
+#   nix/store/jr3x2lq0nfdpcqa2yxfr3p19akmx15gf-libjpeg-turbo-3.1.4-dev/include
+#   nix/store/m95pmwglv2104g52yhsanjpmmazv6x5l-libtiff-4.7.1-dev/include
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Onyx2D_inc_cocotron",
+    headers = glob([
+        "cocotron/Onyx2D/*.h",
+        "cocotron/Onyx2D/**/*.h",
+        "cocotron/Onyx2D/*.c",
+        "cocotron/**/*",
+        "cocotron/CoreText/*.h",
+        "cocotron/CoreText/**/*.h",
+        "cocotron/CoreText/*.c",
+    ]),
+    root = "cocotron",
+    include_subdirs = [
+        "Onyx2D",
+        ".",
+        "CoreText",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "Onyx2D_obj",
+    srcs = [
+        "cocotron/Onyx2D/O2AffineTransform.m",
+        "cocotron/Onyx2D/O2BitmapContext.m",
+        "cocotron/Onyx2D/O2ClipMask.m",
+        "cocotron/Onyx2D/O2ClipPhase.m",
+        "cocotron/Onyx2D/O2ClipState.m",
+        "cocotron/Onyx2D/O2Color.m",
+        "cocotron/Onyx2D/O2ColorSpace+PDF.m",
+        "cocotron/Onyx2D/O2ColorSpace.m",
+        "cocotron/Onyx2D/O2Context.m",
+        "cocotron/Onyx2D/O2Context_builtin.m",
+        "cocotron/Onyx2D/O2Context_builtin_FT.m",
+        "cocotron/Onyx2D/O2Context_distill.m",
+        "cocotron/Onyx2D/O2DataConsumer.m",
+        "cocotron/Onyx2D/O2DataProvider.m",
+        "cocotron/Onyx2D/O2Decoder_TIFF.m",
+        "cocotron/Onyx2D/O2EXIFDecoder.m",
+        "cocotron/Onyx2D/O2Encoder_JPG.m",
+        "cocotron/Onyx2D/O2Encoder_PNG.m",
+        "cocotron/Onyx2D/O2Encoder_TIFF.m",
+        "cocotron/Onyx2D/O2Encoding.m",
+        "cocotron/Onyx2D/O2Font+PDF.m",
+        "cocotron/Onyx2D/O2Font.m",
+        "cocotron/Onyx2D/O2Font_freetype.m",
+        "cocotron/Onyx2D/O2Function+PDF.m",
+        "cocotron/Onyx2D/O2Function.m",
+        "cocotron/Onyx2D/O2Geometry.m",
+        "cocotron/Onyx2D/O2GlyphStencil.m",
+        "cocotron/Onyx2D/O2GraphicsState.m",
+        "cocotron/Onyx2D/O2Image+PDF.m",
+        "cocotron/Onyx2D/O2Image.m",
+        "cocotron/Onyx2D/O2ImageDecoder.m",
+        "cocotron/Onyx2D/O2ImageDecoder_JPEG_libjpeg.m",
+        "cocotron/Onyx2D/O2ImageDecoder_JPEG_stb.m",
+        "cocotron/Onyx2D/O2ImageDestination.m",
+        "cocotron/Onyx2D/O2ImageSource.m",
+        "cocotron/Onyx2D/O2ImageSource_BMP.m",
+        "cocotron/Onyx2D/O2ImageSource_GIF.m",
+        "cocotron/Onyx2D/O2ImageSource_ICNS.m",
+        "cocotron/Onyx2D/O2ImageSource_JPEG.m",
+        "cocotron/Onyx2D/O2ImageSource_PNG.m",
+        "cocotron/Onyx2D/O2ImageSource_TIFF.m",
+        "cocotron/Onyx2D/O2LZW.m",
+        "cocotron/Onyx2D/O2Layer.m",
+        "cocotron/Onyx2D/O2MutablePath.m",
+        "cocotron/Onyx2D/O2PDFArray.m",
+        "cocotron/Onyx2D/O2PDFBlock.m",
+        "cocotron/Onyx2D/O2PDFCharWidths.m",
+        "cocotron/Onyx2D/O2PDFContentStream.m",
+        "cocotron/Onyx2D/O2PDFContext.m",
+        "cocotron/Onyx2D/O2PDFDictionary.m",
+        "cocotron/Onyx2D/O2PDFDocument.m",
+        "cocotron/Onyx2D/O2PDFFilter.m",
+        "cocotron/Onyx2D/O2PDFFont.m",
+        "cocotron/Onyx2D/O2PDFFunction_Type0.m",
+        "cocotron/Onyx2D/O2PDFFunction_Type2.m",
+        "cocotron/Onyx2D/O2PDFFunction_Type3.m",
+        "cocotron/Onyx2D/O2PDFFunction_Type4.m",
+        "cocotron/Onyx2D/O2PDFObject.m",
+        "cocotron/Onyx2D/O2PDFObject_Boolean.m",
+        "cocotron/Onyx2D/O2PDFObject_Integer.m",
+        "cocotron/Onyx2D/O2PDFObject_Name.m",
+        "cocotron/Onyx2D/O2PDFObject_R.m",
+        "cocotron/Onyx2D/O2PDFObject_Real.m",
+        "cocotron/Onyx2D/O2PDFObject_const.m",
+        "cocotron/Onyx2D/O2PDFObject_identifier.m",
+        "cocotron/Onyx2D/O2PDFOperatorTable.m",
+        "cocotron/Onyx2D/O2PDFOperators.m",
+        "cocotron/Onyx2D/O2PDFPage.m",
+        "cocotron/Onyx2D/O2PDFScanner.m",
+        "cocotron/Onyx2D/O2PDFStream.m",
+        "cocotron/Onyx2D/O2PDFString.m",
+        "cocotron/Onyx2D/O2PDFxref.m",
+        "cocotron/Onyx2D/O2PDFxrefEntry.m",
+        "cocotron/Onyx2D/O2Paint.m",
+        "cocotron/Onyx2D/O2Paint_axialGradient.m",
+        "cocotron/Onyx2D/O2Paint_color.m",
+        "cocotron/Onyx2D/O2Paint_image.m",
+        "cocotron/Onyx2D/O2Paint_pattern.m",
+        "cocotron/Onyx2D/O2Paint_radialGradient.m",
+        "cocotron/Onyx2D/O2Paint_ramp.m",
+        "cocotron/Onyx2D/O2Path.m",
+        "cocotron/Onyx2D/O2Pattern.m",
+        "cocotron/Onyx2D/O2Shading+PDF.m",
+        "cocotron/Onyx2D/O2Shading.m",
+        "cocotron/Onyx2D/O2Surface.m",
+        "cocotron/Onyx2D/O2TIFFImageDirectory.m",
+        "cocotron/Onyx2D/O2TTFDecoder.m",
+        "cocotron/Onyx2D/O2argb32f.m",
+        "cocotron/Onyx2D/O2argb8u.m",
+        "cocotron/Onyx2D/O2zlib.m",
+        "cocotron/Onyx2D/VGPath.m",
+    ],
+    compiler_flags = [
+        "-DOnyx2D_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-include",
+        "Foundation/Foundation.h",
+        "-Wno-nonportable-include-path",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":Onyx2D_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Onyx2D
+
+# BEGIN generated: Onyx2D dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Onyx2D   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/Onyx2D/Onyx2D = Onyx2D_dylib
+
+darwin_dylib(
+    name = "Onyx2D_dylib",
+    dylib_name = "Onyx2D",
+    install_name = "/System/Library/PrivateFrameworks/Onyx2D.framework/Versions/A/Onyx2D",
+    compatibility_version = "1.0.0",
+    objs = [
+        # Onyx2D
+        ":Onyx2D_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:z_dylib",
+        "//src/native:FreeType_dylib",
+        "//src/native:fontconfig_dylib",
+        "//src/native:jpeg_dylib",
+        "//src/native:png_dylib",
+        "//src/native:tiff_dylib",
+        "//src/native:gif_dylib",
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Onyx2D dylibs
+
+# BEGIN generated: CoreGraphics
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreGraphics   -- review before committing.
+# cmake target: CoreGraphics  ->  src/external/cocotron/CoreGraphics/CoreGraphics
+# 40 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+#   nix/store/pdx85lx4ndlgzy281d086vfwj7h7dwkc-cairo-1.18.4-dev/include/cairo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "CoreGraphics_inc_cocotron",
+    headers = glob([
+        "cocotron/CoreGraphics/*.h",
+        "cocotron/CoreGraphics/**/*.h",
+        "cocotron/CoreGraphics/*.c",
+        "cocotron/**/*",
+        "cocotron/CoreText/*.h",
+        "cocotron/CoreText/**/*.h",
+        "cocotron/CoreText/*.c",
+    ]),
+    root = "cocotron",
+    include_subdirs = [
+        "CoreGraphics",
+        ".",
+        "CoreText",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CoreGraphics_obj",
+    srcs = [
+        "cocotron/CoreGraphics/CGAffineTransform.m",
+        "cocotron/CoreGraphics/CGBitmapContext.m",
+        "cocotron/CoreGraphics/CGColor.m",
+        "cocotron/CoreGraphics/CGColorSpace.m",
+        "cocotron/CoreGraphics/CGContext.m",
+        "cocotron/CoreGraphics/CGDataConsumer.m",
+        "cocotron/CoreGraphics/CGDataProvider.m",
+        "cocotron/CoreGraphics/CGDirectDisplay.m",
+        "cocotron/CoreGraphics/CGDisplayConfiguration.m",
+        "cocotron/CoreGraphics/CGFont.m",
+        "cocotron/CoreGraphics/CGFunction.m",
+        "cocotron/CoreGraphics/CGGeometry.m",
+        "cocotron/CoreGraphics/CGGradient.m",
+        "cocotron/CoreGraphics/CGImage.m",
+        "cocotron/CoreGraphics/CGLPixelSurface.m",
+        "cocotron/CoreGraphics/CGLayer.m",
+        "cocotron/CoreGraphics/CGPDFContext.m",
+        "cocotron/CoreGraphics/CGPDFDocument.m",
+        "cocotron/CoreGraphics/CGPDFPage.m",
+        "cocotron/CoreGraphics/CGPath.m",
+        "cocotron/CoreGraphics/CGPattern.m",
+        "cocotron/CoreGraphics/CGS.m",
+        "cocotron/CoreGraphics/CGSConnection.m",
+        "cocotron/CoreGraphics/CGSRegion.m",
+        "cocotron/CoreGraphics/CGSSurface.m",
+        "cocotron/CoreGraphics/CGSWindow.m",
+        "cocotron/CoreGraphics/CGShading.m",
+        "cocotron/CoreGraphics/CGSubWindow.m",
+        "cocotron/CoreGraphics/CGWindow.m",
+        "cocotron/CoreGraphics/CGWindowLevel.m",
+    ],
+    compiler_flags = [
+        "-DCoreGraphics_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-Wno-nonportable-include-path",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+        "-include",
+        "Foundation/Foundation.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":CoreGraphics_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CoreGraphics_obj2",
+    srcs = [
+        "cocotron/CoreGraphics/CGDisplayFade.m",
+        "cocotron/CoreGraphics/CGDisplayStream.m",
+        "cocotron/CoreGraphics/CGEvent.m",
+        "cocotron/CoreGraphics/CGEventObjC.m",
+        "cocotron/CoreGraphics/CGEventSource.m",
+        "cocotron/CoreGraphics/CGEventTap.m",
+        "cocotron/CoreGraphics/CGSKeyboardLayout.m",
+        "cocotron/CoreGraphics/CGSScreen.m",
+        "cocotron/CoreGraphics/src/CGEvent.c",
+        "cocotron/CoreGraphics/src/stubs.c",
+    ],
+    compiler_flags = [
+        "-DCoreGraphics_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-Wno-nonportable-include-path",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":CoreGraphics_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreGraphics
+
+# BEGIN generated: CoreGraphics dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreGraphics   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/cocotron/CoreGraphics/CoreGraphics = CoreGraphics_dylib
+
+darwin_dylib(
+    name = "CoreGraphics_dylib",
+    dylib_name = "CoreGraphics",
+    install_name = "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+    compatibility_version = "64.0.0",
+    current_version = "1070.22.0",
+    objs = [
+        # CoreGraphics
+        ":CoreGraphics_obj",
+        ":CoreGraphics_obj2",
+    ],
+    siblings = [
+        "//src/native:GL_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src:IOKit_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreGraphics dylibs
+
+# BEGIN generated: CoreText
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreText   -- review before committing.
+# cmake target: CoreText  ->  src/external/cocotron/CoreText/CoreText
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+
+cc_header_root(
+    name = "CoreText_inc_cocotron_CoreText",
+    headers = glob(["cocotron/CoreText/*.h", "cocotron/CoreText/**/*.h", "cocotron/CoreText/*.c"]),
+    root = "cocotron/CoreText",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "CoreText_obj",
+    srcs = [
+        "cocotron/CoreText/CTFont.m",
+        "cocotron/CoreText/CTFontCollection.m",
+        "cocotron/CoreText/CTFontDescriptor.m",
+        "cocotron/CoreText/CTFontManager.m",
+        "cocotron/CoreText/CTFrame.m",
+        "cocotron/CoreText/CTFrameSetter.m",
+        "cocotron/CoreText/CTLine.m",
+        "cocotron/CoreText/CTParagraphStyle.m",
+        "cocotron/CoreText/CTRun.m",
+        "cocotron/CoreText/CTStringATtributes.m",
+        "cocotron/CoreText/KTFont.m",
+        "cocotron/CoreText/KTFont_FT.m",
+        "cocotron/CoreText/constants.c",
+        "cocotron/CoreText/stubs.c",
+    ],
+    compiler_flags = [
+        "-DCoreText_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_OpenGL",
+        ":CoreText_inc_cocotron_CoreText",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreText
+
+# BEGIN generated: CoreText dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreText   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/CoreText/CoreText = CoreText_dylib
+
+darwin_dylib(
+    name = "CoreText_dylib",
+    dylib_name = "CoreText",
+    install_name = "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CoreText
+        ":CoreText_obj",
+    ],
+    siblings = [
+        "//src/native:FreeType_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreText dylibs
+
+# BEGIN generated: QuartzCore
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py QuartzCore   -- review before committing.
+# cmake target: QuartzCore  ->  src/external/cocotron/QuartzCore/QuartzCore
+# 32 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "QuartzCore_inc_cocotron_QuartzCore",
+    headers = glob([
+        "cocotron/QuartzCore/*.h",
+        "cocotron/QuartzCore/**/*.h",
+        "cocotron/QuartzCore/*.c",
+        "cocotron/QuartzCore/include/*.h",
+        "cocotron/QuartzCore/include/**/*.h",
+        "cocotron/QuartzCore/include/*.c",
+        "cocotron/QuartzCore/private-include/*.h",
+        "cocotron/QuartzCore/private-include/**/*.h",
+        "cocotron/QuartzCore/private-include/*.c",
+    ]),
+    root = "cocotron/QuartzCore",
+    include_subdirs = [
+        ".",
+        "include",
+        "private-include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "QuartzCore_inc_metal",
+    headers = glob([
+        "metal/private-include/*.h",
+        "metal/private-include/**/*.h",
+        "metal/private-include/*.c",
+        "metal/include/*.h",
+        "metal/include/**/*.h",
+        "metal/include/*.c",
+    ]),
+    root = "metal",
+    include_subdirs = [
+        "private-include",
+        "include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "QuartzCore_obj",
+    srcs = [
+        "cocotron/QuartzCore/CAAnimation.m",
+        "cocotron/QuartzCore/CAAnimationGroup.m",
+        "cocotron/QuartzCore/CABase.m",
+        "cocotron/QuartzCore/CABasicAnimation.m",
+        "cocotron/QuartzCore/CAConstraintLayoutManager.m",
+        "cocotron/QuartzCore/CAContext.m",
+        "cocotron/QuartzCore/CAEmitterCell.m",
+        "cocotron/QuartzCore/CAEmitterLayer.m",
+        "cocotron/QuartzCore/CAFilter.m",
+        "cocotron/QuartzCore/CAGradientLayer.m",
+        "cocotron/QuartzCore/CALayer.m",
+        "cocotron/QuartzCore/CALayerContext.m",
+        "cocotron/QuartzCore/CALayerHost.m",
+        "cocotron/QuartzCore/CAMediaTiming.m",
+        "cocotron/QuartzCore/CAMediaTimingFunction.m",
+        "cocotron/QuartzCore/CAOpenGLLayer.m",
+        "cocotron/QuartzCore/CAPropertyAnimation.m",
+        "cocotron/QuartzCore/CARenderer.m",
+        "cocotron/QuartzCore/CAReplicatorLayer.m",
+        "cocotron/QuartzCore/CAScrollLayer.m",
+        "cocotron/QuartzCore/CAShapeLayer.m",
+        "cocotron/QuartzCore/CASpringAnimation.m",
+        "cocotron/QuartzCore/CATextLayer.m",
+        "cocotron/QuartzCore/CATransaction.m",
+        "cocotron/QuartzCore/CATransactionGroup.m",
+        "cocotron/QuartzCore/CATransform3D.m",
+        "cocotron/QuartzCore/CATransformLayer.m",
+        "cocotron/QuartzCore/CATransition.m",
+        "cocotron/QuartzCore/CAValueFunction.m",
+        "cocotron/QuartzCore/CAWindowOpenGLContext.m",
+    ],
+    compiler_flags = [
+        "-DQuartzCore_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-include",
+        "Foundation/Foundation.h",
+        "-Wno-nonportable-include-path",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":QuartzCore_inc_cocotron_QuartzCore",
+        ":QuartzCore_inc_metal",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "QuartzCore_obj2",
+    srcs = [
+        "cocotron/QuartzCore/CAMetalDrawable.mm",
+        "cocotron/QuartzCore/CAMetalLayer.mm",
+    ],
+    compiler_flags = [
+        "-DQuartzCore_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":QuartzCore_inc_cocotron_QuartzCore",
+        ":QuartzCore_inc_metal",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: QuartzCore
+
+# BEGIN generated: QuartzCore dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs QuartzCore   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Metal
+# buck-registry: src/external/cocotron/QuartzCore/QuartzCore = QuartzCore_dylib
+
+darwin_dylib(
+    name = "QuartzCore_dylib",
+    dylib_name = "QuartzCore",
+    install_name = "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+    compatibility_version = "1.2.0",
+    current_version = "1.11.0",
+    objs = [
+        # QuartzCore
+        ":QuartzCore_obj",
+        ":QuartzCore_obj2",
+    ],
+    siblings = [
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    reexport = [
+        "//darwin/frameworks:CoreImage_dylib",
+        "//darwin/frameworks:CoreVideo_dylib",
+        "//buck-src/objc4:objc_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: QuartzCore dylibs
+
+# BEGIN generated: AppKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AppKit   -- review before committing.
+# cmake target: AppKit  ->  src/external/cocotron/AppKit/AppKit
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/62fjl9xipmsk1wckzci47s5awy0sa4zl-libxkbfile-1.1.3-dev/include
+#   nix/store/6v1hx568cmw9qjgx11bww5wgsjy4vna3-xorgproto-2025.1/include
+#   nix/store/8l9asxwa4rzhzjw78rps6qsk2m3w9vf7-libxcursor-1.2.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+#   nix/store/bnv7zg3f9mczqy50s0syi2y8srmfvklj-fontconfig-2.17.1-dev/include
+#   nix/store/cy79h8jf6disyp9mrizssq6rknx5jdxh-libxrandr-1.5.5-dev/include
+#   nix/store/dngs5ab00cl9q31yms9szwcd7dh7wwwd-libxrender-0.9.12-dev/include
+#   nix/store/f4y37bm3j1q3c7y88184rm5b5f75jh74-libxext-1.3.7-dev/include
+#   nix/store/pd412gfwc6ji63i2zzpgrsw0169qahyz-libx11-1.8.13-dev/include
+#   nix/store/pdx85lx4ndlgzy281d086vfwj7h7dwkc-cairo-1.18.4-dev/include/cairo
+#   nix/store/wz0rgiphvldmav4l2vjs4q9lpcqjmwqq-libxdmcp-1.1.5-dev/include
+#   nix/store/ym7yz44z8kpqvmc3gv94g19kx1c0bmlk-libglvnd-1.7.0-dev/include
+#   nix/store/zilam7017h5yhpxcf7iyswzrnmgh4wsw-glu-9.0.3-dev/include
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "AppKit_inc_cocotron",
+    headers = glob([
+        "cocotron/AppKit/*.h",
+        "cocotron/AppKit/**/*.h",
+        "cocotron/AppKit/*.c",
+        "cocotron/**/*",
+        "cocotron/CoreText/*.h",
+        "cocotron/CoreText/**/*.h",
+        "cocotron/CoreText/*.c",
+        "cocotron/AppKit/nib.subproj/*.h",
+        "cocotron/AppKit/nib.subproj/**/*.h",
+        "cocotron/AppKit/nib.subproj/*.c",
+        "cocotron/AppKit/NSColorPicker.subproj/*.h",
+        "cocotron/AppKit/NSColorPicker.subproj/**/*.h",
+        "cocotron/AppKit/NSColorPicker.subproj/*.c",
+        "cocotron/AppKit/NSMenu.subproj/*.h",
+        "cocotron/AppKit/NSMenu.subproj/**/*.h",
+        "cocotron/AppKit/NSMenu.subproj/*.c",
+        "cocotron/AppKit/NSTextView.subproj/*.h",
+        "cocotron/AppKit/NSTextView.subproj/**/*.h",
+        "cocotron/AppKit/NSTextView.subproj/*.c",
+        "cocotron/AppKit/NSEvent.subproj/*.h",
+        "cocotron/AppKit/NSEvent.subproj/**/*.h",
+        "cocotron/AppKit/NSEvent.subproj/*.c",
+        "cocotron/AppKit/NSColor.subproj/*.h",
+        "cocotron/AppKit/NSColor.subproj/**/*.h",
+        "cocotron/AppKit/NSColor.subproj/*.c",
+        "cocotron/AppKit/RTF.subproj/*.h",
+        "cocotron/AppKit/RTF.subproj/**/*.h",
+        "cocotron/AppKit/RTF.subproj/*.c",
+        "cocotron/AppKit/NSToolbar.subproj/*.h",
+        "cocotron/AppKit/NSToolbar.subproj/**/*.h",
+        "cocotron/AppKit/NSToolbar.subproj/*.c",
+        "cocotron/AppKit/NSDrawer.subproj/*.h",
+        "cocotron/AppKit/NSDrawer.subproj/**/*.h",
+        "cocotron/AppKit/NSDrawer.subproj/*.c",
+        "cocotron/AppKit/X11.backend/*.h",
+        "cocotron/AppKit/X11.backend/**/*.h",
+        "cocotron/AppKit/X11.backend/*.c",
+        "cocotron/AppKit/private-include/*.h",
+        "cocotron/AppKit/private-include/**/*.h",
+        "cocotron/AppKit/private-include/*.c",
+        "cocotron/QuartzCore/include/*.h",
+        "cocotron/QuartzCore/include/**/*.h",
+        "cocotron/QuartzCore/include/*.c",
+    ]),
+    root = "cocotron",
+    include_subdirs = [
+        "AppKit",
+        ".",
+        "CoreText",
+        "AppKit/nib.subproj",
+        "AppKit/NSColorPicker.subproj",
+        "AppKit/NSMenu.subproj",
+        "AppKit/NSTextView.subproj",
+        "AppKit/NSEvent.subproj",
+        "AppKit/NSColor.subproj",
+        "AppKit/RTF.subproj",
+        "AppKit/NSToolbar.subproj",
+        "AppKit/NSDrawer.subproj",
+        "AppKit/X11.backend",
+        "AppKit/private-include",
+        "QuartzCore/include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "AppKit_obj",
+    srcs = [
+        "cocotron/AppKit/CoreData_/NSPersistentDocument.m",
+        "cocotron/AppKit/CoreData_/_NSManagedProxy.m",
+        "cocotron/AppKit/MacWorkspace.m",
+        "cocotron/AppKit/NSATSTypesetter.m",
+        "cocotron/AppKit/NSAccessibility.m",
+        "cocotron/AppKit/NSAccessibilityCustomChooser.m",
+        "cocotron/AppKit/NSAccessibilityElement.m",
+        "cocotron/AppKit/NSAccessibilityRemoteUIElement.m",
+        "cocotron/AppKit/NSActionCell.m",
+        "cocotron/AppKit/NSAffineTransform.m",
+        "cocotron/AppKit/NSAlert.m",
+        "cocotron/AppKit/NSAlertPanel.m",
+        "cocotron/AppKit/NSAnimation/NSAnimation.m",
+        "cocotron/AppKit/NSAnimation/NSAnimationContext.m",
+        "cocotron/AppKit/NSAnimation/NSViewAnimation.m",
+        "cocotron/AppKit/NSAppearance.m",
+        "cocotron/AppKit/NSApplication.m",
+        "cocotron/AppKit/NSAttributedString.m",
+        "cocotron/AppKit/NSBezierPath.m",
+        "cocotron/AppKit/NSBitmapImageRep.m",
+        "cocotron/AppKit/NSBox.m",
+        "cocotron/AppKit/NSBrowser.m",
+        "cocotron/AppKit/NSBrowserCell.m",
+        "cocotron/AppKit/NSButton.m",
+        "cocotron/AppKit/NSButtonCell.m",
+        "cocotron/AppKit/NSCIImageRep.m",
+        "cocotron/AppKit/NSCachedImageRep.m",
+        "cocotron/AppKit/NSCandidateListTouchBarItem.m",
+        "cocotron/AppKit/NSCatalogColor.m",
+        "cocotron/AppKit/NSCell.m",
+        "cocotron/AppKit/NSCellUndoManager.m",
+        "cocotron/AppKit/NSClickGestureRecognizer.m",
+        "cocotron/AppKit/NSClipView.m",
+        "cocotron/AppKit/NSCoder+AppKit.m",
+        "cocotron/AppKit/NSCollectionView/NSCollectionView.m",
+        "cocotron/AppKit/NSCollectionView/NSCollectionViewItem.m",
+        "cocotron/AppKit/NSCollectionViewFlowLayout.m",
+        "cocotron/AppKit/NSCollectionViewLayout.m",
+        "cocotron/AppKit/NSCollectionViewLayoutAttributes.m",
+        "cocotron/AppKit/NSCollectionViewLayoutInvalidationContext.m",
+        "cocotron/AppKit/NSColor.subproj/NSColor.m",
+        "cocotron/AppKit/NSColor.subproj/NSColor_CGColor.m",
+        "cocotron/AppKit/NSColor.subproj/NSColor_catalog.m",
+        "cocotron/AppKit/NSColorList.m",
+        "cocotron/AppKit/NSColorPanel.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSBrowserCellColorList.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSColorPicker.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSColorPickerColorList.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSColorPickerSliders.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSColorPickerWheel.m",
+        "cocotron/AppKit/NSColorPicker.subproj/NSColorPickerWheelView.m",
+        "cocotron/AppKit/NSColorSpace.m",
+        "cocotron/AppKit/NSColorWell.m",
+        "cocotron/AppKit/NSComboBox.m",
+        "cocotron/AppKit/NSComboBoxCell.m",
+        "cocotron/AppKit/NSComboBoxView.m",
+        "cocotron/AppKit/NSComboBoxWindow.m",
+        "cocotron/AppKit/NSControl.m",
+        "cocotron/AppKit/NSControlAuxiliary.m",
+        "cocotron/AppKit/NSController/NSArrayController.m",
+        "cocotron/AppKit/NSController/NSController.m",
+        "cocotron/AppKit/NSController/NSControllerMarker.m",
+        "cocotron/AppKit/NSController/NSControllerSelectionProxy.m",
+        "cocotron/AppKit/NSController/NSDictionaryController.m",
+        "cocotron/AppKit/NSController/NSObjectController.m",
+        "cocotron/AppKit/NSController/NSObservationProxy.m",
+        "cocotron/AppKit/NSController/NSTreeController.m",
+        "cocotron/AppKit/NSController/NSUserDefaultsController.m",
+        "cocotron/AppKit/NSController/NSUserDefaultsControllerProxy.m",
+        "cocotron/AppKit/NSController/_NSControllerArray.m",
+        "cocotron/AppKit/NSCursor.m",
+        "cocotron/AppKit/NSCursorRect.m",
+        "cocotron/AppKit/NSCustomImageRep.m",
+        "cocotron/AppKit/NSCustomTouchBarItem.m",
+        "cocotron/AppKit/NSDataAsset.m",
+        "cocotron/AppKit/NSDatePicker.m",
+        "cocotron/AppKit/NSDatePickerCell.m",
+        "cocotron/AppKit/NSDisplay.m",
+        "cocotron/AppKit/NSDockTile.m",
+        "cocotron/AppKit/NSDocument.m",
+        "cocotron/AppKit/NSDocumentController.m",
+        "cocotron/AppKit/NSDraggingItem.m",
+        "cocotron/AppKit/NSDraggingManager.m",
+        "cocotron/AppKit/NSDrawer.subproj/NSDrawer.m",
+        "cocotron/AppKit/NSDrawer.subproj/NSDrawerWindow.m",
+        "cocotron/AppKit/NSDynamicNamedColor.m",
+        "cocotron/AppKit/NSEPSImageRep.m",
+        "cocotron/AppKit/NSErrors.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent_CoreGraphics.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent_keyboard.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent_mouse.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent_other.m",
+        "cocotron/AppKit/NSEvent.subproj/NSEvent_periodic.m",
+        "cocotron/AppKit/NSFilePromiseProvider.m",
+        "cocotron/AppKit/NSFileWrapperExtensions.m",
+        "cocotron/AppKit/NSFont.m",
+        "cocotron/AppKit/NSFontCollection.m",
+        "cocotron/AppKit/NSFontDescriptor.m",
+        "cocotron/AppKit/NSFontFamily.m",
+        "cocotron/AppKit/NSFontManager.m",
+        "cocotron/AppKit/NSFontMetric.m",
+        "cocotron/AppKit/NSFontPanel.m",
+        "cocotron/AppKit/NSFontPanelCell.m",
+        "cocotron/AppKit/NSFontTypeface.m",
+        "cocotron/AppKit/NSForm.m",
+        "cocotron/AppKit/NSFormCell.m",
+        "cocotron/AppKit/NSGestureRecognizer.m",
+        "cocotron/AppKit/NSGlyphGenerator.m",
+        "cocotron/AppKit/NSGlyphInfo.m",
+        "cocotron/AppKit/NSGradient.m",
+        "cocotron/AppKit/NSGraphics.m",
+        "cocotron/AppKit/NSGraphicsContext.m",
+        "cocotron/AppKit/NSGridView.m",
+        "cocotron/AppKit/NSGroupTouchBarItem.m",
+        "cocotron/AppKit/NSHaptics.m",
+        "cocotron/AppKit/NSHelpManager.m",
+        "cocotron/AppKit/NSImage.m",
+        "cocotron/AppKit/NSImageCell.m",
+        "cocotron/AppKit/NSImageRep.m",
+        "cocotron/AppKit/NSImageView.m",
+        "cocotron/AppKit/NSInputManager.m",
+        "cocotron/AppKit/NSInterfacePart/NSGraphicsStyle.m",
+        "cocotron/AppKit/NSInterfacePart/NSInterfaceGraphics.m",
+        "cocotron/AppKit/NSInterfacePart/NSInterfacePart.m",
+        "cocotron/AppKit/NSInterfacePart/NSInterfacePartAttributedString.m",
+        "cocotron/AppKit/NSInterfacePart/NSInterfacePartDisabledAttributedString.m",
+        "cocotron/AppKit/NSInterfaceStyle.m",
+        "cocotron/AppKit/NSKeyBindingManager.m",
+        "cocotron/AppKit/NSKeyValueBinding.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSBinder.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSCachingBinder.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSKVOBinder.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSMultipleValueBinder.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSObject+BindingSupport.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSTextBinder.m",
+        "cocotron/AppKit/NSKeyValueBinding/NSTextFieldBinder.m",
+        "cocotron/AppKit/NSKeyboardBinding/NSKeyboardBinding.m",
+        "cocotron/AppKit/NSKeyboardBinding/NSKeyboardBindingManager.m",
+        "cocotron/AppKit/NSLayoutConstraint.m",
+        "cocotron/AppKit/NSLayoutGuide.m",
+        "cocotron/AppKit/NSLevelIndicator.m",
+        "cocotron/AppKit/NSLevelIndicatorCell.m",
+        "cocotron/AppKit/NSMatrix.m",
+        "cocotron/AppKit/NSMeasurementUnit.m",
+        "cocotron/AppKit/NSMenu.subproj/NSCarbonMenuImpl.m",
+        "cocotron/AppKit/NSMenu.subproj/NSMainMenuView.m",
+        "cocotron/AppKit/NSMenu.subproj/NSMenu.m",
+        "cocotron/AppKit/NSMenu.subproj/NSMenuItem.m",
+        "cocotron/AppKit/NSMenu.subproj/NSMenuView.m",
+        "cocotron/AppKit/NSMenu.subproj/NSMenuWindow.m",
+        "cocotron/AppKit/NSMenu.subproj/NSOverflowMenuView.m",
+        "cocotron/AppKit/NSMenu.subproj/NSSubmenuView.m",
+        "cocotron/AppKit/NSMenuItemCell.m",
+        "cocotron/AppKit/NSModalSessionX.m",
+        "cocotron/AppKit/NSMovie.m",
+        "cocotron/AppKit/NSMovieView.m",
+        "cocotron/AppKit/NSMutableAttributedString.m",
+        "cocotron/AppKit/NSMutableParagraphStyle.m",
+        "cocotron/AppKit/NSOpenGL/NSOpenGLContext.m",
+        "cocotron/AppKit/NSOpenGL/NSOpenGLPixelBuffer.m",
+        "cocotron/AppKit/NSOpenGL/NSOpenGLPixelFormat.m",
+        "cocotron/AppKit/NSOpenGL/NSOpenGLView.m",
+        "cocotron/AppKit/NSOpenGLLayer.m",
+        "cocotron/AppKit/NSOutlineView.m",
+        "cocotron/AppKit/NSPDFImageRep.m",
+        "cocotron/AppKit/NSPageController.m",
+        "cocotron/AppKit/NSPageLayout.m",
+        "cocotron/AppKit/NSPanGestureRecognizer.m",
+        "cocotron/AppKit/NSPanel.m",
+        "cocotron/AppKit/NSParagraphStyle.m",
+        "cocotron/AppKit/NSPasteboard.m",
+        "cocotron/AppKit/NSPasteboardItem.m",
+        "cocotron/AppKit/NSPathCell.m",
+        "cocotron/AppKit/NSPathComponentCell.m",
+        "cocotron/AppKit/NSPathControl.m",
+        "cocotron/AppKit/NSPoofAnimation.m",
+        "cocotron/AppKit/NSPopUpButton.m",
+        "cocotron/AppKit/NSPopUpButtonCell.m",
+        "cocotron/AppKit/NSPopUpView.m",
+        "cocotron/AppKit/NSPopUpWindow.m",
+        "cocotron/AppKit/NSPopover.m",
+        "cocotron/AppKit/NSPopoverTouchBarItem.m",
+        "cocotron/AppKit/NSPredicateEditor.m",
+        "cocotron/AppKit/NSPredicateEditorRowTemplate.m",
+        "cocotron/AppKit/NSPressGestureRecognizer.m",
+        "cocotron/AppKit/NSPressureConfiguration.m",
+        "cocotron/AppKit/NSPrintInfo.m",
+        "cocotron/AppKit/NSPrintOperation.m",
+        "cocotron/AppKit/NSPrintPanel.m",
+        "cocotron/AppKit/NSPrintProgressPanelController.m",
+        "cocotron/AppKit/NSPrinter.m",
+        "cocotron/AppKit/NSProgressIndicator.m",
+        "cocotron/AppKit/NSPulseGestureRecognizer.m",
+        "cocotron/AppKit/NSResponder.m",
+        "cocotron/AppKit/NSRuleEditor.m",
+        "cocotron/AppKit/NSRuleEditorButtonCell.m",
+        "cocotron/AppKit/NSRuleEditorViewSliceRow.m",
+        "cocotron/AppKit/NSRulerMarker.m",
+        "cocotron/AppKit/NSRulerView.m",
+        "cocotron/AppKit/NSRunningApplication.m",
+        "cocotron/AppKit/NSSavePanel.subproj/NSOpenPanel.m",
+        "cocotron/AppKit/NSSavePanel.subproj/NSSavePanel.m",
+        "cocotron/AppKit/NSSavePanel.subproj/_NSFileSystemDataSource.m",
+        "cocotron/AppKit/NSScreen.m",
+        "cocotron/AppKit/NSScrollView.m",
+        "cocotron/AppKit/NSScroller.m",
+        "cocotron/AppKit/NSScrubber.m",
+        "cocotron/AppKit/NSScrubberItemView.m",
+        "cocotron/AppKit/NSSearchField.m",
+        "cocotron/AppKit/NSSearchFieldCell.m",
+        "cocotron/AppKit/NSSecureTextField.m",
+        "cocotron/AppKit/NSSecureTextFieldCell.m",
+        "cocotron/AppKit/NSSegmentedControl/NSSegmentItem.m",
+        "cocotron/AppKit/NSSegmentedControl/NSSegmentedCell.m",
+        "cocotron/AppKit/NSSegmentedControl/NSSegmentedControl.m",
+        "cocotron/AppKit/NSShadow.m",
+        "cocotron/AppKit/NSSharingService.m",
+        "cocotron/AppKit/NSSheetContext.m",
+        "cocotron/AppKit/NSSlider.m",
+        "cocotron/AppKit/NSSliderCell.m",
+        "cocotron/AppKit/NSSound.m",
+        "cocotron/AppKit/NSSpaceTouchBarItem.m",
+        "cocotron/AppKit/NSSpeechSynthesizer.m",
+        "cocotron/AppKit/NSSpellChecker.m",
+        "cocotron/AppKit/NSSpellCheckerTagData.m",
+        "cocotron/AppKit/NSSpellingViewController.m",
+        "cocotron/AppKit/NSSplitView.m",
+        "cocotron/AppKit/NSSplitViewController.m",
+        "cocotron/AppKit/NSSplitViewItem.m",
+        "cocotron/AppKit/NSStackView.m",
+        "cocotron/AppKit/NSStatusBar.m",
+        "cocotron/AppKit/NSStatusItem.m",
+        "cocotron/AppKit/NSStepper.m",
+        "cocotron/AppKit/NSStepperCell.m",
+        "cocotron/AppKit/NSStoryboard.m",
+        "cocotron/AppKit/NSStringDrawer.m",
+        "cocotron/AppKit/NSStringDrawing.m",
+        "cocotron/AppKit/NSSwitch.m",
+        "cocotron/AppKit/NSSystemInfoPanel/NSSystemInfoPanel.m",
+        "cocotron/AppKit/NSTabView.m",
+        "cocotron/AppKit/NSTabViewController.m",
+        "cocotron/AppKit/NSTabViewItem.m",
+        "cocotron/AppKit/NSTableCellView.m",
+        "cocotron/AppKit/NSTableColumn.m",
+        "cocotron/AppKit/NSTableCornerView.m",
+        "cocotron/AppKit/NSTableHeaderCell.m",
+        "cocotron/AppKit/NSTableHeaderView.m",
+        "cocotron/AppKit/NSTableRowView.m",
+        "cocotron/AppKit/NSTableView.m",
+        "cocotron/AppKit/NSTableViewRowAction.m",
+        "cocotron/AppKit/NSText.m",
+        "cocotron/AppKit/NSTextAttachment.m",
+        "cocotron/AppKit/NSTextAttachmentCell.m",
+        "cocotron/AppKit/NSTextField.m",
+        "cocotron/AppKit/NSTextFieldCell.m",
+        "cocotron/AppKit/NSTextFinder.m",
+        "cocotron/AppKit/NSTextInput.m",
+        "cocotron/AppKit/NSTextList.m",
+        "cocotron/AppKit/NSTextTable/NSTextBlock.m",
+        "cocotron/AppKit/NSTextTable/NSTextTable.m",
+        "cocotron/AppKit/NSTextTable/NSTextTableBlock.m",
+        "cocotron/AppKit/NSTextView.subproj/NSBidiHelper.m",
+        "cocotron/AppKit/NSTextView.subproj/NSLayoutManager.m",
+        "cocotron/AppKit/NSTextView.subproj/NSRangeArray.m",
+        "cocotron/AppKit/NSTextView.subproj/NSRulerMarker+NSTextExtensions.m",
+        "cocotron/AppKit/NSTextView.subproj/NSSecureLayoutManager.m",
+        "cocotron/AppKit/NSTextView.subproj/NSSecureTextView.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextContainer.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextStorage.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextStorage_concrete.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextTab.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextView.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTextViewSharedData.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTypesetter.m",
+        "cocotron/AppKit/NSTextView.subproj/NSTypesetter_concrete.m",
+        "cocotron/AppKit/NSTextView.subproj/NSUndoTextOperation.m",
+        "cocotron/AppKit/NSThemeFrame.m",
+        "cocotron/AppKit/NSTitlebarAccessoryViewController.m",
+        "cocotron/AppKit/NSTokenAttachment.m",
+        "cocotron/AppKit/NSTokenAttachmentCell.m",
+        "cocotron/AppKit/NSTokenField.m",
+        "cocotron/AppKit/NSTokenFieldCell.m",
+        "cocotron/AppKit/NSToolTipWindow.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbar.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarCustomizationPalette.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarCustomizationView.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarItem.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarItemGroup.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarItemView.m",
+        "cocotron/AppKit/NSToolbar.subproj/NSToolbarView.m",
+        "cocotron/AppKit/NSTouchBar.m",
+        "cocotron/AppKit/NSTouchBarItem.m",
+        "cocotron/AppKit/NSTouchDevice.m",
+        "cocotron/AppKit/NSTrackingArea.m",
+        "cocotron/AppKit/NSTreeNode.m",
+        "cocotron/AppKit/NSUserInterfaceItemIdentification.m",
+        "cocotron/AppKit/NSView.m",
+        "cocotron/AppKit/NSViewBackingLayer.m",
+        "cocotron/AppKit/NSViewController.m",
+        "cocotron/AppKit/NSVisualEffectView.m",
+        "cocotron/AppKit/NSWindow-Drag.m",
+        "cocotron/AppKit/NSWindow.m",
+        "cocotron/AppKit/NSWindowAnimationContext.m",
+        "cocotron/AppKit/NSWindowController.m",
+        "cocotron/AppKit/NSWindowScripting.m",
+        "cocotron/AppKit/NSWorkspace.m",
+        "cocotron/AppKit/RTF.subproj/NSRichTextReader.m",
+        "cocotron/AppKit/RTF.subproj/NSRichTextWriter.m",
+        "cocotron/AppKit/_NSRuleEditorViewSliceHolder.m",
+        "cocotron/AppKit/nib.subproj/NSButtonImageSource.m",
+        "cocotron/AppKit/nib.subproj/NSClassSwapper.m",
+        "cocotron/AppKit/nib.subproj/NSCustomObject.m",
+        "cocotron/AppKit/nib.subproj/NSCustomResource.m",
+        "cocotron/AppKit/nib.subproj/NSCustomView.m",
+        "cocotron/AppKit/nib.subproj/NSIBHelpConnector.m",
+        "cocotron/AppKit/nib.subproj/NSIBObjectData.m",
+        "cocotron/AppKit/nib.subproj/NSIBUserDefinedRuntimeAttributesConnector.m",
+        "cocotron/AppKit/nib.subproj/NSMenuTemplate.m",
+        "cocotron/AppKit/nib.subproj/NSNib.m",
+        "cocotron/AppKit/nib.subproj/NSNibAXRelationshipConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibAuxiliaryActionConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibBindingConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibControlConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibExternalObjectPlaceholder.m",
+        "cocotron/AppKit/nib.subproj/NSNibHelpConnector.m",
+        "cocotron/AppKit/nib.subproj/NSNibLoading.m",
+        "cocotron/AppKit/nib.subproj/NSNibOutletConnector.m",
+        "cocotron/AppKit/nib.subproj/NSWindowTemplate.m",
+        "cocotron/AppKit/nib.subproj/UINibCoding.m",
+    ],
+    compiler_flags = [
+        "-DAppKit_EXPORTS",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-include",
+        "Foundation/Foundation.h",
+        "-Wno-nonportable-include-path",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":AppKit_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppKit
+
+# BEGIN generated: AppKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AppKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/AppKit/AppKit = AppKit_dylib
+
+darwin_dylib(
+    name = "AppKit_dylib",
+    dylib_name = "AppKit",
+    install_name = "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+    compatibility_version = "45.0.0",
+    current_version = "1499.11.0",
+    objs = [
+        # AppKit
+        ":AppKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//src/native:FreeType_dylib",
+        "//src/native:fontconfig_dylib",
+        "//src/native:jpeg_dylib",
+        "//src/native:png_dylib",
+        "//src/native:tiff_dylib",
+        "//buck-src:system_final",
+        "//buck-src:CoreText_dylib",
+        "//buck-src:CoreData_dylib",
+        "//buck-src:QuartzCore_dylib",
+        "//darwin/frameworks:ImageIO_dylib",
+        "//darwin/frameworks:CoreServices_dylib",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    reexport = [
+        "//buck-src:Foundation_dylib",
+        "//darwin/frameworks:ApplicationServices_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppKit dylibs
+
+# BEGIN generated: X11_cgbackend
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py X11_cgbackend   -- review before committing.
+# cmake target: X11_cgbackend  ->  X11_cgbackend
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+#   nix/store/pdx85lx4ndlgzy281d086vfwj7h7dwkc-cairo-1.18.4-dev/include/cairo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "X11_cgbackend_inc_cocotron",
+    headers = glob([
+        "cocotron/CoreGraphics/*.h",
+        "cocotron/CoreGraphics/**/*.h",
+        "cocotron/CoreGraphics/*.c",
+        "cocotron/**/*",
+        "cocotron/CoreText/*.h",
+        "cocotron/CoreText/**/*.h",
+        "cocotron/CoreText/*.c",
+    ]),
+    root = "cocotron",
+    include_subdirs = [
+        "CoreGraphics",
+        ".",
+        "CoreText",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "X11_cgbackend_obj",
+    srcs = [
+        "cocotron/CoreGraphics/X11.backend/CGSConnectionX11.m",
+        "cocotron/CoreGraphics/X11.backend/CGSSurfaceX11.m",
+        "cocotron/CoreGraphics/X11.backend/CGSWindowX11.m",
+        "cocotron/CoreGraphics/X11.backend/X11KeySymToUCS.m",
+    ],
+    compiler_flags = [
+        "-DX11_cgbackend_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-Wno-nonportable-include-path",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_OpenGL",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":X11_cgbackend_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: X11_cgbackend
+
+# BEGIN generated: X11_cgbackend dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs X11_cgbackend   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/CoreGraphics/X11.backend/X11 = X11_cgbackend_dylib
+
+darwin_dylib(
+    name = "X11_cgbackend_dylib",
+    dylib_name = "X11",
+    install_name = "/System/Library/Frameworks/CoreGraphics.framework/Versions/C/Resources/Backends/X11.backend/Contents/MacOS/X11",
+    compatibility_version = "64.0.0",
+    current_version = "1070.22.0",
+    objs = [
+        # X11_cgbackend
+        ":X11_cgbackend_obj",
+    ],
+    siblings = [
+        "//src/native:X11_dylib",
+        "//src/native:XRandR_dylib",
+        "//src/native:Xcursor_dylib",
+        "//src/native:xkbfile_dylib",
+        "//src/native:fontconfig_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: X11_cgbackend dylibs
+
+# BEGIN generated: X11_backend
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py X11_backend   -- review before committing.
+# cmake target: X11_backend  ->  X11_backend
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/62fjl9xipmsk1wckzci47s5awy0sa4zl-libxkbfile-1.1.3-dev/include
+#   nix/store/6v1hx568cmw9qjgx11bww5wgsjy4vna3-xorgproto-2025.1/include
+#   nix/store/8l9asxwa4rzhzjw78rps6qsk2m3w9vf7-libxcursor-1.2.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include
+#   nix/store/ahbvjrk7nnz0xr311c4q6vaxiyayiq1k-freetype-2.14.3-dev/include/freetype2
+#   nix/store/bnv7zg3f9mczqy50s0syi2y8srmfvklj-fontconfig-2.17.1-dev/include
+#   nix/store/cy79h8jf6disyp9mrizssq6rknx5jdxh-libxrandr-1.5.5-dev/include
+#   nix/store/dngs5ab00cl9q31yms9szwcd7dh7wwwd-libxrender-0.9.12-dev/include
+#   nix/store/f4y37bm3j1q3c7y88184rm5b5f75jh74-libxext-1.3.7-dev/include
+#   nix/store/pd412gfwc6ji63i2zzpgrsw0169qahyz-libx11-1.8.13-dev/include
+#   nix/store/pdx85lx4ndlgzy281d086vfwj7h7dwkc-cairo-1.18.4-dev/include/cairo
+#   nix/store/wz0rgiphvldmav4l2vjs4q9lpcqjmwqq-libxdmcp-1.1.5-dev/include
+#   nix/store/ym7yz44z8kpqvmc3gv94g19kx1c0bmlk-libglvnd-1.7.0-dev/include
+#   nix/store/zilam7017h5yhpxcf7iyswzrnmgh4wsw-glu-9.0.3-dev/include
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "X11_backend_inc_cocotron",
+    headers = glob([
+        "cocotron/AppKit/*.h",
+        "cocotron/AppKit/**/*.h",
+        "cocotron/AppKit/*.c",
+        "cocotron/**/*",
+        "cocotron/CoreText/*.h",
+        "cocotron/CoreText/**/*.h",
+        "cocotron/CoreText/*.c",
+        "cocotron/AppKit/nib.subproj/*.h",
+        "cocotron/AppKit/nib.subproj/**/*.h",
+        "cocotron/AppKit/nib.subproj/*.c",
+        "cocotron/AppKit/NSColorPicker.subproj/*.h",
+        "cocotron/AppKit/NSColorPicker.subproj/**/*.h",
+        "cocotron/AppKit/NSColorPicker.subproj/*.c",
+        "cocotron/AppKit/NSMenu.subproj/*.h",
+        "cocotron/AppKit/NSMenu.subproj/**/*.h",
+        "cocotron/AppKit/NSMenu.subproj/*.c",
+        "cocotron/AppKit/NSTextView.subproj/*.h",
+        "cocotron/AppKit/NSTextView.subproj/**/*.h",
+        "cocotron/AppKit/NSTextView.subproj/*.c",
+        "cocotron/AppKit/NSEvent.subproj/*.h",
+        "cocotron/AppKit/NSEvent.subproj/**/*.h",
+        "cocotron/AppKit/NSEvent.subproj/*.c",
+        "cocotron/AppKit/NSColor.subproj/*.h",
+        "cocotron/AppKit/NSColor.subproj/**/*.h",
+        "cocotron/AppKit/NSColor.subproj/*.c",
+        "cocotron/AppKit/RTF.subproj/*.h",
+        "cocotron/AppKit/RTF.subproj/**/*.h",
+        "cocotron/AppKit/RTF.subproj/*.c",
+        "cocotron/AppKit/NSToolbar.subproj/*.h",
+        "cocotron/AppKit/NSToolbar.subproj/**/*.h",
+        "cocotron/AppKit/NSToolbar.subproj/*.c",
+        "cocotron/AppKit/NSDrawer.subproj/*.h",
+        "cocotron/AppKit/NSDrawer.subproj/**/*.h",
+        "cocotron/AppKit/NSDrawer.subproj/*.c",
+        "cocotron/AppKit/X11.backend/*.h",
+        "cocotron/AppKit/X11.backend/**/*.h",
+        "cocotron/AppKit/X11.backend/*.c",
+        "cocotron/QuartzCore/include/*.h",
+        "cocotron/QuartzCore/include/**/*.h",
+        "cocotron/QuartzCore/include/*.c",
+    ]),
+    root = "cocotron",
+    include_subdirs = [
+        "AppKit",
+        ".",
+        "CoreText",
+        "AppKit/nib.subproj",
+        "AppKit/NSColorPicker.subproj",
+        "AppKit/NSMenu.subproj",
+        "AppKit/NSTextView.subproj",
+        "AppKit/NSEvent.subproj",
+        "AppKit/NSColor.subproj",
+        "AppKit/RTF.subproj",
+        "AppKit/NSToolbar.subproj",
+        "AppKit/NSDrawer.subproj",
+        "AppKit/X11.backend",
+        "QuartzCore/include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "X11_backend_obj",
+    srcs = [
+        "cocotron/AppKit/X11.backend/X11Cursor.m",
+        "cocotron/AppKit/X11.backend/X11Display.m",
+        "cocotron/AppKit/X11.backend/X11Event.m",
+        "cocotron/AppKit/X11.backend/X11KeySymToUCS.m",
+        "cocotron/AppKit/X11.backend/X11Pasteboard.m",
+        "cocotron/AppKit/X11.backend/X11SubWindow.m",
+        "cocotron/AppKit/X11.backend/X11Window.m",
+    ],
+    compiler_flags = [
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=1",
+        "-DX11_backend_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-include",
+        "math.h",
+        "-include",
+        "stdlib.h",
+        "-include",
+        "CoreFoundation/CoreFoundation.h",
+        "-include",
+        "Foundation/Foundation.h",
+        "-Wno-nonportable-include-path",
+        "-Wno-deprecated-objc-isa-usage",
+        "-mmacosx-version-min=10.10",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
+        "//buck-src/icu:icucore_inc_icu_icuSources_common",
+        ":X11_backend_inc_cocotron",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: X11_backend
+
+# BEGIN generated: X11_backend dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs X11_backend   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/cocotron/AppKit/X11 = X11_backend_dylib
+
+darwin_dylib(
+    name = "X11_backend_dylib",
+    dylib_name = "X11",
+    install_name = "/System/Library/Frameworks/AppKit.framework/Versions/C/Resources/Backends/X11.backend/Contents/MacOS/X11",
+    compatibility_version = "45.0.0",
+    current_version = "1499.11.0",
+    objs = [
+        # X11_backend
+        ":X11_backend_obj",
+    ],
+    siblings = [
+        "//src/native:X11_dylib",
+        "//src/native:XRandR_dylib",
+        "//src/native:Xcursor_dylib",
+        "//src/native:xkbfile_dylib",
+        "//buck-src/objc4:objc_final",
+        "//src/native:fontconfig_dylib",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:QuartzCore_dylib",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:Onyx2D_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: X11_backend dylibs
+
+# BEGIN generated: JavaNativeFoundation
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py JavaNativeFoundation   -- review before committing.
+# cmake target: JavaNativeFoundation  ->  src/external/openjdk/JavaNativeFoundation
+
+cc_header_root(
+    name = "JavaNativeFoundation_inc_openjdk_src_java_base_share_native_include",
+    headers = glob(["openjdk/src/java.base/share/native/include/*.h", "openjdk/src/java.base/share/native/include/**/*.h", "openjdk/src/java.base/share/native/include/*.c"]),
+    root = "openjdk/src/java.base/share/native/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "JavaNativeFoundation_inc_openjdk_src_java_base_unix_native_include",
+    headers = glob(["openjdk/src/java.base/unix/native/include/*.h", "openjdk/src/java.base/unix/native/include/**/*.h", "openjdk/src/java.base/unix/native/include/*.c"]),
+    root = "openjdk/src/java.base/unix/native/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "JavaNativeFoundation_inc_openjdk_apple_JavaNativeFoundation",
+    headers = glob(["openjdk/apple/JavaNativeFoundation/*.h", "openjdk/apple/JavaNativeFoundation/**/*.h", "openjdk/apple/JavaNativeFoundation/*.c"]),
+    root = "openjdk/apple/JavaNativeFoundation",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "JavaNativeFoundation_obj",
+    srcs = [
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFAssert.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFAutoreleasePool.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFDate.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFException.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFJNI.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFJObjectWrapper.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFNumber.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFObject.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFPath.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFRunLoop.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFRunnable.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFString.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFThread.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/JNFTypeCoercion.m",
+        "openjdk/apple/JavaNativeFoundation/JavaNativeFoundation/debug.m",
+    ],
+    compiler_flags = [
+        "-DJavaNativeFoundation_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":JavaNativeFoundation_inc_openjdk_src_java_base_share_native_include",
+        ":JavaNativeFoundation_inc_openjdk_src_java_base_unix_native_include",
+        ":JavaNativeFoundation_inc_openjdk_apple_JavaNativeFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaNativeFoundation
+
+# BEGIN generated: JavaNativeFoundation dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs JavaNativeFoundation   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/openjdk/JavaNativeFoundation = JavaNativeFoundation_dylib
+
+darwin_dylib(
+    name = "JavaNativeFoundation_dylib",
+    dylib_name = "JavaNativeFoundation",
+    install_name = "/System/Library/Frameworks/JavaVM.framework/Versions/A/Frameworks/JavaNativeFoundation.framework/Versions/A/JavaNativeFoundation",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # JavaNativeFoundation
+        ":JavaNativeFoundation_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: JavaNativeFoundation dylibs
+
+
+
+# BEGIN generated: csparser
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py csparser   -- review before committing.
+# cmake target: csparser  ->  csparser
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "csparser_inc_security",
+    headers = glob([
+        "security/darling/include/**/*",
+        "security/darling/include/macOS/**/*",
+        "security/**/*",
+        "security/gen/*.h",
+        "security/gen/**/*.h",
+        "security/gen/*.c",
+        "security/OSX/libsecurity_asn1/**/*",
+        "security/OSX/libsecurity_keychain/lib/*.h",
+        "security/OSX/libsecurity_keychain/lib/**/*.h",
+        "security/OSX/libsecurity_keychain/lib/*.c",
+        "security/OSX/sec/*.h",
+        "security/OSX/sec/**/*.h",
+        "security/OSX/sec/*.c",
+        "security/OSX/sec/Security/*.h",
+        "security/OSX/sec/Security/**/*.h",
+        "security/OSX/sec/Security/*.c",
+        "security/OSX/utilities/*.h",
+        "security/OSX/utilities/**/*.h",
+        "security/OSX/utilities/*.c",
+        "security/OSX/**/*",
+        "security/darling/src/libDER/*.h",
+        "security/darling/src/libDER/**/*.h",
+        "security/darling/src/libDER/*.c",
+        "security/darling/include/Security/*.h",
+        "security/darling/include/Security/**/*.h",
+        "security/darling/include/Security/*.c",
+        "security/darling/include/macOS/Security/*.h",
+        "security/darling/include/macOS/Security/**/*.h",
+        "security/darling/include/macOS/Security/*.c",
+    ]),
+    root = "security",
+    include_subdirs = [
+        "darling/include",
+        "darling/include/macOS",
+        ".",
+        "gen",
+        "OSX/libsecurity_asn1",
+        "OSX/libsecurity_keychain/lib",
+        "OSX/sec",
+        "OSX/sec/Security",
+        "OSX/utilities",
+        "OSX",
+        "darling/src/libDER",
+        "darling/include/Security",
+        "darling/include/macOS/Security",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "csparser_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "csparser_obj",
+    srcs = [
+        "security/OSX/lib/plugins/csparser.cpp",
+    ],
+    compiler_flags = [
+        "-DCORECRYPTO_DONOT_USE_TRANSPARENT_UNION=1",
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DNDEBUG=1",
+        "-DPLATFORM=macOS",
+        "-DPRIVATE",
+        "-DSECUREOBJECTSYNC=1",
+        "-DSECURITY_BUILD_VERSION=\"0\"",
+        "-DSHAREDWEBCREDENTIALS=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__KEYCHAINCORE__=1",
+        "-Dcsparser_EXPORTS",
+        "-std=gnu++14",
+        "-fPIC",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":csparser_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        ":csparser_inc_security",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: csparser
+
+# BEGIN generated: csparser dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs csparser   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/security/OSX/csparser.bundle = csparser_dylib
+
+darwin_dylib(
+    name = "csparser_dylib",
+    dylib_name = "csparser.bundle",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    current_version = "59306.61.1",
+    objs = [
+        # csparser
+        ":csparser_obj",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:security_cdsa_utilities",
+        "//buck-src:utilities",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: csparser dylibs
+
+# BEGIN generated: libvterm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py libvterm   -- review before committing.
+# cmake target: libvterm  ->  src/external/vim/src/liblibvterm.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "libvterm_inc_vim_src",
+    headers = glob([
+        "vim/src/**/*",
+        "vim/src/proto/**/*",
+        "vim/src/libvterm/include/*.h",
+        "vim/src/libvterm/include/**/*.h",
+        "vim/src/libvterm/include/*.c",
+    ]),
+    root = "vim/src",
+    include_subdirs = [
+        ".",
+        "proto",
+        "libvterm/include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "libvterm_obj",
+    srcs = [
+        "vim/src/beval.c",
+        "vim/src/libvterm/src/encoding.c",
+        "vim/src/libvterm/src/keyboard.c",
+        "vim/src/libvterm/src/mouse.c",
+        "vim/src/libvterm/src/parser.c",
+        "vim/src/libvterm/src/pen.c",
+        "vim/src/libvterm/src/screen.c",
+        "vim/src/libvterm/src/state.c",
+        "vim/src/libvterm/src/unicode.c",
+        "vim/src/libvterm/src/vterm.c",
+    ],
+    compiler_flags = [
+        "-DDYNAMIC_RUBY",
+        "-DFEAT_RUBY",
+        "-DHAVE_CONFIG_H",
+        "-DINLINE=",
+        "-DMACOS_X_DARWIN",
+        "-DMACOS_X_UNIX",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_FORTIFY_SOURCE",
+        "-D_FORTIFY_SOURCE=0",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-w",
+        "-DDYNAMIC_RUBY_DLL=\"/System/Library/Frameworks/Ruby.framework/Ruby\"",
+    ],
+    prefix_headers = [
+        "vim/gen/vim_dynamic_config.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":libvterm_inc_vim_src",
+        "//buck-src/ruby:ruby_inc_darling_include_ruby",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: libvterm
+
+# BEGIN generated: libvterm archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives libvterm   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "libvterm",
+    lib_name = "liblibvterm.a",
+    objs = [
+        # libvterm
+        ":libvterm_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: libvterm archive
+
+# BEGIN generated: ping
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ping   -- review before committing.
+# cmake target: ping  ->  src/external/network_cmds/ping.tproj/ping
+
+cc_objects(
+    name = "ping_obj",
+    srcs = [
+        "network_cmds/ecnprobe/gmt2local.c",
+        "network_cmds/ping.tproj/ping.c",
+    ],
+    compiler_flags = [
+        "-DPRIVATE",
+        "-DUSE_RFC2292BIS=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D__APPLE_API_OBSOLETE=1",
+        "-D__APPLE_USE_RFC_3542=1",
+        "-nostdinc",
+        "-fwrapv",
+        "-fPIC",
+        "-ggdb",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ping
+
+# BEGIN generated: ping binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ping   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/network_cmds/ping.tproj/ping = ping
+
+darwin_binary(
+    name = "ping",
+    objs = [
+        # ping
+        ":ping_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ping binary
+
+# BEGIN generated: lzfse_cli
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lzfse_cli   -- review before committing.
+# cmake target: lzfse_cli  ->  lzfse_cli
+
+cc_objects(
+    name = "lzfse_cli_obj",
+    srcs = [
+        "lzfse/src/lzfse_main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=gnu99",
+        "-Wall",
+        "-Wno-unknown-pragmas",
+        "-Wno-unused-variable",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lzfse_cli
+
+# BEGIN generated: lzfse_cli binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lzfse_cli   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/lzfse/lzfse = lzfse_cli
+
+darwin_binary(
+    name = "lzfse_cli",
+    exe_name = "lzfse",
+    objs = [
+        # lzfse_cli
+        ":lzfse_cli_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:lzfse",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lzfse_cli binary
+
+
+
+# BEGIN generated: cupsd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupsd   -- review before committing.
+# cmake target: cupsd  ->  src/external/cups/cups/scheduler/cupsd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupsd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupsd_obj",
+    srcs = [
+        "cups/cups/scheduler/auth.c",
+        "cups/cups/scheduler/banners.c",
+        "cups/cups/scheduler/cert.c",
+        "cups/cups/scheduler/classes.c",
+        "cups/cups/scheduler/client.c",
+        "cups/cups/scheduler/colorman.c",
+        "cups/cups/scheduler/conf.c",
+        "cups/cups/scheduler/dirsvc.c",
+        "cups/cups/scheduler/env.c",
+        "cups/cups/scheduler/file.c",
+        "cups/cups/scheduler/ipp.c",
+        "cups/cups/scheduler/job.c",
+        "cups/cups/scheduler/listen.c",
+        "cups/cups/scheduler/log.c",
+        "cups/cups/scheduler/main.c",
+        "cups/cups/scheduler/network.c",
+        "cups/cups/scheduler/policy.c",
+        "cups/cups/scheduler/printers.c",
+        "cups/cups/scheduler/process.c",
+        "cups/cups/scheduler/quotas.c",
+        "cups/cups/scheduler/select.c",
+        "cups/cups/scheduler/server.c",
+        "cups/cups/scheduler/statbuf.c",
+        "cups/cups/scheduler/subscriptions.c",
+        "cups/cups/scheduler/sysman.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":cupsd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsd
+
+# BEGIN generated: cupsd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cupsd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+# buck-registry: src/external/cups/cups/scheduler/cupsd = cupsd
+
+darwin_binary(
+    name = "cupsd",
+    objs = [
+        # cupsd
+        ":cupsd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+        "//darwin/frameworks:ApplicationServices_dylib",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_mime",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsd binary
+
+# BEGIN generated: vim
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py vim   -- review before committing.
+# cmake target: vim  ->  src/external/vim/src/vim
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "vim_inc_vim_src",
+    headers = glob([
+        "vim/src/**/*",
+        "vim/src/proto/**/*",
+        "vim/src/libvterm/include/*.h",
+        "vim/src/libvterm/include/**/*.h",
+        "vim/src/libvterm/include/*.c",
+    ]),
+    root = "vim/src",
+    include_subdirs = [
+        ".",
+        "proto",
+        "libvterm/include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "vim_obj",
+    srcs = [
+        "vim/src/arabic.c",
+        "vim/src/arglist.c",
+        "vim/src/auto/pathdef.c",
+        "vim/src/autocmd.c",
+        "vim/src/blob.c",
+        "vim/src/blowfish.c",
+        "vim/src/buffer.c",
+        "vim/src/bufwrite.c",
+        "vim/src/change.c",
+        "vim/src/channel.c",
+        "vim/src/charset.c",
+        "vim/src/cindent.c",
+        "vim/src/clientserver.c",
+        "vim/src/clipboard.c",
+        "vim/src/cmdexpand.c",
+        "vim/src/cmdhist.c",
+        "vim/src/crypt.c",
+        "vim/src/crypt_zip.c",
+        "vim/src/debugger.c",
+        "vim/src/dict.c",
+        "vim/src/diff.c",
+        "vim/src/digraph.c",
+        "vim/src/drawline.c",
+        "vim/src/drawscreen.c",
+        "vim/src/edit.c",
+        "vim/src/eval.c",
+        "vim/src/evalbuffer.c",
+        "vim/src/evalfunc.c",
+        "vim/src/evalvars.c",
+        "vim/src/evalwindow.c",
+        "vim/src/ex_cmds.c",
+        "vim/src/ex_cmds2.c",
+        "vim/src/ex_docmd.c",
+        "vim/src/ex_eval.c",
+        "vim/src/ex_getln.c",
+        "vim/src/fileio.c",
+        "vim/src/filepath.c",
+        "vim/src/findfile.c",
+        "vim/src/fold.c",
+        "vim/src/getchar.c",
+        "vim/src/gui_xim.c",
+        "vim/src/hardcopy.c",
+        "vim/src/hashtab.c",
+        "vim/src/help.c",
+        "vim/src/highlight.c",
+        "vim/src/if_cscope.c",
+        "vim/src/if_ruby.c",
+        "vim/src/if_xcmdsrv.c",
+        "vim/src/indent.c",
+        "vim/src/insexpand.c",
+        "vim/src/job.c",
+        "vim/src/json.c",
+        "vim/src/list.c",
+        "vim/src/locale.c",
+        "vim/src/main.c",
+        "vim/src/map.c",
+        "vim/src/mark.c",
+        "vim/src/match.c",
+        "vim/src/mbyte.c",
+        "vim/src/memfile.c",
+        "vim/src/memline.c",
+        "vim/src/menu.c",
+        "vim/src/message.c",
+        "vim/src/misc1.c",
+        "vim/src/misc2.c",
+        "vim/src/mouse.c",
+        "vim/src/move.c",
+        "vim/src/netbeans.c",
+        "vim/src/normal.c",
+        "vim/src/ops.c",
+        "vim/src/option.c",
+        "vim/src/optionstr.c",
+        "vim/src/os_mac_conv.c",
+        "vim/src/os_macosx.m",
+        "vim/src/os_unix.c",
+        "vim/src/popupmenu.c",
+        "vim/src/popupwin.c",
+        "vim/src/profiler.c",
+        "vim/src/pty.c",
+        "vim/src/quickfix.c",
+        "vim/src/regexp.c",
+        "vim/src/register.c",
+        "vim/src/screen.c",
+        "vim/src/scriptfile.c",
+        "vim/src/search.c",
+        "vim/src/session.c",
+        "vim/src/sha256.c",
+        "vim/src/sign.c",
+        "vim/src/spell.c",
+        "vim/src/spellfile.c",
+        "vim/src/spellsuggest.c",
+        "vim/src/syntax.c",
+        "vim/src/tag.c",
+        "vim/src/term.c",
+        "vim/src/terminal.c",
+        "vim/src/testing.c",
+        "vim/src/textformat.c",
+        "vim/src/textobject.c",
+        "vim/src/textprop.c",
+        "vim/src/time.c",
+        "vim/src/typval.c",
+        "vim/src/ui.c",
+        "vim/src/undo.c",
+        "vim/src/usercmd.c",
+        "vim/src/userfunc.c",
+        "vim/src/version.c",
+        "vim/src/vim9compile.c",
+        "vim/src/vim9execute.c",
+        "vim/src/vim9script.c",
+        "vim/src/vim9type.c",
+        "vim/src/viminfo.c",
+        "vim/src/window.c",
+    ],
+    compiler_flags = [
+        "-DDYNAMIC_RUBY",
+        "-DFEAT_RUBY",
+        "-DHAVE_CONFIG_H",
+        "-DINLINE=",
+        "-DMACOS_X_DARWIN",
+        "-DMACOS_X_UNIX",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-U_FORTIFY_SOURCE",
+        "-D_FORTIFY_SOURCE=0",
+        "-Wno-error=int-conversion",
+        "-nostdinc",
+        "-w",
+        "-DDYNAMIC_RUBY_DLL=\"/System/Library/Frameworks/Ruby.framework/Ruby\"",
+    ],
+    prefix_headers = [
+        "vim/gen/vim_dynamic_config.h",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":vim_inc_vim_src",
+        "//buck-src/ruby:ruby_inc_darling_include_ruby",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vim
+
+# BEGIN generated: vim binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries vim   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/vim/src/vim = vim
+
+darwin_binary(
+    name = "vim",
+    objs = [
+        # vim
+        ":vim_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//darwin/frameworks:CoreServices_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:libvterm",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: vim binary

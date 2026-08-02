@@ -308,56 +308,65 @@ And `lp` is not a dylib at all -- buck-port reported "Unknown target lp_dylib" b
 coverage missing-list entry is an executable that happens to sit under src/frameworks.
 A name in the missing list is not a promise about what kind of thing it is.
 
-### Stage 2: the cocotron cone (blocked, and why)
+### Stage 2: the cocotron cone (SOLVED: a dropped -include)
 
-Cocoa is in. The other six -- Onyx2D, CoreGraphics, CoreText, QuartzCore, CoreData and
-AppKit -- are NOT, and the reason is worth writing down because it is a limit of the tooling
-rather than of the code.
+Onyx2D, CoreGraphics, CoreText, QuartzCore, CoreData, AppKit and both cocotron X11 backends
+are in, and with them the six frameworks that waited on the cone (AVKit, CoreVideo,
+HIServices, ImageIO, OpenGL, Quartz) and cupsd. One line of gen-buck-from-ninja.py.
 
-One fix did land: `icu/icuSources/i18n` joins `common` in CROSS_PACKAGE_ROOTS. Five of the
-six refused outright with "include dir belongs to package //buck-src/icu" because only the
-common half was mapped, and the i18n root already existed in buck-src/icu/BUCK.
+**The cause.** The reference force-includes four headers into every cocotron compile:
 
-What remains is NOT a missing framework root, which is the one thing buck-port.py knows how
-to fix. It is also not what I first wrote here, and the wrong diagnosis is worth recording
-so nobody repeats it.
+    -include math.h -include stdlib.h
+    -include CoreFoundation/CoreFoundation.h -include Foundation/Foundation.h
 
-I assumed an error CASCADE: that one missing header made Foundation stop parsing and the
-flood of "unknown type name" filled clang's -ferror-limit before the actionable
-"file not found" was emitted. That was wrong. Re-running the exact failing compile with
-`-ferror-limit=0` produces exactly ONE error and no missing header at all:
+`own_flags_of()` keeps a `-include` whose argument is a bare NAME (it resolves through the
+include path) and turns an absolute one into a prefix_headers FILE. Anything else it
+recorded as unresolved and DROPPED, and the test for "bare name" was `"/" not in arg`. A
+framework-style spelling has a slash, so `Foundation/Foundation.h` was dropped -- and that
+umbrella is where those headers get NSMutableArray and every other Foundation type they use
+without importing anything that declares them. Hence CoreData's lone
+"unknown type name 'NSMutableArray'" with no missing header to point at. The test is now
+"is it absolute", which is the property that actually decides whether the compiler resolves
+it through the include path.
 
-    cocotron/CoreData/include/CoreData/NSPersistentStoreCoordinator.h:49:5:
-    error: unknown type name 'NSMutableArray'
+**Two earlier diagnoses here were wrong and are corrected.** The first was an error cascade
+(disproved with -ferror-limit=0). The second was the claim, written in this file, that "the
+flags are identical apart from -B, which is link-time" -- the four -include flags were right
+there in FLAGS. Reading the reference's compile line ALL THE WAY THROUGH is what closed a
+cone that had been parked for several iterations; comparing a summary of it is what kept it
+parked. Seeding framework roots by hand never converged because no framework root was
+missing.
 
-What IS established, by comparing our compile against the reference's for the same file:
+**Scope, measured rather than assumed.** Exactly 10 cmake targets in the stock graph
+force-include a relative header with a slash: the 7 cocotron ones, plus vim, libvterm and
+xxd, which use `-include ../gen/vim_dynamic_config.h`. That one needs different handling:
+`../` resolves against the include dir's PARENT, and a staged root has no parent, so as a
+flag it fails outright ("file not found") where before it was silently absent. It is now
+resolved the way the compiler would -- against the unit's own include dirs in order -- and
+emitted as a prefix_headers FILE, since prefix_headers passes the artifact path straight to
+-include and the staged layout stops mattering. vim needs it: without it every dll_* macro
+for dynamic ruby is undefined. xxd, which builds and installs, was verified unchanged
+before and after.
 
-* The flags are identical apart from `-B`, which is link-time.
-* Both builds compile the SAME header. Ours is staged from
-  cocotron/CoreData/include/CoreData/, which is exactly where the reference's
-  darwin/framework-include/CoreData symlink farm points.
-* The import chain is short and real: NSPersistentStore.m imports
-  <CoreData/NSPersistentStore.h>, which imports only <Foundation/NSObject.h>, which does
-  not declare NSMutableArray. Our fw_Foundation root DOES stage NSArray.h, which does
-  declare it -- nothing imports it.
-* Adding -Idarwin/framework-include (the reference's broad path) does not fix it.
+**Then a snapshot sweep.** A generated block records what the registry knew when it was
+written, so 13 blocks still carried "not ported yet" TODOs naming cone members --
+ApplicationServices listed five. cupsd reaches CGBitmapContextCreate through
+ApplicationServices' reexports, so it stayed broken until that block was regenerated, not
+because anything was wrong with cupsd. After a fix that unblocks a cone, grep the tree for
+TODOs naming what just landed; it is a cheap, bounded sweep.
 
-So cocotron's own header uses a type it never imports, and the reference compiles it anyway.
-Something in the reference's include environment declares NSMutableArray before that header
-is parsed, and I have not found what. The next step is to reproduce the reference's compile
-for this one file EXACTLY (its full -I list in order, not a filtered subset) and bisect the
-difference, rather than to guess at framework roots. Seeding CoreFoundation, Foundation,
-Security, CFNetwork and CoreGraphics by hand did not converge and those seeds were dropped.
-
-Six frameworks in //darwin/frameworks wait on this cone (AVKit, CoreVideo, HIServices,
-ImageIO, OpenGL, Quartz), but it is NOT the cheapest remaining work: the ~300 src/external
-edges (python, ruby, perl and their extension modules) are independent of it and batched
-well for the GUI frameworks.
-
-Also worth knowing: cocotron's Cocoa exports NOTHING, and that is faithful. Its single
+Also worth keeping: cocotron's Cocoa exports NOTHING, and that is faithful. Its single
 source is an umbrella that only imports headers, and the reference emits no
 reexport_library flags for it either. A zero-export dylib is usually the empty-artifact
 trap; this one is not.
+
+**Five blocks were REMOVED rather than left broken**: DBusKit, iokitd, bsdln, getuuid and
+elfdep all generated, none linked. Coverage counts a block that exists, so leaving them
+would have reported 1341/1359 when the truth is 1336. getuuid and elfdep are the
+interesting pair: they are HOST tools that read Mach-O out of the build tree, and the
+generator resolves their <mach/...> includes to a framework root, which a host compile has
+no way to consume. src/bsdln/BUCK and src/buildtools/BUCK are now comment-only, kept so
+those directories keep their own package boundary instead of folding into a parent's globs.
 
 ### Stage 2: cups (57 of 58)
 
@@ -519,14 +528,17 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 | | cli | stock |
 |---|---|---|
 | link edges | 871 | 1359 |
-| ported | 862 (98%) | 1311 (96%) |
+| ported | 866 (99%) | 1336 (98%) |
 | install entries | 1160 | 1872 |
 | UNMAPPED | 0 | **523** |
 | build.ninja lines | 201k | 347k |
 
-The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311. All 96
-loadable modules are done, and 48 link edges remain, most of them the parked cocotron cone
-and what waits on it. 16 of the gain was a MEASUREMENT bug, below, not new work.
+The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336.
+All 96 loadable modules are done. 23 link edges remain: the CoreAudio cluster and its
+ffmpeg dylibs (13), Metal/MetalKit/MetalPerformanceShaders (3), the five removed blocks
+above, and two archives (libbind9_isccc.a, libopendirectory_internal.a). cli rose to 866
+in the same round, because several of those singles are cli targets; buck-test.sh's floor
+moved 860 -> 866. 16 of the earlier gain was a MEASUREMENT bug, below, not new work.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
@@ -1112,10 +1124,12 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
 
-   The src/external language groups are now ALL DONE: ruby (92), perl (117, two
-   interpreters), python (56), python_modules (3), pyobjc (24), plus libffi which
-   python's _ctypes needs. Each got its own split-pin package. What is left in stock is
-   48 edges, and the cocotron cone below is most of it.
+   The src/external language groups are ALL DONE (ruby 92, perl 117, python 56,
+   python_modules 3, pyobjc 24, libffi), each in its own split-pin package, and so is
+   the cocotron cone. 23 edges remain: the CoreAudio cluster with its five ffmpeg/pulse
+   dylibs and four AudioFileTools binaries, Metal/MetalKit/MetalPerformanceShaders,
+   two archives, and the five blocks removed for not linking (DBusKit, iokitd, bsdln,
+   getuuid, elfdep).
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in

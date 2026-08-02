@@ -1901,8 +1901,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs CoreSimulator   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   AppKit
+# buck-registry: src/private-frameworks/CoreSimulator/CoreSimulator = CoreSimulator_dylib
 
 darwin_dylib(
     name = "CoreSimulator_dylib",
@@ -1917,6 +1916,7 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
         "//buck-src:Foundation_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -5495,8 +5495,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs IconServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final pass also links these siblings, not ported yet:
-#   QuartzCore
+# buck-registry: src/private-frameworks/IconServices/IconServices = IconServices_dylib
 
 darwin_dylib(
     name = "IconServices_dylib",
@@ -5511,6 +5510,7 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
+        "//buck-src:QuartzCore_dylib",
         "//darwin/private-frameworks:CoreUI_dylib",
         "//darwin/frameworks:LaunchServices_dylib",
         "//buck-src:Foundation_dylib",

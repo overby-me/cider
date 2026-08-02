@@ -551,8 +551,8 @@ cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
 tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
 # made it decorative: anything short of losing three quarters of the port passed it.
-[ "${cov:-0}" -ge 860 ] && ok "$cov of the reference's ${tot:-871} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-871}, floor is 860"
+[ "${cov:-0}" -ge 866 ] && ok "$cov of the reference's ${tot:-871} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-871}, floor is 866"
 
 # The same question for the INSTALL side: link coverage says what builds, this says what
 # the port can actually lay out. UNMAPPED is every install entry that neither a target nor
