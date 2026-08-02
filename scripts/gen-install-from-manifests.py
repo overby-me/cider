@@ -280,6 +280,18 @@ def binary_index() -> dict:
             name = re.search(r'name = "([^"]+)"', block)
             if not name:
                 continue
+            # A dev STUB never answers a lookup by NAME. It builds an artifact called
+            # exactly AppKit, CoreGraphics, CoreText... so with setdefault it wins or
+            # loses on os.walk order, and when it won the prefix shipped EMPTY STUB
+            # FRAMEWORKS in place of the real ones -- NSApplication died because AppKit
+            # had no implementation in it. A stub is a link-time stand-in, so it is
+            # reachable by its reference PATH and by nothing else. Same rule as
+            # final_registry() in gen-buck-from-ninja.py.
+            pragma = re.search(
+                r"#\s*buck-registry:\s*(\S+)\s*=\s*" + re.escape(name.group(1)) + r"\s*$",
+                text[max(0, m.start() - 800):m.start()], re.M)
+            if pragma and "/dev-stubs/" in pragma.group(1):
+                continue
             kind = "lib" if m.group(1) == "darwin_dylib" else "exe"
             into = index[kind]
             label = f"//{pkg}:{name.group(1)}"
@@ -554,6 +566,8 @@ def main(argv: list[str]) -> int:
     all_dests = set(dest_of.values())
 
     built, sources, symlinks, dirs, unmapped, skipped = {}, {}, {}, {}, [], []
+    # Destinations two different targets both install to. Reported, never silent.
+    collisions: list = []
     exec_files: dict[str, str] = {}
     blocks: dict[str, list[str]] = {}
     exports: dict[str, dict] = {}
@@ -569,7 +583,16 @@ def main(argv: list[str]) -> int:
             if kind in ("SHARED_LIBRARY", "EXECUTABLE", "STATIC_LIBRARY"):
                 t = target_for(src, gen, binaries, kind)
                 if t:
-                    built[full] = t
+                    # See the note on the FILE branch below: the reference installs both
+                    # the real framework and its dev STUB to one destination, so the
+                    # winner cannot be left to whichever entry is read last.
+                    if full in built and built[full] != t:
+                        keep = built[full] if "/dev-stubs/" in src else t
+                        collisions.append(
+                            (full, keep, t if keep == built[full] else built[full]))
+                        built[full] = keep
+                    else:
+                        built[full] = t
                 else:
                     unmapped.append((full, "no target builds it"))
             elif kind in ("FILE", "PROGRAM"):
@@ -613,7 +636,24 @@ def main(argv: list[str]) -> int:
                     continue
                 t = target_for(src, gen, binaries)
                 if t:
-                    built[full] = t
+                    # TWO ENTRIES, ONE DESTINATION. The reference installs both the real
+                    # framework and its dev STUB to the same path -- cocotron's AppKit and
+                    # src/frameworks/dev-stubs/AppKit/AppKit both land in
+                    # AppKit.framework/Versions/C -- so whichever cmake runs last wins
+                    # there, and here whichever entry is read last would win. That is a
+                    # coin toss deciding whether the prefix ships a working AppKit or an
+                    # empty one, and an empty one takes NSApplication down with it.
+                    #
+                    # The real implementation wins, always. A stub exists so a program can
+                    # LINK against a framework that is not built; when the framework IS
+                    # built, shipping the stub in its place is never what anyone wanted.
+                    if full in built and built[full] != t:
+                        keep = built[full] if "/dev-stubs/" in src else t
+                        drop = t if keep == built[full] else built[full]
+                        collisions.append((full, keep, drop))
+                        built[full] = keep
+                    else:
+                        built[full] = t
                 else:
                     unmapped.append((full, "build output with no target"))
             elif kind == "DIRECTORY":
@@ -664,6 +704,10 @@ def main(argv: list[str]) -> int:
     print(f"  UNMAPPED:                          {len(unmapped)}")
     for full, why in unmapped:
         print(f"      {full}  ({why})")
+    if collisions:
+        print(f"  destination collisions (real wins): {len(collisions)}")
+        for full, keep, drop in collisions:
+            print(f"      {full}\n          kept {keep}\n          over {drop}")
 
     if "--write" not in argv:
         return 0

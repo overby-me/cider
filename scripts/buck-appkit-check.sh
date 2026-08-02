@@ -8,13 +8,14 @@
 # pumps one event, printing at each step so a first run says how far it got rather than
 # just pass or fail.
 #
-# CURRENT RESULT: PARTIAL. NSApplication does not come up, and that is a REGRESSION FROM A
-# CORRECTION: CoreGraphics' Backends/X11.backend used to hold AppKit's X11 binary, because
-# install entries were matched by artifact basename. That binary defines X11Display and not
-# the CGSConnectionX11 its Info.plist names, so CoreGraphics had NO usable backend and
-# NSApplication came up regardless. With the right binary installed it dies silently. The
-# pairing was verified two ways before believing it: the reference's own link edges, and
-# each binary defining the principal class its own Info.plist declares. See task #32.
+# CURRENT RESULT: PASS, with the right files in place. It went PARTIAL for a while and the
+# reason is worth keeping: the reference installs the dev STUB frameworks to the same
+# destinations as the real ones (src/frameworks/dev-stubs/AppKit/AppKit and cocotron's
+# AppKit both land in AppKit.framework/Versions/C), so once install entries resolved by
+# path instead of by artifact name, the stub won and the prefix shipped an EMPTY AppKit.
+# NSApplication has nothing to come up in when its framework is a stub.
+# gen-install-from-manifests.py now reports every such collision and keeps the real
+# implementation.
 #
 # It supplies its OWN Xvfb rather than borrowing $DISPLAY: a probe that draws on the
 # developer's desktop is a probe nobody runs twice, and a headless server makes the check

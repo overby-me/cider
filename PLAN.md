@@ -898,6 +898,42 @@ binary defining the principal class its own Info.plist declares -- so this is a 
 bug a wrong file was hiding, not a mapping regression. Reverting a correct fix to keep a
 probe green would have buried it again.
 
+### The dev STUBS install over the real frameworks, and that shipped an empty AppKit
+
+The nastiest bug of the campaign, and one the port INHERITED and then made visible.
+
+The reference installs the dev-stub frameworks to the SAME destinations as the real ones:
+`src/frameworks/dev-stubs/AppKit/AppKit` and `src/external/cocotron/AppKit/AppKit` both land
+in `AppKit.framework/Versions/C`. Nine of them do it -- AppKit, AudioToolbox, Cocoa,
+CoreData, CoreGraphics, CoreText, ImageIO, OpenGL, QuartzCore. In cmake whichever install
+script runs last wins; in the port whichever entry was read last won.
+
+While install entries were matched by artifact BASENAME the collision was invisible, because
+both entries resolved to the same target anyway. The moment they resolved by PATH -- the
+correct behaviour -- the stub entry started resolving to the stub, and the prefix shipped
+**an AppKit with no implementation in it**. NSApplication has nothing to come up in.
+
+gen-install-from-manifests.py now REPORTS every destination two different targets install
+to, and keeps the real implementation:
+
+```
+  destination collisions (real wins): 9
+      libexec/darling/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit
+          kept //buck-src:AppKit_dylib
+          over //darwin/frameworks:AppKit_stub_dylib
+```
+
+A stub exists so a program can LINK against a framework that is not built. When the
+framework IS built, shipping the stub in its place is never what anyone wanted, so this is
+a judgement the port makes deliberately rather than inheriting cmake's ordering. It is
+printed rather than silent, because the previous silent version of this cost a working GUI.
+
+Two smaller lessons came with it. `binary_index()` had the same name-vs-path problem and now
+refuses to answer a NAME lookup with a dev-stub, matching what final_registry() already did.
+And the collision check had to go in BOTH branches of the entry loop -- the first version
+only guarded FILE entries, and frameworks arrive as SHARED_LIBRARY, so it reported nothing
+at all and looked like the problem was elsewhere.
+
 ### CoreGraphics can never find its X11 backend, and the reference cannot either
 
 Chasing the AppKit probe turned this up. `CGMainDisplayID()` returns 0 because CoreGraphics
