@@ -116,6 +116,21 @@ def expand_dir_links(root: str) -> int:
             target = os.path.realpath(link)
             if not os.path.isdir(target) or not os.path.exists(target):
                 continue
+            # A link pointing at its OWN ancestor is a cycle, and expanding one walks into
+            # the tree it is itself creating. JavaScriptCore has exactly one --
+            # DerivedSources/JavaScriptCore/JavaScriptCore -> ../.. -- and running this over
+            # it turned 13 directories at 5 levels into 1147 at 266 before ENAMETOOLONG
+            # stopped it. The `except OSError: pass` below then swallowed that, so the
+            # function reported expanding nothing while having wrecked the tree; buck2
+            # crawls what is left and `aquery` dies with "File name too long". That is what
+            # broke the Nix endpoint while the host, whose buck-src still held the plain
+            # symlink, kept building.
+            here = os.path.join(os.path.realpath(dirpath), name)
+            if here == target or here.startswith(target + os.sep):
+                print(f"buck-src: left cyclic dir link alone: "
+                      f"{os.path.relpath(link, root)} -> {os.readlink(link)}")
+                dirnames.remove(name)
+                continue
             try:
                 os.chmod(dirpath, os.stat(dirpath).st_mode | stat.S_IWUSR)
                 os.remove(link)

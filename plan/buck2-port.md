@@ -115,18 +115,29 @@ tests/darling-smoke.nix uses. tests/darling-buck2-smoke.nix boots the VM, finds 
 launcher, and then `darling-buck2 shell /bin/bash -c ...` times out with no output, where
 the identical command takes seconds on the host through both endpoints.
 
-Diagnosed, not guessed. The test now dumps the daemon log, the process list and the
-uid/userns state on failure, and the log says the container BOOTS: full dtape init,
-`execve expand /usr/libexec/shellspawn`, `darling_sigexc_self()`. Then it hangs. The
-difference from a working host run is one line:
+The test dumps the daemon log, the process list and the uid/userns state on failure, and the
+log says the container BOOTS: full dtape init, `execve expand /usr/libexec/shellspawn`,
+`darling_sigexc_self()`. Then it hangs.
 
-    host (works):  [guest kprintf] dtype for fd 2 -> /Volumes/SystemRootpipe:[94095524]
-    VM   (hangs):  [guest kprintf] dtype for fd 2 -> /darlingserver.log
+The lead recorded here used to be a one-line difference in the daemon log -- `dtype for fd 2`
+resolving to a pipe on the host and to `/darlingserver.log` in the VM. **That was a
+correlation written up as a cause, and it is now disproved.** Two host tests, seconds each:
 
-The guest never resolves its stderr through the host-root mount and falls back to the
-daemon's own log. Two cheaper explanations were tested and eliminated: running without a TTY
-reproduces fine on the host, and giving the VM 4 cores and 4 GB instead of 2 and 2 changes
-nothing.
+  * binding the container's stderr to a regular FILE instead of a pipe runs fine (rc=0);
+  * so does the NixOS driver's exact command shape, `( set -euo pipefail; CMD ) |
+    (base64 --wrap 0; echo)` with stdin closed.
+
+What the fd tables show instead, from a working host run: the persistent shellspawn INIT has
+fd 1/2 on `darlingserver.log` -- by design, `linux/launcher/src/main.rs:490` redirects the
+daemon's stdio there so a one-shot command does not pin the caller's stdout open forever --
+while the guest running the actual command gets the CALLER's fds passed to it. So
+`/darlingserver.log` is what the init legitimately reports, and the VM log line is most
+likely the init's rather than the command guest's, i.e. evidence that the command guest is
+never spawned at all. Being verified now in an interactive VM; do not act on the above
+before that lands.
+
+Cheaper explanations already eliminated: running without a TTY reproduces fine on the host,
+and giving the VM 4 cores and 4 GB instead of 2 and 2 changes nothing.
 
 **It is not the port.** The REFERENCE Nix-built Darling fails the same way in the same
 harness: `nix build .#checks.x86_64-linux.darling-smoke` gets to `darling shell true` and

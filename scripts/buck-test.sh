@@ -754,6 +754,35 @@ case "$ver" in
 *) bad "darling --version failed" ;;
 esac
 
+say "== buck-src normalisation (what the Nix endpoint materialises) =="
+# The host builds from buck-src as it stands; the Nix endpoint re-runs
+# buck-src-normalise.py over its own copy first. So a bug in that script is invisible on
+# the host and fatal in Nix, which is exactly what happened: expand_dir_links() followed
+# JavaScriptCore's DerivedSources/JavaScriptCore/JavaScriptCore -> ../.. into the tree it
+# was creating, made 1147 directories 266 levels deep out of 13, swallowed the resulting
+# ENAMETOOLONG in `except OSError` and reported expanding nothing. buck2 then crawled the
+# wreckage and aquery died with "File name too long".
+#
+# Tested on a COPY: buck-src holds materialized pins and this must never write to them.
+norm_t=$(mktemp -d)
+cp -a buck-src/JavaScriptCore/DerivedSources "$norm_t/" 2>/dev/null
+chmod -R u+w "$norm_t"
+before=$(find "$norm_t" -type d | wc -l)
+python3 -c '
+import importlib.util, sys
+s = importlib.util.spec_from_file_location("n", "scripts/buck-src-normalise.py")
+m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
+m.expand_dir_links(sys.argv[1])' "$norm_t" >/dev/null 2>&1
+after=$(find "$norm_t" -type d | wc -l)
+deep=$(find "$norm_t" -type d -printf '%d\n' | sort -n | tail -1)
+[ "$before" = "$after" ] &&
+	ok "expand_dir_links leaves the cyclic JSC link alone ($after dirs, depth $deep)" ||
+	bad "expand_dir_links expanded a cycle: $before -> $after dirs, depth $deep"
+[ -L "$norm_t/DerivedSources/JavaScriptCore/JavaScriptCore" ] &&
+	ok "the cyclic link survives as a symlink" ||
+	bad "the cyclic link was replaced by a real directory"
+chmod -R u+w "$norm_t" 2>/dev/null; rm -rf "$norm_t"
+
 say "== the prefix (what a Darling install actually is) =="
 # The port's product is not the link outputs, it is a laid-out prefix. This builds the
 # whole of it, which is also the broadest single check in this file: 151 targets, and a
