@@ -860,6 +860,52 @@ name let three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain key pur
 empty stub instead of the framework. final_registry() now registers a `dev-stubs/` target
 by PATH ONLY. A stub is never the answer to "which target builds libX".
 
+### What "100 percent" does NOT mean
+
+Worth stating plainly, because the coverage number invites the wrong reading.
+
+`buck2 build //...` over all **12,115 targets** fails on exactly TWO: `stdcxx_obj` and
+`stdcxx_obj2`, the out-of-scope `libstdc++.6.dylib`. So the build-level claim is strong.
+What it does not cover:
+
+- **libstdc++.6.dylib genuinely does not build.** GCC 4.2.1's vendored headers conflict
+  with libc++'s `stdlib.h` at the `-std=c++14` the reference itself passes (`abs(long)` and
+  `div(long, long)` redeclared against a `using ::abs`). Upstream ships it.
+- **32-bit is not built.** `libsyscall_32` -> `libsystem_kernel_static32.a`, plus the 74
+  i386 MIG edges. The port is x86_64 only.
+- **cctools ld/ar/ranlib come from Nix** rather than being built here.
+- **The metric counts LINK edges only**: 1439 of the reference's 38,337 ninja edges. The
+  3,462 CUSTOM_COMMAND (codegen) edges are covered only by IMPLICATION -- a target missing
+  its generated sources fails to build, and everything builds -- with no 1:1 check.
+- **86 edges are matched on artifact name alone** (the `by-name` line).
+
+**And the big one: build parity is not runtime parity.** buck-test.sh's 143 checks are
+almost entirely static -- does it link, does it export the right symbols, is the
+install_name right. Execution lives in separate scripts, and their combined scope is: the
+container boots, launchd boots, bash runs, guest nix builds and runs bash, plus 22 smoke
+assertions (shell, uname/sw_vers, filesystem, sandbox-exec, diskutil, Directory Services).
+Of ~1450 built artifacts, a few dozen have ever been RUN.
+
+`scripts/buck-jsc-check.sh` is the first probe aimed at that gap, and it paid immediately.
+jsc loads, links against the buck2-built JavaScriptCore, WTF and bmalloc, and gets as far
+as WTF's stack setup inside the container -- then dies on
+
+```
+ASSERTION FAILED: m_origin && m_bound
+wtf/StackBounds.h(129) : bool WTF::StackBounds::isGrowingDownwards() const
+```
+
+Both members nullptr is exactly what the `constexpr StackBounds()` default constructor
+produces, so a DEFAULT-CONSTRUCTED bounds is being queried before anything filled it in.
+
+**This is not a port defect, and checking that was the important step.** The reference does
+not put `-DNDEBUG` on the JavaScriptCore compile edge -- the token appears 1379 times
+elsewhere in the graph and not once there -- so the reference compiles JSC with assertions
+enabled too and its jsc asserts in the same place. The port reproduces the reference
+faithfully; "JavaScriptCore works on Darling" was never established upstream either. The
+probe therefore exits 3 for this state and 1 only if jsc fails to reach WTF init, which
+WOULD be a regression.
+
 NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
 target that does not build must have its block REMOVED, not left in place.
 
