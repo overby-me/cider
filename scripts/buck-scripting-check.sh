@@ -81,9 +81,27 @@ out=$(run_guest /usr/bin/python2.7 -c "$py" || true)
 printf '%s\n' "$out" | grep -E "^PY_(RESULT|FAIL)" || true
 py_ok=$(printf '%s\n' "$out" | sed -n 's|^PY_RESULT \([0-9]*\)/.*|\1|p')
 py_tot=$(printf '%s\n' "$out" | sed -n 's|^PY_RESULT [0-9]*/\([0-9]*\)|\1|p')
-[ "${py_ok:-0}" -ge 50 ] &&
-	say "ok   python imported ${py_ok}/${py_tot} extension modules (floor 50)" ||
-	{ say "FAIL python imported ${py_ok:-0}/${py_tot:-?} extension modules, floor is 50"; fail=1; }
+[ "${py_ok:-0}" -ge 51 ] &&
+	say "ok   python imported ${py_ok}/${py_tot} extension modules (floor 51)" ||
+	{ say "FAIL python imported ${py_ok:-0}/${py_tot:-?} extension modules, floor is 51"; fail=1; }
+
+say "== python: sqlite3 actually works =="
+# Not just importable: the reference installs this module under a name CPython cannot
+# import (see the _sqlite3 note in gen-install-from-manifests.py), so this asserts the
+# whole path -- correct filename, dlopen, init_sqlite3, and a real query.
+sq='
+import sqlite3
+c = sqlite3.connect(":memory:")
+c.execute("create table t (a int, b text)")
+c.execute("insert into t values (?, ?)", (42, "hello"))
+print("SQLITE_OK lib=%s row=%r" % (sqlite3.sqlite_version, c.execute("select * from t").fetchone()))
+'
+out=$(run_guest /usr/bin/python2.7 -c "$sq" || true)
+printf '%s\n' "$out" | grep -E "^SQLITE_OK" || true
+case "$out" in
+*"SQLITE_OK"*"(42, u'hello')"*) say "ok   python sqlite3 opens a database and round-trips a row" ;;
+*) say "FAIL python sqlite3 did not work: $out"; fail=1 ;;
+esac
 
 say "== zsh: zmodload every module =="
 # zmodload is zsh's dlopen. Each module registers builtins or parameters on success.

@@ -211,6 +211,7 @@ prefix_tree(
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_scproxy.so": "//buck-src/python:py27__scproxy_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_socket.so": "//buck-src/python:py27__socket_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_sqlite.so": "//buck-src/python:py27__sqlite_dylib",
+        "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_sqlite3.so": "//buck-src/python:py27__sqlite_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_ssl.so": "//buck-src/python:py27__ssl_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_struct.so": "//buck-src/python:py27__struct_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_testcapi.so": "//buck-src/python:py27__testcapi_dylib",

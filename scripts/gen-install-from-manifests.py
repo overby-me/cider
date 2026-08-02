@@ -88,10 +88,20 @@ GENERATED = {
 # The prefix is what a Darling install IS, so it carries them here instead, at the paths the
 # launcher looks for -- it execs INSTALL_PREFIX/bin/darlingserver and the plain name is what
 # keeps /proc/<pid>/comm reading "darlingserver".
+#
+# The _sqlite3 entry is a DELIBERATE DIVERGENCE from the reference, stated here rather than
+# done quietly. CPython 2.7 imports a C extension X by dlopening X.so and calling initX, and
+# python's own sqlite3 package does `from _sqlite3 import *`. The reference installs this
+# module as _sqlite.so while the symbol it exports is init_sqlite3, so `import sqlite3` fails
+# with "No module named _sqlite3" in the reference exactly as it did here. The artifact IS
+# the _sqlite3 module; only the installed name is wrong. This ADDS the correct name and
+# leaves the reference's _sqlite.so in place, so nothing the reference ships disappears.
 EXTRA = {
     "bin/darling": "//linux/launcher:darling",
     "bin/darlingserver": "//linux/server:darlingserverd",
     "libexec/darling/usr/libexec/darling/mldr": "//darwin/loader:mldr",
+    "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7"
+    "/lib/python2.7/lib-dynload/_sqlite3.so": "//buck-src/python:py27__sqlite_dylib",
 }
 
 # install(DIRECTORY) entries whose source is a BUILD output, with the hand-written target

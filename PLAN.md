@@ -1068,15 +1068,21 @@ initializer, resolves its symbols against the frameworks underneath, and hands t
 interpreter something usable, which is a great deal more.
 
 ```
-PY_RESULT 52/54      ZSH_RESULT 32/32      PL_RESULT 13/14
+PY_RESULT 53/55      ZSH_RESULT 32/32      PL_RESULT 13/14
 ```
 
-**All three failures are upstream's, and each was checked against the reference rather than
-assumed:**
+**All three failures were upstream's, and each was checked against the reference rather than
+assumed. One is now fixed:**
 
-- `_sqlite`: "dynamic module does not define init function (init_sqlite)". The reference
-  installs the file as `_sqlite.so`, but python's sqlite3 package dlopens `_sqlite3` and the
-  C init symbol is `init_sqlite3`. Same name in both builds.
+- `_sqlite`: **FIXED, by diverging from the reference deliberately.** The reference installs
+  the file as `_sqlite.so` while the symbol it exports is `init_sqlite3`, and CPython 2.7
+  imports an extension X by dlopening `X.so` and calling `initX`. python's own sqlite3
+  package does `from _sqlite3 import *`, so `import sqlite3` failed with "No module named
+  _sqlite3" in the reference too. The artifact IS the _sqlite3 module; only the installed
+  name is wrong. gen-install-from-manifests.py's EXTRA map now ALSO installs it as
+  `_sqlite3.so` and leaves the reference's `_sqlite.so` in place, so nothing the reference
+  ships disappears. `import sqlite3` now opens a database and round-trips a row
+  (SQLite 3.32.3), and the check asserts that rather than mere importability.
 - `_curses_panel`: "No module named _curses". `_curses_panel.so` is installed and
   `_curses.so` is not, in the reference too.
 - `Storable`: "object version 2.4 does not match bootstrap parameter 2.41". The 5.18
