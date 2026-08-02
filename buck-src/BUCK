@@ -33385,6 +33385,7 @@ cc_header_root(
     name = "xxd_inc_vim_src",
     headers = glob([
         "vim/src/**/*",
+        "vim/src/proto/**/*",
         "vim/src/libvterm/include/*.h",
         "vim/src/libvterm/include/**/*.h",
         "vim/src/libvterm/include/*.c",
@@ -33392,22 +33393,9 @@ cc_header_root(
     root = "vim/src",
     include_subdirs = [
         ".",
+        "proto",
         "libvterm/include",
     ],
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "xxd_inc_vim_src_proto",
-    headers = glob(["vim/src/proto/**/*"]),
-    root = "vim/src/proto",
-    visibility = ["PUBLIC"],
-)
-
-cc_header_root(
-    name = "xxd_inc_ruby_darling_include_ruby",
-    headers = glob(["ruby/darling/include/ruby/*.h", "ruby/darling/include/ruby/**/*.h", "ruby/darling/include/ruby/*.c"]),
-    root = "ruby/darling/include/ruby",
     visibility = ["PUBLIC"],
 )
 
@@ -33435,8 +33423,7 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         ":xxd_inc_vim_src",
-        ":xxd_inc_vim_src_proto",
-        ":xxd_inc_ruby_darling_include_ruby",
+        "//buck-src/ruby:ruby_inc_darling_include_ruby",
     ],
     visibility = ["PUBLIC"],
 )

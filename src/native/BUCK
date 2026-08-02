@@ -38,6 +38,30 @@ _NATIVE = [
     ("GLU", "libGLU.so", "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries"),
 ]
 
+# What this package produces, for the registry in scripts/gen-buck-from-ninja.py. That
+# registry is a text scan for a literal `name = ... dylib_name = ...` pair, and the three
+# comprehensions below write neither, so without these lines all sixteen read as UNPORTED
+# in scripts/buck-coverage.py -- which is how they sat in the missing list while being
+# built and checked by scripts/buck-test.sh. The list mirrors _NATIVE, and buck-test.sh
+# fails if the two ever disagree.
+#
+# buck-registry: libFreeType.dylib = FreeType_dylib
+# buck-registry: libjpeg.dylib = jpeg_dylib
+# buck-registry: libpng.dylib = png_dylib
+# buck-registry: libtiff.dylib = tiff_dylib
+# buck-registry: libgif.dylib = gif_dylib
+# buck-registry: libEGL.dylib = EGL_dylib
+# buck-registry: libfontconfig.dylib = fontconfig_dylib
+# buck-registry: libX11.dylib = X11_dylib
+# buck-registry: libXext.dylib = Xext_dylib
+# buck-registry: libXRandR.dylib = XRandR_dylib
+# buck-registry: libXcursor.dylib = Xcursor_dylib
+# buck-registry: libxkbfile.dylib = xkbfile_dylib
+# buck-registry: libcairo.dylib = cairo_dylib
+# buck-registry: libdbus.dylib = dbus_dylib
+# buck-registry: libGL.dylib = GL_dylib
+# buck-registry: libGLU.dylib = GLU_dylib
+
 # The directories the SONAMEs are dlopen()ed from, written by scripts/buck-setup.sh from
 # pkg-config. Empty means the stubs cannot generate, which the setup script warns about.
 _ELF_LIB_DIRS = read_root_config("darling", "elf_lib_dirs", "")

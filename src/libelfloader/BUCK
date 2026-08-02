@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_binary")
 
 # wrapgen: writes the Mach-O stub that lets a Darwin program call into a HOST ELF library.
 #

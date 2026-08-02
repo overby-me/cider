@@ -3287,5 +3287,10 @@
   ],
   "printers.cgi": [
     "//buck-src:fw_CoreFoundation"
+  ],
+  "Ruby": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Security",
+    "cflag:-iquote."
   ]
 }

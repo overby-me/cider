@@ -381,6 +381,48 @@ failed as "Unknown target", and so did the twelve binaries that link them -- twe
 undefined-symbol failures with one cause, which looked far worse than it was. Classify by
 the rule name properly: dylib, archive, executable, module.
 
+### Stage 2: ruby (92 of 92), and what splitting a pin costs
+
+The whole ruby group: the Ruby framework dylib, 90 `.bundle` loadable modules and the ruby
+executable. Stock coverage 77% -> 85%.
+
+**Loadable modules are `--dylibs`.** A `.bundle` or a `.so` extension module is a plain
+SHARED_LIBRARY_LINKER edge that happens to carry `-Wl,-bundle`, and the generator copies
+that off the link edge like any other flag; zsh's 35 modules have been declared that way
+since they landed (`zmod_zutil_dylib` in buck-src/zsh/BUCK). There is no separate rule and
+no separate mode to look for.
+
+**`#include __FILE__` needs `-iquote.`** ruby's debug_counter.h is an X-macro file that
+re-includes ITSELF that way, and the trick only works if `__FILE__` is a path the compiler
+can reopen. cmake compiles from a store path, so `__FILE__` is absolute and resolves; buck2
+compiles project-relative with cwd at the project root, so `__FILE__` is
+`buck-src/ruby/ruby/debug_counter.h` and the quoted-include search (which starts at the
+INCLUDER's directory, never the cwd) cannot find it. `cflag:-iquote.` in extra-deps.json
+fixes all 18 affected files and is strictly narrower than what the reference does, since
+`-iquote` is consulted only for `#include "..."`. Patching the pin would have worked too,
+but it would have rebuilt darling-src and both ninja graphs, moving the baseline the port
+is measured against.
+
+**Splitting a pin is a four-step sequence**, and buck-src/BUCK is at 56k lines -- already
+well past the 33k that the split doc calls more memory than the machine has on the
+Nix-lowered path -- so a group of this size has no business going in there:
+
+1. add the pin to `buck/generated/split-pins.txt`;
+2. `gen-sdk-header-roots.py --framework-roots . mach i386 machine libkern sys security_libDER`
+   (the plain form writes `sdk_headers.bzl`; ruby changed nothing there because it exports
+   no `usr/include` namespace, only a framework);
+3. `buck-exports.py` then `buck-fix-loads.py`;
+4. a `CROSS_PACKAGE_ROOTS` entry for any include path another package still reaches into.
+
+Step 4 is the one that bites, because **buck2 does not error on a glob that reaches into a
+subpackage -- it silently matches nothing.** vim's xxd globbed
+`ruby/darling/include/ruby/**` from //buck-src; the moment buck-src/ruby/BUCK existed that
+root staged ZERO files, and nothing failed, because xxd compiles `-DDYNAMIC_RUBY` and
+resolves ruby through dlopen at runtime without ever opening one of those headers. It built,
+installed and passed the suite with a dead include path. The root now lives in the ruby
+package and xxd names it by label (46 files staged). Assume every glob that mentions a
+newly split pin is silently empty and check each one; a passing build proves nothing here.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
@@ -388,10 +430,13 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 | | cli | stock |
 |---|---|---|
 | link edges | 871 | 1359 |
-| ported | 862 (98%) | 862 (63%) |
+| ported | 862 (98%) | 1168 (85%) |
 | install entries | 1160 | 1872 |
 | UNMAPPED | 0 | **523** |
 | build.ninja lines | 201k | 347k |
+
+The stock "ported" figure was 1060 (77%) before this round and 862 (63%) when first sized.
+108 of the gain is real work; 16 of it was a MEASUREMENT bug, below.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
@@ -412,6 +457,17 @@ take EIGHT MINUTES a run because target_for called gen.final_registry() and
 gen.archive_registry() per entry, and each of those WALKS THE WHOLE REPO re-reading every
 BUCK file; they are built once now and it takes 1.6 seconds. If another generator in
 scripts/ feels hung, look for the same shape before assuming it is the ninja parse.
+
+**The registry is a TEXT SCAN, so a target built from a Starlark table is invisible to it.**
+`final_registry()` in gen-buck-from-ninja.py matches a literal `name = "X_dylib",` followed
+by `dylib_name = "..."`. src/native writes its sixteen wrap_elf stubs as three list
+comprehensions over a `_NATIVE` table, so it matches none of them, and buck-coverage.py
+reported all sixteen as unported while buck-test.sh was building and checking them by
+export count. They sat in the missing list for as long as nobody cross-read the two. Such a
+package now declares what it produces with a `# buck-registry: <artifact> = <target>`
+pragma, which the registry reads alongside the literal form; buck-test.sh asserts the
+pragma list and `_NATIVE` still agree, because duplicated data drifts. When a coverage
+number disagrees with something you know builds, suspect the scan before the port.
 
 One more for buck-test.sh specifically: read Mach-O symbols with llvm-nm, never plain nm.
 Inside `nix develop` the bare name resolves to the clang wrapper's binutils nm, which
@@ -965,6 +1021,22 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    already done, see below; the rest are Darling's own framework implementations under
    src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
+
+   Of those src/external groups **ruby is done** (92). What remains, all
+   SHARED_LIBRARY_LINKER so all `--dylibs`, and each wanting its own split-pin package
+   before its blocks land anywhere near buck-src/BUCK:
+
+   | group | edges | shape |
+   |---|---|---|
+   | perl 5.18 | 56 + 1 exe + 1 archive | `.bundle` modules |
+   | perl 5.28 | 55 + 1 exe | `.bundle` modules |
+   | python 2.7 | 54 + 2 exes | Python framework dylib + `.so` extensions |
+   | pyobjc | 24 | `.so` extensions |
+
+   perl ships TWO versions whose module names are identical (`Cwd.bundle` in both), so
+   check which edge the generator picked; the cmake target names disambiguate them and the
+   artifact basenames do not. Expect `#include __FILE__`-class surprises: ruby needed
+   `-iquote.` and the pattern will not be unique to it.
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in

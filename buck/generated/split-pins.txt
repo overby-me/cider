@@ -43,6 +43,7 @@ ncurses
 objc4
 openpam
 removefile
+ruby
 screen
 syslog
 system_cmds

@@ -120,6 +120,10 @@ CROSS_PACKAGE_ROOTS = {
     # (NSObject internals), and foundation is NOT a split pin, so its files belong to
     # the buck-src mega-package.
     "foundation/src": "//buck-src:Foundation_inc_foundation_src",
+    # Same story as corefoundation, for vim's xxd: it compiles -DDYNAMIC_RUBY and gets
+    # -Isrc/external/ruby/darling/include/ruby. ruby became a split pin when its 92
+    # targets landed, so the root has to be declared inside that package.
+    "ruby/darling/include/ruby": "//buck-src/ruby:ruby_inc_darling_include_ruby",
     # mldr's include tree is a symlink farm into the pins for headers the SDK already
     # carries (mach/, sys/, i386/, libkern/, architecture/): 15 of its 19 entries are links
     # into xnu and architecture, and every target that gets this -I also depends on sdk_env.
@@ -1237,6 +1241,12 @@ def final_registry() -> dict:
     reexports by path (libSystem.B.dylib reexports libsystem_duct.dylib), and the
     dylib name and the cmake target name differ often enough that guessing between
     them is how a reexport list ends up naming something that does not exist.
+
+    This is a TEXT scan, so it only sees a target whose name and dylib_name are
+    written out literally. A block that builds its targets from a Starlark table --
+    src/native's sixteen wrap_elf stubs are the case -- is invisible to it, and the
+    sixteen read as unported for as long as nobody checks. Such a package declares
+    what it produces with a `buck-registry:` pragma instead.
     """
     reg = {}
     for dirpath, dirnames, filenames in os.walk(REPO):
@@ -1246,6 +1256,8 @@ def final_registry() -> dict:
             continue
         pkg = os.path.relpath(dirpath, REPO)
         text = open(os.path.join(dirpath, "BUCK")).read()
+        for m in re.finditer(r"#\s*buck-registry:\s*(\S+)\s*=\s*(\S+)", text):
+            reg[m.group(1)] = f"//{pkg}:{m.group(2)}"
         for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_(final|dylib)",\s*\n\s*dylib_name = "([^"]+)"', text):
             # Keep the suffix the target actually uses: a single-pass library is
             # <base>_dylib, and naming it <base>_final does not resolve.

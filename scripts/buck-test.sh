@@ -615,6 +615,20 @@ for n in X11 cairo GL FreeType gif; do
 		bad "lib$n.dylib exports only ${nex:-0} symbols (did wrapgen's dlopen fail?)"
 done
 
+# The buck-registry: pragmas in that file are what makes buck-coverage.py see these
+# sixteen at all -- they are built from a Starlark table, and the registry is a text scan
+# for a literal name/dylib_name pair. Duplicated data drifts, so assert the pragma list
+# and the _NATIVE table still agree. Without this the sixteen silently return to reading
+# as unported the moment someone adds a seventeenth.
+nat_tbl=$(sed -n 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p' src/native/BUCK | sort)
+nat_reg=$(sed -n 's/^# buck-registry: lib\(.*\)\.dylib = .*$/\1/p' src/native/BUCK | sort)
+if [ "$nat_tbl" = "$nat_reg" ]; then
+	ok "src/native buck-registry pragmas match _NATIVE ($(printf '%s\n' "$nat_tbl" | wc -l) entries)"
+else
+	bad "src/native buck-registry pragmas have drifted from _NATIVE"
+	diff <(printf '%s\n' "$nat_tbl") <(printf '%s\n' "$nat_reg") | sed 's/^/    /' || true
+fi
+
 say "== wrapgen (the host-ELF bridge generator) =="
 # The second host tool (task #8), and the one hdiutil is blocked on: cmake's
 # wrap_elf(<name> lib<name>.so) runs it over a HOST library's dynamic symbol table and emits
