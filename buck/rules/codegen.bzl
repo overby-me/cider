@@ -538,3 +538,74 @@ preprocess_gen = rule(
         "toolchain": attrs.toolchain_dep(default = "toolchains//:darwin_cc"),
     },
 )
+
+# ---------------------------------------------------------------------------
+# elf_wrapper: cmake's wrap_elf(), the guest-side bridge to a HOST ELF library.
+#
+# Darling reaches host libraries (fuse, X11, the ffmpeg family) through
+# libelfloader. The guest side of that bridge is a generated stub dylib per host
+# library: wrapgen reads the ELF's dynamic symbol table and emits a C file whose
+# every export forwards through libelfloader. This rule is only the CODEGEN half;
+# the caller builds the result with darwin_dylib, because the install_name,
+# siblings and reexports are the dylib rule's business, not this one's.
+#
+# The awkward part is that wrapgen dlopen()s the real .so AT BUILD TIME, so the
+# library has to be findable by the loader. Passing a bare SONAME (which is what
+# the reference does: wrap_elf(fuse libfuse.so)) fails unless its directory is on
+# LD_LIBRARY_PATH -- the dev shell contains fuse but does not put it there. The
+# directories come from [darling] elf_lib_dirs in .buckconfig.local, written by
+# scripts/buck-setup.sh from pkg-config, the same way ld64_dir and
+# clang_resource_dir are supplied.
+#
+# That makes this the one rule in the port whose OUTPUT depends on a file outside
+# the build graph. It is unavoidable: the stub's whole purpose is to mirror
+# whatever the host actually provides. Worth knowing when a wrapper's contents
+# differ between machines.
+# ---------------------------------------------------------------------------
+
+_ELF_WRAPPER_RUNNER = '''set -euo pipefail
+wrapgen="$1"; soname="$2"; out_c="$3"; out_h="$4"; libdirs="$5"
+export LD_LIBRARY_PATH="$libdirs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+"$wrapgen" "$soname" "$out_c" "$out_h"
+# wrapgen writes the vars header ONLY when the library exports data symbols, and
+# most do not (fuse does not). Buck2 requires every declared output to exist, so
+# an empty one stands in rather than making the header conditional at the rule
+# level, where a consumer would have to know which case it is in.
+[ -f "$out_h" ] || : > "$out_h"
+'''
+
+def _elf_wrapper_impl(ctx):
+    runner = ctx.actions.write(ctx.label.name + "__wrap.sh", _ELF_WRAPPER_RUNNER, is_executable = True)
+    out_c = ctx.actions.declare_output(ctx.attrs.name_base + ".c")
+    out_h = ctx.actions.declare_output(ctx.attrs.name_base + "_vars.h")
+    ctx.actions.run(
+        cmd_args([
+            "bash",
+            runner,
+            ctx.attrs.wrapgen[RunInfo],
+            ctx.attrs.soname,
+            out_c.as_output(),
+            out_h.as_output(),
+            ctx.attrs.lib_dirs,
+        ]),
+        category = "elf_wrapper",
+        identifier = ctx.attrs.name_base,
+        # The host .so is not a build input, so buck2 cannot know when it changes.
+        local_only = True,
+    )
+    return _codegen_providers(ctx, [out_c, out_h], [out_c], [out_h])
+
+elf_wrapper = rule(
+    impl = _elf_wrapper_impl,
+    attrs = {
+        "deps": attrs.list(attrs.dep(), default = []),
+        "header_root": attrs.string(default = ""),
+        # Directories to put on LD_LIBRARY_PATH so the SONAME resolves.
+        "lib_dirs": attrs.string(default = ""),
+        # Stem of the generated files: <base>.c and <base>_vars.h.
+        "name_base": attrs.string(),
+        # The host library as the loader knows it, e.g. "libfuse.so".
+        "soname": attrs.string(),
+        "wrapgen": attrs.dep(providers = [RunInfo]),
+    },
+)

@@ -235,9 +235,35 @@ registry knew at the time, so a target generated early can be permanently poorer
 reference without anything noticing. Anything that resolves through a registry (reexports,
 siblings, upward links) has the same exposure.
 
-The remaining 1 is hdiutil. NOTE that UNMAPPED counts install entries whose TARGET EXISTS,
-not ones that build, so a target that does not build must have its block REMOVED, not left
-in place.
+hdiutil closed it. **UNMAPPED is 0: every install entry of the cli component maps to a
+target that builds.** It needed the wrap_elf mechanism, which is now two rules: elf_wrapper
+runs wrapgen over the HOST libfuse to generate forwarding stubs, and the existing generated
+fuse_obj/fuse_dylib blocks compile them into /usr/lib/native/libfuse.dylib with 176 exports.
+Worth noting the generated cone was already there waiting for its source, so the work was
+wiring rather than writing; check for an existing block before adding one.
+
+elf_wrapper is the ONE rule in this port whose output depends on a file outside the build
+graph, because the stub must mirror whatever the host actually provides. The host lib dir
+comes from [darling] elf_lib_dirs in .buckconfig.local, written by buck-setup.sh from
+pkg-config, alongside ld64_dir and clang_resource_dir.
+
+### Where stage 1 landed
+
+The cli PREFIX is complete. Every artifact the reference installs, the port builds.
+
+The link graph is a different measure and needs care, because buck-coverage.py reports 88
+percent (770/871) and that number is misleading. It matches a link edge to a target of the
+same NAME, and of the 106 it calls missing, 92 are not: curl is ported as `curlexe`, and
+clang, git, bison, Rez and the rest of the Carbon resource tools are deliberately replaced
+by xcselect SHIMS, which is what the reference INSTALLS for them. Nine genuinely unported
+in-scope edges remain (bsdln, elfdep, getuuid, csparser.bundle, lzfse, ping, vifs,
+libbind9_isccc.a, libopendirectory_internal.a) and none is installed by cli, which is why
+UNMAPPED reaches 0 without them. Five more are documented out of scope. Fixing
+buck-coverage.py to resolve aliases is queued, because a coverage number that hides its real
+gaps behind naming noise is worse than no number.
+
+NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
+target that does not build must have its block REMOVED, not left in place.
 
 Three things worth knowing before touching this again. buck-port.py's framework resolver has
 to be re-run AFTER the gen_srcs are wired: a target that builds without its generated
@@ -789,27 +815,23 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **hdiutil**, the LAST cli install entry. wrapgen is ported and the mechanism is proven;
-   what remains is a wrap_elf rule and hdiutil itself.
+1. **STAGE 2: point result-graph-ref at the STOCK graph.** Stage 1 (cli) is done on the
+   install side, see below. The flake already builds the stock graph
+   (`packages.darling-graph`, components = "stock"); re-derive UNMAPPED and coverage against
+   it and expect a large jump, because stock adds the GUI framework and stub trees plus
+   python, ruby and perl.
 
-   cmake's `wrap_elf(name elfname)` (cmake/wrap_elf.cmake) does two things: it runs
-   `wrapgen <elfname> <name>.c <name>_vars.h`, then builds that generated C as a Darwin
-   dylib with install_name `/usr/lib/native/lib<name>.dylib`, linking `system`, with
-   `src/startup/mldr/elfcalls` on the include path, installed to
-   libexec/darling/usr/lib/native.
+2. **Make buck-coverage.py account for target ALIASES.** It matches a link edge to a target
+   of the same NAME, so it reports 106 missing for cli when 92 of those are ported under a
+   different target name (curl as curlexe) or deliberately replaced by an xcselect shim
+   (clang, git, bison, Rez). 88 percent is therefore wrong in a way that hides the 9 real
+   gaps. binary_index() in gen-install-from-manifests.py already resolves exe_name and
+   dylib_name and could be shared.
 
-   The one real constraint is that wrapgen `dlopen`s the HOST library at BUILD time to read
-   its dynamic symbol table, so the .so has to be findable by the loader. `libfuse.so`
-   alone fails; with LD_LIBRARY_PATH pointing at fuse's lib dir it produces an 895-line
-   fuse.c (fuse_vars.h is only written when the library has data symbols, and fuse has
-   none). fuse IS in the dev shell already
-   (/nix/store/*-fuse-2.9.9/lib, and pkg-config finds it), so the path should be supplied
-   the way the port already supplies nix store paths: a `[darling]` key in
-   .buckconfig.local written by scripts/buck-setup.sh, read with read_root_config, as
-   ld64_dir and clang_resource_dir are.
+3. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
+   csparser.bundle, lzfse, ping, vifs, libbind9_isccc.a, libopendirectory_internal.a. None
+   is installed by the cli component, which is why UNMAPPED is 0 without them.
 
-   Then hdiutil (buck-src/darling-dmg, dmg_sources plus src/main-hdiutil.cpp) linking fuse
-   icucore z bz2 crypto44 xml2 iconv lzfse.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference

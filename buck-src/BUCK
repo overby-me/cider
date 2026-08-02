@@ -1,5 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root", "cc_objects", "cc_static_lib")
-load("//buck/rules:codegen.bzl", "bison_gen", "configure_file", "flex_gen", "mig_gen", "preprocess_gen")
+load("//buck/rules:codegen.bzl", "bison_gen", "configure_file", "elf_wrapper", "flex_gen", "mig_gen", "preprocess_gen")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir", "prefix_gen_dir")
@@ -38977,6 +38977,9 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/startup:mldr_elfcalls",
     ],
+    gen_srcs = [
+        "//buck-src:fuse_wrap",
+    ],
     visibility = ["PUBLIC"],
 )
 # END generated: fuse
@@ -38999,7 +39002,9 @@ darwin_dylib(
         "//buck-src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
-    deps = ["//darwin:sdk_env"],
+    deps = [
+        "//darwin:sdk_env",
+    ],
     visibility = ["PUBLIC"],
 )
 # END generated: fuse dylibs
@@ -48925,6 +48930,22 @@ prefix_gen_dir(
     visibility = ["PUBLIC"],
 )
 
+# The guest-side bridge to the HOST's libfuse, which is what lets hdiutil mount a DMG.
+#
+# cmake spells this wrap_elf(fuse libfuse.so) in darling-dmg/CMakeLists.txt; here it is the
+# two halves that hides. elf_wrapper runs wrapgen over the host library to generate the
+# forwarding stubs, and darwin_dylib builds them into a Mach-O whose install_name is the one
+# a guest binary records. Everything under /usr/lib/native is this shape.
+elf_wrapper(
+    name = "fuse_wrap",
+    soname = "libfuse.so",
+    name_base = "fuse",
+    wrapgen = "//src/libelfloader:wrapgen",
+    lib_dirs = read_root_config("darling", "elf_lib_dirs", ""),
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
 # BEGIN generated: prefix dirs
 # GENERATED from the reference build's install entries by
 # scripts/gen-install-from-manifests.py -- review before committing.
@@ -50748,3 +50769,36 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: secd binary
+
+# BEGIN generated: hdiutil binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries hdiutil   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+
+darwin_binary(
+    name = "hdiutil",
+    objs = [
+        # hdiutil
+        ":hdiutil_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:fuse_dylib",
+        "//buck-src:bz2_dylib",
+        "//buck-src:crypto44_dylib",
+        "//buck-src:xml2_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:icucore_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:lzfse",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: hdiutil binary

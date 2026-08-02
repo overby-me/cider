@@ -1472,5 +1472,9 @@
   ],
   "login": [
     "//darwin/private-frameworks:fw_login"
+  ],
+  "fuse": [
+    "gen://buck-src:fuse_wrap",
+    "//src/startup:mldr_elfcalls"
   ]
 }

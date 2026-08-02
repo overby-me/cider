@@ -243,6 +243,7 @@ prefix_tree(
         "libexec/darling/usr/bin/grops": "//buck-src/groff:grops",
         "libexec/darling/usr/bin/grotty": "//buck-src/groff:grotty",
         "libexec/darling/usr/bin/gzip": "//buck-src:gzip",
+        "libexec/darling/usr/bin/hdiutil": "//buck-src:hdiutil",
         "libexec/darling/usr/bin/hdxml2manxml": "//src/xcselect:hdxml2manxml_shim",
         "libexec/darling/usr/bin/head": "//buck-src:head",
         "libexec/darling/usr/bin/headerdoc2html": "//src/xcselect:headerdoc2html_shim",

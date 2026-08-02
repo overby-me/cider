@@ -42,6 +42,18 @@ triplet=x86_64-apple-darwin20
 clang_resource_dir="$(clang -print-resource-dir)"
 echo "clang resource dir: $clang_resource_dir"
 
+# Darling reaches HOST libraries through libelfloader, and wrapgen builds the Mach-O stub
+# for each one by dlopen()ing the real .so at BUILD time to read its dynamic symbol table.
+# dlopen goes through the loader's search path, so the library's directory has to be on it:
+# fuse is the case (hdiutil links it), and `dlopen("libfuse.so")` fails without this even
+# though the dev shell contains fuse. pkg-config knows where it is.
+elf_lib_dirs="$(pkg-config --variable=libdir fuse 2>/dev/null || true)"
+if [ -n "$elf_lib_dirs" ]; then
+	echo "host ELF lib dirs: $elf_lib_dirs"
+else
+	echo "WARNING: pkg-config cannot find fuse; hdiutil's wrap_elf stub will not generate" >&2
+fi
+
 # The store path is immutable, so an absolute reference to it is stable; rerun
 # this script after bumping the sources that ld64 is built from.
 cat >.buckconfig.local <<EOF
@@ -54,6 +66,7 @@ cat >.buckconfig.local <<EOF
 ld = $ld64/bin/$triplet-ld
 ld64_dir = $ld64/bin
 clang_resource_dir = $clang_resource_dir
+elf_lib_dirs = $elf_lib_dirs
 EOF
 
 echo "wrote .buckconfig.local:"
