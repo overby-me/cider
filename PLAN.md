@@ -1103,6 +1103,30 @@ The counts are the assertion, not per-module pass/fail: a handful of extensions 
 legitimately fail on a system without the thing they wrap, so the check asserts floors
 (50, 30, 12) measured from the first run.
 
+### The Security cone runs, and it worked on the first try
+
+Security is the largest cone the port builds that had never executed an instruction: 38
+static archives, 5 dylibs and a 9.3MB framework binary. It is also the one where "it links"
+and "its code runs" are furthest apart, because its exported-symbols list is what pulls the
+archive members onto the link at all -- nothing in Security_obj references SSLRead, so
+without the list ld drops libsecurity_ssl entirely.
+
+`scripts/buck-security-check.sh` walks up from the smallest thing in the cone to the
+largest, and every step passed first time:
+
+```
+SEC_PROBE sha256=correct                    libcommonCrypto
+SEC_PROBE random rc=0 nonzero=1             Security's own entry points
+SEC_PROBE cfdata=801                        CoreFoundation underneath it
+SEC_PROBE certificate=parsed                the ASN.1 and x509 archives
+SEC_PROBE subject=darling-buck2-probe       a name decoded back out of the parsed cert
+```
+
+`tests/buck2/guest/sec_probe.c` is self-contained deliberately: a published digest and a
+certificate embedded as DER, so it needs no network, no keychain on disk and no clock that
+agrees with anybody. Each step is asserted separately, so a regression says which layer
+broke rather than that the cone stopped working.
+
 ### The codegen gap was 227 files, and the reference does not read them either
 
 The worry recorded against the CUSTOM_COMMAND edges was that a generated file which nothing
