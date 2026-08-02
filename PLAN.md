@@ -860,6 +860,56 @@ name let three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain key pur
 empty stub instead of the framework. final_registry() now registers a `dev-stubs/` target
 by PATH ONLY. A stub is never the answer to "which target builds libX".
 
+### The runtime checks CANNOT be chained in one shell
+
+Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes
+the first two fail while each passes alone. The cause is not subtle once looked at:
+
+```
+pgrep -a -x darlingserver
+301939 darlingserver /tmp/darling-jsc-1000/prefix
+720293 darlingserver /tmp/darling-appkit-1000/prefix
+721577 darlingserver /tmp/darling-buck2-1000/prefix
+721668 darlingserver /tmp/darling-smoke-1000
+```
+
+FOUR daemons alive at once. Each check kills stale processes under its own root at START
+and not at exit, so every run leaves its daemon up for the next one, and concurrent daemons
+interfere. Run them one at a time, and kill the strays by PID between runs:
+
+```
+for pid in $(pgrep -x darlingserver); do kill -9 "$pid"; done
+```
+
+`pgrep -x`, never `pgrep -f`: an `-f` pattern matches the command line of the shell running
+it, which is how a cleanup loop ends up killing its own invocation.
+
+### libstdc++ built all along, and sdk_env was the reason it did not
+
+`libstdc++.6.dylib` was the ONLY target in the tree that would not build, and the recorded
+reason -- that GCC 4.2.1's vendored headers do not compile against this SDK with clang at
+`-std=c++14` -- was wrong. It compiles fine. What broke it was the port's own environment.
+
+The reference passes `-nostdinc++` for that target AND never puts `libcxx/include` on its
+include path; its include list has the rest of ENV_INCLUDES and not that one entry. The
+port folds libcxx into `//darwin:sdk_env` -- deliberately, so it appears exactly once, since
+two copies on a command line break `#include_next` -- and sdk_env is all-or-nothing, so
+libstdcxx got libc++'s `stdlib.h` anyway. GCC's `<cstdlib>` does `using ::abs;` and then
+declares `abs(long)`; with libc++'s `stdlib.h` already declaring it, that is a redeclaration
+of what the using-declaration brought in. Eight such conflicts, and none of them anything
+to do with the SDK.
+
+`//darwin:sdk_env_nocxx` is the same environment without libcxx, and the generator chooses
+between the two by READING THE REFERENCE -- a unit whose include list does not mention
+libcxx gets the nocxx one -- the same way HOST_TARGETS is derived from the absence of
+`-target` rather than from a list of names. Both are built from shared Starlark lists with
+libcxx spliced at the position the reference gives it, because appending it instead would
+have quietly changed the include ORDER for every other target in the build.
+
+That is the fifth recorded diagnosis this campaign that turned out to be a guess nobody had
+re-tested, and the fourth that pointed away from a fix that took under an hour. Coverage is
+1453 of 1453 now, with `libstdc++.6.dylib` out of the out-of-scope list.
+
 ### The reference is the `all` graph now
 
 `result-graph-ref` pointed at `stock` from the stock switch until `all` reached 100
@@ -880,11 +930,9 @@ Worth stating plainly, because the coverage number invites the wrong reading.
 `stdcxx_obj2`, the out-of-scope `libstdc++.6.dylib`. So the build-level claim is strong.
 What it does not cover:
 
-- **libstdc++.6.dylib genuinely does not build.** GCC 4.2.1's vendored headers conflict
-  with libc++'s `stdlib.h` at the `-std=c++14` the reference itself passes (`abs(long)` and
-  `div(long, long)` redeclared against a `using ::abs`). Upstream ships it.
-- **32-bit is not built.** `libsyscall_32` -> `libsystem_kernel_static32.a`, plus the 74
-  i386 MIG edges. The port is x86_64 only.
+- **32-bit is not built and will not be.** `libsyscall_32` -> `libsystem_kernel_static32.a`,
+  plus the 74 i386 MIG edges. A deliberate scope reduction, not a gap: the long-term target
+  for this project is aarch64, so spending on i386 buys nothing.
 - **cctools ld/ar/ranlib come from Nix** rather than being built here.
 - **The metric counts LINK edges only**: 1439 of the reference's 38,337 ninja edges. The
   3,462 CUSTOM_COMMAND (codegen) edges are covered only by IMPLICATION -- a target missing

@@ -30,11 +30,6 @@ def load_gen():
 # Deliberately not ported, with the reason. Counted separately so "what is left" stays
 # an honest number rather than a permanent three.
 OUT_OF_SCOPE = {
-    "libstdc++.6.dylib":
-        "GCC 4.2.1's vendored libstdc++ headers do not compile against this SDK with "
-        "clang at the -std=c++14 the reference itself passes (const-correctness of "
-        "memchr/strchr and conflicting using-declarations); nothing links the result -- "
-        "only the aggregate `all` target names it",
     "x86_64-apple-darwin20-ld":
         "Darling's ld64 and cctools come from Nix (nix/lib/darling-ld64.nix, the ld64 "
         "input to darlingBuck2Graph); the port CONSUMES them through [darling] ld and "

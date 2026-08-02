@@ -261,6 +261,9 @@ ENV_INCLUDES = {
     "src/external/libcxx/include",
 }
 
+# The one member of ENV_INCLUDES a target can lack while still using the environment.
+LIBCXX_INCLUDE = "src/external/libcxx/include"
+
 
 def read_edges():
     """Parse build.ninja into [(outputs, rule, inputs, vars)]."""
@@ -634,11 +637,13 @@ def includes_of(unit):
     (src/include is on both paths, and means the repo's copy in either).
     """
     host = unit.get("host", False)
-    ordered, gen, seen_env = [], [], False
+    ordered, gen, seen_env, env_cxx = [], [], False, False
     for i in unit["includes"]:
         if not i.startswith("-I"):
             continue
         if not host and orig_repo_rel(i[2:]) in ENV_INCLUDES:
+            if orig_repo_rel(i[2:]) == LIBCXX_INCLUDE:
+                env_cxx = True
             if not seen_env:
                 ordered.append(("env", None))
                 seen_env = True
@@ -650,6 +655,13 @@ def includes_of(unit):
             ordered.append(("own", real_include_dir(kind, p)))
     if not seen_env and not host:
         ordered.append(("env", None))
+        env_cxx = True
+    # Which environment target this unit gets. libstdcxx is the one whose reference include
+    # list has the rest of ENV_INCLUDES but NOT libcxx -- it compiles GCC 4.2.1's own C++
+    # headers and libc++'s stdlib.h collides with them -- so the choice is READ OFF the
+    # reference rather than kept as a list of target names, the same way HOST_TARGETS is.
+    if not env_cxx:
+        ordered = [("env", "nocxx") if k == "env" else (k, p) for k, p in ordered]
     return ordered, gen
 
 
@@ -1027,7 +1039,7 @@ def generate(target: str, edges):
         seen_dep = set()
         for kind, p in g["inc"]:
             if kind == "env":
-                w('        "//darwin:sdk_env",')
+                w(f'        "//darwin:sdk_env{"_nocxx" if p == "nocxx" else ""}",')
                 for d in extra_deps(target):
                     # Only a LABEL is a dep here. The other entries are typed
                     # instructions for the LINK blocks -- gen: sources, ldflag:, objs:,

@@ -553,9 +553,10 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # made it decorative: anything short of losing three quarters of the port passed it.
 #
 # result-graph-ref now points at the ALL graph, the largest the reference defines, so these
-# are all-component numbers: 1452 of 1452, where stock read 1434 and the cli graph 868 of
+# are all-component numbers: 1453 of 1453, where stock read 1434 and the cli graph 868 of
 # 871. The floor is the WHOLE graph: every in-scope link edge is ported, so any drop at all
-# is a regression, not a gap.
+# is a regression, not a gap. `buck2 build //...` over all ~12k targets is green too, with
+# libstdc++ the last one to fall.
 #
 # The reference moved stock -> all once `all` reached 100 percent and the prefix followed
 # it, which is what let scripts/buck-jsc-check.sh stop hand-staging JavaScriptCore.
@@ -565,8 +566,8 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # module sets, cctools sits beside its xcselect shims, and the nine dev-stub frameworks
 # build an AppKit called exactly AppKit -- and collapsing a pair onto one entry answered
 # "ported" as soon as either half was.
-[ "${cov:-0}" -ge 1452 ] && ok "$cov of the reference's ${tot:-1452} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-1452}, floor is 1452"
+[ "${cov:-0}" -ge 1453 ] && ok "$cov of the reference's ${tot:-1453} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-1453}, floor is 1453"
 
 # What the metric still takes on trust: an edge whose artifact name is ambiguous in the
 # reference and whose block carries no `buck-registry: <path>` pragma is matched on the

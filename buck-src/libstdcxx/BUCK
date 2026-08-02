@@ -1,3 +1,4 @@
+load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 
 # Targets over the libstdcxx pin, materialized by scripts/buck-src.sh. The tree
@@ -12,17 +13,20 @@ load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 # 65 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 
-cc_header_root(
-    name = "stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
-    headers = glob(["include/c++/4.2.1/backward/**/*"]),
-    root = "include/c++/4.2.1/backward",
-    visibility = ["PUBLIC"],
-)
-
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
 cc_header_root(
     name = "stdcxx_inc_libstdcxx_include_c_4_2_1",
-    headers = glob(["include/c++/4.2.1/**/*"]),
+    headers = glob([
+        "include/c++/4.2.1/backward/**/*",
+        "include/c++/4.2.1/**/*",
+    ]),
     root = "include/c++/4.2.1",
+    include_subdirs = [
+        "backward",
+        ".",
+    ],
     visibility = ["PUBLIC"],
 )
 
@@ -106,9 +110,8 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
         ":stdcxx_inc_libstdcxx_include_c_4_2_1",
-        "//darwin:sdk_env",
+        "//darwin:sdk_env_nocxx",
     ],
     visibility = ["PUBLIC"],
 )
@@ -131,10 +134,44 @@ cc_objects(
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
-        ":stdcxx_inc_libstdcxx_include_c_4_2_1_backward",
         ":stdcxx_inc_libstdcxx_include_c_4_2_1",
-        "//darwin:sdk_env",
+        "//darwin:sdk_env_nocxx",
     ],
     visibility = ["PUBLIC"],
 )
 # END generated: stdcxx
+
+# BEGIN generated: stdcxx dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs stdcxx   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/libstdcxx/libstdc++.6.dylib = stdcxx_dylib
+
+darwin_dylib(
+    name = "stdcxx_dylib",
+    dylib_name = "libstdc++.6.dylib",
+    install_name = "/usr/lib/libstdc++.6.dylib",
+    compatibility_version = "7.0.0",
+    current_version = "104.1.0",
+    objs = [
+        # stdcxx
+        ":stdcxx_obj",
+        ":stdcxx_obj2",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    reexport = [
+        "//buck-src:cxxabi_dylib",
+    ],
+    link_flag_files = {
+        "-Wl,-force_symbols_not_weak_list": "exports/notweak.exp",
+        "-Wl,-force_symbols_weak_list": "exports/weak.exp",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: stdcxx dylibs

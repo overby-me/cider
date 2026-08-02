@@ -6,9 +6,11 @@ load("//buck/rules:cc.bzl", "cc_header_root")
 #
 # Defines and order are the reference build's, read off the configured
 # build.ninja rather than inferred from CMakeLists.
-cc_header_root(
-    name = "sdk_env",
-    exported_flags = [
+# The include roots are shared between the two environment targets below, and libcxx sits
+# at the position the reference gives it -- after the basic headers, before the SDK --
+# rather than being appended, because include ORDER decides which header wins.
+_ENV_FLAGS = [
+
         # Inherited by every Darling target from the top-level CMakeLists.
         "-Wno-error=implicit-function-declaration",
         "-Wno-nullability-completeness",
@@ -27,14 +29,16 @@ cc_header_root(
         "-D__APPLE__",
         "-D__DYNAMIC__",
         "-D__MACH__",
-    ],
-    deps = [
+]
+
+_ENV_PRE = [
         "//darwin/basic-headers:basic_headers",
         # AvailabilityVersions.h and architecture/* reach basic-headers by symlink
         # into pinned trees, so they are staged from the materialized pins.
         "//buck-src:sdk_basic_headers_pins",
-        # The C++ standard library, first on the reference build's include path.
-        "//buck-src/libcxx:libcxx_include",
+]
+
+_ENV_POST = [
         "//buck-src:sdk_include",
         "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:sdk_repo_include",
         "//buck-src:lkm_include",
@@ -68,6 +72,36 @@ cc_header_root(
         "//src/softlinking:sdk_src_softlinking_headers",
         "//src/startup:sdk_src_startup_headers",
         "//src/xcselect:sdk_src_xcselect_headers",
-    ],
+]
+
+# The Darwin (guest) compile environment: the defines and include roots every
+# cross-compiled Darling target gets, in the reference build's order. A guest
+# target depends on this one target instead of restating them.
+#
+# Defines and order are the reference build's, read off the configured
+# build.ninja rather than inferred from CMakeLists.
+cc_header_root(
+    name = "sdk_env",
+    exported_flags = _ENV_FLAGS,
+    deps = _ENV_PRE + ["//buck-src/libcxx:libcxx_include"] + _ENV_POST,
+    visibility = ["PUBLIC"],
+)
+
+# The same environment WITHOUT the C++ standard library, for the one target whose
+# reference include list does not have it. libstdcxx compiles GCC 4.2.1's own <cstdlib>,
+# which does `using ::abs;` and then declares abs(long); with libc++'s stdlib.h also on
+# the path that redeclares what the using already brought in, and eight such conflicts
+# made libstdc++.6.dylib the only target in the tree that would not build. The reference
+# passes -nostdinc++ AND simply never adds libcxx there.
+#
+# The generator picks between the two by READING THE REFERENCE, not by name: a target
+# whose include list does not mention libcxx gets this one. And libcxx belongs to exactly
+# one of them, never both -- two copies of libcxx/include on a command line break
+# #include_next, because libcxx's stdint.h defers to the next stdint.h on the path and
+# finds the other staged copy of ITSELF instead of the SDK's.
+cc_header_root(
+    name = "sdk_env_nocxx",
+    exported_flags = _ENV_FLAGS,
+    deps = _ENV_PRE + _ENV_POST,
     visibility = ["PUBLIC"],
 )
