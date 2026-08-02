@@ -1103,6 +1103,44 @@ The counts are the assertion, not per-module pass/fail: a handful of extensions 
 legitimately fail on a system without the thing they wrap, so the check asserts floors
 (50, 30, 12) measured from the first run.
 
+### The codegen gap was 227 files, and the reference does not read them either
+
+The worry recorded against the CUSTOM_COMMAND edges was that a generated file which nothing
+compiles could be silently absent, with no check anywhere that would notice.
+`scripts/buck-codegen-coverage.py` tests that rather than restating it, by classifying every
+generated output:
+
+```
+generated outputs: 4035
+  consumed       177    an input to a real build edge
+  installed        2    named by an install entry (UNMAPPED covers those, and it is 0)
+  header         254    reached by #include; a missing one fails the compile that wants it
+  cmake         3375    cmake's OWN targets -- edit_cache, install, CTest's Nightly set
+  unconsumed     227
+```
+
+**All 227 are MIG side outputs.** One mig run emits user, server, header and xtrace, and a
+target compiles one or two of them; the rest are declared outputs nothing reads -- in the
+reference either. Only 11 are not named with a standard mig suffix, and those are
+IOKitUser's `iokitmig32/64` variants plus `build-mig` itself, the generated driver the mig
+commands invoke inside their command string rather than as a declared input. So there is no
+silent gap: every generated file the reference actually uses is accounted for.
+
+**Getting that number took three wrong measurements, and each was wrong in a way that
+LOOKED like an answer:**
+
+1. 4035 of 4035 "consumed". `gen.read_edges()` keeps ORDER-ONLY deps in its input list, and
+   cmake gives every target a `cmake_object_order_depends_target_X` phony listing every
+   generated file it might use. Everything was consumed by construction.
+2. Then 1 of 4035. A CUSTOM_COMMAND declares its output relative to the build dir while the
+   compile that reads it names the same file absolutely, so almost nothing matched.
+3. Then 3602 unconsumed, of which 3345 ended in `.util`: cmake's own bookkeeping targets,
+   which are not files at all.
+
+The rule this keeps proving is the one already written above it: when a metric looks wrong,
+fix the measurement before reporting the number. A metric that says 100% and a metric that
+says 0.02% are equally suspicious, and both were.
+
 ### The runtime checks CANNOT be chained in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes
@@ -1177,9 +1215,8 @@ What it does not cover:
   plus the 74 i386 MIG edges. A deliberate scope reduction, not a gap: the long-term target
   for this project is aarch64, so spending on i386 buys nothing.
 - **cctools ld/ar/ranlib come from Nix** rather than being built here.
-- **The metric counts LINK edges only**: 1439 of the reference's 38,337 ninja edges. The
-  3,462 CUSTOM_COMMAND (codegen) edges are covered only by IMPLICATION -- a target missing
-  its generated sources fails to build, and everything builds -- with no 1:1 check.
+- **The metric counts LINK edges only**, but the generated files are measured separately
+  now by scripts/buck-codegen-coverage.py. See below.
 - **86 edges are matched on artifact name alone** (the `by-name` line).
 
 **And the big one: build parity is not runtime parity.** buck-test.sh's 143 checks are

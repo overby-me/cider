@@ -574,6 +574,17 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # because its other half is. Getting here was not bookkeeping: it turned up 14 xcselect
 # shims, python's datetime.so and xcselect's xcrun that were never ported at all, and 54
 # perl 5.18 install destinations wired to the 5.28 BINARY.
+# GENERATED files, which the link-edge metric never sees. The worry was that a generated
+# file nothing compiles could be silently absent. Measured, it cannot: of 4035 generated
+# outputs, 3375 are cmake's own bookkeeping targets rather than files, 254 are headers
+# (a missing one fails the compile that includes it, and `buck2 build //...` is green),
+# 177 are consumed by a build edge and 2 are installed. The 227 that remain are MIG SIDE
+# OUTPUTS -- one mig run emits user, server, header and xtrace, and a target compiles one
+# or two -- which the REFERENCE does not read either. Asserted so the number cannot grow.
+unc=$(./scripts/buck-codegen-coverage.py 2>/dev/null | awk '/^  unconsumed/ {print $2}')
+[ "${unc:-999}" -le 227 ] && ok "codegen: $unc generated outputs unconsumed (ceiling 227, all mig side outputs)" ||
+	bad "codegen unconsumed rose to ${unc:-unknown}, ceiling is 227"
+
 soft=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^by-name/ {print $2}')
 [ "${soft:-0}" -le 0 ] && ok "coverage matches ${soft:-0} edges by name alone (ceiling 0)" ||
 	bad "by-name coverage matches rose to ${soft:-unknown}, ceiling is 0"
