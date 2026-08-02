@@ -1058,6 +1058,40 @@ correlates with a leftover **darlingserver**, not only with a concurrent buck2 b
 `llvm-objdump` on the same artifact says TWOLEVEL, and the suite is 143 of 143 once the
 stray daemons are killed.
 
+### The scripting cones: 97 of 100 loadable extensions actually load
+
+`scripts/buck-scripting-check.sh` is the widest runtime probe in the tree by artifact
+count. python's 54 lib-dynload extensions, zsh's 32 loadable modules and perl's XS modules
+are each a separate Mach-O that buck2 built, linked and installed, and until this ran every
+one of them had been checked only for "does it link". Loading a module runs its
+initializer, resolves its symbols against the frameworks underneath, and hands the
+interpreter something usable, which is a great deal more.
+
+```
+PY_RESULT 52/54      ZSH_RESULT 32/32      PL_RESULT 13/14
+```
+
+**All three failures are upstream's, and each was checked against the reference rather than
+assumed:**
+
+- `_sqlite`: "dynamic module does not define init function (init_sqlite)". The reference
+  installs the file as `_sqlite.so`, but python's sqlite3 package dlopens `_sqlite3` and the
+  C init symbol is `init_sqlite3`. Same name in both builds.
+- `_curses_panel`: "No module named _curses". `_curses_panel.so` is installed and
+  `_curses.so` is not, in the reference too.
+- `Storable`: "object version 2.4 does not match bootstrap parameter 2.41". The 5.18
+  `Storable.pm` says 2.41 and the XS is built with `-DVERSION=\"2.4\"`. **The reference
+  passes exactly the same define.** It is not the 5.18/5.28 mixing bug either: the prefix
+  maps each tree to its own target and the source .pm versions match their trees.
+
+That is the eighth time in this campaign that checking changed the answer, and the first
+time the answer came out in the port's favour three times over. Worth stating because the
+reflex by now is to assume a probe failure is the port's fault.
+
+The counts are the assertion, not per-module pass/fail: a handful of extensions can
+legitimately fail on a system without the thing they wrap, so the check asserts floors
+(50, 30, 12) measured from the first run.
+
 ### The runtime checks CANNOT be chained in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes
