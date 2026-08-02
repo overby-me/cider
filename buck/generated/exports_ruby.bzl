@@ -27,6 +27,9 @@ EXPORTS = {
     "darling_include_ruby_ruby_version.h": "darling/include/ruby/ruby/version.h",
     "darling_include_ruby_ruby_vm.h": "darling/include/ruby/ruby/vm.h",
     "darling_include_ruby_ruby_win32.h": "darling/include/ruby/ruby/win32.h",
+    "extras_framework_resources_English.lproj_InfoPlist.strings": "extras/framework_resources/English.lproj/InfoPlist.strings",
+    "extras_framework_resources_Info.plist": "extras/framework_resources/Info.plist",
+    "extras_framework_resources_version.plist": "extras/framework_resources/version.plist",
     "extras_irbrc": "extras/irbrc",
     "extras_rails": "extras/rails",
 }

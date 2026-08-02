@@ -906,6 +906,49 @@ faithfully; "JavaScriptCore works on Darling" was never established upstream eit
 probe therefore exits 3 for this state and 1 only if jsc fails to reach WTF init, which
 WOULD be a regression.
 
+### The AppKit probe, and the 167 install entries nothing could see
+
+`scripts/buck-appkit-check.sh` runs `tests/buck2/gui/appkit_probe.m` against an Xvfb
+server: NSApplication comes up, an NSWindow opens, the run loop is pumped once. **It
+passes** -- MapNotify and VisibilityNotify come back from the X server -- and getting there
+turned up three things, two of them real gaps.
+
+**The host ELF libraries must be on LD_LIBRARY_PATH for the LOADER, not just for wrapgen.**
+Without it, loading AppKit does not merely fail to draw: the process dies BEFORE main with
+no output whatsoever, because the sixteen src/native stubs forward into libX11, cairo and
+freetype through elfcalls, and a stub whose .so cannot be dlopened takes the process with
+it. `darling.elf_lib_dirs` in .buckconfig.local already holds the directories -- it is how
+wrapgen finds the same libraries at build time -- and the check now reuses them.
+
+**The prefix was dropping every `file(INSTALL ... RENAME "x" ...)` entry. All 167 of
+them.** ENTRY in gen-install-from-manifests.py demanded `FILES` immediately after the type
+modifiers, and cmake writes
+
+```
+file(INSTALL DESTINATION "..." TYPE FILE RENAME "Info.plist" FILES ".../X11.backend/Info.plist")
+```
+
+so those lines simply did not match, and a line that does not match is a line nobody
+counts. **Neither existing metric could see it**: UNMAPPED cannot report an entry that
+never parses, and coverage only counts link edges. What found it was running a program.
+cocotron loads its display backend as a BUNDLE and reads NSPrincipalClass out of the
+bundle's Info.plist; with no Info.plist there is no principal class, no backend can be
+instantiated, and NSApplication exits 1 in silence.
+
+The fix keys renames by (destination, source) rather than by source, because one source
+really is installed under several names -- python's `fix/dummy.py` is a placeholder that
+ships as both `xattr` and `python-config` -- and the first version, keyed by source alone,
+said so loudly on its first run instead of quietly picking one.
+
+Bringing those 167 in took the prefix from 34,582 entries to 39,155 and made THREE entries
+newly unmapped: `python-config`, `xattr-0.6.4-2.7` and `python.o` are build outputs the
+port has no target for. They were always missing; the difference is that now they are
+counted. buck-test's UNMAPPED ceiling is 3 until they are mapped.
+
+The general lesson is the one this section keeps re-learning in a new costume: a parser
+that SKIPS what it does not recognise reports success on the subset it happens to
+understand. ENTRY had no else-branch, and 167 lines went past it without a word.
+
 NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
 target that does not build must have its block REMOVED, not left in place.
 

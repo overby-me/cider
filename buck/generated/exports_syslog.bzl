@@ -9,6 +9,7 @@ EXPORTS = {
     "aslmanager.tproj_aslmanager.8": "aslmanager.tproj/aslmanager.8",
     "aslmanager.tproj_com.apple.aslmanager.plist": "aslmanager.tproj/com.apple.aslmanager.plist",
     "libsystem_asl.tproj_include_asl.h": "libsystem_asl.tproj/include/asl.h",
+    "syslogd.tproj_asl.conf.osx": "syslogd.tproj/asl.conf.osx",
     "syslogd.tproj_com.apple.syslogd.plist": "syslogd.tproj/com.apple.syslogd.plist",
     "syslogd.tproj_syslog.conf": "syslogd.tproj/syslog.conf",
     "syslogd.tproj_syslog.conf.5": "syslogd.tproj/syslog.conf.5",

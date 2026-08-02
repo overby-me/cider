@@ -299,6 +299,12 @@ darwin_dylib(
 # scripts/gen-install-from-manifests.py -- review before committing.
 
 export_file(
+    name = "CoreServices_Info.plist",
+    src = "CoreServices/Info.plist",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
     name = "CoreServices_SystemVersion.plist",
     src = "CoreServices/SystemVersion.plist",
     visibility = ["PUBLIC"],
@@ -307,6 +313,12 @@ export_file(
 export_file(
     name = "CoreServices_SystemVersionCompat.plist",
     src = "CoreServices/SystemVersionCompat.plist",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "CoreServices_src_LaunchServices_launchservicesd_schema.sql",
+    src = "CoreServices/src/LaunchServices/launchservicesd/schema.sql",
     visibility = ["PUBLIC"],
 )
 

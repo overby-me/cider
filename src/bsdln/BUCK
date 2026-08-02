@@ -1,5 +1,5 @@
-load("//buck/rules:darwin.bzl", "darwin_binary")
 load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
+
 # No targets. bsdln is a HOST tool (it makes the symlink farm the reference installs) and
 # its block does not link; see PLAN.md. The package is kept so the directory keeps its own
 # package boundary rather than folding into the parent's globs.

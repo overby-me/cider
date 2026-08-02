@@ -9935,3 +9935,14 @@ prefix_dir(
     visibility = ["PUBLIC"],
 )
 # END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_perl.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

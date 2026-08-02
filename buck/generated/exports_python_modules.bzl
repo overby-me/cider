@@ -183,4 +183,5 @@ EXPORTS = {
     "Modules_xattr-0.6.4_xattr-0.6.4_xattr___init__.py": "Modules/xattr-0.6.4/xattr-0.6.4/xattr/__init__.py",
     "Modules_xattr-0.6.4_xattr-0.6.4_xattr_constants.py": "Modules/xattr-0.6.4/xattr-0.6.4/xattr/constants.py",
     "Modules_xattr-0.6.4_xattr-0.6.4_xattr_tool.py": "Modules/xattr-0.6.4/xattr-0.6.4/xattr/tool.py",
+    "darling_src_Extras-2.7.pth": "darling/src/Extras-2.7.pth",
 }

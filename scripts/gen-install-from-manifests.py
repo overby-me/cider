@@ -51,8 +51,17 @@ INSTALL_PREFIX = "/usr/local"
 # read as no entry at all -- silently, since a manifest that parses to nothing looks exactly
 # like a manifest with nothing in it. dirserv's three Directory Services stubs went missing
 # that way, and they are what tests/darling-smoke.nix stage 7 drives.
+# The RENAME group is not decoration: cmake writes
+#   file(INSTALL DESTINATION "..." TYPE FILE RENAME "Info.plist" FILES ".../X11.backend/Info.plist")
+# and the older pattern, which demanded FILES right after the type modifiers, simply did
+# not match those lines -- so 167 install entries were dropped WITHOUT A WORD. UNMAPPED
+# could not see them (an entry that never parses never enters the map) and the coverage
+# metric could not either (they are not link edges). What found it was running an AppKit
+# program: cocotron loads its display backend as a BUNDLE, a bundle with no Info.plist has
+# no NSPrincipalClass, so no backend could be instantiated and NSApplication exited 1.
 ENTRY = re.compile(
-    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)((?:\s+\w+)*)\s+FILES?\s+(.*?)\)\n',
+    r'file\(INSTALL DESTINATION "([^"]+)"\s+TYPE (\w+)((?:\s+\w+)*?)'
+    r'(?:\s+RENAME "([^"]+)")?\s+FILES?\s+(.*?)\)\n',
     re.S)
 STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
 # `REGEX "..." EXCLUDE`, which follows the file list.
@@ -133,6 +142,17 @@ def graph_dir(argv: list[str]) -> str:
 # have to carry a field it ignores.
 EXEC_SOURCES: set = set()
 
+# (destination, source) -> the basename it is INSTALLED under, for
+# `file(INSTALL ... RENAME "x" ...)`. Keyed by the PAIR and not by the source alone,
+# because one source really is installed under several names: python's fix/dummy.py is a
+# placeholder that ships as both `xattr` and `python-config`.
+RENAME_OF: dict = {}
+
+
+def installed_base(dest: str, src: str) -> str:
+    """The name `src` lands under in `dest`, honouring a cmake RENAME."""
+    return RENAME_OF.get((dest, src), os.path.basename(src))
+
 
 def read_entries(root: str):
     """[(destination, type, [sources], [exclude regexes])] over every manifest."""
@@ -143,7 +163,7 @@ def read_entries(root: str):
             continue
         seen += 1
         text = open(os.path.join(dirpath, "cmake_install.cmake")).read()
-        for dest, kind, perms, blob in ENTRY.findall(text):
+        for dest, kind, perms, rename, blob in ENTRY.findall(text):
             dest = dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/")
             # Not every DESTINATION keeps the variable: unzip installs to a literal
             # /usr/local/libexec/... (cmake even warns about the absolute path). Left as
@@ -167,6 +187,9 @@ def read_entries(root: str):
             # too, the zcmp and zmore links pointing at them could not resolve either.
             if kind == "PROGRAM":
                 EXEC_SOURCES.update(srcs)
+            if rename:
+                for s in srcs:
+                    RENAME_OF[(dest, s)] = rename
             out.append((dest, kind, srcs, EXCLUDE.findall(blob)))
     # Loudly, because an empty walk is indistinguishable from a prefix with nothing in it,
     # and a manifest directory that has been garbage-collected or moved is the likely cause.
@@ -511,7 +534,7 @@ def main(argv: list[str]) -> int:
     for dest, _kind, files, _ex in entries:
         for src in files:
             if src:
-                base = os.path.basename(src)
+                base = installed_base(dest, src)
                 dest_of[src] = f"{dest}/{base}" if dest else base
 
     # Every destination anything installs to, so a relative link value can be resolved
@@ -584,7 +607,7 @@ def main(argv: list[str]) -> int:
             elif kind == "DIRECTORY":
                 # A trailing slash means the CONTENTS go to the destination; without one the
                 # directory itself does, under its own name.
-                where = dest if src.endswith("/") else f"{dest}/{os.path.basename(src)}"
+                where = dest if src.endswith("/") else f"{dest}/{installed_base(dest, src)}"
                 if where in EXTRA_DIRS:
                     dirs[where] = EXTRA_DIRS[where]
                     continue

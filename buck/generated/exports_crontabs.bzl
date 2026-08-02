@@ -16,4 +16,5 @@ EXPORTS = {
     "newsyslog_newsyslog.conf.5": "newsyslog/newsyslog.conf.5",
     "periodic_periodic-wrapper.8": "periodic/periodic-wrapper.8",
     "periodic_periodic.8": "periodic/periodic.8",
+    "periodic_periodic.sh": "periodic/periodic.sh",
 }

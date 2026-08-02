@@ -36,6 +36,7 @@ EXPORTS = {
     "nologin.tproj_nologin.8": "nologin.tproj/nologin.8",
     "nvram.tproj_nvram.8": "nvram.tproj/nvram.8",
     "pagesize.tproj_pagesize.1": "pagesize.tproj/pagesize.1",
+    "pagesize.tproj_pagesize.sh": "pagesize.tproj/pagesize.sh",
     "proc_uuid_policy.tproj_proc_uuid_policy.1": "proc_uuid_policy.tproj/proc_uuid_policy.1",
     "purge.tproj_purge.8": "purge.tproj/purge.8",
     "pwd_mkdb.tproj_pwd_mkdb.8": "pwd_mkdb.tproj/pwd_mkdb.8",

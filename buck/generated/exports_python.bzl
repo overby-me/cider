@@ -623,6 +623,7 @@ EXPORTS = {
     "2.7_Python-2.7.16_Lib_xmllib.py": "2.7/Python-2.7.16/Lib/xmllib.py",
     "2.7_Python-2.7.16_Lib_xmlrpclib.py": "2.7/Python-2.7.16/Lib/xmlrpclib.py",
     "2.7_Python-2.7.16_Lib_zipfile.py": "2.7/Python-2.7.16/Lib/zipfile.py",
+    "2.7_Python-2.7.16_Mac_Resources_framework_Info.plist": "2.7/Python-2.7.16/Mac/Resources/framework/Info.plist",
     "2.7_Python-2.7.16_Makefile": "2.7/Python-2.7.16/Makefile",
     "2.7_Python-2.7.16_Modules_Setup": "2.7/Python-2.7.16/Modules/Setup",
     "2.7_Python-2.7.16_Modules_Setup.config": "2.7/Python-2.7.16/Modules/Setup.config",
@@ -633,4 +634,5 @@ EXPORTS = {
     "2.7_Python-2.7.16__sysconfigdata.py": "2.7/Python-2.7.16/_sysconfigdata.py",
     "2.7_Python-2.7.16_install-sh": "2.7/Python-2.7.16/install-sh",
     "2.7_Python-2.7.16_pyconfig.h": "2.7/Python-2.7.16/pyconfig.h",
+    "fix_dummy.py": "fix/dummy.py",
 }

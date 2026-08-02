@@ -1,0 +1,159 @@
+load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_binary")
+
+# A guest AppKit program, built the same way every other Darwin binary here is, so that the
+# GUI cone can be RUN and not merely linked. See tests/buck2/gui/appkit_probe.m and
+# scripts/buck-appkit-check.sh.
+#
+# This is the only hand-written Darwin binary in the tree that has no counterpart in the
+# reference build.ninja, which is why it lives under tests/ rather than src/: nothing
+# installs it and the coverage metric never sees it.
+
+cc_objects(
+    name = "appkit_probe_obj",
+    srcs = ["appkit_probe.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        # AppKit's headers use ARC-era attributes but the frameworks are built MRR, and the
+        # probe is written to match them.
+        "-fno-objc-arc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_IOKit",
+        "//buck-src:fw_Metal",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreImage",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_IOSurface",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "appkit_probe",
+    objs = [
+        ":appkit_probe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src:AppKit_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "foundation_probe_obj",
+    srcs = ["foundation_probe.m"],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        # AppKit's headers use ARC-era attributes but the frameworks are built MRR, and the
+        # probe is written to match them.
+        "-fno-objc-arc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        # The whole surface AppKit's HEADERS reach, not what the probe calls.
+        # Taken from xpc_obj, the widest AppKit consumer the port already builds,
+        # because chasing this cascade one #include at a time is what
+        # buck-port.py exists to automate and this target is hand-written.
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_IOKit",
+        "//buck-src:fw_Metal",
+        "//buck-src:fw_Onyx2D",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreImage",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_IOSurface",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_LocalAuthentication",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "foundation_probe",
+    objs = [
+        ":foundation_probe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
