@@ -789,13 +789,27 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **hdiutil**, the LAST cli install entry, and it is blocked on **wrapgen**. The
-   darling-dmg CMakeLists does `wrap_elf(fuse libfuse.so)`: fuse is a HOST library, so the
-   build generates a Mach-O stub dylib that forwards to the host's libfuse.so through
-   libelfloader, and wrapgen (src/libelfloader/wrapgen, one line, links dl) is the tool
-   that writes it. So the host tool that this queue had filed as "not needed by the port"
-   is in fact the only thing standing between the port and a complete cli component. Port
-   wrapgen, add a wrap_elf rule, then hdiutil.
+1. **hdiutil**, the LAST cli install entry. wrapgen is ported and the mechanism is proven;
+   what remains is a wrap_elf rule and hdiutil itself.
+
+   cmake's `wrap_elf(name elfname)` (cmake/wrap_elf.cmake) does two things: it runs
+   `wrapgen <elfname> <name>.c <name>_vars.h`, then builds that generated C as a Darwin
+   dylib with install_name `/usr/lib/native/lib<name>.dylib`, linking `system`, with
+   `src/startup/mldr/elfcalls` on the include path, installed to
+   libexec/darling/usr/lib/native.
+
+   The one real constraint is that wrapgen `dlopen`s the HOST library at BUILD time to read
+   its dynamic symbol table, so the .so has to be findable by the loader. `libfuse.so`
+   alone fails; with LD_LIBRARY_PATH pointing at fuse's lib dir it produces an 895-line
+   fuse.c (fuse_vars.h is only written when the library has data symbols, and fuse has
+   none). fuse IS in the dev shell already
+   (/nix/store/*-fuse-2.9.9/lib, and pkg-config finds it), so the path should be supplied
+   the way the port already supplies nix store paths: a `[darling]` key in
+   .buckconfig.local written by scripts/buck-setup.sh, read with read_root_config, as
+   ld64_dir and clang_resource_dir are.
+
+   Then hdiutil (buck-src/darling-dmg, dmg_sources plus src/main-hdiutil.cpp) linking fuse
+   icucore z bz2 crypto44 xml2 iconv lzfse.
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
 3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference

@@ -594,6 +594,23 @@ for t in //buck-src:dtrace //buck-src:lockstat //buck-src:plockstat //buck-src:u
 	esac
 done
 
+say "== wrapgen (the host-ELF bridge generator) =="
+# The second host tool (task #8), and the one hdiutil is blocked on: cmake's
+# wrap_elf(<name> lib<name>.so) runs it over a HOST library's dynamic symbol table and emits
+# a Mach-O stub whose every export forwards through libelfloader. Running it is the
+# assertion -- it prints its three-argument usage and exits 0 with no arguments.
+wg=$(out_of //src/libelfloader:wrapgen)
+case "$(file -bL "$wg")" in
+*"ELF 64-bit"*) ok "wrapgen is a host ELF binary" ;;
+*) bad "wrapgen is not a host ELF binary" ;;
+esac
+wgusage=$("$wg" 2>&1 || true)
+case "$wgusage" in
+"Usage:"*"<library-name> <output-file> <var-access-header>"*)
+	ok "wrapgen runs and prints usage" ;;
+*) bad "wrapgen did not print its usage" ;;
+esac
+
 say "== darling-coredump (a HOST tool that reads Mach-O) =="
 # The first of the five host tools to land (task #8). It is worth its own check because
 # what it proves is the header slice, not the program: a Linux binary that includes

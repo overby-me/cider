@@ -1,1 +1,30 @@
-load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
+
+# wrapgen: writes the Mach-O stub that lets a Darwin program call into a HOST ELF library.
+#
+# Darling reaches host libraries (fuse, X11, the ffmpeg family) through libelfloader, and
+# the guest side of that bridge is a generated stub dylib per host library: cmake's
+# wrap_elf(<name> lib<name>.so) runs this tool over the ELF's dynamic symbol table and emits
+# a Mach-O whose every export forwards through libelfloader. So this is a build-time HOST
+# tool, not something that ships, and hdiutil is the first target in the port to need one --
+# it links fuse.
+#
+# A single translation unit against host headers only (elf.h, link.h, dlfcn.h), linked with
+# the C++ driver and -ldl, exactly as the reference does.
+cc_binary(
+    name = "wrapgen",
+    srcs = ["wrapgen/wrapgen.cpp"],
+    compiler_flags = [
+        "-DDARLING",
+        "-Wno-error=implicit-function-declaration",
+        "-Wno-nullability-completeness",
+        "-Wno-deprecated-declarations",
+        "-Wno-availability",
+        "-Wno-expansion-to-defined",
+        "-Wno-elaborated-enum-base",
+        "-Wno-undef-prefix",
+    ],
+    link_cxx = True,
+    linker_flags = ["-ldl"],
+    visibility = ["PUBLIC"],
+)
