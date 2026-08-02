@@ -72,6 +72,13 @@ EXCLUDE = re.compile(r'REGEX "((?:[^"\\]|\\.)*)" EXCLUDE')
 # a fallback that would just as happily match the wrong thing.
 GENERATED = {
     "icudt66l.dat": "//buck-src/icu:icudt66l_dat",
+    # cmake writes these two at CONFIGURE time -- `configure_file(Misc/python-config.in
+    # python-config)` and the easyinstall() function's configure_file of easyinstall.py.in
+    # -- so no ninja edge produces them and nothing in the graph can be matched against
+    # them. They read as "build output with no target" for exactly that reason. The port
+    # reproduces them with its own configure_file rule.
+    "python-config": "//buck-src/python:python_config",
+    "xattr-0.6.4-2.7": "//buck-src/python_modules:easyinstall_xattr_2.7",
 }
 
 # What the reference does NOT install, but a runnable Darling needs.
@@ -342,6 +349,7 @@ def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     executable entry usr/bin/login can resolve to the framework's dylib.
     """
     base = os.path.basename(path)
+    OBJECT_GROUPS = object_groups()
     tables = registries(gen, binaries)
     if kind == "EXECUTABLE":
         tables = [binaries["exe"]] + tables
@@ -367,7 +375,34 @@ def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     for table in (binaries["lib"], binaries["exe"]):
         if f"{base}_{ARCH}" in table:
             return table[f"{base}_{ARCH}"]
+    # cmake's $<TARGET_OBJECTS:X> expands to CMakeFiles/X.dir/<source>.o, and python
+    # installs one such object as config/python.o for distutils to link an embedding
+    # program against. The port builds the same object in its cc_objects target of the
+    # same name, so the OBJECT GROUP is the answer -- there is no library or executable to
+    # find, which is why every table above misses.
+    m = re.search(r"/CMakeFiles/([^/]+)\.dir/", path)
+    if m and path.endswith(".o") and m.group(1) in OBJECT_GROUPS:
+        return OBJECT_GROUPS[m.group(1)]
     return None
+
+
+# {cc_objects target name: label}, for install entries that name a single object file.
+_OBJECT_GROUPS: dict = {}
+
+
+def object_groups() -> dict:
+    if _OBJECT_GROUPS:
+        return _OBJECT_GROUPS
+    for dirpath, dirnames, files in os.walk(REPO):
+        dirnames[:] = [d for d in dirnames
+                       if d not in ("buck-out", ".git", ".jj", ".direnv", "build")]
+        if "BUCK" not in files:
+            continue
+        pkg = os.path.relpath(dirpath, REPO)
+        text = open(os.path.join(dirpath, "BUCK")).read()
+        for m in re.finditer(r'cc_objects\(\n    name = "([^"]+)"', text):
+            _OBJECT_GROUPS.setdefault(m.group(1), f"//{pkg}:{m.group(1)}")
+    return _OBJECT_GROUPS
 
 
 def source_rel(path: str) -> str | None:

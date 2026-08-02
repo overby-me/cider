@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:codegen.bzl", "configure_file")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir")
@@ -276,3 +277,19 @@ load("//buck/generated:exports_python_modules.bzl", "EXPORTS")
     for _n, _s in EXPORTS.items()
 ]
 # END generated: pin exports
+
+# The easyinstall shim, one per packaged module. cmake's easyinstall() function is a
+# `configure_file` of darling/src/easyinstall.py.in with the package baked in, installed as
+# usr/bin/<package>-<pyver>. Configure time again, so no ninja edge exists for it.
+configure_file(
+    name = "easyinstall_xattr_2.7",
+    src = "darling/src/easyinstall.py.in",
+    out = "xattr-0.6.4-2.7",
+    values = {
+        "EXEPATH": "/System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7",
+        "PACKAGE_NAME": "xattr",
+        "PACKAGE_VERSION": "0.6.4",
+        "PYTHON_VERSION": "2.7",
+    },
+    visibility = ["PUBLIC"],
+)

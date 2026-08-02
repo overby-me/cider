@@ -592,13 +592,14 @@ unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 # The ceiling is 2 on the stock graph, not 0 as it was on cli: stock INSTALLS iokitd and
 # DBusKit, and those are two of the five edges whose blocks are removed for not linking.
 # It goes back to 0 when they do.
-# THREE, not zero, and the three are new information rather than a regression. Teaching the
-# manifest parser about `file(INSTALL ... RENAME "x" ...)` brought 167 previously-dropped
-# entries into the map, and three of them install a BUILD OUTPUT the port has no target for:
-# python-config and xattr-0.6.4-2.7 (generated wrapper scripts) and python.o (the object
-# distutils links against). They were always missing from the prefix; nothing could see it.
-[ "${unmapped:-999}" -le 3 ] && ok "install UNMAPPED is $unmapped (ceiling 3)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 3"
+# ZERO. Every install entry the reference has resolves to something the port builds. The
+# last three were not build outputs at all: python-config and the easyinstall shim are
+# written by cmake at CONFIGURE time (configure_file), so no ninja edge ever produced them,
+# and python.o is $<TARGET_OBJECTS:python27exe_obj>, a single object out of a group rather
+# than a library or an executable. All three read as "build output with no target" because
+# the resolver only knew how to look for build outputs.
+[ "${unmapped:-999}" -le 0 ] && ok "install UNMAPPED is $unmapped (ceiling 0)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 0"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

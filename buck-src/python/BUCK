@@ -5649,3 +5649,17 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: py27_datetime dylibs
+
+# python-config, which cmake writes at CONFIGURE time rather than building:
+# `configure_file(Misc/python-config.in python-config)` in the pin's CMakeLists, installed
+# as usr/bin/python2.7-config. There is no ninja edge for it, which is why the install
+# entry read as a build output with no target -- nothing builds it, cmake just writes it.
+configure_file(
+    name = "python_config",
+    src = "2.7/Python-2.7.16/Misc/python-config.in",
+    out = "python-config",
+    values = {
+        "EXENAME": "/System/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7",
+    },
+    visibility = ["PUBLIC"],
+)

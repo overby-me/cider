@@ -898,6 +898,28 @@ binary defining the principal class its own Info.plist declares -- so this is a 
 bug a wrong file was hiding, not a mapping regression. Reverting a correct fix to keep a
 probe green would have buried it again.
 
+### UNMAPPED is 0: the last three were never build outputs at all
+
+The three entries the RENAME fix exposed all read as "build output with no target", and
+none of them is a build output. That phrasing was the resolver describing its own
+assumption, not the artifacts.
+
+- **python-config** and **xattr-0.6.4-2.7** are written by cmake at CONFIGURE time.
+  `configure_file(Misc/python-config.in python-config)` and the `easyinstall()` function's
+  configure_file of `easyinstall.py.in`. No ninja edge produces either -- `grep python-config
+  build.ninja` finds two hits, both inside the cmake re-configure edge -- so nothing in the
+  graph could ever be matched against them. The port has a `configure_file` rule and now
+  reproduces both, with the same substitutions the cmake sets (EXENAME, and EXEPATH /
+  PACKAGE_NAME / PACKAGE_VERSION / PYTHON_VERSION).
+- **python.o** is `$<TARGET_OBJECTS:python27exe_obj>`, which cmake expands to
+  `CMakeFiles/python27exe_obj.dir/./Modules/python.c.o`. It is a single object out of a
+  group, not a library or an executable, so every registry the resolver consulted was the
+  wrong kind of thing. `target_for()` now recognises the `CMakeFiles/<target>.dir/` shape
+  and answers with the cc_objects group of that name, which is general: that is how cmake
+  always expands the generator expression.
+
+Every install entry the reference has now resolves to something the port builds.
+
 ### The dev STUBS install over the real frameworks, and that shipped an empty AppKit
 
 The nastiest bug of the campaign, and one the port INHERITED and then made visible.
