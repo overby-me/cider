@@ -597,15 +597,18 @@ and runs bash (buck-bash-check.sh); tests/darling-smoke.nix stages 2-7 pass 31/3
 (buck-nix-bash-check.sh), which is the campaign's keystone milestone and it survives the
 switch.
 
-### Stage 3: the `all` component, sized and started
+### Stage 3: the `all` component (the nine real targets are DONE)
 
 `.#darling-graph-all` now exists in flake.nix. See the sizing table below for the numbers;
 the short version is that `all` is only 18 raw link edges bigger than stock, the `webkit`
 component contributes NOTHING to the graph at all, and nine of the eighteen are dev-stub
 frameworks the coverage metric cannot see (the basename-collision caveat, also below).
 
-SIX of the nine real new targets are in: bmalloc, libWTF.a, libgnutar.a, libmbmalloc.dylib,
-ash and gnutar.
+ALL NINE of the real new targets are in: bmalloc, libWTF.a, libgnutar.a, libmbmalloc.dylib,
+ash, gnutar, JavaScriptCore, jsc and libMachExceptions_xtrace_mig.dylib. `all` measures
+1363 of 1368 (99%), and the five that remain are the same five stock has (DBusKit, iokitd,
+bsdln, getuuid, elfdep) -- nothing in the JavaScriptCore cone is left. The JavaScriptCore
+dylib is 43.7MB, NOUNDEFS and TWOLEVEL, with 10526 exported symbols.
 
 WTF needed a MIG target first. Its MachExceptions.defs generates MachExceptionsServer.h,
 which both libWTF.a and the xtrace stub compile against, and
@@ -614,22 +617,108 @@ NOT interchangeable: `//buck-src:mig_MachExceptions` puts the generated headers 
 include path, and `gen://buck-src:mig_MachExceptions` makes the target COMPILE the
 generated sources. WTF needs both.
 
-**JavaScriptCore HANGS buck2, and that is a real blocker rather than a slow build.** Its
-block generates fine (1121 sources), and then `buck2 build //buck-src:JavaScriptCore_dylib`
-sits for 35 minutes with the DAEMON AT 0% CPU, no clang processes, nothing written under
-buck-out, and the client printing "Waiting on buck2 daemon ... CPU: 0% IO: none". Killing
-the daemon and starting fresh reproduces it. So it is not analysis cost and not
-compilation: something wedges before any action runs. Worth knowing that buck-src/BUCK was
-62430 lines with the block in it, which is the largest it has ever been.
+**And `gen://` is necessary but NOT sufficient: a mig_gen exports only what its
+`compile_srcs` names.** With that attribute unset the target exports zero sources, so the
+`gen://` entry is wired, the block looks right, WTF builds, libWTF.a is produced -- and
+`MachExceptionsServer.c.o` is simply not in it. It surfaces one link later as
+`_mach_exc_server` undefined, referenced from `libWTF.a(Signals.cpp.o)`, when
+JavaScriptCore links. gen-mig-from-ninja.py fills compile_srcs in automatically only for
+MULTIARCH subsystems (the per-arch User.c); everything else goes in its
+EXTRA_COMPILE_SRCS map, which now carries this subsystem's two halves. To check a mig
+wiring without a full link: `llvm-ar t <the archive> | grep -i <subsystem>`.
+
+That map also had a latent bug worth knowing about, since Starlark will not warn you: it
+emitted one `compile_srcs = [...]` block PER entry, and a repeated keyword argument keeps
+only the last, so a two-entry map would have exported one source and looked fine. It emits
+a single merged list now.
+
+**JavaScriptCore hung buck2, and the cause was a CYCLIC SYMLINK.**
+`JavaScriptCore/DerivedSources/JavaScriptCore/JavaScriptCore` is a link to `../..`, which
+resolves to `JavaScriptCore` itself -- its own ancestor -- so the tree descends forever.
+It is now in GLOB_EXCLUDE and JavaScriptCore builds.
+
+The symptom looked nothing like a bad symlink, which is why it is worth writing down. buck2
+PARSED the package fine and ANALYSED the target fine (`buck2 audit providers` succeeded);
+what wedged was EXECUTING the symlinked_dir action that stages the header root. In that
+state the daemon sits at 0% CPU with all 32 threads in futex_do_wait, the forkserver
+sleeping, no clang processes, nothing written under buck-out, and the client repeating
+"Waiting on buck2 daemon ... CPU: 0% IO: none" while RSS climbs to 2.4GiB.
+
+The bisect that found it, in order, each step cheap and each one killing a hypothesis:
+
+1. A trivial target still built, so the daemon was healthy and the problem was JSC-specific.
+2. A probe with 200 of the 1088 sources hung too -- so NOT size. (607-source Automator_obj
+   builds fine, which was the first hint.)
+3. A probe with ONE source hung -- so not the sources at all, it is in the deps.
+4. Its two header roots built separately: libcxxabi fine, JavaScriptCore's own hung. One
+   target, isolated.
+5. `buck2 audit providers` on that root succeeded -- so analysis is fine and it is the
+   ACTION.
+6. An action that stages files and blocks at 0% CPU is waiting on the filesystem, so look
+   at what is in the tree: `find -type l` showed the cycle immediately.
+
+Two things generalise. Any glob-and-stage of a third-party tree can hit this, so
+`find <tree> -type l` and check for a link to an ancestor is worth doing BEFORE debugging
+buck2. And glob_excludes() now emits both `<bad>/**` and `<bad>`: the first covers a
+directory's contents, the second the entry itself, which is what matters when the bad
+thing is a file or a symlink -- buck2's glob does not traverse a symlinked directory, so a
+cyclic link is matched as ONE entry that `/**` never touches.
+
+**The hang then came back, and the reason is worth more than the symlink itself: a
+GENERATOR fix only reaches the blocks you REGENERATE.** Three blocks glob the
+JavaScriptCore tree -- `JavaScriptCore`, `low_level_interpreter_i386` and
+`low_level_interpreter_x86_64` -- and only the first had been rewritten since
+GLOB_EXCLUDE was added. The other two still carried the cyclic path in their glob, so the
+dylib, which links all three, wedged in exactly the same way under a different target
+name. `grep -rn '"<tree>/\*\*/\*"' --include=BUCK .` lists every block that stages a tree;
+after changing what the generator emits for one, check that list rather than the target
+you were debugging.
+
+A scan of the WHOLE of buck-src for links resolving to their own ancestor finds exactly
+this one, so no other pin carries the same trap:
+
+```
+python3 -c 'import os
+for r,ds,fs in os.walk("buck-src"):
+  for n in ds+fs:
+    p=os.path.join(r,n)
+    if os.path.islink(p):
+      d,t=os.path.realpath(os.path.dirname(p)),os.path.realpath(p)
+      if d==t or d.startswith(t.rstrip("/")+"/"): print(p,"->",os.readlink(p))'
+```
 
 How to tell a hang from a slow build, since this cost most of an iteration: watch
 `find buck-out -name '*.o' -newermt '-2 minutes' | wc -l` and the daemon's CURRENT cpu with
 `top -b -n 2`. `ps -o %cpu` on the daemon reports its LIFETIME average, which for an
 11-hour-old daemon looks like healthy 8% activity no matter what it is doing now.
 
-JavaScriptCore's and MachExceptions_xtrace_mig's blocks are REMOVED (the latter failed to
-link, and its extra-deps entry is dropped rather than left as a guess that did not work).
-The mig_MachExceptions target stays, because WTF compiles its output.
+**Past the hang, JavaScriptCore needed its own framework header namespace, and that
+namespace is made of TEXT FILES, not symlinks.** Its cmake defines
+`setup_forwarded_headers()`, which at CONFIGURE time writes
+`build/private/JavaScriptCore/JSContextPrivate.h` containing the single line
+`#include <API/JSContextPrivate.h>`, and puts `build/public` and `build/private` on the
+include path. That is how a source inside JavaScriptCore gets to say
+`<JavaScriptCore/JSContextPrivate.h>` for a header that lives in `API/` while no
+JavaScriptCore framework exists yet. It is the only target in the graph that does this:
+`-I/build/build/.../public` appears for JavaScriptCore and nothing else.
+
+Configure time has no counterpart here, so it became a rule: `forwarded_headers` in
+buck/rules/codegen.bzl, with `jsc_forwarded_public` and `jsc_forwarded_private` in
+buck-src/BUCK wired in through extra-deps.json. The rule READS THE CMAKE LISTS rather than
+transcribing them -- 15 public and 609 private entries is too many to keep in sync by
+hand -- and 17 of the private ones name a path that does not exist (`DerivedSources/X.h`
+without its `JavaScriptCore/` level). The reference writes those broken shims too; a shim
+only has to resolve if something includes it.
+
+The wrong answer here, and the one buck-port.py's resolver kept proposing, is
+`//buck-src:fw_JavaScriptCore`. That target EXISTS -- the SDK framework farm has a
+JavaScriptCore namespace -- so the guess looks plausible and fails anyway, because the SDK
+farm carries only the public headers and the missing one is private. Same shape as
+CoreAudio: a framework including ITSELF, which the SDK packages never have to express.
+
+MachExceptions_xtrace_mig's block is REMOVED (it failed to link, and its extra-deps entry
+is dropped rather than left as a guess that did not work). The mig_MachExceptions target
+stays, because WTF compiles its output.
 
 ### Stage 2, sized
 
@@ -639,9 +728,9 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 |---|---|---|---|
 | link edges (counted) | 871 | 1359 | 1368 |
 | link edges (raw) | 892 | 1439 | 1457 |
-| ported | 868 (99%) | 1354 (99%) | 1354 (98%) |
+| ported | 868 (99%) | 1354 (99%) | 1363 (99%) |
 | install entries | 1160 | 1872 | 1888 |
-| UNMAPPED | 0 | 2 | 7 |
+| UNMAPPED | 0 | 2 | 2 |
 | build.ninja lines | 201k | 347k | 363k |
 
 `.#darling-graph-all` was added to flake.nix to measure this; `all` is
@@ -668,8 +757,8 @@ artifact basenames are identical to the REAL frameworks the port already builds,
 buck-coverage.py counts each pair once and calls it ported. They are nine genuinely
 unported targets that the number cannot see. Counting by full path rather than basename
 would expose them, but the same dedup is DELIBERATE for the 16 xcselect shims in cli, so
-changing it is not a one-line fix. Until then: `all` is 1354 of 1368 by the metric and
-1354 of 1377 in truth.
+changing it is not a one-line fix. Until then: `all` is 1363 of 1368 by the metric and
+1363 of 1377 in truth.
 
 The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336
 -> 1354. Loadable modules and static archives are both 100%; dylibs are 604 of 605 and

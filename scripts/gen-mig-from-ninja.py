@@ -39,6 +39,11 @@ BIN_DIR = "/build/build"
 # boehm-gc does, so guest nix could not start.
 EXTRA_COMPILE_SRCS = {
     "emmig_signal_exc": ("signal/excServer.c",),
+    # libWTF.a contains MachExceptionsServer.c.o and MachExceptionsUser.c.o, and
+    # Signals.cpp calls mach_exc_server(), so WTF has to COMPILE both halves of this
+    # subsystem, not just include its headers. Without them JavaScriptCore links with
+    # an undefined _mach_exc_server referenced from libWTF.a(Signals.cpp.o).
+    "mig_MachExceptions": ("MachExceptionsServer.c", "MachExceptionsUser.c"),
 }
 
 
@@ -191,18 +196,20 @@ def main(argv: list[str]) -> int:
                           ("xtrace", "xtrace_suffix")):
             if key in suffixes:
                 print(f'    {attr} = "{suffixes[key]}",')
+        compile_srcs = []
         if am:
             print(f'    arch = "{am.group(1)}",')
             # The per-arch User.c is a SOURCE the consumer compiles, so export it.
+            compile_srcs.append(f'{stem}{suffixes["user"]}')
+        # Generated sources the reference BUILD compiles but this scope's ninja shows no
+        # compile edge for. Kept in one place so regenerating a block does not drop them.
+        # Collected into ONE list: Starlark takes the last of a repeated keyword argument,
+        # so emitting a compile_srcs block per entry silently exports only the last one.
+        compile_srcs.extend(EXTRA_COMPILE_SRCS.get(full, ()))
+        if compile_srcs:
             print("    compile_srcs = [")
-            print(f'        "{stem}{suffixes["user"]}",')
-            print("    ],")
-        for extra in EXTRA_COMPILE_SRCS.get(full, ()):
-            # A generated source the reference BUILD contains but its cli-scope ninja
-            # never shows a compile edge for. Kept in one place so regenerating this
-            # block does not drop it again.
-            print("    compile_srcs = [")
-            print(f'        "{extra}",')
+            for src in compile_srcs:
+                print(f'        "{src}",')
             print("    ],")
         if migdefs:
             print("    mig_flags = [")

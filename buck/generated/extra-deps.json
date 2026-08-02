@@ -306,6 +306,10 @@
     "//src/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_lock_set[xtrace]"
   ],
+  "MachExceptions_xtrace_mig": [
+    "//src/xtrace:xtrace_headers",
+    "gen://buck-src:mig_MachExceptions[xtrace]"
+  ],
   "mach_exc_xtrace_mig": [
     "//src/xtrace:xtrace_headers",
     "gen://buck-src:emmig_signal_mach_exc[xtrace]"
@@ -4491,5 +4495,21 @@
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/private-frameworks:fw_InternationalSupport",
     "gen://buck-src:mig_MachExceptions"
+  ],
+  "JavaScriptCore": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//buck-src:jsc_forwarded_private",
+    "//buck-src:jsc_forwarded_public",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "jsc": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_JavaScriptCore"
   ]
 }

@@ -89,6 +89,14 @@ GLOB_EXCLUDE = {
     # reference puts ${CMAKE_CURRENT_SOURCE_DIR} first on the include path, so every one
     # of them hits these two links.
     "dtrace/DTTk",
+    # A CYCLIC symlink: JavaScriptCore/DerivedSources/JavaScriptCore/JavaScriptCore points
+    # at ../.., which resolves to JavaScriptCore itself -- its own ancestor, so the tree
+    # descends forever. buck2 PARSES and ANALYSES the root containing it perfectly happily;
+    # what wedges is EXECUTING the symlinked_dir action, and the failure looks nothing like
+    # a bad symlink: the daemon sits at 0% CPU with every thread in futex_do_wait, no
+    # actions run, nothing is written under buck-out, and the client just repeats
+    # "Waiting on buck2 daemon". Excluding the cycle is what makes JavaScriptCore buildable.
+    "JavaScriptCore/DerivedSources/JavaScriptCore/JavaScriptCore",
 }
 
 
@@ -99,7 +107,12 @@ def glob_excludes(paths) -> list:
         for p in paths:
             p = p.rstrip("/")
             if bad == p or bad.startswith(p + "/"):
+                # BOTH spellings: `<bad>/**` covers a directory's contents, `<bad>` covers
+                # the entry itself. The entry matters when the bad thing IS a file or a
+                # symlink -- buck2's glob does not traverse a symlinked directory, so a
+                # cyclic link is matched as a single entry and `/**` never touches it.
                 out.add(bad + "/**")
+                out.add(bad)
                 break
     return sorted(out)
 
