@@ -28,8 +28,21 @@
   # that was the most expensive bug in it -- and it cost a full relower after every commit
   # made while working on it.
   #
-  # This is the coarse half of the fix. The precise version is to depend on the SOURCES THE
-  # ACTIONS NAME, which the graph already records per action; see plan/buck2-port.md.
+  # This is the coarse half of the fix. The precise version is to give each target only the
+  # sources it reads, and scripts/buck-lower-srcdeps.py computes that set and measures it:
+  # 306,019 project files today for EVERY target, against a median of 4,032 per target, or
+  # 1.32%. CoreFoundation_obj, one of the two big header cones, comes to 5,317 files of which
+  # 5,088 are headers.
+  #
+  # It does NOT come from staging-action argvs, which is what the task originally recorded.
+  # A staging action arrives from aquery as kind `symlinkeddir` carrying four attributes and
+  # no cmd at all, so there is no argv for a header to appear in; anything built that way
+  # would have staged no headers and failed at compile time. The header cones come from the
+  # stagedTrees link MAP below, which the dumper gets from BXL.
+  #
+  # Naming files is only safe because every include root is a staged tree whose contents that
+  # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
+  # are two directories holding 26 files between them, which have to be taken wholesale.
   srcRaw ? ../..,
   src ?
     builtins.path {
