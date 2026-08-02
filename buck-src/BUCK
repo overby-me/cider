@@ -50866,3 +50866,103 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: lp
+
+
+
+# BEGIN generated: Cocoa
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Cocoa   -- review before committing.
+# cmake target: Cocoa  ->  src/external/cocotron/Cocoa/Cocoa
+
+cc_objects(
+    name = "Cocoa_obj",
+    srcs = [
+        "cocotron/Cocoa/Cocoa.m",
+    ],
+    compiler_flags = [
+        "-DCocoa_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Cocoa
+
+# BEGIN generated: Cocoa dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Cocoa   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   AppKit
+#   CoreData
+
+darwin_dylib(
+    name = "Cocoa_dylib",
+    dylib_name = "Cocoa",
+    install_name = "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa",
+    compatibility_version = "1.0.0",
+    current_version = "22.0.0",
+    objs = [
+        # Cocoa
+        ":Cocoa_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Cocoa dylibs
+
+# The COCOTRON cone is held back: Onyx2D, CoreGraphics, CoreText, QuartzCore, CoreData and
+# AppKit. Cocoa is in (it is an umbrella whose single source exports nothing, which the
+# reference produces too).
+#
+# They do not fail for want of a framework root, which is what buck-port.py knows how to
+# fix. They fail on Objective-C header CASCADES: one missing framework header makes
+# Foundation's own headers stop parsing, and the resulting torrent of "unknown type name
+# NSMutableArray" fills clang's -ferror-limit before the single actionable
+# "Security/Security.h file not found" is ever emitted. buck-port reads the first error, so
+# it sees the cascade and gives up, and seeding the obvious framework deps by hand does not
+# converge either.
+#
+# The fix belongs in buck-port.py: build the resolver's probe with -ferror-limit=0 (or
+# retry once with it) so the actionable error is in the output at all. Until then this cone
+# is hand work, and six frameworks in //darwin/frameworks wait on it (AVKit, CoreVideo,
+# HIServices, ImageIO, OpenGL, Quartz).

@@ -308,6 +308,37 @@ And `lp` is not a dylib at all -- buck-port reported "Unknown target lp_dylib" b
 coverage missing-list entry is an executable that happens to sit under src/frameworks.
 A name in the missing list is not a promise about what kind of thing it is.
 
+### Stage 2: the cocotron cone (blocked, and why)
+
+Cocoa is in. The other six -- Onyx2D, CoreGraphics, CoreText, QuartzCore, CoreData and
+AppKit -- are NOT, and the reason is worth writing down because it is a limit of the tooling
+rather than of the code.
+
+One fix did land: `icu/icuSources/i18n` joins `common` in CROSS_PACKAGE_ROOTS. Five of the
+six refused outright with "include dir belongs to package //buck-src/icu" because only the
+common half was mapped, and the i18n root already existed in buck-src/icu/BUCK.
+
+What remains is not a missing framework root, which is the one thing buck-port.py knows how
+to fix. These fail on Objective-C header CASCADES. One missing framework header stops
+Foundation's own headers parsing, the resulting torrent of "unknown type name
+NSMutableArray" fills clang's -ferror-limit, and the single actionable
+"Security/Security.h file not found" is never emitted at all. buck-port reads the first
+error, sees the cascade, and gives up. Seeding the obvious framework deps by hand
+(CoreFoundation, Foundation, Security, CFNetwork, CoreGraphics) did not converge either, so
+that guess is not the answer and the seeds were dropped rather than left as misleading
+state.
+
+The fix belongs in buck-port.py: build the resolver's probe with -ferror-limit=0, or retry
+once with it, so the actionable error is in the output to be found. That is the next thing
+to do here, and it is worth doing before any more hand work, because six frameworks in
+//darwin/frameworks (AVKit, CoreVideo, HIServices, ImageIO, OpenGL, Quartz) are waiting on
+this cone.
+
+Also worth knowing: cocotron's Cocoa exports NOTHING, and that is faithful. Its single
+source is an umbrella that only imports headers, and the reference emits no
+reexport_library flags for it either. A zero-export dylib is usually the empty-artifact
+trap; this one is not.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:

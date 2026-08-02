@@ -139,8 +139,13 @@ CROSS_PACKAGE_ROOTS = {
         "//buck-src:sdk_include_mach",
     # libMobileKeyBag's headers, which secd reaches from //buck-src.
     "src/MobileKeyBag/include": "//src/MobileKeyBag:MobileKeyBag_inc_src_MobileKeyBag_include",
-    # icu is a SPLIT pin, so its common headers are named by label, not globbed from here.
+    # icu is a SPLIT pin, so its headers are named by label, not globbed from here. BOTH
+    # subtrees: cocotron's CoreGraphics, Onyx2D, QuartzCore, CoreData and AppKit reach the
+    # i18n half for the collation and break-iterator APIs, and only `common` was mapped, so
+    # all five refused with "include dir belongs to package //buck-src/icu". The root
+    # itself already existed.
     "icu/icuSources/common": "//buck-src/icu:icucore_inc_icu_icuSources_common",
+    "icu/icuSources/i18n": "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
     # per-app-VPN types. src/networkextension is its own package.
     "src/networkextension/include":
