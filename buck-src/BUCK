@@ -56093,3 +56093,110 @@ darwin_binary(
 # cupsd is HELD BACK for the same reason as AVKit, CoreVideo, HIServices, ImageIO, OpenGL
 # and Quartz: it wants CGBitmapContextCreate and friends from COCOTRON's CoreGraphics, which
 # is parked. Everything else in cups is in (2 dylibs, 4 archives, 51 executables).
+
+# BEGIN generated: ffi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ffi   -- review before committing.
+# cmake target: ffi  ->  src/external/libffi/libffi.dylib
+# 15 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+
+cc_header_root(
+    name = "ffi_inc_libffi_darwin_include",
+    headers = glob(["libffi/darwin/include/*.h", "libffi/darwin/include/**/*.h", "libffi/darwin/include/*.c"]),
+    root = "libffi/darwin/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "ffi_inc_libffi_include",
+    headers = glob(["libffi/include/*.h", "libffi/include/**/*.h", "libffi/include/*.c"]),
+    root = "libffi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ffi_obj",
+    srcs = [
+        "libffi/src/aarch64/ffi.c",
+        "libffi/src/arm/ffi.c",
+        "libffi/src/closures.c",
+        "libffi/src/java_raw_api.c",
+        "libffi/src/prep_cif.c",
+        "libffi/src/raw_api.c",
+        "libffi/src/types.c",
+        "libffi/src/x86/ffi.c",
+        "libffi/src/x86/ffi64.c",
+        "libffi/src/x86/ffiw64.c",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dffi_EXPORTS",
+        "-nostdinc",
+        "-D__DARWIN_UNIX03",
+        "-fPIC",
+        "-w",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ffi_inc_libffi_darwin_include",
+        ":ffi_inc_libffi_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ffi_obj2",
+    srcs = [
+        "libffi/src/aarch64/sysv.S",
+        "libffi/src/arm/sysv.S",
+        "libffi/src/x86/sysv.S",
+        "libffi/src/x86/unix64.S",
+        "libffi/src/x86/win64.S",
+    ],
+    compiler_flags = [
+        "-DHAVE_STDINT_H=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dffi_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ffi_inc_libffi_darwin_include",
+        ":ffi_inc_libffi_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ffi
+
+# BEGIN generated: ffi dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ffi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/libffi/libffi.dylib = ffi_dylib
+
+darwin_dylib(
+    name = "ffi_dylib",
+    dylib_name = "libffi.dylib",
+    install_name = "/usr/lib/libffi.dylib",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # ffi
+        ":ffi_obj",
+        ":ffi_obj2",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ffi dylibs

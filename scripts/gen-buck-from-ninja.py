@@ -103,6 +103,17 @@ def glob_excludes(paths) -> list:
 # Include dirs owned by another buck2 package, mapped to the target that already
 # declares them. A glob in one package cannot reach into another, so without this
 # the root would silently stage empty.
+# Sources one package compiles that ANOTHER package owns, by label. The include-dir
+# analogue is CROSS_PACKAGE_ROOTS below; this is the same problem one level down, and a
+# path here would simply not resolve ("does not exist as a member of package").
+#
+# cmake/versioner.cmake builds a version-dispatch wrapper for a project out of ONE shared
+# source, src/external/perl/versioner/versioner.c, whoever calls it: `perl` gets one and so
+# does `python`. perl owns the file, so python's wrapper has to name it by label.
+CROSS_PACKAGE_SRCS = {
+    "perl/versioner/versioner.c": "//buck-src/perl:versioner_c",
+}
+
 CROSS_PACKAGE_ROOTS = {
     "src/libsimple/include": "//src/libsimple:libsimple_headers",
     "src/external/darlingserver/include": "//src/external/darlingserver:dserver_headers",
@@ -124,6 +135,23 @@ CROSS_PACKAGE_ROOTS = {
     # -Isrc/external/ruby/darling/include/ruby. ruby became a split pin when its 92
     # targets landed, so the root has to be declared inside that package.
     "ruby/darling/include/ruby": "//buck-src/ruby:ruby_inc_darling_include_ruby",
+    # python's dbm module gets -I<sdk>/usr/include/BerkeleyDB, whose db.h and db_cxx.h are
+    # DANGLING links in the committed SDK farm: they still point at src/external/BerkeleyDB
+    # from before the darwin/ + linux/ reorg, like dnsinfo.h does (see the note in that
+    # package's BUCK). The real headers are in the pin, and berkeley_db already stages the
+    # tree with build_unix among its include_subdirs, so the include path maps to that root
+    # rather than to a second copy. It carries `.` as well, which is more surface than the
+    # reference gives dbm, but a near-duplicate root is the worse trade.
+    "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/BerkeleyDB":
+        "//buck-src:berkeley_db_inc_BerkeleyDB_db",
+    # python's own tree, as pyobjc's 24 extension modules include it (Python.h and the
+    # whole C API). python is a split pin, so the root belongs to that package; the root
+    # named here is the one the Python framework dylib already declares. BOTH spellings map
+    # to it, because that root stages `.` and `Include` as sibling include_subdirs of one
+    # tree -- two roots would be two trees, and the -I order between them would stop
+    # matching the reference's.
+    "python/2.7/Python-2.7.16": "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    "python/2.7/Python-2.7.16/Include": "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
     # mldr's include tree is a symlink farm into the pins for headers the SDK already
     # carries (mach/, sys/, i386/, libkern/, architecture/): 15 of its 19 entries are links
     # into xnu and architecture, and every target that gets this -I also depends on sdk_env.
@@ -768,7 +796,21 @@ def generate(target: str, edges):
     for parent, ps in sorted(by_parent.items()):
         if len(ps) < 2:
             continue
-        name = target.removesuffix("_obj") + "_inc_" + sanitize(parent)[-44:]
+        # The SAME boundary check the single-root loop below makes. It was missing here,
+        # and a sibling GROUP is the shape that hides it best: all 24 pyobjc modules got a
+        # root over python/2.7/Python-2.7.16 written into //buck-src/pyobjc, which staged
+        # empty, and the generator reported success. The failure surfaced only at build
+        # time as "The path `Include` does not exist in the artifact", naming the staged
+        # tree rather than the package boundary that emptied it.
+        owner = root_owner_package(parent)
+        if owner and owner != pkg_for_files:
+            sys.exit(
+                f"include dir {parent!r} belongs to package //{owner}, but this block goes\n"
+                f"into //{pkg_for_files}. A glob cannot cross a package boundary: add\n"
+                f"    {parent!r}: \"//{owner}:<its header root>\"\n"
+                f"to CROSS_PACKAGE_ROOTS in {os.path.basename(__file__)}."
+            )
+        name = inc_prefix(target, edges) + "_inc_" + sanitize(parent)[-44:]
         n = 2
         while name in root_name.values():
             name, n = f"{name}_{n}", n + 1
@@ -830,7 +872,7 @@ def generate(target: str, edges):
                     f"    {p!r}: \"//{owner}:<its header root>\"\n"
                     f"to CROSS_PACKAGE_ROOTS in {os.path.basename(__file__)}."
                 )
-            base = target.removesuffix("_obj") + "_inc_" + sanitize(p)[-48:]
+            base = inc_prefix(target, edges) + "_inc_" + sanitize(p)[-48:]
             name, n = base, 2
             while name in root_name.values():
                 name = f"{base}_{n}"
@@ -856,7 +898,7 @@ def generate(target: str, edges):
             w(")")
             w("")
 
-    base = target if target.endswith("_obj") else target + "_obj"
+    base = obj_base(target, edges)
     obj_names = []
     # A group can legitimately have NO srcs of its own (every source generated), so the
     # sort key cannot index into it.
@@ -873,7 +915,7 @@ def generate(target: str, edges):
         w(f'    name = "{name}",')
         w("    srcs = [")
         for _, p in sorted(g["srcs"]):
-            w(f'        "{p}",')
+            w(f'        "{CROSS_PACKAGE_SRCS.get(p, p)}",')
         w("    ],")
         # `cflag:` entries in extra-deps.json, appended to what the reference gives this
         # target. The one case is libsystem_kernel's mig exception server: Apple compiles
@@ -1136,6 +1178,36 @@ def objlibs_of(edge) -> list[str]:
     return names
 
 
+def obj_base(lib: str, edges) -> str:
+    """The buck target name for a cmake object library's first flag group.
+
+    `<lib>` and an object library literally named `<lib>_obj` can BOTH feed one link, and
+    then both want the name `<lib>_obj`. python2.7 is the case: cmake gives python27exe a
+    dummy.c purely so the target has a source of its own ("this file is a dummy source to
+    avoid having only object library sources for a target") and puts the real python.c in
+    an object library called python27exe_obj. The two collapsed onto one label, so the
+    binary listed `:python27exe_obj` twice, python.c was never compiled, and the link
+    failed on _main -- with nothing in the block to suggest a source had gone missing.
+    """
+    if lib.endswith("_obj"):
+        return lib
+    if any(f"CMakeFiles/{lib}_obj.dir/" in i for e in edges for i in e[2]):
+        return lib + "_own_obj"
+    return lib + "_obj"
+
+
+def inc_prefix(target: str, edges) -> str:
+    """The prefix an include-root target name is built from.
+
+    A cmake target and its object library deliberately SHARE one set of include roots --
+    they compile the same tree -- which is why this strips a trailing `_obj`. When both
+    halves of that pair exist the shared name is a collision instead of a saving, and
+    buck2 rejects the second block with "Attempted to register target ... twice", so the
+    disambiguation has to be the same one obj_base() applies.
+    """
+    return obj_base(target, edges).removesuffix("_obj")
+
+
 def obj_groups(lib: str, edges):
     """[(target name, [source paths])] for one cmake object library, and its package.
 
@@ -1162,7 +1234,7 @@ def obj_groups(lib: str, edges):
             continue
         groups[key].append((kind, srcp))
         srcs.append((kind, srcp))
-    base = lib if lib.endswith("_obj") else lib + "_obj"
+    base = obj_base(lib, edges)
     ordered = sorted(groups.values(), key=lambda g: (-len(g), sorted(g)[0][1] if g else ""))
     out = [(base if i == 0 else f"{base}{i + 1}", [p for _k, p in g])
            for i, g in enumerate(ordered)]
@@ -1283,13 +1355,21 @@ _LINK_FLAG_HANDLED = (
 )
 
 
-def link_flag_files(link_vars, pkg) -> tuple:
-    """({flag: package-relative file}, flags whose file is elsewhere).
+def link_flag_files(link_vars, pkg, reg=None) -> tuple:
+    """({flag: package-relative file OR label}, flags whose file is elsewhere).
 
     A linker flag can carry a FILE, and dropping it changes the dylib's symbols:
     libplatform defines _platform_strcmp and answers to _strcmp only through
     -Wl,-alias_list. The file has to be a source in the declaring package, so any
     that is not gets reported instead of being emitted wrong.
+
+    A flag's file can also be something the build PRODUCES rather than a source, and
+    then only a label can name it. python2.7 is the case: all 53 of python's extension
+    modules resolve every Py* symbol through -Wl,-bundle_loader,<the python2.7
+    executable> and link nothing else that defines them, so with the flag dropped every
+    one of them failed on _PyErr_Format and the other few hundred. Passing `reg` (the
+    registry, which is keyed by artifact path for blocks carrying a `buck-registry:`
+    pragma) turns those into labels; without it they are reported as before.
     """
     files, elsewhere = {}, []
     for tok in split_flags(link_vars.get("LINK_FLAGS", "")):
@@ -1310,7 +1390,11 @@ def link_flag_files(link_vars, pkg) -> tuple:
         flag, path = m.group(1), m.group(2)
         kind, rel = repo_path(path)
         if kind == "generated":
-            elsewhere.append(tok)
+            label = (reg or {}).get(rel)
+            if label:
+                files[flag] = label
+            else:
+                elsewhere.append(tok)
             continue
         if kind == "buck-src" and pkg == BUCK_SRC:
             files[flag] = rel
@@ -1434,7 +1518,13 @@ def siblings_of(edge, reg, final_reg):
             label = reg.get(t)
             name = f"lib{t}_firstpass.dylib"
         else:
-            label = final_reg.get(base)
+            # By full PATH first, then by basename. Two targets may build the same file
+            # name -- perl 5.18 and 5.28 both build libperl.dylib -- and a basename lookup
+            # silently returns whichever the registry scanned last, which links the module
+            # against the wrong interpreter. The path comes straight off the ninja edge, so
+            # it is unambiguous; blocks written before the `buck-registry:` path pragma
+            # existed simply fall through to the basename as before.
+            label = final_reg.get(i) or final_reg.get(base)
             if label is None and not base.endswith(".dylib") and base not in DYLIB_ARTIFACTS:
                 # Extensionless and unknown: a tool or a phony, not a library. A framework
                 # binary is also extensionless, so "does the reference link this as a
@@ -1447,6 +1537,39 @@ def siblings_of(edge, reg, final_reg):
         elif name not in missing:
             missing.append(name)
     return sibs, missing
+
+
+def bundle_loader_dylibs(edge, reg, already) -> list:
+    """Labels a BUNDLE needs mapped that nothing else in its block pulls in.
+
+    A loadable module resolves its undefined symbols through
+    -Wl,-bundle_loader,<executable> and links none of the libraries that define them, so
+    the port has no dep from which to derive the -dylib_file mapping for what the LOADER
+    itself links. ld64 still opens those, and python's 53 extension modules all failed
+    with "file not found: /System/Library/Frameworks/Python.framework/Versions/2.7/Python"
+    -- the mapping the reference passes and the block had no reason to.
+
+    Restricted to edges that carry -bundle_loader on purpose. Every ordinary dylib derives
+    its mappings from its own deps, and widening this would add a hundred redundant
+    entries to every block for no gain. The labels go in `deps`, not `siblings`: deps
+    contribute the mapping WITHOUT putting the library on the link line, which is what
+    the reference does too -- Python is not an input of the zlib.so edge.
+    """
+    flags = split_flags(edge[2].get("LINK_FLAGS", ""))
+    if not any(f.startswith("-Wl,-bundle_loader,") for f in flags):
+        return []
+    out = []
+    for tok in flags:
+        m = re.match(r"-Wl,-dylib_file,([^:]+):(/\S+)$", tok)
+        if not m:
+            continue
+        kind, rel = repo_path(m.group(2))
+        if kind != "generated":
+            continue
+        label = reg.get(rel)
+        if label and label not in already and label not in out:
+            out.append(label)
+    return out
 
 
 def generate_dylibs(target: str, edges, only: str = ""):
@@ -1553,8 +1676,8 @@ def generate_dylibs(target: str, edges, only: str = ""):
                 sibs.append(sib_label)
     final_flags, _ = semantic_link_flags(final[2]) if final else ([], [])
     first_flags, _ = semantic_link_flags(first[2]) if first else ([], [])
-    final_files, final_elsewhere = link_flag_files(final[2], pkg) if final else ({}, [])
-    first_files, first_elsewhere = link_flag_files(first[2], pkg) if first else ({}, [])
+    final_files, final_elsewhere = link_flag_files(final[2], pkg, final_reg) if final else ({}, [])
+    first_files, first_elsewhere = link_flag_files(first[2], pkg, final_reg) if first else ({}, [])
     # A file-bearing link flag whose file is GENERATED, supplied by hand as
     # `linkfile:<flag>=<label>`. Security's -exported_symbols_list is the case: the list is
     # preprocessed out of Security.exp-in at build time, so there is no source to name, and
@@ -1593,6 +1716,14 @@ def generate_dylibs(target: str, edges, only: str = ""):
         w("# pass is not ported yet; without them its symbol surface is incomplete:")
         for t in reex_missing:
             w(f"#   {t}")
+    # The edge's real output PATH, so a consumer can name this library unambiguously.
+    # final_registry() is otherwise keyed by artifact BASENAME, and basenames collide once
+    # the graph is wide enough: perl 5.18 and perl 5.28 each build a libperl.dylib, so
+    # every one of 5.18's 54 modules resolved its bundle_loader to 5.28's library and
+    # failed on _Perl_xs_apiversion_bootcheck. siblings_of() looks a path up first.
+    if final is not None and final[0]:
+        w(f"# buck-registry: {final[0]} = {target.removesuffix('_obj')}_"
+          + ("dylib" if first is None else "final"))
     w("")
 
     single = first is None
@@ -1651,6 +1782,11 @@ def generate_dylibs(target: str, edges, only: str = ""):
         elif dylib_archives:
             extra_dylib_deps = extra_dylib_deps + [a for a in dylib_archives
                                                    if a not in extra_dylib_deps]
+        # A bundle's loader brings libraries the block never names; see
+        # bundle_loader_dylibs(). Final pass only: a firstpass resolves nothing anyway.
+        if kind == "final" and final is not None:
+            for lbl in bundle_loader_dylibs(final, final_reg, sibs + extra_dylib_deps):
+                extra_dylib_deps = extra_dylib_deps + [lbl]
         kind_files = final_files if kind == "final" else first_files
         if kind_files:
             w("    link_flag_files = {")
@@ -1901,7 +2037,7 @@ def generate_binary(target: str, edges):
             missing_a.append(base)
     missing = missing + missing_a
     flags, _ = semantic_link_flags(edge[2])
-    files, elsewhere = link_flag_files(edge[2], pkg)
+    files, elsewhere = link_flag_files(edge[2], pkg, final_reg)
     extra_objs = [d[len("objs:"):] for d in extra_deps(target) if d.startswith("objs:")]
     extra_dylib_deps = [d[len("dep:"):] for d in extra_deps(target) if d.startswith("dep:")]
     # Libraries this port has to name explicitly where the reference relies on ld64
@@ -1927,6 +2063,12 @@ def generate_binary(target: str, edges):
         w("# TODO file-bearing link flags whose file is not a source of this package:")
         for f in sorted(set(elsewhere)):
             w(f"#   {f}")
+    # Same pragma the dylib blocks emit: this executable, by the PATH the reference builds
+    # it at. Python's 53 extension modules resolve every Py* symbol through
+    # -Wl,-bundle_loader,<the python2.7 executable>, so a flag can name a binary the way a
+    # sibling names a library, and link_flag_files() needs to look it up.
+    if edge[0]:
+        w(f"# buck-registry: {edge[0]} = {target}")
     w("")
     w("darwin_binary(")
     w(f'    name = "{target}",')

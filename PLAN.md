@@ -423,6 +423,95 @@ installed and passed the suite with a dead include path. The root now lives in t
 package and xxd names it by label (46 files staged). Assume every glob that mentions a
 newly split pin is silently empty and check each one; a passing build proves nothing here.
 
+### Stage 2: perl and python, and four ways a name can be wrong
+
+perl is 117 targets (two interpreters, 109 modules, an archive, three executables) and
+python 56. Almost none of the work was in the sources; it was in four distinct
+name-resolution faults, each of which produced a large pile of failures with one cause.
+
+**The registry was keyed by artifact BASENAME, and basenames collide.** perl 5.18 and 5.28
+each build a `libperl.dylib`, so `final_registry()` held whichever it scanned last and all
+54 of 5.18's modules linked against 5.28's interpreter, failing on
+`_Perl_xs_apiversion_bootcheck`. The dylib and binary generators now emit
+`# buck-registry: <ninja output path> = <target>` and `siblings_of()` resolves by full path
+before falling back to the basename, so blocks written before the pragma existed are
+unaffected. 57 dylib basenames in the stock graph are built by more than one edge; besides
+the 55 perl ones they are `CoreAudio` (two), `X11` (a THIRD one, in cocotron AppKit,
+distinct from the src/native wrap_elf stub and CoreGraphics' backend) and `datetime.so`
+(zsh's is ported, python's is not).
+
+**A linker flag can name something the build PRODUCES.** python's extension modules link
+none of the libraries that define the Py* symbols; they resolve them through
+`-Wl,-bundle_loader,<the python2.7 executable>`. `link_flag_files()` classified that as
+"file is not a source of this package" and dropped it, so all 53 failed on `_PyErr_Format`
+and several hundred others. It now resolves a build-output path through the registry to a
+LABEL. And once the loader was wired they still failed, on
+`/System/Library/Frameworks/Python.framework/Versions/2.7/Python`: ld64 also opens what the
+LOADER links, and the block had no dep from which to derive that `-dylib_file` mapping.
+`bundle_loader_dylibs()` adds it to `deps` rather than `siblings` -- deps contribute the
+mapping without putting the library on the link line, which matches the reference, where
+Python is not an input of the zlib.so edge. Restricted to edges carrying `-bundle_loader`
+on purpose: every ordinary dylib derives its mappings from its own deps.
+
+**A cmake target and an object library can want the same buck name.** cmake gives
+python27exe a `dummy.c` ("this file is a dummy source to avoid having only object library
+sources for a target") and puts the real python.c in an object library called
+`python27exe_obj`. The port appends `_obj` to a target name unless it already ends in one,
+so both collapsed to `:python27exe_obj`, the binary listed it twice, python.c was never
+compiled and the link failed on `_main` -- with nothing in the block to suggest a source
+had gone missing. `obj_base()` now disambiguates to `<lib>_own_obj`, and `inc_prefix()`
+applies the same rule to include-root names, which otherwise collide as "Attempted to
+register target ... twice". Both are identity transforms for every non-colliding target.
+
+**And one that was mine.** A ninja rule is `<KIND>__<cmake target>_`, and I read the target
+with `rule.split("__")[1]`. Every python module whose name starts with an underscore is
+`py27__ctypes`, `py27__io`, `py27__socket` and so on, so that split returned `py27` for 23
+of them. They were never attempted; the batch reported 23 identical "Unknown target
+`py27_dylib`" lines, which reads like one broken target rather than 23 missing ones.
+Partition on the FIRST `__` and strip one trailing underscore.
+
+Splitting a pin also needs BOTH SDK maps regenerated, not just the framework one: ruby
+contributes no `usr/include` namespace so `sdk_headers.bzl` was unchanged, but python
+contributes `python2.7/` and until that map named the headers by label `//buck-src` failed
+to parse with "does not exist as a member of package". Unlike the silent empty glob, this
+one is a hard error.
+
+**The cross-package guard covered one of its two loops.** gen-buck-from-ninja.py refuses to
+write a header root for a directory another package owns -- that is the "add it to
+CROSS_PACKAGE_ROOTS" error -- but only in the loop that emits a SINGLE root. The loop that
+emits a sibling GROUP had no such check, and a group is the shape that hides it best: all
+24 pyobjc modules got a root over `python/2.7/Python-2.7.16` written into
+`//buck-src/pyobjc`, the generator reported success, and the failure surfaced much later as
+"The path `Include` does not exist in the artifact", naming the staged tree rather than the
+boundary that emptied it. Both loops check now. Two entries map python's tree, `.` and
+`Include`, to the SAME root, because that root stages them as sibling include_subdirs of
+one tree and two roots would be two trees with an -I order the reference does not have.
+
+**A shared SOURCE crosses packages too.** cmake/versioner.cmake builds every project's
+version-dispatch wrapper from one file, `perl/versioner/versioner.c`, so python's `python`
+wrapper compiles perl's source. `CROSS_PACKAGE_SRCS` is the file-level analogue of
+CROSS_PACKAGE_ROOTS; perl exports the source and the template, and python's own
+`configure_file` supplies its versions.h (`versioner(python "2.7" "2.7")` -> NVERSIONS 1).
+Both wrappers need that configure_file at all because cmake writes versions.h at CONFIGURE
+time, so no ninja edge produces it -- the same shape as the 159 cert links.
+
+**Two dangling SDK links, left from the darwin/ + linux/ reorg.** python's dbm module gets
+`-I<sdk>/usr/include/BerkeleyDB`, whose db.h and db_cxx.h still point at
+`src/external/BerkeleyDB` from before the pins moved, exactly like the dnsinfo.h case
+already noted in that package's BUCK. The real headers are in the pin and berkeley_db
+already stages them, so the include path maps to that existing root.
+
+**Do not edit a BUCK file while a batch is running.** Adding python's configure_file
+mid-run made six pyobjc modules fail with "Variable `configure_file` not found" -- the load
+had not been fixed yet -- which looks like a rule problem and is only a race.
+
+**And stale wait-loops from earlier iterations are not inert.** buck-test.sh reported "the
+kernel's final pass is not two-level" once; llvm-objdump showed TWOLEVEL plainly on the
+same artifact, and the suite passed 138/138 as soon as three leftover
+`until ! pgrep -f buck-port.py; do sleep; done` shells -- each of which then ran its own
+buck2 build -- were killed. Add that to the list of causes to check when a check fails once
+and cannot be reproduced.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
@@ -430,13 +519,14 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 | | cli | stock |
 |---|---|---|
 | link edges | 871 | 1359 |
-| ported | 862 (98%) | 1168 (85%) |
+| ported | 862 (98%) | 1311 (96%) |
 | install entries | 1160 | 1872 |
 | UNMAPPED | 0 | **523** |
 | build.ninja lines | 201k | 347k |
 
-The stock "ported" figure was 1060 (77%) before this round and 862 (63%) when first sized.
-108 of the gain is real work; 16 of it was a MEASUREMENT bug, below.
+The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311. All 96
+loadable modules are done, and 48 link edges remain, most of them the parked cocotron cone
+and what waits on it. 16 of the gain was a MEASUREMENT bug, below, not new work.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
@@ -1022,21 +1112,10 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
 
-   Of those src/external groups **ruby is done** (92). What remains, all
-   SHARED_LIBRARY_LINKER so all `--dylibs`, and each wanting its own split-pin package
-   before its blocks land anywhere near buck-src/BUCK:
-
-   | group | edges | shape |
-   |---|---|---|
-   | perl 5.18 | 56 + 1 exe + 1 archive | `.bundle` modules |
-   | perl 5.28 | 55 + 1 exe | `.bundle` modules |
-   | python 2.7 | 54 + 2 exes | Python framework dylib + `.so` extensions |
-   | pyobjc | 24 | `.so` extensions |
-
-   perl ships TWO versions whose module names are identical (`Cwd.bundle` in both), so
-   check which edge the generator picked; the cmake target names disambiguate them and the
-   artifact basenames do not. Expect `#include __FILE__`-class surprises: ruby needed
-   `-iquote.` and the pattern will not be unique to it.
+   The src/external language groups are now ALL DONE: ruby (92), perl (117, two
+   interpreters), python (56), python_modules (3), pyobjc (24), plus libffi which
+   python's _ctypes needs. Each got its own split-pin package. What is left in stock is
+   48 edges, and the cocotron cone below is most of it.
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in

@@ -1,0 +1,190 @@
+load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:cc.bzl", "cc_objects")
+# Targets over the python_modules pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate.
+
+# BEGIN generated: _xattr_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py _xattr_py27   -- review before committing.
+# cmake target: _xattr_py27  ->  src/external/python_modules/Modules/xattr-0.6.4/xattr-0.6.4/lib_xattr_py27.dylib
+
+cc_objects(
+    name = "_xattr_py27_obj",
+    srcs = [
+        "Modules/xattr-0.6.4/xattr-0.6.4/xattr/_xattr.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_xattr_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: _xattr_py27
+
+# BEGIN generated: _xattr_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs _xattr_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python_modules/Modules/xattr-0.6.4/xattr-0.6.4/lib_xattr_py27.dylib = _xattr_py27_dylib
+
+darwin_dylib(
+    name = "_xattr_py27_dylib",
+    dylib_name = "lib_xattr_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # _xattr_py27
+        ":_xattr_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: _xattr_py27 dylibs
+
+# BEGIN generated: py2app_bundletemplate
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py py2app_bundletemplate   -- review before committing.
+# cmake target: py2app_bundletemplate  ->  src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/libpy2app_bundletemplate.dylib
+
+cc_objects(
+    name = "py2app_bundletemplate_obj",
+    srcs = [
+        "Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app/bundletemplate/src/main.m",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy2app_bundletemplate_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py2app_bundletemplate
+
+# BEGIN generated: py2app_bundletemplate dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs py2app_bundletemplate   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   AppKit
+# buck-registry: src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/libpy2app_bundletemplate.dylib = py2app_bundletemplate_dylib
+
+darwin_dylib(
+    name = "py2app_bundletemplate_dylib",
+    dylib_name = "libpy2app_bundletemplate.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py2app_bundletemplate
+        ":py2app_bundletemplate_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py2app_bundletemplate dylibs
+
+# BEGIN generated: py2app_apptemplate
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py py2app_apptemplate   -- review before committing.
+# cmake target: py2app_apptemplate  ->  src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app_apptemplate
+
+cc_objects(
+    name = "py2app_apptemplate_obj",
+    srcs = [
+        "Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app/apptemplate/src/main.c",
+    ],
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py2app_apptemplate
+
+# BEGIN generated: py2app_apptemplate binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries py2app_apptemplate   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app_apptemplate = py2app_apptemplate
+
+darwin_binary(
+    name = "py2app_apptemplate",
+    objs = [
+        # py2app_apptemplate
+        ":py2app_apptemplate_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py2app_apptemplate binary

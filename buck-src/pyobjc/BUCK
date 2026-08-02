@@ -1,0 +1,2328 @@
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
+load("//buck/rules:darwin.bzl", "darwin_dylib")
+
+# Targets over the pyobjc pin, materialized by scripts/buck-src.sh. The tree
+# itself is gitignored (content is pinned in nix/submodules.json); this file is
+# committed. One package per pin keeps what the Nix-lowered path has to parse
+# small enough to evaluate.
+
+# BEGIN generated: pyobjc_core_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_core_py27   -- review before committing.
+# cmake target: pyobjc_core_py27  ->  src/external/pyobjc/pyobjc/pyobjc-core-2.5.1/libpyobjc_core_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_core_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_core_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_NSBundleHack.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonArray.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonData.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonDate.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonDictionary.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonEnumerator.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonNumber.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonObject.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonSet.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonString.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/OC_PythonUnicode.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/ObjCPointer.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/alloc_hack.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/block_support.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/bundle-variables.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/class-builder.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/class-list.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/closure_pool.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/coder-category.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/corefoundation.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/formal-protocol.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/fsref.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/fsspec.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/function.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/informal-protocol.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/instance-var.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/ivar-accessor.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/libffi_support.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/method-accessor.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/method-imp.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/method-signature.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/module.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc-NULL.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc-class.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc-object.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc-runtime-compat.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc_super.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc_support.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/objc_util.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/opaque-pointer.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/pointer-support.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/proxy-registry.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/pyobjc-api.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/pyobjc-compat.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/registry.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/selector.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/socketsupport.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/struct-wrapper.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/super-call.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/toll-free-bridging.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/unicode-object.m",
+        "pyobjc/pyobjc-core-2.5.1/Modules/objc/varlist.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-DPyObjC_STRICT_DEBUGGING",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_core_py27_EXPORTS",
+        "-fPIC",
+        "-Wno-error=incompatible-pointer-types",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_Carbon",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_core_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_core_py27
+
+# BEGIN generated: pyobjc_core_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_core_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-core-2.5.1/libpyobjc_core_py27.dylib = pyobjc_core_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_core_py27_dylib",
+    dylib_name = "libpyobjc_core_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_core_py27
+        ":pyobjc_core_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:ffi_dylib",
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//darwin/frameworks:Carbon_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_core_py27 dylibs
+
+# BEGIN generated: pyobjc_AddressBook_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_AddressBook_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_AddressBook_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-AddressBook-2.5.1/libpyobjc_AddressBook_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_AddressBook_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_AddressBook_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-AddressBook-2.5.1/Modules/_AddressBook.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_AddressBook_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_AddressBook",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_AddressBook_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_AddressBook_extra_module_py27
+
+# BEGIN generated: pyobjc_AddressBook_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_AddressBook_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-AddressBook-2.5.1/libpyobjc_AddressBook_extra_module_py27.dylib = pyobjc_AddressBook_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_AddressBook_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_AddressBook_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_AddressBook_extra_module_py27
+        ":pyobjc_AddressBook_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:AddressBook_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_AddressBook_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_CFNetwork_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CFNetwork_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_CFNetwork_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CFNetwork-2.5.1/libpyobjc_CFNetwork_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CFNetwork_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CFNetwork_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-CFNetwork-2.5.1/Modules/_manual.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CFNetwork_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CFNetwork_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CFNetwork_extra_module_py27
+
+# BEGIN generated: pyobjc_CFNetwork_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CFNetwork_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CFNetwork-2.5.1/libpyobjc_CFNetwork_extra_module_py27.dylib = pyobjc_CFNetwork_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CFNetwork_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_CFNetwork_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CFNetwork_extra_module_py27
+        ":pyobjc_CFNetwork_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:CoreServices_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CFNetwork_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_cf_inlines_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_cf_inlines_py27   -- review before committing.
+# cmake target: pyobjc_cf_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_inlines_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_cf_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_cf_inlines_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_CoreFoundation_inlines.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_cf_inlines_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_cf_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_cf_inlines_py27
+
+# BEGIN generated: pyobjc_cf_inlines_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_cf_inlines_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_inlines_py27.dylib = pyobjc_cf_inlines_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_cf_inlines_py27_dylib",
+    dylib_name = "libpyobjc_cf_inlines_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_cf_inlines_py27
+        ":pyobjc_cf_inlines_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_cf_inlines_py27 dylibs
+
+# BEGIN generated: pyobjc_cf_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_cf_py27   -- review before committing.
+# cmake target: pyobjc_cf_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_cf_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_cf_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_CoreFoundation.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_cf_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_cf_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_cf_py27
+
+# BEGIN generated: pyobjc_cf_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_cf_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_py27.dylib = pyobjc_cf_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_cf_py27_dylib",
+    dylib_name = "libpyobjc_cf_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_cf_py27
+        ":pyobjc_cf_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_cf_py27 dylibs
+
+# BEGIN generated: pyobjc_foundation_inlines_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_foundation_inlines_py27   -- review before committing.
+# cmake target: pyobjc_foundation_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_inlines_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_foundation_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_foundation_inlines_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_Foundation_inlines.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_foundation_inlines_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_foundation_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_foundation_inlines_py27
+
+# BEGIN generated: pyobjc_foundation_inlines_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_foundation_inlines_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_inlines_py27.dylib = pyobjc_foundation_inlines_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_foundation_inlines_py27_dylib",
+    dylib_name = "libpyobjc_foundation_inlines_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_foundation_inlines_py27
+        ":pyobjc_foundation_inlines_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_foundation_inlines_py27 dylibs
+
+# BEGIN generated: pyobjc_foundation_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_foundation_py27   -- review before committing.
+# cmake target: pyobjc_foundation_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_foundation_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_foundation_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_Foundation.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_foundation_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_foundation_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_foundation_py27
+
+# BEGIN generated: pyobjc_foundation_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_foundation_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_py27.dylib = pyobjc_foundation_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_foundation_py27_dylib",
+    dylib_name = "libpyobjc_foundation_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_foundation_py27
+        ":pyobjc_foundation_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_foundation_py27 dylibs
+
+# BEGIN generated: pyobjc_appkit_inlines_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_appkit_inlines_py27   -- review before committing.
+# cmake target: pyobjc_appkit_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_inlines_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_appkit_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_appkit_inlines_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_AppKit_inlines.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_appkit_inlines_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_appkit_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_appkit_inlines_py27
+
+# BEGIN generated: pyobjc_appkit_inlines_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_inlines_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   AppKit
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_inlines_py27.dylib = pyobjc_appkit_inlines_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_appkit_inlines_py27_dylib",
+    dylib_name = "libpyobjc_appkit_inlines_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_appkit_inlines_py27
+        ":pyobjc_appkit_inlines_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_appkit_inlines_py27 dylibs
+
+# BEGIN generated: pyobjc_appkit_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_appkit_py27   -- review before committing.
+# cmake target: pyobjc_appkit_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_appkit_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_appkit_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Cocoa-2.5.1/Modules/_AppKit.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_appkit_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_Carbon",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_HIToolbox",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_appkit_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_appkit_py27
+
+# BEGIN generated: pyobjc_appkit_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   AppKit
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_py27.dylib = pyobjc_appkit_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_appkit_py27_dylib",
+    dylib_name = "libpyobjc_appkit_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_appkit_py27
+        ":pyobjc_appkit_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_appkit_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreLocation_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreLocation_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_CoreLocation_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CoreLocation-2.5.1/libpyobjc_CoreLocation_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreLocation_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreLocation_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-CoreLocation-2.5.1/Modules/_CoreLocation.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreLocation_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreLocation",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreLocation_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreLocation_extra_module_py27
+
+# BEGIN generated: pyobjc_CoreLocation_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreLocation_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CoreLocation-2.5.1/libpyobjc_CoreLocation_extra_module_py27.dylib = pyobjc_CoreLocation_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreLocation_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_CoreLocation_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreLocation_extra_module_py27
+        ":pyobjc_CoreLocation_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:CoreLocation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreLocation_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreText_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreText_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_CoreText_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CoreText-2.5.1/libpyobjc_CoreText_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreText_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreText_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-CoreText-2.5.1/Modules/_manual.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreText_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreText_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreText_extra_module_py27
+
+# BEGIN generated: pyobjc_CoreText_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreText_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CoreText-2.5.1/libpyobjc_CoreText_extra_module_py27.dylib = pyobjc_CoreText_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreText_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_CoreText_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreText_extra_module_py27
+        ":pyobjc_CoreText_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:CoreServices_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreText_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_FSEvents_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_FSEvents_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_FSEvents_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-FSEvents-2.5.1/libpyobjc_FSEvents_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_FSEvents_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_FSEvents_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-FSEvents-2.5.1/Modules/_callbacks.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_FSEvents_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_FSEvents_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_FSEvents_extra_module_py27
+
+# BEGIN generated: pyobjc_FSEvents_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_FSEvents_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-FSEvents-2.5.1/libpyobjc_FSEvents_extra_module_py27.dylib = pyobjc_FSEvents_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_FSEvents_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_FSEvents_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_FSEvents_extra_module_py27
+        ":pyobjc_FSEvents_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_FSEvents_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_InputMethodKit_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_InputMethodKit_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-InputMethodKit-2.5.1/libpyobjc_InputMethodKit_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_InputMethodKit_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_InputMethodKit_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-InputMethodKit-2.5.1/Modules/_InputMethodKit.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_InputMethodKit_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_InputMethodKit",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_InputMethodKit_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_InputMethodKit_extra_module_py27
+
+# BEGIN generated: pyobjc_InputMethodKit_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-InputMethodKit-2.5.1/libpyobjc_InputMethodKit_extra_module_py27.dylib = pyobjc_InputMethodKit_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_InputMethodKit_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_InputMethodKit_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_InputMethodKit_extra_module_py27
+        ":pyobjc_InputMethodKit_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:InputMethodKit_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_InputMethodKit_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreVideo_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreVideo_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_CoreVideo_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreVideo_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreVideo_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreVideo_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_CVPixelBuffer.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreVideo_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreVideo_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreVideo_extra_module_py27
+
+# BEGIN generated: pyobjc_CoreVideo_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreVideo_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreVideo_extra_module_py27.dylib = pyobjc_CoreVideo_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreVideo_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_CoreVideo_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreVideo_extra_module_py27
+        ":pyobjc_CoreVideo_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreVideo_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreGraphics_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_CoreGraphics_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreGraphics_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreGraphics_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_coregraphics.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreGraphics_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreGraphics_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_extra_module_py27
+
+# BEGIN generated: pyobjc_CoreGraphics_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_extra_module_py27.dylib = pyobjc_CoreGraphics_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreGraphics_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_CoreGraphics_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreGraphics_extra_module_py27
+        ":pyobjc_CoreGraphics_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:ApplicationServices_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreGraphics_inlines_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_inlines_py27   -- review before committing.
+# cmake target: pyobjc_CoreGraphics_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_inlines_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreGraphics_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreGraphics_inlines_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_CoreGraphics_inlines.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreGraphics_inlines_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreGraphics_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_inlines_py27
+
+# BEGIN generated: pyobjc_CoreGraphics_inlines_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_inlines_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_inlines_py27.dylib = pyobjc_CoreGraphics_inlines_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreGraphics_inlines_py27_dylib",
+    dylib_name = "libpyobjc_CoreGraphics_inlines_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreGraphics_inlines_py27
+        ":pyobjc_CoreGraphics_inlines_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_inlines_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreGraphics_callbacks_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
+# cmake target: pyobjc_CoreGraphics_callbacks_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_callbacks_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreGraphics_callbacks_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreGraphics_callbacks_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_callbacks.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreGraphics_callbacks_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreGraphics_callbacks_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_callbacks_py27
+
+# BEGIN generated: pyobjc_CoreGraphics_callbacks_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_callbacks_py27.dylib = pyobjc_CoreGraphics_callbacks_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreGraphics_callbacks_py27_dylib",
+    dylib_name = "libpyobjc_CoreGraphics_callbacks_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreGraphics_callbacks_py27
+        ":pyobjc_CoreGraphics_callbacks_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_callbacks_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreGraphics_doubleindirect_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
+# cmake target: pyobjc_CoreGraphics_doubleindirect_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_doubleindirect_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreGraphics_doubleindirect_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreGraphics_doubleindirect_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_doubleindirect.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreGraphics_doubleindirect_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreGraphics_doubleindirect_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_doubleindirect_py27
+
+# BEGIN generated: pyobjc_CoreGraphics_doubleindirect_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_doubleindirect_py27.dylib = pyobjc_CoreGraphics_doubleindirect_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreGraphics_doubleindirect_py27_dylib",
+    dylib_name = "libpyobjc_CoreGraphics_doubleindirect_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreGraphics_doubleindirect_py27
+        ":pyobjc_CoreGraphics_doubleindirect_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_doubleindirect_py27 dylibs
+
+# BEGIN generated: pyobjc_CoreGraphics_sortandmap_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
+# cmake target: pyobjc_CoreGraphics_sortandmap_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_sortandmap_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_CoreGraphics_sortandmap_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_CoreGraphics_sortandmap_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-Quartz-2.5.1/Modules/_sortandmap.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_CoreGraphics_sortandmap_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_CoreGraphics_sortandmap_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_sortandmap_py27
+
+# BEGIN generated: pyobjc_CoreGraphics_sortandmap_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_sortandmap_py27.dylib = pyobjc_CoreGraphics_sortandmap_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_CoreGraphics_sortandmap_py27_dylib",
+    dylib_name = "libpyobjc_CoreGraphics_sortandmap_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_CoreGraphics_sortandmap_py27
+        ":pyobjc_CoreGraphics_sortandmap_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_CoreGraphics_sortandmap_py27 dylibs
+
+# BEGIN generated: pyobjc_ScreenSaver_inlines_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_ScreenSaver_inlines_py27   -- review before committing.
+# cmake target: pyobjc_ScreenSaver_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-ScreenSaver-2.5.1/libpyobjc_ScreenSaver_inlines_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_ScreenSaver_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_ScreenSaver_inlines_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-ScreenSaver-2.5.1/Modules/_ScreenSaver_inlines.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_ScreenSaver_inlines_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_ScreenSaver",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_ScreenSaver_inlines_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_ScreenSaver_inlines_py27
+
+# BEGIN generated: pyobjc_ScreenSaver_inlines_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_ScreenSaver_inlines_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-ScreenSaver-2.5.1/libpyobjc_ScreenSaver_inlines_py27.dylib = pyobjc_ScreenSaver_inlines_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_ScreenSaver_inlines_py27_dylib",
+    dylib_name = "libpyobjc_ScreenSaver_inlines_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_ScreenSaver_inlines_py27
+        ":pyobjc_ScreenSaver_inlines_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:ScreenSaver_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_ScreenSaver_inlines_py27 dylibs
+
+# BEGIN generated: pyobjc_ScriptingBridge_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_ScriptingBridge_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/libpyobjc_ScriptingBridge_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_ScriptingBridge_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_ScriptingBridge_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/Modules/_ScriptingBridge.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_ScriptingBridge_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_ScriptingBridge",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_ScriptingBridge_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_ScriptingBridge_extra_module_py27
+
+# BEGIN generated: pyobjc_ScriptingBridge_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/libpyobjc_ScriptingBridge_extra_module_py27.dylib = pyobjc_ScriptingBridge_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_ScriptingBridge_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_ScriptingBridge_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_ScriptingBridge_extra_module_py27
+        ":pyobjc_ScriptingBridge_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:ScriptingBridge_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_ScriptingBridge_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_SyncServices_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_SyncServices_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_SyncServices_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-SyncServices-2.5.1/libpyobjc_SyncServices_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_SyncServices_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_SyncServices_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-SyncServices-2.5.1/Modules/_SyncServices.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_SyncServices_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//darwin/frameworks:fw_SyncServices",
+        ":pyobjc_SyncServices_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_SyncServices_extra_module_py27
+
+# BEGIN generated: pyobjc_SyncServices_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_SyncServices_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-SyncServices-2.5.1/libpyobjc_SyncServices_extra_module_py27.dylib = pyobjc_SyncServices_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_SyncServices_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_SyncServices_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_SyncServices_extra_module_py27
+        ":pyobjc_SyncServices_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:SyncServices_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_SyncServices_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_SystemConfiguration_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_SystemConfiguration_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/libpyobjc_SystemConfiguration_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_SystemConfiguration_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_SystemConfiguration_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/Modules/_manual.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_SystemConfiguration_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":pyobjc_SystemConfiguration_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_SystemConfiguration_extra_module_py27
+
+# BEGIN generated: pyobjc_SystemConfiguration_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/libpyobjc_SystemConfiguration_extra_module_py27.dylib = pyobjc_SystemConfiguration_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_SystemConfiguration_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_SystemConfiguration_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_SystemConfiguration_extra_module_py27
+        ":pyobjc_SystemConfiguration_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_SystemConfiguration_extra_module_py27 dylibs
+
+# BEGIN generated: pyobjc_WebKit_extra_module_py27
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pyobjc_WebKit_extra_module_py27   -- review before committing.
+# cmake target: pyobjc_WebKit_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-WebKit-2.5.1/libpyobjc_WebKit_extra_module_py27.dylib
+
+cc_header_root(
+    name = "pyobjc_WebKit_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+    headers = glob(["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/**/*.h", "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include/*.c"]),
+    root = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pyobjc_WebKit_extra_module_py27_obj",
+    srcs = [
+        "pyobjc/pyobjc-framework-WebKit-2.5.1/Modules/_WebKit.m",
+    ],
+    compiler_flags = [
+        "-DMACOSX",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=0",
+        "-DPyObjC_BUILD_RELEASE=1015",
+        "-D_FORTIFY_SOURCE=0",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpyobjc_WebKit_extra_module_py27_EXPORTS",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_Cocoa",
+        "//buck-src:fw_CoreData",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_QuartzCore",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        "//darwin/frameworks:fw_WebKit",
+        ":pyobjc_WebKit_extra_module_py27_inc_objc_core_2_5_1_Lib_pyobjc_core_egg_info_include",
+        "//buck-src/python:Python_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_WebKit_extra_module_py27
+
+# BEGIN generated: pyobjc_WebKit_extra_module_py27 dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs pyobjc_WebKit_extra_module_py27   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-WebKit-2.5.1/libpyobjc_WebKit_extra_module_py27.dylib = pyobjc_WebKit_extra_module_py27_dylib
+
+darwin_dylib(
+    name = "pyobjc_WebKit_extra_module_py27_dylib",
+    dylib_name = "libpyobjc_WebKit_extra_module_py27.dylib",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # pyobjc_WebKit_extra_module_py27
+        ":pyobjc_WebKit_extra_module_py27_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//darwin/frameworks:WebKit_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-undefined,dynamic_lookup",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pyobjc_WebKit_extra_module_py27 dylibs

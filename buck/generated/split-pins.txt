@@ -42,6 +42,10 @@ misc_cmds
 ncurses
 objc4
 openpam
+perl
+pyobjc
+python
+python_modules
 removefile
 ruby
 screen
