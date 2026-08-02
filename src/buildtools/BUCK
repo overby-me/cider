@@ -1,6 +1,90 @@
+load("//buck/rules:darwin.bzl", "darwin_binary")
+load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
 # No targets. getuuid and elfdep are HOST tools that read Mach-O out of the build tree.
 # Both blocks are correct as far as they go -- native_cc toolchain, cctools include root --
 # but the compile dies in cctools' own mach/machine.h on <mach/machine/vm_types.h>, which
 # exists in the pins ONLY under cctools-port/cctools/include/foreign/ and which nothing in
 # the reference build adds to the include path. See PLAN.md. The package is kept so the
 # directory keeps its own package boundary rather than folding into the parent's globs.
+
+# BEGIN generated: getuuid
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py getuuid   -- review before committing.
+# cmake target: getuuid  ->  src/buildtools/getuuid
+# TODO these include dirs are GENERATED (codegen output):
+#   src/buildtools/include
+#   src/include
+
+cc_objects(
+    name = "getuuid_obj",
+    srcs = [
+        "getuuid.c",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+        "//src/include:darling_config",
+        "//buck-src:cctools_port_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getuuid
+
+# BEGIN generated: getuuid binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries getuuid   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/buildtools/getuuid = getuuid
+
+cc_binary(
+    name = "getuuid",
+    objs = [
+        # getuuid
+        ":getuuid_obj",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: getuuid binary
+
+# BEGIN generated: elfdep
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py elfdep   -- review before committing.
+# cmake target: elfdep  ->  src/buildtools/elfdep
+# TODO these include dirs are GENERATED (codegen output):
+#   src/buildtools/include
+#   src/include
+
+cc_objects(
+    name = "elfdep_obj",
+    srcs = [
+        "elfdep.c",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+        "//src/include:darling_config",
+        "//buck-src:cctools_port_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: elfdep
+
+# BEGIN generated: elfdep binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries elfdep   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/buildtools/elfdep = elfdep
+
+cc_binary(
+    name = "elfdep",
+    objs = [
+        # elfdep
+        ":elfdep_obj",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: elfdep binary

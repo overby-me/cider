@@ -44,6 +44,12 @@ EXTRA_COMPILE_SRCS = {
     # subsystem, not just include its headers. Without them JavaScriptCore links with
     # an undefined _mach_exc_server referenced from libWTF.a(Signals.cpp.o).
     "mig_MachExceptions": ("MachExceptionsServer.c", "MachExceptionsUser.c"),
+    # iokitd is the SERVER side of both subsystems: it compiles the Server.c halves and
+    # nothing else. Its powermanagement.defs is run through mig a second time here, in
+    # iokitd's own directory and with IOKit_SERVER_VERSION set, so it cannot share
+    # IOKitUser's IOKit_mig_powermanagement.
+    "iokitd_mig_iokitmig": ("iokitmigServer.c",),
+    "iokitd_mig_powermanagement": ("powermanagementServer.c",),
 }
 
 

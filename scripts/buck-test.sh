@@ -552,11 +552,13 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
 # made it decorative: anything short of losing three quarters of the port passed it.
 #
-# result-graph-ref now points at the STOCK graph, so these are stock numbers: 1354 of 1359,
-# where the cli graph read 868 of 871. Only five edges are short, and each has its block
-# removed and its cause written up in PLAN.md (DBusKit, iokitd, bsdln, getuuid, elfdep).
-[ "${cov:-0}" -ge 1354 ] && ok "$cov of the reference's ${tot:-1359} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-1359}, floor is 1354"
+# result-graph-ref now points at the STOCK graph, so these are stock numbers: 1359 of 1359,
+# where the cli graph read 868 of 871. The floor is now the WHOLE graph: every in-scope link
+# edge of the stock component is ported, so any drop at all is a regression, not a gap.
+# (The `all` graph is likewise 1368 of 1368. What the metric still cannot see is the nine
+# dev-stub frameworks whose artifact basenames collide with the real ones -- PLAN.md.)
+[ "${cov:-0}" -ge 1359 ] && ok "$cov of the reference's ${tot:-1359} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-1359}, floor is 1359"
 
 # The same question for the INSTALL side: link coverage says what builds, this says what
 # the port can actually lay out. UNMAPPED is every install entry that neither a target nor
@@ -572,8 +574,8 @@ unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 # The ceiling is 2 on the stock graph, not 0 as it was on cli: stock INSTALLS iokitd and
 # DBusKit, and those are two of the five edges whose blocks are removed for not linking.
 # It goes back to 0 when they do.
-[ "${unmapped:-999}" -le 2 ] && ok "install UNMAPPED is $unmapped (ceiling 2)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 2"
+[ "${unmapped:-999}" -le 0 ] && ok "install UNMAPPED is $unmapped (ceiling 0)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 0"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

@@ -241,6 +241,35 @@ cc_header_root(
 # that lives in API/. Nothing assembles a JavaScriptCore framework at this point
 # in the build, so the shims are the whole mechanism, and they have to be
 # reproduced rather than substituted with a framework root.
+# cctools-PORT's public headers, for the HOST tools in //src/buildtools. Distinct from
+# libstuff_inc_cctools_include, which stages the other pin: both ship mach-o/loader.h and
+# the port's guards its <mach/machine.h> with #ifdef __APPLE__ while cctools' includes it
+# unconditionally. A host tool needs the guarded one.
+cc_header_root(
+    name = "cctools_port_include",
+    headers = glob([
+        "cctools-port/cctools/include/*.h",
+        "cctools-port/cctools/include/**/*.h",
+    ]),
+    root = "cctools-port/cctools/include",
+    visibility = ["PUBLIC"],
+)
+
+# DBusKit's own framework namespace. The pin ships it as `include/DBusKit`, a symlink to
+# the sibling `Headers` directory, and buck2's glob DOES NOT TRAVERSE a symlinked
+# directory -- globbing `dbuskit/include/**` stages nothing at all under DBusKit/, without
+# an error. Spelling the namespace out as a map is the same answer the Darwin SDK roots
+# use, and it is named fw_DBusKit so buck-port.py's framework resolver finds it the way it
+# finds every other framework.
+cc_header_root(
+    name = "fw_DBusKit",
+    header_map = {
+        "DBusKit/" + _h.split("/")[-1]: _h
+        for _h in glob(["dbuskit/Headers/*.h"])
+    },
+    visibility = ["PUBLIC"],
+)
+
 forwarded_headers(
     name = "jsc_forwarded_public",
     cmake_lists = "JavaScriptCore/CMakeLists.txt",
@@ -13447,6 +13476,64 @@ mig_gen(
         "//darwin:sdk_env",
         ":IOKit_inc_IOKitUser",
         "//buck-src:fw_CoreFoundation",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# iokitd is the SERVER side of these two subsystems, so it runs mig over the same
+# definitions a SECOND time, in its own directory and with IOKIT_SERVER_VERSION set.
+# That is why powermanagement appears twice: IOKit_mig_powermanagement above is the
+# client half and cannot be shared. Emitted by
+# scripts/gen-mig-from-ninja.py "iokitd" --prefix iokitd_mig.
+
+mig_gen(
+    name = "iokitd_mig_iokitmig",
+    defs = "iokitd/iokitmig.defs",
+    out_base = "iokitd",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "iokitmigServer.c",
+    ],
+    mig_flags = [
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DIOKIT_SERVER_VERSION=20150101",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+mig_gen(
+    name = "iokitd_mig_powermanagement",
+    defs = "iokitd/powermanagement.defs",
+    out_base = "iokitd",
+    user_suffix = "User.c",
+    header_suffix = ".h",
+    server_suffix = "Server.c",
+    sheader_suffix = "Server.h",
+    xtrace_suffix = "XtraceMig.c",
+    compile_srcs = [
+        "powermanagementServer.c",
+    ],
+    mig_flags = [
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DIOKIT_SERVER_VERSION=20150101",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+    ],
+    mig_sh = "//buck-src:mig.sh",
+    migcom = "//buck-src:migcom",
+    deps = [
+        "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
@@ -62824,3 +62911,228 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: jsc binary
+
+# BEGIN generated: iokitd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py iokitd   -- review before committing.
+# cmake target: iokitd  ->  src/external/iokitd/iokitd
+# 21 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these sources are GENERATED; wire a codegen target for each:
+#   src/external/iokitd/iokitmigServer.c
+#   src/external/iokitd/powermanagementServer.c
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/62fjl9xipmsk1wckzci47s5awy0sa4zl-libxkbfile-1.1.3-dev/include
+#   nix/store/6v1hx568cmw9qjgx11bww5wgsjy4vna3-xorgproto-2025.1/include
+#   nix/store/8l9asxwa4rzhzjw78rps6qsk2m3w9vf7-libxcursor-1.2.3-dev/include
+#   nix/store/cy79h8jf6disyp9mrizssq6rknx5jdxh-libxrandr-1.5.5-dev/include
+#   nix/store/dngs5ab00cl9q31yms9szwcd7dh7wwwd-libxrender-0.9.12-dev/include
+#   nix/store/f4y37bm3j1q3c7y88184rm5b5f75jh74-libxext-1.3.7-dev/include
+#   nix/store/pd412gfwc6ji63i2zzpgrsw0169qahyz-libx11-1.8.13-dev/include
+#   nix/store/wz0rgiphvldmav4l2vjs4q9lpcqjmwqq-libxdmcp-1.1.5-dev/include
+#   src/external/iokitd
+
+cc_objects(
+    name = "iokitd_obj",
+    srcs = [
+        "iokitd/src/IODisplayConnect.mm",
+        "iokitd/src/IODisplayConnectX11.mm",
+        "iokitd/src/IOIterator.cpp",
+        "iokitd/src/IOObject.cpp",
+        "iokitd/src/IORegistryEntry.mm",
+        "iokitd/src/IOService.mm",
+        "iokitd/src/IOSurface.mm",
+        "iokitd/src/IOSurfaceRoot.mm",
+        "iokitd/src/IOUserClient.mm",
+        "iokitd/src/IOUserClientApple.mm",
+        "iokitd/src/PowerAssertions.mm",
+        "iokitd/src/PowerAssertionsX11.mm",
+        "iokitd/src/ServiceRegistry.mm",
+        "iokitd/src/iokitd.cpp",
+        "iokitd/src/main.mm",
+    ],
+    compiler_flags = [
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DIOKIT_SERVER_VERSION=20150101",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-nostdinc",
+        "-Wno-gcc-compat",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Foundation",
+        "//buck-src:iokitd_mig_iokitmig",
+        "//buck-src:iokitd_mig_powermanagement",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_IOSurface",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "iokitd_obj2",
+    srcs = [
+        "IOKitUser/IOCFSerialize.c",
+        "IOKitUser/IOCFUnserialize.tab.c",
+        "iokitd/src/stubs-powermanagement.c",
+        "iokitd/src/stubs.c",
+    ],
+    compiler_flags = [
+        "-DIOKIT=1",
+        "-DIOKIT_ALL_IPC=1",
+        "-DIOKIT_SERVER_VERSION=20150101",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-nostdinc",
+        "-Wno-gcc-compat",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_Foundation",
+        "//buck-src:iokitd_mig_iokitmig",
+        "//buck-src:iokitd_mig_powermanagement",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_IOSurface",
+    ],
+    gen_srcs = [
+        "//buck-src:iokitd_mig_iokitmig",
+        "//buck-src:iokitd_mig_powermanagement",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iokitd
+
+# BEGIN generated: iokitd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries iokitd   -- review before committing.
+# Links 1 cmake object library/ies, 3 flag groups in total.
+# buck-registry: src/external/iokitd/iokitd = iokitd
+
+darwin_binary(
+    name = "iokitd",
+    objs = [
+        # iokitd
+        ":iokitd_obj",
+        ":iokitd_obj2",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:bsm.0_dylib",
+        "//src/native:X11_dylib",
+        "//src/native:XRandR_dylib",
+        "//src/native:Xext_dylib",
+        "//src/native:EGL_dylib",
+        "//src/native:GL_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//darwin/frameworks:IOSurface_dylib",
+        "//buck-src:Foundation_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: iokitd binary
+
+# BEGIN generated: DBusKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py DBusKit   -- review before committing.
+# cmake target: DBusKit  ->  src/external/dbuskit/DBusKit
+# TODO these include dirs are GENERATED (codegen output):
+#   nix/store/hg4dfs25w0cq68ivrkgdygcish48hmmm-dbus-1.16.2-lib/lib/dbus-1.0/include
+#   nix/store/mfsy5q8l55flv58aa6si6apz74yjcnq2-dbus-1.16.2-dev/include/dbus-1.0
+
+cc_header_root(
+    name = "DBusKit_inc_dbuskit_include",
+    headers = glob(["dbuskit/include/*.h", "dbuskit/include/**/*.h", "dbuskit/include/*.c"]),
+    root = "dbuskit/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "DBusKit_obj",
+    srcs = [
+        "dbuskit/Source/DKArgument.m",
+        "dbuskit/Source/DKBoxingUtils.m",
+        "dbuskit/Source/DKConnection.m",
+        "dbuskit/Source/DKEndpoint.m",
+        "dbuskit/Source/DKEndpointManager.m",
+        "dbuskit/Source/DKInterface.m",
+        "dbuskit/Source/DKIntrospectionNode.m",
+        "dbuskit/Source/DKIntrospectionParserDelegate.m",
+        "dbuskit/Source/DKMessage.m",
+        "dbuskit/Source/DKMethod.m",
+        "dbuskit/Source/DKMethodCall.m",
+        "dbuskit/Source/DKMethodReturn.m",
+        "dbuskit/Source/DKNonAutoInvalidatingPort.m",
+        "dbuskit/Source/DKNotificationCenter.m",
+        "dbuskit/Source/DKNumber.m",
+        "dbuskit/Source/DKObjectPathNode.m",
+        "dbuskit/Source/DKOutgoingProxy.m",
+        "dbuskit/Source/DKPort.m",
+        "dbuskit/Source/DKPortNameServer.m",
+        "dbuskit/Source/DKProperty.m",
+        "dbuskit/Source/DKPropertyMethod.m",
+        "dbuskit/Source/DKProxy.m",
+        "dbuskit/Source/DKSignal.m",
+        "dbuskit/Source/DKSignalEmission.m",
+        "dbuskit/Source/DKStruct.m",
+        "dbuskit/Source/DKVariant.m",
+    ],
+    compiler_flags = [
+        "-DDBusKit_EXPORTS",
+        "-DOBJC_OLD_DISPATCH_PROTOTYPES=1",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_DBusKit",
+        "//buck-src:fw_Foundation",
+        "//src/native:host_headers",
+        ":DBusKit_inc_dbuskit_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: DBusKit
+
+# BEGIN generated: DBusKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs DBusKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/dbuskit/DBusKit = DBusKit_dylib
+
+darwin_dylib(
+    name = "DBusKit_dylib",
+    dylib_name = "DBusKit",
+    install_name = "/System/Library/PrivateFrameworks/DBusKit.framework/Versions/A/DBusKit",
+    compatibility_version = "1.0.0",
+    objs = [
+        # DBusKit
+        ":DBusKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//src/native:dbus_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: DBusKit dylibs

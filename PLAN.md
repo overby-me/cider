@@ -605,10 +605,9 @@ component contributes NOTHING to the graph at all, and nine of the eighteen are 
 frameworks the coverage metric cannot see (the basename-collision caveat, also below).
 
 ALL NINE of the real new targets are in: bmalloc, libWTF.a, libgnutar.a, libmbmalloc.dylib,
-ash, gnutar, JavaScriptCore, jsc and libMachExceptions_xtrace_mig.dylib. `all` measures
-1363 of 1368 (99%), and the five that remain are the same five stock has (DBusKit, iokitd,
-bsdln, getuuid, elfdep) -- nothing in the JavaScriptCore cone is left. The JavaScriptCore
-dylib is 43.7MB, NOUNDEFS and TWOLEVEL, with 10526 exported symbols.
+ash, gnutar, JavaScriptCore, jsc and libMachExceptions_xtrace_mig.dylib. The JavaScriptCore
+dylib is 43.7MB, NOUNDEFS and TWOLEVEL, with 10526 exported symbols. With the last five
+edges closed as well (below), `all` measures 1368 of 1368.
 
 WTF needed a MIG target first. Its MachExceptions.defs generates MachExceptionsServer.h,
 which both libWTF.a and the xtrace stub compile against, and
@@ -728,9 +727,9 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 |---|---|---|---|
 | link edges (counted) | 871 | 1359 | 1368 |
 | link edges (raw) | 892 | 1439 | 1457 |
-| ported | 868 (99%) | 1354 (99%) | 1363 (99%) |
+| ported | 868 (99%) | 1359 (100%) | 1368 (100%) |
 | install entries | 1160 | 1872 | 1888 |
-| UNMAPPED | 0 | 2 | 2 |
+| UNMAPPED | 0 | 0 | 0 |
 | build.ninja lines | 201k | 347k | 363k |
 
 `.#darling-graph-all` was added to flake.nix to measure this; `all` is
@@ -757,19 +756,73 @@ artifact basenames are identical to the REAL frameworks the port already builds,
 buck-coverage.py counts each pair once and calls it ported. They are nine genuinely
 unported targets that the number cannot see. Counting by full path rather than basename
 would expose them, but the same dedup is DELIBERATE for the 16 xcselect shims in cli, so
-changing it is not a one-line fix. Until then: `all` is 1363 of 1368 by the metric and
-1363 of 1377 in truth.
+changing it is not a one-line fix. Until then: `all` is 1368 of 1368 by the metric and
+1368 of 1377 in truth, and those nine are now the ONLY thing between the port and the
+whole reference graph.
 
 The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336
--> 1354. Loadable modules and static archives are both 100%; dylibs are 604 of 605 and
-executables 521 of 525. FIVE edges remain, all with their blocks removed and their reasons
-recorded above: DBusKit, iokitd, bsdln, getuuid, elfdep. 16 of the earlier gain was a
-MEASUREMENT bug, below, not new work.
+-> 1354 -> **1359 of 1359, 100%**. Every category is complete: 605 dylibs, 525 executables,
+133 archives, 96 loadable modules, and install UNMAPPED is 0. The `all` graph is likewise
+1368 of 1368. 16 of the earlier gain was a MEASUREMENT bug, below, not new work, and one
+gap the metric still cannot see remains: the nine dev-stub frameworks, further down.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
 mostly sit downstream of them. That matches what the COMPONENTS hierarchy says stock adds
 over cli: the GUI framework and stub trees, plus python, ruby and perl.
+
+### The last five edges, and why four of them were the SAME bug
+
+DBusKit, iokitd, bsdln, getuuid and elfdep were the five that stayed unported through both
+stage 2 and stage 3. Each had its own recorded cause. Four of those causes were wrong, and
+all four were wrong in the same direction: the RECORDED SYMPTOM was real and the diagnosis
+behind it was a guess that never got tested.
+
+**iokitd** genuinely needed what was written down: two mig subsystems generated in its own
+directory. It is the SERVER side of both, so it runs mig over powermanagement.defs a second
+time, with IOKIT_SERVER_VERSION set, and cannot share IOKitUser's IOKit_mig_powermanagement.
+`gen-mig-from-ninja.py "iokitd" --prefix iokitd_mig` emits both.
+
+**DBusKit** was "no framework root for itself", which was true but not the cause. The pin
+DOES ship the namespace: `include/DBusKit` is a symlink to the sibling `Headers` directory.
+buck2's glob does not traverse a symlinked directory, so globbing `include/**` stages
+NOTHING under DBusKit/ and says nothing about it -- the second of the two silent-empty-glob
+traps, and the same shape as the cyclic symlink above. A header_map spells the namespace
+out. Underneath that was a second, unrelated need: DBusKit is the one target that compiles
+against a HOST library's real headers rather than a wrapgen stub, and the dev shell's own
+-isystem does not reach dbus, which puts its headers in a versioned subdirectory
+(include/dbus-1.0) and splits dbus-arch-deps.h into another output. Both dirs come from
+pkg-config, into `darling.host_include_dirs` in .buckconfig.local and out through
+`//src/native:host_headers` -- the same not-a-declared-input compromise as elf_lib_dirs
+beside it.
+
+**getuuid and elfdep** were recorded as dying on `mach/machine/vm_types.h`, which exists
+only under `cctools-port/cctools/include/foreign` "which nothing in the reference puts on
+an include path". Both halves are true and the conclusion does not follow. The real cause
+is that CROSS_PACKAGE_ROOTS pointed `cctools-port/cctools/include` at
+`//buck-src:libstuff_inc_cctools_include`, which stages the OTHER pin. Both pins ship
+`mach-o/loader.h`; cctools' is the Darwin copy and includes `<mach/machine.h>`
+unconditionally, cctools-port's guards it with `#ifdef __APPLE__`. On a HOST tool the guard
+is false and the whole vm_types chain is never entered. A root over the right directory
+makes the missing header stop being missing.
+
+The tell was there the whole time: `clang -H` on the same source with the reference's own
+-I list showed no `mach/machine.h` in the include trace AT ALL. Staging the one header by
+hand "worked" in a scratch compile for that reason and would have been committed as a fix
+for a problem that did not exist.
+
+**bsdln, getuuid and elfdep** then all failed to LINK, with `cannot find entry symbol
+_start` and every libc call undefined. The generator emitted `darwin_binary` for them.
+`toolchain_of()` already got the toolchain right -- HOST_TARGETS is derived from the
+absence of `-target` and is correct -- but the RULE did not follow the toolchain, and
+darwin_binary drives the Mach-O path: -nostdlib, ld64, an explicit crt1. A host tool is an
+ordinary ELF executable and is cc_binary. One conditional, three targets.
+
+Two generator bugs surfaced alongside. Extra deps were emitted inside the branch that runs
+for the `//darwin:sdk_env` include root, so a HOST tool -- which has no sdk_env -- silently
+got NONE of them: an entry added for getuuid simply never appeared in its block. And the
+mig EXTRA_COMPILE_SRCS map emitted one `compile_srcs = [...]` per entry, which Starlark
+resolves by keeping the last.
 
 NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
 target that does not build must have its block REMOVED, not left in place.

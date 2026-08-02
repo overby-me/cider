@@ -182,7 +182,16 @@ CROSS_PACKAGE_ROOTS = {
     "src/include": "//src/include:darling_config",
     # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
     # Mach-O out of the build tree from //src/buildtools, and the pin lives in //buck-src.
-    "cctools-port/cctools/include": "//buck-src:libstuff_inc_cctools_include",
+    #
+    # It has to be cctools-PORT's copy, not cctools'. The two pins both ship
+    # mach-o/loader.h and they differ exactly where it matters: cctools' is the Darwin
+    # copy and includes <mach/machine.h> unconditionally, while cctools-port's guards it
+    # with #ifdef __APPLE__. These are HOST tools, so on the port's copy the whole
+    # mach/machine.h -> mach/machine/vm_types.h chain is never entered; on the Darwin copy
+    # it is, and it dead-ends because no mach/machine/ exists outside include/foreign.
+    # Pointing this at libstuff_inc_cctools_include was what made getuuid and elfdep look
+    # like they needed a header the reference never puts on any include path.
+    "cctools-port/cctools/include": "//buck-src:cctools_port_include",
     # The SDK's mach/ subtree as a root of its own, on top of the SDK root (zprint).
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/mach":
         "//buck-src:sdk_include_mach",
@@ -1035,6 +1044,15 @@ def generate(target: str, edges):
                     continue
                 seen_dep.add(name)
                 w(f'        "{name}",' if name.startswith("//") else f'        ":{name}",')
+        # A HOST tool has no //darwin:sdk_env group, so the loop above never reaches the
+        # extra-deps branch and the target silently gets none: an entry added for getuuid
+        # simply did not appear in its block. Emit whatever is still unseen here, which is
+        # everything for a host tool and nothing for a Darwin one.
+        for d in extra_deps(target):
+            if not d.startswith(("//", ":")) or d in seen_dep:
+                continue
+            seen_dep.add(d)
+            w(f'        "{d}",')
         w("    ],")
         gen = [d[len("gen:"):] for d in extra_deps(target) if d.startswith("gen:")]
         if gen and idx == gen_idx:
@@ -2149,7 +2167,14 @@ def generate_binary(target: str, edges):
     if edge[0]:
         w(f"# buck-registry: {edge[0]} = {target}")
     w("")
-    w("darwin_binary(")
+    # A HOST tool is an ordinary ELF executable and links through the host driver, so it
+    # is cc_binary. darwin_binary drives the Mach-O path (-nostdlib, ld64, an explicit
+    # crt1) and on a host tool that produces a link with no libc at all: "cannot find
+    # entry symbol _start", then every call in the program undefined. The toolchain
+    # attribute alone does not switch it, which is why getuuid and elfdep looked like
+    # they were missing a library.
+    host = target in HOST_TARGETS
+    w("cc_binary(" if host else "darwin_binary(")
     w(f'    name = "{target}",')
     # The block keeps the CMAKE target's name so the generator stays addressable by it,
     # but the FILE has to come out under the name the reference installs -- clang_shim
@@ -2167,7 +2192,7 @@ def generate_binary(target: str, edges):
     for extra in extra_objs:
         w(f'        "{extra}",  # added by this port (buck/generated/extra-deps.json)')
     w("    ],")
-    if dylibs:
+    if dylibs and not host:
         w("    dylibs = [")
         for d in dylibs:
             w(f'        "{d}",')
@@ -2177,7 +2202,7 @@ def generate_binary(target: str, edges):
         for f in flags:
             w(f"        {starlark_str(f)},")
         w("    ],")
-    if files:
+    if files and not host:
         w("    link_flag_files = {")
         for flag, rel in sorted(files.items()):
             w(f'        "{flag}": "{rel}",')

@@ -4263,7 +4263,14 @@
     "//darwin/frameworks:fw_SpeechSynthesis"
   ],
   "iokitd": [
-    "//buck-src:fw_CoreFoundation"
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_Foundation",
+    "//buck-src:iokitd_mig_iokitmig",
+    "//buck-src:iokitd_mig_powermanagement",
+    "//darwin/frameworks:fw_CoreVideo",
+    "//darwin/frameworks:fw_IOSurface",
+    "gen://buck-src:iokitd_mig_iokitmig",
+    "gen://buck-src:iokitd_mig_powermanagement"
   ],
   "pbcopy": [
     "//buck-src:fw_AppKit",
@@ -4511,5 +4518,11 @@
   "jsc": [
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_JavaScriptCore"
+  ],
+  "DBusKit": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_DBusKit",
+    "//buck-src:fw_Foundation",
+    "//src/native:host_headers"
   ]
 }

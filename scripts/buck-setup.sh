@@ -76,6 +76,28 @@ done
 echo "host ELF lib dirs: $(printf '%s' "$elf_lib_dirs" | tr ':' '\n' | wc -l) entries"
 [ -n "$elf_missing" ] && echo "WARNING: cannot locate:$elf_missing -- those wrap_elf stubs will not generate" >&2
 
+# HOST include dirs, for the targets that compile against a host library's real headers
+# rather than a wrapgen stub. DBusKit is the only one: it includes <dbus/dbus.h>, and the
+# dev shell's own -isystem does not reach it, because dbus puts its headers in a VERSIONED
+# subdirectory (include/dbus-1.0) and splits dbus-arch-deps.h into a different output
+# entirely. Only pkg-config knows both dirs, which is exactly why the reference cmake asks
+# it too. Same shape as elf_lib_dirs: absolute store paths, stable because the store is.
+host_pkgs="dbus-1"
+host_include_dirs=""
+host_include_missing=""
+for _p in $host_pkgs; do
+	_inc="$(pkg-config --cflags-only-I "$_p" 2>/dev/null | tr ' ' '\n' | sed -n 's/^-I//p')"
+	if [ -z "$_inc" ]; then
+		host_include_missing="$host_include_missing $_p"
+		continue
+	fi
+	for _d in $_inc; do
+		case ":$host_include_dirs:" in *":$_d:"*) ;; *) host_include_dirs="${host_include_dirs:+$host_include_dirs:}$_d" ;; esac
+	done
+done
+echo "host include dirs: $(printf '%s' "$host_include_dirs" | tr ':' '\n' | grep -c .) entries"
+[ -n "$host_include_missing" ] && echo "WARNING: pkg-config knows nothing about:$host_include_missing" >&2
+
 # The store path is immutable, so an absolute reference to it is stable; rerun
 # this script after bumping the sources that ld64 is built from.
 cat >.buckconfig.local <<EOF
@@ -89,6 +111,7 @@ ld = $ld64/bin/$triplet-ld
 ld64_dir = $ld64/bin
 clang_resource_dir = $clang_resource_dir
 elf_lib_dirs = $elf_lib_dirs
+host_include_dirs = $host_include_dirs
 EOF
 
 echo "wrote .buckconfig.local:"

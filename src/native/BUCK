@@ -1,4 +1,4 @@
-load("//buck/rules:cc.bzl", "cc_objects")
+load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "elf_wrapper")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
 
@@ -113,3 +113,20 @@ _ELF_LIB_DIRS = read_root_config("darling", "elf_lib_dirs", "")
     )
     for _n, _so, _dir in _NATIVE
 ]
+
+# HOST headers, for the one target that compiles against a host library's REAL headers
+# instead of a wrapgen stub. DBusKit includes <dbus/dbus.h>, and the dev shell's own
+# -isystem does not reach it: dbus puts its headers in a versioned subdirectory
+# (include/dbus-1.0) and splits dbus-arch-deps.h into a different nix output, so the two
+# dirs come from pkg-config, which is what the reference cmake asks as well.
+#
+# The paths are absolute and NOT declared inputs, exactly like elf_lib_dirs above them --
+# the same compromise, for the same reason: these are host artifacts outside the build
+# graph. scripts/buck-setup.sh writes them into .buckconfig.local.
+_HOST_INCLUDE_DIRS = [_d for _d in read_root_config("darling", "host_include_dirs", "").split(":") if _d]
+
+cc_header_root(
+    name = "host_headers",
+    exported_flags = ["-I" + _d for _d in _HOST_INCLUDE_DIRS],
+    visibility = ["PUBLIC"],
+)
