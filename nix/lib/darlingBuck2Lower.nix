@@ -55,6 +55,21 @@
           # Without this, editing any generator relowers all 259 derivations, and this port
           # is largely a matter of editing generators.
           "scripts"
+          # Documentation and editor/tool state. PLAN.md is the one that matters: it is
+          # 137K, it is edited in essentially every increment of this port, and until now
+          # every one of those edits relowered all 259 derivations. Nothing reads any of
+          # these -- the only mentions of PLAN.md across every BUCK and .bzl in the tree
+          # are comments pointing a reader at it, there is no BUCK package at the repo
+          # root, and a buck2 glob cannot escape its own package.
+          "PLAN.md"
+          "README.md"
+          "CONTRIBUTORS.md"
+          "LICENSE"
+          ".vscode"
+          ".claude"
+          ".tangled"
+          ".gdbinit"
+          ".dfx-boot.log"
           ".git"
           ".jj"
           ".direnv"
