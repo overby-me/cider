@@ -50861,6 +50861,9 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
         ":lp_inc_cups_cups",
     ],
     visibility = ["PUBLIC"],
@@ -50966,3 +50969,5140 @@ darwin_dylib(
 # retry once with it) so the actionable error is in the output at all. Until then this cone
 # is hand work, and six frameworks in //darwin/frameworks wait on it (AVKit, CoreVideo,
 # HIServices, ImageIO, OpenGL, Quartz).
+
+# BEGIN generated: cups
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups   -- review before committing.
+# cmake target: cups  ->  src/external/cups/cups/cups/libcups.2.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_obj",
+    srcs = [
+        "cups/cups/cups/adminutil.c",
+        "cups/cups/cups/array.c",
+        "cups/cups/cups/auth.c",
+        "cups/cups/cups/backchannel.c",
+        "cups/cups/cups/backend.c",
+        "cups/cups/cups/debug.c",
+        "cups/cups/cups/dest-job.c",
+        "cups/cups/cups/dest-localization.c",
+        "cups/cups/cups/dest-options.c",
+        "cups/cups/cups/dest.c",
+        "cups/cups/cups/dir.c",
+        "cups/cups/cups/encode.c",
+        "cups/cups/cups/file.c",
+        "cups/cups/cups/getdevices.c",
+        "cups/cups/cups/getifaddrs.c",
+        "cups/cups/cups/getputfile.c",
+        "cups/cups/cups/globals.c",
+        "cups/cups/cups/hash.c",
+        "cups/cups/cups/http-addr.c",
+        "cups/cups/cups/http-addrlist.c",
+        "cups/cups/cups/http-support.c",
+        "cups/cups/cups/http.c",
+        "cups/cups/cups/ipp-file.c",
+        "cups/cups/cups/ipp-support.c",
+        "cups/cups/cups/ipp-vars.c",
+        "cups/cups/cups/ipp.c",
+        "cups/cups/cups/langprintf.c",
+        "cups/cups/cups/language.c",
+        "cups/cups/cups/md5.c",
+        "cups/cups/cups/md5passwd.c",
+        "cups/cups/cups/notify.c",
+        "cups/cups/cups/options.c",
+        "cups/cups/cups/ppd-attr.c",
+        "cups/cups/cups/ppd-cache.c",
+        "cups/cups/cups/ppd-conflicts.c",
+        "cups/cups/cups/ppd-custom.c",
+        "cups/cups/cups/ppd-emit.c",
+        "cups/cups/cups/ppd-localize.c",
+        "cups/cups/cups/ppd-mark.c",
+        "cups/cups/cups/ppd-page.c",
+        "cups/cups/cups/ppd-util.c",
+        "cups/cups/cups/ppd.c",
+        "cups/cups/cups/pwg-media.c",
+        "cups/cups/cups/raster-error.c",
+        "cups/cups/cups/raster-interpret.c",
+        "cups/cups/cups/raster-interstub.c",
+        "cups/cups/cups/raster-stream.c",
+        "cups/cups/cups/raster-stubs.c",
+        "cups/cups/cups/request.c",
+        "cups/cups/cups/sidechannel.c",
+        "cups/cups/cups/snmp.c",
+        "cups/cups/cups/snprintf.c",
+        "cups/cups/cups/string.c",
+        "cups/cups/cups/tempfile.c",
+        "cups/cups/cups/thread.c",
+        "cups/cups/cups/tls.c",
+        "cups/cups/cups/transcode.c",
+        "cups/cups/cups/usersys.c",
+        "cups/cups/cups/util.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-Dcups_EXPORTS",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        "//buck-src:fw_SystemConfiguration",
+        ":cups_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups
+
+# BEGIN generated: cups dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs cups   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "cups_dylib",
+    dylib_name = "libcups.2.dylib",
+    install_name = "/usr/lib/libcups.2.dylib",
+    compatibility_version = "2.0.0",
+    current_version = "2.14.0",
+    objs = [
+        # cups
+        ":cups_obj",
+    ],
+    siblings = [
+        "//buck-src:iconv_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups dylibs
+
+# BEGIN generated: cupsimage
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupsimage   -- review before committing.
+# cmake target: cupsimage  ->  src/external/cups/cups/cups/libcupsimage.2.dylib
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupsimage_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupsimage_obj",
+    srcs = [
+        "cups/cups/cups/raster-interstub.c",
+        "cups/cups/cups/raster-stubs.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-Dcupsimage_EXPORTS",
+        "-fPIC",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cupsimage_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsimage
+
+# BEGIN generated: cupsimage dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs cupsimage   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# TODO the final pass also links these siblings, not ported yet:
+#   Security_x86_64
+
+darwin_dylib(
+    name = "cupsimage_dylib",
+    dylib_name = "libcupsimage.2.dylib",
+    install_name = "/usr/lib/libcupsimage.2.dylib",
+    compatibility_version = "2.0.0",
+    current_version = "2.3.0",
+    objs = [
+        # cupsimage
+        ":cupsimage_obj",
+    ],
+    siblings = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsimage dylibs
+
+# BEGIN generated: admin.cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py admin.cgi   -- review before committing.
+# cmake target: admin.cgi  ->  src/external/cups/cups/cgi-bin/admin.cgi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "admin.cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "admin.cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/admin.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":admin.cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: admin.cgi
+
+# BEGIN generated: bcp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bcp   -- review before committing.
+# cmake target: bcp  ->  src/external/cups/cups/monitor/bcp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "bcp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bcp_obj",
+    srcs = [
+        "cups/cups/monitor/bcp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":bcp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bcp
+
+# BEGIN generated: bcp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries bcp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "bcp",
+    objs = [
+        # bcp
+        ":bcp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bcp binary
+
+# BEGIN generated: cancel
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cancel   -- review before committing.
+# cmake target: cancel  ->  src/external/cups/cups/systemv/cancel
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cancel_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cancel_obj",
+    srcs = [
+        "cups/cups/systemv/cancel.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cancel_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cancel
+
+# BEGIN generated: cancel binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cancel   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cancel",
+    objs = [
+        # cancel
+        ":cancel_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cancel binary
+
+# BEGIN generated: classes.cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py classes.cgi   -- review before committing.
+# cmake target: classes.cgi  ->  src/external/cups/cups/cgi-bin/classes.cgi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "classes.cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "classes.cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/classes.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":classes.cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: classes.cgi
+
+# BEGIN generated: commandtops
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py commandtops   -- review before committing.
+# cmake target: commandtops  ->  src/external/cups/cups/filter/commandtops
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "commandtops_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "commandtops_obj",
+    srcs = [
+        "cups/cups/filter/commandtops.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":commandtops_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: commandtops
+
+# BEGIN generated: commandtops binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries commandtops   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "commandtops",
+    objs = [
+        # commandtops
+        ":commandtops_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: commandtops binary
+
+# BEGIN generated: cups-deviced
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups-deviced   -- review before committing.
+# cmake target: cups-deviced  ->  src/external/cups/cups/scheduler/cups-deviced
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups-deviced_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups-deviced_obj",
+    srcs = [
+        "cups/cups/scheduler/cups-deviced.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups-deviced_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-deviced
+
+# BEGIN generated: cups-deviced binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cups-deviced   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cups-deviced",
+    objs = [
+        # cups_scheduler_util
+        ":cups_scheduler_util_obj",
+        # cups-deviced
+        ":cups-deviced_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-deviced binary
+
+# BEGIN generated: cups_scheduler_util
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups_scheduler_util   -- review before committing.
+# cmake target: cups_scheduler_util  ->  src/external/cups/cups/scheduler/cups_scheduler_util
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_scheduler_util_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_scheduler_util_obj",
+    srcs = [
+        "cups/cups/scheduler/util.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups_scheduler_util_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_scheduler_util
+
+# BEGIN generated: cups-driverd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups-driverd   -- review before committing.
+# cmake target: cups-driverd  ->  src/external/cups/cups/scheduler/cups-driverd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups-driverd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups-driverd_obj",
+    srcs = [
+        "cups/cups/scheduler/cups-driverd.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups-driverd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-driverd
+
+# BEGIN generated: cups-driverd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cups-driverd   -- review before committing.
+# Links 2 cmake object library/ies, 3 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cups-driverd",
+    objs = [
+        # cups_scheduler_util
+        ":cups_scheduler_util_obj",
+        # cups-driverd
+        ":cups-driverd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:z_dylib",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_ppdc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-driverd binary
+
+# BEGIN generated: cups-exec
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups-exec   -- review before committing.
+# cmake target: cups-exec  ->  src/external/cups/cups/scheduler/cups-exec
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups-exec_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups-exec_obj",
+    srcs = [
+        "cups/cups/scheduler/cups-exec.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cups-exec_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-exec
+
+# BEGIN generated: cups-exec binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cups-exec   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cups-exec",
+    objs = [
+        # cups-exec
+        ":cups-exec_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-exec binary
+
+# BEGIN generated: cups-lpd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups-lpd   -- review before committing.
+# cmake target: cups-lpd  ->  src/external/cups/cups/scheduler/cups-lpd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups-lpd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups-lpd_obj",
+    srcs = [
+        "cups/cups/scheduler/cups-lpd.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups-lpd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-lpd
+
+# BEGIN generated: cups-lpd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cups-lpd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cups-lpd",
+    objs = [
+        # cups-lpd
+        ":cups-lpd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups-lpd binary
+
+# BEGIN generated: cupsaccept
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupsaccept   -- review before committing.
+# cmake target: cupsaccept  ->  src/external/cups/cups/systemv/cupsaccept
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupsaccept_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupsaccept_obj",
+    srcs = [
+        "cups/cups/systemv/cupsaccept.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cupsaccept_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsaccept
+
+# BEGIN generated: cupsaccept binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cupsaccept   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cupsaccept",
+    objs = [
+        # cupsaccept
+        ":cupsaccept_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsaccept binary
+
+# BEGIN generated: cupsctl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupsctl   -- review before committing.
+# cmake target: cupsctl  ->  src/external/cups/cups/systemv/cupsctl
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupsctl_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupsctl_obj",
+    srcs = [
+        "cups/cups/systemv/cupsctl.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cupsctl_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsctl
+
+# BEGIN generated: cupsctl binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cupsctl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cupsctl",
+    objs = [
+        # cupsctl
+        ":cupsctl_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsctl binary
+
+
+
+# BEGIN generated: cupsfilter
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupsfilter   -- review before committing.
+# cmake target: cupsfilter  ->  src/external/cups/cups/scheduler/cupsfilter
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupsfilter_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupsfilter_obj",
+    srcs = [
+        "cups/cups/scheduler/cupsfilter.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cupsfilter_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsfilter
+
+# BEGIN generated: cupsfilter binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cupsfilter   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cupsfilter",
+    objs = [
+        # cupsfilter
+        ":cupsfilter_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_mime",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupsfilter binary
+
+# BEGIN generated: cupstestppd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cupstestppd   -- review before committing.
+# cmake target: cupstestppd  ->  src/external/cups/cups/systemv/cupstestppd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cupstestppd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cupstestppd_obj",
+    srcs = [
+        "cups/cups/systemv/cupstestppd.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cupstestppd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupstestppd
+
+# BEGIN generated: cupstestppd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries cupstestppd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "cupstestppd",
+    objs = [
+        # cupstestppd
+        ":cupstestppd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cupstestppd binary
+
+# BEGIN generated: dnssd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py dnssd   -- review before committing.
+# cmake target: dnssd  ->  src/external/cups/cups/backend/dnssd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "dnssd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "dnssd_obj",
+    srcs = [
+        "cups/cups/backend/dnssd.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":dnssd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dnssd
+
+# BEGIN generated: dnssd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries dnssd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+#   libcups_libbackend.a
+
+darwin_binary(
+    name = "dnssd",
+    objs = [
+        # dnssd
+        ":dnssd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: dnssd binary
+
+# BEGIN generated: gziptoany
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py gziptoany   -- review before committing.
+# cmake target: gziptoany  ->  src/external/cups/cups/filter/gziptoany
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "gziptoany_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "gziptoany_obj",
+    srcs = [
+        "cups/cups/filter/gziptoany.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":gziptoany_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gziptoany
+
+# BEGIN generated: gziptoany binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries gziptoany   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "gziptoany",
+    objs = [
+        # gziptoany
+        ":gziptoany_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: gziptoany binary
+
+# BEGIN generated: help.cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py help.cgi   -- review before committing.
+# cmake target: help.cgi  ->  src/external/cups/cups/cgi-bin/help.cgi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "help.cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "help.cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/help.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":help.cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: help.cgi
+
+# BEGIN generated: ipp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ipp   -- review before committing.
+# cmake target: ipp  ->  src/external/cups/cups/backend/ipp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ipp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ipp_obj",
+    srcs = [
+        "cups/cups/backend/ipp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ipp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ipp
+
+# BEGIN generated: ipp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ipp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ipp",
+    objs = [
+        # ipp
+        ":ipp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_libbackend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ipp binary
+
+# BEGIN generated: ippevepcl
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ippevepcl   -- review before committing.
+# cmake target: ippevepcl  ->  src/external/cups/cups/tools/ippevepcl
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ippevepcl_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ippevepcl_obj",
+    srcs = [
+        "cups/cups/tools/ippevepcl.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ippevepcl_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippevepcl
+
+# BEGIN generated: ippevepcl binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ippevepcl   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ippevepcl",
+    objs = [
+        # ippevepcl
+        ":ippevepcl_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippevepcl binary
+
+# BEGIN generated: ippeveprinter
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ippeveprinter   -- review before committing.
+# cmake target: ippeveprinter  ->  src/external/cups/cups/tools/ippeveprinter
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ippeveprinter_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ippeveprinter_obj",
+    srcs = [
+        "cups/cups/tools/ippeveprinter.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ippeveprinter_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippeveprinter
+
+# BEGIN generated: ippeveprinter binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ippeveprinter   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ippeveprinter",
+    objs = [
+        # ippeveprinter
+        ":ippeveprinter_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src/openpam:pam.2_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippeveprinter binary
+
+# BEGIN generated: ippeveps
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ippeveps   -- review before committing.
+# cmake target: ippeveps  ->  src/external/cups/cups/tools/ippeveps
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ippeveps_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ippeveps_obj",
+    srcs = [
+        "cups/cups/tools/ippeveps.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":ippeveps_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippeveps
+
+# BEGIN generated: ippeveps binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ippeveps   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ippeveps",
+    objs = [
+        # ippeveps
+        ":ippeveps_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippeveps binary
+
+# BEGIN generated: ippfind
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ippfind   -- review before committing.
+# cmake target: ippfind  ->  src/external/cups/cups/tools/ippfind
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ippfind_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ippfind_obj",
+    srcs = [
+        "cups/cups/tools/ippfind.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ippfind_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippfind
+
+# BEGIN generated: ippfind binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ippfind   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ippfind",
+    objs = [
+        # ippfind
+        ":ippfind_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ippfind binary
+
+# BEGIN generated: ipptool
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ipptool   -- review before committing.
+# cmake target: ipptool  ->  src/external/cups/cups/tools/ipptool
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ipptool_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ipptool_obj",
+    srcs = [
+        "cups/cups/tools/ipptool.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ipptool_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ipptool
+
+# BEGIN generated: ipptool binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ipptool   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ipptool",
+    objs = [
+        # ipptool
+        ":ipptool_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ipptool binary
+
+# BEGIN generated: jobs.cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py jobs.cgi   -- review before committing.
+# cmake target: jobs.cgi  ->  src/external/cups/cups/cgi-bin/jobs.cgi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "jobs.cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "jobs.cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/jobs.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":jobs.cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: jobs.cgi
+
+# BEGIN generated: lp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lp",
+    objs = [
+        # lp
+        ":lp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lp binary
+
+# BEGIN generated: lpadmin
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpadmin   -- review before committing.
+# cmake target: lpadmin  ->  src/external/cups/cups/systemv/lpadmin
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpadmin_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpadmin_obj",
+    srcs = [
+        "cups/cups/systemv/lpadmin.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpadmin_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpadmin
+
+# BEGIN generated: lpadmin binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpadmin   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpadmin",
+    objs = [
+        # lpadmin
+        ":lpadmin_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpadmin binary
+
+# BEGIN generated: lpc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpc   -- review before committing.
+# cmake target: lpc  ->  src/external/cups/cups/berkeley/lpc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpc_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpc_obj",
+    srcs = [
+        "cups/cups/berkeley/lpc.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpc_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpc
+
+# BEGIN generated: lpc binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpc   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpc",
+    objs = [
+        # lpc
+        ":lpc_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpc binary
+
+# BEGIN generated: lpd
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpd   -- review before committing.
+# cmake target: lpd  ->  src/external/cups/cups/backend/lpd
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpd_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpd_obj",
+    srcs = [
+        "cups/cups/backend/lpd.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpd_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpd
+
+# BEGIN generated: lpd binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpd   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpd",
+    objs = [
+        # lpd
+        ":lpd_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_libbackend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpd binary
+
+# BEGIN generated: lpinfo
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpinfo   -- review before committing.
+# cmake target: lpinfo  ->  src/external/cups/cups/systemv/lpinfo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpinfo_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpinfo_obj",
+    srcs = [
+        "cups/cups/systemv/lpinfo.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpinfo_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpinfo
+
+# BEGIN generated: lpinfo binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpinfo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpinfo",
+    objs = [
+        # lpinfo
+        ":lpinfo_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpinfo binary
+
+# BEGIN generated: lpmove
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpmove   -- review before committing.
+# cmake target: lpmove  ->  src/external/cups/cups/systemv/lpmove
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpmove_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpmove_obj",
+    srcs = [
+        "cups/cups/systemv/lpmove.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpmove_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpmove
+
+# BEGIN generated: lpmove binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpmove   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpmove",
+    objs = [
+        # lpmove
+        ":lpmove_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpmove binary
+
+# BEGIN generated: lpoptions
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpoptions   -- review before committing.
+# cmake target: lpoptions  ->  src/external/cups/cups/systemv/lpoptions
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpoptions_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpoptions_obj",
+    srcs = [
+        "cups/cups/systemv/lpoptions.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpoptions_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpoptions
+
+# BEGIN generated: lpoptions binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpoptions   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpoptions",
+    objs = [
+        # lpoptions
+        ":lpoptions_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpoptions binary
+
+# BEGIN generated: lpq
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpq   -- review before committing.
+# cmake target: lpq  ->  src/external/cups/cups/berkeley/lpq
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpq_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpq_obj",
+    srcs = [
+        "cups/cups/berkeley/lpq.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpq_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpq
+
+# BEGIN generated: lpq binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpq   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpq",
+    objs = [
+        # lpq
+        ":lpq_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpq binary
+
+# BEGIN generated: lpr
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpr   -- review before committing.
+# cmake target: lpr  ->  src/external/cups/cups/berkeley/lpr
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpr_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpr_obj",
+    srcs = [
+        "cups/cups/berkeley/lpr.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpr_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpr
+
+# BEGIN generated: lpr binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpr   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpr",
+    objs = [
+        # lpr
+        ":lpr_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpr binary
+
+# BEGIN generated: lprm
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lprm   -- review before committing.
+# cmake target: lprm  ->  src/external/cups/cups/berkeley/lprm
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lprm_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lprm_obj",
+    srcs = [
+        "cups/cups/berkeley/lprm.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lprm_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lprm
+
+# BEGIN generated: lprm binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lprm   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lprm",
+    objs = [
+        # lprm
+        ":lprm_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lprm binary
+
+# BEGIN generated: lpstat
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py lpstat   -- review before committing.
+# cmake target: lpstat  ->  src/external/cups/cups/systemv/lpstat
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "lpstat_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "lpstat_obj",
+    srcs = [
+        "cups/cups/systemv/lpstat.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":lpstat_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpstat
+
+# BEGIN generated: lpstat binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries lpstat   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "lpstat",
+    objs = [
+        # lpstat
+        ":lpstat_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: lpstat binary
+
+# BEGIN generated: mailto
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py mailto   -- review before committing.
+# cmake target: mailto  ->  src/external/cups/cups/notifier/mailto
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "mailto_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "mailto_obj",
+    srcs = [
+        "cups/cups/notifier/mailto.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":mailto_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mailto
+
+# BEGIN generated: mailto binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries mailto   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "mailto",
+    objs = [
+        # mailto
+        ":mailto_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: mailto binary
+
+# BEGIN generated: ppdc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ppdc   -- review before committing.
+# cmake target: ppdc  ->  src/external/cups/cups/ppdc/ppdc
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ppdc_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ppdc_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdc.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ppdc_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdc
+
+# BEGIN generated: ppdc binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ppdc   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ppdc",
+    objs = [
+        # ppdc
+        ":ppdc_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_ppdc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdc binary
+
+# BEGIN generated: ppdhtml
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ppdhtml   -- review before committing.
+# cmake target: ppdhtml  ->  src/external/cups/cups/ppdc/ppdhtml
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ppdhtml_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ppdhtml_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdhtml.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ppdhtml_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdhtml
+
+# BEGIN generated: ppdhtml binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ppdhtml   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ppdhtml",
+    objs = [
+        # ppdhtml
+        ":ppdhtml_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_ppdc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdhtml binary
+
+# BEGIN generated: ppdi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ppdi   -- review before committing.
+# cmake target: ppdi  ->  src/external/cups/cups/ppdc/ppdi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ppdi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ppdi_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdi.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ppdi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdi
+
+# BEGIN generated: ppdi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ppdi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ppdi",
+    objs = [
+        # ppdi
+        ":ppdi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_ppdc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdi binary
+
+# BEGIN generated: ppdmerge
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ppdmerge   -- review before committing.
+# cmake target: ppdmerge  ->  src/external/cups/cups/ppdc/ppdmerge
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ppdmerge_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ppdmerge_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdmerge.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ppdmerge_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdmerge
+
+# BEGIN generated: ppdmerge binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ppdmerge   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+#   libcups_ppdc.a
+
+darwin_binary(
+    name = "ppdmerge",
+    objs = [
+        # ppdmerge
+        ":ppdmerge_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdmerge binary
+
+# BEGIN generated: ppdpo
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ppdpo   -- review before committing.
+# cmake target: ppdpo  ->  src/external/cups/cups/ppdc/ppdpo
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "ppdpo_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "ppdpo_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdpo.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":ppdpo_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdpo
+
+# BEGIN generated: ppdpo binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries ppdpo   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "ppdpo",
+    objs = [
+        # ppdpo
+        ":ppdpo_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_ppdc",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ppdpo binary
+
+# BEGIN generated: printers.cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py printers.cgi   -- review before committing.
+# cmake target: printers.cgi  ->  src/external/cups/cups/cgi-bin/printers.cgi
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "printers.cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "printers.cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/printers.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":printers.cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: printers.cgi
+
+# BEGIN generated: pstops
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py pstops   -- review before committing.
+# cmake target: pstops  ->  src/external/cups/cups/filter/pstops
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "pstops_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "pstops_obj",
+    srcs = [
+        "cups/cups/filter/common.c",
+        "cups/cups/filter/pstops.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":pstops_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pstops
+
+# BEGIN generated: pstops binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries pstops   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "pstops",
+    objs = [
+        # pstops
+        ":pstops_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: pstops binary
+
+# BEGIN generated: rastertoepson
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rastertoepson   -- review before committing.
+# cmake target: rastertoepson  ->  src/external/cups/cups/filter/rastertoepson
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "rastertoepson_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "rastertoepson_obj",
+    srcs = [
+        "cups/cups/filter/rastertoepson.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":rastertoepson_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertoepson
+
+# BEGIN generated: rastertoepson binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rastertoepson   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "rastertoepson",
+    objs = [
+        # rastertoepson
+        ":rastertoepson_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertoepson binary
+
+# BEGIN generated: rastertohp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rastertohp   -- review before committing.
+# cmake target: rastertohp  ->  src/external/cups/cups/filter/rastertohp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "rastertohp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "rastertohp_obj",
+    srcs = [
+        "cups/cups/filter/rastertohp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":rastertohp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertohp
+
+# BEGIN generated: rastertohp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rastertohp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "rastertohp",
+    objs = [
+        # rastertohp
+        ":rastertohp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertohp binary
+
+# BEGIN generated: rastertolabel
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rastertolabel   -- review before committing.
+# cmake target: rastertolabel  ->  src/external/cups/cups/filter/rastertolabel
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "rastertolabel_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "rastertolabel_obj",
+    srcs = [
+        "cups/cups/filter/rastertolabel.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":rastertolabel_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertolabel
+
+# BEGIN generated: rastertolabel binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rastertolabel   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "rastertolabel",
+    objs = [
+        # rastertolabel
+        ":rastertolabel_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertolabel binary
+
+# BEGIN generated: rastertopwg
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rastertopwg   -- review before committing.
+# cmake target: rastertopwg  ->  src/external/cups/cups/filter/rastertopwg
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "rastertopwg_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "rastertopwg_obj",
+    srcs = [
+        "cups/cups/filter/rastertopwg.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":rastertopwg_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertopwg
+
+# BEGIN generated: rastertopwg binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rastertopwg   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "rastertopwg",
+    objs = [
+        # rastertopwg
+        ":rastertopwg_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rastertopwg binary
+
+# BEGIN generated: rss
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py rss   -- review before committing.
+# cmake target: rss  ->  src/external/cups/cups/notifier/rss
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "rss_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "rss_obj",
+    srcs = [
+        "cups/cups/notifier/rss.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":rss_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rss
+
+# BEGIN generated: rss binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries rss   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "rss",
+    objs = [
+        # rss
+        ":rss_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: rss binary
+
+# BEGIN generated: snmp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py snmp   -- review before committing.
+# cmake target: snmp  ->  src/external/cups/cups/backend/snmp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "snmp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "snmp_obj",
+    srcs = [
+        "cups/cups/backend/snmp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":snmp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: snmp
+
+# BEGIN generated: snmp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries snmp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "snmp",
+    objs = [
+        # snmp
+        ":snmp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_libbackend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: snmp binary
+
+# BEGIN generated: socket
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py socket   -- review before committing.
+# cmake target: socket  ->  src/external/cups/cups/backend/socket
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "socket_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "socket_obj",
+    srcs = [
+        "cups/cups/backend/socket.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":socket_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: socket
+
+# BEGIN generated: socket binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries socket   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "socket",
+    objs = [
+        # socket
+        ":socket_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_libbackend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: socket binary
+
+# BEGIN generated: tbcp
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py tbcp   -- review before committing.
+# cmake target: tbcp  ->  src/external/cups/cups/monitor/tbcp
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "tbcp_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "tbcp_obj",
+    srcs = [
+        "cups/cups/monitor/tbcp.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":tbcp_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tbcp
+
+# BEGIN generated: tbcp binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries tbcp   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "tbcp",
+    objs = [
+        # tbcp
+        ":tbcp_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: tbcp binary
+
+# BEGIN generated: usb
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py usb   -- review before committing.
+# cmake target: usb  ->  src/external/cups/cups/backend/usb
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "usb_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "usb_obj",
+    srcs = [
+        "cups/cups/backend/usb.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":usb_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: usb
+
+# BEGIN generated: usb binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries usb   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "usb",
+    objs = [
+        # usb
+        ":usb_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:iconv_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:IOKit_dylib",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//buck-src:Security_final",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_libbackend",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: usb binary
+
+# BEGIN generated: cups_cgi
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups_cgi   -- review before committing.
+# cmake target: cups_cgi  ->  src/external/cups/cups/cgi-bin/libcups_cgi.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_cgi_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_cgi_obj",
+    srcs = [
+        "cups/cups/cgi-bin/help-index.c",
+        "cups/cups/cgi-bin/html.c",
+        "cups/cups/cgi-bin/ipp-var.c",
+        "cups/cups/cgi-bin/search.c",
+        "cups/cups/cgi-bin/template.c",
+        "cups/cups/cgi-bin/var.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        ":cups_cgi_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_cgi
+
+# BEGIN generated: cups_cgi archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives cups_cgi   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "cups_cgi",
+    lib_name = "libcups_cgi.a",
+    objs = [
+        # cups_cgi
+        ":cups_cgi_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_cgi archive
+
+# BEGIN generated: cups_libbackend
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups_libbackend   -- review before committing.
+# cmake target: cups_libbackend  ->  src/external/cups/cups/backend/libcups_libbackend.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_libbackend_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_libbackend_obj",
+    srcs = [
+        "cups/cups/backend/ieee1284.c",
+        "cups/cups/backend/network.c",
+        "cups/cups/backend/runloop.c",
+        "cups/cups/backend/snmp-supplies.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups_libbackend_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_libbackend
+
+# BEGIN generated: cups_libbackend archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives cups_libbackend   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "cups_libbackend",
+    lib_name = "libcups_libbackend.a",
+    objs = [
+        # cups_libbackend
+        ":cups_libbackend_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_libbackend archive
+
+# BEGIN generated: cups_mime
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups_mime   -- review before committing.
+# cmake target: cups_mime  ->  src/external/cups/cups/scheduler/libcups_mime.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_mime_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_mime_obj",
+    srcs = [
+        "cups/cups/scheduler/filter.c",
+        "cups/cups/scheduler/mime.c",
+        "cups/cups/scheduler/type.c",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":cups_mime_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_mime
+
+# BEGIN generated: cups_mime archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives cups_mime   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "cups_mime",
+    lib_name = "libcups_mime.a",
+    objs = [
+        # cups_mime
+        ":cups_mime_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_mime archive
+
+# BEGIN generated: cups_ppdc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py cups_ppdc   -- review before committing.
+# cmake target: cups_ppdc  ->  src/external/cups/cups/ppdc/libcups_ppdc.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "cups_ppdc_inc_cups_cups",
+    headers = glob([
+        "cups/cups/**/*",
+        "cups/cups/xcode/*.h",
+        "cups/cups/xcode/**/*.h",
+        "cups/cups/xcode/*.c",
+    ]),
+    root = "cups/cups",
+    include_subdirs = [
+        ".",
+        "xcode",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "cups_ppdc_obj",
+    srcs = [
+        "cups/cups/ppdc/ppdc-array.cxx",
+        "cups/cups/ppdc/ppdc-attr.cxx",
+        "cups/cups/ppdc/ppdc-catalog.cxx",
+        "cups/cups/ppdc/ppdc-choice.cxx",
+        "cups/cups/ppdc/ppdc-constraint.cxx",
+        "cups/cups/ppdc/ppdc-driver.cxx",
+        "cups/cups/ppdc/ppdc-file.cxx",
+        "cups/cups/ppdc/ppdc-filter.cxx",
+        "cups/cups/ppdc/ppdc-font.cxx",
+        "cups/cups/ppdc/ppdc-group.cxx",
+        "cups/cups/ppdc/ppdc-import.cxx",
+        "cups/cups/ppdc/ppdc-mediasize.cxx",
+        "cups/cups/ppdc/ppdc-message.cxx",
+        "cups/cups/ppdc/ppdc-option.cxx",
+        "cups/cups/ppdc/ppdc-profile.cxx",
+        "cups/cups/ppdc/ppdc-shared.cxx",
+        "cups/cups/ppdc/ppdc-source.cxx",
+        "cups/cups/ppdc/ppdc-string.cxx",
+        "cups/cups/ppdc/ppdc-variable.cxx",
+    ],
+    compiler_flags = [
+        "-D_CUPS_SOURCE",
+        "-D_FORTIFY_SOURCE=2",
+        "-D_LARGEFILE64_SOURCE",
+        "-D_LARGEFILE_SOURCE",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D_THREAD_SAFE",
+        "-w",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_GSS",
+        "//buck-src:fw_Security",
+        ":cups_ppdc_inc_cups_cups",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_ppdc
+
+# BEGIN generated: cups_ppdc archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives cups_ppdc   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "cups_ppdc",
+    lib_name = "libcups_ppdc.a",
+    objs = [
+        # cups_ppdc
+        ":cups_ppdc_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: cups_ppdc archive
+
+# BEGIN generated: admin.cgi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries admin.cgi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "admin.cgi",
+    objs = [
+        # admin.cgi
+        ":admin.cgi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_cgi",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: admin.cgi binary
+
+# BEGIN generated: classes.cgi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries classes.cgi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "classes.cgi",
+    objs = [
+        # classes.cgi
+        ":classes.cgi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_cgi",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: classes.cgi binary
+
+# BEGIN generated: help.cgi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries help.cgi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "help.cgi",
+    objs = [
+        # help.cgi
+        ":help.cgi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_cgi",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: help.cgi binary
+
+# BEGIN generated: jobs.cgi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries jobs.cgi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "jobs.cgi",
+    objs = [
+        # jobs.cgi
+        ":jobs.cgi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_cgi",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: jobs.cgi binary
+
+# BEGIN generated: printers.cgi binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries printers.cgi   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# TODO it also links these libraries, not ported yet:
+#   Security_x86_64
+
+darwin_binary(
+    name = "printers.cgi",
+    objs = [
+        # printers.cgi
+        ":printers.cgi_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = [
+        "//buck-src:cups_dylib",
+        "//buck-src:resolv-darwin_final",
+        "//buck-src:iconv_dylib",
+        "//buck-src:z_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Kerberos_dylib",
+        "//buck-src:GSS_dylib",
+        "//darwin/frameworks:SystemConfiguration_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//buck-src:Security_final",
+    ],
+    linker_flags = [
+        "-Wl,-pie",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:cups_cgi",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: printers.cgi binary
+
+# cupsd is HELD BACK for the same reason as AVKit, CoreVideo, HIServices, ImageIO, OpenGL
+# and Quartz: it wants CGBitmapContextCreate and friends from COCOTRON's CoreGraphics, which
+# is parked. Everything else in cups is in (2 dylibs, 4 archives, 51 executables).

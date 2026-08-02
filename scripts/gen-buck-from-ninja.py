@@ -1795,8 +1795,14 @@ def ninja_rule_name(target: str) -> str:
 
     ninja identifiers admit only [A-Za-z0-9_.-], so cmake hex-escapes anything else:
     clang++_shim's linker rule is C_EXECUTABLE_LINKER__clang.2b.2b_shim_.
+
+    The DOT is escaped too, even though ninja would accept it: cups' admin.cgi links
+    through C_EXECUTABLE_LINKER__admin.2ecgi_, and crt1.10.6 through crt1.2e10.2e6. Leaving
+    it in the safe set meant every dotted target failed to match its own rule, which is how
+    all five cups CGI programs reported "no executable link edge" for an edge that is right
+    there in the graph.
     """
-    return "".join(c if (c.isalnum() or c in "_.-") else ".%02x" % ord(c) for c in target)
+    return "".join(c if (c.isalnum() or c in "_-") else ".%02x" % ord(c) for c in target)
 
 
 def exe_edge(target: str, edges):

@@ -3000,5 +3000,292 @@
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "cups": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration"
+  ],
+  "bcp": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cancel": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "commandtops": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cups_scheduler_util": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cups-deviced": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cups-driverd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cups-lpd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cupsaccept": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cupsctl": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cupsd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_CoreText",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security",
+    "//buck-src:fw_SystemConfiguration",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_ATS",
+    "//darwin/frameworks:fw_ApplicationServices",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_ColorSync",
+    "//darwin/frameworks:fw_ColorSyncLegacy",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_HIServices",
+    "//darwin/frameworks:fw_ImageIO",
+    "//darwin/frameworks:fw_LangAnalysis",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_PrintCore",
+    "//darwin/frameworks:fw_QD",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "cupsfilter": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cupstestppd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "dnssd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "gziptoany": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ipp": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ippeveprinter": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ippfind": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ipptool": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lp": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpadmin": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpc": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpd": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpinfo": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpmove": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpoptions": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpq": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpr": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lprm": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "lpstat": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "mailto": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ppdc": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ppdhtml": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ppdi": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ppdmerge": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "ppdpo": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "pstops": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "rastertoepson": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "rastertohp": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "rastertolabel": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "rastertopwg": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "snmp": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "socket": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "tbcp": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "usb": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_CoreText",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_ATS",
+    "//darwin/frameworks:fw_ApplicationServices",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_ColorSync",
+    "//darwin/frameworks:fw_ColorSyncLegacy",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_HIServices",
+    "//darwin/frameworks:fw_ImageIO",
+    "//darwin/frameworks:fw_LangAnalysis",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_PrintCore",
+    "//darwin/frameworks:fw_QD",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "cups_cgi": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "cups_libbackend": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "cups_ppdc": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "admin.cgi": [
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_GSS",
+    "//buck-src:fw_Security"
+  ],
+  "classes.cgi": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "help.cgi": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "jobs.cgi": [
+    "//buck-src:fw_CoreFoundation"
+  ],
+  "printers.cgi": [
+    "//buck-src:fw_CoreFoundation"
   ]
 }

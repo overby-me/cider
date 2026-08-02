@@ -359,6 +359,28 @@ source is an umbrella that only imports headers, and the reference emits no
 reexport_library flags for it either. A zero-export dylib is usually the empty-artifact
 trap; this one is not.
 
+### Stage 2: cups (57 of 58)
+
+Two dylibs, four archives, 51 executables. The whole of cups except cupsd, which wants
+CGBitmapContextCreate from the parked cocotron CoreGraphics, exactly like the six held-back
+frameworks.
+
+Two things worth carrying forward.
+
+A real generator bug: cmake HEX-ESCAPES THE DOT in ninja rule names, and ninja_rule_name()
+did not. admin.cgi links through `C_EXECUTABLE_LINKER__admin.2ecgi_`, crt1.10.6 through
+`crt1.2e10.2e6`; the dot was in the function's safe set, so every dotted target failed to
+match its own rule and the generator reported "no executable link edge" for an edge sitting
+right there in the graph. All five cups CGI programs died on that. No legitimate rule name
+carries a raw dot, so escaping it is strictly more correct.
+
+And a mistake of mine worth not repeating: I split cups into dylibs and executables by
+testing for SHARED_LIBRARY_LINKER and treating everything else as an executable, which put
+four STATIC_LIBRARY_LINKER edges (libcups_cgi.a and friends) into the binary batch. They
+failed as "Unknown target", and so did the twelve binaries that link them -- twelve
+undefined-symbol failures with one cause, which looked far worse than it was. Classify by
+the rule name properly: dylib, archive, executable, module.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
