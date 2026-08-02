@@ -47,15 +47,17 @@ echo "clang resource dir: $clang_resource_dir"
 # dlopen goes through the loader's search path, so every such library's directory has to be
 # on it: `dlopen("libfuse.so")` fails without this even though the dev shell contains fuse.
 #
-# One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), and the sixteen
-# src/native ones the gui component wraps. Looked up by SONAME against the dev shell's own
+# One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), the sixteen
+# src/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
+# plus pulseaudio) that AudioToolbox decodes and plays through. Looked up by SONAME against the dev shell's own
 # -L directories (NIX_LDFLAGS), because that is the authoritative list of what this shell
 # declares. pkg-config is not enough on its own: giflib ships no .pc file at all, and
 # globbing /nix/store is worse than either, since several of these libraries have more than
 # one version there and a stub generated against the wrong one exports the wrong symbols.
 elf_sonames="libfuse.so libfreetype.so libjpeg.so libpng.so libtiff.so libgif.so libEGL.so
 libfontconfig.so libX11.so libXext.so libXrandr.so libXcursor.so libxkbfile.so libcairo.so
-libdbus-1.so libGL.so libGLU.so"
+libdbus-1.so libGL.so libGLU.so libswresample.so libavcodec.so libavformat.so libavutil.so
+libpulse.so"
 _ldirs="$(printf '%s\n' $NIX_LDFLAGS | sed -n 's/^-L//p' | sort -u)"
 elf_lib_dirs=""
 elf_missing=""

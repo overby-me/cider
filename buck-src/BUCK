@@ -58689,3 +58689,468 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: vim binary
+
+# BEGIN generated: Metal
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Metal   -- review before committing.
+# cmake target: Metal  ->  src/external/metal/Metal
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "Metal_inc_metal",
+    headers = glob([
+        "metal/include/*.h",
+        "metal/include/**/*.h",
+        "metal/include/*.c",
+        "metal/private-include/*.h",
+        "metal/private-include/**/*.h",
+        "metal/private-include/*.c",
+    ]),
+    root = "metal",
+    include_subdirs = [
+        "include",
+        "private-include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "Metal_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "Metal_obj",
+    srcs = [
+        "metal/src/Metal/MTLBuffer.mm",
+        "metal/src/Metal/MTLCaptureManager.mm",
+        "metal/src/Metal/MTLCommandBuffer.mm",
+        "metal/src/Metal/MTLCommandQueue.mm",
+        "metal/src/Metal/MTLCompileOptions.mm",
+        "metal/src/Metal/MTLComputeCommandEncoder.mm",
+        "metal/src/Metal/MTLComputePipeline.mm",
+        "metal/src/Metal/MTLDepthStencilDescriptor.mm",
+        "metal/src/Metal/MTLDevice.mm",
+        "metal/src/Metal/MTLDrawable.mm",
+        "metal/src/Metal/MTLLibrary.mm",
+        "metal/src/Metal/MTLPipeline.mm",
+        "metal/src/Metal/MTLRenderCommandEncoder.mm",
+        "metal/src/Metal/MTLRenderPipeline.mm",
+        "metal/src/Metal/MTLSamplerDescriptor.mm",
+        "metal/src/Metal/MTLStencilDescriptor.mm",
+        "metal/src/Metal/MTLTexture.mm",
+        "metal/src/Metal/MTLTextureDescriptor.mm",
+        "metal/src/Metal/MTLVertexDescriptor.mm",
+        "metal/src/Metal/Metal.mm",
+    ],
+    compiler_flags = [
+        "-DMetal_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-std=c++17",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":Metal_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+        ":Metal_inc_metal",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Metal
+
+# BEGIN generated: Metal dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Metal   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/metal/Metal = Metal_dylib
+
+darwin_dylib(
+    name = "Metal_dylib",
+    dylib_name = "Metal",
+    install_name = "/System/Library/Frameworks/Metal.framework/Versions/A/Metal",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # Metal
+        ":Metal_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Metal dylibs
+
+# BEGIN generated: MetalKit
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py MetalKit   -- review before committing.
+# cmake target: MetalKit  ->  src/external/metal/MetalKit
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "MetalKit_inc_metal",
+    headers = glob([
+        "metal/include/*.h",
+        "metal/include/**/*.h",
+        "metal/include/*.c",
+        "metal/private-include/*.h",
+        "metal/private-include/**/*.h",
+        "metal/private-include/*.c",
+    ]),
+    root = "metal",
+    include_subdirs = [
+        "include",
+        "private-include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "MetalKit_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "MetalKit_inc_foundation_internal_include",
+    headers = glob(["foundation/internal_include/*.h", "foundation/internal_include/**/*.h", "foundation/internal_include/*.c"]),
+    root = "foundation/internal_include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "MetalKit_obj",
+    srcs = [
+        "metal/src/MetalKit/MTKView.m",
+    ],
+    compiler_flags = [
+        "-DMetalKit_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":MetalKit_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        "//buck-src:fw_AppKit",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_CoreText",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_ATS",
+        "//darwin/frameworks:fw_ApplicationServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_ColorSync",
+        "//darwin/frameworks:fw_ColorSyncLegacy",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CoreVideo",
+        "//darwin/frameworks:fw_FSEvents",
+        "//darwin/frameworks:fw_HIServices",
+        "//darwin/frameworks:fw_ImageIO",
+        "//darwin/frameworks:fw_LangAnalysis",
+        "//darwin/frameworks:fw_LaunchServices",
+        "//darwin/frameworks:fw_OpenGL",
+        "//darwin/frameworks:fw_PrintCore",
+        "//darwin/frameworks:fw_QD",
+        "//darwin/frameworks:fw_SearchKit",
+        "//darwin/frameworks:fw_SpeechSynthesis",
+        ":MetalKit_inc_metal",
+        ":MetalKit_inc_foundation_internal_include",
+        "//buck-src:QuartzCore_inc_cocotron_QuartzCore_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: MetalKit
+
+# BEGIN generated: MetalKit dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs MetalKit   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/metal/MetalKit = MetalKit_dylib
+
+darwin_dylib(
+    name = "MetalKit_dylib",
+    dylib_name = "MetalKit",
+    install_name = "/System/Library/Frameworks/MetalKit.framework/Versions/A/MetalKit",
+    compatibility_version = "1.0.0",
+    current_version = "113.0.0",
+    objs = [
+        # MetalKit
+        ":MetalKit_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:AppKit_dylib",
+        "//buck-src:Metal_dylib",
+        "//buck-src:QuartzCore_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: MetalKit dylibs
+
+# BEGIN generated: MetalPerformanceShaders
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py MetalPerformanceShaders   -- review before committing.
+# cmake target: MetalPerformanceShaders  ->  src/external/metal/MetalPerformanceShaders
+
+cc_header_root(
+    name = "MetalPerformanceShaders_inc_libcxxabi_include",
+    headers = glob(["libcxxabi/include/*.h", "libcxxabi/include/**/*.h", "libcxxabi/include/*.c"]),
+    root = "libcxxabi/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_header_root(
+    name = "MetalPerformanceShaders_inc_metal_include",
+    headers = glob(["metal/include/*.h", "metal/include/**/*.h", "metal/include/*.c"]),
+    root = "metal/include",
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "MetalPerformanceShaders_obj",
+    srcs = [
+        "metal/src/dummy.c",
+    ],
+    compiler_flags = [
+        "-DMetalPerformanceShaders_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        ":MetalPerformanceShaders_inc_libcxxabi_include",
+        "//darwin:sdk_env",
+        ":MetalPerformanceShaders_inc_metal_include",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: MetalPerformanceShaders
+
+# BEGIN generated: MetalPerformanceShaders dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs MetalPerformanceShaders   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/metal/MetalPerformanceShaders = MetalPerformanceShaders_dylib
+
+darwin_dylib(
+    name = "MetalPerformanceShaders_dylib",
+    dylib_name = "MetalPerformanceShaders",
+    install_name = "/System/Library/Frameworks/MetalPerformanceShaders.framework/Versions/A/MetalPerformanceShaders",
+    compatibility_version = "1.0.0",
+    current_version = "122.5.6",
+    objs = [
+        # MetalPerformanceShaders
+        ":MetalPerformanceShaders_obj",
+    ],
+    siblings = [
+        "//buck-src/objc4:objc_final",
+        "//buck-src:system_final",
+        "//buck-src:Metal_dylib",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: MetalPerformanceShaders dylibs
+
+# BEGIN generated: bind9_isccc
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py bind9_isccc   -- review before committing.
+# cmake target: bind9_isccc  ->  src/external/bind9/bind9/lib/isccc/libbind9_isccc.a
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "bind9_isccc_inc_bind9",
+    headers = glob([
+        "bind9/gen/**/*",
+        "bind9/bind9/**/*",
+    ]),
+    root = "bind9",
+    include_subdirs = [
+        "gen",
+        "bind9",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "bind9_isccc_inc_bind9_bind9",
+    headers = glob([
+        "bind9/bind9/lib/isc/include/*.h",
+        "bind9/bind9/lib/isc/include/**/*.h",
+        "bind9/bind9/lib/isc/include/*.c",
+        "bind9/bind9/lib/isc/unix/include/*.h",
+        "bind9/bind9/lib/isc/unix/include/**/*.h",
+        "bind9/bind9/lib/isc/unix/include/*.c",
+        "bind9/bind9/lib/dns/include/*.h",
+        "bind9/bind9/lib/dns/include/**/*.h",
+        "bind9/bind9/lib/dns/include/*.c",
+        "bind9/bind9/lib/isc/noatomic/include/*.h",
+        "bind9/bind9/lib/isc/noatomic/include/**/*.h",
+        "bind9/bind9/lib/isc/noatomic/include/*.c",
+        "bind9/bind9/lib/isc/pthreads/include/*.h",
+        "bind9/bind9/lib/isc/pthreads/include/**/*.h",
+        "bind9/bind9/lib/isc/pthreads/include/*.c",
+        "bind9/bind9/lib/isccfg/include/*.h",
+        "bind9/bind9/lib/isccfg/include/**/*.h",
+        "bind9/bind9/lib/isccfg/include/*.c",
+        "bind9/bind9/lib/lwres/include/*.h",
+        "bind9/bind9/lib/lwres/include/**/*.h",
+        "bind9/bind9/lib/lwres/include/*.c",
+        "bind9/bind9/lib/lwres/unix/include/*.h",
+        "bind9/bind9/lib/lwres/unix/include/**/*.h",
+        "bind9/bind9/lib/lwres/unix/include/*.c",
+        "bind9/bind9/lib/bind9/include/*.h",
+        "bind9/bind9/lib/bind9/include/**/*.h",
+        "bind9/bind9/lib/bind9/include/*.c",
+        "bind9/bind9/lib/isccc/include/*.h",
+        "bind9/bind9/lib/isccc/include/**/*.h",
+        "bind9/bind9/lib/isccc/include/*.c",
+        "bind9/bind9/lib/irs/include/*.h",
+        "bind9/bind9/lib/irs/include/**/*.h",
+        "bind9/bind9/lib/irs/include/*.c",
+        "bind9/bind9/**/*",
+    ]),
+    root = "bind9/bind9",
+    include_subdirs = [
+        "lib/isc/include",
+        "lib/isc/unix/include",
+        "lib/dns/include",
+        "lib/isc/noatomic/include",
+        "lib/isc/pthreads/include",
+        "lib/isccfg/include",
+        "lib/lwres/include",
+        "lib/lwres/unix/include",
+        "lib/bind9/include",
+        "lib/isccc/include",
+        "lib/irs/include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "bind9_isccc_inc_bind9_gen",
+    headers = glob([
+        "bind9/gen/lib/isc/include/**/*",
+        "bind9/gen/lib/dns/include/**/*",
+        "bind9/gen/lib/lwres/include/**/*",
+        "bind9/gen/lib/irs/include/**/*",
+        "bind9/gen/**/*",
+    ]),
+    root = "bind9/gen",
+    include_subdirs = [
+        "lib/isc/include",
+        "lib/dns/include",
+        "lib/lwres/include",
+        "lib/irs/include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "bind9_isccc_obj",
+    srcs = [
+        "bind9/bind9/lib/isccc/alist.c",
+        "bind9/bind9/lib/isccc/base64.c",
+        "bind9/bind9/lib/isccc/cc.c",
+        "bind9/bind9/lib/isccc/ccmsg.c",
+        "bind9/bind9/lib/isccc/lib.c",
+        "bind9/bind9/lib/isccc/result.c",
+        "bind9/bind9/lib/isccc/sexpr.c",
+        "bind9/bind9/lib/isccc/symtab.c",
+        "bind9/bind9/lib/isccc/version.c",
+    ],
+    compiler_flags = [
+        "-DLIBAGE=0",
+        "-DLIBINTERFACE=140",
+        "-DLIBREVISION=5",
+        "-DVERSION=\"9.10.6\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-D_REENTRANT",
+        "-D__APPLE_USE_RFC_3542",
+        "-g",
+        "-std=gnu89",
+        "-W",
+        "-Wall",
+        "-Wmissing-prototypes",
+        "-Wcast-qual",
+        "-Wwrite-strings",
+        "-Wformat",
+        "-Wpointer-arith",
+        "-fno-strict-aliasing",
+        "-fno-delete-null-pointer-checks",
+        "-fno-common",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:sdk_libxml2",
+        ":bind9_isccc_inc_bind9_gen",
+        ":bind9_isccc_inc_bind9_bind9",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: bind9_isccc
+
+# BEGIN generated: bind9_isccc archive
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --archives bind9_isccc   -- review before committing.
+# Archives 1 cmake object library/ies, 1 flag groups.
+
+cc_static_lib(
+    name = "bind9_isccc",
+    lib_name = "libbind9_isccc.a",
+    objs = [
+        # bind9_isccc
+        ":bind9_isccc_obj",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    visibility = ["PUBLIC"],
+)
+# END generated: bind9_isccc archive

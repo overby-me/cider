@@ -1,5 +1,6 @@
-# No targets yet. getuuid and elfdep are HOST tools that read Mach-O out of the build tree;
-# both blocks were removed because they did not build -- the generator resolves their
-# <mach/...> includes to a framework root, and a host compile has no frameworks. See
-# PLAN.md. The package is kept so the directory keeps its own package boundary rather than
-# folding into the parent's globs.
+# No targets. getuuid and elfdep are HOST tools that read Mach-O out of the build tree.
+# Both blocks are correct as far as they go -- native_cc toolchain, cctools include root --
+# but the compile dies in cctools' own mach/machine.h on <mach/machine/vm_types.h>, which
+# exists in the pins ONLY under cctools-port/cctools/include/foreign/ and which nothing in
+# the reference build adds to the include path. See PLAN.md. The package is kept so the
+# directory keeps its own package boundary rather than folding into the parent's globs.

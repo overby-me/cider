@@ -565,6 +565,29 @@ def own_flags_of(unit):
     return flags, prefix
 
 
+def real_include_dir(kind: str, p: str) -> str:
+    """An include dir with every directory SYMLINK resolved away.
+
+    buck2's glob() does not traverse a symlinked DIRECTORY: it matches nothing and the root
+    stages empty, which then surfaces as "The path X does not exist in the artifact" naming
+    the staged tree rather than the link. src/CoreAudio is the case -- CoreAudioComponent
+    and AFAVFormatComponent both reach AUPublic, AFPublic and PublicUtility through links
+    into CoreAudioUtilityClasses -- and it is the ONLY case: of the 595 distinct include
+    dirs in the stock graph exactly 6 are reached this way, all of them these. Resolving is
+    therefore free of churn everywhere else.
+
+    A symlinked FILE is fine and is left alone; buck2 declares those individually.
+    """
+    root = REPO if kind == "src" else os.path.join(REPO, BUCK_SRC)
+    full = os.path.join(root, p)
+    if not os.path.isdir(full):
+        return p
+    real = os.path.realpath(full)
+    if real == os.path.abspath(full) or not real.startswith(root + os.sep):
+        return p
+    return os.path.relpath(real, root)
+
+
 def includes_of(unit):
     """Ordered include roots for one compile, plus the generated dirs.
 
@@ -598,7 +621,7 @@ def includes_of(unit):
         if kind == "generated":
             gen.append(p)
         else:
-            ordered.append(("own", p))
+            ordered.append(("own", real_include_dir(kind, p)))
     if not seen_env and not host:
         ordered.append(("env", None))
     return ordered, gen

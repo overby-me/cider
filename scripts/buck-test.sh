@@ -551,8 +551,8 @@ cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
 tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
 # made it decorative: anything short of losing three quarters of the port passed it.
-[ "${cov:-0}" -ge 866 ] && ok "$cov of the reference's ${tot:-871} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-871}, floor is 866"
+[ "${cov:-0}" -ge 868 ] && ok "$cov of the reference's ${tot:-871} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-871}, floor is 868"
 
 # The same question for the INSTALL side: link coverage says what builds, this says what
 # the port can actually lay out. UNMAPPED is every install entry that neither a target nor
@@ -615,19 +615,39 @@ for n in X11 cairo GL FreeType gif; do
 		bad "lib$n.dylib exports only ${nex:-0} symbols (did wrapgen's dlopen fail?)"
 done
 
-# The buck-registry: pragmas in that file are what makes buck-coverage.py see these
-# sixteen at all -- they are built from a Starlark table, and the registry is a text scan
-# for a literal name/dylib_name pair. Duplicated data drifts, so assert the pragma list
-# and the _NATIVE table still agree. Without this the sixteen silently return to reading
-# as unported the moment someone adds a seventeenth.
-nat_tbl=$(sed -n 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p' src/native/BUCK | sort)
-nat_reg=$(sed -n 's/^# buck-registry: lib\(.*\)\.dylib = .*$/\1/p' src/native/BUCK | sort)
-if [ "$nat_tbl" = "$nat_reg" ]; then
-	ok "src/native buck-registry pragmas match _NATIVE ($(printf '%s\n' "$nat_tbl" | wc -l) entries)"
-else
-	bad "src/native buck-registry pragmas have drifted from _NATIVE"
-	diff <(printf '%s\n' "$nat_tbl") <(printf '%s\n' "$nat_reg") | sed 's/^/    /' || true
-fi
+say "== the src/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
+# The same shape as src/native's, five of them, which AudioToolbox links to decode and
+# play. Same assertion for the same reason: a failed dlopen yields a valid EMPTY dylib.
+for n in avcodec avutil pulse; do
+	w=$(out_of "//src/CoreAudio:${n}_dylib")
+	case "$(file -bL "$w")" in
+	*"Mach-O 64-bit x86_64 dynamically linked shared library"*) ;;
+	*) bad "lib$n.dylib is not a Mach-O dylib"; continue ;;
+	esac
+	nex=$(llvm-nm --defined-only --extern-only "$w" 2>/dev/null | wc -l)
+	[ "${nex:-0}" -ge 100 ] && ok "lib$n.dylib forwards $nex host symbols" ||
+		bad "lib$n.dylib exports only ${nex:-0} symbols (did wrapgen's dlopen fail?)"
+done
+
+# The buck-registry: pragmas in those files are what makes buck-coverage.py see the
+# wrappers at all -- they are built from Starlark tables, and the registry is a text scan
+# for a literal name/dylib_name pair. Duplicated data drifts, so assert each pragma list
+# and its table still agree. Without this they silently return to reading as unported the
+# moment someone adds one more.
+check_wrap_table() { # <file> <table name> <sed expr extracting the target from a table row>
+	_tbl=$(sed -n "$3" "$1" | sort)
+	_reg=$(sed -n 's/^# buck-registry: lib\(.*\)\.dylib = .*$/\1/p' "$1" | sort)
+	if [ "$_tbl" = "$_reg" ]; then
+		ok "$1 buck-registry pragmas match $2 ($(printf '%s\n' "$_tbl" | wc -l) entries)"
+	else
+		bad "$1 buck-registry pragmas have drifted from $2"
+		diff <(printf '%s\n' "$_tbl") <(printf '%s\n' "$_reg") | sed 's/^/    /' || true
+	fi
+}
+check_wrap_table src/native/BUCK _NATIVE \
+	's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
+check_wrap_table src/CoreAudio/BUCK _AUDIO \
+	's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
 
 say "== wrapgen (the host-ELF bridge generator) =="
 # The second host tool (task #8), and the one hdiutil is blocked on: cmake's

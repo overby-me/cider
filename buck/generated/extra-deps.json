@@ -4338,5 +4338,132 @@
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "AudioToolbox": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "Metal": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "MetalKit": [
+    "//buck-src:fw_AppKit",
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_CoreText",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_ATS",
+    "//darwin/frameworks:fw_ApplicationServices",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_ColorSync",
+    "//darwin/frameworks:fw_ColorSyncLegacy",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_CoreVideo",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_HIServices",
+    "//darwin/frameworks:fw_ImageIO",
+    "//darwin/frameworks:fw_LangAnalysis",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_OpenGL",
+    "//darwin/frameworks:fw_PrintCore",
+    "//darwin/frameworks:fw_QD",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/frameworks:fw_SpeechSynthesis"
+  ],
+  "CoreAudio": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "CoreAudioComponent": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_AudioUnit",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "AFAVFormatComponent": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_AudioUnit",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "AudioFileTools_util": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_AudioUnit",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "afconvert": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "afinfo": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "afplay": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_AudioUnit",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "afrecord": [
+    "//buck-src:fw_CoreFoundation",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//src/CoreAudio:fw_AudioToolbox",
+    "//src/CoreAudio:fw_AudioUnit",
+    "//src/CoreAudio:fw_CoreAudio"
+  ],
+  "bind9_isccc": [
+    "//buck-src:sdk_libxml2"
+  ],
+  "opendirectory_internal": [
+    "//buck-src:fw_CoreFoundation"
   ]
 }

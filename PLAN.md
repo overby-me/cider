@@ -521,6 +521,45 @@ same artifact, and the suite passed 138/138 as soon as three leftover
 buck2 build -- were killed. Add that to the list of causes to check when a check fails once
 and cannot be reproduced.
 
+### Stage 2: CoreAudio, Metal, and the last two archives
+
+Every remaining link edge except five. Stock 1336 -> 1354 of 1359 (99%), archives and
+loadable modules both 100%, cli 866 -> 868. Three things were worth the time.
+
+**Five more wrap_elf stubs.** src/CoreAudio wraps ffmpeg's four libraries and pulseaudio
+exactly as src/native wraps X11 and cairo, so src/CoreAudio/BUCK gets the same table +
+three comprehensions + `buck-registry:` pragmas, their SONAMEs join elf_sonames in
+buck-setup.sh, and buck-test.sh checks them by EXPORT COUNT (23 to 628 each) because a
+failed dlopen still yields a valid empty dylib. The drift check that keeps a pragma list
+honest against its table is now a function, `check_wrap_table`, used for both.
+
+**A framework can include ITSELF.** src/CoreAudio's CMakeLists calls
+`remove_sdk_framework()` on AudioToolbox, AudioUnit and CoreAudio and supplies its own
+headers, so `//src/CoreAudio` is the only package where those roots exist. buck-port.py's
+FRAMEWORK_PACKAGES did not list it, and all three failed with "no framework root for
+CoreAudio" -- a shape the SDK packages never have to express.
+
+**buck2's glob() does not traverse a symlinked DIRECTORY.** CoreAudioComponent and
+AFAVFormatComponent reach AUPublic, AFPublic and PublicUtility through links into
+CoreAudioUtilityClasses; the roots staged empty and the failure read "The path `Utility`
+does not exist in the artifact", naming the staged tree rather than the link. Include dirs
+are now resolved with realpath before a root is written (`real_include_dir`). Measured
+first: of 595 distinct include dirs in the stock graph exactly 6 are reached through a
+directory symlink, all of them these, so the change is churn-free everywhere else. Note
+this is the SECOND way a glob silently stages nothing -- the first was crossing a package
+boundary. Both now fail loudly instead.
+
+**The five that remain, and why.** DBusKit (no framework root for itself), iokitd (wants a
+MIG-generated powermanagementServer.h), bsdln (link failure), and the pair getuuid/elfdep.
+That pair is the interesting one and the earlier note about it was incomplete: their blocks
+are correct -- native_cc toolchain, cctools include root, the right sources -- and the
+compile dies inside cctools' own mach/machine.h on `<mach/machine/vm_types.h>`. That header
+exists in the pins ONLY as
+cctools-port/cctools/include/foreign/mach/machine/vm_types.h, and NOTHING in the reference
+build adds `-Iforeign` to any compile. So the reference resolves it by some route not
+visible in INCLUDES, and finding that route is the next step rather than adding an include
+dir on a guess. Their blocks are removed, so coverage counts them as the gaps they are.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
@@ -528,17 +567,16 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 | | cli | stock |
 |---|---|---|
 | link edges | 871 | 1359 |
-| ported | 866 (99%) | 1336 (98%) |
+| ported | 868 (99%) | 1354 (99%) |
 | install entries | 1160 | 1872 |
 | UNMAPPED | 0 | **523** |
 | build.ninja lines | 201k | 347k |
 
-The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336.
-All 96 loadable modules are done. 23 link edges remain: the CoreAudio cluster and its
-ffmpeg dylibs (13), Metal/MetalKit/MetalPerformanceShaders (3), the five removed blocks
-above, and two archives (libbind9_isccc.a, libopendirectory_internal.a). cli rose to 866
-in the same round, because several of those singles are cli targets; buck-test.sh's floor
-moved 860 -> 866. 16 of the earlier gain was a MEASUREMENT bug, below, not new work.
+The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336
+-> 1354. Loadable modules and static archives are both 100%; dylibs are 604 of 605 and
+executables 521 of 525. FIVE edges remain, all with their blocks removed and their reasons
+recorded above: DBusKit, iokitd, bsdln, getuuid, elfdep. 16 of the earlier gain was a
+MEASUREMENT bug, below, not new work.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
@@ -1124,12 +1162,11 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
 
-   The src/external language groups are ALL DONE (ruby 92, perl 117, python 56,
-   python_modules 3, pyobjc 24, libffi), each in its own split-pin package, and so is
-   the cocotron cone. 23 edges remain: the CoreAudio cluster with its five ffmpeg/pulse
-   dylibs and four AudioFileTools binaries, Metal/MetalKit/MetalPerformanceShaders,
-   two archives, and the five blocks removed for not linking (DBusKit, iokitd, bsdln,
-   getuuid, elfdep).
+   Stage 2 is effectively complete: 1354 of 1359 stock link edges. The five that remain
+   (DBusKit, iokitd, bsdln, getuuid, elfdep) have their blocks removed and their causes
+   written up above. The next item is THE STOCK SWITCH itself, which unlike everything
+   else in stage 2 does change buck/prefix/BUCK, so it needs the runtime checks and the
+   guest-nix milestone run rather than skipped.
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in
