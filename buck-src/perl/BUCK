@@ -5082,6 +5082,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/arybase.bundle = perl5.28_arybase_arybase_dylib
 darwin_dylib(
     name = "perl5.28_arybase_arybase_dylib",
     dylib_name = "arybase.bundle",
@@ -5163,6 +5164,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/attributes.bundle = perl5.28_attributes_attributes_dylib
 darwin_dylib(
     name = "perl5.28_attributes_attributes_dylib",
     dylib_name = "attributes.bundle",
@@ -5244,6 +5246,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/B.bundle = perl5.28_B_B_dylib
 darwin_dylib(
     name = "perl5.28_B_B_dylib",
     dylib_name = "B.bundle",
@@ -5326,6 +5329,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Bzip2.bundle = perl5.28_Compress_Raw_Bzip2_Bzip2_dylib
 darwin_dylib(
     name = "perl5.28_Compress_Raw_Bzip2_Bzip2_dylib",
     dylib_name = "Bzip2.bundle",
@@ -5412,6 +5416,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Zlib.bundle = perl5.28_Compress_Raw_Zlib_Zlib_dylib
 darwin_dylib(
     name = "perl5.28_Compress_Raw_Zlib_Zlib_dylib",
     dylib_name = "Zlib.bundle",
@@ -5497,6 +5502,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Cwd.bundle = perl5.28_Cwd_Cwd_dylib
 darwin_dylib(
     name = "perl5.28_Cwd_Cwd_dylib",
     dylib_name = "Cwd.bundle",
@@ -5578,6 +5584,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Dumper.bundle = perl5.28_Data_Dumper_Dumper_dylib
 darwin_dylib(
     name = "perl5.28_Data_Dumper_Dumper_dylib",
     dylib_name = "Dumper.bundle",
@@ -5663,6 +5670,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/DB_File.bundle = perl5.28_DB_File_DB_File_dylib
 darwin_dylib(
     name = "perl5.28_DB_File_DB_File_dylib",
     dylib_name = "DB_File.bundle",
@@ -5744,6 +5752,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Peek.bundle = perl5.28_Devel_Peek_Peek_dylib
 darwin_dylib(
     name = "perl5.28_Devel_Peek_Peek_dylib",
     dylib_name = "Peek.bundle",
@@ -5827,6 +5836,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/PPPort.bundle = perl5.28_Devel_PPPort_PPPort_dylib
 darwin_dylib(
     name = "perl5.28_Devel_PPPort_PPPort_dylib",
     dylib_name = "PPPort.bundle",
@@ -5909,6 +5919,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/MD5.bundle = perl5.28_Digest_MD5_MD5_dylib
 darwin_dylib(
     name = "perl5.28_Digest_MD5_MD5_dylib",
     dylib_name = "MD5.bundle",
@@ -5990,6 +6001,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/SHA.bundle = perl5.28_Digest_SHA_SHA_dylib
 darwin_dylib(
     name = "perl5.28_Digest_SHA_SHA_dylib",
     dylib_name = "SHA.bundle",
@@ -6084,6 +6096,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Byte.bundle = perl5.28_Encode_Byte_Byte_dylib
 darwin_dylib(
     name = "perl5.28_Encode_Byte_Byte_dylib",
     dylib_name = "Byte.bundle",
@@ -6179,6 +6192,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Encode.bundle = perl5.28_Encode_Encode_dylib
 darwin_dylib(
     name = "perl5.28_Encode_Encode_dylib",
     dylib_name = "Encode.bundle",
@@ -6278,6 +6292,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/CN.bundle = perl5.28_Encode_CN_CN_dylib
 darwin_dylib(
     name = "perl5.28_Encode_CN_CN_dylib",
     dylib_name = "CN.bundle",
@@ -6372,6 +6387,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/EBCDIC.bundle = perl5.28_Encode_EBCDIC_EBCDIC_dylib
 darwin_dylib(
     name = "perl5.28_Encode_EBCDIC_EBCDIC_dylib",
     dylib_name = "EBCDIC.bundle",
@@ -6472,6 +6488,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/JP.bundle = perl5.28_Encode_JP_JP_dylib
 darwin_dylib(
     name = "perl5.28_Encode_JP_JP_dylib",
     dylib_name = "JP.bundle",
@@ -6570,6 +6587,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/KR.bundle = perl5.28_Encode_KR_KR_dylib
 darwin_dylib(
     name = "perl5.28_Encode_KR_KR_dylib",
     dylib_name = "KR.bundle",
@@ -6664,6 +6682,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Symbol.bundle = perl5.28_Encode_Symbol_Symbol_dylib
 darwin_dylib(
     name = "perl5.28_Encode_Symbol_Symbol_dylib",
     dylib_name = "Symbol.bundle",
@@ -6761,6 +6780,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/TW.bundle = perl5.28_Encode_TW_TW_dylib
 darwin_dylib(
     name = "perl5.28_Encode_TW_TW_dylib",
     dylib_name = "TW.bundle",
@@ -6854,6 +6874,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Unicode.bundle = perl5.28_Encode_Unicode_Unicode_dylib
 darwin_dylib(
     name = "perl5.28_Encode_Unicode_Unicode_dylib",
     dylib_name = "Unicode.bundle",
@@ -6935,6 +6956,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Fcntl.bundle = perl5.28_Fcntl_Fcntl_dylib
 darwin_dylib(
     name = "perl5.28_Fcntl_Fcntl_dylib",
     dylib_name = "Fcntl.bundle",
@@ -7016,6 +7038,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/DosGlob.bundle = perl5.28_File_DosGlob_DosGlob_dylib
 darwin_dylib(
     name = "perl5.28_File_DosGlob_DosGlob_dylib",
     dylib_name = "DosGlob.bundle",
@@ -7098,6 +7121,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Glob.bundle = perl5.28_File_Glob_Glob_dylib
 darwin_dylib(
     name = "perl5.28_File_Glob_Glob_dylib",
     dylib_name = "Glob.bundle",
@@ -7179,6 +7203,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Call.bundle = perl5.28_Filter_Util_Call_Call_dylib
 darwin_dylib(
     name = "perl5.28_Filter_Util_Call_Call_dylib",
     dylib_name = "Call.bundle",
@@ -7260,6 +7285,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/FieldHash.bundle = perl5.28_Hash_Util_FieldHash_FieldHash_dylib
 darwin_dylib(
     name = "perl5.28_Hash_Util_FieldHash_FieldHash_dylib",
     dylib_name = "FieldHash.bundle",
@@ -7342,6 +7368,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Util.bundle = perl5.28_Hash_Util_Util_dylib
 darwin_dylib(
     name = "perl5.28_Hash_Util_Util_dylib",
     dylib_name = "Util.bundle",
@@ -7423,6 +7450,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Langinfo.bundle = perl5.28_I18N_Langinfo_Langinfo_dylib
 darwin_dylib(
     name = "perl5.28_I18N_Langinfo_Langinfo_dylib",
     dylib_name = "Langinfo.bundle",
@@ -7505,6 +7533,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/IO.bundle = perl5.28_IO_IO_dylib
 darwin_dylib(
     name = "perl5.28_IO_IO_dylib",
     dylib_name = "IO.bundle",
@@ -7586,6 +7615,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/SysV.bundle = perl5.28_IPC_SysV_SysV_dylib
 darwin_dylib(
     name = "perl5.28_IPC_SysV_SysV_dylib",
     dylib_name = "SysV.bundle",
@@ -7668,6 +7698,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/List/Util.bundle = perl5.28_List_Util_Util_dylib
 darwin_dylib(
     name = "perl5.28_List_Util_Util_dylib",
     dylib_name = "Util.bundle",
@@ -7749,6 +7780,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/FastCalc.bundle = perl5.28_Math_BigInt_FastCalc_FastCalc_dylib
 darwin_dylib(
     name = "perl5.28_Math_BigInt_FastCalc_FastCalc_dylib",
     dylib_name = "FastCalc.bundle",
@@ -7830,6 +7862,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Base64.bundle = perl5.28_MIME_Base64_Base64_dylib
 darwin_dylib(
     name = "perl5.28_MIME_Base64_Base64_dylib",
     dylib_name = "Base64.bundle",
@@ -7911,6 +7944,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/mro.bundle = perl5.28_mro_mro_dylib
 darwin_dylib(
     name = "perl5.28_mro_mro_dylib",
     dylib_name = "mro.bundle",
@@ -7992,6 +8026,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/NDBM_File.bundle = perl5.28_NDBM_File_NDBM_File_dylib
 darwin_dylib(
     name = "perl5.28_NDBM_File_NDBM_File_dylib",
     dylib_name = "NDBM_File.bundle",
@@ -8073,6 +8108,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Opcode.bundle = perl5.28_Opcode_Opcode_dylib
 darwin_dylib(
     name = "perl5.28_Opcode_Opcode_dylib",
     dylib_name = "Opcode.bundle",
@@ -8154,6 +8190,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/encoding.bundle = perl5.28_PerlIO_encoding_encoding_dylib
 darwin_dylib(
     name = "perl5.28_PerlIO_encoding_encoding_dylib",
     dylib_name = "encoding.bundle",
@@ -8235,6 +8272,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/mmap.bundle = perl5.28_PerlIO_mmap_mmap_dylib
 darwin_dylib(
     name = "perl5.28_PerlIO_mmap_mmap_dylib",
     dylib_name = "mmap.bundle",
@@ -8316,6 +8354,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/scalar.bundle = perl5.28_PerlIO_scalar_scalar_dylib
 darwin_dylib(
     name = "perl5.28_PerlIO_scalar_scalar_dylib",
     dylib_name = "scalar.bundle",
@@ -8397,6 +8436,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/via.bundle = perl5.28_PerlIO_via_via_dylib
 darwin_dylib(
     name = "perl5.28_PerlIO_via_via_dylib",
     dylib_name = "via.bundle",
@@ -8478,6 +8518,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/POSIX.bundle = perl5.28_POSIX_POSIX_dylib
 darwin_dylib(
     name = "perl5.28_POSIX_POSIX_dylib",
     dylib_name = "POSIX.bundle",
@@ -8564,6 +8605,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/re.bundle = perl5.28_re_re_dylib
 darwin_dylib(
     name = "perl5.28_re_re_dylib",
     dylib_name = "re.bundle",
@@ -8731,6 +8773,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Socket.bundle = perl5.28_Socket_Socket_dylib
 darwin_dylib(
     name = "perl5.28_Socket_Socket_dylib",
     dylib_name = "Socket.bundle",
@@ -8812,6 +8855,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Storable.bundle = perl5.28_Storable_Storable_dylib
 darwin_dylib(
     name = "perl5.28_Storable_Storable_dylib",
     dylib_name = "Storable.bundle",
@@ -8893,6 +8937,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Hostname.bundle = perl5.28_Sys_Hostname_Hostname_dylib
 darwin_dylib(
     name = "perl5.28_Sys_Hostname_Hostname_dylib",
     dylib_name = "Hostname.bundle",
@@ -8974,6 +9019,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Syslog.bundle = perl5.28_Sys_Syslog_Syslog_dylib
 darwin_dylib(
     name = "perl5.28_Sys_Syslog_Syslog_dylib",
     dylib_name = "Syslog.bundle",
@@ -9055,6 +9101,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/threads.bundle = perl5.28_threads_threads_dylib
 darwin_dylib(
     name = "perl5.28_threads_threads_dylib",
     dylib_name = "threads.bundle",
@@ -9136,6 +9183,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/shared.bundle = perl5.28_threads_shared_shared_dylib
 darwin_dylib(
     name = "perl5.28_threads_shared_shared_dylib",
     dylib_name = "shared.bundle",
@@ -9217,6 +9265,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/NamedCapture.bundle = perl5.28_Tie_Hash_NamedCapture_NamedCapture_dylib
 darwin_dylib(
     name = "perl5.28_Tie_Hash_NamedCapture_NamedCapture_dylib",
     dylib_name = "NamedCapture.bundle",
@@ -9311,6 +9360,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/HiRes.bundle = perl5.28_Time_HiRes_HiRes_dylib
 darwin_dylib(
     name = "perl5.28_Time_HiRes_HiRes_dylib",
     dylib_name = "HiRes.bundle",
@@ -9392,6 +9442,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Piece.bundle = perl5.28_Time_Piece_Piece_dylib
 darwin_dylib(
     name = "perl5.28_Time_Piece_Piece_dylib",
     dylib_name = "Piece.bundle",
@@ -9473,6 +9524,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Collate.bundle = perl5.28_Unicode_Collate_Collate_dylib
 darwin_dylib(
     name = "perl5.28_Unicode_Collate_Collate_dylib",
     dylib_name = "Collate.bundle",
@@ -9554,6 +9606,7 @@ cc_objects(
 # not a source of this package:
 #   -Wl,-bundle_loader,/build/build/src/external/perl/5.28/libperl.dylib
 
+# buck-registry: src/external/perl/5.28/Normalize.bundle = perl5.28_Unicode_Normalize_Normalize_dylib
 darwin_dylib(
     name = "perl5.28_Unicode_Normalize_Normalize_dylib",
     dylib_name = "Normalize.bundle",

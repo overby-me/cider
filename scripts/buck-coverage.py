@@ -38,6 +38,12 @@ OUT_OF_SCOPE = {
         "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools",
     "x86_64-apple-darwin20-ranlib":
         "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools",
+    # BY PATH, because the artifact name is ambiguous and the other one IS built and
+    # installed: the reference builds lipo twice, and only src/external/cctools/misc/lipo
+    # is installed. cctools-port's copy is a build-time tool, the same case as ld/ar/ranlib.
+    "src/external/cctools-port/cctools/misc/lipo":
+        "the second lipo: only cctools' copy is installed, and cctools-port's is a "
+        "build-time tool supplied by the Nix-built cctools like ld, ar and ranlib",
     "libsystem_kernel_static32.a":
         "the i386 slice: its libsyscall_32 compiles the -i386-User.c mig stubs, and this "
         "port targets x86_64 only",
@@ -134,7 +140,8 @@ def main(argv: list[str]) -> int:
                 kinds["exe"].append((o, base, o in final_reg or base in exe_names))
             else:
                 unclassified.append(f"{base} ({kind})")
-            if (kind, base) in ambiguous and o not in final_reg and o not in arch_reg:
+            if ((kind, base) in ambiguous and o not in final_reg and o not in arch_reg
+                    and o not in OUT_OF_SCOPE and base not in OUT_OF_SCOPE):
                 soft.append(o)
             break
 
@@ -145,7 +152,9 @@ def main(argv: list[str]) -> int:
             items[path] = items.get(path, False) or ported
             label[path] = name
         # OUT_OF_SCOPE is written by artifact name, since that is how the reasons read.
-        skipped = {k for k in items if label[k] in OUT_OF_SCOPE}
+        # Keyed by PATH as well as by name: where two artifacts share a name and only one
+        # is out of scope, a name-only check would drop both.
+        skipped = {k for k in items if k in OUT_OF_SCOPE or label[k] in OUT_OF_SCOPE}
         for k in skipped:
             items.pop(k)
         n, d = len(items), sum(1 for v in items.values() if v)

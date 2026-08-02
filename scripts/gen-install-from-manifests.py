@@ -333,6 +333,18 @@ def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     tables = registries(gen, binaries)
     if kind == "EXECUTABLE":
         tables = [binaries["exe"]] + tables
+    # BY PATH FIRST. A basename does not identify an artifact: perl builds the same 53
+    # module names twice, once for 5.18 and once for 5.28, and resolving `re.bundle` by
+    # name gave whichever the registry happened to hold -- so 54 of the 5.18 install
+    # destinations were wired to the 5.28 BINARY. The port builds both sets; it was
+    # shipping one of them into both trees. The generated blocks already carry
+    # `# buck-registry: <reference path> = <target>` and the registries key those by path,
+    # so the answer was there to be asked for.
+    rel = build_rel(path)
+    if rel:
+        for table in tables:
+            if rel in table:
+                return table[rel]
     for table in tables:
         if base in table:
             return table[base]

@@ -860,6 +860,44 @@ name let three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain key pur
 empty stub instead of the framework. final_registry() now registers a `dev-stubs/` target
 by PATH ONLY. A stub is never the answer to "which target builds libX".
 
+### Matching install entries by NAME was shipping the wrong binaries
+
+`target_for()` in gen-install-from-manifests.py resolved an install entry by its artifact
+BASENAME, and a basename does not identify an artifact. What that was actually doing:
+
+- **54 of the 55 Perl 5.18 module destinations held 5.28 BINARIES.** The port builds both
+  sets (170 `perl5.18_*` targets and 164 `perl5.28_*`); it was shipping one of them into
+  both trees.
+- **Both `cmpdylib` destinations held the same file.** The reference builds the cctools
+  tool and its xcselect shim separately and installs one to `Library/Developer/DarlingCLT`
+  and the other to `usr/bin`.
+- **CoreGraphics' X11 backend held AppKit's X11 binary.**
+
+It resolves by path first now, which the generated blocks already supported: they carry
+`# buck-registry: <reference path> = <target>` and the registries key those by path. The
+answer was there to be asked for.
+
+Taking the coverage metric's `by-name` count from 86 to **0** was the same exercise, and it
+was not bookkeeping. It found **14 xcselect shims** (cmpdylib, codesign_allocate,
+ctf_insert, install_name_tool, libtool, lipo, nm, otool, pagestuff, redo_prebinding,
+segedit, size, strings, strip), **python's datetime.so** and **xcselect's xcrun** that were
+never ported at all -- each invisible because a same-named artifact the port DOES build
+answered for it. The same shape as the nine dev-stubs.
+
+One entry is out of scope BY PATH now rather than by name:
+`src/external/cctools-port/cctools/misc/lipo`. The reference builds lipo twice and installs
+only cctools' copy; cctools-port's is a build-time tool like ld, ar and ranlib. Excluding it
+by name would have dropped the installed one too.
+
+**And it cost a green check, correctly.** buck-appkit-check.sh went PASS -> PARTIAL: with
+AppKit's binary wrongly installed as CoreGraphics' backend, CoreGraphics had no usable
+backend at all (that binary defines X11Display, not the CGSConnectionX11 its Info.plist
+names) and NSApplication came up. With the RIGHT binary there it dies silently. The pairing
+was checked two ways before believing it -- the reference's own link edges, and each
+binary defining the principal class its own Info.plist declares -- so this is a cocotron
+bug a wrong file was hiding, not a mapping regression. Reverting a correct fix to keep a
+probe green would have buried it again.
+
 ### The runtime checks CANNOT be chained in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes

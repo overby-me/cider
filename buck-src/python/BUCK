@@ -5543,3 +5543,109 @@ prefix_dir(
     visibility = ["PUBLIC"],
 )
 # END generated: prefix dirs
+
+# BEGIN generated: py27_datetime
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py py27_datetime   -- review before committing.
+# cmake target: py27_datetime  ->  py27_datetime
+# TODO these include dirs are GENERATED (codegen output):
+#   src/external/python/2.7/Python-2.7.16
+
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "py27_datetime_inc_python_2_7_Python_2_7_16",
+    headers = glob([
+        "2.7/Python-2.7.16/**/*",
+        "2.7/Python-2.7.16/Include/*.h",
+        "2.7/Python-2.7.16/Include/**/*.h",
+        "2.7/Python-2.7.16/Include/*.c",
+    ]),
+    root = "2.7/Python-2.7.16",
+    include_subdirs = [
+        ".",
+        "Include",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "py27_datetime_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/datetimemodule.c",
+        "2.7/Python-2.7.16/Modules/timemodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27_datetime_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":py27_datetime_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_datetime
+
+# BEGIN generated: py27_datetime dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs py27_datetime   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/external/python/2.7/Python-2.7.16/datetime.so = py27_datetime_dylib
+
+darwin_dylib(
+    name = "py27_datetime_dylib",
+    dylib_name = "datetime.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        # py27_datetime
+        ":py27_datetime_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//buck-src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src/python:Python_dylib",
+        "//darwin/frameworks:HIServices_dylib",
+        "//darwin/frameworks:ApplicationServices_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:CoreText_dylib",
+        "//darwin/frameworks:ImageIO_dylib",
+        "//darwin/frameworks:CoreVideo_dylib",
+        "//buck-src:CoreData_dylib",
+        "//buck-src:QuartzCore_dylib",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:Onyx2D_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: py27_datetime dylibs

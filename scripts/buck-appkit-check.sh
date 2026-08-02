@@ -8,6 +8,14 @@
 # pumps one event, printing at each step so a first run says how far it got rather than
 # just pass or fail.
 #
+# CURRENT RESULT: PARTIAL. NSApplication does not come up, and that is a REGRESSION FROM A
+# CORRECTION: CoreGraphics' Backends/X11.backend used to hold AppKit's X11 binary, because
+# install entries were matched by artifact basename. That binary defines X11Display and not
+# the CGSConnectionX11 its Info.plist names, so CoreGraphics had NO usable backend and
+# NSApplication came up regardless. With the right binary installed it dies silently. The
+# pairing was verified two ways before believing it: the reference's own link edges, and
+# each binary defining the principal class its own Info.plist declares. See task #32.
+#
 # It supplies its OWN Xvfb rather than borrowing $DISPLAY: a probe that draws on the
 # developer's desktop is a probe nobody runs twice, and a headless server makes the check
 # usable from CI. Xephyr is fine too if you want to watch it.

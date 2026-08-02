@@ -28,6 +28,7 @@ cc_objects(
 # scripts/gen-buck-from-ninja.py --binaries xcrun_clt   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/clt/xcrun = xcrun_clt
 darwin_binary(
     name = "xcrun_clt",
     exe_name = "xcrun",

@@ -4767,6 +4767,7 @@ darwin_binary(
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a
 
+# buck-registry: src/external/cctools/misc/vtool = vtool
 darwin_binary(
     name = "vtool",
     objs = [
@@ -5642,6 +5643,7 @@ cc_objects(
 # scripts/gen-buck-from-ninja.py --binaries bitcode_strip   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/bitcode_strip = bitcode_strip
 darwin_binary(
     name = "bitcode_strip",
     objs = [
@@ -5667,6 +5669,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries check_dylib   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/check_dylib = check_dylib
 darwin_binary(
     name = "check_dylib",
     objs = [
@@ -5692,6 +5695,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries checksyms   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/checksyms = checksyms
 darwin_binary(
     name = "checksyms",
     objs = [
@@ -5717,6 +5721,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries cmpdylib   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/cmpdylib = cmpdylib
 darwin_binary(
     name = "cmpdylib",
     objs = [
@@ -5742,6 +5747,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries codesign_allocate   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/codesign_allocate = codesign_allocate
 darwin_binary(
     name = "codesign_allocate",
     objs = [
@@ -5767,6 +5773,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries ctf_insert   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/ctf_insert = ctf_insert
 darwin_binary(
     name = "ctf_insert",
     objs = [
@@ -5792,6 +5799,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries indr   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/indr = indr
 darwin_binary(
     name = "indr",
     objs = [
@@ -5817,6 +5825,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries install_name_tool   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/install_name_tool = install_name_tool
 darwin_binary(
     name = "install_name_tool",
     objs = [
@@ -5842,6 +5851,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries libtool   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/libtool = libtool
 darwin_binary(
     name = "libtool",
     objs = [
@@ -5867,6 +5877,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries lipo   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/lipo = lipo
 darwin_binary(
     name = "lipo",
     objs = [
@@ -5892,6 +5903,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries nm   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/nm = nm
 darwin_binary(
     name = "nm",
     objs = [
@@ -5917,6 +5929,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries otool   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/otool/otool = otool
 darwin_binary(
     name = "otool",
     objs = [
@@ -5945,6 +5958,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries pagestuff   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/pagestuff = pagestuff
 darwin_binary(
     name = "pagestuff",
     objs = [
@@ -5970,6 +5984,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries redo_prebinding   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/redo_prebinding = redo_prebinding
 darwin_binary(
     name = "redo_prebinding",
     objs = [
@@ -5995,6 +6010,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries seg_addr_table   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/seg_addr_table = seg_addr_table
 darwin_binary(
     name = "seg_addr_table",
     objs = [
@@ -6020,6 +6036,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries seg_hack   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/seg_hack = seg_hack
 darwin_binary(
     name = "seg_hack",
     objs = [
@@ -6045,6 +6062,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries segedit   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/segedit = segedit
 darwin_binary(
     name = "segedit",
     objs = [
@@ -6070,6 +6088,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries size   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/size = size
 darwin_binary(
     name = "size",
     objs = [
@@ -6095,6 +6114,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries strings   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/strings = strings
 darwin_binary(
     name = "strings",
     objs = [
@@ -6120,6 +6140,7 @@ darwin_binary(
 # scripts/gen-buck-from-ninja.py --binaries strip   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
+# buck-registry: src/external/cctools/misc/strip = strip
 darwin_binary(
     name = "strip",
     objs = [
