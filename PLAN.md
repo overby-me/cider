@@ -1165,7 +1165,33 @@ The rule this keeps proving is the one already written above it: when a metric l
 fix the measurement before reporting the number. A metric that says 100% and a metric that
 says 0.02% are equally suspicious, and both were.
 
-### The runtime checks CANNOT be chained in one shell
+### scripts/buck-runtime-check.sh runs all of them, correctly
+
+There are eight runtime checks now and buck-test.sh runs none of them: it is almost
+entirely static, asking whether an artifact links and exports the right symbols. The
+runtime ones are what found an empty AppKit, a null `ec_thread_get_stack`, a missing `0x`
+prefix and a python module installed under a name CPython cannot import.
+
+`scripts/buck-runtime-check.sh` runs them in one command, cheapest first, killing every
+stray daemon BETWEEN checks -- which is the whole trick, see below. It reports a summary
+and treats exit 3 as a KNOWN state rather than a failure, since two of the checks use that
+convention for a partial result their own header explains.
+
+```
+  buck-bash-check          rc=0   PASS
+  buck-launchd-check       rc=0   PASS
+  buck-smoke-check         rc=0   PASS
+  buck-security-check      rc=0   PASS
+  buck-jsc-check           rc=0   PASS
+  buck-appkit-check        rc=0   PASS
+  buck-scripting-check     rc=0   PASS
+```
+
+buck-nix-bash-check is opt-in behind `--with-nix`: it builds bash with Nix INSIDE Darling,
+which is the campaign's keystone milestone and takes longer than everything else here put
+together.
+
+### The runtime checks CANNOT be chained NAIVELY in one shell
 
 Running buck-bash-check.sh, buck-smoke-check.sh and buck-appkit-check.sh back to back makes
 the first two fail while each passes alone. The cause is not subtle once looked at:
