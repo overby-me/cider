@@ -318,21 +318,41 @@ One fix did land: `icu/icuSources/i18n` joins `common` in CROSS_PACKAGE_ROOTS. F
 six refused outright with "include dir belongs to package //buck-src/icu" because only the
 common half was mapped, and the i18n root already existed in buck-src/icu/BUCK.
 
-What remains is not a missing framework root, which is the one thing buck-port.py knows how
-to fix. These fail on Objective-C header CASCADES. One missing framework header stops
-Foundation's own headers parsing, the resulting torrent of "unknown type name
-NSMutableArray" fills clang's -ferror-limit, and the single actionable
-"Security/Security.h file not found" is never emitted at all. buck-port reads the first
-error, sees the cascade, and gives up. Seeding the obvious framework deps by hand
-(CoreFoundation, Foundation, Security, CFNetwork, CoreGraphics) did not converge either, so
-that guess is not the answer and the seeds were dropped rather than left as misleading
-state.
+What remains is NOT a missing framework root, which is the one thing buck-port.py knows how
+to fix. It is also not what I first wrote here, and the wrong diagnosis is worth recording
+so nobody repeats it.
 
-The fix belongs in buck-port.py: build the resolver's probe with -ferror-limit=0, or retry
-once with it, so the actionable error is in the output to be found. That is the next thing
-to do here, and it is worth doing before any more hand work, because six frameworks in
-//darwin/frameworks (AVKit, CoreVideo, HIServices, ImageIO, OpenGL, Quartz) are waiting on
-this cone.
+I assumed an error CASCADE: that one missing header made Foundation stop parsing and the
+flood of "unknown type name" filled clang's -ferror-limit before the actionable
+"file not found" was emitted. That was wrong. Re-running the exact failing compile with
+`-ferror-limit=0` produces exactly ONE error and no missing header at all:
+
+    cocotron/CoreData/include/CoreData/NSPersistentStoreCoordinator.h:49:5:
+    error: unknown type name 'NSMutableArray'
+
+What IS established, by comparing our compile against the reference's for the same file:
+
+* The flags are identical apart from `-B`, which is link-time.
+* Both builds compile the SAME header. Ours is staged from
+  cocotron/CoreData/include/CoreData/, which is exactly where the reference's
+  darwin/framework-include/CoreData symlink farm points.
+* The import chain is short and real: NSPersistentStore.m imports
+  <CoreData/NSPersistentStore.h>, which imports only <Foundation/NSObject.h>, which does
+  not declare NSMutableArray. Our fw_Foundation root DOES stage NSArray.h, which does
+  declare it -- nothing imports it.
+* Adding -Idarwin/framework-include (the reference's broad path) does not fix it.
+
+So cocotron's own header uses a type it never imports, and the reference compiles it anyway.
+Something in the reference's include environment declares NSMutableArray before that header
+is parsed, and I have not found what. The next step is to reproduce the reference's compile
+for this one file EXACTLY (its full -I list in order, not a filtered subset) and bisect the
+difference, rather than to guess at framework roots. Seeding CoreFoundation, Foundation,
+Security, CFNetwork and CoreGraphics by hand did not converge and those seeds were dropped.
+
+Six frameworks in //darwin/frameworks wait on this cone (AVKit, CoreVideo, HIServices,
+ImageIO, OpenGL, Quartz), but it is NOT the cheapest remaining work: the ~300 src/external
+edges (python, ruby, perl and their extension modules) are independent of it and batched
+well for the GUI frameworks.
 
 Also worth knowing: cocotron's Cocoa exports NOTHING, and that is faithful. Its single
 source is an umbrella that only imports headers, and the reference emits no
