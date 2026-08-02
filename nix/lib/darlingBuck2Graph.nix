@@ -35,6 +35,27 @@
 }: let
   inherit (pkgs) lib;
   triplet = "x86_64-apple-darwin20";
+
+  # The host ELF libraries wrapgen dlopen()s WHILE THE GRAPH IS BEING TAKEN. wrap_elf is the
+  # one rule whose output depends on a file outside the build graph (buck/rules/codegen.bzl
+  # says so): the stub it emits mirrors whatever the real .so actually exports, so the
+  # library has to be loadable here, not merely named.
+  #
+  # Reusing darlingBuildInputs' wrappedLibs rather than restating the list, because it is
+  # already the single source of truth that nix/package.nix and the nix-ninja path share.
+  # getLib, not the default output: fontconfig, dbus and ffmpeg all keep their .so in a
+  # separate `lib` output, which is what the dev shell's own -L directories resolve to and
+  # what scripts/buck-setup.sh therefore writes on the daemon path.
+  di = pkgs.callPackage ../darlingBuildInputs.nix {};
+  elfLibDirs = lib.concatStringsSep ":" (map (p: "${lib.getLib p}/lib") di.wrappedLibs);
+
+  # DBusKit compiles against dbus's REAL headers instead of a wrapgen stub, and dbus splits
+  # them over two outputs with a versioned subdirectory, which is why the daemon path asks
+  # pkg-config for both rather than guessing one.
+  hostIncludeDirs = lib.concatStringsSep ":" [
+    "${lib.getDev pkgs.dbus}/include/dbus-1.0"
+    "${lib.getLib pkgs.dbus}/lib/dbus-1.0/include"
+  ];
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins
@@ -205,6 +226,8 @@ in
       clang_resource_dir = $(clang -print-resource-dir)
       darwin_cc = ${pkgs.llvmPackages.clang-unwrapped}/bin/clang
       darwin_cxx = ${pkgs.llvmPackages.clang-unwrapped}/bin/clang++
+      elf_lib_dirs = ${elfLibDirs}
+      host_include_dirs = ${hostIncludeDirs}
       EOF
 
       # The nixpkgs cc/bintools wrappers inject flags for THIS platform through NIX_CFLAGS_*
