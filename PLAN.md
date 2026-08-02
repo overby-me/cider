@@ -597,17 +597,79 @@ and runs bash (buck-bash-check.sh); tests/darling-smoke.nix stages 2-7 pass 31/3
 (buck-nix-bash-check.sh), which is the campaign's keystone milestone and it survives the
 switch.
 
+### Stage 3: the `all` component, sized and started
+
+`.#darling-graph-all` now exists in flake.nix. See the sizing table below for the numbers;
+the short version is that `all` is only 18 raw link edges bigger than stock, the `webkit`
+component contributes NOTHING to the graph at all, and nine of the eighteen are dev-stub
+frameworks the coverage metric cannot see (the basename-collision caveat, also below).
+
+SIX of the nine real new targets are in: bmalloc, libWTF.a, libgnutar.a, libmbmalloc.dylib,
+ash and gnutar.
+
+WTF needed a MIG target first. Its MachExceptions.defs generates MachExceptionsServer.h,
+which both libWTF.a and the xtrace stub compile against, and
+`gen-mig-from-ninja.py "WTF/wtf/mac"` emits it exactly. Note the two extra-deps forms are
+NOT interchangeable: `//buck-src:mig_MachExceptions` puts the generated headers on the
+include path, and `gen://buck-src:mig_MachExceptions` makes the target COMPILE the
+generated sources. WTF needs both.
+
+**JavaScriptCore HANGS buck2, and that is a real blocker rather than a slow build.** Its
+block generates fine (1121 sources), and then `buck2 build //buck-src:JavaScriptCore_dylib`
+sits for 35 minutes with the DAEMON AT 0% CPU, no clang processes, nothing written under
+buck-out, and the client printing "Waiting on buck2 daemon ... CPU: 0% IO: none". Killing
+the daemon and starting fresh reproduces it. So it is not analysis cost and not
+compilation: something wedges before any action runs. Worth knowing that buck-src/BUCK was
+62430 lines with the block in it, which is the largest it has ever been.
+
+How to tell a hang from a slow build, since this cost most of an iteration: watch
+`find buck-out -name '*.o' -newermt '-2 minutes' | wc -l` and the daemon's CURRENT cpu with
+`top -b -n 2`. `ps -o %cpu` on the daemon reports its LIFETIME average, which for an
+11-hour-old daemon looks like healthy 8% activity no matter what it is doing now.
+
+JavaScriptCore's and MachExceptions_xtrace_mig's blocks are REMOVED (the latter failed to
+link, and its extra-deps entry is dropped rather than left as a guess that did not work).
+The mig_MachExceptions target stays, because WTF compiles its output.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
 
-| | cli | stock |
-|---|---|---|
-| link edges | 871 | 1359 |
-| ported | 868 (99%) | 1354 (99%) |
-| install entries | 1160 | 1872 |
-| UNMAPPED | 0 | **523** |
-| build.ninja lines | 201k | 347k |
+| | cli | stock | all |
+|---|---|---|---|
+| link edges (counted) | 871 | 1359 | 1368 |
+| link edges (raw) | 892 | 1439 | 1457 |
+| ported | 868 (99%) | 1354 (99%) | 1354 (98%) |
+| install entries | 1160 | 1872 | 1888 |
+| UNMAPPED | 0 | 2 | 7 |
+| build.ninja lines | 201k | 347k | 363k |
+
+`.#darling-graph-all` was added to flake.nix to measure this; `all` is
+stock + jsc + webkit + cli_extra + cli_dev_gui_stubs.
+
+**`all` is far smaller than the name suggests: 18 raw link edges more than stock.** The
+whole of the `webkit` component contributes NOTHING to the graph. Half of the rest is one
+cone -- JavaScriptCore with WTF, bmalloc and mbmalloc -- and the remainder is gnutar, ash
+and one xtrace MIG dylib.
+
+| group | targets |
+|---|---|
+| JavaScriptCore, jsc, libWTF.a, libbmalloc.a, libmbmalloc.dylib | 5 |
+| libMachExceptions_xtrace_mig.dylib (WTF's xtrace MIG stub) | 1 |
+| gnutar, libgnutar.a | 2 |
+| ash | 1 |
+| dev-stub frameworks (see the caveat below) | 9 |
+
+**A caveat on that 1368, and it is the basename-dedup collision again.** The other nine
+edges are `src/frameworks/dev-stubs/{AppKit,AudioToolbox,Cocoa,CoreData,CoreGraphics,
+CoreText,ImageIO,OpenGL,QuartzCore}` -- link-time stubs the `cli_dev_gui_stubs` component
+installs so a program can build against a framework without the implementation. Their
+artifact basenames are identical to the REAL frameworks the port already builds, so
+buck-coverage.py counts each pair once and calls it ported. They are nine genuinely
+unported targets that the number cannot see. Counting by full path rather than basename
+would expose them, but the same dedup is DELIBERATE for the 16 xcselect shims in cli, so
+changing it is not a one-line fix. Until then: `all` is 1354 of 1368 by the metric and
+1354 of 1377 in truth.
 
 The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336
 -> 1354. Loadable modules and static archives are both 100%; dylibs are 604 of 605 and
@@ -1184,11 +1246,11 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **DONE: the stock switch.** result-graph-ref points at `.#darling-graph-stock`, the
-   prefix is regenerated from it, and buck-test.sh's thresholds are stock numbers. See
-   "The STOCK SWITCH (done)" above for what was verified and the two steps that are easy
-   to miss. The next component is `all` (stock + jsc + webkit + cli_extra +
-   cli_dev_gui_stubs); size it the way stock was sized before starting.
+1. **The `all` component.** Sized and started; see "Stage 3" above. Three targets left
+   and each has a known cause: JavaScriptCore (HANGS buck2 with the daemon at 0% CPU,
+   reproducible across a daemon restart -- the real blocker), MachExceptions_xtrace_mig
+   (does not link) and the 9 dev-stub frameworks the coverage metric hides behind their
+   basename collision with the real frameworks.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
    everything else in stock sits downstream of them. The 16 src/native ELF wrappers are

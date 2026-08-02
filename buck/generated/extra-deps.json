@@ -4465,5 +4465,31 @@
   ],
   "opendirectory_internal": [
     "//buck-src:fw_CoreFoundation"
+  ],
+  "bmalloc": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices"
+  ],
+  "WTF": [
+    "//buck-src:fw_CFNetwork",
+    "//buck-src:fw_CoreFoundation",
+    "//buck-src:fw_CoreGraphics",
+    "//buck-src:fw_Foundation",
+    "//buck-src:fw_Security",
+    "//buck-src:mig_MachExceptions",
+    "//darwin/frameworks:fw_AE",
+    "//darwin/frameworks:fw_CarbonCore",
+    "//darwin/frameworks:fw_CoreServices",
+    "//darwin/frameworks:fw_FSEvents",
+    "//darwin/frameworks:fw_LaunchServices",
+    "//darwin/frameworks:fw_SearchKit",
+    "//darwin/private-frameworks:fw_InternationalSupport",
+    "gen://buck-src:mig_MachExceptions"
   ]
 }

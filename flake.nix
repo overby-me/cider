@@ -437,6 +437,18 @@
           components = "cli";
         };
 
+      # And the WHOLE build: `all` is stock plus jsc, webkit, cli_extra and
+      # cli_dev_gui_stubs (cmake/darling_parse_components.cmake). This is the last
+      # scope, and what full parity with upstream Darling is measured against.
+      #   nix build .#darling-graph-all
+      packages.darling-graph-all =
+        pkgs:
+        import ./nix/lib/darling-graph.nix {
+          inherit pkgs;
+          overby = inputs.overby;
+          components = "all";
+        };
+
       # darling-base (#26): the shared foundation (toolchain + SDK header staging
       # + core libSystem runtime) as ONE cached derivation, the Darling `core`
       # COMPONENT scope. Per-component derivations layer on top of this.
