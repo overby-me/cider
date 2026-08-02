@@ -258,9 +258,26 @@ clang, git, bison, Rez and the rest of the Carbon resource tools are deliberatel
 by xcselect SHIMS, which is what the reference INSTALLS for them. Nine genuinely unported
 in-scope edges remain (bsdln, elfdep, getuuid, csparser.bundle, lzfse, ping, vifs,
 libbind9_isccc.a, libopendirectory_internal.a) and none is installed by cli, which is why
-UNMAPPED reaches 0 without them. Five more are documented out of scope. Fixing
-buck-coverage.py to resolve aliases is queued, because a coverage number that hides its real
-gaps behind naming noise is worse than no number.
+UNMAPPED reaches 0 without them. Five more are documented out of scope. buck-coverage.py
+now resolves exe_name aliases, so it reports the honest number: **862 of 871, 98 percent**,
+with those 9 gaps visible instead of buried among 106.
+
+### Stage 2, sized
+
+Measured by pointing result-graph-ref at the stock graph and re-running both tools:
+
+| | cli | stock |
+|---|---|---|
+| link edges | 871 | 1359 |
+| ported | 862 (98%) | 862 (63%) |
+| install entries | 1160 | 1872 |
+| UNMAPPED | 0 | **523** |
+| build.ninja lines | 201k | 347k |
+
+The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
+497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
+mostly sit downstream of them. That matches what the COMPONENTS hierarchy says stock adds
+over cli: the GUI framework and stub trees, plus python, ruby and perl.
 
 NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
 target that does not build must have its block REMOVED, not left in place.
@@ -815,20 +832,19 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **STAGE 2: point result-graph-ref at the STOCK graph.** Stage 1 (cli) is done on the
-   install side, see below. The flake already builds the stock graph
-   (`packages.darling-graph`, components = "stock"); re-derive UNMAPPED and coverage against
-   it and expect a large jump, because stock adds the GUI framework and stub trees plus
-   python, ruby and perl.
+1. **STAGE 2: switch to the STOCK graph.** The graph is built and the size is known, see
+   "Stage 2, sized" below. The switch is `nix build .#darling-graph-stock` (NOT
+   `.#darling-graph`, which is the system scope) and repointing the `result-graph-ref`
+   symlink; both it and `result-graph-stock` are gitignored, so this is a local switch, not
+   a commit. It must land TOGETHER with raising the buck-test.sh UNMAPPED ceiling from 0 to
+   whatever the stock number then is, and with a regenerated, verified prefix -- repointing
+   on its own leaves the suite red and the prefix generated from a graph nothing has
+   checked.
 
-2. **Make buck-coverage.py account for target ALIASES.** It matches a link edge to a target
-   of the same NAME, so it reports 106 missing for cli when 92 of those are ported under a
-   different target name (curl as curlexe) or deliberately replaced by an xcselect shim
-   (clang, git, bison, Rez). 88 percent is therefore wrong in a way that hides the 9 real
-   gaps. binary_index() in gen-install-from-manifests.py already resolves exe_name and
-   dylib_name and could be shared.
+   Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
+   everything else in stock sits downstream of them.
 
-3. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
+2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
    csparser.bundle, lzfse, ping, vifs, libbind9_isccc.a, libopendirectory_internal.a. None
    is installed by the cli component, which is why UNMAPPED is 0 without them.
 

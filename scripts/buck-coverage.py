@@ -68,6 +68,14 @@ def main(argv: list[str]) -> int:
         for m in re.finditer(
                 r'(?:darwin_binary|cc_binary)\(\s*\n\s*name = "([A-Za-z0-9_.-]+)"', text):
             exe_names.add(m.group(1))
+        # ALSO the exe_name a rule installs under, which is often not its target name. An
+        # edge is matched by the artifact's basename, so without this the port looks like
+        # it is missing 92 cli executables it in fact builds: curl is the target curlexe,
+        # and clang, git, bison, Rez and the Carbon resource tools are xcselect SHIMS,
+        # which is what the reference INSTALLS under those names. A coverage number that
+        # counts those as gaps hides the handful of real ones behind naming noise.
+        for m in re.finditer(r'exe_name = "([A-Za-z0-9_.+-]+)"', text):
+            exe_names.add(m.group(1))
         for m in re.finditer(r'dylib_name = "([A-Za-z0-9_.+-]+\.so)"', text):
             module_names.add(m.group(1))
 
