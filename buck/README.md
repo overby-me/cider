@@ -109,7 +109,7 @@ ninja.)
 ## Conventions
 
 - Flags come from the reference build's configured `build.ninja`
-  (`nix build .#darling-graph`), not from reading `CMakeLists.txt`. The
+  (`nix build .#darling-graph-stock`), not from reading `CMakeLists.txt`. The
   CMakeLists does not contain what a target inherits from parent scopes.
 - Where a target's lists are large and upstream-owned, the BUCK file is
   GENERATED (`scripts/gen-duct-tape-buck.py`) and the generator is committed.

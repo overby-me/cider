@@ -496,7 +496,7 @@ def main(argv: list[str]) -> int:
     graph = graph_dir(argv)
     root = os.path.join(graph, "install-manifests")
     if not os.path.isdir(root):
-        sys.exit(f"no install manifests at {root} -- build .#darling-graph first")
+        sys.exit(f"no install manifests at {root} -- build .#darling-graph-stock first")
 
     binaries = binary_index()
     links = read_symlinks(graph)

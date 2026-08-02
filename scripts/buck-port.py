@@ -110,7 +110,7 @@ def framework_map() -> dict[str, list[str]]:
 
 def ninja_text() -> str:
     if not os.path.exists(NINJA):
-        sys.exit(f"missing {NINJA} -- nix build .#darling-graph -o result-graph-ref")
+        sys.exit(f"missing {NINJA} -- nix build .#darling-graph-stock -o result-graph-ref")
     with open(NINJA, errors="replace") as fh:
         return fh.read()
 

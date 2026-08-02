@@ -8,7 +8,11 @@ command ninja passes, including everything a target inherits from parent cmake
 scopes (which reading a CMakeLists cannot tell you).
 
 Get the graph with:
-    nix build .#darling-graph -o result-graph-ref
+    nix build .#darling-graph-stock -o result-graph-ref
+
+The port targets the STOCK component. `.#darling-graph` is the much smaller `system`
+scope and `.#darling-graph-cli` the intermediate one; both were stepping stones and
+neither is what the thresholds in scripts/buck-test.sh are set against now.
 
 Usage:
     scripts/gen-buck-from-ninja.py <cmake-target> [...]          # print
@@ -2241,7 +2245,7 @@ def ensure_loads(text: str, block: str) -> str:
 
 def main(argv: list[str]) -> int:
     if not os.path.exists(GRAPH):
-        sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#darling-graph -o result-graph-ref")
+        sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#darling-graph-stock -o result-graph-ref")
     args = [a for a in argv[1:] if not a.startswith("--")]
     edges = read_edges()
 

@@ -1,6 +1,7 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "elf_wrapper")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
 
 # The five HOST libraries the audio stack reaches through libelfloader: ffmpeg's four and
 # pulseaudio. Same shape as src/native's sixteen -- see the long comment there for what
@@ -1072,3 +1073,21 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: afrecord binary
+
+# BEGIN generated: prefix exports
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+export_file(
+    name = "CoreAudioComponent_CoreAudio.rsrc",
+    src = "CoreAudioComponent/CoreAudio.rsrc",
+    visibility = ["PUBLIC"],
+)
+
+export_file(
+    name = "CoreAudioComponent_Info.plist",
+    src = "CoreAudioComponent/Info.plist",
+    visibility = ["PUBLIC"],
+)
+
+# END generated: prefix exports

@@ -1,5 +1,7 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
 
 # Targets over the python_modules pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
@@ -188,3 +190,89 @@ darwin_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: py2app_apptemplate binary
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_Modules_six_1_12_0_six_1_12_0_six_egg_info",
+    srcs = glob(
+        ["Modules/six-1.12.0/six-1.12.0/six.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/six-1.12.0/six-1.12.0/six.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_macholib_1_5_1_macholib_1_5_1_macholib_egg_info",
+    srcs = glob(
+        ["Modules/macholib-1.5.1/macholib-1.5.1/macholib.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/macholib-1.5.1/macholib-1.5.1/macholib.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_xattr_0_6_4_xattr_0_6_4_xattr_egg_info",
+    srcs = glob(
+        ["Modules/xattr-0.6.4/xattr-0.6.4/xattr.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/xattr-0.6.4/xattr-0.6.4/xattr.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_setuptools_41_0_1_setuptools_41_0_1_setuptools_egg_info",
+    srcs = glob(
+        ["Modules/setuptools-41.0.1/setuptools-41.0.1/setuptools.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/setuptools-41.0.1/setuptools-41.0.1/setuptools.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_py2app_0_7_3_py2app_0_7_3_noprebuilt_py2app_egg_info",
+    srcs = glob(
+        ["Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_altgraph_0_10_2_altgraph_0_10_2_altgraph_egg_info",
+    srcs = glob(
+        ["Modules/altgraph-0.10.2/altgraph-0.10.2/altgraph.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/altgraph-0.10.2/altgraph-0.10.2/altgraph.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_Modules_modulegraph_0_10_4_modulegraph_0_10_4_modulegraph_egg_info",
+    srcs = glob(
+        ["Modules/modulegraph-0.10.4/modulegraph-0.10.4/modulegraph.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "Modules/modulegraph-0.10.4/modulegraph-0.10.4/modulegraph.egg-info",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_python_modules.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports

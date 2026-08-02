@@ -551,8 +551,12 @@ cov=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $2}')
 tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
 # made it decorative: anything short of losing three quarters of the port passed it.
-[ "${cov:-0}" -ge 868 ] && ok "$cov of the reference's ${tot:-871} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-871}, floor is 868"
+#
+# result-graph-ref now points at the STOCK graph, so these are stock numbers: 1354 of 1359,
+# where the cli graph read 868 of 871. Only five edges are short, and each has its block
+# removed and its cause written up in PLAN.md (DBusKit, iokitd, bsdln, getuuid, elfdep).
+[ "${cov:-0}" -ge 1354 ] && ok "$cov of the reference's ${tot:-1359} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-1359}, floor is 1354"
 
 # The same question for the INSTALL side: link coverage says what builds, this says what
 # the port can actually lay out. UNMAPPED is every install entry that neither a target nor
@@ -564,8 +568,12 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # entry; it used to take eight minutes and now takes under two seconds.
 unmapped=$(python3 scripts/gen-install-from-manifests.py 2>/dev/null |
 	sed -n 's/^ *UNMAPPED: *//p')
-[ "${unmapped:-999}" -le 0 ] && ok "install UNMAPPED is $unmapped (ceiling 0)" ||
-	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 0"
+#
+# The ceiling is 2 on the stock graph, not 0 as it was on cli: stock INSTALLS iokitd and
+# DBusKit, and those are two of the five edges whose blocks are removed for not linking.
+# It goes back to 0 when they do.
+[ "${unmapped:-999}" -le 2 ] && ok "install UNMAPPED is $unmapped (ceiling 2)" ||
+	bad "install UNMAPPED rose to ${unmapped:-unknown}, ceiling is 2"
 
 say "== DUCT_TAPE_LIB staging =="
 dir=$(out_of //linux/server:duct_tape_lib)

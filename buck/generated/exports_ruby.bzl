@@ -27,4 +27,6 @@ EXPORTS = {
     "darling_include_ruby_ruby_version.h": "darling/include/ruby/ruby/version.h",
     "darling_include_ruby_ruby_vm.h": "darling/include/ruby/ruby/vm.h",
     "darling_include_ruby_ruby_win32.h": "darling/include/ruby/ruby/win32.h",
+    "extras_irbrc": "extras/irbrc",
+    "extras_rails": "extras/rails",
 }

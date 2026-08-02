@@ -560,6 +560,43 @@ build adds `-Iforeign` to any compile. So the reference resolves it by some rout
 visible in INCLUDES, and finding that route is the next step rather than adding an include
 dir on a guess. Their blocks are removed, so coverage counts them as the gaps they are.
 
+### The STOCK SWITCH (done)
+
+`result-graph-ref` points at `.#darling-graph-stock` and everything is measured against it.
+The symlink is gitignored, so what actually makes the switch reproducible is committed:
+every script that tells you how to build the graph now says `.#darling-graph-stock`
+(gen-buck-from-ninja.py, buck-port.py, gen-install-from-manifests.py, buck/README.md),
+buck/prefix/BUCK is regenerated from the stock manifests, and buck-test.sh's two thresholds
+move to stock numbers -- coverage floor 1354 of 1359 (it read 868 of 871 on cli) and the
+UNMAPPED ceiling 0 -> 2.
+
+**UNMAPPED is 2, not the 523 this file predicted when stock was first sized.** The porting
+work closed the rest, and the two that remain are exactly the removed blocks that stock
+INSTALLS: `usr/sbin/iokitd` and DBusKit.framework. bsdln, getuuid and elfdep are build
+tools, so their absence costs nothing in the prefix. The ceiling goes back to 0 when those
+two link.
+
+The prefix went from 2275 to 4194 lines: 1308 targets, 2039 source files, 176 symlinks,
+33986 files and 596 links staged.
+
+One step is easy to miss. `gen-install-from-manifests.py --write` writes export_file
+targets for source files into the packages it knows about, but the ones that belong to the
+PINS come from `buck-exports.py`, which is a separate script. Without it the prefix names
+labels nothing defines and the build stops at the first one (`cups_cups_man_lpmove.8`).
+Run buck-exports.py and buck-fix-loads.py after any prefix regeneration.
+
+Also worth knowing when spot-checking a staged prefix by hand: the tree is rooted at
+`libexec/darling/`, AppKit installs under `Versions/C` rather than `Versions/A` (the Cocoa
+convention), and 598 of the symlinks are ABSOLUTE guest paths like
+`/System/Library/Frameworks/Ruby.framework/...` which resolve only inside the container. A
+plain `test -e` on the host follows those and reports a file that is present as missing.
+
+**Verified on the stock prefix, not inferred:** buck-test.sh 142/142; the container boots
+and runs bash (buck-bash-check.sh); tests/darling-smoke.nix stages 2-7 pass 31/31
+(buck-smoke-check.sh); and guest nix built AND ran bash inside the buck2-built Darling
+(buck-nix-bash-check.sh), which is the campaign's keystone milestone and it survives the
+switch.
+
 ### Stage 2, sized
 
 Measured by pointing result-graph-ref at the stock graph and re-running both tools:
@@ -1147,14 +1184,11 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **STAGE 2: switch to the STOCK graph.** The graph is built and the size is known, see
-   "Stage 2, sized" below. The switch is `nix build .#darling-graph-stock` (NOT
-   `.#darling-graph`, which is the system scope) and repointing the `result-graph-ref`
-   symlink; both it and `result-graph-stock` are gitignored, so this is a local switch, not
-   a commit. It must land TOGETHER with raising the buck-test.sh UNMAPPED ceiling from 0 to
-   whatever the stock number then is, and with a regenerated, verified prefix -- repointing
-   on its own leaves the suite red and the prefix generated from a graph nothing has
-   checked.
+1. **DONE: the stock switch.** result-graph-ref points at `.#darling-graph-stock`, the
+   prefix is regenerated from it, and buck-test.sh's thresholds are stock numbers. See
+   "The STOCK SWITCH (done)" above for what was verified and the two steps that are easy
+   to miss. The next component is `all` (stock + jsc + webkit + cli_extra +
+   cli_dev_gui_stubs); size it the way stock was sized before starting.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
    everything else in stock sits downstream of them. The 16 src/native ELF wrappers are

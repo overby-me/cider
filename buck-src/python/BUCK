@@ -2,6 +2,7 @@ load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:codegen.bzl", "configure_file")
 load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
 
 # Targets over the python pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
@@ -5527,3 +5528,18 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: py27_dbm dylibs
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_2_7_Python_2_7_16_Include",
+    srcs = glob(
+        ["2.7/Python-2.7.16/Include/**"],
+        exclude = [],
+    ),
+    strip = "2.7/Python-2.7.16/Include",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs

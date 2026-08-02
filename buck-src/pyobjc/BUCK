@@ -1,5 +1,7 @@
 load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_dylib")
+load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:install.bzl", "prefix_dir")
 
 # Targets over the pyobjc pin, materialized by scripts/buck-src.sh. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
@@ -2324,3 +2326,369 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: pyobjc_WebKit_extra_module_py27 dylibs
+
+# BEGIN generated: prefix dirs
+# GENERATED from the reference build's install entries by
+# scripts/gen-install-from-manifests.py -- review before committing.
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_core_2_5_1_Lib_pyobjc_core_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-core-2.5.1/Lib/pyobjc_core.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Accounts_2_5_1_Lib_pyobjc_framework_Accounts_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Accounts-2.5.1/Lib/pyobjc_framework_Accounts.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Accounts-2.5.1/Lib/pyobjc_framework_Accounts.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_AddressBook_2_5_1_Lib_pyobjc_framework_AddressBook_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-AddressBook-2.5.1/Lib/pyobjc_framework_AddressBook.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-AddressBook-2.5.1/Lib/pyobjc_framework_AddressBook.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_AppleScriptKit_2_5_1_Lib_pyobjc_framework_AppleScriptKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-AppleScriptKit-2.5.1/Lib/pyobjc_framework_AppleScriptKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-AppleScriptKit-2.5.1/Lib/pyobjc_framework_AppleScriptKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_AppleScriptObjC_2_5_1_Lib_pyobjc_framework_AppleScriptObjC_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-AppleScriptObjC-2.5.1/Lib/pyobjc_framework_AppleScriptObjC.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-AppleScriptObjC-2.5.1/Lib/pyobjc_framework_AppleScriptObjC.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Automator_2_5_1_Lib_pyobjc_framework_Automator_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Automator-2.5.1/Lib/pyobjc_framework_Automator.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Automator-2.5.1/Lib/pyobjc_framework_Automator.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_CFNetwork_2_5_1_Lib_pyobjc_framework_CFNetwork_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-CFNetwork-2.5.1/Lib/pyobjc_framework_CFNetwork.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-CFNetwork-2.5.1/Lib/pyobjc_framework_CFNetwork.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Cocoa_2_5_1_Lib_pyobjc_framework_Cocoa_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Cocoa-2.5.1/Lib/pyobjc_framework_Cocoa.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Cocoa-2.5.1/Lib/pyobjc_framework_Cocoa.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Collaboration_2_5_1_Lib_pyobjc_framework_Collaboration_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Collaboration-2.5.1/Lib/pyobjc_framework_Collaboration.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Collaboration-2.5.1/Lib/pyobjc_framework_Collaboration.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_CoreData_2_5_1_Lib_pyobjc_framework_CoreData_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-CoreData-2.5.1/Lib/pyobjc_framework_CoreData.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-CoreData-2.5.1/Lib/pyobjc_framework_CoreData.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_CoreLocation_2_5_1_Lib_pyobjc_framework_CoreLocation_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-CoreLocation-2.5.1/Lib/pyobjc_framework_CoreLocation.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-CoreLocation-2.5.1/Lib/pyobjc_framework_CoreLocation.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_CoreText_2_5_1_Lib_pyobjc_framework_CoreText_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-CoreText-2.5.1/Lib/pyobjc_framework_CoreText.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-CoreText-2.5.1/Lib/pyobjc_framework_CoreText.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_DictionaryServices_2_5_1_Lib_pyobjc_framework_DictionaryServices_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-DictionaryServices-2.5.1/Lib/pyobjc_framework_DictionaryServices.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-DictionaryServices-2.5.1/Lib/pyobjc_framework_DictionaryServices.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_EventKit_2_5_1_Lib_pyobjc_framework_EventKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-EventKit-2.5.1/Lib/pyobjc_framework_EventKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-EventKit-2.5.1/Lib/pyobjc_framework_EventKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_ExceptionHandling_2_5_1_Lib_pyobjc_framework_ExceptionHandling_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-ExceptionHandling-2.5.1/Lib/pyobjc_framework_ExceptionHandling.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-ExceptionHandling-2.5.1/Lib/pyobjc_framework_ExceptionHandling.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_FSEvents_2_5_1_Lib_pyobjc_framework_FSEvents_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-FSEvents-2.5.1/Lib/pyobjc_framework_FSEvents.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-FSEvents-2.5.1/Lib/pyobjc_framework_FSEvents.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_InputMethodKit_2_5_1_Lib_pyobjc_framework_InputMethodKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-InputMethodKit-2.5.1/Lib/pyobjc_framework_InputMethodKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-InputMethodKit-2.5.1/Lib/pyobjc_framework_InputMethodKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_InstallerPlugins_2_5_1_Lib_pyobjc_framework_InstallerPlugins_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-InstallerPlugins-2.5.1/Lib/pyobjc_framework_InstallerPlugins.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-InstallerPlugins-2.5.1/Lib/pyobjc_framework_InstallerPlugins.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_InstantMessage_2_5_1_Lib_pyobjc_framework_InstantMessage_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-InstantMessage-2.5.1/Lib/pyobjc_framework_InstantMessage.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-InstantMessage-2.5.1/Lib/pyobjc_framework_InstantMessage.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_LatentSemanticMapping_2_5_1_Lib_pyobjc_framework_LatentSemanticMapping_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-LatentSemanticMapping-2.5.1/Lib/pyobjc_framework_LatentSemanticMapping.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-LatentSemanticMapping-2.5.1/Lib/pyobjc_framework_LatentSemanticMapping.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_LaunchServices_2_5_1_Lib_pyobjc_framework_LaunchServices_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-LaunchServices-2.5.1/Lib/pyobjc_framework_LaunchServices.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-LaunchServices-2.5.1/Lib/pyobjc_framework_LaunchServices.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Message_2_5_1_Lib_pyobjc_framework_Message_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Message-2.5.1/Lib/pyobjc_framework_Message.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Message-2.5.1/Lib/pyobjc_framework_Message.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_OpenDirectory_2_5_1_Lib_pyobjc_framework_OpenDirectory_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-OpenDirectory-2.5.1/Lib/pyobjc_framework_OpenDirectory.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-OpenDirectory-2.5.1/Lib/pyobjc_framework_OpenDirectory.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_PreferencePanes_2_5_1_Lib_pyobjc_framework_PreferencePanes_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-PreferencePanes-2.5.1/Lib/pyobjc_framework_PreferencePanes.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-PreferencePanes-2.5.1/Lib/pyobjc_framework_PreferencePanes.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_PubSub_2_5_1_Lib_pyobjc_framework_PubSub_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-PubSub-2.5.1/Lib/pyobjc_framework_PubSub.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-PubSub-2.5.1/Lib/pyobjc_framework_PubSub.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_QTKit_2_5_1_Lib_pyobjc_framework_QTKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-QTKit-2.5.1/Lib/pyobjc_framework_QTKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-QTKit-2.5.1/Lib/pyobjc_framework_QTKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Quartz_2_5_1_Lib_pyobjc_framework_Quartz_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Quartz-2.5.1/Lib/pyobjc_framework_Quartz.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Quartz-2.5.1/Lib/pyobjc_framework_Quartz.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_ScreenSaver_2_5_1_Lib_pyobjc_framework_ScreenSaver_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-ScreenSaver-2.5.1/Lib/pyobjc_framework_ScreenSaver.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-ScreenSaver-2.5.1/Lib/pyobjc_framework_ScreenSaver.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_ScriptingBridge_2_5_1_Lib_pyobjc_framework_ScriptingBridge_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/Lib/pyobjc_framework_ScriptingBridge.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/Lib/pyobjc_framework_ScriptingBridge.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_SearchKit_2_5_1_Lib_pyobjc_framework_SearchKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-SearchKit-2.5.1/Lib/pyobjc_framework_SearchKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-SearchKit-2.5.1/Lib/pyobjc_framework_SearchKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_ServiceManagement_2_5_1_Lib_pyobjc_framework_ServiceManagement_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-ServiceManagement-2.5.1/Lib/pyobjc_framework_ServiceManagement.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-ServiceManagement-2.5.1/Lib/pyobjc_framework_ServiceManagement.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_Social_2_5_1_Lib_pyobjc_framework_Social_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-Social-2.5.1/Lib/pyobjc_framework_Social.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-Social-2.5.1/Lib/pyobjc_framework_Social.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_SyncServices_2_5_1_Lib_pyobjc_framework_SyncServices_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-SyncServices-2.5.1/Lib/pyobjc_framework_SyncServices.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-SyncServices-2.5.1/Lib/pyobjc_framework_SyncServices.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_SystemConfiguration_2_5_1_Lib_pyobjc_framework_SystemConfiguration_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/Lib/pyobjc_framework_SystemConfiguration.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/Lib/pyobjc_framework_SystemConfiguration.egg-info",
+    visibility = ["PUBLIC"],
+)
+
+prefix_dir(
+    name = "prefix_pyobjc_pyobjc_framework_WebKit_2_5_1_Lib_pyobjc_framework_WebKit_egg_info",
+    srcs = glob(
+        ["pyobjc/pyobjc-framework-WebKit-2.5.1/Lib/pyobjc_framework_WebKit.egg-info/**"],
+        exclude = [],
+    ),
+    strip = "pyobjc/pyobjc-framework-WebKit-2.5.1/Lib/pyobjc_framework_WebKit.egg-info",
+    visibility = ["PUBLIC"],
+)
+# END generated: prefix dirs
+
+# BEGIN generated: pin exports
+load("//buck/generated:exports_pyobjc.bzl", "EXPORTS")
+
+# One export_file per file another package names by label, from the list
+# scripts/buck-exports.py keeps.
+[
+    export_file(name = _n, src = _s, visibility = ["PUBLIC"])
+    for _n, _s in EXPORTS.items()
+]
+# END generated: pin exports
