@@ -956,25 +956,30 @@ And the collision check had to go in BOTH branches of the entry loop -- the firs
 only guarded FILE entries, and frameworks arrive as SHARED_LIBRARY, so it reported nothing
 at all and looked like the problem was elsewhere.
 
-### CoreGraphics can never find its X11 backend, and the reference cannot either
+### CoreGraphics finds its backend fine, and the claim that it cannot was WRONG
 
-Chasing the AppKit probe turned this up. `CGMainDisplayID()` returns 0 because CoreGraphics
-has no display backend, and the reason is a layout split the port reproduces faithfully:
+This section used to say that CoreGraphics can never find its X11 backend, because the
+reference installs the binary to `Versions/A/CoreGraphics` and the backend to
+`Versions/C/Resources/Backends` with `Current -> A`, so `_CGSLoadBackend` would look in
+`Versions/A/Resources/Backends`, which does not exist. The layout split is real. The
+conclusion drawn from it was not, and it was written down as fact after being inferred from
+NSBundle semantics rather than tested.
 
-```
-CoreGraphics.framework/Versions/A/CoreGraphics          <- the binary
-CoreGraphics.framework/Versions/C/Resources/Backends/   <- the backend
-CoreGraphics.framework/Versions/Current -> A
-```
+Two measurements kill it:
 
-Both destinations come straight out of the reference's own cmake_install.cmake.
-`_CGSLoadBackend` asks `[NSBundle bundleForClass: [CGSConnection class]]` for
-`pathsForResourcesOfType:@"backend" inDirectory:@"Backends"`, which resolves against the
-LOADED IMAGE -- `Versions/A/Resources/Backends` -- and that directory does not exist.
-AppKit is unaffected: its framework and its backend are both under `Versions/C`.
+- `CGMainDisplayID()` returns **1**, a valid display. The 0 that started the whole theory
+  was measured while the prefix had the STUB CoreGraphics installed (54K, no
+  implementation); with the real framework (176K, 25 CGSConnection symbols) it reports a
+  display. That was the dev-stub collision bug, not a lookup problem.
+- Adding the supposedly missing path -- `Versions/A/Resources -> ../C/Resources` -- into a
+  materialized prefix changes NOTHING. Same `cg-display=1`, same `APPKIT_PROBE_OK`, no new
+  log line. If the lookup were blocked by the layout, that symlink would unblock it.
 
-So this is upstream's bug, not the port's, and it is worth knowing before anyone spends a
-day on the GUI stack. Task #33.
+So the split is harmless, whatever the mechanism, and the port should NOT diverge from the
+reference here. That is the seventh recorded diagnosis in this campaign to fail on contact
+with a measurement, and the pattern in all seven is the same: a real observation, an
+untested explanation attached to it, and the explanation written into the plan as though it
+were the observation.
 
 ### The runtime checks CANNOT be chained in one shell
 
