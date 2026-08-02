@@ -1018,10 +1018,40 @@ The chain underneath, in order, each step measured or read rather than assumed:
 `bzero((char *)p, strlen(p))`, and the guest's own `apple[]` now reads `main_stack=` with
 the value blanked, which is that bzero and nothing else.
 
-**And stackaddr is still 0.** One layer remains between libpthread parsing the value and
-`pthread_get_stackaddr_np` reporting it, and the next increment starts there rather than
-guessing at it. The mldr change is correct regardless and is verified not to regress
-anything: all four runtime checks pass and buck-test is 143 of 143.
+5. The value has to be written with **0x PREFIXES**. libpthread parses these fields with
+   its own `_pthread_strtoul`, whose comment says "Expect hex string starting with 0x" and
+   whose body checks `p[0] == '0' && p[1] == 'x'` before consuming anything. Bare hex parses
+   as zero, the comma check fails, and the whole function takes the goto-out path.
+
+The trap in step 5 is worth keeping, because the obvious evidence points the wrong way.
+`parse_main_stack_params` bzeros the value on BOTH paths -- the `out:` label is reached on
+success too -- so a blanked `main_stack=` in the guest proves only that the function RAN,
+not that it worked. What distinguishes them is the **stacksize**: 0x10000 when the parse
+succeeds, and 8388608 when it fails and the sysctl fallback hardcodes DFLSSIZ. Reading the
+blanking as success cost an increment.
+
+With the prefixes:
+
+```
+STACK_PROBE main main_np=1 stackaddr=0x7fffffe00000 stacksize=65536 bound=0x7fffffdf0000
+```
+
+**And jsc evaluates JavaScript:**
+
+```
+JSC_OK sum=19999900000 json={"a":1}
+PASS: jsc evaluated JavaScript inside the buck2-built Darling
+```
+
+That is the JavaScriptCore cone -- JavaScriptCore, WTF, bmalloc, mbmalloc, ICU, the JIT and
+the GC -- running end to end for the first time. All four runtime checks are rc=0 now, and
+buck-test is 143 of 143.
+
+A correction to what this section used to say: "JavaScriptCore works on Darling was never
+true upstream either" was too strong. The reference does compile JSC with assertions
+enabled, which is why its jsc would assert in the same place, but the FIX turned out to be
+in mldr, which is first-party Rust the port owns. Whether the C mldr passed main_stack is
+not something this port can check any more, so it should not be claimed either way.
 
 One refinement to the note below: the false "kernel's final pass is not two-level" failure
 correlates with a leftover **darlingserver**, not only with a concurrent buck2 build.

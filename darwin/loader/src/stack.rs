@@ -84,7 +84,16 @@ pub unsafe fn setup_stack(
         // WTF believing it had 8MB of room below the commpage.
         //
         // stackaddr is the HIGH address, per Darwin's pthread_get_stackaddr_np.
-        format!("main_stack={stack_top:x},{size:x},{base:x},{size:x}"),
+        //
+        // The 0x PREFIXES are load-bearing. libpthread parses these with its own
+        // _pthread_strtoul, whose comment says "Expect hex string starting with 0x" and
+        // whose body checks p[0] == '0' && p[1] == 'x' before consuming anything. Bare hex
+        // parses as zero, leaves the comma check failing, and sends the whole function down
+        // the goto-out path -- which still bzeros the value, so the guest sees an empty
+        // main_stack either way and the blanking proves only that the function RAN.
+        // What distinguishes the two is the stacksize the probe reports: 0x10000 when this
+        // parses, and 8388608 (the DFLSSIZ the sysctl fallback hardcodes) when it does not.
+        format!("main_stack=0x{stack_top:x},0x{size:x},0x{base:x},0x{size:x}"),
     ];
 
     // Strings high, from stack_top downward.

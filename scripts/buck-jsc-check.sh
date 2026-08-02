@@ -8,23 +8,21 @@
 # exercises the whole cone end to end: the loader, libSystem, ICU, WTF's thread and stack
 # setup, bmalloc, and then the interpreter.
 #
-# CURRENT RESULT: jsc loads and runs WTF initialization, then dies on
+# CURRENT RESULT: PASS. jsc evaluates JavaScript.
+#
+# It spent a while dying on
 #
 #   ASSERTION FAILED: m_origin && m_bound
 #   wtf/StackBounds.h(129) : bool WTF::StackBounds::isGrowingDownwards() const
 #
-# which is a DEFAULT-CONSTRUCTED StackBounds (the constexpr ctor sets both to nullptr)
-# being queried before anything filled it in from pthread_get_stackaddr_np.
+# and the cause was that the guest's MAIN thread had no stack address at all:
+# pthread_get_stackaddr_np returned NULL there while spawned threads got real addresses.
+# mldr now passes main_stack in apple[] so libpthread fills the main thread in properly.
+# tests/buck2/guest/stack_probe.c is the instrument that found it and is the thing to run
+# first if this ever regresses.
 #
-# That is NOT a port defect. The reference build.ninja does not put -DNDEBUG on the
-# JavaScriptCore compile edge -- the token appears 1379 times elsewhere in the graph and
-# not once there -- so the reference compiles JSC with assertions ENABLED too, and its jsc
-# asserts in the same place. What this probe establishes is that the port faithfully
-# reproduces the reference, and that "JavaScriptCore works on Darling" was never true
-# upstream either. Root-causing the empty StackBounds is guest-side work.
-#
-# So: exit 0 means JS actually evaluated, exit 3 means the known assertion (the cone loaded
-# and initialized), and exit 1 means it did not get that far -- which WOULD be a regression.
+# So: exit 0 means JS actually evaluated, exit 3 means the empty-StackBounds assertion is
+# back, and exit 1 means jsc did not even reach WTF initialization.
 #
 # Usage:  scripts/buck-jsc-check.sh [<scratch dir>]
 set -euo pipefail
