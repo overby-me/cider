@@ -66,3 +66,43 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+cc_objects(
+    name = "audio_probe_obj",
+    srcs = ["audio_probe.cpp"],
+    compiler_flags = ["-D_LIBC_NO_FEATURE_VERIFICATION"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CoreFoundation",
+        "//src/CoreAudio:fw_AudioToolbox",
+        "//src/CoreAudio:fw_CoreAudio",
+        "//darwin/frameworks:fw_CoreServices",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_AE",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "audio_probe",
+    objs = [
+        ":audio_probe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    # AudioToolbox's own headers are C++ (AudioQueue.h declares classes), so the probe is a
+    # .cpp and the link needs libc++ alongside the frameworks.
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/libcxx:cxx_dylib",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+        "//src/CoreAudio:AudioToolbox_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

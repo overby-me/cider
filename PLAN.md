@@ -1165,6 +1165,38 @@ The rule this keeps proving is the one already written above it: when a metric l
 fix the measurement before reporting the number. A metric that says 100% and a metric that
 says 0.02% are equally suspicious, and both were.
 
+### CoreAudio: the wrappers work, the framework above them is an upstream stub
+
+CoreAudio was the last cone of any size never to have run, and it splits cleanly in two.
+
+**The port-specific half works.** Five ELF wrappers under `/usr/lib/native` are wrapgen
+Mach-O stubs whose exports forward into the host's ffmpeg and pulseaudio through elfcalls,
+and every one of them carries a real answer back:
+
+```
+libavutil     avutil_version=60.26.102
+libavcodec    avcodec_version=62.28.102
+libavformat   avformat_version=62.12.102
+libswresample swresample_version=6.3.102
+libpulse      pa_get_library_version=17.0.0
+```
+
+**The framework half is stubbed in Darling itself.** Every entry point in
+`src/CoreAudio/AudioToolbox/AudioFile.cpp` is literally `return unimpErr`, so
+`AudioFileOpenURL` answers -4 and there is no decode path at that layer to exercise -- on a
+WAV or an MP3 alike. That is upstream's state, not the port's, and `afinfo` hides it: it
+prints "AudioFileOpen failed" and swallows the status, which is exactly why
+tests/buck2/guest/audio_probe.cpp prints the number and the fourcc.
+
+`scripts/buck-audio-check.sh` therefore exits 3, the convention the other checks use for a
+known partial state, and it PASSES with 0 the day someone implements AudioFile. Editing
+afinfo to print the status would have been the obvious move and was deliberately not made:
+it lives under src/, so changing it invalidates darling-cmake-src and with it the reference
+graph every measurement in this file is against. A new probe costs nothing by comparison.
+
+The check writes its own WAV with python's `wave` module rather than shipping or fetching
+one, so it stays self-contained like sec_probe.c.
+
 ### scripts/buck-runtime-check.sh runs all of them, correctly
 
 There are eight runtime checks now and buck-test.sh runs none of them: it is almost
@@ -1185,6 +1217,7 @@ convention for a partial result their own header explains.
   buck-jsc-check           rc=0   PASS
   buck-appkit-check        rc=0   PASS
   buck-scripting-check     rc=0   PASS
+  buck-audio-check         rc=3   KNOWN (AudioFile is an upstream stub)
 ```
 
 buck-nix-bash-check is opt-in behind `--with-nix`: it builds bash with Nix INSIDE Darling,

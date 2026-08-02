@@ -38,6 +38,7 @@ CHECKS=(
 	buck-jsc-check
 	buck-appkit-check
 	buck-scripting-check
+	buck-audio-check
 )
 # Builds bash with Nix INSIDE Darling. It is the campaign's keystone milestone and it takes
 # far longer than everything else here put together, so it is opt-in.
