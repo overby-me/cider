@@ -43,18 +43,12 @@ command -v buck2 >/dev/null || {
 	exit 2
 }
 
-say "== building the prefix, jsc and JavaScriptCore =="
-out=$(buck2 build //buck/prefix:darling_prefix //buck-src:jsc //buck-src:JavaScriptCore_dylib \
-	--show-output 2>/dev/null)
-art=$(awk '/darling_prefix/ {print $2}' <<<"$out")
-bin=$(awk '/:jsc / {print $2}' <<<"$out")
-lib=$(awk '/JavaScriptCore_dylib/ {print $2}' <<<"$out")
-for f in "$art" "$bin" "$lib"; do
-	[ -e "$f" ] || {
-		say "missing build output: $f"
-		exit 1
-	}
-done
+say "== building the prefix =="
+art=$(buck2 build //buck/prefix:darling_prefix --show-output 2>/dev/null | tail -1 | awk '{print $2}')
+[ -d "$art" ] || {
+	say "the prefix did not build"
+	exit 1
+}
 
 # Anything still running from a previous run holds the old prefix mounted, and removing the
 # tree underneath a live daemon leaves it wedged -- so this comes FIRST.
@@ -71,17 +65,9 @@ mkdir -p "$rt" "$prefix"
 cp -a "$art"/. "$rt"/
 chmod -R u+w "$rt"
 
-# jsc and its framework are STAGED IN BY HAND because buck/prefix/BUCK is generated from the
-# STOCK graph, and JavaScriptCore belongs to `all`. The two destinations are the ones the
-# reference's own cmake_install.cmake names. When the prefix moves to the `all` graph this
-# whole block goes away.
-fw="$rt/libexec/darling/System/Library/Frameworks/JavaScriptCore.framework"
-mkdir -p "$fw/Versions/A"
-cp "$lib" "$fw/Versions/A/JavaScriptCore"
-ln -sfn A "$fw/Versions/Current"
-ln -sfn Versions/Current/JavaScriptCore "$fw/JavaScriptCore"
-cp "$bin" "$rt/libexec/darling/usr/bin/jsc"
-chmod +x "$rt/libexec/darling/usr/bin/jsc" "$fw/Versions/A/JavaScriptCore"
+# jsc and JavaScriptCore.framework come from the PREFIX now. They used to be staged in by
+# hand here, because buck/prefix/BUCK was generated from the stock graph while
+# JavaScriptCore belongs to `all`; the prefix is generated from `all` now and ships both.
 
 say "== running jsc inside the container =="
 # Arithmetic in a loop and a JSON round trip: enough to need the interpreter, the GC and

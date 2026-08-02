@@ -860,6 +860,18 @@ name let three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain key pur
 empty stub instead of the framework. final_registry() now registers a `dev-stubs/` target
 by PATH ONLY. A stub is never the answer to "which target builds libX".
 
+### The reference is the `all` graph now
+
+`result-graph-ref` pointed at `stock` from the stock switch until `all` reached 100
+percent; it points at `all` now, and the prefix is generated from it. The move was small
+by design -- `all` adds 16 install entries over stock -- and it removes the one structural
+inconsistency left in the port: it BUILT the whole `all` component while SHIPPING a stock
+prefix, which is why buck-jsc-check.sh had to hand-stage JavaScriptCore into the tree
+before it could run anything. It does not any more.
+
+Numbers move with it: the coverage floor in buck-test.sh is 1452 rather than 1434, and the
+prefix is 39,168 entries.
+
 ### What "100 percent" does NOT mean
 
 Worth stating plainly, because the coverage number invites the wrong reading.
