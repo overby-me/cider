@@ -1068,11 +1068,11 @@ initializer, resolves its symbols against the frameworks underneath, and hands t
 interpreter something usable, which is a great deal more.
 
 ```
-PY_RESULT 53/55      ZSH_RESULT 32/32      PL_RESULT 13/14
+PY_RESULT 53/55      ZSH_RESULT 32/32      PL_RESULT 14/14
 ```
 
 **All three failures were upstream's, and each was checked against the reference rather than
-assumed. One is now fixed:**
+assumed. Two are now fixed:**
 
 - `_sqlite`: **FIXED, by diverging from the reference deliberately.** The reference installs
   the file as `_sqlite.so` while the symbol it exports is `init_sqlite3`, and CPython 2.7
@@ -1085,10 +1085,15 @@ assumed. One is now fixed:**
   (SQLite 3.32.3), and the check asserts that rather than mere importability.
 - `_curses_panel`: "No module named _curses". `_curses_panel.so` is installed and
   `_curses.so` is not, in the reference too.
-- `Storable`: "object version 2.4 does not match bootstrap parameter 2.41". The 5.18
-  `Storable.pm` says 2.41 and the XS is built with `-DVERSION=\"2.4\"`. **The reference
-  passes exactly the same define.** It is not the 5.18/5.28 mixing bug either: the prefix
-  maps each tree to its own target and the source .pm versions match their trees.
+- `Storable`: **FIXED, the second deliberate divergence.** "object version 2.4 does not
+  match bootstrap parameter 2.41". The 5.18 `Storable.pm` says 2.41 and the XS was built
+  with `-DVERSION=\"2.4\"`, because Darling's own cmake writes
+  `add_bundle(Storable/Storable 2.4 ...)` -- a dropped digit, and the reference passes the
+  same define. It was NOT the 5.18/5.28 mixing bug: the prefix maps each tree to its own
+  target and the source .pm versions match their trees, and 5.28's `3.08_01` is correct on
+  both sides. Two `cflag:` entries in extra-deps.json override it to 2.41, which works
+  because a later `-D` on the command line wins. `use Storable` now freezes and thaws a
+  nested structure, and perl goes 13 of 14 to **14 of 14**.
 
 That is the eighth time in this campaign that checking changed the answer, and the first
 time the answer came out in the port's favour three times over. Worth stating because the

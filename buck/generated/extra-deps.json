@@ -4614,5 +4614,9 @@
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices"
+  ],
+  "perl5.18_Storable_Storable": [
+    "cflag:-DVERSION=\"2.41\"",
+    "cflag:-DXS_VERSION=\"2.41\""
   ]
 }

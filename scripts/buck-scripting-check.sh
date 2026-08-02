@@ -138,9 +138,28 @@ out=$(run_guest /usr/bin/perl -e "$pl" || true)
 printf '%s\n' "$out" | grep -E "^PL_(RESULT|FAIL)" || true
 p_ok=$(printf '%s\n' "$out" | sed -n 's|^PL_RESULT \([0-9]*\)/.*|\1|p')
 p_tot=$(printf '%s\n' "$out" | sed -n 's|^PL_RESULT [0-9]*/\([0-9]*\)|\1|p')
-[ "${p_ok:-0}" -ge 12 ] &&
-	say "ok   perl loaded ${p_ok}/${p_tot} XS modules (floor 12)" ||
-	{ say "FAIL perl loaded ${p_ok:-0}/${p_tot:-?} XS modules, floor is 12"; fail=1; }
+[ "${p_ok:-0}" -ge 14 ] &&
+	say "ok   perl loaded ${p_ok}/${p_tot} XS modules (floor 14)" ||
+	{ say "FAIL perl loaded ${p_ok:-0}/${p_tot:-?} XS modules, floor is 14"; fail=1; }
+
+say "== perl: Storable actually round-trips =="
+# Loading Storable is a version check against the XS bootstrap, which Darling's cmake got
+# wrong for 5.18 (see the cflag override in extra-deps.json). This asserts the whole path:
+# the bootstrap agrees, and freeze/thaw returns the structure that went in.
+# In a single-quoted shell variable like the block above, so that perl's own sigils are
+# not expanded by bash. Inlining it after -e ran $d through the shell, and set -u turned
+# that into "unbound variable".
+st='
+use Storable qw(freeze thaw);
+my $d = thaw(freeze({a => 1, b => [2, 3]}));
+print "STORABLE_OK $Storable::VERSION b1=$d->{b}[1]\n";
+'
+out=$(run_guest /usr/bin/perl -e "$st" || true)
+printf '%s\n' "$out" | grep -E "^STORABLE_OK" || true
+case "$out" in
+*"STORABLE_OK 2.41 b1=3"*) say "ok   perl Storable freezes and thaws a nested structure" ;;
+*) say "FAIL perl Storable did not round-trip: $out"; fail=1 ;;
+esac
 
 [ "$fail" = 0 ] && {
 	say "PASS: the scripting cones load their extensions"

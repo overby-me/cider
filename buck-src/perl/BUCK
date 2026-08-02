@@ -4156,6 +4156,8 @@ cc_objects(
         "-nostdinc",
         "-std=c99",
         "-w",
+        "-DVERSION=\"2.41\"",
+        "-DXS_VERSION=\"2.41\"",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -4170,9 +4172,6 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --dylibs perl5.18_Storable_Storable   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# TODO the final link passes these file-bearing flags whose file is
-# not a source of this package:
-#   -Wl,-bundle_loader,/build/build/src/external/perl/5.18/libperl.dylib
 # buck-registry: src/external/perl/5.18/Storable.bundle = perl5.18_Storable_Storable_dylib
 
 darwin_dylib(
@@ -4192,9 +4191,23 @@ darwin_dylib(
         "-Wl,-bundle",
         "-Wl,-flat_namespace",
     ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//buck-src/perl:libperl5.18_dylib",
+    },
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//buck-src/python:Python_dylib",
+        "//darwin/frameworks:HIServices_dylib",
+        "//darwin/frameworks:ApplicationServices_dylib",
+        "//buck-src:CoreGraphics_dylib",
+        "//buck-src:CoreText_dylib",
+        "//darwin/frameworks:ImageIO_dylib",
+        "//darwin/frameworks:CoreVideo_dylib",
+        "//buck-src:CoreData_dylib",
+        "//buck-src:QuartzCore_dylib",
+        "//darwin/frameworks:OpenGL_dylib",
+        "//buck-src:Onyx2D_dylib",
     ],
     visibility = ["PUBLIC"],
 )
