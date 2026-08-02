@@ -80,6 +80,19 @@ def main(argv: list[str]) -> int:
             module_names.add(m.group(1))
 
     kinds = {"dylib": [], "exe": [], "archive": [], "module": []}
+    # An artifact name the reference builds at more than one path. Resolving such an edge
+    # by NAME cannot distinguish the two, so it is counted but reported separately: the
+    # number is the size of what this metric still takes on trust, and it must not grow.
+    paths_by_name = {}
+    for outs, rule, inputs, vars in edges:
+        if not any(i.endswith(".o") for i in inputs) or rule.split("__")[0] == "phony":
+            continue
+        for o in outs:
+            if "/" in o:
+                paths_by_name.setdefault((rule.split("__")[0], os.path.basename(o)), set()).add(o)
+                break
+    ambiguous = {k for k, v in paths_by_name.items() if len(v) > 1}
+    soft = []
     # Everything that matched no category, kept rather than dropped. Silence is how 70
     # module edges came to be missing from a metric that read 100%.
     unclassified = []
@@ -99,28 +112,45 @@ def main(argv: list[str]) -> int:
             if "/" not in o:
                 continue
             base = os.path.basename(o)
+            # KEYED BY PATH, not by basename. An artifact name does not identify a
+            # library: the reference builds 79 names at more than one path -- perl's
+            # 5.18 and 5.28 module sets, the cctools tools next to their xcselect shims,
+            # and the nine dev-stub frameworks, whose AppKit is called AppKit exactly
+            # like the real one. Collapsing those onto one entry answered "ported" for a
+            # pair as soon as EITHER half was, which is how nine unported frameworks sat
+            # inside a metric that read 100%.
+            #
+            # The port already says which target builds which reference PATH: every
+            # generated dylib and binary block carries a `buck-registry: <path> =
+            # <target>` pragma, and final_registry() keys those by path. So resolve by
+            # path first and fall back to the artifact name, which still covers the
+            # blocks that predate the pragma.
             if kind.endswith("STATIC_LIBRARY_LINKER"):
-                kinds["archive"].append((base, base in arch_reg))
+                kinds["archive"].append((o, base, o in arch_reg or base in arch_reg))
             elif kind.endswith("SHARED_LIBRARY_LINKER"):
                 if base.endswith(".so"):
                     # A loadable MODULE: -shared, no -dylib_install_name. zsh's 35.
-                    kinds["module"].append((base, base in module_names))
+                    kinds["module"].append((o, base, o in final_reg or base in module_names))
                 else:
-                    ported = base in final_reg or base.removeprefix("lib").removesuffix(
-                        ".dylib").removesuffix("_firstpass") in reg
-                    kinds["dylib"].append((base, ported))
+                    ported = o in final_reg or base in final_reg or base.removeprefix(
+                        "lib").removesuffix(".dylib").removesuffix("_firstpass") in reg
+                    kinds["dylib"].append((o, base, ported))
             elif kind.endswith("EXECUTABLE_LINKER"):
-                kinds["exe"].append((base, base in exe_names))
+                kinds["exe"].append((o, base, o in final_reg or base in exe_names))
             else:
                 unclassified.append(f"{base} ({kind})")
+            if (kind, base) in ambiguous and o not in final_reg and o not in arch_reg:
+                soft.append(o)
             break
 
     total = done = 0
     for kind in ("dylib", "exe", "archive", "module"):
-        items = {}
-        for name, ported in kinds[kind]:
-            items[name] = items.get(name, False) or ported
-        skipped = {k for k in items if k in OUT_OF_SCOPE}
+        items, label = {}, {}
+        for path, name, ported in kinds[kind]:
+            items[path] = items.get(path, False) or ported
+            label[path] = name
+        # OUT_OF_SCOPE is written by artifact name, since that is how the reasons read.
+        skipped = {k for k in items if label[k] in OUT_OF_SCOPE}
         for k in skipped:
             items.pop(k)
         n, d = len(items), sum(1 for v in items.values() if v)
@@ -133,6 +163,12 @@ def main(argv: list[str]) -> int:
             for m in miss:
                 print(f"    - {m}")
     print(f"{'total':10} {done:4d} / {total:4d}  ({100 * done // max(total, 1)}%)")
+    if soft:
+        print(f"{'by-name':10} {len(soft):4d}       (ambiguous artifact name, no "
+              f"`buck-registry: <path>` pragma: counted on the NAME alone)")
+        if "--missing" in argv:
+            for s in sorted(soft):
+                print(f"    ~ {s}")
     if unclassified:
         # Not fatal, but never silent: an edge nothing recognises is an edge nobody is
         # counting, which is how this metric came to report 100% while missing 70 of them.

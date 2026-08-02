@@ -725,12 +725,16 @@ Measured by pointing result-graph-ref at the stock graph and re-running both too
 
 | | cli | stock | all |
 |---|---|---|---|
-| link edges (counted) | 871 | 1359 | 1368 |
+| link edges (counted) | 871 | 1434 | 1452 |
 | link edges (raw) | 892 | 1439 | 1457 |
-| ported | 868 (99%) | 1359 (100%) | 1368 (100%) |
+| ported | 868 (99%) | 1434 (100%) | 1452 (100%) |
 | install entries | 1160 | 1872 | 1888 |
 | UNMAPPED | 0 | 0 | 0 |
 | build.ninja lines | 201k | 347k | 363k |
+
+The cli column was measured before the metric keyed by path, so its 871 is a basename
+count and is not comparable with the other two. It is kept because the cli graph is the
+milestone the port passed through, not a target anyone measures against now.
 
 `.#darling-graph-all` was added to flake.nix to measure this; `all` is
 stock + jsc + webkit + cli_extra + cli_dev_gui_stubs.
@@ -748,23 +752,21 @@ and one xtrace MIG dylib.
 | ash | 1 |
 | dev-stub frameworks (see the caveat below) | 9 |
 
-**A caveat on that 1368, and it is the basename-dedup collision again.** The other nine
-edges are `src/frameworks/dev-stubs/{AppKit,AudioToolbox,Cocoa,CoreData,CoreGraphics,
-CoreText,ImageIO,OpenGL,QuartzCore}` -- link-time stubs the `cli_dev_gui_stubs` component
-installs so a program can build against a framework without the implementation. Their
-artifact basenames are identical to the REAL frameworks the port already builds, so
-buck-coverage.py counts each pair once and calls it ported. They are nine genuinely
-unported targets that the number cannot see. Counting by full path rather than basename
-would expose them, but the same dedup is DELIBERATE for the 16 xcselect shims in cli, so
-changing it is not a one-line fix. Until then: `all` is 1368 of 1368 by the metric and
-1368 of 1377 in truth, and those nine are now the ONLY thing between the port and the
-whole reference graph.
+**The other nine edges were `src/frameworks/dev-stubs/{AppKit,AudioToolbox,Cocoa,CoreData,
+CoreGraphics,CoreText,ImageIO,OpenGL,QuartzCore}`** -- link-time stubs the
+`cli_dev_gui_stubs` component installs so a program can build against a framework without
+the implementation. They are ported now (their cmake targets are `<Name>_stub`, which is
+why addressing them by framework name found nothing).
+
+They also exposed the metric bug that had been hiding them, and the fix turned out to be
+one line rather than the hard problem it was written up as. See "the metric keys by PATH
+now" below.
 
 The stock "ported" figure went 862 (63%) when first sized -> 1060 -> 1168 -> 1311 -> 1336
--> 1354 -> **1359 of 1359, 100%**. Every category is complete: 605 dylibs, 525 executables,
-133 archives, 96 loadable modules, and install UNMAPPED is 0. The `all` graph is likewise
-1368 of 1368. 16 of the earlier gain was a MEASUREMENT bug, below, not new work, and one
-gap the metric still cannot see remains: the nine dev-stub frameworks, further down.
+-> 1354 -> 1359 -> **1434 of 1434, 100%**, the last jump being the denominator growing when
+the metric stopped collapsing distinct artifacts onto one name. Every category is complete,
+install UNMAPPED is 0, and the `all` graph is likewise **1452 of 1452**. 16 of the earlier
+gain was a MEASUREMENT bug, below, not new work.
 
 The shape of the remaining work is unambiguous: **dylibs go from 244 to 605**, so 362 of the
 497 missing link edges are frameworks, and the 53 missing modules and 74 missing executables
@@ -823,6 +825,40 @@ for the `//darwin:sdk_env` include root, so a HOST tool -- which has no sdk_env 
 got NONE of them: an entry added for getuuid simply never appeared in its block. And the
 mig EXTRA_COMPILE_SRCS map emitted one `compile_srcs = [...]` per entry, which Starlark
 resolves by keeping the last.
+
+### The metric keys by PATH now, and that is what made the stubs visible
+
+buck-coverage.py used to key an edge by its artifact BASENAME. A name does not identify a
+library. The reference builds 79 names at more than one path: perl's 5.18 and 5.28 module
+sets, the cctools tools sitting beside their xcselect shims, cocotron's two X11s, and the
+nine dev-stub frameworks, whose AppKit is called exactly `AppKit`. Collapsing a pair onto
+one entry answered "ported" as soon as EITHER half was, which is how nine unported
+frameworks sat inside a number that read 100%.
+
+It keys by path now, and the denominator went 1359 -> 1434 on stock and 1368 -> 1452 on
+`all` -- 84 artifacts that had been counted as somebody else. Nothing had to be invented to
+make it work: every generated dylib and binary block ALREADY carries a
+`# buck-registry: <reference path> = <target>` pragma, and final_registry() has keyed those
+by path since the perl 5.18/5.28 collision was fixed. Resolve by path first, fall back to
+the name.
+
+The write-up this replaces said counting by full path "is not a one-line fix" because the
+basename dedup was "DELIBERATE for the 16 xcselect shims". Neither half held up. The
+xcselect shims are handled by the SEPARATE `exe_name` mechanism a few lines above, which is
+what that comment was actually describing, and the change is one line in each of four
+branches. A caveat that is never re-tested becomes a reason not to look.
+
+What the metric still takes on trust is now PRINTED rather than assumed, as a `by-name`
+line: 86 edges whose name is ambiguous and whose block has no path pragma (53 perl module
+duplicates, 30 cctools/xcselect, 3 others), matched on the name alone. buck-test.sh asserts
+that number cannot grow. Regenerating those blocks would emit the pragma and take it to 0.
+
+Porting the stubs also introduced a hazard worth knowing about, because it was silent: a
+stub's artifact has the SAME NAME as the framework it stands in for, so registering it by
+name let three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain key purely on
+`os.walk` order -- and a consumer resolving a sibling or a reexport would have got the
+empty stub instead of the framework. final_registry() now registers a `dev-stubs/` target
+by PATH ONLY. A stub is never the answer to "which target builds libX".
 
 NOTE that UNMAPPED counts install entries whose TARGET EXISTS, not ones that build, so a
 target that does not build must have its block REMOVED, not left in place.

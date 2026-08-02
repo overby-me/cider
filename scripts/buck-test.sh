@@ -552,13 +552,26 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
 # made it decorative: anything short of losing three quarters of the port passed it.
 #
-# result-graph-ref now points at the STOCK graph, so these are stock numbers: 1359 of 1359,
-# where the cli graph read 868 of 871. The floor is now the WHOLE graph: every in-scope link
+# result-graph-ref now points at the STOCK graph, so these are stock numbers: 1434 of 1434,
+# where the cli graph read 868 of 871. The floor is the WHOLE graph: every in-scope link
 # edge of the stock component is ported, so any drop at all is a regression, not a gap.
-# (The `all` graph is likewise 1368 of 1368. What the metric still cannot see is the nine
-# dev-stub frameworks whose artifact basenames collide with the real ones -- PLAN.md.)
-[ "${cov:-0}" -ge 1359 ] && ok "$cov of the reference's ${tot:-1359} in-scope link edges are ported" ||
-	bad "coverage dropped to ${cov:-0} of ${tot:-1359}, floor is 1359"
+# (The `all` graph is likewise 1452 of 1452.)
+#
+# The denominator jumped from 1359 when the metric started keying edges by reference PATH
+# rather than by artifact basename. A name does not identify a library -- perl builds two
+# module sets, cctools sits beside its xcselect shims, and the nine dev-stub frameworks
+# build an AppKit called exactly AppKit -- and collapsing a pair onto one entry answered
+# "ported" as soon as either half was.
+[ "${cov:-0}" -ge 1434 ] && ok "$cov of the reference's ${tot:-1434} in-scope link edges are ported" ||
+	bad "coverage dropped to ${cov:-0} of ${tot:-1434}, floor is 1434"
+
+# What the metric still takes on trust: an edge whose artifact name is ambiguous in the
+# reference and whose block carries no `buck-registry: <path>` pragma is matched on the
+# name alone, so a pair can read ported when only one half is. 86 of them, all perl module
+# duplicates and cctools/xcselect shims. Asserted so the number cannot quietly grow.
+soft=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^by-name/ {print $2}')
+[ "${soft:-999}" -le 86 ] && ok "coverage matches ${soft:-0} edges by name alone (ceiling 86)" ||
+	bad "by-name coverage matches rose to ${soft:-unknown}, ceiling is 86"
 
 # The same question for the INSTALL side: link coverage says what builds, this says what
 # the port can actually lay out. UNMAPPED is every install entry that neither a target nor

@@ -16261,3 +16261,543 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: AVKit dylibs
+
+# BEGIN generated: AppKit_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AppKit_stub   -- review before committing.
+# cmake target: AppKit_stub  ->  AppKit_stub
+
+cc_objects(
+    name = "AppKit_stub_obj",
+    srcs = [
+        "dev-stubs/AppKit/src/classes.m",
+        "dev-stubs/AppKit/src/main.m",
+    ],
+    compiler_flags = [
+        "-DAppKit_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppKit_stub
+
+# BEGIN generated: AppKit_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AppKit_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/AppKit/AppKit = AppKit_stub_dylib
+
+darwin_dylib(
+    name = "AppKit_stub_dylib",
+    dylib_name = "AppKit",
+    install_name = "/System/Library/Frameworks/AppKit.framework/Versions/C/AppKit",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AppKit_stub
+        ":AppKit_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AppKit_stub dylibs
+
+# BEGIN generated: AudioToolbox_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py AudioToolbox_stub   -- review before committing.
+# cmake target: AudioToolbox_stub  ->  AudioToolbox_stub
+
+cc_objects(
+    name = "AudioToolbox_stub_obj",
+    srcs = [
+        "dev-stubs/AudioToolbox/src/classes.m",
+        "dev-stubs/AudioToolbox/src/main.m",
+    ],
+    compiler_flags = [
+        "-DAudioToolbox_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioToolbox_stub
+
+# BEGIN generated: AudioToolbox_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs AudioToolbox_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/AudioToolbox/AudioToolbox = AudioToolbox_stub_dylib
+
+darwin_dylib(
+    name = "AudioToolbox_stub_dylib",
+    dylib_name = "AudioToolbox",
+    install_name = "/System/Library/Frameworks/AudioToolbox.framework/Versions/A/AudioToolbox",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # AudioToolbox_stub
+        ":AudioToolbox_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: AudioToolbox_stub dylibs
+
+# BEGIN generated: Cocoa_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py Cocoa_stub   -- review before committing.
+# cmake target: Cocoa_stub  ->  Cocoa_stub
+
+cc_objects(
+    name = "Cocoa_stub_obj",
+    srcs = [
+        "dev-stubs/Cocoa/src/classes.m",
+        "dev-stubs/Cocoa/src/main.m",
+    ],
+    compiler_flags = [
+        "-DCocoa_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Cocoa_stub
+
+# BEGIN generated: Cocoa_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs Cocoa_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/Cocoa/Cocoa = Cocoa_stub_dylib
+
+darwin_dylib(
+    name = "Cocoa_stub_dylib",
+    dylib_name = "Cocoa",
+    install_name = "/System/Library/Frameworks/Cocoa.framework/Versions/A/Cocoa",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # Cocoa_stub
+        ":Cocoa_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: Cocoa_stub dylibs
+
+# BEGIN generated: CoreData_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreData_stub   -- review before committing.
+# cmake target: CoreData_stub  ->  CoreData_stub
+
+cc_objects(
+    name = "CoreData_stub_obj",
+    srcs = [
+        "dev-stubs/CoreData/src/classes.m",
+        "dev-stubs/CoreData/src/main.m",
+    ],
+    compiler_flags = [
+        "-DCoreData_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreData_stub
+
+# BEGIN generated: CoreData_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreData_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/CoreData/CoreData = CoreData_stub_dylib
+
+darwin_dylib(
+    name = "CoreData_stub_dylib",
+    dylib_name = "CoreData",
+    install_name = "/System/Library/Frameworks/CoreData.framework/Versions/A/CoreData",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CoreData_stub
+        ":CoreData_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreData_stub dylibs
+
+# BEGIN generated: CoreGraphics_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreGraphics_stub   -- review before committing.
+# cmake target: CoreGraphics_stub  ->  CoreGraphics_stub
+
+cc_objects(
+    name = "CoreGraphics_stub_obj",
+    srcs = [
+        "dev-stubs/CoreGraphics/src/classes.m",
+        "dev-stubs/CoreGraphics/src/main.m",
+    ],
+    compiler_flags = [
+        "-DCoreGraphics_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreGraphics_stub
+
+# BEGIN generated: CoreGraphics_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreGraphics_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/CoreGraphics/CoreGraphics = CoreGraphics_stub_dylib
+
+darwin_dylib(
+    name = "CoreGraphics_stub_dylib",
+    dylib_name = "CoreGraphics",
+    install_name = "/System/Library/Frameworks/CoreGraphics.framework/Versions/A/CoreGraphics",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CoreGraphics_stub
+        ":CoreGraphics_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreGraphics_stub dylibs
+
+# BEGIN generated: CoreText_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py CoreText_stub   -- review before committing.
+# cmake target: CoreText_stub  ->  CoreText_stub
+
+cc_objects(
+    name = "CoreText_stub_obj",
+    srcs = [
+        "dev-stubs/CoreText/src/classes.m",
+        "dev-stubs/CoreText/src/main.m",
+    ],
+    compiler_flags = [
+        "-DCoreText_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreText_stub
+
+# BEGIN generated: CoreText_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs CoreText_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/CoreText/CoreText = CoreText_stub_dylib
+
+darwin_dylib(
+    name = "CoreText_stub_dylib",
+    dylib_name = "CoreText",
+    install_name = "/System/Library/Frameworks/CoreText.framework/Versions/A/CoreText",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # CoreText_stub
+        ":CoreText_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: CoreText_stub dylibs
+
+# BEGIN generated: ImageIO_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py ImageIO_stub   -- review before committing.
+# cmake target: ImageIO_stub  ->  ImageIO_stub
+
+cc_objects(
+    name = "ImageIO_stub_obj",
+    srcs = [
+        "dev-stubs/ImageIO/src/classes.m",
+        "dev-stubs/ImageIO/src/main.m",
+    ],
+    compiler_flags = [
+        "-DImageIO_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ImageIO_stub
+
+# BEGIN generated: ImageIO_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs ImageIO_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/ImageIO/ImageIO = ImageIO_stub_dylib
+
+darwin_dylib(
+    name = "ImageIO_stub_dylib",
+    dylib_name = "ImageIO",
+    install_name = "/System/Library/Frameworks/ImageIO.framework/Versions/A/ImageIO",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # ImageIO_stub
+        ":ImageIO_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: ImageIO_stub dylibs
+
+# BEGIN generated: OpenGL_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py OpenGL_stub   -- review before committing.
+# cmake target: OpenGL_stub  ->  OpenGL_stub
+
+cc_objects(
+    name = "OpenGL_stub_obj",
+    srcs = [
+        "dev-stubs/OpenGL/src/classes.m",
+        "dev-stubs/OpenGL/src/main.m",
+    ],
+    compiler_flags = [
+        "-DOpenGL_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: OpenGL_stub
+
+# BEGIN generated: OpenGL_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs OpenGL_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/OpenGL/OpenGL = OpenGL_stub_dylib
+
+darwin_dylib(
+    name = "OpenGL_stub_dylib",
+    dylib_name = "OpenGL",
+    install_name = "/System/Library/Frameworks/OpenGL.framework/Versions/A/OpenGL",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # OpenGL_stub
+        ":OpenGL_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: OpenGL_stub dylibs
+
+# BEGIN generated: QuartzCore_stub
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py QuartzCore_stub   -- review before committing.
+# cmake target: QuartzCore_stub  ->  QuartzCore_stub
+
+cc_objects(
+    name = "QuartzCore_stub_obj",
+    srcs = [
+        "dev-stubs/QuartzCore/src/classes.m",
+        "dev-stubs/QuartzCore/src/main.m",
+    ],
+    compiler_flags = [
+        "-DQuartzCore_stub_EXPORTS",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fPIC",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:fw_CFNetwork",
+        "//buck-src:fw_CoreFoundation",
+        "//buck-src:fw_CoreGraphics",
+        "//buck-src:fw_Foundation",
+        "//buck-src:fw_Security",
+        "//darwin/frameworks:fw_AE",
+        "//darwin/frameworks:fw_CarbonCore",
+        "//darwin/frameworks:fw_CoreServices",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: QuartzCore_stub
+
+# BEGIN generated: QuartzCore_stub dylibs
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --dylibs QuartzCore_stub   -- review before committing.
+# Links 1 cmake object library/ies, 1 flag groups in total.
+# buck-registry: src/frameworks/dev-stubs/QuartzCore/QuartzCore = QuartzCore_stub_dylib
+
+darwin_dylib(
+    name = "QuartzCore_stub_dylib",
+    dylib_name = "QuartzCore",
+    install_name = "/System/Library/Frameworks/QuartzCore.framework/Versions/A/QuartzCore",
+    compatibility_version = "1.0.0",
+    current_version = "1.0.0",
+    objs = [
+        # QuartzCore_stub
+        ":QuartzCore_stub_obj",
+    ],
+    siblings = [
+        "//buck-src:system_final",
+        "//buck-src:Foundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: QuartzCore_stub dylibs

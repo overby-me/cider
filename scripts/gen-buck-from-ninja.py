@@ -1425,13 +1425,24 @@ def final_registry() -> dict:
             continue
         pkg = os.path.relpath(dirpath, REPO)
         text = open(os.path.join(dirpath, "BUCK")).read()
+        # A dev STUB builds an artifact with the SAME name as the framework it stands in
+        # for -- src/frameworks/dev-stubs/AppKit/AppKit is called AppKit, exactly like the
+        # real one -- so it must be reachable by PATH and never by name. Registering its
+        # name too made three of the nine (ImageIO, OpenGL, AudioToolbox) win the plain
+        # key purely on os.walk order, which would hand a consumer resolving a sibling or
+        # a reexport the empty stub instead of the framework.
+        stub_targets = set()
         for m in re.finditer(r"#\s*buck-registry:\s*(\S+)\s*=\s*(\S+)", text):
             reg[m.group(1)] = f"//{pkg}:{m.group(2)}"
+            if "/dev-stubs/" in m.group(1):
+                stub_targets.add(m.group(2))
         for m in re.finditer(r'name = "([A-Za-z0-9_.-]+)_(final|dylib)",\s*\n\s*dylib_name = "([^"]+)"', text):
             # Keep the suffix the target actually uses: a single-pass library is
             # <base>_dylib, and naming it <base>_final does not resolve.
             label = f"//{pkg}:{m.group(1)}_{m.group(2)}"
             artifact = m.group(3)
+            if f"{m.group(1)}_{m.group(2)}" in stub_targets:
+                continue
             reg[artifact] = label
             # A framework's per-arch slice and the lipo'd binary are two names for one
             # library, and a consumer may use either: cmake builds CoreFoundation_x86_64
