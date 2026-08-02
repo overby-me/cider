@@ -3688,6 +3688,82 @@ darwin_dylib(
 )
 # END generated: py27__ctypes_test dylibs
 
+# HAND-WRITTEN, and a deliberate divergence from the reference, which builds _curses_panel
+# but not _curses. CPython's panel module does `import _curses` when it initialises, so the
+# _curses_panel.so the reference installs has never been loadable: it fails with "No module
+# named _curses" on upstream Darling exactly as it did here.
+#
+# Everything needed was already in the tree. Modules/_cursesmodule.c ships in the same pin,
+# ncurses_dylib is already built and already linked by _curses_panel below, and curses.h and
+# term.h sit in the same SDK include farm that resolves panel.h today. So this is the
+# _sqlite3.so case -- a small divergence that makes an artifact the reference ships actually
+# work -- rather than a new cone.
+#
+# The include root is _curses_panel's own: same pin, same root, same globs, and staging the
+# 2.7 tree a second time would buy nothing but build time.
+cc_objects(
+    name = "py27__curses_obj",
+    srcs = [
+        "2.7/Python-2.7.16/Modules/_cursesmodule.c",
+    ],
+    compiler_flags = [
+        "-DDTRACE_PROBES_DISABLED=1",
+        "-DEXEC_PREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DMACOSX",
+        "-DNDEBUG",
+        "-DPLATFORM=\"darwin\"",
+        "-DPREFIX=\"/System/Library/Frameworks/Python.framework/Versions/2.7\"",
+        "-DPYTHONPATH=\":plat-darwin:plat-mac:plat-mac/lib-scriptpackages:lib-tk:lib-old\"",
+        "-DSUFFIX=\"\"",
+        "-DVERSION=\"2.7\"",
+        "-DVPATH=\".\"",
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-Dpy27__curses_EXPORTS",
+        "-fPIC",
+        "-std=c99",
+        "-fno-common",
+        "-fno-strict-aliasing",
+        "-fwrapv",
+        "-w",
+        "-nostdinc",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        ":py27__curses_panel_inc_python_2_7_Python_2_7_16",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+darwin_dylib(
+    name = "py27__curses_dylib",
+    dylib_name = "_curses.so",
+    install_name = "",
+    compatibility_version = "1.0.0",
+    objs = [
+        ":py27__curses_obj",
+    ],
+    # No panel_dylib: this is the layer BELOW panel, and linking it would be a cycle in
+    # spirit if not in the linker.
+    siblings = [
+        "//buck-src:ncurses_dylib",
+        "//buck-src:system_final",
+    ],
+    linker_flags = [
+        "-Wl,-bundle",
+        "-Wl,-flat_namespace",
+    ],
+    link_flag_files = {
+        "-Wl,-bundle_loader": "//buck-src/python:python27exe",
+    },
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src/python:Python_dylib",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # BEGIN generated: py27__curses_panel
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py py27__curses_panel   -- review before committing.

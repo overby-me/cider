@@ -96,12 +96,20 @@ GENERATED = {
 # with "No module named _sqlite3" in the reference exactly as it did here. The artifact IS
 # the _sqlite3 module; only the installed name is wrong. This ADDS the correct name and
 # leaves the reference's _sqlite.so in place, so nothing the reference ships disappears.
+#
+# _curses is the same kind of divergence one step further out: the reference installs
+# _curses_panel.so but never builds _curses at all, and CPython's panel module imports
+# _curses when it initialises, so _curses_panel has never loaded on upstream Darling either.
+# buck-src/python/BUCK builds it from the _cursesmodule.c that already ships in the pin
+# against the ncurses _curses_panel already links, and this puts it where CPython looks.
 EXTRA = {
     "bin/darling": "//linux/launcher:darling",
     "bin/darlingserver": "//linux/server:darlingserverd",
     "libexec/darling/usr/libexec/darling/mldr": "//darwin/loader:mldr",
     "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7"
     "/lib/python2.7/lib-dynload/_sqlite3.so": "//buck-src/python:py27__sqlite_dylib",
+    "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7"
+    "/lib/python2.7/lib-dynload/_curses.so": "//buck-src/python:py27__curses_dylib",
 }
 
 # install(DIRECTORY) entries whose source is a BUILD output, with the hand-written target

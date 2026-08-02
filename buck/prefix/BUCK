@@ -196,6 +196,7 @@ prefix_tree(
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_csv.so": "//buck-src/python:py27__csv_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_ctypes.so": "//buck-src/python:py27__ctypes_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_ctypes_test.so": "//buck-src/python:py27__ctypes_test_dylib",
+        "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_curses.so": "//buck-src/python:py27__curses_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_curses_panel.so": "//buck-src/python:py27__curses_panel_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_elementtree.so": "//buck-src/python:py27__elementtree_dylib",
         "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/lib-dynload/_functools.so": "//buck-src/python:py27__functools_dylib",

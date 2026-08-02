@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Load every scripting-language extension the prefix ships, inside the buck2-built Darling.
 #
-# This is the widest runtime probe in the tree by artifact count. python's 54 lib-dynload
+# This is the widest runtime probe in the tree by artifact count. python's 56 lib-dynload
 # extensions, zsh's 35 loadable modules and perl's XS modules are each a separate Mach-O
 # that buck2 built, linked and installed -- and until this ran, every one of them had been
 # checked only for "does it link". Loading a module executes its initializer, resolves its
@@ -81,9 +81,12 @@ out=$(run_guest /usr/bin/python2.7 -c "$py" || true)
 printf '%s\n' "$out" | grep -E "^PY_(RESULT|FAIL)" || true
 py_ok=$(printf '%s\n' "$out" | sed -n 's|^PY_RESULT \([0-9]*\)/.*|\1|p')
 py_tot=$(printf '%s\n' "$out" | sed -n 's|^PY_RESULT [0-9]*/\([0-9]*\)|\1|p')
-[ "${py_ok:-0}" -ge 51 ] &&
-	say "ok   python imported ${py_ok}/${py_tot} extension modules (floor 51)" ||
-	{ say "FAIL python imported ${py_ok:-0}/${py_tot:-?} extension modules, floor is 51"; fail=1; }
+# 55 of 56, and the one that fails is the reference's own _sqlite.so, whose init symbol is
+# init_sqlite3 rather than init_sqlite -- left in place deliberately so nothing the reference
+# ships disappears, with the working copy installed alongside as _sqlite3.so.
+[ "${py_ok:-0}" -ge 55 ] &&
+	say "ok   python imported ${py_ok}/${py_tot} extension modules (floor 55)" ||
+	{ say "FAIL python imported ${py_ok:-0}/${py_tot:-?} extension modules, floor is 55"; fail=1; }
 
 say "== python: sqlite3 actually works =="
 # Not just importable: the reference installs this module under a name CPython cannot
