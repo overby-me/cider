@@ -70,15 +70,23 @@ kill_daemons() {
 declare -a names=() codes=()
 fail=0
 for c in "${CHECKS[@]}"; do
-	s="scripts/$c.sh"
+	# .nu first, .sh second: the checks are being converted to nushell one at a time
+	# (task #40), so both kinds coexist and this resolves whichever is present. A .nu is
+	# executed directly through its shebang; a .sh still goes through bash explicitly.
+	s="scripts/$c.nu"
+	runner=""
+	if [ ! -x "$s" ]; then
+		s="scripts/$c.sh"
+		runner="bash"
+	fi
 	[ -x "$s" ] || {
-		say "no such check: $s"
+		say "no such check: scripts/$c.{nu,sh}"
 		exit 2
 	}
 	say ""
 	say "######## $c ########"
 	kill_daemons
-	bash "$s"
+	if [ -n "$runner" ]; then "$runner" "$s"; else "$s"; fi
 	rc=$?
 	names+=("$c")
 	codes+=("$rc")
