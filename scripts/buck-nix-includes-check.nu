@@ -5,7 +5,7 @@
 # Nix build, and each time it was reproducible on the host in seconds once the condition was
 # named. The condition is a divergence between two lists:
 #
-#   the HOST gets its host include dirs from scripts/buck-setup.sh, which asks pkg-config
+#   the HOST gets its host include dirs from scripts/buck-setup.nu, which asks pkg-config
 #   for 23 packages and then SWEEPS the dev shell's own -isystem directories to catch
 #   giflib, which ships no .pc file. That sweep is generous: 51 directories, including ones
 #   nobody named, and linux-headers rode in on it unnoticed for the whole campaign.

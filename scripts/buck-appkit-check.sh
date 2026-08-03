@@ -93,7 +93,7 @@ done
 # inventing a second list.
 elf_dirs=$(sed -n 's/^elf_lib_dirs *= *//p' .buckconfig.local)
 [ -n "$elf_dirs" ] || {
-	say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.sh"
+	say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
 	exit 2
 }
 

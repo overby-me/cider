@@ -79,7 +79,7 @@ PY
 # through elfcalls, and a stub whose .so cannot be found is the whole failure mode here.
 elf_dirs=$(sed -n 's/^elf_lib_dirs *= *//p' .buckconfig.local)
 [ -n "$elf_dirs" ] || {
-	say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.sh"
+	say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
 	exit 2
 }
 
