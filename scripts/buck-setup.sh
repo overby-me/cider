@@ -82,7 +82,23 @@ echo "host ELF lib dirs: $(printf '%s' "$elf_lib_dirs" | tr ':' '\n' | wc -l) en
 # subdirectory (include/dbus-1.0) and splits dbus-arch-deps.h into a different output
 # entirely. Only pkg-config knows both dirs, which is exactly why the reference cmake asks
 # it too. Same shape as elf_lib_dirs: absolute store paths, stable because the store is.
-host_pkgs="dbus-1"
+# EVERY host library the reference gives a compile an absolute -I for, not just dbus. The
+# reference build.ninja names 25 such include dirs across 23 packages, and the port dropped
+# all of them: on the host that went unnoticed because darwin_cc defaults to the bare name
+# "clang" (buck/toolchains/BUCK), which inside the dev shell is the WRAPPED clang and injects
+# the same directories through NIX_CFLAGS_COMPILE. So the port has been compiling AppKit,
+# Onyx2D, CoreGraphics, the CoreAudio cone and the X11 backends against headers nothing in
+# the build graph asked for, and it only showed up where that wrapper is deliberately not
+# used: the Nix graph derivation pins clang-unwrapped and unsets NIX_CFLAGS, where iokitd
+# stops at "X11/Xlib.h file not found".
+#
+# pkg-config rather than the -isystem list, because several of these are VERSIONED
+# subdirectories that only pkg-config knows: freetype2 is include/freetype2, cairo is
+# include/cairo, dbus splits over two outputs. The ones with no .pc file at all (giflib) are
+# picked up from the dev shell's own -isystem directories below.
+host_pkgs="dbus-1 x11 xext xrandr xcursor xkbfile xrender xdmcp xproto freetype2
+fontconfig cairo gl glu libavcodec libavformat libavutil libswresample libpulse zlib
+libpng libtiff-4 fuse"
 host_include_dirs=""
 host_include_missing=""
 for _p in $host_pkgs; do
@@ -94,6 +110,14 @@ for _p in $host_pkgs; do
 	for _d in $_inc; do
 		case ":$host_include_dirs:" in *":$_d:"*) ;; *) host_include_dirs="${host_include_dirs:+$host_include_dirs:}$_d" ;; esac
 	done
+done
+# The stragglers. giflib ships no .pc file at all, so pkg-config cannot find it and the
+# only authoritative statement of where its header is, is the dev shell's own -isystem
+# list -- the same list the wrapped clang has been quietly injecting all along. Added
+# AFTER the pkg-config dirs so a versioned subdirectory still wins the include order.
+for _d in $(printf '%s\n' ${NIX_CFLAGS_COMPILE:-} | awk '$0=="-isystem"{getline; print}' | sort -u); do
+	[ -d "$_d" ] || continue
+	case ":$host_include_dirs:" in *":$_d:"*) ;; *) host_include_dirs="${host_include_dirs:+$host_include_dirs:}$_d" ;; esac
 done
 echo "host include dirs: $(printf '%s' "$host_include_dirs" | tr ':' '\n' | grep -c .) entries"
 [ -n "$host_include_missing" ] && echo "WARNING: pkg-config knows nothing about:$host_include_missing" >&2

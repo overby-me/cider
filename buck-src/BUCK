@@ -39095,6 +39095,7 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//src/startup:mldr_elfcalls",
+        "//src/native:host_headers",
     ],
     gen_srcs = [
         "//buck-src:fuse_wrap",
@@ -48733,6 +48734,7 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src:sdk_libxml2",
+        "//src/native:host_headers",
         "//src/startup:mldr_elfcalls",
     ],
     visibility = ["PUBLIC"],
@@ -56600,6 +56602,7 @@ cc_objects(
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":Onyx2D_inc_cocotron",
@@ -56755,6 +56758,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":CoreGraphics_inc_cocotron",
@@ -56817,6 +56821,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":CoreGraphics_inc_cocotron",
@@ -56913,6 +56918,7 @@ cc_objects(
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_OpenGL",
+        "//src/native:host_headers",
         ":CoreText_inc_cocotron_CoreText",
     ],
     visibility = ["PUBLIC"],
@@ -57655,6 +57661,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":AppKit_inc_cocotron",
@@ -57775,6 +57782,7 @@ cc_objects(
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_HIToolbox",
         "//darwin/frameworks:fw_OpenGL",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":X11_cgbackend_inc_cocotron",
@@ -57965,6 +57973,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
+        "//src/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":X11_backend_inc_cocotron",
@@ -62990,6 +62999,7 @@ cc_objects(
         "//buck-src:iokitd_mig_powermanagement",
         "//darwin/frameworks:fw_CoreVideo",
         "//darwin/frameworks:fw_IOSurface",
+        "//src/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -63019,6 +63029,7 @@ cc_objects(
         "//buck-src:iokitd_mig_powermanagement",
         "//darwin/frameworks:fw_CoreVideo",
         "//darwin/frameworks:fw_IOSurface",
+        "//src/native:host_headers",
     ],
     gen_srcs = [
         "//buck-src:iokitd_mig_iokitmig",
@@ -63157,3 +63168,8 @@ darwin_dylib(
     visibility = ["PUBLIC"],
 )
 # END generated: DBusKit dylibs
+
+
+
+
+

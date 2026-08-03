@@ -12302,6 +12302,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
+        "//src/native:host_headers",
         ":ruby_zlib_inc_ruby_gen",
         ":ruby_zlib_inc_ruby_ruby",
     ],

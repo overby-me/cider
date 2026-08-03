@@ -49,13 +49,29 @@
   di = pkgs.callPackage ../darlingBuildInputs.nix {};
   elfLibDirs = lib.concatStringsSep ":" (map (p: "${lib.getLib p}/lib") di.wrappedLibs);
 
-  # DBusKit compiles against dbus's REAL headers instead of a wrapgen stub, and dbus splits
-  # them over two outputs with a versioned subdirectory, which is why the daemon path asks
-  # pkg-config for both rather than guessing one.
-  hostIncludeDirs = lib.concatStringsSep ":" [
-    "${lib.getDev pkgs.dbus}/include/dbus-1.0"
-    "${lib.getLib pkgs.dbus}/lib/dbus-1.0/include"
-  ];
+  # Every host library the reference gives a compile an absolute -I for. The reference
+  # build.ninja names 25 such directories across 23 packages, for AppKit, Onyx2D,
+  # CoreGraphics, CoreText, iokitd, hdiutil, the X11 backends and the CoreAudio cone.
+  #
+  # wrappedLibs is the ELF set; these four are include-only and appear in no wrap_elf:
+  # xorgproto is where X11/X.h lives, libXrender and libXdmcp arrive through libX11's own
+  # headers, and zlib through ruby's zlib module.
+  hostIncludeLibs =
+    di.wrappedLibs
+    ++ [pkgs.xorg.xorgproto pkgs.xorg.libXrender pkgs.xorg.libXdmcp pkgs.zlib];
+
+  # The VERSIONED subdirectories, which a plain include dir does not reach: freetype2 and
+  # cairo put their headers one level down, and dbus splits over two outputs. These are
+  # exactly the cases scripts/buck-setup.sh needs pkg-config for on the daemon path.
+  hostIncludeDirs = lib.concatStringsSep ":" (
+    [
+      "${lib.getDev pkgs.dbus}/include/dbus-1.0"
+      "${lib.getLib pkgs.dbus}/lib/dbus-1.0/include"
+      "${lib.getDev pkgs.freetype}/include/freetype2"
+      "${lib.getDev pkgs.cairo}/include/cairo"
+    ]
+    ++ map (p: "${lib.getDev p}/include") hostIncludeLibs
+  );
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins

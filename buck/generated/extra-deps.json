@@ -857,7 +857,8 @@
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_Foundation",
     "//darwin/frameworks:fw_CarbonCore",
-    "//darwin/frameworks:fw_CoreServices"
+    "//darwin/frameworks:fw_CoreServices",
+    "//src/native:host_headers"
   ],
   "ioalloccount": [
     "//buck-src:fw_CoreFoundation"
@@ -1358,7 +1359,8 @@
     "//buck-src:sdk_libxml2"
   ],
   "hdiutil": [
-    "//buck-src:sdk_libxml2"
+    "//buck-src:sdk_libxml2",
+    "//src/native:host_headers"
   ],
   "installer": [
     "//buck-src:fw_CFNetwork",
@@ -1479,7 +1481,8 @@
   ],
   "fuse": [
     "gen://buck-src:fuse_wrap",
-    "//src/startup:mldr_elfcalls"
+    "//src/startup:mldr_elfcalls",
+    "//src/native:host_headers"
   ],
   "AGL": [
     "//buck-src:fw_CoreFoundation",
@@ -2299,7 +2302,8 @@
   "OpenGL": [
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
-    "//darwin/frameworks:fw_OpenGL"
+    "//darwin/frameworks:fw_OpenGL",
+    "//src/native:host_headers"
   ],
   "OpenScripting": [
     "//buck-src:fw_CFNetwork",
@@ -4083,7 +4087,8 @@
     "//buck-src:fw_Security",
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
-    "//darwin/frameworks:fw_CoreServices"
+    "//darwin/frameworks:fw_CoreServices",
+    "//src/native:host_headers"
   ],
   "CoreGraphics": [
     "//buck-src:fw_AppKit",
@@ -4110,7 +4115,8 @@
     "//darwin/frameworks:fw_PrintCore",
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
-    "//darwin/frameworks:fw_SpeechSynthesis"
+    "//darwin/frameworks:fw_SpeechSynthesis",
+    "//src/native:host_headers"
   ],
   "CoreText": [
     "//buck-src:fw_CFNetwork",
@@ -4124,7 +4130,8 @@
     "//darwin/frameworks:fw_ATS",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//darwin/frameworks:fw_OpenGL"
+    "//darwin/frameworks:fw_OpenGL",
+    "//src/native:host_headers"
   ],
   "QuartzCore": [
     "//buck-src:fw_AppKit",
@@ -4180,7 +4187,8 @@
     "//darwin/frameworks:fw_PrintCore",
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
-    "//darwin/frameworks:fw_SpeechSynthesis"
+    "//darwin/frameworks:fw_SpeechSynthesis",
+    "//src/native:host_headers"
   ],
   "X11_cgbackend": [
     "//buck-src:fw_CFNetwork",
@@ -4192,7 +4200,8 @@
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
     "//darwin/frameworks:fw_HIToolbox",
-    "//darwin/frameworks:fw_OpenGL"
+    "//darwin/frameworks:fw_OpenGL",
+    "//src/native:host_headers"
   ],
   "X11_backend": [
     "//buck-src:fw_AppKit",
@@ -4221,7 +4230,8 @@
     "//darwin/frameworks:fw_PrintCore",
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
-    "//darwin/frameworks:fw_SpeechSynthesis"
+    "//darwin/frameworks:fw_SpeechSynthesis",
+    "//src/native:host_headers"
   ],
   "Accessibility": [
     "//buck-src:fw_CFNetwork",
@@ -4270,7 +4280,8 @@
     "//darwin/frameworks:fw_CoreVideo",
     "//darwin/frameworks:fw_IOSurface",
     "gen://buck-src:iokitd_mig_iokitmig",
-    "gen://buck-src:iokitd_mig_powermanagement"
+    "gen://buck-src:iokitd_mig_powermanagement",
+    "//src/native:host_headers"
   ],
   "pbcopy": [
     "//buck-src:fw_AppKit",
@@ -4353,7 +4364,8 @@
   "AudioToolbox": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
-    "//darwin/frameworks:fw_CoreServices"
+    "//darwin/frameworks:fw_CoreServices",
+    "//src/native:host_headers"
   ],
   "Metal": [
     "//buck-src:fw_CFNetwork",
@@ -4395,7 +4407,8 @@
   "CoreAudio": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "CoreAudioComponent": [
     "//buck-src:fw_CoreFoundation",
@@ -4407,7 +4420,8 @@
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "AFAVFormatComponent": [
     "//buck-src:fw_CoreFoundation",
@@ -4419,7 +4433,8 @@
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "AudioFileTools_util": [
     "//buck-src:fw_CoreFoundation",
@@ -4431,7 +4446,8 @@
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "afconvert": [
     "//buck-src:fw_CoreFoundation",
@@ -4442,14 +4458,16 @@
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "afinfo": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
     "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "afplay": [
     "//buck-src:fw_CoreFoundation",
@@ -4457,7 +4475,8 @@
     "//darwin/frameworks:fw_CoreServices",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "afrecord": [
     "//buck-src:fw_CoreFoundation",
@@ -4469,7 +4488,8 @@
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio"
+    "//src/CoreAudio:fw_CoreAudio",
+    "//src/native:host_headers"
   ],
   "bind9_isccc": [
     "//buck-src:sdk_libxml2"
@@ -4618,5 +4638,11 @@
   "perl5.18_Storable_Storable": [
     "cflag:-DVERSION=\"2.41\"",
     "cflag:-DXS_VERSION=\"2.41\""
+  ],
+  "AudioUnit": [
+    "//src/native:host_headers"
+  ],
+  "ruby_zlib": [
+    "//src/native:host_headers"
   ]
 }

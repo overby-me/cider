@@ -2133,6 +2133,7 @@ cc_objects(
         "//buck-src:fw_Foundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
+        "//src/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10093,6 +10094,7 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//buck-src:fw_CoreGraphics",
         "//darwin/frameworks:fw_OpenGL",
+        "//src/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
