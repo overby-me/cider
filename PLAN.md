@@ -845,6 +845,15 @@ has been true six times running, each time a check freshly written.
   that are 123,343 distinct strings, and the staged link targets are 3,581,461 that are
   127,493. Interning them and dropping `indent=2` is a dumper-only change and was measured
   by building the variants: 1.62 GB to 0.96 GB, 11.0s to 6.4s, 3.73 GB to 2.37 GB (#49).
+  WHY it is redundant, which beats interning it: `target_sources` answers "what may this
+  target read" by EXPANDING shared things per target. `srcs |= under(d)` walks every file
+  under every `-I`, `-isystem`, `-F` and `-iquote` root, and `srcs |= tree_srcs[o]` adds
+  every project file a consumed staged tree points at. Both are shared, so 4,039 paths land
+  in over half the 3,225 targets and make up 65.6 percent of all 10,512,996 entries, while
+  33,624 paths appear in exactly one. The expansion adds BYTES, NOT INFORMATION: `under(d)`
+  takes the whole directory unfiltered, so naming the root is exactly as precise, and
+  `tree_srcs[o]` is recomputable from `stagedTrees[o]`, which the same file already holds.
+  Record the roots (#51). Depfiles would be the precise answer and are what #44 wants.
   The lowering half is #47. Do #50 FIRST: graph.json and staged/ share one store path, so
   a dump-format change moves what every lowered derivation references and none of this can
   be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
