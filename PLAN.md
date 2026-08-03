@@ -845,21 +845,20 @@ has been true six times running, each time a check freshly written.
   that are 123,343 distinct strings, and the staged link targets are 3,581,461 that are
   127,493. Interning them and dropping `indent=2` is a dumper-only change and was measured
   by building the variants: 1.62 GB to 0.96 GB, 11.0s to 6.4s, 3.73 GB to 2.37 GB (#49).
-  WHY it is redundant, which beats interning it: `target_sources` answers "what may this
-  target read" by EXPANDING shared things per target. `srcs |= under(d)` walks every file
-  under every `-I`, `-isystem`, `-F` and `-iquote` root, and `srcs |= tree_srcs[o]` adds
-  every project file a consumed staged tree points at. Both are shared, so 4,039 paths land
-  in over half the 3,225 targets and make up 65.6 percent of all 10,512,996 entries, while
-  33,624 paths appear in exactly one. The expansion adds BYTES, NOT INFORMATION: `under(d)`
-  takes the whole directory unfiltered, so naming the root is exactly as precise, and
-  `tree_srcs[o]` is recomputable from `stagedTrees[o]`, which the same file already holds.
-  Record the roots (#51). It comes from NEITHER ninja nor buck2: buck/bxl/probe.bxl records
-  that an ActionQueryNode here exposes only action, analysis, attrs and rule_type, and
-  `.action` is opaque, so the dump cannot ask buck2 what an action reads and reconstructs it
-  from the command line instead, where a compile names header SEARCH PATHS and not headers.
-  nix-ninja was more precise: it took the closure from depfiles (0dfdcfc). No compile in the
-  port emits one today, measured, zero `-MD`, `-MMD` or `-MF` in the whole graph, so
-  recovering that precision starts in the BUCK compile rule, not in the dumper (#44).
+  WHY it is redundant, which beats interning it: `target_sources` FLATTENS shared things
+  that the graph already records, once per consumer. The two branches are NOT equal, and
+  measuring which is which changed the fix. The `-I`, `-isystem`, `-F` and `-iquote` walk
+  fires 46 times over 3 directories, because 96.4 percent of the 1,251,596 include roots
+  already point into buck-out. The port therefore HAS the precision buck2 normally gives:
+  a declared, materialized header farm per target. The 85x is entirely `srcs |=
+  tree_srcs[o]`, which expands every project file a consumed farm points at, per consumer,
+  and that set is recomputable from `stagedTrees[o]` in the same file. So it is stored
+  twice: 4,039 paths land in over half the 3,225 targets and are 65.6 percent of all
+  10,512,996 entries. Record WHICH FARMS a target consumes, not their contents (#51).
+  Depfiles are not needed for this and would be a ninja-shaped answer to a buck2 question;
+  nix-ninja needed them (0dfdcfc) and the port emits none, measured, zero `-MD`, `-MMD` or
+  `-MF` in the whole graph. The three source-tree roots are rule bugs worth fixing on their
+  own: `src/xtrace/include` (44 uses), `src/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
   The lowering half is #47. Do #50 FIRST: graph.json and staged/ share one store path, so
   a dump-format change moves what every lowered derivation references and none of this can
   be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
