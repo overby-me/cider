@@ -76,9 +76,35 @@ in
                   "mount | grep -E 'overlay|/tmp/dp' 2>&1; echo ---; "
                   "dmesg | tail -15"
               )
+              # THE FD TABLES, which is what actually separates the two readings, and the
+              # reason the earlier "dtype for fd 2 -> /darlingserver.log" line was written up
+              # as a cause and then disproved. On a WORKING host run there are two kinds of
+              # guest, and they differ exactly here:
+              #
+              #   the persistent shellspawn INIT has fd 1/2 on darlingserver.log, by design --
+              #   linux/launcher/src/main.rs redirects the daemon's stdio there so a one-shot
+              #   command does not pin the caller's stdout open forever;
+              #   the guest running the COMMAND has the caller's own fds, passed to it.
+              #
+              # So a log-file fd 2 is normal for the init and damning for a command guest. If
+              # the only mldr here is the init, nothing ever spawned the command and the fd
+              # line was never evidence about it; if a command guest exists holding log fds,
+              # the fd passing is what broke. One dump answers which, and a VM round trip is
+              # minutes, so it is worth taking every time.
+              st_d, fdinfo = machine.execute(
+                  "for p in $(pgrep -x darlingserver; pgrep -x mldr; pgrep -x darling-buck2); do "
+                  "  echo \"== pid $p $(cat /proc/$p/comm 2>/dev/null)"
+                  " syscall=$(awk '{print $1}' /proc/$p/syscall 2>/dev/null)"
+                  " wchan=$(cat /proc/$p/wchan 2>/dev/null)\"; "
+                  "  ls -l /proc/$p/fd 2>/dev/null | awk 'NR>1 && $9 <= 2 {print \"   fd\", $9, $10, $11}'; "
+                  "done; echo '--- how many guests exist at all ---'; "
+                  "echo \"mldr: $(pgrep -x -c mldr 2>/dev/null || echo 0)\"; "
+                  "echo \"darlingserver: $(pgrep -x -c darlingserver 2>/dev/null || echo 0)\""
+              )
               raise Exception(
                   f"status={status}\noutput={out!r}\n"
                   f"--- daemon log ---\n{dslog}\n--- processes ---\n{procs}\n"
+                  f"--- fds, init versus command guest ---\n{fdinfo}\n"
                   f"--- env ---\n{envinfo}"
               )
           # Darwin's bash is 3.2.57; the host's is 5.x, so the version is also the proof
