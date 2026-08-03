@@ -149,6 +149,19 @@ in
           "plan"
           "docs"
           "nix"
+          # The generators and the check suite. buck2 never opens one: the only path
+          # starting with scripts/ in any BUCK file is darlingserver's
+          # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
+          # to src/external/darlingserver/scripts/, not here. The two scripts this
+          # derivation does run, buck2-graph-dump.py and buck-src-normalise.py, arrive as
+          # their own store paths through Nix path interpolation, so editing either still
+          # rebuilds the graph, which is correct because both change its output.
+          #
+          # Without this, adding a check script rebuilds the whole graph derivation, 40
+          # minutes, for a file nothing in the build reads. nix/lib/darlingBuck2Lower.nix
+          # has excluded scripts/ for the same reason since the coarse filter went in; the
+          # graph simply never got the same treatment.
+          "scripts"
           ".git"
           ".jj"
           ".direnv"

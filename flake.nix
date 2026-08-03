@@ -214,6 +214,34 @@
           targets = [ "//src/libsimple:libsimple_darlingserver" ];
         };
 
+      # THE REAL GRAPH, and the reason this is a separate attribute: the one above is a
+      # DEMO over a single target and writes 2 command actions. A green build of it says
+      # nothing about the port, which is a trap worth naming -- it was read as a passing
+      # endpoint once, while the graph the endpoint actually uses was failing.
+      #
+      # This is byte-identical to the graph darling-buck2-prefix builds (same darlingSrc,
+      # same ld64, allPins, same target list), so it is the way to exercise or debug the
+      # graph derivation ALONE. That matters because the two halves cost very differently:
+      # the graph is one derivation of roughly 40 minutes, the lowering that follows it is
+      # hundreds. Every one of tasks #35 to #38 was a graph-stage failure, and each cost a
+      # full prefix build to reach.
+      #
+      #   nix build .#darling-buck2-graph-all -L
+      packages.darling-buck2-graph-all =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+        in
+        import ./nix/lib/darlingBuck2Graph.nix {
+          inherit pkgs darlingSrc ld64;
+          allPins = true;
+          targets = import ./nix/lib/buck2-targets.nix;
+        };
+
       # The same graph, LOWERED: one Nix derivation per buck2 action, from the single
       # IFD of graph.json. This is the endpoint the port is aiming at -- per-action
       # caching a binary cache can serve, with buck2 as the definition authority.
