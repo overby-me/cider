@@ -848,7 +848,7 @@ grep -q "<data>" "$bundle/Contents/Resources/EVRoots.plist" 2>/dev/null &&
 # the checkout never fetched them, so the port installs the pointer under the library's name.
 # Nothing links against them, so no build-time check could see it. Free here because the
 # prefix is already built above.
-if out=$(./scripts/buck-dylib-shape.sh "$prefix/libexec/darling" 2>&1); then
+if out=$(./scripts/buck-dylib-shape.nu "$prefix/libexec/darling" 2>&1); then
 	ok "$(printf '%s' "$out" | tail -1 | sed 's/^ok: //')"
 else
 	bad "a file installed as .dylib is not a library"

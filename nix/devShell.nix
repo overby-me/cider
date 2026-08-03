@@ -21,6 +21,11 @@ in {
     # store symlinks) and fs_hash_crawler re-hashes buck-src on every command.
     buck2
     watchman
+    # The port's scripting is moving from bash to nushell (task #40), so the checks now run
+    # .nu files. DECLARED here rather than inherited: nu happens to be on this machine's PATH
+    # from the user profile, so a missing entry would not fail here and would fail for
+    # everyone else, which is the worst way for a dependency to be wrong.
+    nushell
     pkg-config
     bison
     flex
