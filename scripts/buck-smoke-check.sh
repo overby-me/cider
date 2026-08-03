@@ -3,7 +3,7 @@
 #
 # The smoke test itself runs in a NixOS test VM, and Darling hangs in one (a pre-existing
 # problem, not the port's -- task #12). Its assertions do not need a VM: they need a prefix
-# and a container, which scripts/buck-bash-check.sh already produces. So this drives the
+# and a container, which scripts/buck-bash-check.nu already produces. So this drives the
 # same checks here, and what remains blocked on the VM is the harness rather than the claim.
 #
 # Stages, numbered as they are in tests/darling-smoke.nix:
@@ -18,7 +18,7 @@
 # a warning scan that fails nothing.
 #
 # Usage:  scripts/buck-smoke-check.sh
-# Run scripts/buck-bash-check.sh first -- this drives the root it materializes.
+# Run scripts/buck-bash-check.nu first -- this drives the root it materializes.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -31,7 +31,7 @@ say() { printf '%s\n' "$*" >&2; }
 
 if [ ! -x "$RT/bin/darling" ]; then
 	say "no materialized prefix at $RT"
-	say "run scripts/buck-bash-check.sh first -- it builds //buck/prefix:darling_prefix and"
+	say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
 	say "copies it there, which is what this check then drives."
 	exit 2
 fi

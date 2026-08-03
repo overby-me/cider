@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Boot the buck2-built Darling through LAUNCHD and run a command inside it.
 #
-# The sibling check (buck-bash-check.sh) sets DARLING_NO_LAUNCHD=1, which runs the command
+# The sibling check (buck-bash-check.nu) sets DARLING_NO_LAUNCHD=1, which runs the command
 # directly and skips init entirely. This one takes the real path: launchd comes up as guest
 # pid 1, `launchctl bootstrap -S System` loads the system jobs, those jobs start, and only
 # then does the requested command run via shellspawn. It exercises the whole Mach IPC core --
@@ -60,7 +60,7 @@ rm -rf "$rt" "$prefix" "$prefix.workdir"
 # lines of daemon log). The no-launchd check gets away with it because running one command
 # directly needs almost none of what that setup lays down.
 mkdir -p "$rt"
-# `cp -a`, never `cp -aL`: see buck-bash-check.sh.
+# `cp -a`, never `cp -aL`: see buck-bash-check.nu.
 cp -a "$art"/. "$rt"/
 chmod -R u+w "$rt"
 

@@ -2,7 +2,7 @@
 # Guest Nix, running inside the BUCK2-BUILT Darling, builds GNU bash from source and runs it.
 #
 # This is the goal the port was aiming at, and it is a strictly bigger claim than
-# scripts/buck-bash-check.sh: that one boots the container and runs the bash the port itself
+# scripts/buck-bash-check.nu: that one boots the container and runs the bash the port itself
 # built, while this one runs a Darwin toolchain under the port well enough to COMPILE a package
 # and execute the result.
 #
@@ -34,13 +34,13 @@ def main [attr?: string, bin?: string] {
 
     if not ($"($rt)/bin/darling" | path exists) {
         say $"no materialized prefix at ($rt)"
-        say "run scripts/buck-bash-check.sh first -- it builds //buck/prefix:darling_prefix and"
+        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
         say "copies it there, which is what this check then drives."
         exit 2
     }
 
     # The two paths the daemon reads from the environment. The cmake build bakes them in; a
-    # relocatable prefix cannot, so they are passed here (same as scripts/buck-bash-check.sh).
+    # relocatable prefix cannot, so they are passed here (same as scripts/buck-bash-check.nu).
     $env.DSERVER_LIBEXEC_PATH = $"($rt)/libexec/darling"
     $env.DSERVER_MLDR_PATH = $"($rt)/libexec/darling/usr/libexec/darling/mldr"
 

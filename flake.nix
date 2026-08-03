@@ -346,7 +346,7 @@
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all-graph
       # The PREFIX, lowered: a Darling install built entirely through the Nix endpoint,
       # one derivation per buck2 target. This is the bash milestone on the Nix side --
-      # the same tree scripts/buck-bash-check.sh boots, but assembled from store paths.
+      # the same tree scripts/buck-bash-check.nu boots, but assembled from store paths.
       #
       #   nix build .#darling-buck2-prefix
       packages.darling-buck2-prefix =

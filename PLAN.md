@@ -740,7 +740,7 @@ has been true six times running, each time a check freshly written.
   (`ssh -o BatchMode=yes git@tangled.org` shows an IPv6 connect timeout). Retry.
 - **Rebuild costs**: touching buck/generated/sdk_headers.bzl or the ksmig mig_flags rebuilds
   essentially everything, roughly 14,000 actions, about 20 minutes.
-- **Known flakes**, re-run before believing a failure: buck-bash-check.sh fails roughly 1 in
+- **Known flakes**, re-run before believing a failure: buck-bash-check.nu fails roughly 1 in
   5 with a core dump (shared SIGFPE); buck-smoke-check.sh failed once at 11/31 then passed
   3/3.
 - **All three runtime checks failing together is usually the MACHINE, not the tree**, and it

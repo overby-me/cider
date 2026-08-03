@@ -8,7 +8,7 @@
 #
 # This asserts what IS ported, in the same harness: the container comes up and /bin/bash
 # runs inside it. Bash builtins only, since there is no userland at this scope. It is the
-# VM-side twin of scripts/buck-bash-check.sh.
+# VM-side twin of scripts/buck-bash-check.nu.
 #
 # Usage:
 #   nix build .#checks.x86_64-linux.darling-buck2-smoke -L
