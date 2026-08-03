@@ -838,6 +838,17 @@ has been true six times running, each time a check freshly written.
   the dump writes it with `indent=2` and `sort_keys=True`: `grep -bn '^  "[a-zA-Z]*":'`
   gives every top-level key with its byte and line offset, and the counts are then line
   arithmetic (`^    "` is an entry, `^      "` is a link).
+- **The 58 seconds and the 9 GB are not inherent. Both halves are measured.** Evaluating
+  the prefix drvPath splits into a PARSE (11.0s CPU, 3.73 GB heap, just
+  `fromJSON` of graph.json) and the LOWERING on top of it (48s, 5.3 GB). The parse is
+  large because graph.json is 85 times redundant: `targetSources` is 10,512,996 entries
+  that are 123,343 distinct strings, and the staged link targets are 3,581,461 that are
+  127,493. Interning them and dropping `indent=2` is a dumper-only change and was measured
+  by building the variants: 1.62 GB to 0.96 GB, 11.0s to 6.4s, 3.73 GB to 2.37 GB (#49).
+  The lowering half is #47. Do #50 FIRST: graph.json and staged/ share one store path, so
+  a dump-format change moves what every lowered derivation references and none of this can
+  be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
+  already enabled here.
 - **The endpoint build OOMs on a 30 GB machine, and eval is why.** `nix eval` of the prefix
   drvPath alone holds a 9.0 GB heap and allocates 20.6 GB, and for an IFD endpoint that
   evaluator stays resident for the WHOLE build, not just the eval. With `max-jobs = 22` on
