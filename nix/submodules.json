@@ -105,7 +105,7 @@
   {"path": "src/external/dbuskit", "owner": "darlinghq", "repo": "darling-dbuskit", "rev": "890e51fda949e4dd2c46765e39074f790c10ca18", "recursive": false, "hash": "sha256-WrsFp17v54VPGLN6rX8MXR8QUD3mZtO+ctzlrB3Q4Fo="},
   {"path": "src/external/IOKitTools", "owner": "darlinghq", "repo": "darling-IOKitTools", "rev": "df58be2f134f7adbdd3c760a165ad3501ee82fb5", "recursive": false, "hash": "sha256-N2VdDeQOIySJ21PwdrzVOiuOnZvil2SsGzQ4tzP4ClQ="},
   {"path": "src/external/fmdb", "owner": "darlinghq", "repo": "fmdb", "rev": "ad2fdd660d02c24b262d64d7d23d3d4645768f44", "recursive": false, "hash": "sha256-ZRIqn38maSAjOlUc5+hGuKyR6vjovl8V8wvAV3xVXT4="},
-  {"path": "src/external/swift", "owner": "darlinghq", "repo": "darling-swift", "rev": "471514f4b4985a604b192e1facac9bbc53dedad3", "recursive": false, "hash": "sha256-yIGNcGPRcDFeCvq+qNc1ZHUr/0oXtJs1JAur6W+5Pr4="},
+  {"path": "src/external/swift", "owner": "darlinghq", "repo": "darling-swift", "rev": "471514f4b4985a604b192e1facac9bbc53dedad3", "recursive": false, "lfs": true, "hash": "sha256-81liKDVr9nZ4tY70SCVXQ2Xga749fyOI+HgAceOa8ik="},
   {"path": "src/external/glut", "owner": "darlinghq", "repo": "darling-glut", "rev": "b53a2d8f0c6dc0c2052aef410a120d14ee553056", "recursive": false, "hash": "sha256-PrpkDiz+uk+WqLglHwFMlbd+nQV3R9FIN/7NWP2O3Ag="},
   {"path": "src/external/energytrace", "owner": "darlinghq", "repo": "darling-energytrace", "rev": "e277fcfd430ddab2d8b52187cf480f2857629104", "recursive": false, "hash": "sha256-7LHMu51phMgIPxY7QHKiz/I9GM+48Lf0n8LTNHq4TvY="},
   {"path": "src/external/nghttp2", "owner": "darlinghq", "repo": "darling-nghttp2", "rev": "1a1853837b4350d4393bd25e1e4cb6018ab2d918", "recursive": true, "hash": "sha256-yiOJSwHvc4JmargrkgrkdWM74dGiRKv2iDk75ntNbgI="},
