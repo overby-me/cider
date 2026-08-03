@@ -92,6 +92,13 @@ an `-f` pattern matches the command line of the shell running it.
 **Host ELF libraries must be on `LD_LIBRARY_PATH` for the LOADER**, not just for wrapgen.
 Without it, loading AppKit kills the process before `main` with no output at all.
 
+**An exclusion list is load-bearing, and a rename can empty it.** The lowering stages `src/`
+and `src/external/` as REAL directories so the pins can be planted in them, so the loop that
+symlinks every other top-level entry into the store must skip `src`. That exclusion was
+rewritten to a Nix BINDING name, which matches no directory, and all 1798 lowered targets then
+failed with "Permission denied" 90 minutes into a build.
+`scripts/buck-lowering-stage-check.nu` reads the generated staging script in seconds instead.
+
 ### The meta-lesson: re-test a recorded diagnosis before acting on it
 
 **Eight** recorded diagnoses in this file turned out to be untested guesses, and most
