@@ -1,6 +1,6 @@
 # The targets the Nix endpoint dumps a graph for, kept in one place because both the
 # graph attribute and the lowered one need the same list. It is the suite's list
-# (scripts/buck-test.sh): the set already known to build, spanning host tier, guest
+# (scripts/buck-test.nu): the set already known to build, spanning host tier, guest
 # tier, MIG codegen and the firstpass/final link pair.
 [
   "//src/libsimple:libsimple_darlingserver"

@@ -12,7 +12,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
 buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape
-scripts/buck-test.sh         # regression test for everything ported so far
+scripts/buck-test.nu         # regression test for everything ported so far
 ```
 
 `scripts/buck-setup.nu --all` materializes ALL 147 pinned trees (~3.8 GB), which

@@ -26,7 +26,7 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 ## Buck2 port: where it stands
 
 Every in-scope link edge of the reference graph is ported and builds: **1452 of 1452**,
-install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-test.sh`
+install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-test.nu`
 144 of 144, and every runtime check at 0 or a documented 3.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
@@ -716,7 +716,7 @@ has been true six times running, each time a check freshly written.
   clang wrapper's binutils nm, which answers "file format not recognized" and, with stderr
   discarded, yields an empty symbol list indistinguishable from a library missing
   everything.
-- **Never `cmd | grep -q` in buck-test.sh.** grep -q exits on the first match, the writer
+- **Never `cmd | grep -q` in buck-test.nu.** grep -q exits on the first match, the writer
   takes SIGPIPE, and under `set -o pipefail` the pipeline reports FAILURE on a match.
   Capture into a variable and match with `case`.
 - **file(1) strings**: `Mach-O 64-bit x86_64 dynamically linked shared library` and

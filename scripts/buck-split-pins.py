@@ -353,7 +353,7 @@ def repoint(names: dict[str, str]) -> int:
     for dirpath, dirnames, filenames in os.walk(REPO):
         dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS]
         for fn in filenames:
-            if fn not in ("BUCK", "extra-deps.json", "buck-test.sh"):
+            if fn not in ("BUCK", "extra-deps.json", "buck-test.nu"):
                 continue
             f = os.path.join(dirpath, fn)
             t = orig = open(f).read()

@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Run every runtime check, in the one way that actually works.
 #
-# There are ten of these now and buck-test.sh runs none of them: it is almost entirely
+# There are ten of these now and buck-test.nu runs none of them: it is almost entirely
 # static, asking whether an artifact links and exports the right symbols. The checks here
 # are the ones that RUN things, and they are what found an empty AppKit, a null
 # ec_thread_get_stack, a missing 0x prefix and a python module installed under a name

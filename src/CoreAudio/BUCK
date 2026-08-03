@@ -20,7 +20,7 @@ _AUDIO = [
 
 # What this package produces, for the registry in scripts/gen-buck-from-ninja.py: it is a
 # text scan for a literal name/dylib_name pair and the comprehensions below write neither.
-# Same reason src/native carries these; buck-test.sh fails if the list and _AUDIO disagree.
+# Same reason src/native carries these; buck-test.nu fails if the list and _AUDIO disagree.
 #
 # buck-registry: libswresample.dylib = swresample_dylib
 # buck-registry: libavcodec.dylib = avcodec_dylib

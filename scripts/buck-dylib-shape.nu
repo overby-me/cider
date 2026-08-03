@@ -36,7 +36,7 @@ def main [root?: string] {
     # ABSOLUTE, because glob returns absolute paths whatever it is given, so stripping a
     # RELATIVE root off them matches nothing and every path stays absolute -- which then
     # fails the "is it under usr/lib/swift" test and reports 44 good files as misplaced.
-    # buck-test.sh passes a relative prefix, so this is the shape that matters, and an
+    # buck-test.nu passes a relative prefix, so this is the shape that matters, and an
     # equivalence test run only with an absolute path will not see it.
     let base = ($root | path expand)
 

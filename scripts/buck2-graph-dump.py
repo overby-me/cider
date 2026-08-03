@@ -14,7 +14,7 @@ everything (plan/buck2-port.md phase 3, and buck/bxl/probe.bxl for what was trie
     comma-space, and configure_file now passes its values in a file, so nothing in the tree
     carries it: 1 BUCK literal contains it and it is the safe one, and 0 of the reference's
     79,139 flag lines do. scripts/buck-argv-roundtrip-check.py holds both halves of that,
-    statically in buck-test.sh and against what-ran on demand. See unjoin below.
+    statically in buck-test.nu and against what-ran on demand. See unjoin below.
   * `log what-ran --format json` -- the same commands, but only for actions that actually
     RAN. Kept as the checker, not as the source: using it as the source is what forced the
     graph derivation to compile everything before it could learn anything.

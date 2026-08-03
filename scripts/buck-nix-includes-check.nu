@@ -21,7 +21,7 @@
 # rather than the dev shell's wrapped clang, whose NIX_CFLAGS_COMPILE is the other half of
 # the same crutch, and ONLY the include dirs the Nix derivation declares.
 #
-# It is deliberately NOT in buck-test.sh: it shells out to nix to read the derivation and
+# It is deliberately NOT in buck-test.nu: it shells out to nix to read the derivation and
 # builds under a non-default buck2 config, which re-analyses. Run it when touching host
 # includes, wrappedLibs, or the graph derivation's config.
 #

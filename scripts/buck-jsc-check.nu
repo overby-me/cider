@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Run jsc inside the buck2-built Darling.
 #
-# The point is RUNTIME evidence. buck-test.sh is almost entirely static -- does it link, does it
+# The point is RUNTIME evidence. buck-test.nu is almost entirely static -- does it link, does it
 # export the right symbols, is the install_name right -- and the JavaScriptCore cone
 # (JavaScriptCore, libWTF.a, libbmalloc.a, libmbmalloc.dylib, jsc) passes all of that while never
 # having executed a single instruction. This is the cheapest probe that exercises the whole cone

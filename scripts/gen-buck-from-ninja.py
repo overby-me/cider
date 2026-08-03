@@ -12,7 +12,7 @@ Get the graph with:
 
 The port targets the STOCK component. `.#darling-graph` is the much smaller `system`
 scope and `.#darling-graph-cli` the intermediate one; both were stepping stones and
-neither is what the thresholds in scripts/buck-test.sh are set against now.
+neither is what the thresholds in scripts/buck-test.nu are set against now.
 
 Usage:
     scripts/gen-buck-from-ninja.py <cmake-target> [...]          # print

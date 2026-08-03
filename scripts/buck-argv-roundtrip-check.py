@@ -34,7 +34,7 @@ Usage:
   scripts/buck-argv-roundtrip-check.py [<target>...]   # default: every configure_file target
   scripts/buck-argv-roundtrip-check.py --static [<dir>]  # no build: scan BUCK files instead
 
---static is the cheap half, and it is what buck-test.sh runs. Every BUCK string literal that
+--static is the cheap half, and it is what buck-test.nu runs. Every BUCK string literal that
 becomes an argv element must not contain the separator. Measured when this went in: exactly
 one literal in the tree contains it, perl's VERSIONS, and configure_file now passes its
 values in a file, so that one is safe by construction and is the only allowance. The

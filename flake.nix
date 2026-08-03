@@ -754,7 +754,7 @@
           darling-build = darling;
 
           # ── The Buck2 Nix endpoint ─────────────────────────────────────
-          # scripts/buck-test.sh gates the buck2 DAEMON path; nothing gated the
+          # scripts/buck-test.nu gates the buck2 DAEMON path; nothing gated the
           # Nix one until this. Deliberately the cheap end of it: libsimple needs
           # no pins, so its graph derivation is a small buck2 build rather than
           # the 4 GB pin materialization a guest target pulls in. It still
