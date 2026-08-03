@@ -41,7 +41,7 @@
 # Example (bootstrap-tools demand list):
 #   let bt = (nix eval --raw "github:NixOS/nixpkgs/<rev>#legacyPackages.x86_64-darwin.stdenv.bootstrapTools.outPath")
 #   nix-store -r $bt
-#   scripts/symbol-demand.nu $bt | save -f plan/symbol-gap.md
+#   scripts/symbol-demand.nu $bt | save -f scratch/symbol-gap.md
 
 # The Mach-O magics, thin and fat, both byte orders. Compared as binary rather than as a hex
 # string: bash needed head -c4 | od | tr, three processes per FILE, to say the same thing.

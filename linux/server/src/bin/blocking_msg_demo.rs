@@ -9,7 +9,7 @@
 //! Because the receiver's stack is discarded when it blocks, its receive buffer lives
 //! on the heap (stable address) and its result comes back through the syscall_return
 //! hook, not a Rust return. The guest task carries the demo's own pid so the message
-//! copies target our own memory. See plan/rust-rewrite-eval.md (bucket A + B.2).
+//! copies target our own memory. See PLAN.md (bucket A + B.2).
 
 use darling::mach;
 use darling::registry::Registry;

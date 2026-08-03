@@ -12,7 +12,7 @@
 #
 # This stub operates on the Darling prefix's /etc/group file, NOT the host's.
 #
-# See: plan/07-phase5-daemon.md (Task 5.1)
+# See: PLAN.md (Task 5.1)
 
 set -eu
 

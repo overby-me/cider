@@ -148,7 +148,7 @@ def level1_echo_to_out [ctx: record] {
         print "    \u{2022} 'Bad file descriptor' / ENOEXEC: sandbox-exec stub issue (Phase 2)"
         print "    \u{2022} 'sandbox profile' write fail: check /tmp is writable inside prefix"
         print "    \u{2022} Builder hangs: posix_spawn with POSIX_SPAWN_SETEXEC broken"
-        print "    \u{2022} 'Unimplemented syscall': check plan/syscall-triage.md"
+        print "    \u{2022} 'Unimplemented syscall': check PLAN.md"
         print ""
         print "  Manual reproduction:"
         print $"    darling shell bash -lc 'nix-build -vvvv --no-out-link --expr \"($expr)\"'"

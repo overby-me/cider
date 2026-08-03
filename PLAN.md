@@ -241,7 +241,7 @@ tracks below.
   in CI, reproducibly from a clean prefix.
 
 ### F — ARM readiness (prep only, do not start the port) [ARCH-PARAM]
-- **F.1** salvage-assess the three `feature/arm-support*` branches → `plan/arm-salvage.md`.
+- **F.1** salvage-assess the three `feature/arm-support*` branches → `PLAN.md`.
 - **F.2** arch-boundary audit (syscall numbers, ucontext layouts, asm, page size). Audit
   host-page-size vs Darwin `vm_page_size`: arm64 userland assumes **16K pages** — plan to
   report 16K from libSystem regardless of host, and prefer `CONFIG_ARM64_16K_PAGES` guests.

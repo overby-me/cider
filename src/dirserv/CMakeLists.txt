@@ -7,7 +7,7 @@ project(dirserv)
 # file operations within the Darling prefix.  They implement only the
 # subset needed by the Nix installer and multi-user Nix daemon setup.
 #
-# See: plan/07-phase5-daemon.md (Task 5.1)
+# See: PLAN.md (Task 5.1)
 
 install(FILES dseditgroup sysadminctl dscl
 	DESTINATION libexec/darling/usr/sbin

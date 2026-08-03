@@ -8,7 +8,7 @@
 #   GDB   host path to the closure DB dump (reached via /Volumes/SystemRoot)
 #   GBIN  (optional) basename of a binary in the output's bin/ to run --version
 # See scripts/gnix-hello.sh for the hello-specific M1 driver and
-# plan/guest-nix-m1.md for the launchd-bypass background.
+# PLAN.md for the launchd-bypass background.
 #
 # STAYS BASH. This runs inside the GUEST, under a darling shell session, where the
 # shell is Darwin bash 3.2.57 and there is no nushell in the prefix. The bash-to-
@@ -44,7 +44,7 @@ echo "=BUILD $GDRV="
 # ^* builds all outputs, so multi-output packages (bin/lib/dev/...) work too.
 # Retry: guest test/build binaries occasionally crash with a transient signal
 # (e.g. SIGFPE in an autoconf mbrtowc/locale probe) -- a darling execution-
-# fidelity flake, not a real build error (see plan/guest-nix-m1.md, task #44).
+# fidelity flake, not a real build error (see PLAN.md, task #44).
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do

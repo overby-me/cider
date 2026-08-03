@@ -28,8 +28,7 @@
 # The script is designed to be run periodically (e.g., in CI) and its JSON
 # output can be compared across runs to detect regressions and progress.
 #
-# See: plan/08-phase6-ci.md (Task 6.5)
-#      plan/09-phase7-remote-builder.md (Task 7.6)
+# See: PLAN.md (Tasks 6.5, 7.6)
 
 set -euo pipefail
 
@@ -397,7 +396,7 @@ Examples:
   # CI mode: JSON only, fail on regressions
   ./tests/nix/compatibility-matrix.sh --json --tier 1,2
 
-See: plan/08-phase6-ci.md (Task 6.5)
+See: PLAN.md (Task 6.5)
 EOF
 }
 

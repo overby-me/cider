@@ -4,7 +4,7 @@
 //! valid Mach port name -- proving the daemon can serve Mach operations, the first
 //! step toward mach_msg. task_self_trap is ALSO driven through the generated
 //! dispatch() so the full RPC path (decode -> handler -> encode) is exercised end to
-//! end. See plan/rust-rewrite-eval.md (bucket A, mach IPC core).
+//! end. See PLAN.md (bucket A, mach IPC core).
 
 use darling::mach;
 use darling::registry::Registry;

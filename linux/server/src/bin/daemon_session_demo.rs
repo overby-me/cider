@@ -5,7 +5,7 @@
 //! microthread bound to the client's task (created once, parked between calls and woken
 //! by the socket loop), which dispatches each through the shared Handler and posts the
 //! reply. This composes checkin/checkout + the doWork loop + real-socket serving +
-//! cross-process memory + the mach engine into one session. See plan/rust-rewrite-eval.md.
+//! cross-process memory + the mach engine into one session. See PLAN.md.
 
 use darling::handler::Handler;
 use darling::mach;

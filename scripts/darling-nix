@@ -25,7 +25,7 @@
 #   DPREFIX           Override the default Darling prefix (~/.darling)
 #   DARLING_NIX_VERBOSE  Set to 1 for debug output
 #
-# See: plan/05-phase3-nix-install.md (Task 3.4)
+# See: PLAN.md (Task 3.4)
 
 set -euo pipefail
 

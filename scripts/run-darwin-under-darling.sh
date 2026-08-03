@@ -10,7 +10,7 @@
 #
 # Each `darling shell` runs in its own fresh container: rootless can create a
 # container but cannot join an existing one from a sibling user namespace (see
-# plan/blockers.md), and a fresh prefix's first boot races the shellspawn
+# PLAN.md), and a fresh prefix's first boot races the shellspawn
 # socket, so we kill any stale darlingserver and retry.
 #
 # Usage:

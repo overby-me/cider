@@ -17,13 +17,13 @@ Usage:
       [--root <libSystem.tbd or dir>] \
       [--darling-root <darling prefix or dir of dylibs>] \
       [--demand <symbol-demand.json>] \
-      [--out plan/symbol-gap.md] [--json out.json]
+      [--out scratch/symbol-gap.md] [--json out.json]
 
 Typical:
   SDK=$(nix eval --raw 'github:NixOS/nixpkgs/<rev>#legacyPackages.x86_64-darwin.apple-sdk.outPath')
   scripts/tbd-diff.py --sdk "$SDK" \
     --darling-root result/libexec/darling/usr/lib \
-    --demand scratch/demand.json --out plan/symbol-gap.md
+    --demand scratch/demand.json --out scratch/symbol-gap.md
 """
 
 import argparse

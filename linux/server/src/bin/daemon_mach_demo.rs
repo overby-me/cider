@@ -5,7 +5,7 @@
 //!
 //! Uses a SEQPACKET socketpair (a genuine connected unix socket, but no filesystem path,
 //! so it works under the nix build sandbox) with the client in a forked child. See
-//! plan/rust-rewrite-eval.md (real-socket serving).
+//! PLAN.md (real-socket serving).
 
 use darling::handler::Handler;
 use darling::registry::Registry;

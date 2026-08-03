@@ -1,7 +1,7 @@
 //! The daemon's reusable RPC handler: the real handler bodies, run on a microthread
 //! bound to the calling guest's task (so `sched::current_task()` and the `mach::*`
 //! traps act on that guest). Starts with the special-port Mach traps; this is where the
-//! remaining ~70 calls get implemented as the daemon grows. See plan/rust-rewrite-eval.md.
+//! remaining ~70 calls get implemented as the daemon grows. See PLAN.md.
 
 use crate::bindings::dtape_semaphore_t;
 use crate::rpc_wire::{self, *};
@@ -610,7 +610,7 @@ impl rpc_wire::RpcHandler for Handler {
         // rcv_name flags a port whose expected message never arrives (a Mach-side livelock) --
         // a lead worth checking when a guest hangs. MACH_RCV_TIMED_OUT == 0x10004003. (Note:
         // the M1 config.status hang is NOT this -- it is a guest bash here-doc pipe deadlock
-        // with the daemon idle; see plan/rust-rewrite-eval.md "M1 status 2026-07-27".)
+        // with the daemon idle; see PLAN.md "M1 status 2026-07-27".)
         if code as u32 == 0x10004003 && std::env::var_os("DSERVER_TRACE_MSG").is_some() {
             eprintln!(
                 "darlingserver: mach_msg RCV TIMED_OUT rcv_name={} option={:#x} timeout={}",

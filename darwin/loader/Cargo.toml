@@ -4,7 +4,7 @@
 # the commpage, checks in with darlingserver, and jumps into dyld's entry point.
 #
 # Uses goblin for the Mach-O parse (the mapping/stack/jump are raw libc + asm). See the
-# milestones M0-M6 in plan/rust-startup-port.md.
+# milestones M0-M6 in PLAN.md.
 [package]
 name = "loader"
 version = "0.0.0"

@@ -7,7 +7,7 @@
 # a Mach IPC wait that never wakes. When a build or test hangs, a plain timeout
 # tells us nothing; this wrapper attaches gdb to every relevant process on
 # timeout and dumps backtraces so the stall can be triaged
-# (see plan/stall-triage.md).
+# (see PLAN.md).
 #
 # Usage:
 #   scripts/with-watchdog.sh [--timeout SECONDS] [--label NAME]

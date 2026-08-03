@@ -5,7 +5,7 @@
 //! process_vm_writev(client_pid, ...) via the write_memory hook -- exactly what the real
 //! daemon does. The client provides its own buffer address; the daemon's task for the
 //! client carries the client's pid, so the copyout lands in the client. See
-//! plan/rust-rewrite-eval.md (handler breadth over the socket).
+//! PLAN.md (handler breadth over the socket).
 
 use darling::handler::Handler;
 use darling::mach;

@@ -61,7 +61,7 @@ let
   # `mach_msg` branch and the darlingserver link fails with undefined `mach_msg`.
   # The duct-tape IS the kernel, so define `_MIG_KERNEL_SPECIFIC_CODE_` explicitly,
   # scoped to just the duct-tape directory (harmless in the monolith, where mig.h
-  # already sets it to the same value). See plan/nix-ninja-componentization.md.
+  # already sets it to the same value). See PLAN.md.
   ductapeMigFixSrc = pkgs.runCommand "darling-src-migkernelfix" { } ''
     # cp -a preserves mode (crucially the +x on scripts the build runs, e.g.
     # generate-rpc-wrappers.py and mig.sh) and symlinks; drop only ownership
@@ -77,7 +77,7 @@ let
     # kernel mach headers to a mig user-stub's per-edge compile, so a stub calls
     # the un-redirected `mach_msg_send_from_kernel` and the link fails undefined.
     # These mirror ipc_mig.h exactly and only apply to the duct-tape, so they are
-    # a no-op in the monolith build. See plan/nix-ninja-componentization.md.
+    # a no-op in the monolith build. See PLAN.md.
     ${pkgs.gnused}/bin/sed -i \
       's/^add_compile_definitions($/&\n\t_MIG_KERNEL_SPECIFIC_CODE_=1\n\tmach_msg_send_from_kernel=mach_msg_send_from_kernel_proper\n\tmach_msg_rpc_from_kernel=mach_msg_rpc_from_kernel_proper\n\tmach_msg_destroy_from_kernel=mach_msg_destroy_from_kernel_proper/' \
       $out/src/external/darlingserver/duct-tape/CMakeLists.txt

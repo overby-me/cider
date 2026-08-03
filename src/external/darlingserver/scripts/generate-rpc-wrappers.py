@@ -1628,7 +1628,7 @@ library_source.close()
 # Optional 5th arg: emit byte-identical Rust structs for the RPC wire messages
 # from the SAME `calls` list (single source of truth). x86_64 layout: Rust
 # #[repr(C)] already 8-aligns u64/i64, matching the C __attribute__((aligned(8))).
-# The C outputs above are untouched. See plan/rust-rewrite-eval.md (Stage 1).
+# The C outputs above are untouched. See PLAN.md (Stage 1).
 if len(sys.argv) > 5:
 	RUST_WIRE_MAP = {
 		'bool': 'bool',

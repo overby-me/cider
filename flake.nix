@@ -78,7 +78,7 @@
         };
 
       # Darling's in-tree ld64 (cctools Mach-O linker) built standalone and cached
-      # -- "Path B" of the cctools de-vendoring (plan/de-vendoring-audit.md). Uses
+      # -- "Path B" of the cctools de-vendoring (PLAN.md). Uses
       # the off-submodules darling-src tree, so no ?submodules=1.
       #   nix build .#darling-ld64
       packages.darling-ld64 =
@@ -423,7 +423,7 @@
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
       # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in
-      # nix/submodules.json instead of git submodules (see plan/off-submodules.md
+      # nix/submodules.json instead of git submodules (see PLAN.md
       # and nix/lib/darling-src.nix). Build WITHOUT ?submodules=1 -- darling-src
       # overlays every pinned submodule onto this flake's own tree and applies
       # patches/<name>/. Partial until every hash is filled
@@ -664,7 +664,7 @@
 
       # ── The darling host-side daemon (Rust) ──────────────────────────
       #
-      # The Rust `server` (plan/rust-rewrite-eval.md), built reproducibly. It consumes
+      # The Rust `server` (PLAN.md), built reproducibly. It consumes
       # the duct-tape + libsimple static libs exported by the standalone `duct-tape`
       # package (built from committed source), bindgens the dtape hooks, and compiles
       # fast_context.c (the P1 switch). Produces the daemon `darlingserverd` + the
@@ -708,7 +708,7 @@
       # Initialise a new project with:
       #   nix flake init -t github:nixie-dev/darling-nix#darling-builder
       #
-      # See: docs/darwin-builder.md, plan/09-phase7-remote-builder.md (Task 7.7)
+      # See: docs/darwin-builder.md, PLAN.md (Task 7.7)
       templates.darling-builder = {
         path = ./templates/darling-builder;
         description = "NixOS configuration with a Darling-based x86_64-darwin remote builder";
@@ -741,8 +741,7 @@
       #   nix build .#checks.x86_64-linux.nix-in-darling -L
       #   nix build .#checks.x86_64-linux.darling-builder -L
       #
-      # See: plan/08-phase6-ci.md (Tasks 6.1, 6.2)
-      #      plan/09-phase7-remote-builder.md (Task 7.5)
+      # See: PLAN.md (Tasks 6.1, 6.2, 7.5)
       checks = pkgs:
         let
           darling = pkgs.darling;
@@ -786,7 +785,7 @@
           # binaries, asserting each prints its OK marker -- the whole daemon
           # pipeline (link + dtape_init, the microthread scheduler, the byte-parity
           # wire codec, the code-generated dispatch, per-guest routing, the epoll
-          # loop) exercised end to end. See plan/rust-rewrite-eval.md.
+          # loop) exercised end to end. See PLAN.md.
           #   nix build '.?submodules=1#checks.x86_64-linux.server' -L
           server =
             pkgs.runCommand "server-check"

@@ -6,7 +6,7 @@
 #
 # Expected: all tests pass (exit 0).
 #
-# See: plan/04-phase2-sandbox.md (Task 2.1)
+# See: PLAN.md (Task 2.1)
 
 set -u
 

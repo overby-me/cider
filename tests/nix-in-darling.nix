@@ -15,7 +15,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.nix-in-darling -L
 #
-# See: plan/08-phase6-ci.md (Task 6.1)
+# See: PLAN.md (Task 6.1)
 { pkgs, darling, ... }:
 
 let

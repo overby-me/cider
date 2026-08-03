@@ -13,7 +13,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.darling-builder -L
 #
-# See: plan/09-phase7-remote-builder.md
+# See: PLAN.md
 { pkgs, darling, darlingBuilderModule, ... }:
 
 let

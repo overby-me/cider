@@ -5,7 +5,7 @@
 //! a microthread bound to the guest's task via the registry. These are the first real
 //! Mach calls on the way to mach_msg (they take no message, so they need no copyin/
 //! copyout and never block). Mirrors call.cpp's TaskSelfTrap/... handlers. See
-//! plan/rust-rewrite-eval.md (bucket A, mach IPC core).
+//! PLAN.md (bucket A, mach IPC core).
 
 extern "C" {
     fn dtape_task_self_trap() -> u32;

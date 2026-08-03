@@ -20,8 +20,8 @@
  *
  * Exit code 0 = all tests passed, nonzero = failure.
  *
- * See: plan/03-phase1-syscalls.md (Task 1.4)
- *      plan/01-blockers.md (Blocker B4)
+ * See: PLAN.md (Task 1.4)
+ *      PLAN.md (Blocker B4)
  */
 
 #include <stdio.h>

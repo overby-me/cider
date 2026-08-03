@@ -7,7 +7,7 @@
 // logs once and returns NULL/0 (which the caller treats as failure).
 //
 // Generated from the undefined nw_ symbols of libaws-c-io; see
-// plan/syscall-triage.md. NOT a real Network implementation.
+// PLAN.md. NOT a real Network implementation.
 #include <stdio.h>
 #include <stddef.h>
 

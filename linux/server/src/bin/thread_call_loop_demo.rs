@@ -4,7 +4,7 @@
 //! fresh microthread per call. Composes persistent threads (park/wake) with the
 //! generated dispatch: the loop waits for a call, dispatches it, posts the reply, then
 //! parks for the next; a per-thread stack counter proves the SAME thread served them
-//! all. See plan/rust-rewrite-eval.md (bucket B.2).
+//! all. See PLAN.md (bucket B.2).
 
 use darling::mach;
 use darling::registry::Registry;

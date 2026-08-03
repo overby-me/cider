@@ -1,6 +1,6 @@
 # server -- the darling host-side daemon (Rust rewrite of darlingserver, Stage 0 onward).
 # The lib crate is named "darling", so bins import it as darling::server, darling::registry, etc.
-# See plan/rust-rewrite-eval.md (plan) + plan/rust-spike-stage3.md (the make-or-break
+# See PLAN.md (plan) + PLAN.md (the make-or-break
 # spike). Stage 0: bindgen the real dtape hooks contract + link the prebuilt
 # duct-tape static lib and call the real dtape_init(&hooks). The prior end-to-end
 # link-model proof (stub duct-tape) was validated in a throwaway prototype, since removed.
@@ -18,7 +18,7 @@ name = "darling"
 name = "dtape-link-proof"
 path = "src/main.rs"
 
-# Stage 3 make-or-break spike (plan/rust-spike-stage3.md): a stackful Rust
+# Stage 3 make-or-break spike (PLAN.md): a stackful Rust
 # microthread suspends/resumes across the dtape FFI via a semaphore.
 [[bin]]
 name = "stage3-spike"

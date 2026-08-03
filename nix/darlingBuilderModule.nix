@@ -26,7 +26,7 @@
 #
 #   nix build nixpkgs#hello --system x86_64-darwin
 #
-# See: plan/09-phase7-remote-builder.md
+# See: PLAN.md
 {
   config,
   lib,

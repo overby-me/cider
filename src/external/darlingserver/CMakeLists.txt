@@ -15,7 +15,7 @@ option(DSERVER_FAST_CONTEXT "Signal-mask-free microthread context switch (x86_64
 # NOTE: NOT the cause of the boot stall -- strace showed the ~30s early-boot delay
 # is a specific RPC (semaphore_timedwait_signal, call 62) timing out, identical
 # with FAST_EPOLL on or off; general reply delivery is prompt. See
-# plan/guest-nix-m1.md.
+# PLAN.md.
 option(DSERVER_FAST_EPOLL "Skip redundant eventfd epoll re-arms in the event loop" ON)
 
 if (DSERVER_TOOLS)
@@ -120,4 +120,4 @@ add_custom_target(generate_dserver_rpc_wrappers
 # The C++ host-side daemon (add_executable(darlingserver) + src/*.cpp) has been REMOVED: the Rust
 # rewrite (linux/server) is now the daemon. This build only produces the shared
 # duct-tape static libs (add_subdirectory(duct-tape) above) that the Rust daemon links against,
-# plus the generated RPC wrappers and the optional debug tools. See plan/rust-rewrite-eval.md.
+# plus the generated RPC wrappers and the optional debug tools. See PLAN.md.

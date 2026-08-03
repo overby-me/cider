@@ -117,7 +117,7 @@ stdenv.mkDerivation {
 
     # Stage 0 of the Rust host-side rewrite: export the duct-tape + libsimple
     # static libs so the server crate can link the REAL duct-tape and
-    # call dtape_init(&hooks) (plan/rust-rewrite-eval.md, plan/rust-spike-stage3.md).
+    # call dtape_init(&hooks) (PLAN.md).
     # Consumed via DUCT_TAPE_LIB. Best-effort; harmless if the archives move.
     mkdir -p $out/rust-consume/lib
     find . -name 'libdarlingserver_duct_tape.a' -exec cp -v {} $out/rust-consume/lib/ \; || true

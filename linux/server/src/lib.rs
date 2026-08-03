@@ -2,7 +2,7 @@
 //!
 //! Boundary (frozen): the C duct-tape (XNU emulation) is consumed via the dtape_*
 //! API + the dtape_hooks vtable; everything above it is safe-ish Rust. See
-//! plan/rust-rewrite-eval.md. Proven so far (spikes): the link + dtape_init
+//! PLAN.md. Proven so far (spikes): the link + dtape_init
 //! (Stage 0), both microthread suspend/resume paths across the FFI (Stage 3), and
 //! the byte-identical RPC wire codec (Stage 1). This library is the Stage 4
 //! foundation: a reusable, static-mut-free microthread scheduler + hook layer

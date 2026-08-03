@@ -8,7 +8,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.darling-smoke -L
 #
-# See: plan/08-phase6-ci.md (Task 6.6)
+# See: PLAN.md (Task 6.6)
 { pkgs, darling, ... }:
 
 let

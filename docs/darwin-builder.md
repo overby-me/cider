@@ -572,7 +572,7 @@ darling shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
 ./scripts/triage-syscalls.nu --output /tmp/triage.md
 
 # Check the known triage table
-cat plan/syscall-triage.md
+cat PLAN.md
 ```
 
 If you discover a new unimplemented syscall, please
@@ -699,15 +699,13 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 | **darling-build-hook** | Alternative to SSH — invokes `darling shell` directly |
 | **darlingBuilderModule.nix** | NixOS module that wires everything together declaratively |
 
-For more technical details, see [plan/11-architecture.md](../plan/11-architecture.md).
+For more technical details, see [PLAN.md](../PLAN.md).
 
 ---
 
 ## Further Reading
 
-- [Project plan](../plan/README.md) — full development plan with phases and tasks
-- [Known blockers](../plan/01-blockers.md) — detailed analysis of blocking issues
-- [Syscall triage](../plan/syscall-triage.md) — tracking table for unimplemented syscalls
+- [Project plan](../PLAN.md) — development plan, known blockers and the syscall triage table
 - [Darling documentation](https://docs.darlinghq.org/) — upstream Darling docs
 - [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html) — Nix manual on distributed builds
 - [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down) — early exploration of Nix-in-Darling

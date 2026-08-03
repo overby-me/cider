@@ -1,7 +1,7 @@
 //! Proof of the guest-memory hooks (task_read_memory / task_write_memory): the daemon
 //! reading AND writing another process's address space via process_vm_readv/writev --
 //! the exact primitive the C++ daemon uses (Process::readMemory, process.cpp) and the
-//! foundation mach_msg copyin/copyout depends on. See plan/rust-rewrite-eval.md
+//! foundation mach_msg copyin/copyout depends on. See PLAN.md
 //! (bucket B.1, the head of the critical path).
 //!
 //! Fork a child holding a known buffer at a known address; the parent reads it back

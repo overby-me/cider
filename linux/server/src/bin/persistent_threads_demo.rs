@@ -8,7 +8,7 @@
 //! Proof: two guest threads each issue a "receive" that blocks (both park); delivering
 //! to one wakes exactly that thread (the other stays parked, untouched), and its reply
 //! combines a STACK-LOCAL stamped before the block with the delivered payload -- so the
-//! stack survived. See plan/rust-rewrite-eval.md.
+//! stack survived. See PLAN.md.
 
 use darling::registry::Registry;
 use darling::sched;

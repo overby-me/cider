@@ -3,7 +3,7 @@
 # standalone `duct-tape` package (DUCT_TAPE_LIB), never rebuilds them -- the
 # "consume, don't build" model (proven first in a throwaway prototype, since removed).
 # bindgen (via rustPlatform.bindgenHook) and the cc crate (fast_context.c, the P1
-# switch) run at build time. The lib crate is named "darling". See plan/rust-rewrite-eval.md.
+# switch) run at build time. The lib crate is named "darling". See PLAN.md.
 #
 #   nix build .#server
 {

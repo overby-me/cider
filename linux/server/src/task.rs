@@ -2,7 +2,7 @@
 //! take an explicit `dtape_task_t*` (unlike the mach traps, which act on the current
 //! task). A handler gets the task pointer from `sched::current_task()` -- the task its
 //! microthread is bound to -- and passes it here. Mirrors the `process->_dtapeTask`
-//! calls in call.cpp. See plan/rust-rewrite-eval.md (bucket A).
+//! calls in call.cpp. See PLAN.md (bucket A).
 
 use crate::bindings::{dtape_semaphore_t, dtape_task_t};
 

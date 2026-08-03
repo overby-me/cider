@@ -37,7 +37,7 @@
 #   ./scripts/darling-build-hook --check
 #   ./scripts/darling-build-hook --help
 #
-# See: plan/09-phase7-remote-builder.md (Task 7.4)
+# See: PLAN.md (Task 7.4)
 
 set -euo pipefail
 
@@ -276,7 +276,7 @@ Examples:
   #     "/path/to/darling-build-hook x86_64-darwin - 4 1 - - -"
   #   ];
 
-See: plan/09-phase7-remote-builder.md (Task 7.4)
+See: PLAN.md (Task 7.4)
 EOF
 }
 

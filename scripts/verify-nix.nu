@@ -337,7 +337,7 @@ def main [
         print -e ""
         print -e "Troubleshooting:"
         print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-darling.nu"
-        print -e "  \u{2022} If syscall warnings appear, check: plan/syscall-triage.md"
+        print -e "  \u{2022} If syscall warnings appear, check: PLAN.md"
         print -e "  \u{2022} If evaluator fails, try: darling shell bash -lc 'nix eval --expr 1+1' 2>&1"
         print -e "  \u{2022} For detailed tracing: DARLING_XTRACE=1 darling shell bash -lc 'nix --version'"
         print -e "  \u{2022} For host-side tracing: strace -f -p $(pidof darlingserver) 2>&1 | head -500"

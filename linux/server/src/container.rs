@@ -12,7 +12,7 @@
 //! for now (all best-effort prefix work, orthogonal to the namespace/mount/clone core):
 //! setupUserHome, darlingPreInit, fixPermissions, and rlimit bumps. The writable-/nix
 //! overlay (for guest Nix / M1) IS ported (`mount_nix_overlay`). See
-//! plan/rust-rewrite-eval.md (bucket B, the container main).
+//! PLAN.md (bucket B, the container main).
 
 use std::ffi::CString;
 use std::io;

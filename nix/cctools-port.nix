@@ -1,6 +1,6 @@
 # Build ONLY Darling's in-tree ld64 (the classic cctools Mach-O linker) as a
 # standalone, cached nix derivation -- "Path B" of the cctools de-vendoring
-# (plan/de-vendoring-audit.md). The monolith builds this ld64 as an in-tree cmake
+# (PLAN.md). The monolith builds this ld64 as an in-tree cmake
 # subtree every time; extracting it lets `use_ld64.cmake` point `-fuse-ld` at a
 # cached store path instead, so the ~40-min monolith and the per-edge nix-ninja
 # build both reuse one ld64 rather than rebuilding it.

@@ -2,7 +2,7 @@
 //! every guest sends its RPC datagrams, multiplexed through one epoll into the receive ->
 //! dispatch -> reply cycle. Connectionless: replies go back to each sender's address.
 //! This matches the real guest transport (server.cpp:452); call handlers plug in via the
-//! closure passed to `run`. See plan/rust-rewrite-eval.md.
+//! closure passed to `run`. See PLAN.md.
 
 use crate::rpc_io::{recv_datagram, send_datagram, Message};
 use std::ffi::CString;

@@ -1,7 +1,7 @@
 //! Daemon-side RPC message I/O: the receive/decode half of the loop. recvmsg a
 //! message (with SCM_RIGHTS fds) off the unix socket, decode its callhdr, and
 //! dispatch by call number via the generated codec. Pure socket/wire code -- no
-//! duct-tape. See plan/rust-rewrite-eval.md (Stage 4).
+//! duct-tape. See PLAN.md (Stage 4).
 
 use crate::rpc_wire::{callnum_name, DserverRpcCallhdr};
 use std::io;

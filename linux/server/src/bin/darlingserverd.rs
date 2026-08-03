@@ -8,7 +8,7 @@
 //! relocatable paths: DSERVER_LIBEXEC_PATH, DSERVER_MLDR_PATH, and the init selector
 //! (DSERVER_INIT / DARLING_NO_LAUNCHD). NOT runnable in the nix sandbox (needs root +
 //! CAP_SYS_ADMIN); validated by splicing into a darling runtime. See
-//! plan/rust-rewrite-eval.md (bucket B, the container main).
+//! PLAN.md (bucket B, the container main).
 
 use darling::container::{self, Config};
 use darling::handler::Handler;

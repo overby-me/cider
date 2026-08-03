@@ -13,7 +13,7 @@ sources can be edited in-tree without the patch-file indirection.
   (opt-in via a `.enable-writable-nix` marker in the prefix). Was
   `patches/darlingserver/0001-optional-writable-nix-overlay.patch`.
 - `src/message.cpp` — cache the daemon's own `ucred` (pid/uid/gid) instead of
-  calling getpid/getuid/getgid per message; see `plan/perf-overhead.md`. Was
+  calling getpid/getuid/getgid per message; see `PLAN.md`. Was
   `patches/darlingserver/0002-cache-darlingserver-own-credentials.patch`.
 
 ## Re-syncing with upstream

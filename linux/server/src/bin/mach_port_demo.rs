@@ -4,7 +4,7 @@
 //! composes the port machinery with the task_write_memory hook: the XNU trap's copyout
 //! runs copyoutmap -> dtape_hooks->task_write_memory -> process_vm_writev (memory.c).
 //! The demo's guest task carries the demo's OWN pid, so that copyout lands in a local.
-//! See plan/rust-rewrite-eval.md (bucket A, mach IPC core).
+//! See PLAN.md (bucket A, mach IPC core).
 
 use darling::mach;
 use darling::registry::Registry;

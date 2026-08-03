@@ -14,7 +14,7 @@
  *                [-n <profile-name>] [-D <key>=<value>]...
  *                <command> [args...]
  *
- * See: plan/04-phase2-sandbox.md (Task 2.1)
+ * See: PLAN.md (Task 2.1)
  */
 
 #include <unistd.h>

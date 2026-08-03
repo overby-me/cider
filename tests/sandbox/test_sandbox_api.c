@@ -12,7 +12,7 @@
  *
  * Expected: all tests pass (exit 0).
  *
- * See: plan/04-phase2-sandbox.md (Tasks 2.2, 2.3)
+ * See: PLAN.md (Tasks 2.2, 2.3)
  */
 
 #include <stdio.h>

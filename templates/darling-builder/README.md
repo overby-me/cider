@@ -131,7 +131,7 @@ ssh -vvv -i /etc/nix/darling-builder-key -p 2222 root@127.0.0.1 echo ok
 
 The derivation uses a macOS syscall that Darling doesn't support yet. This is
 expected for complex packages. Check the
-[syscall triage table](https://github.com/nixie-dev/darling-nix/blob/main/plan/syscall-triage.md)
+[syscall triage table](https://github.com/nixie-dev/darling-nix/blob/main/PLAN.md)
 and consider filing an issue upstream.
 
 ### Build is very slow
@@ -146,6 +146,6 @@ and consider filing an issue upstream.
 ## Further Reading
 
 - [Full setup guide](https://github.com/nixie-dev/darling-nix/blob/main/docs/darwin-builder.md)
-- [Project plan](https://github.com/nixie-dev/darling-nix/blob/main/plan/README.md)
+- [Project plan](https://github.com/nixie-dev/darling-nix/blob/main/PLAN.md)
 - [Darling documentation](https://docs.darlinghq.org/)
 - [Nix distributed builds](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html)

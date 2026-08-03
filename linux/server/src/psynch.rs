@@ -15,7 +15,7 @@
 //! Every op returns an `int` errno (0 == success) and writes the u32 retval through a
 //! pointer -- the same `retvalPointer` (a stable per-thread slot) the C++
 //! `Call::<name>::processCall` passes; see the handler wiring in `handler.rs`. See
-//! plan/rust-rewrite-eval.md (the psynch bucket).
+//! PLAN.md (the psynch bucket).
 
 extern "C" {
     fn dtape_psynch_cvbroad(cv: u64, cvlsgen: u64, cvudgen: u64, flags: u32, mutex: u64, mugen: u64, tid: u64, retval: *mut u32) -> i32;

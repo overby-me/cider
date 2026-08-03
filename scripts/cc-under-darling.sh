@@ -8,7 +8,7 @@
 # It stages the host source through Darling's host-root mount
 # (/Volumes/SystemRoot) and compiles into the container's writable $HOME
 # (/tmp is read-only inside; clang also needs a writable TMPDIR there). Runs a
-# single fresh container (rootless cannot re-join one; see plan/blockers.md).
+# single fresh container (rootless cannot re-join one; see PLAN.md).
 #
 # Prereqs (substitute once on the host):
 #   nix copy --from https://cache.nixos.org \
