@@ -27,10 +27,10 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 
 Every in-scope link edge of the reference graph is ported and builds: **1452 of 1452**,
 install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-test.nu`
-144 of 144, and every runtime check at 0 or a documented 3.
+**151 of 151**, and every runtime check at 0 or a documented 3.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
-all-component numbers. `scripts/buck-runtime-check.nu` runs the ten runtime checks in
+all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
 one command.
 
 ### What 100 percent does NOT mean
