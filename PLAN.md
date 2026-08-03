@@ -716,9 +716,16 @@ has been true six times running, each time a check freshly written.
   clang wrapper's binutils nm, which answers "file format not recognized" and, with stderr
   discarded, yields an empty symbol list indistinguishable from a library missing
   everything.
-- **Never `cmd | grep -q` in buck-test.nu.** grep -q exits on the first match, the writer
-  takes SIGPIPE, and under `set -o pipefail` the pipeline reports FAILURE on a match.
-  Capture into a variable and match with `case`.
+- **Capture, then match, in buck-test.nu.** Under the bash suite `cmd | grep -q` reported
+  FAILURE on a MATCH (grep exits early, the writer takes SIGPIPE, pipefail propagates it);
+  under nushell a non-zero external in a pipeline throws instead. Either way: collect the
+  output once with `complete`, then test it.
+- **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
+  subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
+  RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses
+  as a call to `else`; raw strings are `r#'...'#`, never `r#"..."#`; `get` with a computed
+  index takes `-o`, not a trailing `?`; `input` reads the terminal, not stdin; a def cannot
+  mutate its caller's variables and its `$env` writes do not propagate out.
 - **file(1) strings**: `Mach-O 64-bit x86_64 dynamically linked shared library` and
   `Mach-O 64-bit x86_64 executable`. x86_64 comes BEFORE "dynamically". Copy an existing
   case rather than writing it from memory.
