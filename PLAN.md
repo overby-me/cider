@@ -815,6 +815,19 @@ has been true six times running, each time a check freshly written.
   editing the VM test is NEUTRAL (measured: the prefix derivation did not move, and
   `nix build .#darling-buck2` afterwards consumed the very store path the earlier build had
   produced), while `tests/buck2/**` holds real targets and is not.
+- **Evaluating the endpoint: 155s to 58s, measured with the eval profiler.**
+  `nix eval --raw .#darling-buck2-prefix.drvPath --eval-profiler flamegraph
+  --eval-profile-file <f>` works in nix 2.34 and puts 57 percent of the self time in
+  darlingBuck2Lower.nix. Three output-preserving fixes: the staged-tree script escaped the
+  same destination TWICE per link (155 to 68), argv escaping now runs once per DISTINCT
+  argument since 97.5 percent of 208,515 entries repeat (68 to 60), and staged link targets
+  the same way at 45 percent repeats (60 to 58). Each one is safe because the prefix
+  derivation does not move; that identity is the check.
+  What is left: about 40 percent is still the staged-tree script, which emits two escaped
+  shell lines per link for 236,528 links. Removing that means emitting a table plus a loop,
+  or having the dumper emit it, either of which CHANGES an input or the output and so costs
+  a full endpoint rebuild to verify. `lib.unique` is 3 percent and order-sensitive here, so
+  it stays.
 - **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
   subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
   RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses
