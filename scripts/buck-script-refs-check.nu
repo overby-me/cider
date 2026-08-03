@@ -63,12 +63,38 @@ def main [--scan: string = ""] {
         | flatten
     )
 
-    if ($bad | is-empty) {
+    # And the runtime driver's own list, which names checks WITHOUT an extension because it
+    # resolves .nu before .sh. A check renamed out from under it fails only when the driver is
+    # run, which costs a container each time; here it costs nothing.
+    let driver = "scripts/buck-runtime-check.nu"
+    let named = if ($scan | is-not-empty) or (not ($driver | path exists)) {
+        []
+    } else {
+        open --raw $driver
+        | parse --regex '(?s)const (?:CHECKS|SLOW) = \[(?P<body>[^\]]*)\]'
+        | get body
+        | each {|b| $b | lines | each {|l| $l | str replace --regex '#.*' '' | str trim } }
+        | flatten
+        | where {|n| ($n | is-not-empty) and ($n =~ '^[a-z0-9-]+$') }
+    }
+    let missing_checks = (
+        $named | where {|n| not (($"scripts/($n).nu" | path exists) or ($"scripts/($n).sh" | path exists)) }
+    )
+    if ($named | is-not-empty) {
+        say $"   plus ($named | length) check\(s) named by ($driver)"
+    }
+
+    if ($bad | is-empty) and ($missing_checks | is-empty) {
         say "PASS: every scripts/<name> written down still exists"
         exit 0
     }
-    say $"FAIL: ($bad | length) reference\(s) name a script that is not there"
-    for b in $bad { say $"  ($b.file): ($b.missing)" }
+    for m in $missing_checks {
+        say $"FAIL: ($driver) runs ($m), and neither scripts/($m).nu nor .sh is there"
+    }
+    if ($bad | is-not-empty) {
+        say $"FAIL: ($bad | length) reference\(s) name a script that is not there"
+        for b in $bad { say $"  ($b.file): ($b.missing)" }
+    }
     say ""
     say "Rename the reference, or delete it if the tool was retired on purpose."
     exit 1
