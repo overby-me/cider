@@ -440,7 +440,7 @@
       # and nix/lib/darling-src.nix). Build WITHOUT ?submodules=1 -- darling-src
       # overlays every pinned submodule onto this flake's own tree and applies
       # patches/<name>/. Partial until every hash is filled
-      # (scripts/prefetch-submodule-hashes.sh); passthru.unpinnedPaths lists gaps.
+      # (scripts/prefetch-submodule-hashes.nu); passthru.unpinnedPaths lists gaps.
       #   nix build .#darling-src
       packages.darling-src =
         pkgs:

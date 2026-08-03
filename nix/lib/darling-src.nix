@@ -5,7 +5,7 @@
 # (task #71) so nix is the sole source path -- no `git submodule update`, no dirty
 # `nix build .?submodules=1`, both of which fetch outside nix and are not content-
 # addressed. This function reads nix/submodules.json (the hand-maintained pin
-# manifest; its `hash` fields are filled by scripts/prefetch-submodule-hashes.sh)
+# manifest; its `hash` fields are filled by scripts/prefetch-submodule-hashes.nu)
 # and for every entry with a pinned `hash` fetches it with fetchFromGitHub, then
 # overlays it onto a base tree and applies patches/<name>/*.patch. The result is
 # a complete, content-addressed Darling source tree with no git submodule step.
@@ -13,7 +13,7 @@
 # Incremental by design: entries whose `hash` is still "" (not yet prefetched)
 # are left as they are in `baseSrc`, and their paths are reported in
 # `passthru.unpinned`. So this is usable the moment the first hash is filled and
-# becomes a full replacement once scripts/prefetch-submodule-hashes.sh has pinned
+# becomes a full replacement once scripts/prefetch-submodule-hashes.nu has pinned
 # them all. A build that needs an unpinned submodule fails loudly (empty dir),
 # never silently.
 {
