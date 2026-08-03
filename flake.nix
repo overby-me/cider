@@ -367,9 +367,19 @@
             # the sandbox does not have them and the action dies with "Cannot load
             # libX11.so" -- the same failure the graph derivation hit one stage earlier.
             #
+            # hostHeaderLibs as well as wrappedLibs, and for the same reason one step over:
+            # a compile's argv carries -I into xorgproto, zlib, linux-headers and the rest
+            # as plain text, so those store paths are equally invisible to Nix. Declaring
+            # only the ELF set is what left fseventsd_obj failing on linux/types.h in the
+            # lowering after the graph stage had been fixed.
+            #
             # Only here: the libsimple, migcom and blocks endpoints below lower graphs with
             # no wrap_elf in them.
-            extraTools = (pkgs.callPackage ./nix/darlingBuildInputs.nix { }).wrappedLibs;
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
               inherit pkgs darlingSrc ld64;
               allPins = true;

@@ -53,21 +53,12 @@
   # build.ninja names 25 such directories across 23 packages, for AppKit, Onyx2D,
   # CoreGraphics, CoreText, iokitd, hdiutil, the X11 backends and the CoreAudio cone.
   #
-  # wrappedLibs is the ELF set; these four are include-only and appear in no wrap_elf:
-  # xorgproto is where X11/X.h lives, libXrender and libXdmcp arrive through libX11's own
-  # headers, and zlib through ruby's zlib module.
-  #
-  # linuxHeaders is not a library at all. fseventsd is a Darwin guest binary that bridges to
-  # Linux fanotify, so it includes kernel UAPI headers: fanotify.h reaches for
-  # <linux/types.h> and nothing else in this list carries it. The daemon path gets it by
-  # accident, through the dev shell -isystem sweep scripts/buck-setup.sh does for giflib,
-  # and the reference does not name it either -- every -I on its fseventsd edge is a project
-  # path, so both builds lean on the compiler default that this derivation deliberately
-  # removes.
-  hostIncludeLibs =
-    di.wrappedLibs
-    ++ [pkgs.xorg.xorgproto pkgs.xorg.libXrender pkgs.xorg.libXdmcp pkgs.zlib]
-    ++ [pkgs.linuxHeaders];
+  # wrappedLibs is the ELF set; hostHeaderLibs is the include-only set beside it, and both
+  # live in darlingBuildInputs so this and the LOWERING cannot drift apart. They did drift
+  # once, and it cost a build: the include-only packages were added here and not to the
+  # lowering's extraTools, so fseventsd_obj went on failing on linux/types.h in the lowering
+  # after the graph stage had stopped failing on it.
+  hostIncludeLibs = di.wrappedLibs ++ di.hostHeaderLibs;
 
   # The VERSIONED subdirectories, which a plain include dir does not reach: freetype2 and
   # cairo put their headers one level down, and dbus splits over two outputs. These are

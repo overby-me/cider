@@ -45,6 +45,10 @@
   expat,
   libXau,
   libXdmcp,
+  xorgproto,
+  libXrender,
+  zlib,
+  linuxHeaders,
 }:
 let
   stdenv = clangStdenv;
@@ -108,9 +112,29 @@ let
     ffmpeg
     pulseaudio
   ];
+
+  # Libraries the build compiles AGAINST but never wraps, so they are in no wrap_elf and
+  # wrappedLibs does not carry them. The reference gives every one of them an absolute -I:
+  # xorgproto is where X11/X.h lives, libXrender and libXdmcp arrive through libX11's own
+  # headers, zlib through ruby's zlib module, and linuxHeaders is not a library at all --
+  # fseventsd bridges to Linux fanotify, whose header reaches for linux/types.h.
+  #
+  # ONE list, because the two consumers drifted and it cost a build each time. The graph
+  # derivation needs them for the -I it writes into .buckconfig.local; the LOWERING needs
+  # them declared as well, because the recorded argv names their store paths as plain text
+  # and the dump discards string context, so Nix cannot see the dependency and the sandbox
+  # would not have it. Adding to the graph alone is what left fseventsd_obj failing in the
+  # lowering with the very error the graph fix had just cleared.
+  hostHeaderLibs = [
+    xorgproto
+    libXrender
+    libXdmcp
+    zlib
+    linuxHeaders
+  ];
 in
 {
-  inherit stdenv ccWrapperBypass wrappedLibs;
+  inherit stdenv ccWrapperBypass wrappedLibs hostHeaderLibs;
 
   nativeBuildInputs = [
     bison
