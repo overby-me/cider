@@ -821,6 +821,11 @@ has been true six times running, each time a check freshly written.
   as a call to `else`; raw strings are `r#'...'#`, never `r#"..."#`; `get` with a computed
   index takes `-o`, not a trailing `?`; `input` reads the terminal, not stdin; a def cannot
   mutate its caller's variables and its `$env` writes do not propagate out.
+  **`default` substitutes for NULL, not for an empty string.** A flag declared
+  `--scratch: string = ""` is the empty string when omitted, so `$scratch | default <x>`
+  keeps the empty string. That made a scratch root empty, and a cleanup loop that killed
+  processes whose exe lives under it matched EVERYTHING and killed an unrelated build.
+  The older checks take such an argument as an optional POSITIONAL, which really is null.
 - **file(1) strings**: `Mach-O 64-bit x86_64 dynamically linked shared library` and
   `Mach-O 64-bit x86_64 executable`. x86_64 comes BEFORE "dynamically". Copy an existing
   case rather than writing it from memory.
