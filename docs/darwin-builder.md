@@ -350,15 +350,15 @@ darling-builder-test
 
 ### Progressive Build Tests
 
-The `build-trivial.sh` script tests derivation building at five increasing
+The `build-trivial.nu` script tests derivation building at five increasing
 levels of complexity:
 
 ```bash
 # Run all five levels
-./scripts/build-trivial.sh
+./scripts/build-trivial.nu
 
 # Target a specific level with debug output
-./scripts/build-trivial.sh --level 1 --debug
+./scripts/build-trivial.nu --level 1 --debug
 
 # Levels:
 #   1. Echo to $out — minimal: sandbox-exec → bash → file creation
