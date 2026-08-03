@@ -30,7 +30,7 @@ install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-t
 144 of 144, and every runtime check at 0 or a documented 3.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
-all-component numbers. `scripts/buck-runtime-check.sh` runs the eight runtime checks in
+all-component numbers. `scripts/buck-runtime-check.nu` runs the eight runtime checks in
 one command.
 
 ### What 100 percent does NOT mean
