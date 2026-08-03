@@ -106,3 +106,32 @@ darwin_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+cc_objects(
+    name = "dispatch_probe_obj",
+    srcs = ["dispatch_probe.c"],
+    # -fblocks: dispatch's whole API is blocks, and the guest clang needs telling.
+    compiler_flags = [
+        "-D_LIBC_NO_FEATURE_VERIFICATION",
+        "-fblocks",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = ["//darwin:sdk_env"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "dispatch_probe",
+    objs = [
+        ":dispatch_probe_obj",
+        # crt1.10.6
+        "//buck-src/csu:crt1.10.6_obj2",
+    ],
+    dylibs = ["//buck-src:system_final"],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)

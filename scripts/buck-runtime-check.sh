@@ -39,6 +39,9 @@ CHECKS=(
 	buck-appkit-check
 	buck-scripting-check
 	buck-audio-check
+	# libdispatch, which is cheap but goes last because it is the newest: it makes threads
+	# and hands work between them, which is the machinery this port has broken most often.
+	buck-dispatch-check
 )
 # Builds bash with Nix INSIDE Darling. It is the campaign's keystone milestone and it takes
 # far longer than everything else here put together, so it is opt-in.
