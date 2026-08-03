@@ -853,7 +853,13 @@ has been true six times running, each time a check freshly written.
   33,624 paths appear in exactly one. The expansion adds BYTES, NOT INFORMATION: `under(d)`
   takes the whole directory unfiltered, so naming the root is exactly as precise, and
   `tree_srcs[o]` is recomputable from `stagedTrees[o]`, which the same file already holds.
-  Record the roots (#51). Depfiles would be the precise answer and are what #44 wants.
+  Record the roots (#51). It comes from NEITHER ninja nor buck2: buck/bxl/probe.bxl records
+  that an ActionQueryNode here exposes only action, analysis, attrs and rule_type, and
+  `.action` is opaque, so the dump cannot ask buck2 what an action reads and reconstructs it
+  from the command line instead, where a compile names header SEARCH PATHS and not headers.
+  nix-ninja was more precise: it took the closure from depfiles (0dfdcfc). No compile in the
+  port emits one today, measured, zero `-MD`, `-MMD` or `-MF` in the whole graph, so
+  recovering that precision starts in the BUCK compile rule, not in the dumper (#44).
   The lowering half is #47. Do #50 FIRST: graph.json and staged/ share one store path, so
   a dump-format change moves what every lowered derivation references and none of this can
   be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
