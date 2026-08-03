@@ -1,0 +1,217 @@
+getpeername on a PF_LOCAL socket smashed the caller stack.
+
+sockaddr_fixup_from_linux converts a Linux sockaddr into a BSD one in place, in
+the caller's buffer, and it was told how many bytes the kernel WROTE but never
+how large that buffer IS. For a PF_LOCAL address it then wrote a full
+sizeof(sun_path) plus a terminator, which is 106 bytes.
+
+bash calls it for every shell whose stdin is a socket. lib/sh/netconn.c does
+
+	socklen_t l; struct sockaddr sa;
+	l = sizeof(sa); rv = getpeername(fd, &sa, &l);
+
+with a 16 byte struct sockaddr on the stack, so 106 bytes landed over it and
+bash died in __stack_chk_fail, silently, with SIGABRT. Under the NixOS test
+driver, whose control channel is a socketpair, that read as Darling hanging.
+
+Measured: AF_UNIX stdin aborts, AF_INET stdin does not, which is the PF_LOCAL
+branch exactly. The stack from strace -k is
+isnetconn -> __stack_chk_fail -> abort -> kill(0, SIGABRT).
+
+The same helper is reached by getsockname and recvfrom, and by the three route
+message writers in sysctl_net, whose slots are one
+round_up_sizeof_u32(sizeof(struct sockaddr)) each. All of them now pass the
+capacity, and every write is bounded by it. The return value stays the FULL
+length so a caller still learns the true size when the address did not fit,
+which is how truncation works on macOS.
+
+Two smaller things fixed with it: the path was read out of sun_path with strcpy
+regardless of how much the kernel wrote, so an unnamed socket was read as an
+uninitialised string; and an unnamed socket now returns without a pointless
+vchroot round trip.
+
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
+@@ -20,6 +20,9 @@
+ 
+ unsigned long sockaddr_fixup_size_from_bsd(const void* bsd_sockaddr, int bsd_sockaddr_len);
+ int sockaddr_fixup_from_bsd(struct sockaddr_fixup* out, const void* bsd_sockaddr, int bsd_sockaddr_len);
+-int sockaddr_fixup_from_linux(struct sockaddr_fixup* out, const void* linux_sockaddr, int linux_sockaddr_len);
++// `capacity` is the size of the CALLER's buffer, which is not the same thing as the
++// number of bytes the Linux kernel wrote into it. Without it the PF_LOCAL conversion
++// wrote a full 104 byte sun_path into whatever it was given.
++int sockaddr_fixup_from_linux(struct sockaddr_fixup* out, const void* linux_sockaddr, int linux_sockaddr_len, int capacity);
+ 
+ #endif // NETWORK_DUCT_H
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
+@@ -169,19 +169,19 @@
+ 			ifam->ifam_version = RTM_VERSION;
+ 			ifam->ifam_addrs = RTA_NETMASK | RTA_IFA | RTA_BRD;
+ 
+-			sockaddr_fixup_from_linux((struct sockaddr_fixup*)ip_addr, &curr->lifr_addr, sizeof(struct linux_sockaddr));
++			sockaddr_fixup_from_linux((struct sockaddr_fixup*)ip_addr, &curr->lifr_addr, sizeof(struct linux_sockaddr), round_up_sizeof_u32(sizeof(struct sockaddr)));
+ 
+ 			memcpy(tmp.lifr_name, curr->lifr_name, sizeof(curr->lifr_name));
+ 
+ 			// get the netmask
+ 			if ((status = __real_ioctl(tmp_sock, LINUX_SIOCGIFNETMASK, &tmp)) < 0)
+ 				goto out;
+-			sockaddr_fixup_from_linux((struct sockaddr_fixup*)netmask, &tmp.lifr_netmask, sizeof(struct linux_sockaddr));
++			sockaddr_fixup_from_linux((struct sockaddr_fixup*)netmask, &tmp.lifr_netmask, sizeof(struct linux_sockaddr), round_up_sizeof_u32(sizeof(struct sockaddr)));
+ 
+ 			// get the broadcast address
+ 			if ((status = __real_ioctl(tmp_sock, LINUX_SIOCGIFBRDADDR, &tmp)) < 0)
+ 				goto out;
+-			sockaddr_fixup_from_linux((struct sockaddr_fixup*)broad_addr, &tmp.lifr_broadaddr, sizeof(struct linux_sockaddr));
++			sockaddr_fixup_from_linux((struct sockaddr_fixup*)broad_addr, &tmp.lifr_broadaddr, sizeof(struct linux_sockaddr), round_up_sizeof_u32(sizeof(struct sockaddr)));
+ 
+ 			old_ptr += ifam_length;
+ 		}
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
+@@ -37,29 +37,70 @@
+ 	return ret;
+ }
+ 
+-int sockaddr_fixup_from_linux(struct sockaddr_fixup* out, const void* linux_sockaddr, int linux_sockaddr_len) {
++int sockaddr_fixup_from_linux(struct sockaddr_fixup* out, const void* linux_sockaddr, int linux_sockaddr_len, int capacity) {
++	// The head is the two bytes before sun_path: on Linux one 16 bit family, on BSD a
++	// length byte and a family byte.
++	const int head = (int) (sizeof(*out) - sizeof(out->sun_path));
+ 	int ret = linux_sockaddr_len;
++	int copy = linux_sockaddr_len;
+ 
+-	memcpy(out, linux_sockaddr, linux_sockaddr_len);
++	// Every write below is bounded by `capacity`. It used to be bounded by nothing: for a
++	// PF_LOCAL address this wrote sizeof(sun_path) bytes plus a terminator into the
++	// caller's buffer, so bash calling getpeername with a 16 byte struct sockaddr (its
++	// isnetconn, which runs for every shell whose stdin is a socket) had 106 bytes written
++	// over its stack and died in __stack_chk_fail.
++	if (capacity < head)
++		return ret;
++
++	if (copy > capacity)
++		copy = capacity;
++	memcpy(out, linux_sockaddr, copy);
+ 
+ 	out->bsd_family = sfamily_linux_to_bsd(out->linux_family);
+ 
+ 	if (out->bsd_family == PF_LOCAL) {
+ 		struct vchroot_unexpand_args vc;
+-		strcpy(vc.path, out->sun_path);
++		int src = copy - head;
++		int pathlen;
++
++		// Only the bytes the kernel actually wrote hold a path. The old code ran strcpy
++		// over sun_path regardless, so an unnamed socket (a socketpair, where Linux
++		// returns just the family) was read as an uninitialised string.
++		if (src < 0)
++			src = 0;
++		if (src > (int) sizeof(vc.path) - 1)
++			src = (int) sizeof(vc.path) - 1;
++
++		if (src == 0) {
++			// Unnamed: no path to translate and nothing further to write.
++			out->bsd_length = ret;
++			return ret;
++		}
++
++		memcpy(vc.path, out->sun_path, src);
++		vc.path[src] = '\0';
+ 
+ 		ret = vchroot_unexpand(&vc);
+ 		if (ret < 0)
+ 			return errno_linux_to_bsd(ret);
+ 
+-		strncpy(out->sun_path, vc.path, sizeof(out->sun_path) - 1);
+-		out->sun_path[sizeof(out->sun_path) - 1] = '\0';
+-		ret = sizeof(*out) - sizeof(out->sun_path) + strlen(out->sun_path) + 1;
++		pathlen = (int) strlen(vc.path);
++
++		// The FULL length, which is what the caller learns from *socklen even when the
++		// address did not fit, exactly as truncation works on macOS.
++		ret = head + pathlen + 1;
++
++		if (capacity > head) {
++			int n = pathlen;
++			if (n > capacity - head - 1)
++				n = capacity - head - 1;
++			memcpy(out->sun_path, vc.path, n);
++			out->sun_path[n] = '\0';
++		}
+ 	}
+ 
+-	if (ret >= 0) {
++	if (ret >= 0)
+ 		out->bsd_length = ret;
+-	}
+ 
+ 	return ret;
+ }
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
+@@ -15,6 +15,8 @@
+ long sys_getpeername(int fd, void* asa, int* socklen)
+ {
+ 	int ret;
++	// BEFORE the syscall: it overwrites *socklen with the length it wrote.
++	int capacity = (socklen != 0) ? *socklen : 0;
+ 	struct sockaddr_fixup* fixed;
+ 
+ #ifdef __NR_socketcall
+@@ -29,7 +31,7 @@
+ 	else
+ 	{
+ 		fixed = (struct sockaddr_fixup*) asa;
+-		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen);
++		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen, capacity);
+ 		if (ret > 0)
+ 			ret = 0;
+ 	}
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
+@@ -15,6 +15,8 @@
+ long sys_getsockname(int fd, void* asa, int* socklen)
+ {
+ 	int ret;
++	// BEFORE the syscall: it overwrites *socklen with the length it wrote.
++	int capacity = (socklen != 0) ? *socklen : 0;
+ 	struct sockaddr_fixup* fixed;
+ 
+ #ifdef __NR_socketcall
+@@ -29,7 +31,7 @@
+ 	else
+ 	{
+ 		fixed = (struct sockaddr_fixup*) asa;
+-		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen);
++		ret = *socklen = sockaddr_fixup_from_linux(fixed, asa, *socklen, capacity);
+ 		if (ret > 0)
+ 			ret = 0;
+ 	}
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
+@@ -23,6 +23,8 @@
+ 		int flags, void* from, int* socklen)
+ {
+ 	int ret, linux_flags;
++	// BEFORE the syscall: it overwrites *socklen with the length it wrote.
++	int capacity = (from != 0 && socklen != 0) ? *socklen : 0;
+ 	struct sockaddr_fixup* fixed;
+ 
+ 	linux_flags = msgflags_bsd_to_linux(flags);
+@@ -39,7 +41,7 @@
+ 	else if (from != NULL)
+ 	{
+ 		fixed = (struct sockaddr_fixup*) from;
+-		if ((*socklen = sockaddr_fixup_from_linux(fixed, from, *socklen)) < 0)
++		if ((*socklen = sockaddr_fixup_from_linux(fixed, from, *socklen, capacity)) < 0)
+ 			ret = *socklen;
+ 	}
+ 
