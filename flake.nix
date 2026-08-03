@@ -393,8 +393,13 @@
       # the copy without extraTools is the configuration that cannot work: a wrap_elf action
       # dlopens the host libX11 and friends at BUILD time, so without them in the sandbox it
       # dies with "Cannot load libX11.so", which is exactly the failure task #35 fixed on the
-      # graph side. The VM test in checks/ consumes THIS package, so that was the endpoint
-      # #10 and #12 are waiting on.
+      # graph side. The VM test in checks/ consumes THIS package, and it passes: exit 0, the
+      # container up in under half a second and the guest bash reporting 3.2.57 and darwin.
+      #
+      # Measured rather than asserted, since the whole point is that there is only ONE
+      # lowering: the built darling-buck2.drv consumes exactly the store path that
+      # .#darling-buck2-prefix produces, and the endpoint builds green with extraTools,
+      # 3216 derivations and no errors.
       packages.darling-buck2 =
         pkgs:
         pkgs.callPackage ./nix/buck2-package.nix {
