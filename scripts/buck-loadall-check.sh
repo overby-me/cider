@@ -112,7 +112,7 @@ say "   $n libraries to try"
 # fails and the initializer ABORTS, taking the whole guest process tree with it. The daemon
 # log says it plainly, "sigexc: handler (6) returning", signal 6 being SIGABRT.
 #
-# scripts/buck-audio-check.sh has always done this, which is why the CoreAudio wrappers
+# scripts/buck-audio-check.nu has always done this, which is why the CoreAudio wrappers
 # answer there and died here. A display is NOT the cause and was tried first: with Xvfb up
 # and DISPLAY passed in, the count did not move at all.
 elf_dirs=$(sed -n 's/^elf_lib_dirs *= *//p' .buckconfig.local)
