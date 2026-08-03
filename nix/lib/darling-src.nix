@@ -43,8 +43,23 @@ let
       path: _type:
       let
         rel = lib.removePrefix (toString baseSrc + "/") (toString path);
+        base = baseNameOf rel;
       in
-      !(builtins.elem rel [
+      # The port's BUCK files live INSIDE this tree -- darwin/frameworks/BUCK,
+      # src/CoreAudio/BUCK and 56 others -- because darwin/ and src/ are what cmake needs,
+      # so the top-level exclusions below cannot reach them. cmake never opens one.
+      #
+      # Left in, editing any of them rehashes this tree, and ld64 is built from it
+      # (nix/cctools-port.nix), so a one-line BUCK edit rebuilds ld64 from source: 26,351
+      # compile steps before the thing being tested can even start. That is measurable in
+      # the store, where darling-cmake-src paths carry 46, 60, 61 and 62 BUCK files -- one
+      # rebuild of everything per BUCK edit, all campaign.
+      #
+      # BUCK.tmp.* too: scripts/gen-buck-from-ninja.py writes one next to the file it is
+      # rewriting, so a build racing a regenerate would otherwise capture it.
+      base != "BUCK"
+      && !(lib.hasPrefix "BUCK.tmp" base)
+      && !(builtins.elem rel [
         "nix"
         "flake.nix"
         "flake.lock"
