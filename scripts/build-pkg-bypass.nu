@@ -2,7 +2,7 @@
 # build-pkg-bypass.nu -- build ANY nixpkgs x86_64-darwin package FROM SOURCE with guest Nix
 # under Darling, rootless and launchd-FREE, then run it.
 #
-# Generalises scripts/build-hello-bypass.sh (the M1 reference) to an arbitrary attr via the
+# Generalises scripts/build-hello-bypass.nu (the M1 reference) to an arbitrary attr via the
 # generic guest driver scripts/gnix-build.sh. The launchd bypass is DARLING_NO_LAUNCHD=1
 # (shellspawn as guest PID1; no launchd, no LKM).
 #

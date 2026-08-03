@@ -765,7 +765,7 @@ has been true six times running, each time a check freshly written.
 Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then
 `DSERVER_LIBEXEC_PATH=$rt/libexec/darling
 DSERVER_MLDR_PATH=$rt/libexec/darling/usr/libexec/darling/mldr bash
-scripts/build-hello-bypass.sh --mono $rt --prefix /tmp/darling-hello-m1-buck2`. Expect
+scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/darling-hello-m1-buck2`. Expect
 `build_rc=0` and "Hello, world!".
 
 ---
