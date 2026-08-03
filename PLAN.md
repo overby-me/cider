@@ -272,6 +272,12 @@ predicted discriminator held, AF_UNIX aborts where AF_INET does not, which is th
 PF_LOCAL branch exactly. In the VM it surfaces as 124 rather than 1 because the driver
 also waits for stdout to be closed and throws the output away.
 
+**Confirmed end to end** against a prefix built with the patch: the same socketpair repro
+that aborted now returns rc 0 and `BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19`.
+The `< /dev/null` in the VM test stays: it is correct hygiene for a detaching command, and
+the test runs against the Nix-built package, which needs an endpoint rebuild to carry the
+patch.
+
 Narrowed twice more: the daemon logs of a failing and a working run are identical through
 `execve expand /bin/bash`, so bash execs fine; and with the same socket stdin
 `darling shell /bin/echo X` returns 127 **with a message from the outer bash**, so bash
