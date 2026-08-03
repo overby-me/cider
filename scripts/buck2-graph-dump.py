@@ -8,12 +8,13 @@ everything (plan/buck2-port.md phase 3, and buck/bxl/probe.bxl for what was trie
   * `aquery --output-all-attributes` -- the command line, at ANALYSIS time, without
     executing anything. Its `cmd` is rendered by joining the real argv with ", " (comma
     plus space), which is lossy in general: an argument containing that sequence cannot be
-    told from two arguments. It is NOT lossy for this port, and that was measured rather
-    than assumed -- over the 2,066 actions of the whole-port graph, reversing the join
-    reproduces what-ran's argv EXACTLY for 2,066 of 2,066, and no argument anywhere
-    contains the separator. The flags that do carry commas (-Wl,-alias_list,<file>) never
-    carry comma-space. `--check-against-what-ran` re-verifies that, and the dump refuses to
-    trust the join if it ever stops holding.
+    told from two arguments. It HAS been lossy for this port, once -- perl's versions.h
+    passed a C initializer carrying the separator and the Nix lowering replayed a different
+    command than buck2 ran. The flags that carry commas (-Wl,-alias_list,<file>) never carry
+    comma-space, and configure_file now passes its values in a file, so nothing in the tree
+    carries it: 1 BUCK literal contains it and it is the safe one, and 0 of the reference's
+    79,139 flag lines do. scripts/buck-argv-roundtrip-check.py holds both halves of that,
+    statically in buck-test.sh and against what-ran on demand. See unjoin below.
   * `log what-ran --format json` -- the same commands, but only for actions that actually
     RAN. Kept as the checker, not as the source: using it as the source is what forced the
     graph derivation to compile everything before it could learn anything.
@@ -108,6 +109,101 @@ def unjoin(cmd: str) -> list[str]:
     if inner.startswith("[") and inner.endswith("]"):
         inner = inner[1:-1]
     return inner.split(", ") if inner else []
+
+
+# The project files each TARGET reads, precomputed here for the same reason stagedTreeDeps
+# is: nix/lib/buck2-srcdeps.nix computes exactly this and takes 158 seconds, against a
+# lowering whose whole evaluation is about 14. Python does it in a second or two, and it is a
+# pure function of what this dump already holds.
+#
+# Every lowered target currently depends on the whole filtered project, 306,019 files, so a
+# one-line source edit relowers all of them. With this the median target names 4,032.
+#
+# The rule, and scripts/buck-lower-srcdeps.py audits its completeness:
+#   * project-relative tokens in the target's own argvs;
+#   * plus every link TARGET of each staged tree it consumes, which is where the header cones
+#     live -- NOT the staging actions' argvs, since those actions carry no command at all;
+#   * plus, WHOLESALE, any project directory used as an include root, because a compile can
+#     read anything under one and no per-file set could know what. There are two of those in
+#     the whole port, 26 files between them.
+_GLUED = ("-I", "-F", "-L", "-iquote")
+
+
+def _project_candidates(tok: str):
+    if not tok or tok.startswith(("/", "@", "buck-out/")):
+        return
+    yield tok
+    for g in _GLUED:
+        if tok.startswith(g) and len(tok) > len(g):
+            rest = tok[len(g):]
+            if not rest.startswith(("/", "@", "buck-out/")):
+                yield rest
+
+
+def _include_roots(argv: list):
+    for i, t in enumerate(argv):
+        if t in ("-I", "-isystem", "-F", "-iquote") and i + 1 < len(argv):
+            yield argv[i + 1]
+        elif t.startswith(("-I", "-F")) and len(t) > 2:
+            yield t[2:]
+
+
+def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict:
+    known = set(producer) | set(staged) | set(trees)
+
+    def owner_of(path: str):
+        segs = path.split("/")
+        for n in range(len(segs), 0, -1):
+            pfx = "/".join(segs[:n])
+            if pfx in known:
+                return pfx
+        return None
+
+    tree_srcs = {}
+    for path, links in trees.items():
+        out = set()
+        for rel, tgt in links.items():
+            dest = os.path.normpath(os.path.join(os.path.dirname(os.path.join(path, rel)), tgt))
+            if not dest.startswith("buck-out/") and not dest.startswith("/"):
+                out.add(dest)
+        tree_srcs[path] = out
+
+    whole = {}
+
+    def under(d: str) -> set:
+        if d not in whole:
+            found = set()
+            for dp, _dn, fs in os.walk(d):
+                found.update(os.path.join(dp, f) for f in fs)
+            whole[d] = found
+        return whole[d]
+
+    by_target = {}
+    for a in ran:
+        by_target.setdefault(a["identity"].split(" (")[0], []).append(a)
+
+    out = {}
+    for label, acts in by_target.items():
+        srcs = set()
+        for a in acts:
+            for tok in a["argv"]:
+                for cand in _project_candidates(tok):
+                    if os.path.lexists(cand):
+                        srcs.add(cand)
+                        break
+            for d in _include_roots(a["argv"]):
+                if not d.startswith(("/", "@", "buck-out/")) and os.path.isdir(d):
+                    srcs |= under(d)
+        owners = {o for o in (owner_of(i) for a in acts for i in a.get("inputs", [])) if o}
+        for o in owners:
+            if o in tree_srcs:
+                srcs |= tree_srcs[o]
+                for dest in tree_srcs[o]:
+                    sub = owner_of(dest)
+                    if sub and sub in tree_srcs:
+                        srcs |= tree_srcs[sub]
+        out[label] = sorted(srcs)
+    return out
 
 
 def check_against_what_ran(isolation: str, ran: list, subs: dict) -> int:
@@ -362,6 +458,8 @@ def main(argv: list[str]) -> int:
         "stagedTrees": trees,
         # {staged tree: [buck-out paths its links resolve to]}, precomputed.
         "stagedTreeDeps": tree_deps,
+        # {target: [project files it reads]}, precomputed for the same reason.
+        "targetSources": target_sources(ran, trees, copied, producer),
         "producers": producer,
         "kinds": kinds,
         "targetOutputs": target_outputs,
