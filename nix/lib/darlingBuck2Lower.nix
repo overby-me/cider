@@ -144,6 +144,20 @@
     builtins.unsafeDiscardStringContext (builtins.readFile "${graph}/graph.json")
   );
 
+  # One escape per DISTINCT argument rather than one per occurrence. Measured over a graph
+  # dump: 208,515 argv entries across the actions and 5,193 of them distinct, so 97.5
+  # percent are repeats -- the same compiler, the same -I flags, the same isysroot, once
+  # per compile. Both fill and escapeShellArg are pure functions of the string, so the
+  # emitted command line is identical either way; an eval profile put 12 percent of the
+  # evaluation on that one map.
+  escArgCache = builtins.listToAttrs (map (x: {
+    name = x;
+    value = lib.escapeShellArg (fill x);
+  }) (lib.concatMap (a: a.argv) (g.actions or [])));
+  # The fallback is for an argv that never appeared in g.actions, which should not happen
+  # and must not become a silent evaluation error if it does.
+  escArg = x: escArgCache.${x} or (lib.escapeShellArg (fill x));
+
   # The same crate sources the graph derivation analysed against, from the same lock files.
   rustVendor = import ./rust-vendor.nix {inherit pkgs;};
 
@@ -547,7 +561,7 @@
         '')
         a.outputs}
         echo "  ${a.identity}"
-        ${lib.concatStringsSep " " (map (x: lib.escapeShellArg (fill x)) a.argv)}
+        ${lib.concatStringsSep " " (map escArg a.argv)}
       '')
       actions}
 
