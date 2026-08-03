@@ -133,8 +133,9 @@ daemon's stdio there so a one-shot command does not pin the caller's stdout open
 while the guest running the actual command gets the CALLER's fds passed to it. So
 `/darlingserver.log` is what the init legitimately reports, and the VM log line is most
 likely the init's rather than the command guest's, i.e. evidence that the command guest is
-never spawned at all. Being verified now in an interactive VM; do not act on the above
-before that lands.
+never spawned at all. STILL UNVERIFIED: the interactive VM that was going to settle it could
+not be built, because the Nix endpoint turned out to be broken in four separate ways (see
+below). Treat the paragraph above as the most plausible reading, not as a finding.
 
 Cheaper explanations already eliminated: running without a TTY reproduces fine on the host,
 and giving the VM 4 cores and 4 GB instead of 2 and 2 changes nothing.
@@ -153,3 +154,37 @@ So two things are now known that were not:
     task #5 was never "port more components until it goes green". Whatever is wrong with
     Darling inside a NixOS test VM has to be fixed first, and it belongs to Darling's
     container plumbing rather than to this port.
+
+## The Nix endpoint was broken in four ways, which is what blocked the VM work
+
+The line above -- "it boots and runs bash from the Nix endpoint" -- was true when written and
+then quietly stopped being true. Getting an interactive VM to diagnose #12 meant building
+`pkgs.darling-buck2`, and that turned up four independent faults, none of which the host
+build could see. All four are fixed; the endpoint is at the last mile.
+
+  * **A cyclic symlink wrecked the tree.** `expand_dir_links` in
+    `scripts/buck-src-normalise.py` followed JavaScriptCore's
+    `DerivedSources/JavaScriptCore/JavaScriptCore -> ../..` into the tree it was creating:
+    13 directories became 1147 at 266 levels deep, `except OSError` swallowed the
+    ENAMETOOLONG, and buck2 then died crawling the wreckage. Invisible on the host, whose
+    `buck-src` still held the plain symlink.
+  * **wrapgen could not dlopen anything.** The generated `.buckconfig.local` had no
+    `elf_lib_dirs`, so all 22 `wrap_elf` targets failed. The lowering needed the same
+    libraries declared separately, via `extraTools`, because a wrap action carries them as
+    plain text in its argv and the dump discards string context.
+  * **Host headers were never named.** The reference gives 5,945 compiles an absolute `-I`
+    into X11, freetype, cairo, ffmpeg and the rest; the port named none of them and got away
+    with it because `darwin_cc` defaults to the bare name `clang`, which in the dev shell is
+    the WRAPPED clang injecting the same dirs through `NIX_CFLAGS_COMPILE`.
+  * **fseventsd needs kernel UAPI headers**, which are not a library and so were in no list.
+
+Two checks now hold the line, both verified to fail when the invariant is broken:
+`scripts/buck-host-includes.py` (in `buck-test.sh`) requires every target the reference gives
+a host `-I` to declare `//src/native:host_headers`; `scripts/buck-nix-includes-check.sh`
+(standalone) compiles those targets with clang-unwrapped and ONLY the dirs the Nix derivation
+declares, which is the divergence that hid two of the four.
+
+**The lesson worth keeping**: each of these cost about an hour to find in a Nix build and
+seconds to reproduce on the host once the condition was named -- an emptied config value, a
+forced `clang-unwrapped`, one include dir removed. Name the condition, reproduce it on the
+host, then fix.
