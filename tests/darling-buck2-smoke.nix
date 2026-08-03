@@ -10,6 +10,14 @@
 # runs inside it. Bash builtins only, since there is no userland at this scope. It is the
 # VM-side twin of scripts/buck-bash-check.nu.
 #
+# EVERY darling invocation here closes stdin. That is not tidiness: the launcher waits on
+# the caller's stdin, the driver's control channel never closes it, and the driver in turn
+# waits for stdout to be closed (its own docstring warns that a detaching command must
+# close it). The result was 124 with the output thrown away, which read as a hang in
+# Darling. Measured in four arms over one VM, one variable each: stdin inherited hangs,
+# `< /dev/null` returns rc 0, setsid changes nothing, and a backgrounded command works
+# because POSIX hands it /dev/null. The guest command had been succeeding the whole time.
+#
 # Usage:
 #   nix build .#checks.x86_64-linux.darling-buck2-smoke -L
 {
@@ -55,7 +63,7 @@ in
           status, out = machine.execute(
               "DPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
               "darling-buck2 shell /bin/bash -c "
-              "'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE'",
+              "'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE' < /dev/null",
               timeout=300,
           )
           if "BUCK2_BASH_OK" not in out:
@@ -113,7 +121,14 @@ in
           assert "darwin" in out, f"not a Darwin machine type: {out}"
 
       with machine.nested("exit codes propagate out of the container"):
-          machine.succeed("darling-buck2 shell /bin/bash -c 'exit 0'")
-          machine.fail("darling-buck2 shell /bin/bash -c 'exit 1'")
+          # The same environment as above, deliberately. This subtest used to set neither
+          # DPREFIX nor DARLING_NO_LAUNCHD, so it booted a second prefix through LAUNCHD
+          # and returned 1 for a command that exits 0. Arms with an explicit prefix and
+          # no-launchd give rc 0 for exit 0 and print for echo, and the default prefix
+          # behaves the same, so neither the prefix nor propagation was at fault. The
+          # launchd path in a VM is its own question and belongs in its own test.
+          env = "DPREFIX=/tmp/dp DARLING_NO_LAUNCHD=1 "
+          machine.succeed(env + "darling-buck2 shell /bin/bash -c 'exit 0' < /dev/null")
+          machine.fail(env + "darling-buck2 shell /bin/bash -c 'exit 1' < /dev/null")
     '';
   }
