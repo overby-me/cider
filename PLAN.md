@@ -787,12 +787,15 @@ has been true six times running, each time a check freshly written.
 - **What invalidates the Nix endpoint** (measured from two graph derivations, not
   assumed): the graph takes the staged project as one store path, and that path holds
   the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ cmake/ etc/ misc/ patches/
-  templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. A comment there
-  rebuilds the graph and everything under it. `scripts/`, `nix/`, `docs/`, `plan/`,
-  `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that are their own
-  inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`, and
-  `nix/lib/darlingBuck2{Graph,Lower}.nix`, which ARE the derivations. So batch edits to
-  the build tree, and keep doc sweeps away from it while a build runs.
+  templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. `scripts/`, `nix/`,
+  `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
+  are their own inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`,
+  and `nix/lib/darlingBuck2{Graph,Lower}.nix`, which ARE the derivations.
+  `scripts/buck-endpoint-stale.nu` answers this in a second.
+  **Membership is necessary, not sufficient**, and the script over-reports because of it:
+  editing `tests/darling-buck2-smoke.nix` was reported stale and the prefix derivation did
+  not move at all -- `nix build .#darling-buck2` afterwards consumed the very store path
+  the earlier build had produced. Treat STALE as "check before trusting a running build".
 - **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
   subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
   RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses

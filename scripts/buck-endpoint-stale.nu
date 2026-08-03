@@ -19,6 +19,14 @@
 # /nix/store/*-darling-buck2-project, which is what nix/lib/darlingBuck2Graph.nix passes as
 # src. scripts/, nix/, docs/, plan/, PLAN.md and flake.nix are NOT in it. Re-measure with
 # --against whenever a staged project is at hand.
+#
+# NECESSARY, NOT SUFFICIENT, and this script over-reports because of it. Being under one of
+# these roots means a file CAN reach the endpoint, not that it does: editing
+# tests/darling-buck2-smoke.nix was reported stale here, and the prefix derivation did not
+# change at all -- nix build .#darling-buck2 afterwards consumed the very store path the
+# earlier build had produced. So a STALE verdict means "check before you trust a running
+# build", not "it is certainly wasted". The definitive answer is comparing the two
+# drvPaths, which costs a graph build, which is the thing this script exists to avoid.
 const ENDPOINT_ROOTS = [
     ".tangled" ".vscode" "buck" "buck-rust" "buck-src" "cmake" "darwin" "etc" "linux"
     "misc" "outputs" "patches" "src" "templates" "tests" "tools"
