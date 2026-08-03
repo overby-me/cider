@@ -36,8 +36,8 @@ need watchman
 
 # The pinned upstream trees the port compiles (migcom, the SDK header roots).
 if [ ! -d buck-src/bootstrap_cmds ] || [ ! -d buck-src/xnu ]; then
-	say "materializing pinned sources (scripts/buck-src.sh) ..."
-	./scripts/buck-src.sh >/dev/null
+	say "materializing pinned sources (scripts/buck-src.nu) ..."
+	./scripts/buck-src.nu >/dev/null
 fi
 
 out_of() { # target -> artifact path

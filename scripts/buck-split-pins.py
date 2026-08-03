@@ -432,7 +432,7 @@ def migrate(pins: list[str], dry: bool = False) -> int:
         os.makedirs(d, exist_ok=True)
         f = os.path.join(d, "BUCK")
         head = "" if os.path.exists(f) else (
-            f"# Targets over the {pin} pin, materialized by scripts/buck-src.sh. The tree\n"
+            f"# Targets over the {pin} pin, materialized by scripts/buck-src.nu. The tree\n"
             "# itself is gitignored (content is pinned in nix/submodules.json); this file is\n"
             "# committed. One package per pin keeps what the Nix-lowered path has to parse\n"
             "# small enough to evaluate (plan/buck2-port.md phase 3).\n\n")

@@ -1,0 +1,164 @@
+#!/usr/bin/env nu
+# Materialize nix-pinned upstream sources into buck-src/ for the Buck2 port.
+#
+# Most of Darling's source is already in this repo, but a few trees are nix pins
+# (nix/submodules.json) with no working copy: `nix build` assembles them into the store, which
+# a direct `buck2 build` cannot see (buck2 needs its sources inside the project root, and a
+# symlink into the store would make it crawl the closure).
+#
+# So this fetches the SAME pinned revision + hash nix uses, and copies it into buck-src/<name>/
+# (gitignored). The BUCK file that builds these trees is buck-src/BUCK, which is committed: a
+# buck2 package owns its subdirectories, so one checked-in BUCK file can define targets over all
+# materialized trees without putting a BUCK file inside any of them.
+#
+# --all copies out of the nix-ASSEMBLED tree (`nix build .#darling-src`) rather than fetching
+# 147 pins one at a time: one derivation, and its patches and symlink fixups are already
+# applied. It is what the guest tier needs, because a Darwin compile's include path is the SDK
+# tree (darwin/Developer/.../MacOSX.sdk/usr/include), ~1900 committed symlinks into these trees
+# -- with them absent, 1909 of those links dangle.
+#
+# Converted from bash (task #40). Tested against the bash version in an isolated tree -- a
+# scratch root holding only scripts/, nix/submodules.json and the flake, so buck-src/ there is
+# empty and the copying paths run for real without touching this repo's 3.8 GB of pins. Both
+# versions were driven over: a cold fetch of a small pin, the same pin again (the rev-stamp
+# skip), FORCE=1 over it, a path with no manifest entry, a scratch patches/<name>/*.patch to
+# exercise the patch loop, and --all's skip path against materialized stamps. Resulting trees
+# were compared file by file, not just the output.
+#
+# Usage:  scripts/buck-src.nu [<submodule-path> ...]
+#         scripts/buck-src.nu                      # the port's current needs
+#         scripts/buck-src.nu --all                # every pinned tree (~3.8 GB)
+#         FORCE=1 scripts/buck-src.nu <path>       # re-fetch even if present
+
+# What the port needs so far:
+#  - bootstrap_cmds: migcom + mig.sh, which every MIG codegen edge runs.
+#  - xnu: the Darwin headers migcom's own sources compile against (mach/*.h). The repo's SDK
+#    tree reaches these through ~1900 relative symlinks that only resolve in the nix-assembled
+#    tree, so the Buck2 port declares the header roots it needs directly from the source trees
+#    instead.
+const DEFAULT_PATHS = ["src/external/bootstrap_cmds" "src/external/xnu"]
+
+def say [msg: string] { print -e $msg }
+
+def main [--all, ...paths: string] {
+    let repo_root = ($env.FILE_PWD | path join ".." | path expand)
+    let manifest = ($repo_root | path join "nix/submodules.json")
+    let dest_root = ($repo_root | path join "buck-src")
+    let force = ($env.FORCE? | default "" | is-not-empty)
+    let entries = (open --raw $manifest | from json)
+
+    mkdir $dest_root
+
+    if $all {
+        print "buck-src: realizing the assembled tree (nix build .#darling-src) ..."
+        let assembled = (^nix build $"($repo_root)#darling-src" --no-link --print-out-paths
+            | str trim | lines | last)
+        print $"buck-src: assembled at ($assembled)"
+
+        let all_paths = ($entries | where {|e| ($e.hash? | default "") | is-not-empty }
+            | get path)
+        print $"buck-src: copying ($all_paths | length) pinned trees ..."
+        for sub in $all_paths {
+            let name = ($sub | path basename)
+            let dest = ($dest_root | path join $name)
+            let src = ($assembled | path join $sub)
+            if ($src | path type) != "dir" {
+                print $"buck-src: WARNING ($sub) missing from the assembled tree"
+                continue
+            }
+            let stamp = ($dest | path join ".buck-src-assembled")
+            let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $assembled))
+            if (not $force) and $stamped {
+                continue
+            }
+            if ($dest | path exists) { do -i { ^chmod -R u+w $dest } }
+            rm -rf $dest
+            # Plain copy, NOT hardlinks: hardlinked store files share the store's inode, so any
+            # later chmod/write would mutate the nix store itself. Left read-only; nothing here
+            # is edited, only compiled.
+            ^cp -a --no-preserve=ownership $src $dest
+            # The copy inherits the store's read-only mode, so the stamp needs the directory
+            # itself made writable first (only the directory, not the tree: nothing in here is
+            # edited).
+            ^chmod u+w $dest
+            # With the trailing newline echo wrote, so a tree stamped by either version
+            # is byte-identical. The readers strip it, but the file should not differ.
+            $"($assembled)\n" | save -f $stamp
+        }
+        let size = (^du -sh $dest_root | split row "\t" | first)
+        print $"buck-src: done \(($size))"
+        exit 0
+    }
+
+    let wanted = if ($paths | is-empty) { $DEFAULT_PATHS } else { $paths }
+
+    for sub in $wanted {
+        let name = ($sub | path basename)
+        let dest = ($dest_root | path join $name)
+
+        let hits = ($entries | where path == $sub)
+        if ($hits | is-empty) {
+            say $"no submodule entry for ($sub)"
+            exit 1
+        }
+        let e = ($hits | first)
+        if (($e.hash? | default "") | is-empty) {
+            say $"submodule ($e.path) has no pinned hash yet"
+            exit 1
+        }
+
+        let stamp = ($dest | path join ".buck-src-rev")
+        let stamped = (($stamp | path exists) and ((open --raw $stamp | str trim) == $e.rev))
+        if (not $force) and $stamped {
+            print $"buck-src: ($name) already at ($e.rev)"
+            continue
+        }
+        # --all already put this tree here, copied out of the nix-assembled tree at the same
+        # pinned rev with the same patches. Nothing to do.
+        if (not $force) and (($dest | path join ".buck-src-assembled") | path exists) {
+            print $"buck-src: ($name) already materialized from the assembled tree"
+            continue
+        }
+
+        print $"buck-src: fetching ($e.owner)/($e.repo) @ ($e.rev)"
+        # getFlake for the pinned nixpkgs, and --impure because that reads a path outside the
+        # store. The same fetchFromGitHub arguments nix/lib/darling-src.nix uses, so the fetch
+        # is a store hit whenever the nix side has already been built.
+        let flake = $"\(builtins.getFlake \"path:($repo_root)\"\)"
+        # A list joined rather than a concatenation: in nushell a newline before an operator
+        # ends the expression, so a `+` at the start of a continuation line is parsed as a
+        # command name and fails with "Command `+` not found".
+        let expr = ([
+            $"let pkgs = ($flake).inputs.nixpkgs.legacyPackages.${builtins.currentSystem};"
+            $"in pkgs.fetchFromGitHub { owner = \"($e.owner)\"; repo = \"($e.repo)\";"
+            $"rev = \"($e.rev)\"; hash = \"($e.hash)\"; }"
+        ] | str join " ")
+        let store_path = (^nix build --impure --no-link --print-out-paths --expr $expr
+            | str trim | lines | last)
+
+        if ($dest | path exists) { do -i { ^chmod -R u+w $dest } }
+        rm -rf $dest
+        ^cp -a --no-preserve=ownership $store_path $dest
+        ^chmod -R u+w $dest
+
+        # Same patch application as nix/lib/darling-src.nix: patches/<name>/*.patch with
+        # `patch -p1` inside the tree. xnu in particular carries the macOS identity patches, so
+        # an unpatched tree is not the tree we build.
+        let patch_dir = ($repo_root | path join "patches" $name)
+        if ($patch_dir | path type) == "dir" {
+            for p in (glob $"($patch_dir)/*.patch" | sort) {
+                print $"buck-src:   patch ($name): ($p | path basename)"
+                # stdout dropped, stderr left alone: a rejected hunk has to be visible.
+                open --raw $p | ^patch -p1 -d $dest --force | ignore
+            }
+        }
+
+        # buck2 refuses symlinks with a "." component or a target that leaves the cell, and the
+        # upstream trees contain both; re-point them at the same file inside buck-src. See
+        # scripts/buck-src-normalise.py for the two cases.
+        ^$"($repo_root)/scripts/buck-src-normalise.py" $dest
+
+        $"($e.rev)\n" | save -f $stamp
+        print $"buck-src: ($name) -> ($dest)"
+    }
+}

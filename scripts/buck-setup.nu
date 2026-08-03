@@ -3,7 +3,7 @@
 #
 # Two things buck2 cannot work out for itself:
 #
-#  1. The pinned upstream sources (scripts/buck-src.sh). The working copy is not a
+#  1. The pinned upstream sources (scripts/buck-src.nu). The working copy is not a
 #     complete source tree: 147 trees are nix pins with no checkout.
 #  2. The absolute path of Darling's Mach-O linker. clang's `-fuse-ld=` only
 #     accepts a linker NAME or an ABSOLUTE path, and a Starlark rule cannot
@@ -21,9 +21,9 @@ def main [--all] {
 
     print "== pinned sources =="
     if $all {
-        ^./scripts/buck-src.sh --all
+        ^./scripts/buck-src.nu --all
     } else {
-        ^./scripts/buck-src.sh
+        ^./scripts/buck-src.nu
     }
 
     print "== Mach-O toolchain =="

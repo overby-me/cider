@@ -5,7 +5,7 @@
 # fetched while the build runs: the sources have to be inside the project root before buck2
 # starts, since that is the only place it can read from. nix/devShell.nix unpacks every crate
 # in the three Cargo.lock files into $DARLING_RUST_VENDOR, and this copies them here -- the
-# same arrangement scripts/buck-src.sh gives the pinned C sources under buck-src/.
+# same arrangement scripts/buck-src.nu gives the pinned C sources under buck-src/.
 #
 # Copied, not symlinked: buck2 hashes what it reads, and a glob across a symlinked directory
 # into the store either misses files or drags the closure in.

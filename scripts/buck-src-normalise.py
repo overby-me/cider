@@ -12,7 +12,7 @@ buck2 rejects two kinds of symlink outright, and both occur in the upstream tree
 Both are rewritten to point at the same file INSIDE buck-src: the SDK farm's own links
 end in src/external/<pin>/..., which is exactly buck-src/<pin>/....
 
-Run after scripts/buck-src.sh (it invokes this itself); safe to re-run.
+Run after scripts/buck-src.nu (it invokes this itself); safe to re-run.
 
 Usage: scripts/buck-src-normalise.py [<tree> ...]
 """

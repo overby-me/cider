@@ -15,7 +15,7 @@ SDK's headers under exactly the SDK's names, with no source tree on the include
 path -- which is the whole point of the port (see plan/buck2-port.md wall #1).
 
 The symlinks resolve to `src/external/<pin>/...`, which for a direct `buck2
-build` are materialized under buck-src/<pin>/ (scripts/buck-src.sh), so targets
+build` are materialized under buck-src/<pin>/ (scripts/buck-src.nu), so targets
 are rewritten to that prefix.
 
 Usage:
@@ -33,7 +33,7 @@ SDK_INCLUDE = os.path.join(
     REPO,
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
 )
-# Where scripts/buck-src.sh materializes pinned trees, relative to the repo root.
+# Where scripts/buck-src.nu materializes pinned trees, relative to the repo root.
 BUCK_SRC = "buck-src"
 
 
