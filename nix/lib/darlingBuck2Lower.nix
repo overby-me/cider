@@ -158,6 +158,16 @@
   # and must not become a silent evaluation error if it does.
   escArg = x: escArgCache.${x} or (lib.escapeShellArg (fill x));
 
+  # The same trick for the staged trees, where it is worth less because the two strings
+  # differ: a destination is <tree>/<rel> and every one of them is distinct, but 45 percent
+  # of the LINK TARGETS repeat across trees (measured: 22,378 links, 12,305 distinct
+  # targets), because the same artifact gets staged into many trees.
+  stagedTargetCache = builtins.listToAttrs (map (t: {
+    name = t;
+    value = lib.escapeShellArg t;
+  }) (lib.concatMap (links: lib.attrValues links) (lib.attrValues (g.stagedTrees or {}))));
+  escStagedTarget = t: stagedTargetCache.${t} or (lib.escapeShellArg t);
+
   # The same crate sources the graph derivation analysed against, from the same lock files.
   rustVendor = import ./rust-vendor.nix {inherit pkgs;};
 
@@ -209,7 +219,7 @@
           dst = lib.escapeShellArg (path + "/" + rel);
         in ''
           mkdir -p "$(dirname ${dst})"
-          ln -sfn ${lib.escapeShellArg target} ${dst}
+          ln -sfn ${escStagedTarget target} ${dst}
         '')
         links));
 
