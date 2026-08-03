@@ -99,7 +99,7 @@ def main [scratch?: string] {
     # most resolve their symbols against the INTERPRETER process through a bundle loader, so a
     # standalone dlopen returns NULL for a healthy module. Tried on six PyObjC bundles: _inlines
     # loads, _AppKit and _CoreFoundation do not, and neither result says anything about whether
-    # the module works. They are already covered properly by scripts/buck-scripting-check.sh,
+    # the module works. They are already covered properly by scripts/buck-scripting-check.nu,
     # which imports them THROUGH the interpreter: python 55 of 56, zsh 32 of 32, perl 14 of 14.
     # Adding them here would only make this number noisier and less true.
 
