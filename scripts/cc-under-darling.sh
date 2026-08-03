@@ -19,6 +19,12 @@
 #
 # Usage:
 #   scripts/cc-under-darling.sh <host-source.c> [clang args...]
+#
+# STAYS BASH (task #40). This forwards ARBITRARY argv to another program, and a nushell
+# script cannot receive that: nu parses a script's arguments against main's signature, so the
+# first argument starting with a dash becomes an unknown flag and the script exits 1 before
+# running. `--` does not help, in either `script.nu -- -la` or `nu script.nu -- -la` form; both
+# are parsed as a flag with an empty name. Measured, not assumed.
 set -euo pipefail
 
 DARLING="${DARLING:-darling}"

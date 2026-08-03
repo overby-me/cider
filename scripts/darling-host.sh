@@ -15,13 +15,19 @@
 #
 # Env:
 #   DARLING_OUT          override the darling out path (else `nix build`)
-#   DARLING_C2_SETUID    setuid copy location (default /usr/local/bin/darling-c2)
+#   DARLING_C2_SETUID    setuid copy location (default /opt/darling-c2/darling)
 #   DPREFIX              prefix location (default ~/.darling-c2)
 #
 # Usage: scripts/darling-host.sh <darling args...>
 #        scripts/darling-host.sh --refresh-cmd   # just print the sudo command
 #
 # Exit 3 = setuid copy missing/stale (refresh command printed to stderr).
+#
+# STAYS BASH (task #40). This forwards ARBITRARY argv to another program, and a nushell
+# script cannot receive that: nu parses a script's arguments against main's signature, so the
+# first argument starting with a dash becomes an unknown flag and the script exits 1 before
+# running. `--` does not help, in either `script.nu -- -la` or `nu script.nu -- -la` form; both
+# are parsed as a flag with an empty name. Measured, not assumed.
 
 set -uo pipefail
 
