@@ -15,28 +15,27 @@
 # Exit 0 when nothing touched carries into the endpoint, 1 when something did, so a build
 # wrapper can gate on it.
 
-# Measured, not guessed: this is the top level of a real
-# /nix/store/*-darling-buck2-project, which is what nix/lib/darlingBuck2Graph.nix passes as
-# src. scripts/, nix/, docs/, plan/, PLAN.md and flake.nix are NOT in it. Re-measure with
-# --against whenever a staged project is at hand.
+# What the endpoint actually reads, taken from the two filters themselves rather than from a
+# listing of the result: nix/lib/darlingBuck2Graph.nix and nix/lib/darlingBuck2Lower.nix each
+# drop these top-level names, and both additionally drop tests/**/*.nix. This is the
+# INTERSECTION of the two lists, so a path is called neutral only when BOTH filters drop it.
+# The lowering drops seven more (LICENSE, .vscode, .claude, .tangled, .gdbinit,
+# .dfx-boot.log, result-graph-ref); calling those staged is the safe direction.
 #
-# NECESSARY, NOT SUFFICIENT, and this script over-reports because of it. Being under one of
-# these roots means a file CAN reach the endpoint, not that it does: editing
-# tests/darling-buck2-smoke.nix was reported stale here, and the prefix derivation did not
-# change at all -- nix build .#darling-buck2 afterwards consumed the very store path the
-# earlier build had produced. So a STALE verdict means "check before you trust a running
-# build", not "it is certainly wasted". The definitive answer is comparing the two
-# drvPaths, which costs a graph build, which is the thing this script exists to avoid.
-const ENDPOINT_ROOTS = [
-    ".tangled" ".vscode" "buck" "buck-rust" "buck-src" "cmake" "darwin" "etc" "linux"
-    "misc" "outputs" "patches" "src" "templates" "tests" "tools"
-    ".buckconfig" ".buckroot" ".envrc" ".gdbinit" ".gitignore" ".watchmanconfig"
-    "CMakeLists.txt" "LICENSE"
+# The first version of this script whitelisted the top level of a built staged project
+# instead, which said tests/ was an endpoint input. It is not: tests/buck2 holds real buck2
+# targets and passes the filter, while the NixOS VM tests beside it are Nix that buck2 never
+# reads. Editing tests/darling-buck2-smoke.nix was reported stale and the prefix derivation
+# did not move at all.
+const NEUTRAL_TOPS = [
+    "plan" "docs" "nix" "scripts" "PLAN.md" "README.md" "CONTRIBUTORS.md"
+    ".git" ".jj" ".direnv" "buck-out" "flake.nix" "flake.lock" "result-graph-ref"
 ]
 
-# Outside the staged project, but inputs of the endpoint in their own right: the first two
-# are passed to the graph derivation as separate store paths, and the last two ARE the
-# derivations, so a comment in them changes the drv text directly.
+# Outside those filters but inputs of the endpoint in their own right: the first two are
+# passed to the graph derivation as separate store paths, and the last two ARE the
+# derivations, so a comment in them changes the drv text directly. They sit under tops the
+# filters drop, which is exactly why they need naming.
 const OWN_INPUTS = [
     "scripts/buck2-graph-dump.py"
     "scripts/buck-src-normalise.py"
@@ -46,8 +45,11 @@ const OWN_INPUTS = [
 
 def classify [path: string] {
     if $path in $OWN_INPUTS { return "own-input" }
-    let root = ($path | split row "/" | first)
-    if $root in $ENDPOINT_ROOTS { "staged" } else { "neutral" }
+    let top = ($path | split row "/" | first)
+    # both filters drop the Nix files under tests/, and only those
+    if $top == "tests" and ($path | str ends-with ".nix") { return "neutral" }
+    if $top in $NEUTRAL_TOPS { return "neutral" }
+    "staged"
 }
 
 def main [
@@ -57,21 +59,19 @@ def main [
     cd ($env.CURRENT_FILE | path dirname | path join "..")
 
     if ($against | is-not-empty) {
-        # The root list is the only guessable part of this, so check it against the real
-        # thing rather than trusting a comment.
-        # ls --all, because nushell hides dotfiles exactly like a shell ls does, and eight
-        # of the roots are dotfiles. Without it the self-check reports them as absent.
-        let actual = (ls --all $against | get name | each {|n| $n | path basename } | sort)
-        let expected = ($ENDPOINT_ROOTS | sort)
-        let missing = ($expected | where {|e| not ($e in $actual) })
-        let extra = ($actual | where {|a| not ($a in $expected) })
-        if ($missing | is-empty) and ($extra | is-empty) {
-            print $"ok: the root list matches ($against)"
+        # The exclusion list is the guessable part, so check it against a real staged
+        # project: not one of these names may appear in it, and no Nix file under tests/
+        # may either. If one does, the endpoint reads it and this script is calling it
+        # neutral, which is the dangerous direction.
+        let present = ($NEUTRAL_TOPS | where {|t| ($against | path join $t) | path exists })
+        let stray = (glob $"($against)/tests/**/*.nix" | length)
+        if ($present | is-empty) and $stray == 0 {
+            print $"ok: none of the ($NEUTRAL_TOPS | length) excluded names is in ($against), and no tests Nix file either"
             exit 0
         }
-        if ($missing | is-not-empty) { print $"listed but absent: ($missing | str join ', ')" }
-        if ($extra | is-not-empty) { print $"present but unlisted: ($extra | str join ', ')" }
-        print "The endpoint sees more (or less) than this script thinks. Fix ENDPOINT_ROOTS."
+        if ($present | is-not-empty) { print $"present but called neutral: ($present | str join ', ')" }
+        if $stray > 0 { print $"($stray) Nix file\(s) under tests/ are in the staged project" }
+        print "The endpoint reads more than this script thinks. Fix NEUTRAL_TOPS."
         exit 1
     }
 
