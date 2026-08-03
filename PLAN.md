@@ -221,6 +221,33 @@ tracks below.
   miscompile). **A codegen-class divergence is stop-the-line** — the shim is lying to the
   compiler (math, memory layout, or a syscall result) and everything above is suspect.
 
+### #12 the VM hang: MEASURED, and it is not a hang in Darling
+
+Four arms in one VM, same command, same prefix shape, one variable each:
+
+| arm | stdin | result |
+|-----|-------|--------|
+| foreground | inherited from the driver | **124, no output, empty file** |
+| foreground | `< /dev/null` | rc 0, `ARM_B_OK` |
+| foreground | `setsid` + `< /dev/null` | rc 0, `ARM_C_OK` |
+| backgrounded | POSIX gives it `/dev/null` | rc 0, `ARM_D_OK` |
+
+So the variable is **stdin**, not the process group (setsid changed nothing) and not the
+stdout target (a file, an anonymous pipe and a named FIFO all worked when backgrounded).
+The guest command always ran: `BUCK2_BASH_OK`, `PIPED_OK` and `FIFO_OK` each appeared,
+in under 75s, in a fresh prefix. What never happens is the LAUNCHER exiting, because it
+waits on a stdin that the NixOS driver's control channel never closes. The driver then
+waits for stdout to be closed (its own docstring says so, and says a detaching command
+must close it) and reports 124 with the output thrown away.
+
+This retires the fd-2 lead for good: the fd-2-on-the-log line belongs to the persistent
+shellspawn init, by design, and the surviving init in a failed run holds no pipe of the
+caller's at all.
+
+- **Test side:** every darling invocation in a VM test needs `< /dev/null`.
+- **Darling side (open):** the launcher should not block forever on a stdin that never
+  EOFs after the guest command has exited.
+
 ### M1 tail (Phase C.3–C.4b) [ARCH-FREE]
 - Drive the official `pkgs.hello` **derivation** through guest nix (not hand-run
   configure/make). `scripts/build-pkg-bypass.nu <attr>` generalizes to any nixpkgs
