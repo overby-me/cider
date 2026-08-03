@@ -9,6 +9,11 @@
 #   GBIN  (optional) basename of a binary in the output's bin/ to run --version
 # See scripts/gnix-hello.sh for the hello-specific M1 driver and
 # plan/guest-nix-m1.md for the launchd-bypass background.
+#
+# STAYS BASH. This runs inside the GUEST, under a darling shell session, where the
+# shell is Darwin bash 3.2.57 and there is no nushell in the prefix. The bash-to-
+# nushell conversion (task #40) covers HOST tooling only; converting this would break
+# the guest, and putting a nushell in the prefix is a different project.
 : "${GDRV:?set GDRV to the derivation to build}"
 : "${GDB:?set GDB to the host closure-dump path}"
 

@@ -16,6 +16,11 @@
 #   NIXBIN         x86_64-darwin nix bin dir (store path, seen via the /nix overlay)
 #   HELLO_DRV      the hello derivation to build
 #   HELLO_DB_DUMP  host path to the closure db dump (reached via /Volumes/SystemRoot)
+#
+# STAYS BASH. This runs inside the GUEST, under a darling shell session, where the
+# shell is Darwin bash 3.2.57 and there is no nushell in the prefix. The bash-to-
+# nushell conversion (task #40) covers HOST tooling only; converting this would break
+# the guest, and putting a nushell in the prefix is a different project.
 NIXBIN="${NIXBIN:-/nix/store/fw9y98mcqkksxyah45mmbsrvaxxv7r6x-nix-2.34.8/bin}"
 HELLO_DRV="${HELLO_DRV:-/nix/store/yc10hxdna1mi7a8b96azgyg3prfi72ns-hello-2.12.3.drv}"
 HELLO_DB_DUMP="${HELLO_DB_DUMP:?set HELLO_DB_DUMP to the host closure-dump path}"
