@@ -4,7 +4,7 @@
 Parses the SDK's libSystem.tbd re-export closure to get the *official*
 macOS-14 export set, extracts Darling's *actual* export set from our built
 system dylibs, and diffs them - optionally intersected with the demand list
-from symbol-demand.sh so the output is exactly the symbols that (a) real
+from symbol-demand.nu so the output is exactly the symbols that (a) real
 binaries import, (b) macOS 14 provides, and (c) Darling still lacks.
 
 No third-party deps (no PyYAML): the .tbd files are regular enough to parse

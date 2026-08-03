@@ -86,7 +86,7 @@ the archive is produced, and the object is simply not in it. Check with
 
 **The runtime checks cannot be chained naively.** Each kills stale processes under its own
 root at START and not at exit, so three back to back leave three daemons alive and the
-earlier ones fail spuriously. `buck-runtime-check.sh` kills between. `pgrep -x`, never `-f`:
+earlier ones fail spuriously. `buck-runtime-check.nu` kills between. `pgrep -x`, never `-f`:
 an `-f` pattern matches the command line of the shell running it.
 
 **Host ELF libraries must be on `LD_LIBRARY_PATH` for the LOADER**, not just for wrapgen.
@@ -542,7 +542,7 @@ P2 epoll re-arm memoize.
 
 ### Watch-items (reopen on demand)
 - **Symbol:** 6 lazy-bound FSEvents stubs (`_FSEventStream*`, CoreServices) only if a real
-  binary calls them. Re-run `symbol-demand.sh` as the package set widens (larger C++/Swift
+  binary calls them. Re-run `symbol-demand.nu` as the package set widens (larger C++/Swift
   broadens the surface). Supply = `nm --defined-only` ∪ full export-trie (both, or you
   undercount re-exports).
 - **Syscall:** dup2-to-guarded-fd → return EBADF, don't abort; may recur in
