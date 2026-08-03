@@ -109,7 +109,21 @@ let
     # add_subdirectory into the nested path fails at configure. fetchgit with
     # fetchSubmodules recurses and resolves the nested repos' relative URLs
     # against the parent (../darling-X.git -> github.com/darlinghq/darling-X).
-    if e.recursive or false
+    # A pin whose content is in git LFS cannot come from an archive tarball either: GitHub
+    # serves the 132-byte POINTER files, not the objects. src/external/swift is the one, and
+    # its 44 runtime dylibs were installed into the prefix as those pointers -- text where a
+    # Mach-O belongs, which is why all 44 fail to load and nothing else in the sweep does.
+    if e.lfs or false
+    then
+      pkgs.fetchgit {
+        url = "https://github.com/${e.owner}/${e.repo}";
+        inherit (e) rev;
+        hash = e.hash;
+        fetchLFS = true;
+        fetchSubmodules = e.recursive or false;
+        inherit name;
+      }
+    else if e.recursive or false
     then
       pkgs.fetchgit {
         url = "https://github.com/${e.owner}/${e.repo}";

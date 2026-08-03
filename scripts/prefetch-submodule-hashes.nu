@@ -52,12 +52,18 @@ export def write_hash [manifest: string, idx: int, sri: string] {
     save_manifest $manifest ($d | update $idx {|e| $e | upsert hash $sri })
 }
 
-def prefetch [owner: string, repo: string, rev: string, recursive: bool] {
-    if $recursive {
-        # Recursive submodules (their own .gitmodules) need fetchgit fetchSubmodules; the
-        # archive-tarball hash from nix-prefetch-url would omit the nested content.
+def prefetch [owner: string, repo: string, rev: string, recursive: bool, lfs: bool] {
+    if $recursive or $lfs {
+        # Neither can come from an archive tarball. Recursive submodules (their own
+        # .gitmodules) need fetchSubmodules, or the nested content is missing; an LFS pin needs
+        # --fetch-lfs, or every LFS-tracked file is its 132-byte pointer rather than its
+        # content. Both are fetchgit on the nix side, so both are nix-prefetch-git here.
+        let extra = (
+            (if $recursive { ["--fetch-submodules"] } else { [] })
+            ++ (if $lfs { ["--fetch-lfs"] } else { [] })
+        )
         let r = (^nix-prefetch-git --quiet --url $"https://github.com/($owner)/($repo)"
-            --rev $rev --fetch-submodules | complete)
+            --rev $rev ...$extra | complete)
         if $r.exit_code != 0 { return "" }
         try { $r.stdout | from json | get hash? | default "" } catch { "" }
     } else {
@@ -102,9 +108,10 @@ def main [
     for it in $work {
         let e = $it.item
         let rec = ($e.recursive? | default false)
-        let tag = if $rec { " \(recursive)" } else { "" }
+        let lfs = ($e.lfs? | default false)
+        let tag = if $lfs { " \(lfs)" } else if $rec { " \(recursive)" } else { "" }
         print -n $"  [($it.index)] ($e.owner)/($e.repo) @ ($e.rev | str substring 0..<10)($tag) ... "
-        let sri = (prefetch $e.owner $e.repo $e.rev $rec)
+        let sri = (prefetch $e.owner $e.repo $e.rev $rec $lfs)
         if ($sri | is-empty) {
             print "FAILED"
             $fail = $fail + 1
