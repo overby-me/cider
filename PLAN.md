@@ -863,6 +863,18 @@ has been true six times running, each time a check freshly written.
   a dump-format change moves what every lowered derivation references and none of this can
   be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
   already enabled here.
+- **IFD is not the problem. The 1.62 GB payload is. Do not bet on an experimental feature
+  before fixing the representation.** recursive-nix works here, verified end to end: an
+  inner derivation built from inside a build, INNER_OK read back out of the store. The
+  gotcha, which cost one failed run, is that the socket is exposed as
+  `NIX_REMOTE=unix:///build/.nix-socket` and NOT the daemon path, so exporting
+  `NIX_REMOTE=daemon` fails with "cannot connect to socket at
+  /nix/var/nix/daemon-socket/socket". Keep that as a FALLBACK. It and dynamic-derivations
+  are CppNix-specific and long-experimental, and snix takes IFD as a supported feature
+  rather than a wart. After #51 the graph is tens of MB rather than 1.62 GB, an IFD that
+  size costs a fraction of a second, and the architecture that exists today becomes
+  affordable without any experimental feature. Do #51 and #47, RE-MEASURE, and only then
+  decide whether granularity still needs a lever.
 - **The endpoint build OOMs on a 30 GB machine, and eval is why.** `nix eval` of the prefix
   drvPath alone holds a 9.0 GB heap and allocates 20.6 GB, and for an IFD endpoint that
   evaluator stays resident for the WHOLE build, not just the eval. With `max-jobs = 22` on
