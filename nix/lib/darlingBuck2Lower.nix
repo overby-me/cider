@@ -275,22 +275,75 @@
   # As SYMLINKS, and as a SHARED script: an action only reads project files, and copying
   # the repo (let alone 4 GB of pins) into every derivation would cost more than the build
   # being replaced. The script assumes the builder has already entered the working tree.
+  # NARROWED to what the port actually reads, when the graph carries the per-target lists
+  # scripts/buck2-graph-dump.py precomputes. The filtered project is 306,019 files; the union
+  # of every target's sources is 16,106, so nineteen twentieths of what every lowered
+  # derivation depended on was never opened by any action. Pin contents dominate the rest.
+  #
+  # A UNION rather than one source per target, and that is measured, not a shortcut. The 671
+  # targets name 1,754,387 files between them, so each of those 16,106 appears in about 109
+  # of them; a per-target lib.fileset.toSource, which is what task #11 originally proposed,
+  # would copy the same small set into the store a hundred times over. Getting per-target
+  # invalidation without that duplication needs one store path per distinct FILE, shared, with
+  # a per-target manifest the builder reads -- a different design, still open.
+  #
+  # Falls back to the whole filtered source when targetSources is absent, so a graph dumped
+  # before this field existed still lowers.
+  srcUnion = let
+    files = lib.unique (lib.concatLists (lib.attrValues g.targetSources));
+    wanted = builtins.listToAttrs (map (p: {
+      name = p;
+      value = true;
+    })
+    files);
+    # Every ancestor directory of a wanted file, as a SET. builtins.path filters top down and
+    # never descends into what it rejected, so a directory has to be kept when anything under
+    # it is wanted -- and answering that by scanning the file set per directory is 16,106
+    # comparisons for each of 306,019 paths. Precomputing the ancestors makes it a lookup:
+    # about 80,000 entries, built once.
+    ancestors = builtins.listToAttrs (map (d: {
+      name = d;
+      value = true;
+    })
+    (lib.unique (lib.concatMap (p: let
+        segs = lib.splitString "/" p;
+      in
+        map (n: lib.concatStringsSep "/" (lib.take n segs))
+        (lib.range 1 (lib.length segs - 1)))
+      files)));
+  in
+    builtins.path {
+      name = "darling-buck2-lower-sources";
+      path = srcRaw;
+      filter = path: type: let
+        rel = lib.removePrefix (toString srcRaw + "/") (toString path);
+      in
+        if type == "directory"
+        then ancestors ? ${rel}
+        else wanted ? ${rel};
+    };
+
+  projectSrc =
+    if g ? targetSources && g.targetSources != {}
+    then srcUnion
+    else src;
+
   stageProject = pkgs.writeShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${src}/${name}"} ${lib.escapeShellArg name}
+        ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
       '') (lib.filterAttrs (name: _:
-        name != "buck-src" && name != "buck-out" && name != "src" && name != "buck-rust")
-        (builtins.readDir src)))}
+        name != "buck-src" && name != "buck-out" && name != "projectSrc" && name != "buck-rust")
+        (builtins.readDir projectSrc)))}
 
     # buck-rust/ is a REAL directory for the same reason src/ is: its BUCK file is
-    # committed and travels in `src`, while the crate sources are gitignored and come from
+    # committed and travels in `projectSrc`, while the crate sources are gitignored and come from
     # the vendor derivation, so the two have to be planted side by side. Without it rustc
     # opens buck-rust/libc-0.2.189/src/lib.rs and finds nothing there.
     mkdir -p buck-rust
-    ${lib.optionalString (builtins.pathExists (src + "/buck-rust")) (
+    ${lib.optionalString (builtins.pathExists (projectSrc + "/buck-rust")) (
       lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-          ln -s ${lib.escapeShellArg "${src}/buck-rust/${name}"} ${lib.escapeShellArg "buck-rust/${name}"}
-        '') (builtins.readDir (src + "/buck-rust")))
+          ln -s ${lib.escapeShellArg "${projectSrc}/buck-rust/${name}"} ${lib.escapeShellArg "buck-rust/${name}"}
+        '') (builtins.readDir (projectSrc + "/buck-rust")))
     )}
     for _c in ${rustVendor}/*/; do
       ln -sfn "$_c" "buck-rust/$(basename "$_c")"
@@ -301,16 +354,16 @@
     # planting anything inside a store path is a permission error.
     mkdir -p src/external
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${src}/src/${name}"} ${lib.escapeShellArg "src/${name}"}
-      '') (lib.filterAttrs (name: _: name != "external") (builtins.readDir (src + "/src"))))}
+        ln -s ${lib.escapeShellArg "${projectSrc}/src/${name}"} ${lib.escapeShellArg "src/${name}"}
+      '') (lib.filterAttrs (name: _: name != "external") (builtins.readDir (projectSrc + "/src"))))}
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${src}/src/external/${name}"} ${lib.escapeShellArg "src/external/${name}"}
-      '') (builtins.readDir (src + "/src/external")))}
-    ${lib.optionalString (builtins.pathExists (src + "/buck-src")) ''
+        ln -s ${lib.escapeShellArg "${projectSrc}/src/external/${name}"} ${lib.escapeShellArg "src/external/${name}"}
+      '') (builtins.readDir (projectSrc + "/src/external")))}
+    ${lib.optionalString (builtins.pathExists (projectSrc + "/buck-src")) ''
       mkdir -p buck-src
       ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-          ln -s ${lib.escapeShellArg "${src}/buck-src/${name}"} ${lib.escapeShellArg "buck-src/${name}"}
-        '') (builtins.readDir (src + "/buck-src")))}
+          ln -s ${lib.escapeShellArg "${projectSrc}/buck-src/${name}"} ${lib.escapeShellArg "buck-src/${name}"}
+        '') (builtins.readDir (projectSrc + "/buck-src")))}
     ''}
     ${lib.concatMapStrings (p: ''
       ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
