@@ -559,7 +559,7 @@ tot=$(./scripts/buck-coverage.py 2>/dev/null | awk '/^total/ {print $4}')
 # libstdc++ the last one to fall.
 #
 # The reference moved stock -> all once `all` reached 100 percent and the prefix followed
-# it, which is what let scripts/buck-jsc-check.sh stop hand-staging JavaScriptCore.
+# it, which is what let scripts/buck-jsc-check.nu stop hand-staging JavaScriptCore.
 #
 # The denominator jumped from 1359 when the metric started keying edges by reference PATH
 # rather than by artifact basename. A name does not identify a library -- perl builds two
