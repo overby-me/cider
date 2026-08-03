@@ -246,6 +246,12 @@ prefix log shows the guest taking **signal 6** and "emulating default signal eff
 because the driver additionally waits for stdout to be closed (its docstring says so, and
 warns that a detaching command must close it) and throws the output away.
 
+Narrowed twice more: the daemon logs of a failing and a working run are identical through
+`execve expand /bin/bash`, so bash execs fine; and with the same socket stdin
+`darling shell /bin/echo X` returns 127 **with a message from the outer bash**, so bash
+also runs and writes. Only the NESTED `bash -c` aborts, which puts the fault in passing
+the socket fd to a SECOND guest process. Tracked as #46.
+
 This retires the fd-2 lead for good: the fd-2-on-the-log line belongs to the persistent
 shellspawn init, by design, and the surviving init in a failed run holds no pipe of the
 caller's at all.
