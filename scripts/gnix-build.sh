@@ -2,7 +2,7 @@
 # gnix-build.sh -- generic guest-side driver: build any pre-seeded derivation
 # FROM SOURCE with guest Nix under Darling, then optionally run its binary.
 # Runs INSIDE one `darling shell sh <this>` session (rootless one-shot). The
-# host-side counterpart scripts/build-pkg-bypass.sh sets up the prefix, seeds
+# host-side counterpart scripts/build-pkg-bypass.nu sets up the prefix, seeds
 # the store DB, and passes:
 #   GDRV  the derivation to build (a /nix/store/....drv, canonical path in-guest)
 #   GDB   host path to the closure DB dump (reached via /Volumes/SystemRoot)

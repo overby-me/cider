@@ -12,13 +12,13 @@
 # port's job is to run it, not to build it.
 #
 # Converted from bash (task #40) and checked against it WITHOUT a container, by driving both in
-# a scratch tree whose build-pkg-bypass.sh is a stub printing a canned transcript: the missing
+# a scratch tree whose build-pkg-bypass.nu is a stub printing a canned transcript: the missing
 # prefix (2), PASS, PARTIAL and FAIL. The verdict is the whole of this script, so the verdict is
 # what was tested; the container belongs to the driver it calls.
 #
 # Usage:  scripts/buck-nix-bash-check.nu [<attr> [<binary>]]
 # Default attr is bash. Any nixpkgs x86_64-darwin attr works, since the driver underneath
-# (scripts/build-pkg-bypass.sh) is generic.
+# (scripts/build-pkg-bypass.nu) is generic.
 
 def say [msg: string] { print -e $msg }
 
@@ -50,7 +50,7 @@ def main [attr?: string, bin?: string] {
     # transcript for build_rc and run_rc IN ORDER. Trailing newlines stripped as $(...) does in
     # bash, so print adds exactly one back rather than a blank line per run.
     let log = (mktemp --tmpdir buck-nix-bash-check.XXXXXX)
-    do -i { ^./scripts/build-pkg-bypass.sh $attr $bin --mono $rt --prefix $prefix out+err> $log }
+    do -i { ^./scripts/build-pkg-bypass.nu $attr $bin --mono $rt --prefix $prefix out+err> $log }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log
     print $out

@@ -223,7 +223,7 @@ tracks below.
 
 ### M1 tail (Phase C.3–C.4b) [ARCH-FREE]
 - Drive the official `pkgs.hello` **derivation** through guest nix (not hand-run
-  configure/make). `scripts/build-pkg-bypass.sh <attr>` generalizes to any nixpkgs
+  configure/make). `scripts/build-pkg-bypass.nu <attr>` generalizes to any nixpkgs
   x86_64-darwin attr. Widen to no-substitute deps.
 - **C.4b** gdb-on-timeout stall capture (timeout + on-timeout stack of the guest process +
   daemon), filed to the Stall notes below. (The old `config.status` here-doc pipe hang was
