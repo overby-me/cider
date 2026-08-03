@@ -318,29 +318,17 @@
       # 2,066 actions, which is the ratio that made per-target the right unit.
       #
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all
+      # The targets come from the PREFIX package rather than from a second lowering of the
+      # same graph, for the reason spelled out at packages.darling-buck2: a lowering without
+      # extraTools produces a disjoint set of derivations AND cannot build the wrap_elf ones.
       packages.darling-buck2-all =
         pkgs:
-        let
-          darlingSrc = import ./nix/lib/darling-src.nix {
-            inherit pkgs;
-            baseSrc = ./.;
-          };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
-          lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
-            allPins = true;
-            graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
-              allPins = true;
-              targets = import ./nix/lib/buck2-targets.nix;
-            };
-          };
-        in
         pkgs.linkFarm "darling-buck2-all" (
           pkgs.lib.mapAttrsToList (label: drv: {
             name = pkgs.lib.strings.sanitizeDerivationName (pkgs.lib.last (pkgs.lib.splitString ":" label));
             path = drv;
-          }) lowered.named
+          })
+          pkgs.darling-buck2-prefix.named
         );
 
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-all-graph
@@ -391,32 +379,27 @@
         # extra attribute only gives `nix build .#darling-buck2-prefix.stageProject` something
         # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
         # seconds instead of discovering a staging bug 90 minutes into a build.
-        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject; };
+        # `named` as well as stageProject, so packages.darling-buck2-all can link-farm THESE
+        # derivations instead of lowering the graph a second time with different arguments.
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.
       #   nix build .#darling-buck2 && ./result/bin/darling-buck2 shell /bin/bash -c ...
+      # The PREFIX package, not a second lowering of the same graph. It used to build its own,
+      # with the same arguments EXCEPT extraTools, and extraTools goes into the
+      # nativeBuildInputs of every lowered derivation -- so the two entry points produced two
+      # disjoint sets of ~671 derivations, and building one did nothing for the other. Worse,
+      # the copy without extraTools is the configuration that cannot work: a wrap_elf action
+      # dlopens the host libX11 and friends at BUILD time, so without them in the sandbox it
+      # dies with "Cannot load libX11.so", which is exactly the failure task #35 fixed on the
+      # graph side. The VM test in checks/ consumes THIS package, so that was the endpoint
+      # #10 and #12 are waiting on.
       packages.darling-buck2 =
         pkgs:
-        let
-          darlingSrc = import ./nix/lib/darling-src.nix {
-            inherit pkgs;
-            baseSrc = ./.;
-          };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
-          lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
-            allPins = true;
-            graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
-              allPins = true;
-              targets = import ./nix/lib/buck2-targets.nix;
-            };
-          };
-        in
         pkgs.callPackage ./nix/buck2-package.nix {
           # The lowered target's output holds the tree under its own name.
-          prefix = "${lowered.named."root//buck/prefix:darling_prefix"}/darling_prefix__prefix";
+          prefix = "${pkgs.darling-buck2-prefix}/darling_prefix__prefix";
         };
 
       packages.darling-buck2-all-graph =
