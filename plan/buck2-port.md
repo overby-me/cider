@@ -180,7 +180,7 @@ build could see. All four are fixed; the endpoint is at the last mile.
 
 Two checks now hold the line, both verified to fail when the invariant is broken:
 `scripts/buck-host-includes.py` (in `buck-test.sh`) requires every target the reference gives
-a host `-I` to declare `//src/native:host_headers`; `scripts/buck-nix-includes-check.sh`
+a host `-I` to declare `//src/native:host_headers`; `scripts/buck-nix-includes-check.nu`
 (standalone) compiles those targets with clang-unwrapped and ONLY the dirs the Nix derivation
 declares, which is the divergence that hid two of the four.
 
