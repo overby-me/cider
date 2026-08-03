@@ -221,6 +221,21 @@ tracks below.
   miscompile). **A codegen-class divergence is stop-the-line** — the shim is lying to the
   compiler (math, memory layout, or a syscall result) and everything above is suspect.
 
+### The Nix endpoint builds the prefix, green
+
+`nix build .#darling-buck2-prefix` finished with **NIX EXIT 0**: 3216 derivations, **0
+errors**, ending on the prefix derivation. The result holds **34,720** files and links,
+and all six spot checks pass (`bin/bash`, `bin/sh`, `usr/lib/dyld`,
+`usr/lib/libSystem.B.dylib`, `usr/lib/system/libsystem_kernel.dylib`, the ICU data).
+Read the `NIX EXIT` line and the `-o` link, never the wrapper status.
+
+**The Nix prefix ships REAL Swift libraries.** `buck-dylib-shape.nu` over it reports 227
+installed `.dylib` files, **227 Mach-O, 0 git LFS pointers**, and the 44 under
+`usr/lib/swift` are genuine (libswiftCore 6.7 MB, libswiftFoundation 3.2 MB), because the
+nix pins fetch LFS content. The HOST tree still installs the 131-byte pointers, which is
+what the check's exception covers, so the two prefixes differ in exactly that set. This is
+reported, not acted on: #39 stays as the user left it.
+
 ### #12 the VM hang: MEASURED, and it is not a hang in Darling
 
 Four arms in one VM, same command, same prefix shape, one variable each:
