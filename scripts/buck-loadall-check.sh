@@ -3,7 +3,7 @@
 #
 # Every coverage number this port has is about building: 1452 of 1452 link edges, install
 # UNMAPPED 0, codegen accounted for. None of them says anything about running, and the eight
-# other runtime checks between them touch a few dozen artifacts out of the 227 plain dylibs
+# other runtime checks between them touch a few dozen artifacts out of the several hundred
 # the prefix ships. The rest were believed to work because they linked.
 #
 # This dlopens all of them inside the container and counts. A failure here is not
@@ -71,20 +71,23 @@ chmod +x "$rt/libexec/darling/usr/bin/loadall_probe"
 # which brings it up properly under X11 and opens a window, so the cone is covered by the tool
 # built for it. Anything added here has to be justified the same way: a dedicated check, or a
 # reason it cannot be loaded blind.
-# FRAMEWORK BINARIES ARE NOT SWEPT, and the reason is specific rather than caution. Loading
-# AppKit with no display does not fail, and does not merely crash its own child: it ends the
-# whole guest process tree, so the sweep stopped there with 300 libraries unmeasured. Forking
-# per library inside the probe did not help for the same reason, and ApplicationServices, which
-# re-exports the same cone, behaves identically. The GUI frameworks have their own check --
-# scripts/buck-appkit-check.sh brings AppKit up under X11 and opens a window -- so the cone is
-# covered by the tool built for it, and this measures the 227 plain dylibs instead.
-SKIP='^$'
+# FRAMEWORK BINARIES ARE SWEPT TOO. They were excluded on the belief that AppKit needs a
+# display and ends the guest without one. That was wrong in the same way the 22 native
+# wrappers were: the killer was a missing LD_LIBRARY_PATH, so their initializers could not
+# dlopen the host libX11 through elfcalls and aborted. With it, AppKit, ApplicationServices
+# and CoreText all dlopen cleanly with no display anywhere.
+#
+# A framework binary has no extension: Foo.framework/Versions/A/Foo, reached through the
+# Foo.framework/Foo symlink that -type f skips.
 
 say "== enumerating what the prefix ships =="
 list="$rt/libexec/darling/tmp/loadall.txt"
 mkdir -p "$(dirname "$list")"
-find "$rt/libexec/darling" -type f -name '*.dylib' |
-	sed "s|^$rt/libexec/darling||" | sort -u | grep -vE "$SKIP" >"$list"
+{
+	find "$rt/libexec/darling" -type f -name '*.dylib'
+	find "$rt/libexec/darling/System/Library/Frameworks" \
+		-mindepth 3 -maxdepth 4 -type f ! -name '*.*' 2>/dev/null
+} | sed "s|^$rt/libexec/darling||" | sort -u >"$list"
 n=$(wc -l <"$list")
 say "   $n libraries to try"
 
@@ -164,17 +167,18 @@ if [ "$bad" != 0 ] || [ "${crash:-0}" != 0 ] || [ "${hang:-0}" != 0 ]; then
 		sed -E 's/^LOADALL (fail|crash|hang) /     \1 /' | head -24
 fi
 
-# A FLOOR set to what was MEASURED. 183 of the 227 dylibs load, and 183 is exactly the number
-# of them that are Mach-O at all: scripts/buck-dylib-shape.nu counts 183 Mach-O and 44 git LFS
-# pointers. So EVERY real library in the prefix loads, and the only failures are files that
-# are not libraries.
+# A FLOOR set to what was MEASURED. 292 of 336 load: 227 dylibs plus 109 framework binaries,
+# and the 44 that do not are exactly the git LFS pointers under usr/lib/swift, which
+# scripts/buck-dylib-shape.nu counts independently. So EVERY real artifact in the prefix
+# loads in the guest, and the only failures are files that are not libraries at all.
 #
-# It used to read 161 with 22 more ending the guest process, and that gap was this harness
-# missing LD_LIBRARY_PATH rather than anything about the port.
+# It read 161 of 227 an hour ago, with 22 ending the guest process and 110 frameworks not
+# swept because AppKit was thought to need a display. Both were the same missing
+# LD_LIBRARY_PATH.
 #
 # Raise it when the count goes up, the way the scripting check's floor tracks its own
 # measurement.
-floor=${LOADALL_FLOOR:-183}
+floor=${LOADALL_FLOOR:-292}
 if [ "${ok:-0}" -ge "$floor" ]; then
 	say ""
 	say "PASS: $ok of $n installed libraries load in the guest (floor $floor)"
