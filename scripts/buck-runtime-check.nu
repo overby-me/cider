@@ -45,6 +45,10 @@ const CHECKS = [
     # libdispatch, which is cheap but goes last because it is the newest: it makes threads
     # and hands work between them, which is the machinery this port has broken most often.
     buck-dispatch-check
+    # A SOCKET on stdin, which nothing else here passes: every other check inherits a
+    # terminal or redirects. That gap hid a stack smash in the guest getpeername for months,
+    # and it looked like a hang rather than a crash from every harness that hit it.
+    buck-socket-stdin-check
 ]
 # Builds bash with Nix INSIDE Darling. It is the campaign's keystone milestone and it takes
 # far longer than everything else here put together, so it is opt-in.
