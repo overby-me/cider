@@ -7,7 +7,7 @@
 # Cargo.lock each of them ships.
 #
 # Shared by nix/devShell.nix (which exports it as DARLING_RUST_VENDOR for
-# scripts/buck-rust-vendor.sh) and nix/lib/darlingBuck2Graph.nix (which materializes it into
+# scripts/buck-rust-vendor.nu) and nix/lib/darlingBuck2Graph.nix (which materializes it into
 # buck-rust/ inside the derivation). One definition, because a graph dumped against a
 # different set of crate sources than the daemon uses is a graph of a different build.
 {pkgs}:

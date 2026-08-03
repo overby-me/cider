@@ -211,7 +211,7 @@ in
 
       ${materializePins}
 
-      # The Rust crate sources, the same set scripts/buck-rust-vendor.sh materializes for
+      # The Rust crate sources, the same set scripts/buck-rust-vendor.nu materializes for
       # the daemon path. Copied rather than symlinked, because buck2 reads them as package
       # files and a glob across a link into the store either misses them or drags the
       # closure in.
