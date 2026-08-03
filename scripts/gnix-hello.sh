@@ -1,7 +1,7 @@
 #!/bin/sh
 # gnix-hello.sh -- runs INSIDE one darling shell session (rootless one-shot).
 # Guest `nix build` compiles GNU hello FROM SOURCE via the darwin stdenv and runs
-# it: the *official* campaign M1 (vs the toolchain M1 in build-hello-under-darling.sh).
+# it: the *official* campaign M1 (vs the toolchain M1 in build-hello-under-darling.nu).
 # See plan/guest-nix-m1.md. Everything below is solved; the build currently reaches
 # hello's configure and trips the darlingserver fork/exec concurrency bug at the
 # first clang call (plan/blockers.md).

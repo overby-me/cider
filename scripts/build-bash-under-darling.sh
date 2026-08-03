@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build GNU bash from source inside a Darling container using the 26.05
 # bootstrap-tools clang + apple-sdk-14.4, then run it. Mirrors
-# build-hello-under-darling.sh; bash is a much larger configure/make and
+# build-hello-under-darling.nu; bash is a much larger configure/make and
 # exercises far more of libSystem (signals, job control, termios, locale).
 set -euo pipefail
 DARLING="${DARLING:-darling}"
