@@ -147,6 +147,32 @@ def check_wrap_table [f: string, name: string, sedexpr: string] {
     }
 }
 
+# Task #40 converted the port's scripting to nushell. Six shell scripts remain and
+# every one of them is deliberate, so a SEVENTH is a regression: four of these need
+# a bash the guest or the watchdog can exec, and two run inside the container where
+# there is no nu at all. Listed by name rather than counted, so replacing one with a
+# different bash script does not pass.
+def check_shell_scripts [] {
+    let allowed = [
+        cc-under-darling.sh      # a fresh container per compile, exec'd by the build hook
+        darling-host.sh          # the host side of the same
+        run-darwin-under-darling.sh
+        with-watchdog.sh         # wraps a command in a stall watchdog, exec'd from bash
+        gnix-hello.sh            # runs INSIDE the guest
+        gnix-build.sh            # runs INSIDE the guest
+    ] | sort
+    let found = (ls scripts/*.sh | get name | each {|n| $n | path basename } | sort)
+    if $found == $allowed {
+        ok $"scripts/ holds only the ($found | length) shell scripts that have to stay bash"
+    } else {
+        bad "scripts/*.sh has drifted from the six that have to stay bash"
+        let extra = ($found | where {|f| not ($f in $allowed) })
+        let gone = ($allowed | where {|f| not ($f in $found) })
+        if ($extra | is-not-empty) { print $"    unexpected: ($extra | str join ', ')" }
+        if ($gone | is-not-empty) { print $"    missing: ($gone | str join ', ')" }
+    }
+}
+
 def main [flag?: string] {
     let verbose = ($flag == "-v")
     cd ($env.CURRENT_FILE | path dirname | path join "..")
@@ -933,6 +959,9 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
         bad "a BUCK literal would put the argv separator into a command"
         print -e (indent7 $ar.out)
     }
+
+    say "== the shell scripts that stay bash =="
+    check_shell_scripts
 
     say "== the prefix (what a Darling install actually is) =="
     # The port's product is not the link outputs, it is a laid-out prefix. This builds the
