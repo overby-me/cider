@@ -158,16 +158,6 @@
   # and must not become a silent evaluation error if it does.
   escArg = x: escArgCache.${x} or (lib.escapeShellArg (fill x));
 
-  # The same trick for the staged trees, where it is worth less because the two strings
-  # differ: a destination is <tree>/<rel> and every one of them is distinct, but 45 percent
-  # of the LINK TARGETS repeat across trees (measured: 22,378 links, 12,305 distinct
-  # targets), because the same artifact gets staged into many trees.
-  stagedTargetCache = builtins.listToAttrs (map (t: {
-    name = t;
-    value = lib.escapeShellArg t;
-  }) (lib.concatMap (links: lib.attrValues links) (lib.attrValues (g.stagedTrees or {}))));
-  escStagedTarget = t: stagedTargetCache.${t} or (lib.escapeShellArg t);
-
   # The same crate sources the graph derivation analysed against, from the same lock files.
   rustVendor = import ./rust-vendor.nix {inherit pkgs;};
 
@@ -195,36 +185,49 @@
 
   known = producerTarget // (g.staged or {}) // (g.stagedTrees or {});
 
-  # Recreating a staged farm, from the map the dump recorded instead of a copy of what the
-  # links pointed at. The link VALUES are verbatim from buck2, so they resolve here exactly
-  # as they did there: the directory sits at the same place in this working tree.
-  # MEMOISED per tree. A staged farm is consumed by many targets, and this rebuilt the same
-  # script text -- two escapeShellArg calls per link, across what is now 5,282 trees holding
-  # 3,581,461 links -- once for every consumer. Nix deduplicates the resulting derivations
-  # but not the string building, which the profiler put at about a quarter of the evaluation
-  # once link resolution had moved to the dumper.
+  # Recreating a staged farm, from the table the dump wrote beside the graph. The link
+  # VALUES are verbatim from buck2, so they resolve here exactly as they did there: the
+  # directory sits at the same place in this working tree.
   #
-  # mapAttrs is lazy per attribute, so a tree nobody consumes is never built. That laziness
-  # is the reason the count above is not the count this evaluation pays for.
+  # NOTHING HERE IS PROPORTIONAL TO THE LINK COUNT, and that is the point. This used to
+  # emit two escaped shell lines per link, across 5,282 trees holding 3,581,461 links, and
+  # the eval profiler put about 40 percent of a 58 second evaluation on building those
+  # strings. The script is now fixed size and reads a tab separated table, so the cost moved
+  # to the dump, which writes it once.
+  #
+  # mapAttrs is lazy per attribute, so a tree nobody consumes is never scripted.
   stagedTreeScripts = lib.mapAttrs stagedTreeScriptFor (g.stagedTrees or {});
-  stagedTreeScript = path: links: stagedTreeScripts.${path} or (stagedTreeScriptFor path links);
+  stagedTreeScript = path: meta: stagedTreeScripts.${path} or (stagedTreeScriptFor path meta);
 
-  stagedTreeScriptFor = path: links:
-    pkgs.writeShellScript "buck2-stage-tree" (''
-        mkdir -p ${lib.escapeShellArg path}
-      ''
-      # The destination is escaped ONCE and reused. It was written twice, and
-      # escapeShellArg is a regex match plus string work per call, so every link paid a
-      # second match to recompute a string already in hand. An eval profile put 19.5
-      # percent of a 155 second evaluation on this one line.
-      # The emitted script is character for character what it was.
-      + lib.concatStrings (lib.mapAttrsToList (rel: target: let
-          dst = lib.escapeShellArg (path + "/" + rel);
-        in ''
-          mkdir -p "$(dirname ${dst})"
-          ln -sfn ${escStagedTarget target} ${dst}
-        '')
-        links));
+  # `meta` is {n, table, dirs} from the graph, not a link map. A graph dumped before the
+  # tables existed carried the links inline, and lowering one of those with this code would
+  # silently stage an EMPTY farm, which surfaces an hour later as a header not found. So it
+  # is a hard error, named.
+  stagedTreeScriptFor = path: meta:
+    if !(meta ? n)
+    then throw ("buck2 lower: this graph carries staged tree links inline, which this "
+      + "lowering no longer reads. Rebuild the graph derivation. Tree: " + path)
+    else
+      pkgs.writeShellScript "buck2-stage-tree" (''
+        tree=${lib.escapeShellArg path}
+        mkdir -p "$tree"
+      '' + lib.optionalString (meta.n > 0) ''
+        # The directories first and only once, so the link loop below runs no subshell at
+        # all: a dirname per link is 3.5 million of them across the graph, paid at BUILD
+        # time, and the dump already knows the answer.
+        while IFS= read -r d; do
+          mkdir -p "$tree/$d"
+        done < ${graph}/${meta.dirs}
+        # IFS= with an explicit split, NOT `IFS=$tab read rel target`: a tab is whitespace
+        # to read, so a leading one would be swallowed and an EMPTY link name (which the
+        # dump does emit, for a dangling symlink artifact) would take the target as its
+        # name and stage the farm wrong.
+        tab=$(printf '\t')
+        while IFS= read -r line; do
+          rel=''${line%%"$tab"*}
+          ln -sfn "''${line#*"$tab"}" "$tree/$rel"
+        done < ${graph}/${meta.table}
+      '');
 
   # By walking the path's own prefixes, NOT by scanning every known artifact: an action's
   # output is often a DIRECTORY (mig writes a whole tree of generated sources) and a
@@ -337,7 +340,13 @@
     # Nothing needs the list deduplicated: all three consumers below build an attrset out of
     # it with listToAttrs, and attribute names are unique by construction. (lib.uniqueStrings
     # is the O(n log n) one if a deduplicated LIST is ever actually needed.)
-    files = lib.concatLists (lib.attrValues g.targetSources);
+    # The UNION, which the dump now writes directly. It used to be flattened out of the
+    # per-target map, and that map held the same paths 85 times over -- 10,512,996 entries
+    # for 123,343 distinct files -- because it expanded each shared header farm once per
+    # consumer. Since this was the only thing that ever read it, the per-target breakdown
+    # moved to target-sources.json beside the graph, where narrowing can pick it up without
+    # every evaluation parsing 651 MB it never looks at.
+    files = g.projectSources or (lib.concatLists (lib.attrValues (g.targetSources or {})));
     wanted = builtins.listToAttrs (map (p: {
       name = p;
       value = true;
@@ -410,7 +419,7 @@
   # So this stays OFF by default until a full endpoint build has run green with it, which
   # costs 90 minutes and has not been spent yet. Pass narrowSources = true to opt in.
   projectSrc =
-    if narrowSources && g ? targetSources && g.targetSources != {}
+    if narrowSources && (g.projectSources or (lib.attrNames (g.targetSources or {}))) != []
     then srcUnion
     else src;
 
@@ -538,13 +547,17 @@
       # linked was copied out and is restored from there.
       ${lib.concatMapStrings (o: let
         links = (g.stagedTrees or {}).${o} or null;
+        # An entry with no links at all used to be spelled {} and is now {n = 0;}. Both
+        # mean the same thing: there is no farm to rebuild, so only the copied data below
+        # applies.
+        hasLinks = links != null && (links.n or 0) > 0;
         data = (g.staged or {}).${o} or null;
       in
-        lib.optionalString (links != null && links != {}) ''
+        lib.optionalString hasLinks ''
           ${stagedTreeScript o links}
         ''
         + lib.optionalString (data != null) (
-          if links != null && links != {}
+          if hasLinks
           then ''
             # MERGED, not replaced: a tree can hold both links into the project and files
             # buck2 generated (rtsig.h is one), and copying over the farm with -T destroys

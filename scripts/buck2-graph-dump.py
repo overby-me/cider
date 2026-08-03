@@ -451,15 +451,59 @@ def main(argv: list[str]) -> int:
             shutil.copy(path, dest, follow_symlinks=True)
             copied[path] = os.path.relpath(dest, outdir)
 
+    # The link MAPS travel as files, not as JSON, and the reason is measured. Inline they
+    # were 3,581,461 entries and 499 MB of a 1.62 GB graph.json, and builtins.fromJSON is
+    # strict, so every evaluation parsed all of them into Nix values whether or not a tree
+    # was ever staged. The lowering now emits a read loop over these tables instead of two
+    # shell lines per link, so nothing on the Nix side is proportional to the link count.
+    #
+    # A tab separates the two, so neither field may contain one, and neither may contain a
+    # newline. Nothing in buck2's output does. Assert rather than trust it: a corrupted
+    # table would surface as a dangling symlink an hour into a build.
+    tree_index = {}
+    for i, path in enumerate(sorted(trees)):
+        links = trees[path]
+        if not links:
+            tree_index[path] = {"n": 0}
+            continue
+        for name, target in links.items():
+            if "\t" in name or "\n" in name or "\t" in target or "\n" in target:
+                raise SystemExit(f"link name or target holds a tab or newline: {path} {name!r} -> {target!r}")
+        base = f"treelinks/{i:05d}"
+        os.makedirs(os.path.join(outdir, "treelinks"), exist_ok=True)
+        with open(os.path.join(outdir, base + ".tsv"), "w") as fh:
+            for name, target in sorted(links.items()):
+                fh.write(f"{name}\t{target}\n")
+        # The directories to make, ONCE and sorted, so the staging script does not run a
+        # dirname subshell per link at BUILD time as well.
+        dirs = sorted({os.path.dirname(n) for n in links} - {""})
+        with open(os.path.join(outdir, base + ".dirs"), "w") as fh:
+            for d in dirs:
+                fh.write(d + "\n")
+        tree_index[path] = {"n": len(links), "table": base + ".tsv", "dirs": base + ".dirs"}
+
+    # {target: [project files it reads]} goes to its OWN file. Only the narrowSources path
+    # reads it, which is off by default, and leaving it in graph.json cost every evaluation
+    # 651 MB of parsing for data it then never touched: measured, 11.0s and 3.73 GB of heap
+    # against 5.6s and 2.11 GB without it. What the default path does want is the UNION,
+    # which is all srcUnion ever built out of it, and that is 123,343 paths rather than
+    # 10,512,996 entries.
+    per_target = target_sources(ran, trees, copied, producer)
+    with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
+        json.dump(per_target, fh, sort_keys=True)
+        fh.write("\n")
+
     graph = {
         "targets": targets,
         "actions": ran,
         "staged": copied,
-        "stagedTrees": trees,
+        # {staged tree: {n, table, dirs}} -- the links themselves are in the table file.
+        "stagedTrees": tree_index,
         # {staged tree: [buck-out paths its links resolve to]}, precomputed.
         "stagedTreeDeps": tree_deps,
-        # {target: [project files it reads]}, precomputed for the same reason.
-        "targetSources": target_sources(ran, trees, copied, producer),
+        # Every project file any target reads, deduplicated. target-sources.json beside this
+        # holds the per-target breakdown for narrowing.
+        "projectSources": sorted({p for v in per_target.values() for p in v}),
         "producers": producer,
         "kinds": kinds,
         "targetOutputs": target_outputs,
@@ -478,6 +522,11 @@ def main(argv: list[str]) -> int:
         fh.write("\n")
     print(f"graph: {len(ran)} command action(s), {len(copied)} staged artifact(s), "
           f"{len(referenced)} referenced path(s)")
+    print(f"  {len(tree_index)} staged tree(s) holding "
+          f"{sum(t['n'] for t in tree_index.values())} link(s), written as tables beside "
+          f"the graph rather than inside it")
+    print(f"  {len(graph['projectSources'])} distinct project source(s), from "
+          f"{sum(len(v) for v in per_target.values())} per-target entries")
 
     # The join is only sound while no argument contains the separator. Check it against
     # whatever the last invocation ran rather than assuming it stays true.
