@@ -314,6 +314,18 @@
         map (n: lib.concatStringsSep "/" (lib.take n segs))
         (lib.range 1 (lib.length segs - 1)))
       files)));
+    # The DIRECTORY of every wanted file, as a set. A quoted include resolves against the
+    # including file's own directory and buck2 never declares it, so keeping the file without
+    # its neighbours is what stopped CarbonCore at "UserBreak.h file not found". Measured over
+    # the all graph: 123,343 declared files live in 8,596 directories holding 131,048 files
+    # between them, so this widens the union by six percent and still leaves 306,019 far
+    # behind. It also picks up 383 headers named exactly like the source beside them, which is
+    # a lower bound on how often the declared set was short.
+    wantedDirs = builtins.listToAttrs (map (d: {
+      name = d;
+      value = true;
+    })
+    (lib.unique (map (p: builtins.dirOf p) files)));
   in
     builtins.path {
       name = "darling-buck2-lower-sources";
@@ -323,7 +335,14 @@
       in
         if type == "directory"
         then ancestors ? ${rel}
-        else wanted ? ${rel};
+        # A SYMLINK is neither, and asking only the two questions above dropped it: the filter
+        # took the else branch, the symlink is not itself a declared file, and every path
+        # THROUGH it vanished. Eight of them are ancestors of declared paths here, including
+        # src/CoreAudio/AFAVFormatComponent/PublicUtility, whose whole tree the CoreAudio
+        # targets compile.
+        else if type == "symlink"
+        then (ancestors ? ${rel}) || (wanted ? ${rel})
+        else (wanted ? ${rel}) || (wantedDirs ? ${builtins.dirOf rel});
     };
 
   # OFF by default, because the narrowing is not correct yet and a wrong one fails the build
@@ -340,9 +359,12 @@
   #   neither a wanted file nor a directory, so it was dropped and every path THROUGH it
   #   vanished, while the resolved tree sat in the union all along.
   #
-  # Making it correct needs the compiler's real inputs, which means depfiles the port does not
-  # collect yet. Until then the whole filtered project is used, which is what the endpoint was
-  # built and boot-tested on before the narrowing landed. Pass narrowSources = true to opt in.
+  # BOTH of those are addressed by the filter above now, and the fix was measured offline
+  # against the real tree before being written: the candidate keeps UserBreak.h, keeps all
+  # eight symlinked ancestors, and costs six percent more files. What is still NOT covered is
+  # an include that reaches OUT of its directory with ../, which only depfiles can answer.
+  # So this stays OFF by default until a full endpoint build has run green with it, which
+  # costs 90 minutes and has not been spent yet. Pass narrowSources = true to opt in.
   projectSrc =
     if narrowSources && g ? targetSources && g.targetSources != {}
     then srcUnion
