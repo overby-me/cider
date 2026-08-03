@@ -210,7 +210,7 @@ tracks below.
 
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
-- **D.1** `scripts/oracle.sh <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
+- **D.1** `scripts/oracle.nu <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
   (match / mismatch / build-failure / known-nondeterministic).
 - **D.2** oracle column in `tests/nix/compatibility-matrix.sh`; a justified
   non-determinism allowlist.
