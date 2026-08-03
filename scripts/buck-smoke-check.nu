@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env nu
 # tests/darling-smoke.nix's assertions, against the BUCK2-built Darling, without a VM.
 #
 # The smoke test itself runs in a NixOS test VM, and Darling hangs in one (a pre-existing
@@ -17,37 +17,41 @@
 # Stage 1 is prefix creation, which is what getting this far already proves, and stage 8 is
 # a warning scan that fails nothing.
 #
-# Usage:  scripts/buck-smoke-check.sh
+# Usage:  scripts/buck-smoke-check.nu
 # Run scripts/buck-bash-check.nu first -- this drives the root it materializes.
-set -uo pipefail
-cd "$(dirname "$0")/.."
+#
+# Converted from bash (task #40). The GUEST script below stays bash and is embedded verbatim,
+# because it runs inside Darling where there is no nushell: only the host-side wrapper is
+# nushell. Verified by running BOTH versions against a real container and diffing the whole
+# output, which for this check is 30 assertions plus the tally.
 
-RT="${BUCK2_RT:-/tmp/darling-buck2-$(id -u)/rt}"
-# SHORT, because the daemon's control socket lives in the prefix and a Unix socket path is
-# capped at 108 bytes.
-PREFIX="${DPREFIX:-/tmp/darling-smoke-$(id -u)}"
+def say [msg: string] { print -e $msg }
 
-say() { printf '%s\n' "$*" >&2; }
+def main [] {
+    cd ($env.FILE_PWD | path join ".." | path expand)
 
-if [ ! -x "$RT/bin/darling" ]; then
-	say "no materialized prefix at $RT"
-	say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
-	say "copies it there, which is what this check then drives."
-	exit 2
-fi
+    let rt = ($env.BUCK2_RT? | default $"/tmp/darling-buck2-(^id -u | str trim)/rt")
+    # SHORT, because the daemon's control socket lives in the prefix and a Unix socket path is
+    # capped at 108 bytes.
+    let prefix_dir = ($env.DPREFIX? | default $"/tmp/darling-smoke-(^id -u | str trim)")
 
-pkill -9 -x darling darlingserver mldr shellspawn 2>/dev/null
-rm -rf "$PREFIX" "$PREFIX.workdir"
+    if not ($"($rt)/bin/darling" | path exists) {
+        say $"no materialized prefix at ($rt)"
+        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
+        say "copies it there, which is what this check then drives."
+        exit 2
+    }
 
-# One container invocation for the whole run: booting costs more than every check in here
-# put together, and the stages are not independent anyway (stage 7 builds up a user and a
-# group and then takes them away again).
-out=$(
-	DPREFIX="$PREFIX" \
-		DARLING_NO_LAUNCHD=1 \
-		DSERVER_LIBEXEC_PATH="$RT/libexec/darling" \
-		DSERVER_MLDR_PATH="$RT/libexec/darling/usr/libexec/darling/mldr" \
-		timeout 300 "$RT/bin/darling" shell /bin/bash -c '
+    # pkill -x, never -f: an -f pattern matches the command line of the shell running it. One
+    # name per call, because a multi-pattern pkill matches nothing and exits 2.
+    for n in [darling darlingserver mldr shellspawn] { do -i { ^pkill -9 -x $n } }
+    # GNU rm: the overlay workdir holds a `work` directory at mode 000.
+    ^rm -rf $prefix_dir $"($prefix_dir).workdir"
+
+    # One container invocation for the whole run: booting costs more than every check in here
+    # put together, and the stages are not independent anyway (stage 7 builds up a user and a
+    # group and then takes them away again).
+    let guest = '
 set +e
 say() { printf "%s\n" "$*"; }
 ok() { say "SMOKE ok   $1"; }
@@ -121,26 +125,36 @@ is "dscl reads the uid" \
 	ok "sysadminctl deletes the user" || no "sysadminctl deletes the user" "failed"
 /usr/sbin/dseditgroup -o delete smoketest >/dev/null 2>&1 &&
 	ok "dseditgroup deletes the group" || no "dseditgroup deletes the group" "failed"
-say "SMOKE DONE"
-' 2>&1
-)
+say "SMOKE DONE"'
+    # out+err> into one file rather than `complete`, which would hand back stdout and stderr
+    # separately and put every SMOKE line before every daemon line.
+    let log = (mktemp --tmpdir buck-smoke-check.XXXXXX)
+    with-env {
+        DPREFIX: $prefix_dir
+        DARLING_NO_LAUNCHD: "1"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+    } {
+        do -i { ^timeout 300 $"($rt)/bin/darling" shell /bin/bash -c $guest out+err> $log }
+    }
+    let out = (open --raw $log | str trim --right --char "\n")
+    rm -f $log
 
-# Only the harness's own lines, so the prefix-creation chatter on a first boot does not
-# read as output of a check.
-printf '%s\n' "$out" | grep '^SMOKE ' || true
+    # Only the harness's own lines, so the prefix-creation chatter on a first boot does not read
+    # as output of a check.
+    let lines = ($out | lines)
+    $lines | where {|l| $l starts-with "SMOKE " } | each {|l| print $l }
 
-passed=$(printf '%s\n' "$out" | grep -c '^SMOKE ok ')
-failed=$(printf '%s\n' "$out" | grep -c '^SMOKE FAIL')
-case "$out" in
-*"SMOKE DONE"*) ;;
-*)
-	say ""
-	say "FAIL: the container did not finish the run"
-	exit 1
-	;;
-esac
+    let passed = ($lines | where {|l| $l starts-with "SMOKE ok " } | length)
+    let failed = ($lines | where {|l| $l starts-with "SMOKE FAIL" } | length)
+    if not ($out | str contains "SMOKE DONE") {
+        say ""
+        say "FAIL: the container did not finish the run"
+        exit 1
+    }
 
-say ""
-say "$passed passed, $failed failed"
-[ "$failed" -eq 0 ] || exit 1
-say "PASS: the buck2-built Darling meets tests/darling-smoke.nix stages 2-7"
+    say ""
+    say $"($passed) passed, ($failed) failed"
+    if $failed != 0 { exit 1 }
+    say "PASS: the buck2-built Darling meets tests/darling-smoke.nix stages 2-7"
+}
