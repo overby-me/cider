@@ -579,7 +579,7 @@ def main [
         print -e $"  \u{2022} Run a single level:  (self_name) --level N --debug"
         print -e "  \u{2022} Manual build:        darling shell bash -lc 'nix-build -vvvv --expr \"...\"'"
         print -e "  \u{2022} Manual sandbox test: darling shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
-        print -e "  \u{2022} Check syscalls:      ./scripts/triage-syscalls.sh"
+        print -e "  \u{2022} Check syscalls:      ./scripts/triage-syscalls.nu"
         print -e "  \u{2022} Host-side trace:     strace -f -p $(pidof darlingserver) 2>&1 | head -500"
         print -e "  \u{2022} Darling xtrace:      DARLING_XTRACE=1 darling shell bash -lc 'nix-build --expr ...'"
         print -e ""

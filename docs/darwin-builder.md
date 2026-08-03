@@ -569,7 +569,7 @@ darling shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
 
 ```bash
 # Run the syscall triage tool to identify the issue
-./scripts/triage-syscalls.sh --output /tmp/triage.md
+./scripts/triage-syscalls.nu --output /tmp/triage.md
 
 # Check the known triage table
 cat plan/syscall-triage.md
