@@ -387,7 +387,11 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:darling_prefix";
+        # `//` rather than overrideAttrs or passthru: this must not touch the derivation. The
+        # extra attribute only gives `nix build .#darling-buck2-prefix.stageProject` something
+        # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
+        # seconds instead of discovering a staging bug 90 minutes into a build.
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.

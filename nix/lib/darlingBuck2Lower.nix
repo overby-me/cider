@@ -541,6 +541,12 @@ in
   assert unstageable == [] || throw "buck2 lower: unstageable artifacts: ${toString unstageable}"; {
   inherit drvs named g;
 
+  # The staging script on its own, so it can be checked without building anything that uses
+  # it. scripts/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
+  # out of the top-level exclusion list) failed all 1798 lowered targets and was only visible
+  # 90 minutes into a build.
+  inherit stageProject;
+
   # The single target's output, for the common case of asking for one thing.
   final = let
     all = lib.attrValues named;
