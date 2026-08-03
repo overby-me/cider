@@ -252,14 +252,25 @@ stdout target (a file, an anonymous pipe and a named FIFO all worked when backgr
 The guest command always ran: `BUCK2_BASH_OK`, `PIPED_OK` and `FIFO_OK` each appeared,
 in under 75s, in a fresh prefix.
 
-**Then reproduced on the host in seconds, which corrected the explanation.** The first
-reading was that the launcher waits for stdin to reach EOF. It does not: a FIFO held open
-by a writer that never writes returns `HOST_OK2` and rc 0. What breaks is stdin being a
-**socket**. A socketpair on stdin gives rc 1, no output, deterministically, and the
-prefix log shows the guest taking **signal 6** and "emulating default signal effects".
-/dev/null and a FIFO both work. In the VM the same trigger surfaces as 124 rather than 1,
-because the driver additionally waits for stdout to be closed (its docstring says so, and
-warns that a detaching command must close it) and throws the output away.
+**Then reproduced on the host in seconds, and the root cause is a stack smash in the
+guest kernel** (#46, fixed by `patches/xnu/0009-sockaddr-fixup-respect-caller-buffer.patch`).
+The first reading, that the launcher waits for stdin EOF, was wrong: a FIFO held open by a
+writer that never writes returns rc 0. The trigger is stdin being a **socket**, and what
+it breaks is this:
+
+`sockaddr_fixup_from_linux` converts a Linux sockaddr into a BSD one IN THE CALLER'S
+BUFFER, and was told how many bytes the kernel wrote but never how large that buffer is.
+On the PF_LOCAL branch it wrote a full `sizeof(sun_path)` plus a terminator, 106 bytes.
+bash calls `getpeername(fd, &sa, &l)` from `isnetconn` with a **16 byte** `struct sockaddr`
+for every shell whose stdin is a socket, so bash died in `__stack_chk_fail`, silently,
+with SIGABRT.
+
+The chain that found it, each step seconds on the host: socket fails, /dev/null and FIFO
+do not; bash aborts and sh does not, and they are the same binary; `--norc` avoids it;
+`strace -k` gives `isnetconn -> __stack_chk_fail -> abort -> kill(0, SIGABRT)`; and the
+predicted discriminator held, AF_UNIX aborts where AF_INET does not, which is the
+PF_LOCAL branch exactly. In the VM it surfaces as 124 rather than 1 because the driver
+also waits for stdout to be closed and throws the output away.
 
 Narrowed twice more: the daemon logs of a failing and a working run are identical through
 `execve expand /bin/bash`, so bash execs fine; and with the same socket stdin
