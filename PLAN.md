@@ -235,10 +235,16 @@ Four arms in one VM, same command, same prefix shape, one variable each:
 So the variable is **stdin**, not the process group (setsid changed nothing) and not the
 stdout target (a file, an anonymous pipe and a named FIFO all worked when backgrounded).
 The guest command always ran: `BUCK2_BASH_OK`, `PIPED_OK` and `FIFO_OK` each appeared,
-in under 75s, in a fresh prefix. What never happens is the LAUNCHER exiting, because it
-waits on a stdin that the NixOS driver's control channel never closes. The driver then
-waits for stdout to be closed (its own docstring says so, and says a detaching command
-must close it) and reports 124 with the output thrown away.
+in under 75s, in a fresh prefix.
+
+**Then reproduced on the host in seconds, which corrected the explanation.** The first
+reading was that the launcher waits for stdin to reach EOF. It does not: a FIFO held open
+by a writer that never writes returns `HOST_OK2` and rc 0. What breaks is stdin being a
+**socket**. A socketpair on stdin gives rc 1, no output, deterministically, and the
+prefix log shows the guest taking **signal 6** and "emulating default signal effects".
+/dev/null and a FIFO both work. In the VM the same trigger surfaces as 124 rather than 1,
+because the driver additionally waits for stdout to be closed (its docstring says so, and
+warns that a detaching command must close it) and throws the output away.
 
 This retires the fd-2 lead for good: the fd-2-on-the-log line belongs to the persistent
 shellspawn init, by design, and the surviving init in a failed run holds no pipe of the
