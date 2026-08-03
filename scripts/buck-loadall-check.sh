@@ -79,6 +79,15 @@ chmod +x "$rt/libexec/darling/usr/bin/loadall_probe"
 #
 # A framework binary has no extension: Foo.framework/Versions/A/Foo, reached through the
 # Foo.framework/Foo symlink that -type f skips.
+#
+# The 123 .so BUNDLES are deliberately NOT swept, and this was measured rather than assumed.
+# They are interpreter extensions -- PyObjC, python lib-dynload, perl XS, zsh modules -- and
+# most resolve their symbols against the INTERPRETER process through a bundle loader, so a
+# standalone dlopen returns NULL for a healthy module. Tried on six PyObjC bundles: _inlines
+# loads, _AppKit and _CoreFoundation do not, and neither result says anything about whether
+# the module works. They are already covered properly by scripts/buck-scripting-check.sh,
+# which imports them THROUGH the interpreter: python 55 of 56, zsh 32 of 32, perl 14 of 14.
+# Adding them here would only make this number noisier and less true.
 
 say "== enumerating what the prefix ships =="
 list="$rt/libexec/darling/tmp/loadall.txt"
