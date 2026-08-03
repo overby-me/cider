@@ -30,7 +30,7 @@ install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-t
 144 of 144, and every runtime check at 0 or a documented 3.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
-all-component numbers. `scripts/buck-runtime-check.nu` runs the eight runtime checks in
+all-component numbers. `scripts/buck-runtime-check.nu` runs the ten runtime checks in
 one command.
 
 ### What 100 percent does NOT mean
@@ -41,8 +41,10 @@ one command.
 - **The link-edge metric counts link edges.** Generated files are measured separately by
   `scripts/buck-codegen-coverage.py`: 227 outputs are unconsumed and all are mig side
   outputs the reference does not read either.
-- **Build parity is not runtime parity.** buck-test is almost entirely static. Of ~1450
-  artifacts most have still never run; the eight runtime checks cover the cones that have.
+- **Build parity is not runtime parity.** buck-test is almost entirely static. What runs is
+  the ten runtime checks plus `scripts/buck-loadall-check.sh`, which dlopens the prefix:
+  292 of 336 installed dylibs and framework binaries load in the guest, and the 44 that do
+  not are the Swift LFS pointers (#39), which are not libraries. Past dlopen is unmeasured.
 
 ### Deliberate divergences from the reference
 
