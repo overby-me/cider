@@ -67,7 +67,7 @@ chmod +x "$rt/libexec/darling/usr/bin/loadall_probe"
 # counting both would double every library that has one.
 # The display-dependent frameworks are NOT swept, and that is not a gap: dlopening AppKit
 # with no display takes the whole container down rather than just its child, so it ends the
-# sweep and leaves the other 335 unmeasured. It has its own check, scripts/buck-appkit-check.sh,
+# sweep and leaves the other 335 unmeasured. It has its own check, scripts/buck-appkit-check.nu,
 # which brings it up properly under X11 and opens a window, so the cone is covered by the tool
 # built for it. Anything added here has to be justified the same way: a dedicated check, or a
 # reason it cannot be loaded blind.
@@ -166,7 +166,7 @@ if [ "${nkill:-0}" != 0 ]; then
 	say ""
 	say "   these end the guest process tree when dlopened with no display, which is a"
 	say "   fact about loading them blind rather than about the port; the GUI cone has its"
-	say "   own check in scripts/buck-appkit-check.sh:"
+	say "   own check in scripts/buck-appkit-check.nu:"
 	printf '%s' "$killers" | sed 's/^/     /'
 fi
 if [ "$bad" != 0 ] || [ "${crash:-0}" != 0 ] || [ "${hang:-0}" != 0 ]; then

@@ -43,6 +43,9 @@
   # Naming files is only safe because every include root is a staged tree whose contents that
   # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
   # are two directories holding 26 files between them, which have to be taken wholesale.
+  # Opt in to the per-target source union below. OFF because it is not correct yet; the two
+  # kinds of input it drops are named where projectSrc is defined.
+  narrowSources ? false,
   srcRaw ? ../..,
   src ?
     builtins.path {
@@ -323,8 +326,25 @@
         else wanted ? ${rel};
     };
 
+  # OFF by default, because the narrowing is not correct yet and a wrong one fails the build
+  # 90 minutes in. targetSources records what buck2 DECLARES, and that is not what a compile
+  # READS. Two kinds of input are missing from it, both found by building the whole endpoint:
+  #
+  #   a quoted include next to its source. darwin/frameworks/CoreServices/src/CarbonCore/
+  #   UserBreak.cpp does #include "UserBreak.h", which resolves against the including file's
+  #   own directory; the .cpp is declared and the .h is not, so the union had one and not the
+  #   other and clang stopped at "UserBreak.h file not found".
+  #
+  #   a symlinked ancestor. src/CoreAudio/AFAVFormatComponent/PublicUtility is a symlink to
+  #   ../CoreAudioUtilityClasses/CoreAudio/PublicUtility, and the filter classified it as
+  #   neither a wanted file nor a directory, so it was dropped and every path THROUGH it
+  #   vanished, while the resolved tree sat in the union all along.
+  #
+  # Making it correct needs the compiler's real inputs, which means depfiles the port does not
+  # collect yet. Until then the whole filtered project is used, which is what the endpoint was
+  # built and boot-tested on before the narrowing landed. Pass narrowSources = true to opt in.
   projectSrc =
-    if g ? targetSources && g.targetSources != {}
+    if narrowSources && g ? targetSources && g.targetSources != {}
     then srcUnion
     else src;
 
