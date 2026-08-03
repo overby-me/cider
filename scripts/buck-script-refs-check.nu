@@ -29,10 +29,24 @@ const DEFAULT_GLOBS = [
     ".gitignore"
     "plan/**/*.md"
     "docs/**/*.md"
-    "buck/**/*.md"
-    "tests/**/*.nix"
+    # Prose is not the only place a script name is written down: the three that
+    # survived the first version of this check were named by a .bzl, a BUCK file, a
+    # gitignore beside a materialized tree and a Rust doc comment. Widened after
+    # buck-appkit-check, buck-rust-vendor and buck-setup were renamed to .nu and
+    # seven such references kept pointing at the .sh.
+    "buck/**/*"
+    "buck-rust/BUCK"
+    "buck-rust/.gitignore"
+    "tests/**/*"
+    "src/**/BUCK"
+    "src/**/*.py"
+    "linux/**/*.rs"
+    "darwin/**/*.rs"
     "scripts/*"
 ]
+# NOT nix/** yet: nix/lib/darlingBuck2Graph.nix carries one reference that is
+# package-relative on purpose, and editing that file rebuilds the graph derivation
+# even for a comment, so it waits for a moment when nothing is building.
 
 def main [--scan: string = ""] {
     cd ($env.FILE_PWD | path join ".." | path expand)
@@ -57,7 +71,12 @@ def main [--scan: string = ""] {
             | parse --regex '(?m)(?P<pre>^|[^A-Za-z0-9_/.-])(?P<ref>scripts/[A-Za-z0-9_-]+\.(?:sh|nu|py|bxl))'
             | get ref
             | uniq
-            | where {|r| not ($r | path exists) }
+            # A BUCK file names its script RELATIVE TO ITS PACKAGE: darlingserver's
+            # BUCK points at src/external/darlingserver/scripts/generate-rpc-wrappers.py
+            # by its package-relative name, which is correct and resolves to a real
+            # file. Resolve both ways before calling it missing. (Spelled here as a
+            # full path on purpose: a bare one would make this comment its own hit.)
+            | where {|r| (not ($r | path exists)) and (not (($f | path dirname | path join $r) | path exists)) }
             | each {|r| {file: $f, missing: $r} }
         }
         | flatten

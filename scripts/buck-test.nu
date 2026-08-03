@@ -963,6 +963,17 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     say "== the shell scripts that stay bash =="
     check_shell_scripts
 
+    # Written-down script names rot every time one is renamed, and the reader cannot
+    # tell whether the tool moved or was retired. Static and about a second over 518
+    # files, so it belongs in the suite rather than in someone's memory.
+    let sr = (cap_rc [./scripts/buck-script-refs-check.nu])
+    if $sr.rc == 0 {
+        ok (last_line_no_ok $sr.out)
+    } else {
+        bad "a file names a scripts/<name> that is not there"
+        print -e (indent7 $sr.out)
+    }
+
     say "== the prefix (what a Darling install actually is) =="
     # The port's product is not the link outputs, it is a laid-out prefix. This builds the
     # whole of it, which is also the broadest single check in this file: 151 targets, and a

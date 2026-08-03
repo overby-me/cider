@@ -41,7 +41,7 @@ _LD64_DIR = read_root_config("darling", "ld64_dir", "result-ld64/bin")
 # Guest compiles pass -nostdinc (as the reference build does), which drops
 # clang's OWN builtin headers together with the host's, so the resource dir goes
 # back on as -isystem exactly as the reference does. Written by
-# scripts/buck-setup.sh, since it is a nix store path.
+# scripts/buck-setup.nu, since it is a nix store path.
 _CLANG_RESOURCE_DIR = read_root_config("darling", "clang_resource_dir", "")
 
 _DARWIN_FLAGS = [

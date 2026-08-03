@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary")
 
 # A guest AppKit program, built the same way every other Darwin binary here is, so that the
 # GUI cone can be RUN and not merely linked. See tests/buck2/gui/appkit_probe.m and
-# scripts/buck-appkit-check.sh.
+# scripts/buck-appkit-check.nu.
 #
 # This is the only hand-written Darwin binary in the tree that has no counterpart in the
 # reference build.ninja, which is why it lives under tests/ rather than src/: nothing

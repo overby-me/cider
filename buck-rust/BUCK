@@ -2,7 +2,7 @@ load("//buck/rules:rust.bzl", "rust_library")
 
 # Third-party crates, pinned by the three Cargo.lock files (linux/server, linux/launcher,
 # darwin/loader), unpacked by nix/devShell.nix and materialized here by
-# scripts/buck-rust-vendor.sh. The tree is gitignored, this file is committed -- the same
+# scripts/buck-rust-vendor.nu. The tree is gitignored, this file is committed -- the same
 # arrangement buck-src/ has for the pinned C sources.
 #
 # One target per crate, with the features cargo would resolve. Features are stated rather

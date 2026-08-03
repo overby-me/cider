@@ -1716,7 +1716,7 @@ pub struct RpcReplyDebugListMessages {
 }
 
 /// Print `<key> <size> <align>` for every RPC message struct; diffed
-/// against the C probe (scripts/rpc-wire-parity.sh) to prove byte parity.
+/// against the C probe when the structs landed to prove byte parity.
 pub fn print_sizes() {
 	use std::mem::{size_of, align_of};
 	println!("callhdr {} {}", size_of::<DserverRpcCallhdr>(), align_of::<DserverRpcCallhdr>());

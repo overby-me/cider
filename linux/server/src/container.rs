@@ -7,8 +7,8 @@
 //! IMPORTANT (validation): this code needs root (darling.c launches darlingserver as
 //! mapped-root inside a user namespace) plus CAP_SYS_ADMIN for unshare/mount/clone. It
 //! CANNOT run in the nix build sandbox and is not exercised by a flake-check demo; it is
-//! validated by splicing the daemon into a real darling runtime (see
-//! scripts/splice-darlingserver.sh) and launching it via darling.c. Deferred vs the C++
+//! validated by splicing the daemon into a real darling runtime (the run recipe in
+//! PLAN.md) and launching it through the darling launcher. Deferred vs the C++
 //! for now (all best-effort prefix work, orthogonal to the namespace/mount/clone core):
 //! setupUserHome, darlingPreInit, fixPermissions, and rlimit bumps. The writable-/nix
 //! overlay (for guest Nix / M1) IS ported (`mount_nix_overlay`). See

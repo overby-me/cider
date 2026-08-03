@@ -16,7 +16,7 @@ pub mod bindings {
 }
 
 /// Byte-identical Rust mirror of the RPC wire messages (generated; see
-/// scripts/rpc-wire-parity.sh for the parity gate).
+/// rpc_wire_sizes for the sizes the parity gate compared).
 #[path = "rpc_wire.rs"]
 pub mod rpc_wire;
 

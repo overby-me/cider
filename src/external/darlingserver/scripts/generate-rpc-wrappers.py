@@ -1713,7 +1713,7 @@ if len(sys.argv) > 5:
 	# A size/align probe, enumerating every message struct, for the byte-parity gate
 	# (its output is diffed against the C probe below; identical lines == byte parity).
 	rf.write("/// Print `<key> <size> <align>` for every RPC message struct; diffed\n")
-	rf.write("/// against the C probe (scripts/rpc-wire-parity.sh) to prove byte parity.\n")
+	rf.write("/// against the C probe when the structs landed to prove byte parity.\n")
 	rf.write("pub fn print_sizes() {\n")
 	rf.write("\tuse std::mem::{size_of, align_of};\n")
 	rf.write("\tprintln!(\"callhdr {} {}\", size_of::<DserverRpcCallhdr>(), align_of::<DserverRpcCallhdr>());\n")

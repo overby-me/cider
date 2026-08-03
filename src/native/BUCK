@@ -62,7 +62,7 @@ _NATIVE = [
 # buck-registry: libGL.dylib = GL_dylib
 # buck-registry: libGLU.dylib = GLU_dylib
 
-# The directories the SONAMEs are dlopen()ed from, written by scripts/buck-setup.sh from
+# The directories the SONAMEs are dlopen()ed from, written by scripts/buck-setup.nu from
 # pkg-config. Empty means the stubs cannot generate, which the setup script warns about.
 _ELF_LIB_DIRS = read_root_config("darling", "elf_lib_dirs", "")
 
@@ -122,7 +122,7 @@ _ELF_LIB_DIRS = read_root_config("darling", "elf_lib_dirs", "")
 #
 # The paths are absolute and NOT declared inputs, exactly like elf_lib_dirs above them --
 # the same compromise, for the same reason: these are host artifacts outside the build
-# graph. scripts/buck-setup.sh writes them into .buckconfig.local.
+# graph. scripts/buck-setup.nu writes them into .buckconfig.local.
 _HOST_INCLUDE_DIRS = [_d for _d in read_root_config("darling", "host_include_dirs", "").split(":") if _d]
 
 cc_header_root(

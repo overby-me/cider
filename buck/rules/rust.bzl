@@ -10,7 +10,7 @@
 #
 #   dependency resolution  ->  the Cargo.lock is already resolved; nix/devShell.nix unpacks
 #                              every locked crate into $DARLING_RUST_VENDOR and
-#                              scripts/buck-rust-vendor.sh materializes it into buck-rust/,
+#                              scripts/buck-rust-vendor.nu materializes it into buck-rust/,
 #                              exactly as buck-src/ holds the pinned C sources
 #   feature flags          ->  the `features` attribute, which becomes --cfg feature="x"
 #   build.rs               ->  the `env` attribute for the `cargo:rustc-env=` lines, and the

@@ -563,7 +563,7 @@ preprocess_gen = rule(
 # the reference does: wrap_elf(fuse libfuse.so)) fails unless its directory is on
 # LD_LIBRARY_PATH -- the dev shell contains fuse but does not put it there. The
 # directories come from [darling] elf_lib_dirs in .buckconfig.local, written by
-# scripts/buck-setup.sh from pkg-config, the same way ld64_dir and
+# scripts/buck-setup.nu from pkg-config, the same way ld64_dir and
 # clang_resource_dir are supplied.
 #
 # That makes this the one rule in the port whose OUTPUT depends on a file outside

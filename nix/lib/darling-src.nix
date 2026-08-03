@@ -23,7 +23,7 @@
   baseSrc,
   manifest ? ../submodules.json,
   # patches/<basename-of-submodule-path>/*.patch, applied with `patch -p1` under
-  # the submodule dir, mirroring scripts/init-submodules.sh.
+  # the submodule dir, the way the retired init-submodules checkout script did.
   patchesDir ? ../../patches,
 }:
 let
