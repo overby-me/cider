@@ -469,7 +469,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   #47 IS DONE. The container now boots through launchd -- launchd as guest pid 1, launchctl
   bootstrap -S System loading the system jobs, memberd and shellspawn running, 21 guest
   threads where there used to be 3 -- and runs a command to completion. Locked in by
-  scripts/buck-launchd-check.sh, which is the no-launchd check's counterpart and exists
+  scripts/buck-launchd-check.nu, which is the no-launchd check's counterpart and exists
   because "bash runs" never implied "init works": the no-launchd path skips init entirely.
 
   TWO OPS TRAPS, both of which cost real time here and will cost it again:

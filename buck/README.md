@@ -10,12 +10,12 @@ umbrella) needs custom rules regardless. See `plan/buck2-port.md`.
 Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
-scripts/buck-setup.sh        # pinned sources + the absolute ld64 path
+scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
 buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape
 scripts/buck-test.sh         # regression test for everything ported so far
 ```
 
-`scripts/buck-setup.sh --all` materializes ALL 147 pinned trees (~3.8 GB), which
+`scripts/buck-setup.nu --all` materializes ALL 147 pinned trees (~3.8 GB), which
 the guest (Darwin) tier needs: its include path is the SDK tree, ~1987 symlinks
 into those trees.
 

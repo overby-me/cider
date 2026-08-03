@@ -28,7 +28,7 @@ some of what the committed blocks carry (libcxx's symbol-list flags, cross-packa
 which is the generator/tree fixpoint debt in plan/buck2-port.md.
 
 Usage:
-  scripts/buck-fix-sibling-order.py [--check]
+  scripts/buck-fix-link-model.py [--check]
 """
 from __future__ import annotations
 
