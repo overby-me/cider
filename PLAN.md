@@ -275,9 +275,11 @@ caller's at all.
 - **Darling side (open):** the launcher should not block forever on a stdin that never
   EOFs after the guest command has exited.
 
-With stdin closed the first subtest PASSES: the container boots in 0.33s and the guest
-bash reports 3.2.57 and darwin, which is #10's milestone reached in a VM (against a
-darling-buck2 already in the store). What still fails is the exit-code subtest, and it is
+With stdin closed **the whole check passes at HEAD**: `nix build
+.#checks.x86_64-linux.darling-buck2-smoke` exits 0, all three subtests green, against a
+darling-buck2 built through the Nix endpoint rather than one already in the store. The
+container boots in under half a second and the guest bash reports 3.2.57 and darwin.
+That is #10. What still fails is the exit-code subtest, and it is
 the only one that sets neither DPREFIX nor DARLING_NO_LAUNCHD. Arms with an explicit
 prefix and no-launchd: `exit 0` gives rc 0, `echo` gives its output, and the DEFAULT
 prefix behaves the same, so neither the prefix nor exit codes are the problem — it is the
