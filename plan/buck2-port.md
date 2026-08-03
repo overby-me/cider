@@ -155,12 +155,14 @@ So two things are now known that were not:
     Darling inside a NixOS test VM has to be fixed first, and it belongs to Darling's
     container plumbing rather than to this port.
 
-## The Nix endpoint was broken in four ways, which is what blocked the VM work
+## The Nix endpoint keeps breaking in ways the host build cannot see
 
 The line above -- "it boots and runs bash from the Nix endpoint" -- was true when written and
 then quietly stopped being true. Getting an interactive VM to diagnose #12 meant building
-`pkgs.darling-buck2`, and that turned up four independent faults, none of which the host
-build could see. All four are fixed; the endpoint is at the last mile.
+`pkgs.darling-buck2`, and that turned up four independent faults at once. The count is not the
+point and is deliberately not kept here, because it went on growing: an argv-splitting bug in
+`configure_file` after these four, and then the staging regression below. What they have in
+common is that the host build passes throughout.
 
   * **A cyclic symlink wrecked the tree.** `expand_dir_links` in
     `scripts/buck-src-normalise.py` followed JavaScriptCore's
@@ -177,12 +179,18 @@ build could see. All four are fixed; the endpoint is at the last mile.
     with it because `darwin_cc` defaults to the bare name `clang`, which in the dev shell is
     the WRAPPED clang injecting the same dirs through `NIX_CFLAGS_COMPILE`.
   * **fseventsd needs kernel UAPI headers**, which are not a library and so were in no list.
+  * **The lowering symlinked `src/` into the store**, so the pins could not be planted at
+    `src/external/<pin>` and every one of the 1798 lowered targets died on "Permission
+    denied". One word: the top-level exclusion list had `name != "src"` rewritten to
+    `name != "projectSrc"`, which is a Nix binding name and matches no directory.
 
-Two checks now hold the line, both verified to fail when the invariant is broken:
+Three checks now hold the line, all verified to fail when the invariant is broken:
 `scripts/buck-host-includes.py` (in `buck-test.sh`) requires every target the reference gives
 a host `-I` to declare `//src/native:host_headers`; `scripts/buck-nix-includes-check.nu`
 (standalone) compiles those targets with clang-unwrapped and ONLY the dirs the Nix derivation
-declares, which is the divergence that hid two of the four.
+declares, which is the divergence that hid two of the four; and
+`scripts/buck-lowering-stage-check.nu` reads the generated staging script, which is how a
+staging bug becomes a five second answer rather than a 90 minute one.
 
 **The lesson worth keeping**: each of these cost about an hour to find in a Nix build and
 seconds to reproduce on the host once the condition was named -- an emptied config value, a
