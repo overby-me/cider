@@ -783,6 +783,20 @@ deep=$(find "$norm_t" -type d -printf '%d\n' | sort -n | tail -1)
 	bad "the cyclic link was replaced by a real directory"
 chmod -R u+w "$norm_t" 2>/dev/null; rm -rf "$norm_t"
 
+say "== host headers (the ones that live outside the build graph) =="
+# The port compiles against X11, freetype, fontconfig, cairo, ffmpeg and pulseaudio, and for
+# the whole campaign it never asked for their headers: darwin_cc defaults to the bare name
+# "clang" (buck/toolchains/BUCK), which in the dev shell is the WRAPPED clang and injects
+# them through NIX_CFLAGS_COMPILE. Nothing here noticed until the Nix graph derivation,
+# which pins clang-unwrapped and unsets NIX_CFLAGS on purpose, stopped at
+# "X11/Xlib.h file not found". This asserts the port keeps naming them itself.
+if out=$(./scripts/buck-host-includes.py 2>&1); then
+	ok "$(printf '%s' "$out" | tail -1 | sed 's/^ok: //')"
+else
+	bad "a target compiles against host headers without declaring them"
+	printf '%s\n' "$out" | sed 's/^/       /' >&2
+fi
+
 say "== the prefix (what a Darling install actually is) =="
 # The port's product is not the link outputs, it is a laid-out prefix. This builds the
 # whole of it, which is also the broadest single check in this file: 151 targets, and a
