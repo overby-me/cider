@@ -94,17 +94,21 @@ def main [
     # In a variable, because a newline inside an external command ends it: with the script on
     # its own line, bash was invoked as `-c` with no argument and said so.
     let guest_cmd = 'echo BUCK2_BASH_OK $BASH_VERSION $MACHTYPE'
-    let r = (
-        with-env {
-            DPREFIX: $prefix_dir
-            DARLING_NO_LAUNCHD: "1"
-            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-            DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
-        } {
-            ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd | complete
-        }
-    )
-    let out = ($"($r.stdout)($r.stderr)" | str trim --right --char "\n")
+    # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,
+    # so concatenating them puts every guest line before every daemon line and the transcript
+    # stops showing which came first. bash got this for free from 2>&1, and when a check fails
+    # the interleaving is most of the evidence.
+    let log = (mktemp --tmpdir buck-bash-check.XXXXXX)
+    with-env {
+        DPREFIX: $prefix_dir
+        DARLING_NO_LAUNCHD: "1"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+    } {
+        do -i { ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd out+err> $log }
+    }
+    let out = (open --raw $log | str trim --right --char "\n")
+    rm -f $log
     print $out
 
     # What is asserted is BASH ITSELF, not a coreutil: uname lives in the cli component, which

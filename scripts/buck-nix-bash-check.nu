@@ -45,10 +45,14 @@ def main [attr?: string, bin?: string] {
     $env.DSERVER_MLDR_PATH = $"($rt)/libexec/darling/usr/libexec/darling/mldr"
 
     say $"== guest nix builds ($attr) under the buck2-built Darling =="
-    let r = (^./scripts/build-pkg-bypass.sh $attr $bin --mono $rt --prefix $prefix | complete)
-    # Trailing newlines stripped, as $(...) does in bash, so print adds exactly one back and
-    # the transcript does not gain a blank line per run.
-    let out = ($"($r.stdout)($r.stderr)" | str trim --right --char "\n")
+    # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,
+    # so concatenating them reorders the driver's transcript, and this check reads that
+    # transcript for build_rc and run_rc IN ORDER. Trailing newlines stripped as $(...) does in
+    # bash, so print adds exactly one back rather than a blank line per run.
+    let log = (mktemp --tmpdir buck-nix-bash-check.XXXXXX)
+    do -i { ^./scripts/build-pkg-bypass.sh $attr $bin --mono $rt --prefix $prefix out+err> $log }
+    let out = (open --raw $log | str trim --right --char "\n")
+    rm -f $log
     print $out
 
     # build_rc=0 alone is not enough: the driver retries, and a stale valid output in the store

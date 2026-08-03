@@ -74,16 +74,19 @@ def main [--prefix: string = "", scratch?: string] {
     # No DARLING_NO_LAUNCHD here -- that is the entire point of this check. The guest script
     # lives in a variable because a newline inside an external command ends it.
     let guest_cmd = 'echo BUCK2_LAUNCHD_OK $BASH_VERSION $MACHTYPE'
-    let r = (
-        with-env {
-            DPREFIX: $prefix_dir
-            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-            DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
-        } {
-            ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd | complete
-        }
-    )
-    let out = ($"($r.stdout)($r.stderr)" | str trim --right --char "\n")
+    # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,
+    # so concatenating them puts every guest line before every daemon line. bash got the real
+    # order for free from 2>&1, and for a launchd boot that order IS the diagnosis.
+    let log = (mktemp --tmpdir buck-launchd-check.XXXXXX)
+    with-env {
+        DPREFIX: $prefix_dir
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+    } {
+        do -i { ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd out+err> $log }
+    }
+    let out = (open --raw $log | str trim --right --char "\n")
+    rm -f $log
     print $out
 
     # The home-directory template copy ("cp: /Users/root: No such file or directory") is

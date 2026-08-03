@@ -77,17 +77,20 @@ def main [scratch?: string] {
     ^chmod +x $"($rt)/libexec/darling/usr/bin/sec_probe"
 
     say "== running the probe inside the container =="
-    let r = (
-        with-env {
-            DPREFIX: $prefix_dir
-            DARLING_NO_LAUNCHD: "1"
-            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-            DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
-        } {
-            ^timeout 200 $"($rt)/bin/darling" shell /usr/bin/sec_probe | complete
-        }
-    )
-    let out = ($"($r.stdout)($r.stderr)" | str trim --right --char "\n")
+    # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,
+    # so concatenating them puts every probe line before every daemon line. bash got the real
+    # order for free from 2>&1.
+    let log = (mktemp --tmpdir buck-security-check.XXXXXX)
+    with-env {
+        DPREFIX: $prefix_dir
+        DARLING_NO_LAUNCHD: "1"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+    } {
+        do -i { ^timeout 200 $"($rt)/bin/darling" shell /usr/bin/sec_probe out+err> $log }
+    }
+    let out = (open --raw $log | str trim --right --char "\n")
+    rm -f $log
     $out | lines | where {|l| $l =~ "SEC_PROBE" } | each {|l| print $l }
 
     # Each step is asserted separately, so a regression says WHICH layer broke rather than that
