@@ -182,7 +182,7 @@ darling shell bash -lc '
 Verify:
 
 ```bash
-./scripts/verify-nix.sh
+./scripts/verify-nix.nu
 
 # Or manually:
 darling shell bash -lc "nix --version"
@@ -341,8 +341,8 @@ darling-builder-test
 ./scripts/darling-build-hook --check
 
 # Standalone Nix health-check
-./scripts/verify-nix.sh
-./scripts/verify-nix.sh --online   # also test network/cache access
+./scripts/verify-nix.nu
+./scripts/verify-nix.nu --online   # also test network/cache access
 
 # Run the compatibility matrix (after Nix builds work)
 ./tests/nix/compatibility-matrix.sh --tier 1
