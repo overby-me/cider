@@ -101,12 +101,15 @@ failed with "Permission denied" 90 minutes into a build.
 
 ### The meta-lesson: re-test a recorded diagnosis before acting on it
 
-**Eight** recorded diagnoses in this file turned out to be untested guesses, and most
-pointed away from a fix that took under an hour: DBusKit's "no framework root", getuuid's
-"missing header", the JSC hang, "counting by path is not a one-line fix", libstdc++'s
-"incompatible headers", the AppKit backend, CoreGraphics' "can never find its backend", and
-the claim that JavaScriptCore never worked upstream. Two of those were written by the same
-agent that later disproved them.
+Recorded diagnoses in this file keep turning out to be untested guesses, and most point away
+from a fix that takes under an hour: DBusKit's "no framework root", getuuid's "missing
+header", the JSC hang, "counting by path is not a one-line fix", libstdc++'s "incompatible
+headers", the AppKit backend, CoreGraphics' "can never find its backend", the claim that
+JavaScriptCore never worked upstream, eight krb5 symlinks called dangling that were absolute
+GUEST paths, 22 libraries called display-dependent that only wanted `LD_LIBRARY_PATH`, and
+`oracle.nu` called untestable when every branch of it is reachable behind a stub `nix`.
+Several were written by the same agent that later disproved them. The count is deliberately
+not kept: it only ever goes up, and a stale number is the same bug this section is about.
 
 The pattern is identical every time: a real observation, an untested explanation attached to
 it, and the explanation recorded as though it were the observation.
