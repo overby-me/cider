@@ -31,7 +31,7 @@ Usage:
     scripts/buck-port.py --objects Security_obj
     scripts/buck-port.py --build-only //buck-src:Security_dylib
 
-Run it inside `nix develop`, after `source scripts/buck-env.sh`.
+Run it inside `nix develop`, after `source scripts/buck-env.nu`.
 """
 
 from __future__ import annotations

@@ -731,8 +731,9 @@ has been true six times running, each time a check freshly written.
 - **Confirm a port with a direct `buck2 build <label>`**, never with buck-port.py's verdict.
   It also says "failed (no recognisable error)" when the cause is a package-level file
   error.
-- **buck2 runs**: `nix develop --command bash -c 'source scripts/buck-env.sh; buck2 ...'`.
-  Sourcing buck-env.sh alone is not enough: the direnv cache goes stale (rustc and bindgen
+- **buck2 runs**: `nix develop --command nu -c 'source scripts/buck-env.nu; buck2 ...'`,
+  nu rather than bash now that the file is nushell.
+  Sourcing buck-env.nu alone is not enough: the direnv cache goes stale (rustc and bindgen
   went missing that way), and buck2's daemon inherits the client PATH at daemon START, so
   `buck2 killall` after fixing PATH.
 - **Never pre-create DPREFIX.** darling treats an existing prefix as already set up, and
