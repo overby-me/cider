@@ -824,10 +824,26 @@ has been true six times running, each time a check freshly written.
   the same way at 45 percent repeats (60 to 58). Each one is safe because the prefix
   derivation does not move; that identity is the check.
   What is left: about 40 percent is still the staged-tree script, which emits two escaped
-  shell lines per link for 236,528 links. Removing that means emitting a table plus a loop,
-  or having the dumper emit it, either of which CHANGES an input or the output and so costs
-  a full endpoint rebuild to verify. `lib.unique` is 3 percent and order-sensitive here, so
-  it stays.
+  shell lines per link. Removing that means emitting a table plus a loop, or having the
+  dumper emit it, either of which CHANGES an input or the output and so costs a full
+  endpoint rebuild to verify. `lib.unique` is 3 percent and order-sensitive here, so it
+  stays.
+- **58 seconds is not a regression from the 9 seconds of commit 45098ec. The graph grew.**
+  That measurement was 1,115 staged trees; graph.json is now 1.62 GB holding 5,282 trees
+  with 3,581,461 links, 27,591 actions and 3,225 targets. Per staged tree the evaluation
+  costs 10.7k function calls and 3.9 MB today against 17k and 5.6 MB then, so the work per
+  unit of graph went DOWN; the absolute number went up because the port did. Getting under
+  10 seconds again at this scale is a structural change, not another micro-fix.
+  Section sizes come out of graph.json in under a second, without parsing 1.62 GB, because
+  the dump writes it with `indent=2` and `sort_keys=True`: `grep -bn '^  "[a-zA-Z]*":'`
+  gives every top-level key with its byte and line offset, and the counts are then line
+  arithmetic (`^    "` is an entry, `^      "` is a link).
+- **The endpoint build OOMs on a 30 GB machine, and eval is why.** `nix eval` of the prefix
+  drvPath alone holds a 9.0 GB heap and allocates 20.6 GB, and for an IFD endpoint that
+  evaluator stays resident for the WHOLE build, not just the eval. With `max-jobs = 22` on
+  22 cores beside it, ld64 links and clang jobs take the rest. Cap the jobs rather than the
+  memory, since a MemoryMax scope kills the evaluator instead of queueing:
+  `nix build .#darling-buck2 --max-jobs 6`.
 - **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
   subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
   RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses

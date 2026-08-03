@@ -199,10 +199,13 @@
   # links pointed at. The link VALUES are verbatim from buck2, so they resolve here exactly
   # as they did there: the directory sits at the same place in this working tree.
   # MEMOISED per tree. A staged farm is consumed by many targets, and this rebuilt the same
-  # script text -- two escapeShellArg calls per link, across 1,115 trees -- once for every
-  # consumer. Nix deduplicates the resulting derivations but not the string building, which
-  # the profiler put at about a quarter of the evaluation once link resolution had moved to
-  # the dumper.
+  # script text -- two escapeShellArg calls per link, across what is now 5,282 trees holding
+  # 3,581,461 links -- once for every consumer. Nix deduplicates the resulting derivations
+  # but not the string building, which the profiler put at about a quarter of the evaluation
+  # once link resolution had moved to the dumper.
+  #
+  # mapAttrs is lazy per attribute, so a tree nobody consumes is never built. That laziness
+  # is the reason the count above is not the count this evaluation pays for.
   stagedTreeScripts = lib.mapAttrs stagedTreeScriptFor (g.stagedTrees or {});
   stagedTreeScript = path: links: stagedTreeScripts.${path} or (stagedTreeScriptFor path links);
 
@@ -211,9 +214,9 @@
         mkdir -p ${lib.escapeShellArg path}
       ''
       # The destination is escaped ONCE and reused. It was written twice, and
-      # escapeShellArg is a regex match plus string work per call: with 236,528 staged
-      # links that was 236,528 matches spent recomputing a string already in hand, and an
-      # eval profile puts 19.5 percent of a 155 second evaluation on this one line.
+      # escapeShellArg is a regex match plus string work per call, so every link paid a
+      # second match to recompute a string already in hand. An eval profile put 19.5
+      # percent of a 155 second evaluation on this one line.
       # The emitted script is character for character what it was.
       + lib.concatStrings (lib.mapAttrsToList (rel: target: let
           dst = lib.escapeShellArg (path + "/" + rel);
