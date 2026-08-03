@@ -94,6 +94,18 @@ say "   $n libraries to try"
 # skip list discovered one four-minute run at a time, the host restarts the sweep after the
 # library that killed it and records that library as its own category. The container stays
 # up between restarts, so each costs an exec.
+# The HOST ELF LIBRARY PATH, which is what the 22 "killed the guest" libraries were missing.
+# usr/lib/native/*.dylib are wrapgen stubs whose initializers dlopen the real libX11, libGL
+# and friends through elfcalls; without their directories on the loader path that dlopen
+# fails and the initializer ABORTS, taking the whole guest process tree with it. The daemon
+# log says it plainly, "sigexc: handler (6) returning", signal 6 being SIGABRT.
+#
+# scripts/buck-audio-check.sh has always done this, which is why the CoreAudio wrappers
+# answer there and died here. A display is NOT the cause and was tried first: with Xvfb up
+# and DISPLAY passed in, the count did not move at all.
+elf_dirs=$(sed -n 's/^elf_lib_dirs *= *//p' .buckconfig.local)
+[ -n "$elf_dirs" ] || say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
+
 say "== dlopening every one of them in the container, resuming past any that kill it =="
 run_list="$list"
 all_out=""
@@ -104,6 +116,7 @@ for _round in $(seq 1 40); do
 			DARLING_NO_LAUNCHD=1 \
 			DSERVER_LIBEXEC_PATH="$rt/libexec/darling" \
 			DSERVER_MLDR_PATH="$rt/libexec/darling/usr/libexec/darling/mldr" \
+			LD_LIBRARY_PATH="$elf_dirs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
 			timeout 900 "$rt/bin/darling" shell /usr/bin/loadall_probe \
 			"/tmp/$(basename "$run_list")" 2>&1
 	) || true
@@ -151,16 +164,17 @@ if [ "$bad" != 0 ] || [ "${crash:-0}" != 0 ] || [ "${hang:-0}" != 0 ]; then
 		sed -E 's/^LOADALL (fail|crash|hang) /     \1 /' | head -24
 fi
 
-# A FLOOR set to what was MEASURED, not to a hope. 161 of the 227 dylibs load. The 44 that do
-# not are all one thing -- /usr/lib/swift/libswift*.dylib, the Swift runtime shims Darling
-# installs without implementing -- and the rest are the /usr/lib/native ELF wrappers, which
-# end the guest process when dlopened with no display because they pull in the host libX11
-# and friends. Neither is a regression and neither is news; what this catches is the number
-# going DOWN, which nothing else here would see.
+# A FLOOR set to what was MEASURED. 183 of the 227 dylibs load, and 183 is exactly the number
+# of them that are Mach-O at all: scripts/buck-dylib-shape.nu counts 183 Mach-O and 44 git LFS
+# pointers. So EVERY real library in the prefix loads, and the only failures are files that
+# are not libraries.
+#
+# It used to read 161 with 22 more ending the guest process, and that gap was this harness
+# missing LD_LIBRARY_PATH rather than anything about the port.
 #
 # Raise it when the count goes up, the way the scripting check's floor tracks its own
 # measurement.
-floor=${LOADALL_FLOOR:-161}
+floor=${LOADALL_FLOOR:-183}
 if [ "${ok:-0}" -ge "$floor" ]; then
 	say ""
 	say "PASS: $ok of $n installed libraries load in the guest (floor $floor)"
