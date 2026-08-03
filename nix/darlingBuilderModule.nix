@@ -268,7 +268,7 @@ in
         Whether to automatically install Nix inside the Darling prefix
         during service startup.  Requires network access to download the
         Nix installer.  If false (default), you must install Nix manually
-        using scripts/install-nix-in-darling.sh before enabling the builder.
+        using scripts/install-nix-in-darling.nu before enabling the builder.
 
         NOTE: This is a slow operation on first run (downloads ~50MB) and
         is best done manually.  Set to true only for automated/CI setups.

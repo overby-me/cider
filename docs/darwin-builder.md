@@ -165,7 +165,7 @@ darling shell sw_vers      # → macOS 14.4.1 (Sonoma), build 23E224
 Use the automated installer script:
 
 ```bash
-./scripts/install-nix-in-darling.sh
+./scripts/install-nix-in-darling.nu
 ```
 
 Or install manually:

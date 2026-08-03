@@ -2,7 +2,7 @@
 # verify-nix.nu: standalone health-check for a Nix installation inside Darling
 #
 # This script runs a comprehensive set of checks to verify that Nix is correctly installed and
-# functional inside a Darling prefix. It can be used after running install-nix-in-darling.sh, or
+# functional inside a Darling prefix. It can be used after running install-nix-in-darling.nu, or
 # at any later time to diagnose regressions.
 #
 # Converted from bash (task #40) and verified against it with `darling` stubbed on PATH, no
@@ -336,7 +336,7 @@ def main [
         err_ $c "Some checks failed."
         print -e ""
         print -e "Troubleshooting:"
-        print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-darling.sh"
+        print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-darling.nu"
         print -e "  \u{2022} If syscall warnings appear, check: plan/syscall-triage.md"
         print -e "  \u{2022} If evaluator fails, try: darling shell bash -lc 'nix eval --expr 1+1' 2>&1"
         print -e "  \u{2022} For detailed tracing: DARLING_XTRACE=1 darling shell bash -lc 'nix --version'"
@@ -347,7 +347,7 @@ def main [
         exit 1
     } else if $passed == 0 {
         warn $c "No checks passed \u{2014} Nix may not be installed."
-        print -e "  Run: ./scripts/install-nix-in-darling.sh"
+        print -e "  Run: ./scripts/install-nix-in-darling.nu"
         exit 2
     } else {
         say $c $"($c.green)All checks passed!($c.reset) Nix is healthy inside Darling."

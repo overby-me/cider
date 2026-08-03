@@ -144,7 +144,7 @@ fi
 # Verify nix is available
 if ! command -v nix &>/dev/null && ! command -v nix-env &>/dev/null; then
     echo 'darling-nix: Nix does not appear to be installed in this prefix.' >&2
-    echo 'darling-nix: Run ./scripts/install-nix-in-darling.sh first.' >&2
+    echo 'darling-nix: Run ./scripts/install-nix-in-darling.nu first.' >&2
     exit 127
 fi
 

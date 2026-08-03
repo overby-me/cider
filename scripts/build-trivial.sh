@@ -175,7 +175,7 @@ nix_version=""
 nix_version=$(dsh_nix "nix --version" 2>&1) || true
 if [ -z "$nix_version" ] || ! echo "$nix_version" | grep -qi "nix"; then
     fatal "Nix does not appear to be installed in the Darling prefix.\n" \
-          "  Run: ./scripts/install-nix-in-darling.sh"
+          "  Run: ./scripts/install-nix-in-darling.nu"
 fi
 
 log "  Prefix: $DARLING_PREFIX"

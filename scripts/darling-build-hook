@@ -143,7 +143,7 @@ cmd_check() {
         log "  ✓ nix installed: $result"
     else
         log "  ✗ nix not found or not working inside Darling"
-        log "    Run scripts/install-nix-in-darling.sh first"
+        log "    Run scripts/install-nix-in-darling.nu first"
         exit_code=1
     fi
 

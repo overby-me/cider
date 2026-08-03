@@ -27,7 +27,7 @@
 # Prerequisites:
 #   - Darling must be installed and `darling shell echo ok` must work
 #   - For Nix-related tests, Nix must be installed in the prefix
-#     (run scripts/install-nix-in-darling.sh first)
+#     (run scripts/install-nix-in-darling.nu first)
 #
 # See: plan/03-phase1-syscalls.md (Task 1.7)
 #      plan/syscall-triage.md
@@ -496,7 +496,7 @@ if timeout 15 darling shell bash -lc 'command -v nix' &>/dev/null; then
     log "  Nix in prefix: ${GREEN}found${RESET}"
 else
     warn "Nix not found in prefix. Nix-specific operations will be skipped."
-    warn "Run scripts/install-nix-in-darling.sh first for full triage."
+    warn "Run scripts/install-nix-in-darling.nu first for full triage."
 fi
 
 echo "" >&2
