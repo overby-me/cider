@@ -201,7 +201,7 @@ tracks below.
 2. **No Apple-proprietary bits** in outputs or the repo. Reimplement from Apple open source
    (APSL) or clean-room from public docs; note provenance in commits. SDK stubs flow through
    Nix's own `apple-sdk` fetch, never vendored.
-3. **Green never regresses.** Every fix lands with a regression test; `scripts/run-tests.sh`
+3. **Green never regresses.** Every fix lands with a regression test; `scripts/run-tests.nu`
    + flake checks pass before every commit; the compatibility matrix is append-only.
 4. **Arch discipline.** Code touching registers, syscall numbers, thread state, signal
    frames, TLS, page size, or Mach-O CPU types goes behind the arch boundary. aarch64 is the
