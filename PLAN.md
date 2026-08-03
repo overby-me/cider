@@ -838,9 +838,20 @@ has been true six times running, each time a check freshly written.
   the dump writes it with `indent=2` and `sort_keys=True`: `grep -bn '^  "[a-zA-Z]*":'`
   gives every top-level key with its byte and line offset, and the counts are then line
   arithmetic (`^    "` is an entry, `^      "` is a link).
-- **The 58 seconds and the 9 GB are not inherent. Both halves are measured.** Evaluating
-  the prefix drvPath splits into a PARSE (11.0s CPU, 3.73 GB heap, just
-  `fromJSON` of graph.json) and the LOWERING on top of it (48s, 5.3 GB). The parse is
+- **DONE (#51, #47): the endpoint evaluation is 22.4s and 2.49 GB, from 58.8s and 9.0 GB.**
+  Allocation went 20.6 GB to 5.95 GB, calls 56.5M to 38.5M, and graph.json 1.62 GB to
+  481 MB. Two changes, both moving work out of the evaluator: the dump writes the UNION of
+  project sources instead of a per-target map that repeated it 85 times (the per-target
+  breakdown now lives in target-sources.json, which only narrowing reads), and staged farm
+  links travel as `treelinks/*.tsv` plus `*.dirs` tables that a fixed-size read loop
+  consumes, so nothing in Nix is proportional to the 3,581,461 links. Together with the
+  three escaping fixes earlier the same evaluation has gone 161s to 22.4s. The prefix
+  derivation MOVED, by design, so the guard did not apply: verified instead by building
+  `.#darling-buck2-lowered` and a real codegen target (dserver_rpc) out of the new graph,
+  and by reading an emitted staging script. The diagnosis that led there is kept below.
+- **How it was found. Both halves were measured.** Evaluating
+  the prefix drvPath split into a PARSE (11.0s CPU, 3.73 GB heap, just
+  `fromJSON` of graph.json) and the LOWERING on top of it (48s, 5.3 GB). The parse was
   large because graph.json is 85 times redundant: `targetSources` is 10,512,996 entries
   that are 123,343 distinct strings, and the staged link targets are 3,581,461 that are
   127,493. Interning them and dropping `indent=2` is a dumper-only change and was measured
