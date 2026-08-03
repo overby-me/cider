@@ -41,10 +41,16 @@ def main [root?: string] {
     let base = ($root | path expand)
 
     # REGULAR FILES ONLY, which is not incidental: glob returns symlinks too, and the prefix
-    # is full of compatibility links, so counting them would double most libraries and drag
-    # in 8 DANGLING ones whose targets do not exist. bash's find -type f excluded them, and
-    # the conversion is only faithful if this does too. 309 glob hits, 227 regular files.
-    # (The dangling ones are a real defect, but a separate one: see the krb5 family.)
+    # is full of compatibility links, so counting them would double most libraries. bash's
+    # find -type f excluded them and the conversion is only faithful if this does too.
+    # 309 glob hits, 227 regular files.
+    #
+    # Eight of those links look BROKEN from here and are not. usr/lib/libkrb5.dylib and its
+    # seven siblings point at /System/Library/Frameworks/Kerberos.framework/Kerberos, an
+    # absolute GUEST path: it resolves inside the container, where that is the framework, and
+    # cannot resolve on the host, where /System/Library does not exist. The target is real --
+    # the port builds it as buck-src:Kerberos_dylib and the prefix carries 174KB of it. A
+    # host-side existence test on an absolute guest path answers a question nobody asked.
     #
     # Sorted, so the report is stable between runs and between machines.
     let files = (glob $"($base)/**/*.dylib" | where {|f| ($f | path type) == "file" } | sort)
