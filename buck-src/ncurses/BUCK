@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 load("//buck/rules:install.bzl", "prefix_dir")
 
-# Targets over the ncurses pin, materialized by scripts/buck-src.sh. The tree
+# Targets over the ncurses pin, materialized by scripts/buck-src.nu. The tree
 # itself is gitignored (content is pinned in nix/submodules.json); this file is
 # committed. One package per pin keeps what the Nix-lowered path has to parse
 # small enough to evaluate (plan/buck2-port.md phase 3).

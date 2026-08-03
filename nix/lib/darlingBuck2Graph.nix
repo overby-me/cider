@@ -235,7 +235,7 @@ in
       chmod -R u+w buck-rust
       echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
 
-      # The same normalisation scripts/buck-src.sh applies on the daemon path: the upstream
+      # The same normalisation scripts/buck-src.nu applies on the daemon path: the upstream
       # trees contain symlinks with a "." component and ones whose relative target leaves
       # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
       # notify.defs, whose link was written for src/external/<pin> and reaches one level

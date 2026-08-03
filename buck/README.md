@@ -114,5 +114,5 @@ ninja.)
 - Where a target's lists are large and upstream-owned, the BUCK file is
   GENERATED (`scripts/gen-duct-tape-buck.py`) and the generator is committed.
   Hand-authored BUCK is for the code we iterate on.
-- New pinned upstream tree to compile? Add it to `scripts/buck-src.sh` and give
+- New pinned upstream tree to compile? Add it to `scripts/buck-src.nu` and give
   it targets in `buck-src/BUCK`.

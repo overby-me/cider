@@ -7,12 +7,12 @@ load("//buck/rules:install.bzl", "prefix_dir", "prefix_gen_dir")
 load("//buck/generated:sdk_headers.bzl", "SDK_I386", "SDK_LIBKERN", "SDK_MACH", "SDK_MACHINE", "SDK_ROOT", "SDK_SYS")
 
 # Targets over the nix-pinned upstream trees materialized by
-# scripts/buck-src.sh. The trees themselves are gitignored (content is pinned in
+# scripts/buck-src.nu. The trees themselves are gitignored (content is pinned in
 # nix/submodules.json); this file is committed. A buck2 package owns its
 # subdirectories, so one BUCK file here covers every materialized tree without
 # putting a BUCK file inside any of them (which would be gitignored too).
 #
-# Run `scripts/buck-src.sh` before building anything here.
+# Run `scripts/buck-src.nu` before building anything here.
 
 # ---------------------------------------------------------------------------
 # bootstrap_cmds: migcom + mig.sh, the MIG toolchain every codegen edge runs.

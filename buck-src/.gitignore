@@ -1,4 +1,4 @@
-# Materialized nix-pinned upstream sources (scripts/buck-src.sh). Content is
+# Materialized nix-pinned upstream sources (scripts/buck-src.nu). Content is
 # pinned in nix/submodules.json, so it is reproducible and never committed.
 # Only this file and the BUCK file that builds those trees are tracked.
 *
