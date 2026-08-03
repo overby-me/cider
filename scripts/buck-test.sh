@@ -797,6 +797,20 @@ else
 	printf '%s\n' "$out" | sed 's/^/       /' >&2
 fi
 
+say "== the argv separator (what the Nix lowering replays) =="
+# aquery renders an action's command by joining the argv with ", " and the graph dump splits
+# it back, so an argument containing that separator comes back as two and the lowering
+# replays a DIFFERENT command than buck2 ran. It happened once: perl's VERSIONS is the C
+# initializer for versions.h, and the Nix build died on a ValueError from the configure
+# script while the host, which never round-trips through the rendering, was fine.
+# configure_file passes its values in a file now; this catches the next one for free.
+if out=$(./scripts/buck-argv-roundtrip-check.py --static 2>&1); then
+	ok "$(printf '%s' "$out" | tail -1 | sed 's/^ok: //')"
+else
+	bad "a BUCK literal would put the argv separator into a command"
+	printf '%s\n' "$out" | sed 's/^/       /' >&2
+fi
+
 say "== the prefix (what a Darling install actually is) =="
 # The port's product is not the link outputs, it is a laid-out prefix. This builds the
 # whole of it, which is also the broadest single check in this file: 151 targets, and a

@@ -32,12 +32,21 @@ Two things make it work that are worth knowing before editing it:
 
 Usage:
   scripts/buck-argv-roundtrip-check.py [<target>...]   # default: every configure_file target
+  scripts/buck-argv-roundtrip-check.py --static [<dir>]  # no build: scan BUCK files instead
+
+--static is the cheap half, and it is what buck-test.sh runs. Every BUCK string literal that
+becomes an argv element must not contain the separator. Measured when this went in: exactly
+one literal in the tree contains it, perl's VERSIONS, and configure_file now passes its
+values in a file, so that one is safe by construction and is the only allowance. The
+reference agrees, with 0 across 79,139 of its flag lines, so a new one can only arrive by
+someone writing it.
 """
 from __future__ import annotations
 
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -66,7 +75,54 @@ def buck2(*args: str) -> str:
     return p.stdout
 
 
+# The one rule whose values never reach an argv, because it writes them to a file.
+SAFE_RULE = "configure_file"
+
+RULE_RE = re.compile(r"^([a-z_][a-z0-9_]*)\(")
+STR_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
+
+
+def static_scan(root: str) -> int:
+    """Which BUCK literals carry the separator, and are any of them in an unsafe rule?"""
+    total, bad = 0, []
+    for dp, dn, fn in os.walk(root):
+        if any(x in dp for x in ("buck-out", "/.jj", "/.git", "/.direnv")):
+            dn[:] = []
+            continue
+        if "BUCK" not in fn:
+            continue
+        path = os.path.join(dp, "BUCK")
+        rule = ""
+        for i, line in enumerate(open(path, errors="ignore"), 1):
+            m = RULE_RE.match(line)
+            if m:
+                rule = m.group(1)
+            if line.lstrip().startswith("#"):
+                continue
+            for sm in STR_RE.finditer(line):
+                if ", " not in sm.group(1):
+                    continue
+                total += 1
+                if rule != SAFE_RULE:
+                    bad.append((path, i, rule, sm.group(1)[:70]))
+    print(f"BUCK literals carrying the argv separator: {total}")
+    print(f"  in {SAFE_RULE} (safe, passed in a file):  {total - len(bad)}")
+    print(f"  in a rule that puts them in an argv:      {len(bad)}")
+    if bad:
+        print("\nFAIL: an argument would carry the ', ' aquery joins on, so the Nix")
+        print("lowering would replay a DIFFERENT command than buck2 ran. Pass the value")
+        print("through a file, the way configure_file does.\n")
+        for path, i, rule, v in bad[:8]:
+            print(f"  {path}:{i}  in {rule}(): {v}")
+        return 1
+    print("\nok: no argv-bound literal carries the separator")
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if "--static" in argv:
+        rest = [a for a in argv if not a.startswith("--")]
+        return static_scan(rest[0] if rest else REPO)
     dump = load_dumper()
     targets = [a for a in argv if not a.startswith("--")]
     if not targets:
