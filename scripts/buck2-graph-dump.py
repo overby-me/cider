@@ -88,8 +88,21 @@ def unjoin(cmd: str) -> list[str]:
     """aquery's `cmd` back into an argv.
 
     It is rendered as "[a, b, c]" -- the real argv joined with comma-space. Reversing that
-    is only sound while no argument contains the separator, which is checked below and was
-    measured over the whole-port graph: 2,066 of 2,066 actions reproduce what-ran exactly.
+    is only sound while no argument contains the separator, and THAT IS AN ASSUMPTION, not a
+    guarantee. check_against_what_ran below verifies it, but only for actions that actually
+    ran in the last invocation; the graph comes from analysis, where most never do. So the
+    old note here, 2,066 of 2,066 reproducing what-ran exactly, was never evidence about the
+    rest of the graph, and it read as though it were.
+
+    It has been wrong once. perl's versions.h passed VERSIONS as the C initializer
+    ` "5.18", "5.28",`, which came back as two arguments and killed the Nix lowering with a
+    ValueError about a dictionary update sequence, while the host, which never round-trips
+    through this rendering, built it fine. The fix was to stop the rule putting a
+    comma-space in an argument at all (buck/rules/codegen.bzl, configure_file passes its
+    values in a file now), because the ambiguity here cannot be resolved after the fact.
+
+    If this bites again, the answer is the same: remove the separator from the argument at
+    the rule, rather than teaching this function to guess where the boundaries were.
     """
     inner = cmd.strip()
     if inner.startswith("[") and inner.endswith("]"):

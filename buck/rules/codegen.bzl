@@ -409,10 +409,10 @@ script_gen = rule(
 # #cmakedefine lines, and the syscall emulation layer includes the result.
 # ---------------------------------------------------------------------------
 
-_CONFIGURE_RUNNER = """import sys
+_CONFIGURE_RUNNER = """import json, sys
 
 src, dst = sys.argv[1], sys.argv[2]
-values = dict(a.split("=", 1) for a in sys.argv[3:])
+values = json.load(open(sys.argv[3]))
 
 FALSEY = ("", "0", "OFF", "FALSE", "NO")
 out = []
@@ -437,9 +437,18 @@ open(dst, "w").write("".join(out))
 def _configure_file_impl(ctx):
     runner = ctx.actions.write(ctx.label.name + "__configure.py", _CONFIGURE_RUNNER)
     out = ctx.actions.declare_output(ctx.attrs.out)
-    cmd = cmd_args(["python3", runner, ctx.attrs.src, out.as_output()])
-    for k, v in ctx.attrs.values.items():
-        cmd.add(k + "=" + v)
+
+    # The values travel in a FILE, not as KEY=VALUE arguments, and that is not cosmetic.
+    # aquery renders an action's command by joining its argv with ", ", and
+    # scripts/buck2-graph-dump.py has to split that back apart, which is only sound while no
+    # argument contains the separator. perl's versions.h breaks it: VERSIONS is the C
+    # initializer ` "5.18", "5.28",`, so the one argument came back as two and the Nix
+    # lowering died on
+    #   ValueError: dictionary update sequence element #5 has length 1; 2 is required
+    # while the host, which never round-trips through that rendering, was fine. Passing a
+    # file removes the ambiguity at the source rather than teaching the dumper to guess.
+    values = ctx.actions.write_json(ctx.label.name + "__values.json", ctx.attrs.values)
+    cmd = cmd_args(["python3", runner, ctx.attrs.src, out.as_output(), values])
     ctx.actions.run(cmd, category = "configure_file", identifier = ctx.attrs.out)
     return _codegen_providers(ctx, [out], [], [out])
 
