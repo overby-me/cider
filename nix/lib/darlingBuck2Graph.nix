@@ -136,10 +136,22 @@ in
         # VM tests are Nix it never reads, and editing one changed the graph -- and so every
         # derivation lowered from it.
         !(top == "tests" && lib.hasSuffix ".nix" rel)
+        # EVERY result symlink, not just result-graph-ref. .buckconfig's [project] ignore
+        # already lists `result, result-*`, so buck2 does not read one; what they did do is
+        # rehash this derivation whenever any of them was repointed, because builtins.path
+        # hashes a symlink by its TARGET STRING and those targets are store paths. Rebuilding
+        # ld64 therefore rebuilt the graph, 30 minutes, over a link buck2 ignores.
+        && !(lib.hasPrefix "result" top)
         && !(builtins.elem top [
           "plan"
           "docs"
           "nix"
+          # The prose. A PLAN.md edit cost a 30 minute graph rebuild and a full relowering
+          # before this line: the lowering had already been taught to ignore it
+          # (d8af37a70), the graph had not.
+          "PLAN.md"
+          "README.md"
+          "CONTRIBUTORS.md"
           # The generators and the check suite. buck2 never opens one: the only path
           # starting with scripts/ in any BUCK file is darlingserver's
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
@@ -157,7 +169,6 @@ in
           ".jj"
           ".direnv"
           "buck-out"
-          "result-graph-ref"
           # The flake describes how this derivation is INVOKED, never what buck2 reads.
           # Leaving them in meant every edit to an unrelated flake output invalidated the
           # graph and re-ran a three-minute analysis plus the whole lowering behind it.

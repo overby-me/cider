@@ -331,8 +331,13 @@
   stageProject = pkgs.writeShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
+      # "src" belongs in this list and cost a whole endpoint build when it fell out of it:
+      # the section below plants the pins at src/external/<pin>, which is only possible if
+      # src/ is a real directory here rather than a symlink into the store. There is no
+      # entry called "projectSrc" -- that was a rename of the "src" exclusion into a Nix
+      # BINDING name, and it silently turned every lowered target into a permission error.
       '') (lib.filterAttrs (name: _:
-        name != "buck-src" && name != "buck-out" && name != "projectSrc" && name != "buck-rust")
+        name != "buck-src" && name != "buck-out" && name != "src" && name != "buck-rust")
         (builtins.readDir projectSrc)))}
 
     # buck-rust/ is a REAL directory for the same reason src/ is: its BUCK file is
