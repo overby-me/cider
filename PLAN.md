@@ -42,7 +42,7 @@ one command.
   `scripts/buck-codegen-coverage.py`: 227 outputs are unconsumed and all are mig side
   outputs the reference does not read either.
 - **Build parity is not runtime parity.** buck-test is almost entirely static. What runs is
-  the ten runtime checks plus `scripts/buck-loadall-check.sh`, which dlopens the prefix:
+  the ten runtime checks plus `scripts/buck-loadall-check.nu`, which dlopens the prefix:
   292 of 336 installed dylibs and framework binaries load in the guest, and the 44 that do
   not are the Swift LFS pointers (#39), which are not libraries. Past dlopen is unmeasured.
 

@@ -843,7 +843,7 @@ grep -q "<data>" "$bundle/Contents/Resources/EVRoots.plist" 2>/dev/null &&
 	ok "Certificates.bundle EVRoots.plist names EV roots" ||
 	bad "Certificates.bundle EVRoots.plist has no roots"
 
-# Is every .dylib actually a library? scripts/buck-loadall-check.sh found 44 that would not
+# Is every .dylib actually a library? scripts/buck-loadall-check.nu found 44 that would not
 # dlopen, and they are 131-byte git LFS pointers: the Swift runtime binaries live in LFS and
 # the checkout never fetched them, so the port installs the pointer under the library's name.
 # Nothing links against them, so no build-time check could see it. Free here because the
