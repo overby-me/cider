@@ -870,17 +870,21 @@ has been true six times running, each time a check freshly written.
   STILL OFF BY DEFAULT. Flipping `coarsePins` is a separate decision and wants the full
   coarse prefix built and diffed first; the expected win is ~1,196 fewer derivations and 31
   percent fewer staging passes, NOT less compile work.
-- **#44: the narrowing gap is FIVE files, and depfiles are not needed to close it.** The
-  comment at `projectSrc` says the uncovered case, a quoted include reaching out of its own
-  directory, is one that only depfiles can answer, and that narrowing waits on a 90 minute
-  build. Measured on the host in ten seconds instead: of 64,903 C-family files in the union,
-  734 have a quoted `../` include, 93 are uncovered, 40 name a target that does not exist
-  (guarded out), and 48 of the remaining 53 are vim GUI files this port never compiles
-  (`gui_x11.c`, `gui_motif.c`, `gui_gtk.c` have ZERO compile actions, against 1 for
-  `YarrPattern.cpp`). What is left: the three `otool` disassemblers needing
-  `cctools/as/*-opcode.h`, `man/src/gripes.c` needing `catopen/catopen.c` (a .c, not a
-  header), and `CFOpenDirectory.c` needing its `generated-stubs.h`. So the fix is a bounded
-  quoted-include scan in the dump. #49 is answered too, and the answer is DO NOTHING:
+- **#44: the narrowing gap is 25 quoted includes, and depfiles are not needed to close it.**
+  The comment at `projectSrc` says this case only depfiles can answer, and that narrowing
+  waits on a 90 minute build. Both are wrong; it measures on the host in ten seconds.
+  I FIRST REPORTED FIVE, and that was too narrow: I scanned only includes spelled `../`
+  and missed the subdirectory form, which is the same problem (`libcxxabi` reaching for
+  `include/atomic_support.h` and `demangle/ItaniumDemangle.h`, `fseventsd.m` for
+  `linux/fanotify.h`). The closure in the dump always covered both; only the count was
+  wrong. `scripts/buck-include-closure-check.py` now measures it properly and is verified
+  both ways: 25 against a pre-closure graph, 0 after.
+  The narrowing that matters: of 64,903 C-family files, 734 have a quoted `../` include and
+  93 are uncovered, but 40 name a file that does not exist (guarded out) and 48 of the
+  remaining 53 are vim GUI files this port never compiles (`gui_x11.c`, `gui_motif.c`,
+  `gui_gtk.c` have ZERO compile actions, against 1 for `YarrPattern.cpp`). Never judge a
+  gap by its raw count; judge it by what is actually compiled.
+  #49 is answered too, and the answer is DO NOTHING:
   dropping `indent=2` saves ~0.4s of parse and destroys the `grep -bn` section-offset trick
   used repeatedly to measure this graph, and interning `target-sources.json` only matters
   once narrowing is on, so it belongs with #44.
