@@ -888,6 +888,15 @@ has been true six times running, each time a check freshly written.
   dropping `indent=2` saves ~0.4s of parse and destroys the `grep -bn` section-offset trick
   used repeatedly to measure this graph, and interning `target-sources.json` only matters
   once narrowing is on, so it belongs with #44.
+- **`nix-diff <old.drv> <new.drv>` answers "why did this rebuild", and it is already
+  installed.** It walks the derivation tree and names the first real difference, which for a
+  content-addressed dependency is the thing that is otherwise hard to see: a consumer binds
+  to the producing DERIVATION, not to its output path, so it prints
+  `The input derivation named darling-buck2-graph.drv differs` and then `Sources: - old
+  buck2-graph-dump.py + new`. That is the whole #55 cascade in one command. It beats
+  decoding the `text` env var out of a `.drv` by hand, which is how this was first found.
+  Pair the SAME artifact across the two revisions, not two different variants: comparing the
+  default prefix against the coarse one just reports pin merging and tells you nothing.
 - **VERIFY ON ONE DERIVATION, NOT ON A FULL PREFIX REBUILD.** #50 was proven on
   `.#darling-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
   diffing a sorted file list plus per-file sha256 against a known-good output. Queueing #53
