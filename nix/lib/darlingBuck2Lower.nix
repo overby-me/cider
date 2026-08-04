@@ -505,8 +505,13 @@
         (builtins.readFile "${graph}/target-sources.json"))
     else {};
 
+  # buck-rust joins the exclusions for a third distinct reason: the crate sources under
+  # buck-rust/<crate>/ are GITIGNORED and come from the rustVendor derivation, so a
+  # builtins.path at one would fail with "not tracked by Git". Only its committed BUCK file
+  # lives in the repo, and stageProject already plants the vendor beside it.
   groupOfPath = p:
     if lib.hasPrefix "buck-src/" p || lib.hasPrefix "src/external/" p
+      || lib.hasPrefix "buck-rust/" p
     then null
     else let
       segs = lib.splitString "/" p;
@@ -519,7 +524,7 @@
   groupStore = g:
     builtins.path {
       name = "darling-src-" + lib.strings.sanitizeDerivationName g;
-      path = srcRaw + "/" + g;
+      path = srcRaw + ("/" + g);
     };
 
   # And per FILE for the 68 that sit in no group; a whole-directory path would drag in
@@ -527,7 +532,7 @@
   fileStore = p:
     builtins.path {
       name = "darling-srcfile-" + lib.strings.sanitizeDerivationName p;
-      path = srcRaw + "/" + p;
+      path = srcRaw + ("/" + p);
     };
 
   stageGroupsFor = label: let
@@ -547,9 +552,10 @@
     shallow = lib.filter (p:
       !(lib.hasPrefix "buck-src/" p)
       && !(lib.hasPrefix "src/external/" p)
+      && !(lib.hasPrefix "buck-rust/" p)
       && groupOfPath p == null
       && p != "."
-      && builtins.pathExists (srcRaw + "/" + p))
+      && builtins.pathExists (srcRaw + ("/" + p)))
     files;
   in ''
     ${lib.concatMapStrings (g: ''
