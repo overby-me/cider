@@ -283,9 +283,13 @@ it costs ~10 s over the default path and normal heap. Default eval itself is unc
 
 And it delivers, measured statically off the derivations rather than by a 90-minute build.
 Across 85 framework groups, editing one framework rebuilds a **median of 1 target** and at
-worst 1,702, against **all 3,215** for any edit whatsoever on the default path. (The two
-worst, LocalAuthentication and CryptoTokenKit at 1,702, look like the Security cone everything
-links, so that is a dependency shape to look at, not a grouping failure.)
+worst 1,702, against **all 3,215** for any edit whatsoever on the default path. The two worst,
+LocalAuthentication and CryptoTokenKit at 1,702 each, are a granularity artifact and not a
+dependency bug: the generated `sdk_darwin_frameworks_headers` target owns **five** SDK headers
+split across those two framework directories, and since a group is three path segments it
+drags both whole frameworks into the SDK header root every Darwin compile depends on. Making
+those five travel as individual files, the way the 69 ungrouped ones already do, would cut the
+worst case.
 
 ### #12 the VM hang: MEASURED, and it is not a hang in Darling
 
