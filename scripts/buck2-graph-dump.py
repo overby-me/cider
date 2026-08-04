@@ -111,159 +111,6 @@ def unjoin(cmd: str) -> list[str]:
     return inner.split(", ") if inner else []
 
 
-# The project files each TARGET reads, precomputed here for the same reason stagedTreeDeps
-# is: nix/lib/buck2-srcdeps.nix computes exactly this and takes 158 seconds, against a
-# lowering whose whole evaluation is about 14. Python does it in a second or two, and it is a
-# pure function of what this dump already holds.
-#
-# Every lowered target currently depends on the whole filtered project, 306,019 files, so a
-# one-line source edit relowers all of them. With this the median target names 4,032.
-#
-# The rule, and scripts/buck-lower-srcdeps.py audits its completeness:
-#   * project-relative tokens in the target's own argvs;
-#   * plus every link TARGET of each staged tree it consumes, which is where the header cones
-#     live -- NOT the staging actions' argvs, since those actions carry no command at all;
-#   * plus, WHOLESALE, any project directory used as an include root, because a compile can
-#     read anything under one and no per-file set could know what. There are two of those in
-#     the whole port, 26 files between them.
-_GLUED = ("-I", "-F", "-L", "-iquote")
-
-
-def _project_candidates(tok: str):
-    if not tok or tok.startswith(("/", "@", "buck-out/")):
-        return
-    yield tok
-    for g in _GLUED:
-        if tok.startswith(g) and len(tok) > len(g):
-            rest = tok[len(g):]
-            if not rest.startswith(("/", "@", "buck-out/")):
-                yield rest
-
-
-def _include_roots(argv: list):
-    for i, t in enumerate(argv):
-        if t in ("-I", "-isystem", "-F", "-iquote") and i + 1 < len(argv):
-            yield argv[i + 1]
-        elif t.startswith(("-I", "-F")) and len(t) > 2:
-            yield t[2:]
-
-
-_C_FAMILY = (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".h", ".hpp", ".hh", ".inc")
-_QUOTED_INCLUDE = re.compile(rb'^[ \t]*#[ \t]*include[ \t]*"([^"]+)"', re.M)
-_quoted_cache: dict = {}
-
-
-def _quoted_includes(rel: str) -> list:
-    """Existing project files that a quoted include in `rel` resolves to.
-
-    Resolved against the INCLUDING FILE own directory, which is what the C preprocessor
-    does for the quoted form and what no buck2 declaration records. Cached per file,
-    because a file's includes do not depend on which target is reading it, and every
-    target's source set otherwise rescans the same headers.
-
-    Only existing targets are returned: an include that names nothing is guarded out by
-    the preprocessor and cannot affect a build, and 40 of the 93 uncovered ones here are
-    exactly that (RELEASE_PPC artifacts, win32 headers).
-    """
-    hit = _quoted_cache.get(rel)
-    if hit is not None:
-        return hit
-    found = []
-    if rel.endswith(_C_FAMILY):
-        try:
-            with open(rel, "rb") as fh:
-                data = fh.read()
-        except OSError:
-            data = b""
-        base = os.path.dirname(rel)
-        for m in _QUOTED_INCLUDE.finditer(data):
-            target = m.group(1).decode("utf-8", "replace")
-            res = os.path.normpath(os.path.join(base, target))
-            # Escaping the project entirely is a system header by another name.
-            if not res.startswith("..") and os.path.exists(res):
-                found.append(res)
-    _quoted_cache[rel] = found
-    return found
-
-
-def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict:
-    known = set(producer) | set(staged) | set(trees)
-
-    def owner_of(path: str):
-        segs = path.split("/")
-        for n in range(len(segs), 0, -1):
-            pfx = "/".join(segs[:n])
-            if pfx in known:
-                return pfx
-        return None
-
-    tree_srcs = {}
-    for path, links in trees.items():
-        out = set()
-        for rel, tgt in links.items():
-            dest = os.path.normpath(os.path.join(os.path.dirname(os.path.join(path, rel)), tgt))
-            if not dest.startswith("buck-out/") and not dest.startswith("/"):
-                out.add(dest)
-        tree_srcs[path] = out
-
-    whole = {}
-
-    def under(d: str) -> set:
-        if d not in whole:
-            found = set()
-            for dp, _dn, fs in os.walk(d):
-                found.update(os.path.join(dp, f) for f in fs)
-            whole[d] = found
-        return whole[d]
-
-    by_target = {}
-    for a in ran:
-        by_target.setdefault(a["identity"].split(" (")[0], []).append(a)
-
-    out = {}
-    for label, acts in by_target.items():
-        srcs = set()
-        for a in acts:
-            for tok in a["argv"]:
-                for cand in _project_candidates(tok):
-                    if os.path.lexists(cand):
-                        srcs.add(cand)
-                        break
-            for d in _include_roots(a["argv"]):
-                if not d.startswith(("/", "@", "buck-out/")) and os.path.isdir(d):
-                    srcs |= under(d)
-        owners = {o for o in (owner_of(i) for a in acts for i in a.get("inputs", [])) if o}
-        for o in owners:
-            if o in tree_srcs:
-                srcs |= tree_srcs[o]
-                for dest in tree_srcs[o]:
-                    sub = owner_of(dest)
-                    if sub and sub in tree_srcs:
-                        srcs |= tree_srcs[sub]
-        # A quoted include resolves against the INCLUDING FILE own directory, which buck2
-        # never declares, so it has to be recovered here or the narrowed source set drops a
-        # header the compile really reads and the build dies late. To a fixpoint, because
-        # headers include headers.
-        #
-        # The comment at projectSrc in the lowering said this case needs depfiles. It does
-        # not, for this tree, and that was measured rather than assumed: of the 64,903 C
-        # family files in the union, 734 hold a quoted dot dot include, 93 are not already
-        # covered, 40 of those name a file that does not exist and so are guarded out, and
-        # 48 of the surviving 53 belong to vim, whose GUI has ZERO compile actions here.
-        # The whole real gap is five files: the three otool disassemblers reaching for
-        # cctools/as/*-opcode.h, gripes.c reaching for catopen/catopen.c, which is a .c and
-        # not a header, and CFOpenDirectory.c reaching for its generated-stubs.h.
-        pending = list(srcs)
-        while pending:
-            nxt = []
-            for f in pending:
-                for r in _quoted_includes(f):
-                    if r not in srcs:
-                        srcs.add(r)
-                        nxt.append(r)
-            pending = nxt
-        out[label] = sorted(srcs)
-    return out
 
 
 def coarse_pin_map(ran: list) -> dict:
@@ -728,16 +575,14 @@ def main(argv: list[str]) -> int:
             tree_index[path]["k"] = derive_k
             tree_index[path]["prefix"] = derive_prefix
 
-    # {target: [project files it reads]} goes to its OWN file. Only the narrowSources path
-    # reads it, which is off by default, and leaving it in graph.json cost every evaluation
-    # 651 MB of parsing for data it then never touched: measured, 11.0s and 3.73 GB of heap
-    # against 5.6s and 2.11 GB without it. What the default path does want is the UNION,
-    # which is all srcUnion ever built out of it, and that is 123,343 paths rather than
-    # 10,512,996 entries.
-    per_target = target_sources(ran, trees, copied, producer)
-    with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
-        json.dump(per_target, fh, sort_keys=True)
-        fh.write("\n")
+    # WHICH PROJECT FILES EACH TARGET READS IS NOT COMPUTED HERE ANY MORE. It is the only
+    # answer that depends on source file CONTENTS, because a quoted include is found by
+    # parsing #include "..." out of the file, and this dump now runs against a SKELETON
+    # (scripts/buck-skeleton.py) so that editing a .c cannot rerun it. That pass lives in
+    # scripts/buck2-graph-sources.py and runs against the real tree, reading this graph plus
+    # the link tables. Verified equivalent when it was moved: 124,055 of 124,056 sources
+    # identical, the one difference being a quoted include whose target is inside an
+    # uninitialised submodule in the working tree it was compared against.
 
     graph = {
         "targets": targets,
@@ -747,9 +592,6 @@ def main(argv: list[str]) -> int:
         "stagedTrees": tree_index,
         # {staged tree: [buck-out paths its links resolve to]}, precomputed.
         "stagedTreeDeps": tree_deps,
-        # Every project file any target reads, deduplicated. target-sources.json beside this
-        # holds the per-target breakdown for narrowing.
-        "projectSources": sorted({p for v in per_target.values() for p in v}),
         "producers": producer,
         # {target label: pin} for the buck-src pins that may be merged into one derivation
         # each. Only pins in NO dependency cycle appear; see coarse_pin_map.
@@ -774,8 +616,6 @@ def main(argv: list[str]) -> int:
     print(f"  {len(tree_index)} staged tree(s) holding "
           f"{sum(t['n'] for t in tree_index.values())} link(s), written as tables beside "
           f"the graph rather than inside it")
-    print(f"  {len(graph['projectSources'])} distinct project source(s), from "
-          f"{sum(len(v) for v in per_target.values())} per-target entries")
 
     # The join is only sound while no argument contains the separator. Check it against
     # whatever the last invocation ran rather than assuming it stays true.

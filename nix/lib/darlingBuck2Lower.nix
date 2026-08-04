@@ -151,6 +151,21 @@
     builtins.unsafeDiscardStringContext (builtins.readFile "${graph}/graph.json")
   );
 
+  # A SECOND import-from-derivation, deliberately (#56). Which project files a target reads
+  # is the one answer that depends on file CONTENTS rather than on the build definition,
+  # because a quoted include is found by parsing #include "..." out of the file. Leaving it
+  # in the graph forced the graph derivation to take the whole project, so editing one .c
+  # cost a 30 to 47 minute buck2 rerun before any compile could start. It is now its own
+  # derivation over the real tree, a 125 second python walk, and it is content addressed: a
+  # .c edit changes no file NAME, so this output is byte identical and nothing here moves.
+  #
+  # Only the UNION is read here. The per-target breakdown is 10.5 million entries and sits
+  # in target-sources.json beside it, parsed only when narrowing asks for it.
+  srcClosure = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext
+    (builtins.readFile "${graph.sources}/sources.json")
+  );
+
   # One escape per DISTINCT argument rather than one per occurrence. Measured over a graph
   # dump: 208,515 argv entries across the actions and 5,193 of them distinct, so 97.5
   # percent are repeats -- the same compiler, the same -I flags, the same isysroot, once
@@ -418,7 +433,7 @@
     # consumer. Since this was the only thing that ever read it, the per-target breakdown
     # moved to target-sources.json beside the graph, where narrowing can pick it up without
     # every evaluation parsing 651 MB it never looks at.
-    files = g.projectSources or (lib.concatLists (lib.attrValues (g.targetSources or {})));
+    files = srcClosure.projectSources;
     wanted = builtins.listToAttrs (map (p: {
       name = p;
       value = true;
@@ -491,7 +506,7 @@
   # So this stays OFF by default until a full endpoint build has run green with it, which
   # costs 90 minutes and has not been spent yet. Pass narrowSources = true to opt in.
   projectSrc =
-    if narrowSources && (g.projectSources or (lib.attrNames (g.targetSources or {}))) != []
+    if narrowSources && srcClosure.projectSources != []
     then srcUnion
     else src;
 
@@ -522,7 +537,7 @@
     if sourceGroups
     then
       builtins.fromJSON (builtins.unsafeDiscardStringContext
-        (builtins.readFile "${graph}/target-sources.json"))
+        (builtins.readFile "${graph.sources}/target-sources.json"))
     else {};
 
   # buck-rust joins the exclusions for a third distinct reason: the crate sources under

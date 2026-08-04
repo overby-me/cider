@@ -77,72 +77,10 @@
     if allPins
     then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
     else pins;
-  # As a SCRIPT, not inline: 147 pins of shell in the builder's environment is
-  # "Argument list too long" before it is anything else.
-  materializePins = pkgs.writeShellScript "materialize-pins" (
-  lib.concatMapStrings (p: let
-        name = builtins.baseNameOf p;
-      in ''
-        echo "materializing buck-src/${name}"
-        # CONTENTS, not the directory: buck-src/<pin>/BUCK is committed since the per-pin
-        # split, so the destination already exists and `cp -a src dest` would nest the
-        # whole tree one level down as buck-src/<pin>/<pin>.
-        mkdir -p buck-src/${name}
-        cp -a --reflink=auto ${darlingSrc}/${p}/. buck-src/${name}/
-        chmod -R u+w buck-src/${name}
-        # And where the SDK expects it. Darling's SDK is a farm of ~1,900 committed
-        # symlinks into src/external/<pin>, and this flake is built WITHOUT git submodules,
-        # so in the source those all dangle: the staged headers come out empty and the
-        # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
-        # longer has a typedef). One relative symlink per pin makes the farm resolve, and
-        # points at the copy that is already there rather than a second one.
-        mkdir -p ${builtins.dirOf p}
-        rmdir ${p} 2>/dev/null || true
-        ln -sfn ../../buck-src/${name} ${p}
-      '') wantedPins
-  );
-  # The vendored Rust crates, which buck-rust/BUCK globs and which are gitignored like the
-  # pins: without them the analysis fails on the first crate it loads, since a source
-  # attribute has to name a file that exists.
-  rustVendor = import ./rust-vendor.nix {inherit pkgs;};
-
-  # As a LIST built in Nix, not as an inline fragment: an optional piece inside the shell
-  # line leaves a dangling continuation when it is empty, and the targets end up on a line
-  # of their own where the dumper never sees them.
-  placeholderArgs =
-    [
-      "--placeholder"
-      "CLANG=${pkgs.llvmPackages.clang-unwrapped}"
-      "--placeholder"
-      "RESOURCE_DIR=${pkgs.clang}/resource-root"
-    ]
-    ++ lib.optionals (ld64 != null) ["--placeholder" "LD64=${ld64}"];
-in
-  pkgs.stdenv.mkDerivation {
-    name = "darling-buck2-graph";
-    # TWO OUTPUTS, CONTENT ADDRESSED (#50). graph.json is read only by the EVALUATOR while
-    # staged/ and treelinks/ are read only by the lowered BUILDERS, and sharing one store
-    # path meant that changing a byte of the dump FORMAT moved the path every lowered
-    # derivation references, so all of them rebuilt although not one build input had changed.
-    # Split, and under content addressing the data output is addressed by its own content, so
-    # a format-only change leaves it exactly where it was and the consumers do not rebuild.
-    #
-    # PROVEN on a two output toy before being pointed at a 481 MB graph: changing the builder
-    # so only the first output differs leaves the data output path identical, and a consumer
-    # reading only that output does NOT rebuild. Note the consumer drvPath DOES move, because
-    # a deferred reference carries the producing drv, so "did the drvPath move" is the WRONG
-    # check for a content addressed dependency and would report a false negative here. The
-    # check is whether nix actually reruns the builder.
-    outputs = ["out" "data"];
-    __contentAddressed = true;
-    outputHashMode = "recursive";
-    outputHashAlgo = "sha256";
-    # Filtered: buck2 reads BUCK files, rules, toolchains, configs and sources, and
-    # nothing else here. Without this, editing the plan or the Nix that CONSUMES this
-    # graph invalidates the graph itself, which costs a full buck2 build to rediscover
-    # commands that did not change. (Keying this on the build DEFINITION rather than on
-    # file contents is the next step -- see plan/buck2-port.md.)
-    src = builtins.path {
+  # The project as Nix sees it, filtered to what the build can possibly read. Two
+  # derivations take it: the SKELETON below, which is what buck2 gets, and the source
+  # closure, which is the one pass that needs real bytes.
+  projectSrc = builtins.path {
       name = "darling-buck2-project";
       path = src;
       filter = path: _type: let
@@ -194,6 +132,134 @@ in
         ]);
     };
 
+  # What buck2 analysis actually reads: build definition files verbatim, every other file
+  # present but EMPTY so glob still sees the same names. Content addressed, so a .c edit
+  # leaves this output byte identical and the graph derivation does not rerun at all, while
+  # a BUCK edit changes it and the graph correctly rebuilds. Measured on the real tree: 24
+  # seconds, 198 build files copied, 289,959 emptied, 75 MB.
+  skeleton = pkgs.runCommand "darling-buck2-skeleton" {
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    nativeBuildInputs = [pkgs.python3];
+  } ''
+    python3 ${../../scripts/buck-skeleton.py} ${projectSrc} "$out"
+  '';
+
+  # The tree BOTH passes work on: the pins materialised under buck-src, the vendored Rust
+  # crates, and the symlink normalisation buck2 refuses to load without. Shared rather than
+  # duplicated, because the graph runs it over the skeleton and the source closure runs the
+  # very same steps over the real tree, and the two drifting apart would show up as a
+  # missing header a long way from here.
+  assembleProject = ''
+      # buck2 writes buck-out INTO the project root, so the source has to be writable.
+      chmod -R u+w .
+
+      ${materializePins}
+
+      # The Rust crate sources, the same set scripts/buck-rust-vendor.nu materializes for
+      # the daemon path. Copied rather than symlinked, because buck2 reads them as package
+      # files and a glob across a link into the store either misses them or drags the
+      # closure in.
+      mkdir -p buck-rust
+      for c in ${rustVendor}/*/; do
+        name=$(basename "$c")
+        mkdir -p "buck-rust/$name"
+        cp -a --reflink=auto "$c"/. "buck-rust/$name/"
+      done
+      chmod -R u+w buck-rust
+      echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
+
+      # The same normalisation scripts/buck-src.nu applies on the daemon path: the upstream
+      # trees contain symlinks with a "." component and ones whose relative target leaves
+      # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
+      # notify.defs, whose link was written for src/external/<pin> and reaches one level
+      # above the root from buck-src/<pin>.
+      #
+      # AFTER every pin, not per pin: the rewrite follows the SDK farm's own links to find
+      # what the escaping link means, and those point into src/external/<pin>, which only
+      # exists once the pin loop has made all of them.
+      # --repo: the script runs from the store here, so it cannot find the project by
+      # looking above itself, and the rewrite that needs it would quietly do nothing.
+      python3 ${../../scripts/buck-src-normalise.py} --repo "$PWD" buck-src/*
+  '';
+
+  # As a SCRIPT, not inline: 147 pins of shell in the builder's environment is
+  # "Argument list too long" before it is anything else.
+  materializePins = pkgs.writeShellScript "materialize-pins" (
+  lib.concatMapStrings (p: let
+        name = builtins.baseNameOf p;
+      in ''
+        echo "materializing buck-src/${name}"
+        # CONTENTS, not the directory: buck-src/<pin>/BUCK is committed since the per-pin
+        # split, so the destination already exists and `cp -a src dest` would nest the
+        # whole tree one level down as buck-src/<pin>/<pin>.
+        mkdir -p buck-src/${name}
+        cp -a --reflink=auto ${darlingSrc}/${p}/. buck-src/${name}/
+        chmod -R u+w buck-src/${name}
+        # And where the SDK expects it. Darling's SDK is a farm of ~1,900 committed
+        # symlinks into src/external/<pin>, and this flake is built WITHOUT git submodules,
+        # so in the source those all dangle: the staged headers come out empty and the
+        # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
+        # longer has a typedef). One relative symlink per pin makes the farm resolve, and
+        # points at the copy that is already there rather than a second one.
+        mkdir -p ${builtins.dirOf p}
+        rmdir ${p} 2>/dev/null || true
+        ln -sfn ../../buck-src/${name} ${p}
+      '') wantedPins
+  );
+  # The vendored Rust crates, which buck-rust/BUCK globs and which are gitignored like the
+  # pins: without them the analysis fails on the first crate it loads, since a source
+  # attribute has to name a file that exists.
+  rustVendor = import ./rust-vendor.nix {inherit pkgs;};
+
+  # As a LIST built in Nix, not as an inline fragment: an optional piece inside the shell
+  # line leaves a dangling continuation when it is empty, and the targets end up on a line
+  # of their own where the dumper never sees them.
+  placeholderArgs =
+    [
+      "--placeholder"
+      "CLANG=${pkgs.llvmPackages.clang-unwrapped}"
+      "--placeholder"
+      "RESOURCE_DIR=${pkgs.clang}/resource-root"
+    ]
+    ++ lib.optionals (ld64 != null) ["--placeholder" "LD64=${ld64}"];
+  graph = pkgs.stdenv.mkDerivation {
+    name = "darling-buck2-graph";
+    # TWO OUTPUTS, CONTENT ADDRESSED (#50). graph.json is read only by the EVALUATOR while
+    # staged/ and treelinks/ are read only by the lowered BUILDERS, and sharing one store
+    # path meant that changing a byte of the dump FORMAT moved the path every lowered
+    # derivation references, so all of them rebuilt although not one build input had changed.
+    # Split, and under content addressing the data output is addressed by its own content, so
+    # a format-only change leaves it exactly where it was and the consumers do not rebuild.
+    #
+    # PROVEN on a two output toy before being pointed at a 481 MB graph: changing the builder
+    # so only the first output differs leaves the data output path identical, and a consumer
+    # reading only that output does NOT rebuild. Note the consumer drvPath DOES move, because
+    # a deferred reference carries the producing drv, so "did the drvPath move" is the WRONG
+    # check for a content addressed dependency and would report a false negative here. The
+    # check is whether nix actually reruns the builder.
+    outputs = ["out" "data"];
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    # Filtered: buck2 reads BUCK files, rules, toolchains, configs and sources, and
+    # nothing else here. Without this, editing the plan or the Nix that CONSUMES this
+    # graph invalidates the graph itself, which costs a full buck2 build to rediscover
+    # commands that did not change. (Keying this on the build DEFINITION rather than on
+    # file contents is the next step -- see plan/buck2-port.md.)
+    # THE SKELETON, not the project (#56). buck2 analysis cannot read a source file: it is a
+    # pure function of the target graph and the configuration, and sources are artifacts that
+    # exist only at execution. Feeding it the real tree meant editing one .c reran this
+    # derivation, 30 to 47 minutes, before a single compile could start. Content addressing
+    # kept that from cascading into the lowered derivations, so it was never a rebuild storm,
+    # it was a fixed tax on every edit.
+    #
+    # VERIFIED before being relied on: buck2 loads the skeleton in 14 seconds and reports the
+    # same 12,283 targets, with all 3,225 action owning labels from the real graph present.
+    # The negative control removes buck-src/BUCK and exactly its 1,227 labels disappear.
+    src = skeleton;
+
     nativeBuildInputs =
       [
         pkgs.buck2
@@ -234,36 +300,7 @@ in
     buildPhase = ''
       runHook preBuild
 
-      # buck2 writes buck-out INTO the project root, so the source has to be writable.
-      chmod -R u+w .
-
-      ${materializePins}
-
-      # The Rust crate sources, the same set scripts/buck-rust-vendor.nu materializes for
-      # the daemon path. Copied rather than symlinked, because buck2 reads them as package
-      # files and a glob across a link into the store either misses them or drags the
-      # closure in.
-      mkdir -p buck-rust
-      for c in ${rustVendor}/*/; do
-        name=$(basename "$c")
-        mkdir -p "buck-rust/$name"
-        cp -a --reflink=auto "$c"/. "buck-rust/$name/"
-      done
-      chmod -R u+w buck-rust
-      echo "buck-rust: $(ls buck-rust | wc -l) crate(s)"
-
-      # The same normalisation scripts/buck-src.nu applies on the daemon path: the upstream
-      # trees contain symlinks with a "." component and ones whose relative target leaves
-      # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
-      # notify.defs, whose link was written for src/external/<pin> and reaches one level
-      # above the root from buck-src/<pin>.
-      #
-      # AFTER every pin, not per pin: the rewrite follows the SDK farm's own links to find
-      # what the escaping link means, and those point into src/external/<pin>, which only
-      # exists once the pin loop has made all of them.
-      # --repo: the script runs from the store here, so it cannot find the project by
-      # looking above itself, and the rewrite that needs it would quietly do nothing.
-      python3 ${../../scripts/buck-src-normalise.py} --repo "$PWD" buck-src/*
+      ${assembleProject}
 
       # The machine-local config scripts/buck-setup.nu writes by hand, here from the
       # store paths this derivation was given -- the whole point of running in Nix.
@@ -330,5 +367,42 @@ in
       runHook postBuild
     '';
 
-    passthru = {inherit targets;};
-  }
+    passthru = {
+      inherit targets;
+      # WHICH PROJECT FILES EACH TARGET READS (#56). Its own derivation, over the REAL tree,
+      # because it is the only answer that depends on file CONTENTS: a quoted include is
+      # found by parsing #include "..." out of the file. It is a python walk rather than a
+      # buck2 build, 125 seconds measured, and it is content addressed, so editing a .c
+      # changes no file NAME, the output is byte identical and nothing downstream moves.
+      # Adding an include does change it, which is exactly when consumers should rebuild.
+      sources = sourcesDrv;
+    };
+  };
+
+  sourcesDrv = pkgs.stdenv.mkDerivation {
+    name = "darling-buck2-sources";
+    src = projectSrc;
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    nativeBuildInputs = [
+      pkgs.python3
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gnused
+      pkgs.bash
+    ];
+    dontConfigure = true;
+    dontInstall = true;
+    dontFixup = true;
+    buildPhase = ''
+      runHook preBuild
+      ${assembleProject}
+      mkdir -p "$out"
+      python3 ${../../scripts/buck2-graph-sources.py} \
+        ${graph}/graph.json ${graph.data} "$out"
+      runHook postBuild
+    '';
+  };
+in
+  graph
