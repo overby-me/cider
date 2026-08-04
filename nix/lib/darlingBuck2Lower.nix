@@ -51,7 +51,7 @@
   # reasoning and the measurements are at groupOf below.
   coarsePins ? false,
   # Stage each target from the SOURCE GROUPS it reads instead of one shared tree (#54). OFF
-  # so the default path stays byte-comparable; the reasoning is at groupOfPath below.
+  # so the default path stays byte-comparable; the rule is in buck2-graph-sources.py.
   sourceGroups ? false,
   srcRaw ? ../..,
   src ?
@@ -533,27 +533,24 @@
   # Three components, not two: darwin/frameworks alone is 17,223 files, so two would leave
   # every framework in one blob. Three gives 208 groups with none nested inside another,
   # plus 68 shallow files that belong to no group and travel individually.
-  perTargetSources =
+  # WHICH GROUPS a target reads, precomputed. This used to read target-sources.json and work
+  # the groups out here, and that file is 588 MB of 10.5 million entries for 124,055 distinct
+  # files: it cost eval 21.4s to 75.6s and heap 1.76 to 3.40 GB, which is what kept source
+  # groups switched off. The lowering never wanted the files, only the groups, so the closure
+  # pass emits them directly. Measured: 2.06 MB against 588 MB, 285 times smaller, holding
+  # 41,896 target-to-group edges over 195 groups plus 69 files that belong to none.
+  targetGroups =
     if sourceGroups
     then
       builtins.fromJSON (builtins.unsafeDiscardStringContext
-        (builtins.readFile "${graph.sources}/target-sources.json"))
+        (builtins.readFile "${graph.sources}/target-groups.json"))
     else {};
 
-  # buck-rust joins the exclusions for a third distinct reason: the crate sources under
-  # buck-rust/<crate>/ are GITIGNORED and come from the rustVendor derivation, so a
-  # builtins.path at one would fail with "not tracked by Git". Only its committed BUCK file
-  # lives in the repo, and stageProject already plants the vendor beside it.
-  groupOfPath = p:
-    if lib.hasPrefix "buck-src/" p || lib.hasPrefix "src/external/" p
-      || lib.hasPrefix "buck-rust/" p
-    then null
-    else let
-      segs = lib.splitString "/" p;
-    in
-      if lib.length segs >= 4
-      then lib.concatStringsSep "/" (lib.take 3 segs)
-      else null;
+  # The grouping RULE itself lives in scripts/buck2-graph-sources.py now, beside the map it
+  # is applied to, rather than being reimplemented here over a 588 MB file. That is also
+  # where the three ungrouped prefixes are justified: buck-src and src/external are pins
+  # staged wholesale by revision, and buck-rust is gitignored and comes from the vendor
+  # derivation, so a builtins.path at one would fail with "not tracked by Git".
 
   # One store path per group, so the group is what moves when a file in it changes.
   groupStore = g:
@@ -571,27 +568,9 @@
     };
 
   stageGroupsFor = label: let
-    files = perTargetSources.${label} or [];
-    groups = lib.attrNames (builtins.listToAttrs (lib.concatMap (p: let
-        g = groupOfPath p;
-      in
-        if g == null
-        then []
-        else [
-          {
-            name = g;
-            value = true;
-          }
-        ])
-      files));
-    shallow = lib.filter (p:
-      !(lib.hasPrefix "buck-src/" p)
-      && !(lib.hasPrefix "src/external/" p)
-      && !(lib.hasPrefix "buck-rust/" p)
-      && groupOfPath p == null
-      && p != "."
-      && builtins.pathExists (srcRaw + ("/" + p)))
-    files;
+    entry = targetGroups.${label} or {};
+    groups = entry.groups or [];
+    shallow = entry.shallow or [];
   in ''
     ${lib.concatMapStrings (g: ''
       mkdir -p ${lib.escapeShellArg (builtins.dirOf g)}

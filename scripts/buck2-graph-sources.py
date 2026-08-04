@@ -181,6 +181,48 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict
         out[label] = sorted(srcs)
     return out
 
+# Grouping (#54). Every target stages ONE shared source path today, so a byte changing
+# anywhere in it moves that path and all 3,225 targets rebuild. Source groups fix that by
+# giving a target only the subtrees it reads -- but the lowering used to work them out by
+# parsing the per-target map, 10.5 million entries for 124,055 distinct files, which cost
+# eval 21.4s to 75.6s and heap 1.76 to 3.40 GB. It never needed the FILES, only the GROUPS,
+# and that is 3,225 targets times a few entries. It is computed here, where the map is
+# already in hand, so the lowering reads a small file and never parses the big one.
+#
+# buck-src, src/external and buck-rust are deliberately ungrouped, each for its own reason:
+# the first two are pins staged wholesale by revision and a group there would collide with
+# those symlinks, and buck-rust is gitignored and comes from the vendor derivation, so a
+# builtins.path at one would fail with "not tracked by Git".
+_UNGROUPED = ("buck-src/", "src/external/", "buck-rust/")
+
+
+def group_of(p: str):
+    if p.startswith(_UNGROUPED):
+        return None
+    segs = p.split("/")
+    return "/".join(segs[:3]) if len(segs) >= 4 else None
+
+
+def target_groups(per_target: dict) -> dict:
+    """{target: {groups, shallow}} -- the subtrees it reads, plus the files in no group.
+
+    os.path.exists and NOT lexists, to match the builtins.pathExists this replaces: a
+    dangling symlink is false to Nix, and staging one would point at nothing.
+    """
+    out = {}
+    for label, files in per_target.items():
+        groups = sorted({g for g in (group_of(p) for p in files) if g})
+        shallow = sorted(
+            p for p in files
+            if not p.startswith(_UNGROUPED)
+            and group_of(p) is None
+            and p != "."
+            and os.path.exists(p)
+        )
+        out[label] = {"groups": groups, "shallow": shallow}
+    return out
+
+
 def read_trees(graph: dict, data: str) -> dict:
     """{staged tree: {link name: link target}} back out of the per farm tables.
 
@@ -230,6 +272,14 @@ def main(argv: list) -> int:
     with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
         json.dump(per_target, fh, sort_keys=True)
         fh.write("\n")
+
+    groups = target_groups(per_target)
+    with open(os.path.join(outdir, "target-groups.json"), "w") as fh:
+        json.dump(groups, fh, sort_keys=True)
+        fh.write("\n")
+    print(f"  {sum(len(v['groups']) for v in groups.values())} target-to-group edge(s) over "
+          f"{len({g for v in groups.values() for g in v['groups']})} distinct group(s), and "
+          f"{len({p for v in groups.values() for p in v['shallow']})} file(s) in no group")
 
     print(f"sources: {len(union)} distinct project source(s), from "
           f"{sum(len(v) for v in per_target.values())} per-target entries across "
