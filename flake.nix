@@ -452,6 +452,43 @@
       #   nix build .#darling-buck2-prefix-coarse --max-jobs 4 --cores 6
       # then diff its prefix against .#darling-buck2-prefix file list and per-file sha256,
       # which is how #52 was proven.
+      # The same endpoint with each target staged from ONLY the source groups it reads
+      # (#54), instead of one shared project path that every target takes. That shared path
+      # is why any edit rebuilds everything: change a byte in it and all 3,225 targets move.
+      #
+      # A SEPARATE ATTRIBUTE so darling-buck2-prefix stays byte-comparable. The test that
+      # matters is not that this builds, it is that an unrelated edit does NOT rebuild:
+      #   nix build .#darling-buck2-prefix-grouped   (once)
+      #   touch a file under darwin/frameworks/Quartz, which no pin target reads
+      #   nix build .#darling-buck2-prefix-grouped   (a pin target must NOT rerun)
+      #   touch darwin/basic-headers, which 1,326 pin targets do read
+      #   nix build .#darling-buck2-prefix-grouped   (they MUST rerun)
+      packages.darling-buck2-prefix-grouped =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            sourceGroups = true;
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+
       packages.darling-buck2-prefix-coarse =
         pkgs:
         let
