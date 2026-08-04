@@ -263,6 +263,26 @@
         while IFS= read -r d; do
           mkdir -p "$tree/$d"
         done < ${graph.data}/${meta.dirs}
+      '' + lib.optionalString (meta.n > 0 && meta ? k) ''
+        # DERIVED TARGETS. The dump found this farm's targets to be exactly
+        # ("../" * (k + the name's own depth)) + prefix + name, for every link, so the table
+        # holds NAMES ONLY and the target is rebuilt here. Storing the target as well made
+        # treelinks 467 MB when the names in it are 33 percent of that, and every staged
+        # tree derivation references the whole thing to read one table out of it.
+        #
+        # The ../ runs are cached in an array rather than rebuilt per link, so this stays a
+        # few parameter expansions per link, with no subshell, exactly as the two column
+        # loop below is.
+        pre=${lib.escapeShellArg meta.prefix}
+        up=("");
+        while IFS= read -r rel; do
+          slashes=''${rel//[!\/]/}
+          n=$(( ${toString meta.k} + ''${#slashes} ))
+          while [ ''${#up[@]} -le "$n" ]; do up+=( "''${up[$(( ''${#up[@]} - 1 ))]}../" ); done
+          ln -sfn "''${up[$n]}$pre$rel" "$tree/$rel"
+        done < ${graph.data}/${meta.table}
+      '' + lib.optionalString (meta.n > 0 && !(meta ? k)) ''
+        # The fallback form, for a farm whose targets are NOT derivable from their names.
         # IFS= with an explicit split, NOT `IFS=$tab read rel target`: a tab is whitespace
         # to read, so a leading one would be swallowed and an EMPTY link name (which the
         # dump does emit, for a dangling symlink artifact) would take the target as its

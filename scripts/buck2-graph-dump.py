@@ -668,9 +668,53 @@ def main(argv: list[str]) -> int:
                 raise SystemExit(f"link name or target holds a tab or newline: {path} {name!r} -> {target!r}")
         base = f"treelinks/{i:05d}"
         os.makedirs(os.path.join(outdir, "treelinks"), exist_ok=True)
+
+        # DERIVABLE TARGETS. A link target is almost always ("../" * up) + prefix + the link
+        # NAME itself, with the name repeated verbatim at the end, and measured on the real
+        # tables the two variables are constant per tree: in the largest, all 8,687 links
+        # have (up minus the name depth) equal to 8 and the same prefix. Storing the target
+        # anyway made treelinks 467 MB, of which the names alone are 33 percent. So when the
+        # rule holds, write names ONLY and let the staging script rebuild the target; when it
+        # does not, fall back to the explicit two-column form so nothing is lost.
+        derive_k = None
+        derive_prefix = None
+        for name, target in links.items():
+            up = 0
+            rest = target
+            while rest.startswith("../"):
+                up += 1
+                rest = rest[3:]
+            if not rest.endswith(name) or rest.startswith("/"):
+                derive_k = None
+                break
+            k = up - name.count("/")
+            pre = rest[: len(rest) - len(name)]
+            if derive_k is None and derive_prefix is None:
+                derive_k, derive_prefix = k, pre
+            elif (k, pre) != (derive_k, derive_prefix):
+                derive_k = None
+                break
+
+        # PROVE it before relying on it. The rule above is derived from the data, so a farm
+        # that satisfies it by accident, or a future change to how targets are built, must
+        # not be able to silently write a table that stages the wrong tree. Reconstructing
+        # every target here is the same arithmetic the staging script will do, and it costs
+        # one pass over links that were just walked anyway.
+        if derive_k is not None:
+            for name, target in links.items():
+                rebuilt = "../" * (derive_k + name.count("/")) + derive_prefix + name
+                if rebuilt != target:
+                    raise SystemExit(
+                        f"treelinks: derived target does not reproduce the real one for {path}:"
+                        f" {name!r} is {target!r} but the rule gives {rebuilt!r}")
+
         with open(os.path.join(outdir, base + ".tsv"), "w") as fh:
-            for name, target in sorted(links.items()):
-                fh.write(f"{name}\t{target}\n")
+            if derive_k is not None:
+                for name in sorted(links):
+                    fh.write(name + "\n")
+            else:
+                for name, target in sorted(links.items()):
+                    fh.write(f"{name}\t{target}\n")
         # The directories to make, ONCE and sorted, so the staging script does not run a
         # dirname subshell per link at BUILD time as well.
         dirs = sorted({os.path.dirname(n) for n in links} - {""})
@@ -678,6 +722,11 @@ def main(argv: list[str]) -> int:
             for d in dirs:
                 fh.write(d + "\n")
         tree_index[path] = {"n": len(links), "table": base + ".tsv", "dirs": base + ".dirs"}
+        if derive_k is not None:
+            # The reader is told HOW to read the table here rather than by a header line in
+            # it, so the staging script never parses a format marker.
+            tree_index[path]["k"] = derive_k
+            tree_index[path]["prefix"] = derive_prefix
 
     # {target: [project files it reads]} goes to its OWN file. Only the narrowSources path
     # reads it, which is off by default, and leaving it in graph.json cost every evaluation
