@@ -50,6 +50,9 @@
   # stays byte-comparable against the prefix that is already built and verified; the
   # reasoning and the measurements are at groupOf below.
   coarsePins ? false,
+  # Stage each target from the SOURCE GROUPS it reads instead of one shared tree (#54). OFF
+  # so the default path stays byte-comparable; the reasoning is at groupOfPath below.
+  sourceGroups ? false,
   srcRaw ? ../..,
   src ?
     builtins.path {
@@ -472,6 +475,117 @@
     then srcUnion
     else src;
 
+  # ---- per-component source groups (#54) ----------------------------------
+  #
+  # projectSrc is ONE store path that every target stages, so a byte changing anywhere in it
+  # moves the path and all 3,225 targets rebuild. narrowSources does not fix that; it shrinks
+  # the path from 306,019 files to about 131,048 and it is STILL shared. This splits the part
+  # that people actually edit so a target only depends on the groups it reads.
+  #
+  # MEASURED, which is what makes the split worth it: of 27,591 actions, 16,255 are pinned
+  # upstream code, and NOT ONE of them reads darwin/frameworks. The 1,326 pin targets that
+  # touch first-party files at all read only the SDK headers under darwin/Developer plus
+  # about ten stable compatibility headers -- darwin/basic-headers, src/sandbox,
+  # src/libsysmon. So editing a framework should leave every pin target cached, and today it
+  # rebuilds all of them.
+  #
+  # buck-src/ and src/external/ are deliberately NOT grouped. 98,933 of the 123,343 declared
+  # files are pins, already staged wholesale from darlingSrc by the pins section below and
+  # keyed by pin revision; grouping them would collide with those symlinks. src/external is
+  # where the pins are PLANTED, so a group there (src/external/darlingserver is 1,720 files)
+  # would fight the same symlink.
+  #
+  # Three components, not two: darwin/frameworks alone is 17,223 files, so two would leave
+  # every framework in one blob. Three gives 208 groups with none nested inside another,
+  # plus 68 shallow files that belong to no group and travel individually.
+  perTargetSources =
+    if sourceGroups
+    then
+      builtins.fromJSON (builtins.unsafeDiscardStringContext
+        (builtins.readFile "${graph}/target-sources.json"))
+    else {};
+
+  groupOfPath = p:
+    if lib.hasPrefix "buck-src/" p || lib.hasPrefix "src/external/" p
+    then null
+    else let
+      segs = lib.splitString "/" p;
+    in
+      if lib.length segs >= 4
+      then lib.concatStringsSep "/" (lib.take 3 segs)
+      else null;
+
+  # One store path per group, so the group is what moves when a file in it changes.
+  groupStore = g:
+    builtins.path {
+      name = "darling-src-" + lib.strings.sanitizeDerivationName g;
+      path = srcRaw + "/" + g;
+    };
+
+  # And per FILE for the 68 that sit in no group; a whole-directory path would drag in
+  # siblings the target does not read, which is the coupling this exists to remove.
+  fileStore = p:
+    builtins.path {
+      name = "darling-srcfile-" + lib.strings.sanitizeDerivationName p;
+      path = srcRaw + "/" + p;
+    };
+
+  stageGroupsFor = label: let
+    files = perTargetSources.${label} or [];
+    groups = lib.attrNames (builtins.listToAttrs (lib.concatMap (p: let
+        g = groupOfPath p;
+      in
+        if g == null
+        then []
+        else [
+          {
+            name = g;
+            value = true;
+          }
+        ])
+      files));
+    shallow = lib.filter (p:
+      !(lib.hasPrefix "buck-src/" p)
+      && !(lib.hasPrefix "src/external/" p)
+      && groupOfPath p == null
+      && p != "."
+      && builtins.pathExists (srcRaw + "/" + p))
+    files;
+  in ''
+    ${lib.concatMapStrings (g: ''
+      mkdir -p ${lib.escapeShellArg (builtins.dirOf g)}
+      ln -sfn ${groupStore g} ${lib.escapeShellArg g}
+    '')
+    groups}
+    ${lib.concatMapStrings (p: ''
+      mkdir -p ${lib.escapeShellArg (builtins.dirOf p)}
+      ln -sfn ${fileStore p} ${lib.escapeShellArg p}
+    '')
+    shallow}
+  '';
+
+  # Under #54 a target stages ONLY its groups plus the pins. It deliberately references no
+  # shared project path at all -- that is the whole point, since one shared input is what
+  # makes every edit rebuild everything. The pins still come from darlingSrc, keyed by pin
+  # revision, and src/external and buck-rust stay REAL directories because the pins are
+  # planted inside them; the comment on stageProject records that losing that cost a whole
+  # endpoint build.
+  stageProjectFor = label:
+    pkgs.writeShellScript "buck2-stage-project-grouped" ''
+      ${stageGroupsFor label}
+      mkdir -p buck-rust src/external buck-src
+      for _c in ${rustVendor}/*/; do
+        ln -sfn "$_c" "buck-rust/$(basename "$_c")"
+      done
+      ${lib.concatMapStrings (p: ''
+        ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
+        mkdir -p ${builtins.dirOf p}
+        rm -f ${p}
+        ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg p}
+      '')
+      wantedPins}
+    '';
+
   stageProject = pkgs.writeShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
@@ -596,7 +710,7 @@
       };
     } ''
       mkdir -p work && cd work
-      ${stageProject}
+      ${if sourceGroups then stageProjectFor label else stageProject}
 
       # What other targets built, at the paths this target's argv expects. Modes are
       # PRESERVED: a dependency can be a TOOL -- migcom is, and the port's every codegen
