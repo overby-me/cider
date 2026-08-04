@@ -208,18 +208,56 @@
     else lib.elemAt (builtins.match compileRe hit.identity) 1)
   byLabel;
 
-  groupOf = a: let
-    label = targetOf a;
+  # A label already IN a per-pin package names its pin in the package path, so do not go
+  # looking at source roots there: buck-src/python's sources live under Python-2.7.16/, and
+  # the heuristic would file that target under a "Python-2.7.16" pin instead of "python".
+  # The source-root heuristic was only ever measured for the TOP-LEVEL buck-src targets.
+  packagePinOf = label: let
+    sub = lib.removePrefix "root//buck-src" (lib.head (lib.splitString ":" label));
+  in
+    if sub == ""
+    then null
+    else lib.head (lib.splitString "/" (lib.removePrefix "/" sub));
+
+  # CONTRACTING A DAG CAN CREATE CYCLES, and here it does. Measured on the host by building
+  # the target dependency graph, contracting it per pin and running Tarjan: of 157 pins, 42
+  # land in ONE strongly connected component -- Libinfo, cctools, commoncrypto, compiler-rt,
+  # configd, copyfile, corecrypto, corefoundation and the rest of the system cone, which are
+  # mutually dependent at target level even though the target graph itself is acyclic. In
+  # Nix that surfaces as `error: infinite recursion` from the dependency staging line, with
+  # no clue what caused it, so it is refused by name instead.
+  #
+  # The remaining 115 pins have no cycle and ARE coarsenable, JavaScriptCore among them,
+  # which is the target this was aimed at. Landing that needs the acyclic subset computed in
+  # the dumper, the way every other graph analysis here is done, rather than an SCC pass in
+  # the evaluator.
+  coarseGuard =
+    if coarsePins
+    then throw ("buck2 lower: coarsePins is not viable as written. Contracting the target "
+      + "graph per pin creates a 42 pin cycle across the system cone (Libinfo, cctools, "
+      + "corefoundation and friends), which evaluates as infinite recursion. 115 of 157 "
+      + "pins are acyclic and can be coarsened; that subset has to come from the dump. See "
+      + "task #53.")
+    else null;
+
+  groupOfLabel = label: let
     pin =
       if coarsePins && lib.hasPrefix "root//buck-src" label
-      then pinOfLabel.${label} or null
+      then
+        (
+          if packagePinOf label != null
+          then packagePinOf label
+          else pinOfLabel.${label} or null
+        )
       else null;
   in
     if pin == null
     then label
     else "root//buck-src:pin-" + pin;
 
-  targets = lib.groupBy groupOf g.actions;
+  groupOf = a: groupOfLabel (targetOf a);
+
+  targets = builtins.seq coarseGuard (lib.groupBy groupOf g.actions);
 
   # Which GROUP writes which artifact, so a consumer resolves to the derivation that
   # actually contains it. This has to use the same key as `targets` above or a coarse
@@ -337,7 +375,14 @@
     # always find: an action that reads its inputs from a file names none of them on the
     # command line. The prefix is the case that needs it -- one manifest argument standing
     # for 5,537 inputs -- and aquery is where the declaration comes from.
-    declared = lib.unique (lib.concatMap (a: a.input_targets or []) targets.${label});
+    # THROUGH THE SAME GROUPING, which is not optional. These arrive from aquery as raw
+    # target labels, while `targets` and `stagedByTarget` below are keyed by GROUP, so under
+    # coarsePins an unmapped label matches NOTHING and the dependency disappears in silence.
+    # That is exactly how the first coarse build died: the prefix declares its 5,537 inputs
+    # rather than naming them in argv, so this is the only path that carries them, and it
+    # failed with "cp: cannot stat .../python27exe_obj/.../python.c.o" an hour in.
+    declared = lib.unique (map groupOfLabel
+      (lib.concatMap (a: a.input_targets or []) targets.${label}));
     # Only the ones that RUN something. A declared input can be a target with no actions at
     # all -- a header root, a staged include tree -- and there is no derivation to copy for
     # those; what they own travels as staged data instead, picked up just below.
