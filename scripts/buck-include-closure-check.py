@@ -14,7 +14,11 @@ a quoted ../ include and 93 were uncovered, of which 40 named a file that does n
 has ZERO compile actions here. The real gap was five files.
 
 Usage:
-  scripts/buck-include-closure-check.py <graph-store-path>
+  scripts/buck-include-closure-check.py <graph-store-path> <sources-store-path>
+
+Two paths since #56: the graph holds the actions, and the source closure is its own
+derivation over the real tree, because parsing a quoted include is the one thing here that
+reads file CONTENTS and the graph is now dumped from a skeleton.
 
 Exit 0 when every compiled file's quoted includes are covered, 1 when any is not, 2 on
 infrastructure trouble.
@@ -25,6 +29,7 @@ i860-opcode.h and sparc-opcode.h for the three otool disassemblers, man/man/cato
 catopen.c for gripes.c, which is a .c and not a header, and the OpenDirectory
 generated-stubs.h); run it against one dumped after and it reports none.
 """
+import json
 import os
 import re
 import subprocess
@@ -34,46 +39,20 @@ C_FAMILY = (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".h", ".hpp", ".hh", ".inc
 QUOTED = re.compile(rb'^[ \t]*#[ \t]*include[ \t]*"([^"]+)"', re.M)
 
 
-def project_sources(graph: str) -> list:
-    """The projectSources array, without parsing 481 MB of JSON.
+def project_sources(sources: str) -> list:
+    """The union, straight out of sources.json.
 
-    The dump writes graph.json with indent=2 and sort_keys=True, so every top-level key sits
-    at exactly two spaces and `grep -bn` gives its line offset in under a second. That is
-    worth more than the 8 percent the indent costs, which is why #49 chose to keep it.
+    It used to be sliced out of graph.json by line offset, because that file is 481 MB and
+    parsing it to read one array was not worth it. Since #56 the union is a small file of
+    its own, so it is just read.
     """
-    path = os.path.join(graph, "graph.json")
+    path = os.path.join(sources, "sources.json")
     if not os.path.exists(path):
-        print(f"no graph.json in {graph}", file=sys.stderr)
+        print(f"no sources.json in {sources}; pass the darling-buck2-sources output, not "
+              f"the graph", file=sys.stderr)
         raise SystemExit(2)
-    out = subprocess.run(["grep", "-n", '^  "[a-zA-Z]*":', path],
-                         capture_output=True, text=True).stdout
-    bounds = {}
-    order = []
-    for line in out.splitlines():
-        n, _, rest = line.partition(":")
-        key = rest.strip().split('"')[1]
-        bounds[key] = int(n)
-        order.append((int(n), key))
-    if "projectSources" not in bounds:
-        print("this graph has no projectSources; it predates the union", file=sys.stderr)
-        raise SystemExit(2)
-    order.sort()
-    start = bounds["projectSources"]
-    end = next((n for n, _ in order if n > start), None)
-    if end is None:
-        print("could not find the end of projectSources", file=sys.stderr)
-        raise SystemExit(2)
-    srcs = []
     with open(path) as fh:
-        for i, line in enumerate(fh, 1):
-            if i <= start:
-                continue
-            if i >= end:
-                break
-            s = line.strip().rstrip(",")
-            if s.startswith('"') and s.endswith('"'):
-                srcs.append(s[1:-1])
-    return srcs
+        return json.load(fh)["projectSources"]
 
 
 def compiled_basenames(graph: str) -> set:
@@ -96,15 +75,16 @@ def compiled_basenames(graph: str) -> set:
 
 
 def main(argv: list) -> int:
-    if len(argv) != 2:
+    if len(argv) != 3:
         print(__doc__.strip().splitlines()[0], file=sys.stderr)
-        print("usage: buck-include-closure-check.py <graph-store-path>", file=sys.stderr)
+        print("usage: buck-include-closure-check.py <graph-store-path> <sources-store-path>",
+              file=sys.stderr)
         return 2
-    graph = argv[1]
+    graph, sources = argv[1], argv[2]
     root = os.path.dirname(os.path.abspath(__file__))
     os.chdir(os.path.join(root, ".."))
 
-    srcs = project_sources(graph)
+    srcs = project_sources(sources)
     declared = set(srcs)
     # The filter also keeps the DIRECTORY of every declared file, so a sibling is covered.
     dirs = {os.path.dirname(p) for p in declared}

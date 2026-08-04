@@ -9,7 +9,7 @@
 #
 # SINCE #50 AN OWN-INPUT HIT IS NO LONGER AUTOMATICALLY EXPENSIVE, and this script cannot
 # tell the difference, so read its verdict with that in mind. The graph derivation now has
-# two content-addressed outputs: `out` holds graph.json and target-sources.json, which only
+# two content-addressed outputs: `out` holds graph.json, which only
 # the EVALUATOR reads, and `data` holds staged/ and treelinks/, which the lowered BUILDERS
 # read. A dump change that only alters graph.json leaves `data` byte-identical, so its path
 # does not move and every lowered target resolves to the output it already has -- the work
