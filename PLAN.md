@@ -858,6 +858,19 @@ has been true six times running, each time a check freshly written.
   3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **THE ROOT INVALIDATION CAUSE IS THE GRAPH DERIVATION ITSELF (#56), and #50, #53, #54 and
+  #55 are all downstream of it.** `darlingBuck2Graph.nix` takes the project as ONE
+  `builtins.path` that excludes only plan, docs, nix, scripts and a few dotfiles, so
+  `darwin/`, `src/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
+  rebuilds (30-47 min of buck2 analysis), its drv moves, and every lowered derivation moves
+  with it, because each binds to the graph's DERIVATION rather than to its output. No amount
+  of per-target or per-group granularity can matter beneath that. The comment on that filter
+  already said so: keying the graph on the build DEFINITION rather than on file contents is
+  the next step. The fix is to split ANALYSIS (BUCK, .bzl, configs, plus a NAME manifest of
+  the sources) from MATERIALISATION (real sources, producing staged/ and treelinks/).
+  WHAT THIS COSTS IN HINDSIGHT: four mechanisms were built and flagged off before anyone
+  measured a one-file-edit rebuild. Measure that FIRST next time; it is the only number the
+  work is for.
 - **DONE (#53): a buck-src PIN can be lowered as ONE derivation, and the merge is
   byte-identical.** The dump decides WHICH pins, because contracting a DAG can create
   cycles and this graph has them: 43 of 157 pins form one strongly connected component over
