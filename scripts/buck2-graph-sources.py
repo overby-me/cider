@@ -28,7 +28,7 @@ import sys
 
 
 # The project files each TARGET reads, precomputed here for the same reason stagedTreeDeps
-# is: nix/lib/buck2-srcdeps.nix computes exactly this and takes 158 seconds, against a
+# is: the Nix implementation of exactly this took 158 seconds (deleted, see history), against a
 # lowering whose whole evaluation is about 14. Python does it in a second or two, and it is a
 # pure function of what this dump already holds.
 #

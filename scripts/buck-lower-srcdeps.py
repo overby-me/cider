@@ -27,7 +27,7 @@ prefix of an input path, because an action's output is often a directory and con
 files inside it.
 
 Usage:
-  scripts/buck-lower-srcdeps.py [<graph.json>] [--target LABEL] [--list] [--top N]
+  scripts/buck-lower-srcdeps.py <graph.json> <graph-data-dir> [--target LABEL] [--list]
 """
 from __future__ import annotations
 
@@ -83,6 +83,35 @@ def include_roots(argv: list[str]):
             yield t[len("-iquote"):]
 
 
+def read_trees(g: dict, data: str) -> dict:
+    """{farm: {name: target}} out of the per farm link tables.
+
+    The dump stopped putting links in graph.json (#47) and this script kept indexing
+    stagedTrees as though it still did, so it was iterating the {n, table, dirs} index and
+    crashing on the int. It went unnoticed because nothing runs it automatically.
+
+    Two encodings since #58: names only when the target is derivable from the name, and two
+    columns when it is not. The form is taken from the index, never guessed from the line,
+    because reading the wrong one resolves every link to nonsense rather than failing.
+    """
+    trees = {}
+    for path, meta in (g.get("stagedTrees") or {}).items():
+        links = {}
+        if meta.get("n"):
+            with open(os.path.join(data, meta["table"])) as fh:
+                if "k" in meta:
+                    k, pre = meta["k"], meta["prefix"]
+                    for line in fh:
+                        rel = line.rstrip("\n")
+                        links[rel] = "../" * (k + rel.count("/")) + pre + rel
+                else:
+                    for line in fh:
+                        name, _, target = line.rstrip("\n").partition("\t")
+                        links[name] = target
+        trees[path] = links
+    return trees
+
+
 def load(path: str) -> dict:
     with open(path) as f:
         return json.load(f)
@@ -100,14 +129,15 @@ def main(argv: list[str]) -> int:
         if a == "--top" and i + 1 < len(argv):
             top_n = int(argv[i + 1])
             args = [x for x in args if x != argv[i + 1]]
-    if not args:
-        print("usage: buck-lower-srcdeps.py <graph.json> [--target LABEL] [--list]")
+    if len(args) < 2:
+        print("usage: buck-lower-srcdeps.py <graph.json> <graph-data-dir> "
+              "[--target LABEL] [--list]")
         return 2
     g = load(args[0])
 
     actions = g["actions"]
     staged = g.get("staged") or {}
-    staged_trees = g.get("stagedTrees") or {}
+    staged_trees = read_trees(g, args[1])
 
     by_target: dict[str, list] = {}
     for a in actions:
