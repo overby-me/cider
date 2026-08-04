@@ -442,6 +442,45 @@
         # derivations instead of lowering the graph a second time with different arguments.
         lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
 
+      # The same endpoint with each buck-src PIN lowered as one derivation instead of one
+      # per target (#53). buck-src is 58.9 percent of the actions and only moves when a
+      # submodule pin is bumped, so per-target granularity there buys nothing and costs a
+      # staging pass per target, which is what limits a full rebuild.
+      #
+      # A SEPARATE ATTRIBUTE, deliberately, so darling-buck2-prefix stays byte-comparable
+      # against the tree that is already built and verified. The comparison is the point:
+      #   nix build .#darling-buck2-prefix-coarse --max-jobs 4 --cores 6
+      # then diff its prefix against .#darling-buck2-prefix file list and per-file sha256,
+      # which is how #52 was proven.
+      packages.darling-buck2-prefix-coarse =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            coarsePins = true;
+            # Same reason as the narrow variant above: a wrap_elf argv carries these store
+            # paths as PLAIN TEXT, so Nix cannot see the dependency and the sandbox would
+            # not have them.
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.
       #   nix build .#darling-buck2 && ./result/bin/darling-buck2 shell /bin/bash -c ...

@@ -46,6 +46,10 @@
   # Opt in to the per-target source union below. OFF because it is not correct yet; the two
   # kinds of input it drops are named where projectSrc is defined.
   narrowSources ? false,
+  # Merge each buck-src pin's targets into ONE derivation (#53). OFF so the default path
+  # stays byte-comparable against the prefix that is already built and verified; the
+  # reasoning and the measurements are at groupOf below.
+  coarsePins ? false,
   srcRaw ? ../..,
   src ?
     builtins.path {
@@ -172,13 +176,58 @@
   # "root//buck-src:migcom (<unspecified>) (c_compile foo.c)" -> "root//buck-src:migcom"
   targetOf = a: lib.head (lib.splitString " (" a.identity);
 
-  targets = lib.groupBy targetOf g.actions;
+  # ---- coarse pins (#53) --------------------------------------------------
+  #
+  # GRANULARITY SHOULD FOLLOW CHANGE FREQUENCY. buck-src is 16,255 of the 27,591 actions,
+  # 58.9 percent, and nobody edits a file in there: it moves when a submodule pin is bumped,
+  # as a whole new upstream release, and then it moves entirely. One derivation per target
+  # buys nothing for code like that, and costs plenty -- evaluation scales with the action
+  # count, the nix-daemon grows 8 to 9 MB per derivation built (#48), and each target
+  # derivation pays a STAGING pass before it runs anything, which is what actually limits a
+  # full rebuild.
+  #
+  # A pin is the source root of a target's compile actions, which is 99.4 percent clean:
+  # of 527 top-level buck-src targets only 5 span more than one root once the *__gen roots
+  # (MIG and codegen OUTPUTS, not pins) are excluded, and 2 of those are sources with no
+  # directory component. The genuine three are iokitd_obj2, libdispatch_shared_obj and
+  # libnetwork_obj, which simply keep their own derivations.
+  #
+  # Regrouping is SAFE only because g.actions is globally topological, and that is measured
+  # rather than assumed: walking the list while accumulating produced outputs finds 0 inputs
+  # read before they are written, across all 27,591 actions and 27,619 artifacts, while the
+  # same walk over the reversed list finds 112,213. lib.groupBy keeps the order of elements
+  # within a group, so every group stays topological and the #52 concurrency stays correct.
+  compileRe = ".*\\((c|cxx|objc)_compile ([^/]+)/.*";
+  byLabel = lib.groupBy targetOf g.actions;
+  # findFirst is lazy, so this is normally ONE regex per label rather than one per action.
+  pinOfLabel = lib.mapAttrs (_label: acts: let
+    hit = lib.findFirst (a: builtins.match compileRe a.identity != null) null acts;
+  in
+    if hit == null
+    then null
+    else lib.elemAt (builtins.match compileRe hit.identity) 1)
+  byLabel;
 
-  # Which target writes which artifact.
+  groupOf = a: let
+    label = targetOf a;
+    pin =
+      if coarsePins && lib.hasPrefix "root//buck-src" label
+      then pinOfLabel.${label} or null
+      else null;
+  in
+    if pin == null
+    then label
+    else "root//buck-src:pin-" + pin;
+
+  targets = lib.groupBy groupOf g.actions;
+
+  # Which GROUP writes which artifact, so a consumer resolves to the derivation that
+  # actually contains it. This has to use the same key as `targets` above or a coarse
+  # build looks up a derivation that no longer exists.
   producerTarget = lib.listToAttrs (lib.concatMap (a:
     map (o: {
       name = o;
-      value = targetOf a;
+      value = groupOf a;
     })
     a.outputs)
   g.actions);
