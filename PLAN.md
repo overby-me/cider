@@ -935,31 +935,17 @@ has been true six times running, each time a check freshly written.
   derivation MOVED, by design, so the guard did not apply: verified instead by building
   `.#darling-buck2-lowered` and a real codegen target (dserver_rpc) out of the new graph,
   and by reading an emitted staging script. The diagnosis that led there is kept below.
-- **How it was found. Both halves were measured.** Evaluating
-  the prefix drvPath split into a PARSE (11.0s CPU, 3.73 GB heap, just
-  `fromJSON` of graph.json) and the LOWERING on top of it (48s, 5.3 GB). The parse was
-  large because graph.json is 85 times redundant: `targetSources` is 10,512,996 entries
-  that are 123,343 distinct strings, and the staged link targets are 3,581,461 that are
-  127,493. Interning them and dropping `indent=2` is a dumper-only change and was measured
-  by building the variants: 1.62 GB to 0.96 GB, 11.0s to 6.4s, 3.73 GB to 2.37 GB (#49).
-  WHY it is redundant, which beats interning it: `target_sources` FLATTENS shared things
-  that the graph already records, once per consumer. The two branches are NOT equal, and
-  measuring which is which changed the fix. The `-I`, `-isystem`, `-F` and `-iquote` walk
-  fires 46 times over 3 directories, because 96.4 percent of the 1,251,596 include roots
-  already point into buck-out. The port therefore HAS the precision buck2 normally gives:
-  a declared, materialized header farm per target. The 85x is entirely `srcs |=
-  tree_srcs[o]`, which expands every project file a consumed farm points at, per consumer,
-  and that set is recomputable from `stagedTrees[o]` in the same file. So it is stored
-  twice: 4,039 paths land in over half the 3,225 targets and are 65.6 percent of all
-  10,512,996 entries. Record WHICH FARMS a target consumes, not their contents (#51).
-  Depfiles are not needed for this and would be a ninja-shaped answer to a buck2 question;
-  nix-ninja needed them (0dfdcfc) and the port emits none, measured, zero `-MD`, `-MMD` or
-  `-MF` in the whole graph. The three source-tree roots are rule bugs worth fixing on their
-  own: `src/xtrace/include` (44 uses), `src/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
-  The lowering half is #47. Do #50 FIRST: graph.json and staged/ share one store path, so
-  a dump-format change moves what every lowered derivation references and none of this can
-  be verified without a full rebuild. `ca-derivations` and `dynamic-derivations` are both
-  already enabled here.
+- **How it was found, since the method transfers and the conclusions above do not.** The
+  evaluation split into a PARSE (11.0s, 3.73 GB, `fromJSON` alone) and the LOWERING on top
+  (48s, 5.3 GB), so both halves had to be attacked separately. The parse was large because
+  the graph repeated itself 85 times, and the instructive part was WHICH branch caused it:
+  the `-I` walk fires only 46 times over 3 directories, because 96.4 percent of the
+  1,251,596 include roots already point into buck-out. The port therefore HAS the precision
+  buck2 normally gives, a declared header farm per target, and the 85x was the dump
+  FLATTENING those farms per consumer, recomputable from data already in the same file.
+  Depfiles would have been a ninja-shaped answer to a buck2 question. Three source-tree
+  include roots remain as rule bugs worth fixing on their own: `src/xtrace/include`
+  (44 uses), `src/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
 - **IFD is not the problem. The 1.62 GB payload is. Do not bet on an experimental feature
   before fixing the representation.** recursive-nix works here, verified end to end: an
   inner derivation built from inside a build, INNER_OK read back out of the store. The
@@ -972,12 +958,13 @@ has been true six times running, each time a check freshly written.
   size costs a fraction of a second, and the architecture that exists today becomes
   affordable without any experimental feature. Do #51 and #47, RE-MEASURE, and only then
   decide whether granularity still needs a lever.
-- **The endpoint build OOMs on a 30 GB machine, and eval is why.** `nix eval` of the prefix
-  drvPath alone holds a 9.0 GB heap and allocates 20.6 GB, and for an IFD endpoint that
-  evaluator stays resident for the WHOLE build, not just the eval. With `max-jobs = 22` on
-  22 cores beside it, ld64 links and clang jobs take the rest. Cap the jobs rather than the
-  memory, since a MemoryMax scope kills the evaluator instead of queueing:
-  `nix build .#darling-buck2 --max-jobs 6`.
+- **The OOM was NOT eval, and this bullet used to say it was.** The evaluator holding a
+  9.0 GB heap resident for the whole IFD build was a contributor and is now 1.76 GB. The
+  cause is `nix-daemon`, which forks a worker per CONNECTION that grows 8-9 MB per
+  derivation BUILT: 11.1 GB at 1,171 and 15.3 GB at 1,873, extrapolating past 30 GB for
+  8,472. It is all returned on disconnect, so CYCLE THE CONNECTION rather than capping
+  memory, and `--max-jobs` does not help because the growth is per derivation PROCESSED.
+  Full detail with the endpoint milestone above.
 - **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
   subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
   RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses
