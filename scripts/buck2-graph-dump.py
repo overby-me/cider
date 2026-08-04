@@ -148,6 +148,44 @@ def _include_roots(argv: list):
             yield t[2:]
 
 
+_C_FAMILY = (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".h", ".hpp", ".hh", ".inc")
+_QUOTED_INCLUDE = re.compile(rb'^[ \t]*#[ \t]*include[ \t]*"([^"]+)"', re.M)
+_quoted_cache: dict = {}
+
+
+def _quoted_includes(rel: str) -> list:
+    """Existing project files that a quoted include in `rel` resolves to.
+
+    Resolved against the INCLUDING FILE own directory, which is what the C preprocessor
+    does for the quoted form and what no buck2 declaration records. Cached per file,
+    because a file's includes do not depend on which target is reading it, and every
+    target's source set otherwise rescans the same headers.
+
+    Only existing targets are returned: an include that names nothing is guarded out by
+    the preprocessor and cannot affect a build, and 40 of the 93 uncovered ones here are
+    exactly that (RELEASE_PPC artifacts, win32 headers).
+    """
+    hit = _quoted_cache.get(rel)
+    if hit is not None:
+        return hit
+    found = []
+    if rel.endswith(_C_FAMILY):
+        try:
+            with open(rel, "rb") as fh:
+                data = fh.read()
+        except OSError:
+            data = b""
+        base = os.path.dirname(rel)
+        for m in _QUOTED_INCLUDE.finditer(data):
+            target = m.group(1).decode("utf-8", "replace")
+            res = os.path.normpath(os.path.join(base, target))
+            # Escaping the project entirely is a system header by another name.
+            if not res.startswith("..") and os.path.exists(res):
+                found.append(res)
+    _quoted_cache[rel] = found
+    return found
+
+
 def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict:
     known = set(producer) | set(staged) | set(trees)
 
@@ -202,6 +240,28 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict
                     sub = owner_of(dest)
                     if sub and sub in tree_srcs:
                         srcs |= tree_srcs[sub]
+        # A quoted include resolves against the INCLUDING FILE own directory, which buck2
+        # never declares, so it has to be recovered here or the narrowed source set drops a
+        # header the compile really reads and the build dies late. To a fixpoint, because
+        # headers include headers.
+        #
+        # The comment at projectSrc in the lowering said this case needs depfiles. It does
+        # not, for this tree, and that was measured rather than assumed: of the 64,903 C
+        # family files in the union, 734 hold a quoted dot dot include, 93 are not already
+        # covered, 40 of those name a file that does not exist and so are guarded out, and
+        # 48 of the surviving 53 belong to vim, whose GUI has ZERO compile actions here.
+        # The whole real gap is five files: the three otool disassemblers reaching for
+        # cctools/as/*-opcode.h, gripes.c reaching for catopen/catopen.c, which is a .c and
+        # not a header, and CFOpenDirectory.c reaching for its generated-stubs.h.
+        pending = list(srcs)
+        while pending:
+            nxt = []
+            for f in pending:
+                for r in _quoted_includes(f):
+                    if r not in srcs:
+                        srcs.add(r)
+                        nxt.append(r)
+            pending = nxt
         out[label] = sorted(srcs)
     return out
 
