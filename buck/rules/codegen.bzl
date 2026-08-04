@@ -7,6 +7,8 @@
 # parent directory, and shell redirection -- without hiding the real command,
 # which stays visible in `buck2 log what-ran`.
 
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
 load(
     ":cc.bzl",
     "CcLibInfo",
@@ -489,7 +491,7 @@ def _stdout_gen_impl(ctx):
     cmd.add(ctx.attrs.args)
     cmd.add(ctx.attrs.srcs)
     ctx.actions.run(cmd, category = "stdout_gen", identifier = ctx.label.name)
-    return [DefaultInfo(default_output = out)]
+    return [DefaultInfo(default_output = out), InProcInfo(artifacts = [runner])]
 
 stdout_gen = rule(
     impl = _stdout_gen_impl,

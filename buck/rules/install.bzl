@@ -22,6 +22,8 @@ load("//buck/rules:cc.bzl", "CcLibInfo")
 # holds bin/, usr/ and everything else. symlinked_dir refuses overlapping destinations (and
 # is right to -- a symlink at libexec/darling would shadow the rest), so a tree is expanded
 # into its individual files and merged path by path instead.
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
 PrefixDirInfo = provider(fields = ["files"])
 
 # Three kinds of entry, in an order that matters: a directory before anything inside it, and
@@ -154,6 +156,9 @@ def _prefix_tree_impl(ctx):
 
     return [
         DefaultInfo(default_output = staged),
+        # The manifest and the builder script are written, not run, so nothing else reaches
+        # them and the Nix endpoint has to carry both.
+        InProcInfo(artifacts = [manifest, builder]),
         # A prefix is a tree, not a link input, so it carries no CcLibInfo. Named here so a
         # consumer that mistakenly puts a prefix on an include path fails loudly.
         CcLibInfo(

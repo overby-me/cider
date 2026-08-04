@@ -22,6 +22,8 @@
 load("@toolchains//:cc.bzl", "CcToolchainInfo")
 
 # What a C target hands to its consumers.
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
 CcLibInfo = provider(fields = [
     # list[artifact]: staged include roots, passed as -I in order.
     "include_dirs",
@@ -201,14 +203,20 @@ def _cc_objects_impl(ctx):
     # its generated-header include root, so it never has to be listed twice.
     merged = merge_dep_libs(ctx.attrs.deps + ctx.attrs.gen_srcs)
 
+    # inproc: made without running a command, so it has to be declared. The private
+    # include farm is NOT in the exported CcLibInfo (that is the point of private), so
+    # nothing else would reach it.
+    inproc = []
     include_dirs = []
     if ctx.attrs.headers:
-        include_dirs.append(stage_include_root(
+        private_root = stage_include_root(
             ctx,
             ctx.label.name + "__private_include",
             ctx.attrs.include_root,
             ctx.attrs.headers,
-        ))
+        )
+        inproc.append(private_root)
+        include_dirs.append(private_root)
     include_dirs.extend(merged.include_dirs)
 
     flags = merged.exported_flags + ctx.attrs.compiler_flags
@@ -226,6 +234,7 @@ def _cc_objects_impl(ctx):
             static_libs = merged.static_libs,
             linker_flags = merged.linker_flags,
         ),
+        InProcInfo(artifacts = inproc),
     ]
 
 _cc_objects_attrs = {
@@ -454,6 +463,8 @@ def _cc_lib_dir_impl(ctx):
     staged = ctx.actions.symlinked_dir(ctx.label.name, mapping)
     return [
         DefaultInfo(default_output = staged),
+        # The staged directory IS this target result, made in-process.
+        InProcInfo(artifacts = [staged]),
         CcLibInfo(
             include_dirs = merged.include_dirs,
             exported_flags = merged.exported_flags,
