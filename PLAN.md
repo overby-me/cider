@@ -858,6 +858,18 @@ has been true six times running, each time a check freshly written.
   3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **DONE (#53): a buck-src PIN can be lowered as ONE derivation, and the merge is
+  byte-identical.** The dump decides WHICH pins, because contracting a DAG can create
+  cycles and this graph has them: 43 of 157 pins form one strongly connected component over
+  the system cone (Libinfo, cctools, corefoundation), mutually dependent at target level
+  though the target graph is acyclic; `coarse_pin_map` runs Tarjan and offers only the 114
+  that are clean, covering 1,310 of 3,225 targets. `groupOfLabel` is then a lookup.
+  Verified on a real merged pin rather than a full rebuild: `pin-JavaScriptCore` merges five
+  targets and its 1,091 files contain all 1,082 of `JavaScriptCore_obj` with ZERO checksum
+  differences, the extra nine being exactly the other four targets' objects. 23 minutes.
+  STILL OFF BY DEFAULT. Flipping `coarsePins` is a separate decision and wants the full
+  coarse prefix built and diffed first; the expected win is ~1,196 fewer derivations and 31
+  percent fewer staging passes, NOT less compile work.
 - **VERIFY ON ONE DERIVATION, NOT ON A FULL PREFIX REBUILD.** #50 was proven on
   `.#darling-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
   diffing a sorted file list plus per-file sha256 against a known-good output. Queueing #53
