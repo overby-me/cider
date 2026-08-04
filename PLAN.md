@@ -277,6 +277,9 @@ constant per table), so tables store names only. 5,240 of 5,266 qualify; 26 keep
 
 The per-target source **groups** (#54) stopped being expensive: the cost was never the
 groups but the 588 MB per-target map parsed to choose them, now precomputed to **2.06 MB**.
+Measured after: **32.6 s cpu / 1.78 GB** against the 75.6 s / 3.40 GB that got it parked, so
+it costs ~10 s over the default path and normal heap. Default eval itself is unchanged at
+**22.6 s** despite the closure becoming a second IFD.
 
 ### #12 the VM hang: MEASURED, and it is not a hang in Darling
 
