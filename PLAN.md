@@ -662,15 +662,12 @@ P2 epoll re-arm memoize.
 ### Watch-items (reopen on demand)
 
 **Content addressing is research-grade, and the invalidation design rests on it.** Early
-cutoff (#50, #56) is real and verified here twice, but per an advanced-Nix reference:
-stabilization is ~65% (March 2026), realisation signing is unfinished, **CA + IFD is a known
-incompatibility (#5805)** -- the placeholder-context problem the three
-`unsafeDiscardStringContext` calls in the lowering work around -- CA + recursive-nix errors
-out, and it "still crashes on trivial cases as recently as Nix 2.34.x", which is the version
-here (2.34.7). **Lix is removing CA** (#815); Determinate ignores it for parallel eval,
-which is why `parallel-eval` is unavailable. So this port is tied to CppNix with
-experimental features. Also: IFD cannot be parallelized, and the two IFDs (graph, then
-source closure) are **strictly serial** because the closure needs `graph.json`.
+cutoff (#50, #56) is real and verified here twice. The two caveats that bite on this
+machine: **CA + IFD is a known incompatibility (#5805)**, the placeholder-context problem
+the three `unsafeDiscardStringContext` calls in the lowering work around, and CA is reported
+to "still crash on trivial cases as recently as Nix 2.34.x", which is the version here
+(2.34.7). Also: IFD cannot be parallelized, so the two IFDs (graph, then source closure) are
+**strictly serial** because the closure needs `graph.json`.
 - **Symbol:** 6 lazy-bound FSEvents stubs (`_FSEventStream*`, CoreServices) only if a real
   binary calls them. Re-run `symbol-demand.nu` as the package set widens (larger C++/Swift
   broadens the surface). Supply = `nm --defined-only` ∪ full export-trie (both, or you
