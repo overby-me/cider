@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Reduce the project to what buck2 ANALYSIS actually reads: the build definition, and the
-NAMES of everything else.
+"""Reduce the project to what the graph derivation actually reads.
 
 Why this exists. The graph derivation took the whole project, so editing one .c file reran
 it, 30 to 47 minutes, before a single compile could start. Under content addressing that is
@@ -14,14 +13,15 @@ data output is 6.9 MB of staged/ that is 166 rule generated scripts and value fi
 (rustc.sh, forward.py, configure.py, values.json), plus treelinks/ which is link names. Not
 one byte of source content reaches either.
 
-So the graph is a pure function of BUCK files, bzl rules, toolchains, configs and source
-NAMES. This writes exactly that: build definition files verbatim, every other file present
-but EMPTY so glob() still sees the same names, and every directory and symlink preserved
-because buck2 resolves package boundaries through them.
+Analysis alone would let EVERY file be emptied, since analysis cannot read a source at all.
+It is not analysis alone: the derivation also materialises the in-process artifacts, and a
+staged farm of GENERATED headers is only materialised by running its generator, which does
+read real bytes. So the C family is emptied and everything else is copied whole -- see
+_EMPTIABLE below for what that cost when it was learned the hard way.
 
-The output is content addressed by its consumer, so editing a .c leaves this output byte
-identical and the graph derivation does not rerun at all. Editing a BUCK file changes it and
-the graph correctly rebuilds.
+The output is content addressed by its consumer, so editing a .c or a .h leaves it byte
+identical and the graph derivation does not rerun at all. Editing a BUCK file, a .defs, a
+grammar or a generator script changes it, and the graph correctly rebuilds.
 
 The one thing that DOES need real contents is the include closure, which parses
 #include "..." out of real bytes. That is not analysis and it does not belong here; it runs
@@ -46,6 +46,38 @@ _BUILD_NAMES = frozenset([
 ])
 _BUILD_SUFFIXES = (".bzl", ".bxl")
 _BUILD_TREES = ("buck/",)
+
+
+# WHAT MAY BE EMPTIED, and it is a much smaller set than "everything that is not a build
+# file". Emptying the whole tree looked right -- analysis reads no source -- but the graph
+# derivation also MATERIALISES the in-process artifacts, and a staged farm of GENERATED
+# headers can only be materialised by running the generator. Measured: with everything
+# emptied, buck2 fails on root//src/external/darlingserver:dserver_rpc, root//buck-src:
+# mig_parser and root//buck-src:shell_cmds_find_getdate, which are the rpc wrapper script,
+# a mig .defs and a yacc grammar.
+#
+# So only the C family is emptied. That is the bulk of the tree and it is what people edit,
+# it is only ever COMPILED, and compiles no longer run here at all since buck/bxl/
+# materialize.bxl stopped ensuring default outputs. Everything a generator might read --
+# .defs, grammars, scripts, data -- keeps its real contents, so editing one correctly
+# rebuilds the graph.
+_EMPTIABLE = (
+    ".c", ".cc", ".cpp", ".cxx", ".m", ".mm",
+    ".h", ".hpp", ".hh", ".inc",
+    ".s", ".S", ".asm",
+)
+
+
+# NEVER emptied, whatever the suffix. In the graph derivation these do not come from here
+# at all: the pins are materialised from darlingSrc, the crates from the vendor derivation,
+# and src/external is where the pins are planted. Emptying them in a hand run makes the run
+# unrepresentative of the build, which is exactly how a test came back failing on
+# buck-src:mig_parser for a reason that cannot happen in Nix.
+_NEVER_EMPTY = ("buck-src/", "buck-rust/", "src/external/")
+
+
+def may_empty(rel: str) -> bool:
+    return rel.endswith(_EMPTIABLE) and not rel.startswith(_NEVER_EMPTY)
 
 
 def is_build_file(rel: str) -> bool:
@@ -99,19 +131,21 @@ def main(argv: list[str]) -> int:
                 # dangling one is preserved rather than resolved or dropped.
                 os.symlink(os.readlink(p), dst)
                 links += 1
-            elif is_build_file(rel):
+            elif may_empty(rel) and not is_build_file(rel):
+                # The NAME is the whole content that analysis needs, and nothing here reads
+                # a C family file: compiles do not run in this derivation.
+                open(dst, "wb").close()
+                emptied += 1
+            else:
                 with open(p, "rb") as fh_in, open(dst, "wb") as fh_out:
                     fh_out.write(fh_in.read())
                 copied += 1
-            else:
-                # The NAME is the whole content that analysis needs.
-                open(dst, "wb").close()
-                emptied += 1
 
-    print(f"skeleton: {copied} build files copied, {emptied} emptied, "
+    print(f"skeleton: {copied} file(s) copied whole, {emptied} emptied, "
           f"{links} symlinks, {dirs} directories", file=sys.stderr)
-    if copied == 0:
-        raise SystemExit("skeleton: not one build file was copied, the filter is wrong")
+    if copied == 0 or emptied == 0:
+        raise SystemExit("skeleton: nothing was copied or nothing was emptied, "
+                         "the filter is wrong")
     return 0
 
 

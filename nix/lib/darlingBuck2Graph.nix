@@ -132,25 +132,10 @@
         ]);
     };
 
-  # What buck2 analysis actually reads: build definition files verbatim, every other file
-  # present but EMPTY so glob still sees the same names. Content addressed, so a .c edit
-  # leaves this output byte identical and the graph derivation does not rerun at all, while
-  # a BUCK edit changes it and the graph correctly rebuilds. Measured on the real tree: 24
-  # seconds, 198 build files copied, 289,959 emptied, 75 MB.
-  skeleton = pkgs.runCommand "darling-buck2-skeleton" {
-    __contentAddressed = true;
-    outputHashMode = "recursive";
-    outputHashAlgo = "sha256";
-    nativeBuildInputs = [pkgs.python3];
-  } ''
-    python3 ${../../scripts/buck-skeleton.py} ${projectSrc} "$out"
-  '';
-
   # The tree BOTH passes work on: the pins materialised under buck-src, the vendored Rust
   # crates, and the symlink normalisation buck2 refuses to load without. Shared rather than
-  # duplicated, because the graph runs it over the skeleton and the source closure runs the
-  # very same steps over the real tree, and the two drifting apart would show up as a
-  # missing header a long way from here.
+  # duplicated, because the graph and the source closure both need it and the two drifting
+  # apart would show up as a missing header a long way from here.
   assembleProject = ''
       # buck2 writes buck-out INTO the project root, so the source has to be writable.
       chmod -R u+w .
@@ -248,17 +233,22 @@
     # graph invalidates the graph itself, which costs a full buck2 build to rediscover
     # commands that did not change. (Keying this on the build DEFINITION rather than on
     # file contents is the next step -- see plan/buck2-port.md.)
-    # THE SKELETON, not the project (#56). buck2 analysis cannot read a source file: it is a
-    # pure function of the target graph and the configuration, and sources are artifacts that
-    # exist only at execution. Feeding it the real tree meant editing one .c reran this
-    # derivation, 30 to 47 minutes, before a single compile could start. Content addressing
-    # kept that from cascading into the lowered derivations, so it was never a rebuild storm,
-    # it was a fixed tax on every edit.
+    # THE PROJECT, not a skeleton. Feeding this derivation a tree whose C family was
+    # emptied was tried and REVERTED, and the reason is worth keeping: this derivation does
+    # not only analyse. It materialises the in-process artifacts, and a staged farm of
+    # GENERATED headers is produced by running a generator, which is a host tool this
+    # derivation BUILDS from first-party C -- src/startup:rtsig and src/libelfloader:wrapgen
+    # among them.
     #
-    # VERIFIED before being relied on: buck2 loads the skeleton in 14 seconds and reports the
-    # same 12,283 targets, with all 3,225 action owning labels from the real graph present.
-    # The negative control removes buck-src/BUCK and exactly its 1,227 labels disappear.
-    src = skeleton;
+    # An emptied rtsig.c does not fail to compile. It compiles cleanly, links, runs, and
+    # writes an EMPTY header, so the graph comes out quietly wrong and the failure lands
+    # somewhere far away. A mechanism whose failure mode is silence is worse than the cost
+    # it was removing.
+    #
+    # scripts/buck-skeleton.py is kept: the idea is sound for the ANALYSIS half, and it is
+    # verified to load the identical target graph. What it needs first is the codegen input
+    # closure, so that exactly the files this derivation compiles keep their contents.
+    src = projectSrc;
 
     nativeBuildInputs =
       [

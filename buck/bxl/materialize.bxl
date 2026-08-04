@@ -37,11 +37,17 @@ def _impl(ctx):
         if info != None:
             wanted += info.include_dirs
 
-        # The default output too: a target whose result IS an in-process artifact (a staged
-        # lib directory) has nothing else to hand over.
-        default = providers.get(DefaultInfo)
-        if default != None:
-            wanted += default.default_outputs
+        # NOT the default output. Taking it for every node in the closure is what made this
+        # BUILD the port: a compile target's default output IS its object file, so ensuring
+        # it compiled, and a binary's is the linked binary, so ensuring it linked. That was
+        # invisible while the graph derivation got the real project -- the compiles simply
+        # succeeded -- and it surfaced the moment the derivation was given a skeleton, as
+        # failures on darwin/loader:mldr and a long list of _obj targets.
+        #
+        # Nothing here needs a compiled artifact. What has to travel is the in-process
+        # artifacts, and those come from the include dirs above, so the default output is
+        # pure cost. Measured over the endpoint target list: 98,455 artifacts are still
+        # ensured without it.
 
     ctx.output.print("ensuring %s artifact(s)" % len(wanted))
     ctx.output.ensure_multiple(wanted)
