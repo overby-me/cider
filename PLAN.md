@@ -838,6 +838,26 @@ has been true six times running, each time a check freshly written.
   the dump writes it with `indent=2` and `sort_keys=True`: `grep -bn '^  "[a-zA-Z]*":'`
   gives every top-level key with its byte and line offset, and the counts are then line
   arithmetic (`^    "` is an entry, `^      "` is a link).
+- **THE NIX ENDPOINT BUILDS A WORKING DARLING, END TO END, FOR THE FIRST TIME.** 8,472
+  derivations, zero builder failures. The prefix is 622 MB and 34,126 files with
+  `bin/darling`, `bin/darlingserver` and `bin/darling-coredump`, and
+  `scripts/buck-bash-check.nu --prefix result/darling_prefix__prefix` PASSES: the container
+  boots and prints `BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19`, which is the
+  Darwin bash and not the host's 5.x. Wall time: 29m41s for the graph, then about four
+  hours for the lowering, most of it two avoidable problems (#48, #52).
+  THREE OPERATIONAL TRAPS, each of which cost a run:
+  1. `nix-daemon` forks a worker per CONNECTION that grows 8-9 MB per derivation BUILT
+     (11.1 GB at 1,171, 15.3 GB at 1,873, swap to 9.1 GB), which extrapolates past this
+     machine's 30 GB and is why the endpoint had never finished. It is all returned on
+     disconnect, so CYCLE THE CONNECTION: `timeout 900 nix build ...` in a retry loop, since
+     nix resumes from the store. Capping `--max-jobs` does not help, the growth is per
+     derivation processed.
+  2. BUT A CYCLING WINDOW MUST EXCEED THE LONGEST SINGLE DERIVATION or it livelocks. The 15
+     minute window killed `JavaScriptCore_obj` (54 minutes on its own) and restarted it from
+     zero, twice, before this was spotted. Drop the timeout for the last few derivations.
+  3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
+     through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
+     and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
 - **DONE (#51, #47): the endpoint evaluation is 22.4s and 2.49 GB, from 58.8s and 9.0 GB.**
   Allocation went 20.6 GB to 5.95 GB, calls 56.5M to 38.5M, and graph.json 1.62 GB to
   481 MB. Two changes, both moving work out of the evaluator: the dump writes the UNION of
