@@ -186,69 +186,24 @@
   # derivation pays a STAGING pass before it runs anything, which is what actually limits a
   # full rebuild.
   #
-  # A pin is the source root of a target's compile actions, which is 99.4 percent clean:
-  # of 527 top-level buck-src targets only 5 span more than one root once the *__gen roots
-  # (MIG and codegen OUTPUTS, not pins) are excluded, and 2 of those are sources with no
-  # directory component. The genuine three are iokitd_obj2, libdispatch_shared_obj and
-  # libnetwork_obj, which simply keep their own derivations.
+  # WHICH pins may be merged is decided in the DUMP, not here, because CONTRACTING A DAG CAN
+  # CREATE CYCLES and this graph has them: 43 of 157 pins fall into one strongly connected
+  # component covering the system cone (Libinfo, cctools, commoncrypto, compiler-rt, configd,
+  # copyfile, corecrypto, corefoundation), mutually dependent at target level even though the
+  # target graph itself is acyclic. Merging those is not suboptimal, it is invalid, and in Nix
+  # it surfaces as a bare infinite recursion from the dependency staging line. coarse_pin_map
+  # in scripts/buck2-graph-dump.py runs Tarjan over the contracted graph and offers only the
+  # 114 pins that are in no cycle, JavaScriptCore among them.
   #
   # Regrouping is SAFE only because g.actions is globally topological, and that is measured
   # rather than assumed: walking the list while accumulating produced outputs finds 0 inputs
   # read before they are written, across all 27,591 actions and 27,619 artifacts, while the
   # same walk over the reversed list finds 112,213. lib.groupBy keeps the order of elements
   # within a group, so every group stays topological and the #52 concurrency stays correct.
-  compileRe = ".*\\((c|cxx|objc)_compile ([^/]+)/.*";
-  byLabel = lib.groupBy targetOf g.actions;
-  # findFirst is lazy, so this is normally ONE regex per label rather than one per action.
-  pinOfLabel = lib.mapAttrs (_label: acts: let
-    hit = lib.findFirst (a: builtins.match compileRe a.identity != null) null acts;
-  in
-    if hit == null
-    then null
-    else lib.elemAt (builtins.match compileRe hit.identity) 1)
-  byLabel;
-
-  # A label already IN a per-pin package names its pin in the package path, so do not go
-  # looking at source roots there: buck-src/python's sources live under Python-2.7.16/, and
-  # the heuristic would file that target under a "Python-2.7.16" pin instead of "python".
-  # The source-root heuristic was only ever measured for the TOP-LEVEL buck-src targets.
-  packagePinOf = label: let
-    sub = lib.removePrefix "root//buck-src" (lib.head (lib.splitString ":" label));
-  in
-    if sub == ""
-    then null
-    else lib.head (lib.splitString "/" (lib.removePrefix "/" sub));
-
-  # CONTRACTING A DAG CAN CREATE CYCLES, and here it does. Measured on the host by building
-  # the target dependency graph, contracting it per pin and running Tarjan: of 157 pins, 42
-  # land in ONE strongly connected component -- Libinfo, cctools, commoncrypto, compiler-rt,
-  # configd, copyfile, corecrypto, corefoundation and the rest of the system cone, which are
-  # mutually dependent at target level even though the target graph itself is acyclic. In
-  # Nix that surfaces as `error: infinite recursion` from the dependency staging line, with
-  # no clue what caused it, so it is refused by name instead.
-  #
-  # The remaining 115 pins have no cycle and ARE coarsenable, JavaScriptCore among them,
-  # which is the target this was aimed at. Landing that needs the acyclic subset computed in
-  # the dumper, the way every other graph analysis here is done, rather than an SCC pass in
-  # the evaluator.
-  coarseGuard =
-    if coarsePins
-    then throw ("buck2 lower: coarsePins is not viable as written. Contracting the target "
-      + "graph per pin creates a 42 pin cycle across the system cone (Libinfo, cctools, "
-      + "corefoundation and friends), which evaluates as infinite recursion. 115 of 157 "
-      + "pins are acyclic and can be coarsened; that subset has to come from the dump. See "
-      + "task #53.")
-    else null;
-
   groupOfLabel = label: let
     pin =
-      if coarsePins && lib.hasPrefix "root//buck-src" label
-      then
-        (
-          if packagePinOf label != null
-          then packagePinOf label
-          else pinOfLabel.${label} or null
-        )
+      if coarsePins
+      then (g.coarsePinOf or {}).${label} or null
       else null;
   in
     if pin == null
@@ -257,7 +212,7 @@
 
   groupOf = a: groupOfLabel (targetOf a);
 
-  targets = builtins.seq coarseGuard (lib.groupBy groupOf g.actions);
+  targets = lib.groupBy groupOf g.actions;
 
   # Which GROUP writes which artifact, so a consumer resolves to the derivation that
   # actually contains it. This has to use the same key as `targets` above or a coarse

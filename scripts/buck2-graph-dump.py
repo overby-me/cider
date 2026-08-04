@@ -642,6 +642,9 @@ def main(argv: list[str]) -> int:
         # holds the per-target breakdown for narrowing.
         "projectSources": sorted({p for v in per_target.values() for p in v}),
         "producers": producer,
+        # {target label: pin} for the buck-src pins that may be merged into one derivation
+        # each. Only pins in NO dependency cycle appear; see coarse_pin_map.
+        "coarsePinOf": coarse_pin_map(ran),
         "kinds": kinds,
         "targetOutputs": target_outputs,
         "placeholders": sorted(subs.values()),
