@@ -120,6 +120,23 @@
 in
   pkgs.stdenv.mkDerivation {
     name = "darling-buck2-graph";
+    # TWO OUTPUTS, CONTENT ADDRESSED (#50). graph.json is read only by the EVALUATOR while
+    # staged/ and treelinks/ are read only by the lowered BUILDERS, and sharing one store
+    # path meant that changing a byte of the dump FORMAT moved the path every lowered
+    # derivation references, so all of them rebuilt although not one build input had changed.
+    # Split, and under content addressing the data output is addressed by its own content, so
+    # a format-only change leaves it exactly where it was and the consumers do not rebuild.
+    #
+    # PROVEN on a two output toy before being pointed at a 481 MB graph: changing the builder
+    # so only the first output differs leaves the data output path identical, and a consumer
+    # reading only that output does NOT rebuild. Note the consumer drvPath DOES move, because
+    # a deferred reference carries the producing drv, so "did the drvPath move" is the WRONG
+    # check for a content addressed dependency and would report a false negative here. The
+    # check is whether nix actually reruns the builder.
+    outputs = ["out" "data"];
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
     # Filtered: buck2 reads BUCK files, rules, toolchains, configs and sources, and
     # nothing else here. Without this, editing the plan or the Nix that CONSUMES this
     # graph invalidates the graph itself, which costs a full buck2 build to rediscover
@@ -301,6 +318,14 @@ in
       # escape, so a continuation would be two backslashes and cut the command.
       python3 ${../../scripts/buck2-graph-dump.py} nix "$out" ${lib.escapeShellArgs placeholderArgs} ${lib.escapeShellArgs targets}
       buck2 --isolation-dir nix kill || true
+
+      # Split the two audiences apart. The dump records staged and treelinks paths RELATIVE
+      # to its output directory, so moving the directories wholesale keeps every recorded
+      # path valid; the lowering just resolves them against the data output instead.
+      mkdir -p "$data"
+      for d in staged treelinks; do
+        if [ -e "$out/$d" ]; then mv "$out/$d" "$data/$d"; fi
+      done
 
       runHook postBuild
     '';

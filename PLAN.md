@@ -858,6 +858,18 @@ has been true six times running, each time a check freshly written.
   3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **DONE (#50): the graph derivation has two outputs and is content addressed, so a
+  dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
+  are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
+  by the lowered BUILDERS and move to `data`. Recorded paths are relative, so the split is a
+  move. Verified BOTH ways on `.#darling-buck2-lowered`: adding a key to graph.json rebuilt
+  only the graph and left the target at the same output with no builder run, while writing
+  one file into `treelinks/` moved the data path and did rebuild it; removing the probe
+  returned to the identical baseline output.
+  THE CHECK IS "DOES IT REBUILD", NOT "DID THE drvPath MOVE". A consumer of a content
+  addressed output holds a DEFERRED reference carrying the producing drv, so its drvPath
+  always moves and the old plan would have read a false negative. Nix resolves it after the
+  dependency builds and reuses the output when the resolution is identical.
 - **DONE (#52): a target's independent actions run concurrently. JavaScriptCore 54m to
   10m36s at only `--cores 8`, and the objects are IDENTICAL.** 1,082 files each way, zero
   difference in the file list and zero across all 1,082 sha256 sums, and the 10m36s even

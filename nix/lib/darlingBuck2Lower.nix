@@ -304,7 +304,7 @@
         # time, and the dump already knows the answer.
         while IFS= read -r d; do
           mkdir -p "$tree/$d"
-        done < ${graph}/${meta.dirs}
+        done < ${graph.data}/${meta.dirs}
         # IFS= with an explicit split, NOT `IFS=$tab read rel target`: a tab is whitespace
         # to read, so a leading one would be swallowed and an EMPTY link name (which the
         # dump does emit, for a dangling symlink artifact) would take the target as its
@@ -313,7 +313,7 @@
         while IFS= read -r line; do
           rel=''${line%%"$tab"*}
           ln -sfn "''${line#*"$tab"}" "$tree/$rel"
-        done < ${graph}/${meta.table}
+        done < ${graph.data}/${meta.table}
       '');
 
   # By walking the path's own prefixes, NOT by scanning every known artifact: an action's
@@ -677,12 +677,12 @@
             # MERGED, not replaced: a tree can hold both links into the project and files
             # buck2 generated (rtsig.h is one), and copying over the farm with -T destroys
             # the links that were just made.
-            cp -a ${graph}/${data}/. ${lib.escapeShellArg o}/
+            cp -a ${graph.data}/${data}/. ${lib.escapeShellArg o}/
             chmod -R u+w ${lib.escapeShellArg o}
           ''
           else ''
             mkdir -p "$(dirname ${lib.escapeShellArg o})"
-            cp -aT ${graph}/${data} ${lib.escapeShellArg o}
+            cp -aT ${graph.data}/${data} ${lib.escapeShellArg o}
             chmod -R u+w ${lib.escapeShellArg o}
           ''
         ))
@@ -774,7 +774,7 @@
         ''
         else if st != null
         then ''
-          cp -aT ${graph}/${st} "$out/${builtins.baseNameOf o}"
+          cp -aT ${graph.data}/${st} "$out/${builtins.baseNameOf o}"
         ''
         else if owner != null && (g.stagedTrees or {}) ? ${owner}
         then ''
