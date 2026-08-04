@@ -281,6 +281,12 @@ Measured after: **32.6 s cpu / 1.78 GB** against the 75.6 s / 3.40 GB that got i
 it costs ~10 s over the default path and normal heap. Default eval itself is unchanged at
 **22.6 s** despite the closure becoming a second IFD.
 
+And it delivers, measured statically off the derivations rather than by a 90-minute build.
+Across 85 framework groups, editing one framework rebuilds a **median of 1 target** and at
+worst 1,702, against **all 3,215** for any edit whatsoever on the default path. (The two
+worst, LocalAuthentication and CryptoTokenKit at 1,702, look like the Security cone everything
+links, so that is a dependency shape to look at, not a grouping failure.)
+
 ### #12 the VM hang: MEASURED, and it is not a hang in Darling
 
 Four arms in one VM, same command, same prefix shape, one variable each:
