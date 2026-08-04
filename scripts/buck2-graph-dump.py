@@ -206,6 +206,143 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict
     return out
 
 
+def coarse_pin_map(ran: list) -> dict:
+    """{target label: pin} for the pins that can safely become ONE derivation each.
+
+    buck-src is 59 percent of the actions and changes only when a submodule pin is bumped,
+    so one derivation per target there buys nothing and costs a staging pass per target,
+    which is what limits a full rebuild. Merging a pin's targets is the fix -- but CONTRACTING
+    A DAG CAN CREATE CYCLES, and here it does: 42 of 157 pins land in one strongly connected
+    component covering the system cone (Libinfo, cctools, commoncrypto, compiler-rt, configd,
+    copyfile, corecrypto, corefoundation and the rest), which are mutually dependent at target
+    level even though the target graph itself is acyclic. Merging those is not suboptimal, it
+    is invalid, and in Nix it surfaces as a bare "infinite recursion" from the dependency
+    staging line with no indication of the cause.
+
+    So the answer is computed HERE, where the whole graph is in hand, and only pins that are
+    in no cycle are offered. The other 115 are safe, JavaScriptCore among them, which is the
+    worst case this exists for: 1,088 compiles that used to run one at a time.
+    """
+    tgt = lambda a: a["identity"].split(" (")[0]
+
+    producer = {}
+    for a in ran:
+        for o in a.get("outputs", []):
+            producer[o] = tgt(a)
+
+    # A target already inside a per-pin package names its pin in the PACKAGE PATH. Do not
+    # look at source roots there: buck-src/python keeps its sources under Python-2.7.16/,
+    # which would file that target under a Python-2.7.16 pin instead of python.
+    compile_re = re.compile(r"\((?:c|cxx|objc)_compile ([^/]+)/")
+    first_root = {}
+    for a in ran:
+        t = tgt(a)
+        if t not in first_root:
+            m = compile_re.search(a["identity"])
+            if m:
+                first_root[t] = m.group(1)
+
+    def pin_of(label: str):
+        if not label.startswith("root//buck-src"):
+            return None
+        pkg = label.split(":")[0][len("root//buck-src"):]
+        if pkg:
+            return pkg.lstrip("/").split("/")[0]
+        return first_root.get(label)
+
+    # EVERY label, not only the ones that own actions. A declared input can name a target
+    # with no actions at all, and the lowering maps declared labels through the same grouping
+    # (it must, or the dependency vanishes), so the model here has to do it too. Keying only
+    # on targets seen in the action list left 30 pins looking acyclic that are not, including
+    # Libinfo, cctools, compiler-rt, configd and icu -- under-refusing, which is the
+    # direction that ends in infinite recursion an hour into a build.
+    node_cache = {}
+
+    def node_of(label: str) -> str:
+        if label not in node_cache:
+            p = pin_of(label)
+            node_cache[label] = ("pin:" + p) if p else label
+        return node_cache[label]
+
+    edges = {}
+    for a in ran:
+        t = tgt(a)
+        s = edges.setdefault(t, set())
+        for i in a.get("inputs", []):
+            p = producer.get(i)
+            if p and p != t:
+                s.add(p)
+        for d in a.get("input_targets", []):
+            if d != t:
+                s.add(d)
+
+    # The same edges with every target replaced by its pin. A cycle here means two pins each
+    # hold a target depending on the other.
+    pe = {}
+    for t, deps in edges.items():
+        nt = node_of(t)
+        s = pe.setdefault(nt, set())
+        for d in deps:
+            nd = node_of(d)
+            if nd != nt:
+                s.add(nd)
+
+    # Tarjan, iterative because the graph is deep enough to blow the Python stack.
+    index, low, onstack, stack, counter, cyclic = {}, {}, set(), [], [0], set()
+
+    def strongconnect(root):
+        work = [(root, iter(pe.get(root, ())))]
+        index[root] = low[root] = counter[0]
+        counter[0] += 1
+        stack.append(root)
+        onstack.add(root)
+        while work:
+            v, it = work[-1]
+            descended = False
+            for w in it:
+                if w not in index:
+                    index[w] = low[w] = counter[0]
+                    counter[0] += 1
+                    stack.append(w)
+                    onstack.add(w)
+                    work.append((w, iter(pe.get(w, ()))))
+                    descended = True
+                    break
+                if w in onstack:
+                    low[v] = min(low[v], index[w])
+            if descended:
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[v])
+            if low[v] == index[v]:
+                comp = []
+                while True:
+                    w = stack.pop()
+                    onstack.discard(w)
+                    comp.append(w)
+                    if w == v:
+                        break
+                if len(comp) > 1:
+                    cyclic.update(comp)
+
+    for v in list(pe):
+        if v not in index:
+            strongconnect(v)
+
+    out = {}
+    for a in ran:
+        label = tgt(a)
+        n = node_of(label)
+        if n.startswith("pin:") and n not in cyclic:
+            out[label] = n[len("pin:"):]
+    pins = {p for p in out.values()}
+    print(f"  {len(pins)} coarsenable pin(s) over {len(out)} target(s); "
+          f"{len({n for n in cyclic if n.startswith('pin:')})} pin(s) refused for cycles",
+          file=sys.stderr)
+    return out
+
+
 def check_against_what_ran(isolation: str, ran: list, subs: dict) -> int:
     """Re-verify the join on whatever the last invocation actually executed."""
     truth = {}
