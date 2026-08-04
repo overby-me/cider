@@ -18,6 +18,7 @@
 #   buck2 bxl //buck/bxl/materialize.bxl:main -- --targets //buck-src:system_blocks_final
 
 load("//buck/rules:cc.bzl", "CcLibInfo")
+load("//buck/rules:inproc.bzl", "InProcInfo")
 
 def _impl(ctx):
     # The whole closure, since an include root is usually owned by a dependency rather than
@@ -36,6 +37,14 @@ def _impl(ctx):
         info = providers.get(CcLibInfo)
         if info != None:
             wanted += info.include_dirs
+
+        # Artifacts a rule made WITHOUT running a command, declared by the rule itself. A
+        # written rustc runner and a symlinked dependency farm live here: they were reached
+        # only as a side effect of ensuring the default output, so dropping that silently
+        # lost 18 staged artifacts and 11 farms, all Rust, and the graph still exited 0.
+        inproc = providers.get(InProcInfo)
+        if inproc != None:
+            wanted += inproc.artifacts
 
         # NOT the default output. Taking it for every node in the closure is what made this
         # BUILD the port: a compile target's default output IS its object file, so ensuring

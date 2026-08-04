@@ -442,9 +442,14 @@ def main(argv: list[str]) -> int:
     copied = {}
     trees = {}
     tree_deps = {}
+    missing = []
     for path in sorted(staged):
         if not os.path.exists(path) and not os.path.islink(path):
-            print(f"  MISSING artifact {path}", file=sys.stderr)
+            # Collected and made FATAL below, since it stopped being hypothetical. A graph
+            # missing an in-process artifact still exits 0 and still lowers; the failure
+            # lands an hour later as a runner script or a header that is simply not there.
+            # One BXL change dropped 30 of them and the build reported success.
+            missing.append(path)
             continue
         if os.path.isdir(path):
             # A staged include root is a farm of SYMLINKS into the project -- 3,591 of them
@@ -574,6 +579,16 @@ def main(argv: list[str]) -> int:
             # it, so the staging script never parses a format marker.
             tree_index[path]["k"] = derive_k
             tree_index[path]["prefix"] = derive_prefix
+
+    if missing:
+        for path in missing[:20]:
+            print(f"  MISSING artifact {path}", file=sys.stderr)
+        if len(missing) > 20:
+            print(f"  ... and {len(missing) - 20} more", file=sys.stderr)
+        raise SystemExit(
+            f"{len(missing)} in-process artifact(s) were never materialised. Each one has to "
+            f"be reachable from a provider that buck/bxl/materialize.bxl ensures, which "
+            f"means the rule making it must declare it through InProcInfo.")
 
     # WHICH PROJECT FILES EACH TARGET READS IS NOT COMPUTED HERE ANY MORE. It is the only
     # answer that depends on source file CONTENTS, because a quoted include is found by

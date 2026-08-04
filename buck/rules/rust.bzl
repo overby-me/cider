@@ -26,6 +26,8 @@
 # `transitive` is the whole closure, not just this crate: rustc needs --extern for every
 # crate that appears in the dependency graph, direct or not, and passing them all by name is
 # simpler than reconstructing -L search directories from artifact paths.
+load("//buck/rules:inproc.bzl", "InProcInfo")
+
 RustLibInfo = provider(fields = ["crate_name", "rlib", "transitive"])
 
 _RUSTC = read_root_config("darling", "rustc", "rustc")
@@ -62,7 +64,12 @@ exec "$@"
 """
 
 def _rustc(ctx, crate_type, out, deps):
+    # inproc collects what buck2 makes without running a command: the written runner, and
+    # the dependency farm below. They are returned so the rule can declare them through
+    # InProcInfo -- the Nix endpoint carries them as data and nothing else can recreate them.
+    inproc = []
     runner = ctx.actions.write(ctx.label.name + "__rustc.sh", _RUSTC_RUNNER, is_executable = True)
+    inproc.append(runner)
     cmd = cmd_args(["bash", runner])
     for k in sorted(ctx.attrs.env):
         cmd.add("--env", "%s=%s" % (k, ctx.attrs.env[k]))
@@ -100,6 +107,7 @@ def _rustc(ctx, crate_type, out, deps):
             deps[name].basename: deps[name]
             for name in deps
         })
+        inproc.append(staged)
         cmd.add("-L", cmd_args(staged, format = "dependency={}"))
 
     # What cargo does for every dependency it did not write: a lint that becomes
@@ -122,7 +130,7 @@ def _rustc(ctx, crate_type, out, deps):
     # they are inputs without ever appearing on the command line -- and a crate that
     # recompiles when they change is the entire point of declaring them.
     cmd.add(cmd_args(hidden = ctx.attrs.srcs))
-    return cmd
+    return cmd, inproc
 
 def _rust_library_impl(ctx):
     crate = _crate_name(ctx)
@@ -131,14 +139,14 @@ def _rust_library_impl(ctx):
     # A proc-macro is a host dylib loaded BY the compiler, not linked into the target.
     is_proc_macro = ctx.attrs.proc_macro
     out = ctx.actions.declare_output("lib%s.so" % crate if is_proc_macro else "lib%s.rlib" % crate)
-    cmd = _rustc(ctx, "proc-macro" if is_proc_macro else "rlib", out, deps)
+    cmd, inproc = _rustc(ctx, "proc-macro" if is_proc_macro else "rlib", out, deps)
     if is_proc_macro:
         cmd.add("--extern", "proc_macro")
     ctx.actions.run(cmd, category = "rustc", identifier = ctx.label.name)
-
     return [
         DefaultInfo(default_output = out),
         RustLibInfo(crate_name = crate, rlib = out, transitive = deps),
+        InProcInfo(artifacts = inproc),
     ]
 
 rust_library = rule(
@@ -166,7 +174,7 @@ rust_library = rule(
 def _rust_binary_impl(ctx):
     deps = _closure(ctx)
     out = ctx.actions.declare_output(ctx.attrs.binary_name or ctx.label.name)
-    cmd = _rustc(ctx, "bin", out, deps)
+    cmd, inproc = _rustc(ctx, "bin", out, deps)
 
     # Static libraries from the C side of the port (duct-tape, libsimple, the fast-context
     # shim), which the daemon links. -L native= says where to look and -l static= names
@@ -186,7 +194,7 @@ def _rust_binary_impl(ctx):
     cmd.add(ctx.attrs.link_flags)
 
     ctx.actions.run(cmd, category = "rustc_link", identifier = ctx.label.name)
-    return [DefaultInfo(default_output = out), RunInfo(args = cmd_args(out))]
+    return [DefaultInfo(default_output = out), RunInfo(args = cmd_args(out)), InProcInfo(artifacts = inproc)]
 
 rust_binary = rule(
     impl = _rust_binary_impl,
