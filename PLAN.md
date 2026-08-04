@@ -236,31 +236,39 @@ nix pins fetch LFS content. The HOST tree still installs the 131-byte pointers, 
 what the check's exception covers, so the two prefixes differ in exactly that set. This is
 reported, not acted on: #39 stays as the user left it.
 
-### Iteration cost: the graph no longer reads the project (#56, #58)
+### Iteration cost: what the graph derivation really needs (#56, #58)
 
-The graph derivation took the whole project, so editing one `.c` reran it, **30 to 47
-minutes**, before any compile could start. Content addressing kept that from cascading into
-the lowered derivations, so it was a fixed tax per edit, not a rebuild storm.
+Editing one `.c` reruns the graph derivation, **30 to 90 minutes**, before any compile can
+start. Content addressing keeps that from cascading into the lowered derivations, so it is a
+fixed tax per edit.
 
-buck2 analysis **cannot read a source file** (it is a pure function of the target graph and
-the configuration; sources exist only at execution). Measured: the data output is 6.9 MB of
-`staged/`, all 166 of it rule generated scripts and value files, plus `treelinks/`, which is
-link names. So the graph now takes a **skeleton** (build files verbatim, every other file
-present but empty; 24 s to build, 198 copied, 289,959 emptied).
+**A skeleton does not fix it, and the reason is worth keeping.** buck2 analysis genuinely
+cannot read a source file, and that was verified both ways: buck2 loads a skeleton with the
+same **12,283** targets and all **3,225** action-owning labels, and emptying `buck-src/BUCK`
+removes exactly its **1,227**. But this derivation also **materialises** the in-process
+artifacts, and a farm of *generated* headers is produced by running a generator, which is a
+host tool it builds from first-party C (`src/startup:rtsig`, `src/libelfloader:wrapgen`). An
+emptied `rtsig.c` compiles, links, runs, and writes an **empty header** — quietly wrong
+rather than failing. Reverted.
 
-Verified both ways before wiring: buck2 loads the skeleton in 14 s with the same **12,283**
-targets and all **3,225** action-owning labels present; the negative control empties
-`buck-src/BUCK` and exactly its **1,227** labels vanish.
+**Splitting analysis from materialisation is not the fix either**: measured on the failed
+run, analysis is ~65 min and materialisation ~19 min, so a second derivation would redo
+analysis in its own sandbox and pay the 65 again.
 
-The include closure is the one answer that needs real bytes, so it moved to its own
-content-addressed derivation over the real tree (125 s python walk). It reproduces
-**124,055 of 124,056** sources, the one difference being a quoted include into a submodule
-that is not checked out locally.
+**Kept from the attempt**: `buck/bxl/materialize.bxl` no longer ensures every node's default
+output, which was making the derivation compile objects and link binaries it has no use for.
+**98,455** artifacts are still ensured without it.
 
-`treelinks` also shrank **455.5 MB to 124.3 MB**: the link target is derivable from the
-name (the name is the target tail in every case, and the `../` depth minus the name depth is
-constant per table), so tables store names only. 5,240 of 5,266 tables qualify; the other 26
-keep the two-column form.
+The real fix, if resumed, is the **codegen input closure** — computable from an existing
+graph — so exactly the files this derivation compiles keep their contents. It must be
+derived, never guessed by extension, because guessing fails silently.
+
+`treelinks` also shrank **455.5 MB to 124.3 MB**: a link target is derivable from its name
+(the name is the target tail in every case, and the `../` depth minus the name depth is
+constant per table), so tables store names only. 5,240 of 5,266 qualify; 26 keep two columns.
+
+The per-target source **groups** (#54) stopped being expensive: the cost was never the
+groups but the 588 MB per-target map parsed to choose them, now precomputed to **2.06 MB**.
 
 ### #12 the VM hang: MEASURED, and it is not a hang in Darling
 
