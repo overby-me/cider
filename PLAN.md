@@ -868,6 +868,13 @@ has been true six times running, each time a check freshly written.
   catch a background failure and an unnoticed one is a target quietly missing an object.
   Bounded by `NIX_BUILD_CORES`, so pair `--cores` with `--max-jobs`: 6 jobs each allowed 22
   cores is 132 compiles. Evaluation is unaffected, 21.4s and 1.76 GB.
+  VERIFIED AT FULL BLAST RADIUS, because it changed every builder: a complete rebuild of all
+  3,199 target derivations (the 5,282 farms were untouched and reused) ran 4 cycles in
+  1h48m with zero failures, and the resulting prefix is BYTE-IDENTICAL to the serial one --
+  39,173 entries, no tree difference, no difference across all 34,126 checksums -- and still
+  passes `buck-bash-check.nu`. What limits a rebuild is not compile parallelism but
+  per-derivation STAGING, paid once per target derivation: concurrency oscillates 0 to 18
+  with repeated stretches at zero. That is the argument for #53.
 - **DONE (#51, #47): the endpoint evaluation is 22.4s and 2.49 GB, from 58.8s and 9.0 GB.**
   Allocation went 20.6 GB to 5.95 GB, calls 56.5M to 38.5M, and graph.json 1.62 GB to
   481 MB. Two changes, both moving work out of the evaluator: the dump writes the UNION of
