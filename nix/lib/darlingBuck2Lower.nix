@@ -481,6 +481,27 @@
   drvs = lib.mapAttrs (label: actions: let
     needs = needsOf label;
     outs = lib.unique (lib.concatMap (a: a.outputs) actions);
+    # Which of this target's actions may run CONCURRENTLY. JavaScriptCore_obj is 1,088
+    # cxx_compile actions in one derivation and ran them one at a time, 54 minutes with 21
+    # cores idle, which was a quarter of the whole endpoint build for one target.
+    #
+    # The test is a set membership and needs no ordering pass: the actions are in buck2's
+    # topological order, so an input produced by THIS target necessarily comes from an
+    # earlier action. An action that reads none of its siblings' outputs therefore depends
+    # on nothing already launched and is safe to run in the background; one that does reads
+    # something a sibling wrote, so everything outstanding has to land first.
+    #
+    # Conservative in the safe direction: such an action waits for ALL outstanding work, not
+    # just for the sibling it actually needs. For the shape this targets, many compiles and
+    # then one archive or link, that costs nothing.
+    ownOutputs = builtins.listToAttrs (lib.concatMap (a:
+      map (o: {
+        name = o;
+        value = true;
+      })
+      a.outputs)
+    actions);
+    readsSibling = a: lib.any (i: ownOutputs ? ${i}) a.inputs;
   in
     pkgs.runCommand (drvName label) {
       nativeBuildInputs =
@@ -580,16 +601,48 @@
       mkdir -p "$TMPDIR" "$BUCK_SCRATCH_PATH"
 
       # This target's own actions, in the order buck2 ran them, which is a topological one:
-      # buck2 only runs an action once its inputs exist.
+      # buck2 only runs an action once its inputs exist. Independent ones run CONCURRENTLY,
+      # bounded by NIX_BUILD_CORES the way any other builder is -- so balance this with
+      # `--cores` alongside `--max-jobs`, since 6 jobs each allowed 22 cores is 132 compiles.
+      _max=''${NIX_BUILD_CORES:-1}
+      if [ "$_max" -lt 1 ]; then _max=1; fi
+      _running=0
+      # Checked EXPLICITLY, not left to set -e: a background job's failure does not abort the
+      # shell, and an unnoticed one here means a target quietly missing an object and a link
+      # error somewhere else entirely.
+      _reap() {
+        if ! wait -n; then
+          echo "buck2 lower: an action of ${label} failed" >&2
+          exit 1
+        fi
+        _running=$((_running - 1))
+      }
+      _spawn() {
+        "$@" &
+        _running=$((_running + 1))
+        while [ "$_running" -ge "$_max" ]; do _reap; done
+      }
+      _drain() { while [ "$_running" -gt 0 ]; do _reap; done; }
+
       ${lib.concatMapStrings (a: ''
         ${lib.concatMapStrings (o: ''
           mkdir -p "$(dirname ${lib.escapeShellArg o})"
         '')
         a.outputs}
         echo "  ${a.identity}"
-        ${lib.concatStringsSep " " (map escArg a.argv)}
+        ${
+          if readsSibling a
+          then ''
+            _drain
+            ${lib.concatStringsSep " " (map escArg a.argv)}
+          ''
+          else ''
+            _spawn ${lib.concatStringsSep " " (map escArg a.argv)}
+          ''
+        }
       '')
       actions}
+      _drain
 
       # Everything this target produced, at the SAME relative paths, so a consumer can
       # stage it exactly where its own argv expects it.

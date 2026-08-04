@@ -858,6 +858,16 @@ has been true six times running, each time a check freshly written.
   3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **DONE (#52): a target's independent actions run concurrently. JavaScriptCore 54m to
+  10m36s at only `--cores 8`, and the objects are IDENTICAL.** 1,082 files each way, zero
+  difference in the file list and zero across all 1,082 sha256 sums, and the 10m36s even
+  includes rebuilding the dependency chain that the serial baseline did not pay. The test
+  needs no ordering pass: actions are in buck2 topological order, so an action reading none
+  of its siblings' outputs cannot depend on anything already launched, which is one set
+  membership. `_reap` checks every background job EXPLICITLY, because `set -e` does not
+  catch a background failure and an unnoticed one is a target quietly missing an object.
+  Bounded by `NIX_BUILD_CORES`, so pair `--cores` with `--max-jobs`: 6 jobs each allowed 22
+  cores is 132 compiles. Evaluation is unaffected, 21.4s and 1.76 GB.
 - **DONE (#51, #47): the endpoint evaluation is 22.4s and 2.49 GB, from 58.8s and 9.0 GB.**
   Allocation went 20.6 GB to 5.95 GB, calls 56.5M to 38.5M, and graph.json 1.62 GB to
   481 MB. Two changes, both moving work out of the evaluator: the dump writes the UNION of
