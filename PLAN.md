@@ -255,9 +255,17 @@ rather than failing. Reverted.
 run, analysis is ~65 min and materialisation ~19 min, so a second derivation would redo
 analysis in its own sandbox and pay the 65 again.
 
-**Kept from the attempt**: `buck/bxl/materialize.bxl` no longer ensures every node's default
-output, which was making the derivation compile objects and link binaries it has no use for.
-**98,455** artifacts are still ensured without it.
+**Kept from the attempt, and verified**: `buck/bxl/materialize.bxl` no longer ensures every
+node's default output, which was making the derivation compile objects and link binaries it
+has no use for. The graph built that way is **the same graph** — `buck-graph-equiv.py`
+reports every dimension identical, including staged artifact contents and all 5,282
+reconstructed farms. Wall time **27 min** against 30-47 before; the 12.5 min figure seen
+mid-way was a build that was silently missing 30 artifacts, not a real result.
+
+Getting there cost two silent-failure bugs, both now closed. Artifacts made in-process were
+reachable *only* as a side effect of building the target, so removing the default-output
+ensure dropped 30 of them while the build **exited 0**. Rules now declare them
+(`InProcInfo`, 98,455 → 98,484 ensured) and a missing one is **fatal** in the dump.
 
 The real fix, if resumed, is the **codegen input closure** — computable from an existing
 graph — so exactly the files this derivation compiles keep their contents. It must be
