@@ -7,6 +7,20 @@
 # sweep had already superseded it: it was producing a prefix derivation that HEAD no
 # longer wanted. This answers that question in a second, before the hours are spent.
 #
+# SINCE #50 AN OWN-INPUT HIT IS NO LONGER AUTOMATICALLY EXPENSIVE, and this script cannot
+# tell the difference, so read its verdict with that in mind. The graph derivation now has
+# two content-addressed outputs: `out` holds graph.json and target-sources.json, which only
+# the EVALUATOR reads, and `data` holds staged/ and treelinks/, which the lowered BUILDERS
+# read. A dump change that only alters graph.json leaves `data` byte-identical, so its path
+# does not move and every lowered target resolves to the output it already has -- the work
+# in flight is not wasted. A dump change that alters staged/ or treelinks/ does move it and
+# everything downstream really does rebuild.
+#
+# Which of the two it is cannot be decided from the source diff, only measured: rebuild the
+# GRAPH alone and see whether nix reruns any builder. And the check is whether it RERUNS,
+# not whether a drvPath moved -- a consumer of a content-addressed output holds a deferred
+# reference carrying the producing drv, so its drvPath moves every time and means nothing.
+#
 # Usage:
 #   scripts/buck-endpoint-stale.nu                      # working copy vs its parent
 #   scripts/buck-endpoint-stale.nu --since <rev>        # anything since <rev>
@@ -104,5 +118,12 @@ def main [
     for h in $hits { print $"  ($h.kind)  ($h.path)" }
     print ""
     print "A build started before these is producing a prefix derivation HEAD no longer wants."
+    if ($hits | any {|h| $h.kind == "own-input" }) and ($hits | all {|h| $h.kind == "own-input" }) {
+        print ""
+        print "ALL of them are own-inputs, so this may be cheap. Since #50 a dump change that"
+        print "only alters graph.json leaves the data output byte-identical and every lowered"
+        print "target keeps the output it already has. Rebuild the GRAPH alone and see whether"
+        print "nix reruns a builder; do not read the drvPath, a deferred reference always moves."
+    }
     exit 1
 }
