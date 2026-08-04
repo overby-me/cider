@@ -858,6 +858,17 @@ has been true six times running, each time a check freshly written.
   3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **VERIFY ON ONE DERIVATION, NOT ON A FULL PREFIX REBUILD.** #50 was proven on
+  `.#darling-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
+  diffing a sorted file list plus per-file sha256 against a known-good output. Queueing #53
+  behind a 3 hour rebuild of all ~8,400 derivations tested nothing that
+  `nix build /nix/store/<hash>.drv^out` would not have caught, and blocked every other
+  increment while it ran. Reach for a whole-endpoint build only to produce the deliverable,
+  or when the change really does touch every derivation, and say which it is.
+  Two related traps: a CONTENT ADDRESSED drv holds a deferred placeholder, so grepping a
+  `.drv` for a store path finds nothing and the derivation has to come from the closure;
+  and for the same reason the check is whether nix RERUNS THE BUILDER, not whether a
+  drvPath moved.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
