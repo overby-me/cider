@@ -132,9 +132,14 @@ Done once, so it need not be redone from scratch:
 | `dnsinfo.h` symlink (`27dd667e`) | 1 | **was genuinely missing -- applied**, see the fix for #59 |
 | submodule bumps | 5 | **the real remaining work**: bump `rev`/`hash` in `nix/submodules.json`, selectively |
 | configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `src/external/configd` |
-| stub frameworks, symbol lists, `.github` | ~15 | parity only, or not carried here |
+| **`3d9752422d5e` "Add symbol for rustls crate"** | 1 | **MISSING and goal-relevant** -- it is not a symbol list, it adds `SCDynamicStore.c` defining `SCDynamicStoreCreateWithOptions` and `kSCDynamicStoreUseSessionKeys`, which the rustls crate resolves. Neither exists here |
+| stub frameworks, symbol lists, `.github` | ~14 | parity only, or not carried here: WebKit (Bibdesk), InstantMessage and AddressBook Xcode symbols, SDK stub headers for PubSub/QuickTime/Message |
 
-So exactly **one** of 36 carried a change this fork needed.
+So **two** of 36 carried a change this fork needed.
+
+**Do not triage by commit subject.** "Add symbol for rustls crate" reads like the other symbol
+commits and is not: it adds a real source file for a Rust TLS dependency. Read what each
+commit *touches* before grouping it.
 
 **How to check "is this one already here" without being fooled**: diff our file against
 upstream's file *after* the commit --
