@@ -236,6 +236,22 @@ nix pins fetch LFS content. The HOST tree still installs the 131-byte pointers, 
 what the check's exception covers, so the two prefixes differ in exactly that set. This is
 reported, not acted on: #39 stays as the user left it.
 
+### The endpoint builds green on the rebuilt graph (2026-08-05)
+
+`nix build .#darling-buck2-prefix` finished **exit 0** in **2 h 6 min**: 3,442 builders,
+**0 errors**, on the graph rebuilt after the BXL and `InProcInfo` changes. The prefix is
+**identical to the known-good reference** -- 39,173 entries each, zero differences in either
+direction under `LC_ALL=C` -- and `buck-bash-check.nu --prefix` reports
+**BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19, PASS**.
+
+**Operational trap found on the way**: a build that stops advancing with flat CPU may be a
+**zombie-reap hang in nix-daemon**, not contention. Builders finish, become `state=Z`, and the
+worker never reaps them; it recurred with a single builder in flight, so it is not a
+concurrency race. Memory (18 GB free), the daemon cgroup task limit (23 of 1,048,576) and
+build-log flooding were all excluded. **Restarting `nix-daemon` cleared it**, and the resumed
+build went straight through. Completed derivations survive in the store, so a restart costs
+only the in-flight ones.
+
 ### Iteration cost: what the graph derivation really needs (#56, #58)
 
 Editing one `.c` reruns the graph derivation, **30 to 90 minutes**, before any compile can
