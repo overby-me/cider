@@ -189,6 +189,24 @@
     then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
     else pins;
 
+  # WHERE A PIN COMES FROM (#54). Its own store path when darling-src offers one, and only
+  # then the assembled tree. This is the difference between a target depending on 147 frozen
+  # pin paths and depending on ONE path that holds the whole project.
+  #
+  # It is what made source groups worth switching on. Measured on libsimple_darlingserver
+  # before this: editing one unrelated ObjC file changed 588 of the 601 lines in its grouped
+  # staging script, every changed line a darling-src path, while the two source groups it
+  # actually reads did not move at all. Splitting the first-party side bought nothing while
+  # the pins kept the shared path alive.
+  #
+  # The per-pin stores are byte identical to what the assembled tree holds, by NAR hash for
+  # all 147, and scripts/buck-pin-store-check.nu is that check. The fallback is kept for a
+  # caller that passes a darlingSrc without the attribute.
+  pinPath = p:
+    if darlingSrc != null && ((darlingSrc.pinPaths or {}) ? ${p})
+    then "${darlingSrc.pinPaths.${p}}"
+    else "${darlingSrc}/${p}";
+
   # ---- the graph, grouped the way this lowers it -------------------------
 
   # "root//buck-src:migcom (<unspecified>) (c_compile foo.c)" -> "root//buck-src:migcom"
@@ -623,10 +641,10 @@
         ln -sfn "$_c" "buck-rust/$(basename "$_c")"
       done
       ${lib.concatMapStrings (p: ''
-        ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
+        ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
         mkdir -p ${builtins.dirOf p}
         rm -f ${p}
-        ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg p}
+        ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
       '')
       wantedPins}
     '';
@@ -685,10 +703,10 @@
         '') (builtins.readDir (projectSrc + "/buck-src")))}
     ''}
     ${lib.concatMapStrings (p: ''
-      ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
       mkdir -p ${builtins.dirOf p}
       rm -f ${p}
-      ln -sfn ${lib.escapeShellArg "${darlingSrc}/${p}"} ${lib.escapeShellArg p}
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
     '') wantedPins}
   '';
 

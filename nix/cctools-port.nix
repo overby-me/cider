@@ -35,6 +35,20 @@ stdenv.mkDerivation {
 
   inherit src;
 
+  # CONTENT ADDRESSED, because `src` is the whole assembled project and this linker is not.
+  # It builds four binaries out of src/external/cctools-port, so editing one ObjC file in
+  # darwin/frameworks moves `src`, rebuilds this, and then moves every lowered target that
+  # names the linker -- which is all of them. MEASURED: the two ld64 outputs built from the
+  # clean tree and from a tree with one comment appended to darwin/frameworks/Accounts/src/
+  # ACAccount.m are BIT IDENTICAL, sha256-tHH+BndVNL2V8g9iM7++iD/aGY3Pz5AirmcwEqJSblc=, so
+  # under content addressing they collapse to one path and the consumers stop moving.
+  #
+  # This does NOT stop the 28 minute rebuild itself, which needs the source narrowed to what
+  # the linker reads (task #64). It stops that rebuild from propagating.
+  __contentAddressed = true;
+  outputHashMode = "recursive";
+  outputHashAlgo = "sha256";
+
   # Identical configure prep to package.nix so the tree configures byte-for-byte
   # the same (patches, mig shebang, darlingserver scripts).
   postPatch = ''

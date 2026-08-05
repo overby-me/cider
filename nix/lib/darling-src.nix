@@ -139,6 +139,61 @@ let
         inherit name;
       };
 
+  # The symlink rewrite the assembled tree does after overlaying, for the per-pin stores.
+  #
+  # A DELIBERATE COPY of the loop at the bottom of the assembled tree, not a shared binding,
+  # and the reason is measured: factoring the two into one fragment changes the assembled
+  # builder text by whitespace alone, which moves darling-src, which rebuilds ld64 and then
+  # the graph. An hour of machine time for a tidier let block. scripts/buck-pin-store-check.nu
+  # is what keeps the two honest instead, by diffing a real pin store against the real
+  # assembled tree, which a shared string could not have proven anyway.
+  repointSdkLinks = findArgs: ''
+    find ${findArgs} | while read -r l; do
+      t=$(readlink "$l") || continue
+      case "$t" in
+        *darwin/Developer/Platforms/*) : ;;
+        *Developer/Platforms/MacOSX.platform*)
+          nt=$(printf '%s' "$t" | sed 's#Developer/Platforms/MacOSX.platform#darwin/Developer/Platforms/MacOSX.platform#')
+          rm -f "$l"; ln -s "$nt" "$l" ;;
+      esac
+    done
+  '';
+
+  # ONE STORE PATH PER PIN (#54). The assembled darling-src is a single path that moves when
+  # any tracked file changes, and the lowering plants the pins from it -- so a one line edit
+  # to a framework moved all 295 pin symlinks in every target's staging script, which is what
+  # made source groups buy nothing. MEASURED on libsimple_darlingserver: 588 of the 601 lines
+  # in its grouped staging script changed after editing one unrelated ObjC file, and every
+  # changed line was a darling-src path, while the two group paths it actually reads did not
+  # move at all.
+  #
+  # Same three steps the assembled tree applies, in the same order, so the result is the same
+  # bytes: fetch, patch, repoint. scripts/buck-pin-store-check.nu diffs one against the
+  # assembled tree rather than trusting that sentence.
+  pinStore = e: let
+    base = baseNameOf e.path;
+    patchSub = patchesDir + "/${base}";
+    hasPatches = builtins.pathExists patchSub;
+    needsWork = hasPatches;
+  in
+    pkgs.runCommand "darling-pin-${lib.strings.sanitizeDerivationName e.path}"
+      {
+        nativeBuildInputs = [ pkgs.coreutils ] ++ lib.optional needsWork pkgs.gnupatch;
+        passthru = { inherit (e) path rev; };
+      }
+      (''
+        cp -a --no-preserve=ownership ${fetchOne e} "$out"
+        chmod -R u+w "$out"
+      ''
+      + lib.optionalString hasPatches ''
+        for p in ${patchSub}/*.patch; do
+          [ -e "$p" ] || continue
+          echo "  patch ${base}: $(basename "$p")"
+          patch -p1 -d "$out" --force < "$p"
+        done
+      ''
+      + repointSdkLinks "\"$out\" -type l -print");
+
   # Shell to overlay one fetched submodule and apply its patches.
   overlayOne = e: let
     base = baseNameOf e.path;
@@ -167,6 +222,9 @@ pkgs.runCommand "darling-src"
       unpinnedPaths = map (e: e.path) unpinned;
       pinnedCount = builtins.length pinned;
       totalCount = builtins.length entries;
+      # {"src/external/libdispatch" = <store path>; ...}, so a consumer can name ONE pin
+      # instead of the assembled tree. See pinStore above for why that matters.
+      pinPaths = lib.listToAttrs (map (e: lib.nameValuePair e.path (pinStore e)) pinned);
     };
   }
   ''

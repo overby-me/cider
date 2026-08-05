@@ -395,6 +395,29 @@
       # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
       # flake source gives a different darling-src and therefore a different ld64, so it
       # rebuilds 26k objects and then compares against a baseline that is not this one.
+      # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
+      # assembled tree they replace. The lowering plants pins from darling-src, which is ONE
+      # path that moves when any tracked file changes, and that is what made source groups
+      # buy nothing: editing one ObjC file moved 588 of the 601 lines in a target's staging
+      # script, every one of them a darling-src path.
+      #
+      #   nix build .#darling-pin-stores
+      #   scripts/buck-pin-store-check.nu
+      packages.darling-pin-stores =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+        in
+        pkgs.linkFarm "darling-pin-stores" (
+          pkgs.lib.mapAttrsToList (path: drv: {
+            name = pkgs.lib.strings.sanitizeDerivationName path;
+            path = drv;
+          }) darlingSrc.pinPaths
+        );
+
       # THE MINIMAL PREFIX. The same endpoint restricted to what the goal actually needs -- a
       # prefix that boots, runs bash and can run nix -- by dropping the GUI frameworks, the
       # private frameworks and the scripting languages. Measured on the full graph those are
@@ -433,6 +456,15 @@
                 di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
+            # #54, ON HERE FIRST because this endpoint is the cheap one to prove it on. The
+            # #55 probe measured what is left of the cascade: one first-party source edited,
+            # 0 of 4,159 stage-trees ran and 323 compiles did, because every target stages the
+            # ONE projectSrc and a byte anywhere in it moves that path. Source groups split it
+            # so a target depends only on the groups it reads.
+            #
+            # The full prefix above stays off until this one has run green and been probed, so
+            # the parity endpoint is never the thing an experiment breaks.
+            sourceGroups = true;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
               inherit pkgs darlingSrc ld64;
               allPins = true;
