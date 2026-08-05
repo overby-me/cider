@@ -616,7 +616,7 @@
   # planted inside them; the comment on stageProject records that losing that cost a whole
   # endpoint build.
   stageProjectFor = label:
-    pkgs.writeShellScript "buck2-stage-project-grouped" ''
+    caShellScript "buck2-stage-project-grouped" ''
       ${stageGroupsFor label}
       mkdir -p buck-rust src/external buck-src
       for _c in ${rustVendor}/*/; do
@@ -631,7 +631,11 @@
       wantedPins}
     '';
 
-  stageProject = pkgs.writeShellScript "buck2-stage-project" ''
+  # CA for the same reason the stage-tree scripts are, and the probe that verified those
+  # named this one as the residue: with stage-trees content addressed, a graph moving edit
+  # rebuilt 0 stage-trees and 0 compiles, and the only survivors were buck2-stage-project and
+  # its four consumers. It embeds ${graph.data} exactly as they do.
+  stageProject = caShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
       # "src" belongs in this list and cost a whole endpoint build when it fell out of it:
