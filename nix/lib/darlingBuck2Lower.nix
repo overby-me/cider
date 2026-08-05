@@ -259,6 +259,31 @@
   stagedTreeScripts = lib.mapAttrs stagedTreeScriptFor (g.stagedTrees or {});
   stagedTreeScript = path: meta: stagedTreeScripts.${path} or (stagedTreeScriptFor path meta);
 
+  # CONTENT ADDRESSED, and this is the whole of #55 (#50 finished the producer, not the
+  # consumers). These scripts embed ${graph.data}/<table>, which under content addressing is a
+  # DEFERRED PLACEHOLDER keyed on the producing DERIVATION rather than on its output. So any
+  # edit anywhere moves the graph drv, moves every one of these scripts, and moves everything
+  # downstream of them -- measured, a one line edit rebuilt all 6,490 derivations of the
+  # minimal endpoint while the graph output was byte identical.
+  #
+  # Made CA, the resolved script text is the same text (the data path did not change), so it
+  # collapses to the SAME output path and the consumers stop moving. The scripts still rerun;
+  # what stops is the 1,188 compiles behind them.
+  #
+  # writeTextFile rather than writeShellScript because only the former takes derivationArgs.
+  # The shebang is added by hand, which is all writeShellScript adds over it here.
+  caShellScript = name: text:
+    pkgs.writeTextFile {
+      inherit name;
+      executable = true;
+      text = "#!" + pkgs.runtimeShell + "\n" + text;
+      derivationArgs = {
+        __contentAddressed = true;
+        outputHashMode = "recursive";
+        outputHashAlgo = "sha256";
+      };
+    };
+
   # `meta` is {n, table, dirs} from the graph, not a link map. A graph dumped before the
   # tables existed carried the links inline, and lowering one of those with this code would
   # silently stage an EMPTY farm, which surfaces an hour later as a header not found. So it
@@ -268,7 +293,7 @@
     then throw ("buck2 lower: this graph carries staged tree links inline, which this "
       + "lowering no longer reads. Rebuild the graph derivation. Tree: " + path)
     else
-      pkgs.writeShellScript "buck2-stage-tree" (''
+      caShellScript "buck2-stage-tree" (''
         tree=${lib.escapeShellArg path}
         mkdir -p "$tree"
       '' + lib.optionalString (meta.n > 0) ''
