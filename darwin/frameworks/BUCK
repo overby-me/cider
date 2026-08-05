@@ -98,6 +98,11 @@ darwin_dylib(
 cc_objects(
     name = "SystemConfiguration_obj",
     srcs = [
+        # SCDynamicStore.c is the pair the rustls crate resolves. configd's own header
+        # declares both and nothing defined either, so a consumer linked against an
+        # undefined symbol. Upstream adds the same file in 3d9752422d5e, where it also edits
+        # a CMakeLists this port does not build from -- hence the entry here.
+        "SystemConfiguration/SCDynamicStore.c",
         "SystemConfiguration/SCNetworkConnection.c",
         "SystemConfiguration/SCNetworkReachability.c",
         "SystemConfiguration/SCSchemaDefinitions.c",
