@@ -252,6 +252,32 @@ build-log flooding were all excluded. **Restarting `nix-daemon` cleared it**, an
 build went straight through. Completed derivations survive in the store, so a restart costs
 only the in-flight ones.
 
+### A minimal prefix, sized for the goal rather than for parity (2026-08-05)
+
+The goal is a prefix that boots, runs bash and can run nix. The endpoint was building the
+full parity prefix for that, and most of it is dead weight: `darwin/frameworks` is 8,142
+actions, private-frameworks 2,250, the scripting languages 1,197 -- 42% of 27,591.
+
+`nix build .#darling-buck2-prefix-min` builds a prefix with those dropped, generated (not
+hand-edited) by `scripts/gen-prefix-min.py` from the generated full prefix, and it
+**PASSES `buck-bash-check.nu`: BUCK2_BASH_OK 3.2.57(1)-release**.
+
+| | full | minimal |
+|---|---|---|
+| graph actions | 27,591 | **17,510** (-36.5%) |
+| targets | 3,225 | 2,339 |
+| staged trees | 5,282 | 4,175 |
+| prefix entries | 39,174 | **9,980** (-75%) |
+| prefix size | 622 MB | **270 MB** |
+
+The build is bounded by the survivors closure, not by the entry list: dropping 44% of install
+entries removed 36.5% of actions, because buck2 still builds what the remaining targets
+depend on. **zsh was NOT excluded** (the exclusion list omits `//buck-src/zsh` although the
+prose claimed it), so more is still available.
+
+This also shrinks #54 and #55 without solving either: fewer targets means fewer stage-trees
+to rebuild when the graph moves.
+
 ### Iteration cost: what the graph derivation really needs (#56, #58)
 
 Editing one `.c` reruns the graph derivation, **30 to 90 minutes**, before any compile can
