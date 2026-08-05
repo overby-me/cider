@@ -631,10 +631,17 @@
       wantedPins}
     '';
 
-  # CA for the same reason the stage-tree scripts are, and the probe that verified those
-  # named this one as the residue: with stage-trees content addressed, a graph moving edit
-  # rebuilt 0 stage-trees and 0 compiles, and the only survivors were buck2-stage-project and
-  # its four consumers. It embeds ${graph.data} exactly as they do.
+  # CA for the same reason the stage-tree scripts are, though MEASURED it buys nothing while
+  # #54 is off, and why is worth keeping. This script embeds ${projectSrc}, NOT ${graph.data}
+  # as this comment used to claim. With narrowSources and sourceGroups off, projectSrc is the
+  # whole project, so a source edit genuinely changes this script's TEXT; its content address
+  # moves with it, and every target that stages the project rebuilds. Content addressing
+  # collapses a text that came out the same, and this one did not.
+  #
+  # The probe, on the minimal endpoint with one first-party source edited and reverted:
+  # 0 of 4,159 stage-trees ran, 1 stage-project ran, and 323 compiles ran and were still
+  # climbing when it was stopped. So #55 cut the graph to stage-tree to compile path, and
+  # #54, the ONE shared projectSrc, is what still holds the compiles.
   stageProject = caShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
