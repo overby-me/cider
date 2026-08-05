@@ -122,6 +122,26 @@ upstream change for its *intent* and apply that intent to the Rust.
    `scripts/buck-bash-check.nu`, and for anything on the guest path
    `scripts/buck-runtime-check.nu`.
 
+## Triage of the 36 commits behind (2026-08-05)
+
+Done once, so it need not be redone from scratch:
+
+| group | n | verdict |
+|---|---|---|
+| Fedora 44 build fixes | 5 | **all already present** -- the fork converged independently, because clang 21 under Nix surfaces the same strictness Fedora 44's toolchain does (libaks `int*`, OpenDirectory Foundation import, ImageIO, DiskArbitration, SecurityFoundation) |
+| `dnsinfo.h` symlink (`27dd667e`) | 1 | **was genuinely missing -- applied**, see the fix for #59 |
+| submodule bumps | 5 | **the real remaining work**: bump `rev`/`hash` in `nix/submodules.json`, selectively |
+| configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `src/external/configd` |
+| stub frameworks, symbol lists, `.github` | ~15 | parity only, or not carried here |
+
+So exactly **one** of 36 carried a change this fork needed.
+
+**How to check "is this one already here" without being fooled**: diff our file against
+upstream's file *after* the commit --
+`jj file show -r <commit> <upstream/path> > /tmp/a && diff /tmp/a <our/path>`.
+Grepping for an added line out of the diff is fragile to whitespace and to which line you
+pick, and it produced one false "missing" during this triage.
+
 ## What "up to date with upstream" means here
 
 Build parity is measured against the **reference cmake build at the fork point**: 151 of 151
