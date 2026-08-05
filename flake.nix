@@ -395,6 +395,72 @@
       # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
       # flake source gives a different darling-src and therefore a different ld64, so it
       # rebuilds 26k objects and then compares against a baseline that is not this one.
+      # THE MINIMAL PREFIX. The same endpoint restricted to what the goal actually needs -- a
+      # prefix that boots, runs bash and can run nix -- by dropping the GUI frameworks, the
+      # private frameworks and the scripting languages. Measured on the full graph those are
+      # 8,142 + 2,250 + 1,197 of 27,591 actions, about 42 percent, and 1,923 of 4,314 install
+      # entries. The full prefix above is untouched and remains the parity target.
+      #
+      #   nix build .#darling-buck2-prefix-min
+      packages.darling-buck2-prefix-min =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
+            # extraTools exists: a wrap_elf action's fifth argument is the elf_lib_dirs
+            # string, so the recorded argv carries those store paths as PLAIN TEXT, the
+            # dump discards string context, and Nix cannot see the dependency. Undeclared,
+            # the sandbox does not have them and the action dies with "Cannot load
+            # libX11.so" -- the same failure the graph derivation hit one stage earlier.
+            #
+            # hostHeaderLibs as well as wrappedLibs, and for the same reason one step over:
+            # a compile's argv carries -I into xorgproto, zlib, linux-headers and the rest
+            # as plain text, so those store paths are equally invisible to Nix. Declaring
+            # only the ELF set is what left fseventsd_obj failing on linux/types.h in the
+            # lowering after the graph stage had been fixed.
+            #
+            # Only here: the libsimple, migcom and blocks endpoints below lower graphs with
+            # no wrap_elf in them.
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets-min.nix;
+            };
+          };
+        in
+        # `//` rather than overrideAttrs or passthru: this must not touch the derivation. The
+        # extra attribute only gives `nix build .#darling-buck2-prefix.stageProject` something
+        # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
+        # seconds instead of discovering a staging bug 90 minutes into a build.
+        # `named` as well as stageProject, so packages.darling-buck2-all can link-farm THESE
+        # derivations instead of lowering the graph a second time with different arguments.
+        lowered.named."root//buck/prefix-min:darling_prefix_min" // { inherit (lowered) stageProject named; };
+
+      # Task #44, the experiment and nothing more: the same lowering with narrowSources on.
+      #
+      # A DUPLICATE rather than a shared function on purpose. The question the experiment
+      # asks is whether the narrowed source union builds, and the only way to be sure the
+      # comparison is honest is for the default expression above to stay byte for byte what
+      # it was, which a refactor cannot promise without a second evaluation to check it.
+      # This block goes away when #44 concludes, either by flipping the default in
+      # nix/lib/darlingBuck2Lower.nix or by dropping the narrowing.
+      #
+      # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
+      # flake source gives a different darling-src and therefore a different ld64, so it
+      # rebuilds 26k objects and then compares against a baseline that is not this one.
+
       packages.darling-buck2-prefix-narrow =
         pkgs:
         let
