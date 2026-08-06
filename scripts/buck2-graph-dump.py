@@ -434,7 +434,13 @@ def main(argv: list[str]) -> int:
          "--"] + [a for t in targets for a in ("--targets", t)],
         capture_output=True, text=True)
     if bxl.returncode != 0:
-        print(bxl.stderr[-1500:], file=sys.stderr)
+        # THE WHOLE STDERR, not a tail. This used to print the last 1500 characters, and when
+        # a materialization fails buck2 ends with a LIST of every target it could not build:
+        # that list is thousands of characters, so the tail is all list and the actual cause,
+        # which buck2 prints FIRST as the failing action and its output, is cut off. Three
+        # skeleton graph runs were diagnosed from a truncated message that ended mid word,
+        # which is how a real answer turned into guesswork.
+        print(bxl.stderr, file=sys.stderr)
         raise SystemExit("materialization failed")
     print("  " + bxl.stdout.strip(), file=sys.stderr)
 
