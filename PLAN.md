@@ -1035,13 +1035,19 @@ has been true six times running, each time a check freshly written.
   `darwin/frameworks/CoreServices`, and that group store does hold the header. The header is
   ITSELF a relative symlink to `../../../../basic-headers/MacTypes.h`, which under one shared
   `projectSrc` resolved inside the same store path and under groups resolves four levels above
-  the CoreServices store path and dangles. **2,490 of the 2,970 symlinks under darwin, src and
-  linux are relative and cross a group boundary**, so that is the rule, not an exception.
+  the CoreServices store path and dangles. **2,306 of the 2,970 symlinks under darwin, src and
+  linux are relative and cross a group boundary**, across 15 groups, so that is the rule, not
+  an exception. (Corrected from 2,490 across 8: the first measurement approximated the
+  grouping rule instead of using the one in `scripts/buck2-graph-sources.py`, and the wrong
+  numbers reached commit 18f54931. `scripts/buck-escape-check.py` now copies the real rule.)
   Concentrated though: `darwin/Developer/Platforms` 2,189, `darwin/frameworks/
-  SystemConfiguration` 52, `src/opendirectory_internal/include` 24, `src/startup/mldr` 16, and
-  four groups with two or fewer. The fix is to rewrite an escaping link to an ABSOLUTE path
-  into the store of the group or pin it lands in, at group build time; most land in pins,
-  which now have stable per-pin stores.
+  SystemConfiguration` 52, `src/opendirectory_internal/include` 24, `src/startup/mldr` 16,
+  `src/libm/include` 7, and ten groups with three or fewer.
+  **1,989 of the 2,306 land in an UNGROUPED destination**, which is to say in the pins. So the
+  rewrite target for the great majority is a pin, and that is why the pins have to become self
+  contained FIRST: they are not (21 escapes of their own), and rewriting group escapes at
+  `${darlingSrc}/src/external/...` instead would make the SDK group depend on the whole
+  assembled tree and hand back the entire cascade.
   Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
   ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
   4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took

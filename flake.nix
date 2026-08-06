@@ -463,7 +463,7 @@
             #
             # The cause is not the group LIST. Accounts_obj does stage
             # darwin/frameworks/CoreServices. It is that a group is staged as ONE SYMLINK to
-            # its own store path, while 2,490 of the 2,970 symlinks in this tree are relative
+            # its own store path, while 2,306 of the 2,970 symlinks in this tree are relative
             # and cross a group boundary. darwin/frameworks/CoreServices/include/CoreServices/
             # MacTypes.h is itself a link to ../../../../basic-headers/MacTypes.h: under one
             # shared projectSrc that resolves inside the same store path, and under groups it
@@ -471,10 +471,13 @@
             #
             # The escapes are concentrated, which is what makes a fix tractable:
             # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
-            # src/opendirectory_internal/include 24, src/startup/mldr 16, and four groups with
-            # two or fewer. The fix is to rewrite an escaping link to an ABSOLUTE path into the
-            # store of the group or pin it lands in, at group build time; most land in pins,
-            # which now have stable per-pin store paths of their own.
+            # src/opendirectory_internal/include 24, src/startup/mldr 16, src/libm/include 7,
+            # and ten groups with three or fewer. Run scripts/buck-escape-check.py groups.
+            #
+            # 1,989 of them land in the PINS, so the pins have to become self contained first:
+            # they are not, 21 links reach out of their own pin, and rewriting group escapes at
+            # the assembled tree instead would make the SDK group depend on all of it and hand
+            # back the whole cascade.
             #
             # packages.darling-buck2-prefix-grouped below is where that gets tried next, so
             # this endpoint stays buildable meanwhile.

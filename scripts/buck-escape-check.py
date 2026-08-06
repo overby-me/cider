@@ -36,7 +36,7 @@ Find the assembled tree with:
 Exit 0 when every boundary is self contained, 1 when any is not, 2 on trouble.
 
 VERIFIED on the tree it was written against, three ways:
-  `groups`                     -> 2,490 escapes, matching an independent walk
+  `groups`                     -> 2,306 escapes across 15 groups, matching an independent walk
   `pins --root <assembled>`    -> 21 across 12 pins, matching the same independent walk
   `pins` with no --root        -> REFUSES with exit 2 rather than reporting a clean 0
 The third is the one that matters, because reporting 0 there is the exact bug this file is
@@ -53,12 +53,18 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def group_of(rel: str) -> str:
-    """The same rule the lowering stages by: frameworks split one level deeper."""
-    p = rel.split(os.sep)
-    if len(p) >= 3 and p[0] == "darwin" and p[1] in ("frameworks", "private-frameworks"):
-        return os.sep.join(p[:3])
-    return os.sep.join(p[:2]) if len(p) >= 2 else rel
+# EXACTLY the rule in scripts/buck2-graph-sources.py, copied rather than approximated. An
+# earlier version of this file guessed at it (frameworks three deep, everything else two) and
+# reported 2,490 escapes across 8 groups where the real rule gives 2,306 across 15. Same
+# conclusion, wrong numbers, and the numbers were quoted in a commit message.
+_UNGROUPED = ("buck-src/", "src/external/", "buck-rust/")
+
+
+def group_of(rel: str):
+    if rel.startswith(_UNGROUPED):
+        return None
+    segs = rel.split("/")
+    return "/".join(segs[:3]) if len(segs) >= 4 else None
 
 
 def escapes(boundary_of, roots, tree=None):
@@ -137,7 +143,13 @@ def main(argv):
         return report("pins", found, walked, f" over {len(pins)} pins")
 
     if mode == "groups":
-        found, walked = escapes(group_of, ["darwin", "src", "linux"], tree)
+        # A link whose OWN path is in no group travels individually as a shallow file, so it
+        # has no boundary to escape from and is not a finding.
+        def boundary(rel):
+            return group_of(rel) or "<no group>"
+
+        found, walked = escapes(boundary, ["darwin", "src", "linux"], tree)
+        found = [f for f in found if f[3] != "<no group>"]
         return report("groups", found, walked)
 
     if mode == "path":
