@@ -1026,6 +1026,27 @@ has been true six times running, each time a check freshly written.
   `.drv` for a store path finds nothing and the derivation has to come from the closure;
   and for the same reason the check is whether nix RERUNS THE BUILDER, not whether a
   drvPath moved.
+- **DONE (#55 then #54): a first-party source edit now rebuilds ZERO compiles.** Measured on
+  one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/ACAccount.m`
+  which it does not read. #55 content-addressed the lowered derivations: 0 of 4,159
+  stage-trees ran, but 323 compiles still did and were climbing. #54 closed that, and the
+  order the parts had to arrive in is the lesson.
+  SOURCE GROUPS ALONE BOUGHT NOTHING. With `sourceGroups` on and nothing else, the same edit
+  changed 588 of the 601 lines in the target's grouped staging script, and every changed line
+  was a `darling-src` path: the 295 pin symlinks were planted from the assembled tree, which
+  is ONE path holding the whole project. Splitting the first-party side left the shared path
+  alive through the pins. Three parts were needed: `darling-src` exposes `passthru.pinPaths`,
+  one store path per pin (same fetch, patch and SDK-symlink-repoint the assembled tree does);
+  `nix/cctools-port.nix` is content addressed, because the two ld64 builds from the clean and
+  edited trees are BIT IDENTICAL so CA collapses them; and the pins are staged through a
+  linkFarm, not named individually.
+  THE FARM IS NOT COSMETIC. With source groups there is one staging script PER TARGET, so
+  3,225 scripts naming 147 pin paths each is half a million references: the endpoint build sat
+  35 minutes with the daemon worker growing 230 MB a minute to 4.9 GB, zero builders started.
+  Through a farm the worker is flat at 1.44 GB. That is #48 again, data per derivation.
+  `scripts/buck-pin-store-check.nu` compares all 147 per-pin stores to the assembled tree by
+  NAR hash and is verified both ways (the unpatched xnu fetch does NOT match). Still paid on
+  every edit, and not hidden: an ld64 rebuild (#64) and a graph rebuild (#56), 26 minutes.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
