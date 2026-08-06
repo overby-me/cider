@@ -435,9 +435,24 @@ the shell before the probe can report.
 - **#63 exec across architectures** [narrow] — daemon cross-arch exec; the guest 32-bit
   loader (`mldr32`, cmake `BUILD_TARGET_32BIT`) is port-or-drop-undecided. Fat/universal
   Mach-O selection already done.
-- **#72 duct-tape → self-contained `-sys` crate** — decouple XNU from the cmake tree (today
-  linked via `DUCT_TAPE_LIB` at the cmake build's `.a`; bindgen runs on in-tree headers).
-  Aspirational, not started.
+- **#72 duct-tape to Rust, with XNU staying C behind a `-sys` crate**: decouple XNU from the
+  cmake tree (today linked via `DUCT_TAPE_LIB` at the cmake build's `.a`; bindgen already runs
+  on in-tree headers, so the FFI boundary exists and is exercised). Not started, but no longer
+  aspirational in size, because the split is now measured:
+
+  | | files |
+  |---|---|
+  | duct-tape's own glue | **17 `.c`** + 66 `.h` |
+  | vendored `duct-tape/xnu` | 49 `.c` + 1,526 `.h` |
+  | build cost | 163 ninja edges, 109 compiles, 18 directories |
+
+  **The split IS the task.** The 49 `.c` under `duct-tape/xnu` are Apple's kernel sources
+  compiled as-is; they must keep tracking upstream and stay C. Only the 17 glue files are a
+  port target: `condvar debug host init kqchan locks memory misc processor psynch semaphore
+  stubs task thread timer traps` plus `pthread/kern_synch.c`.
+  Two traps already paid for once: `init.c` is TWO PHASE (multithreaded guests need
+  `dtape_init_in_thread` on a kernel microthread), and `psynch.c` produced a silent SIGSEGV
+  from a null `pthread_list_mlock`. Both fail under threads, not at boot.
 - **#73 port build-time codegen to Rust** — `generate-rpc-wrappers.py` (already extended to
   emit the Rust codec, but still Python) and `tools/generate-xcode-stubs.py`.
 - **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
@@ -445,8 +460,15 @@ the shell before the probe can report.
   patched (see Build system).
 - **#68 finish the repo reorg** — move the C++ darlingserver + duct-tape from `src/external`
   into `linux/darlingserver/`, completing the `darwin/` (guest) + `linux/` (host) seam.
-- **Linker (#57 tail)** — `packages.darling-ld64` (`nix/cctools-port.nix`) done; fold in
-  `install_name_tool`/`nmedit`, validate a real darwin dylib link with `-DDARLING_LD64_DIR`.
+- **Linker (#57 tail)**: `packages.darling-ld64` (`nix/cctools-port.nix`) done; validate a real
+  darwin dylib link with `-DDARLING_LD64_DIR`.
+  **DO NOT "fold in `install_name_tool`/`nmedit`", which is what this line used to say.**
+  cctools-port defines neither; only `lipo`. Asking ninja for them by bare name resolves to the
+  GUEST `src/xcselect` shims and costs **3,113 compiles across 197 directories** instead of 62
+  across 9, and the output is then discarded because `installPhase` looks under
+  `cctools-port/cctools/misc` where they were never written. That was the state until #70
+  removed them. If Darling genuinely needs those two as HOST tools, they have to be built from
+  somewhere that defines them, not conjured by name.
 
 ### Build system — make nix-ninja the primary incremental build (#26/#39)
 Lower every edge of Darling's ~26k-edge ninja graph to its own content-addressed nix
