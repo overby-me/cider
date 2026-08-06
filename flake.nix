@@ -558,6 +558,25 @@
         # derivations instead of lowering the graph a second time with different arguments.
         lowered.named."root//buck/prefix-min:darling_prefix_min" // { inherit (lowered) stageProject named; };
 
+      # ONE TARGET, ONE COMMAND, ONE EVAL (task #68). The most common operation in this work is
+      # "does this one target still build, and what RAN", and it used to cost TWO evaluations of
+      # the same 307 MB graph because named."root//..." is not addressable from the CLI: a
+      # nix eval --apply to get the drvPath, then a nix build of that path.
+      #
+      # libsimple_darlingserver is the canonical probe: one C source, one include root, one
+      # archive action, so it exercises load, rule, provider, glob and three action kinds and
+      # still builds in seconds.
+      #
+      # Reached THROUGH the minimal endpoint rather than lowered separately, and that is the
+      # whole point. A second lowering with its own arguments would be a different derivation,
+      # and checking it would say nothing about the endpoint. This is literally one of the 2,339
+      # derivations that .#darling-buck2-prefix-min builds.
+      #
+      #   nix build .#darling-buck2-one --no-link -L
+      #   scripts/buck-quick-check.nu
+      packages.darling-buck2-one =
+        pkgs: pkgs.darling-buck2-prefix-min.named."root//src/libsimple:libsimple_darlingserver";
+
       # Task #44, the experiment and nothing more: the same lowering with narrowSources on.
       #
       # A DUPLICATE rather than a shared function on purpose. The question the experiment
