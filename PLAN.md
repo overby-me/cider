@@ -1055,6 +1055,29 @@ has been true six times running, each time a check freshly written.
   by the subset so an unchanged target collapses to the same path.
   `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
   <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
+- **#54 MEASURED, and per-target granularity is worth a lot: the median edit would rebuild 5
+  targets instead of 2,339.** From `target-sources.json`: 2,339 targets, 74,621 distinct files,
+  6,419,328 (target, file) pairs. Blast radius of editing ONE file, if each target depended
+  only on what it reads:
+
+  | percentile | targets invalidated |
+  |---|---|
+  | p25 | 2 |
+  | **p50** | **5** |
+  | p75 | 27 |
+  | p90 | 78 |
+  | p99 | 1,265 |
+  | max | 1,267 |
+
+  22 percent of files are read by exactly ONE target, 58 percent by ten or fewer, 94 percent by
+  a hundred or fewer, and **no file is read by more than 1,267 targets**, so even the worst case
+  is half the project rather than all of it. Today every edit rebuilds all 2,339.
+  The cost side, same source: the median target reads 4,048 files (p90 5,640, max 13,726), so
+  2,339 subsets is about 9.5 million entries. That rules out COPYING (tens of GB) and points at
+  symlink farms, which work here for the reason group staging did not: every directory is real
+  and only the leaves are links, so a relative link inside the subset resolves against the
+  subset instead of escaping into another store path. Rough cost is derivation overhead, about
+  2,339 builds, not the link creation.
 - **#64: ld64 is content addressed, and narrowing its source is NOT possible as scoped.** The
   rebuild no longer propagates (its outputs from a clean tree and from an edited one are bit
   identical), but it still costs 26 to 28 minutes on any first-party edit. The plan was to drop
