@@ -395,6 +395,50 @@
       # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
       # flake source gives a different darling-src and therefore a different ld64, so it
       # rebuilds 26k objects and then compares against a baseline that is not this one.
+      # THE MINIMAL ENDPOINT WITH narrowSources ON (#54). packages.darling-buck2-prefix-narrow
+      # exists already but lowers the FULL target list and the full prefix, so testing the flag
+      # there costs a graph this store may not hold plus a two hour build. This pairs the flag
+      # with buck2-targets-min.nix, which reuses the graph the minimal endpoint already built,
+      # so one target can be tried in seconds and the whole endpoint in about an hour.
+      #
+      # WHY narrowSources RATHER THAN sourceGroups, measured: splitting the source into
+      # per-subtree stores cannot work here. A link farm cannot repair a relative escape, since
+      # the kernel resolves .. against the REAL parent once it crosses the farm symlink, and
+      # rewriting escapes to absolute paths relocates the problem rather than solving it, 143
+      # dangling links becoming 413, because the destination store has escapes of its own. The
+      # SDK usr/include extracted alone is 1,987 dangling of 1,987 symlinks against 0 of 2,928
+      # inside the assembled tree. A builtins.path union keeps the PROJECT ROOT, so the
+      # relative web resolves, and is keyed on FILTERED CONTENT, so a target whose own files
+      # did not change keeps its path when the project moves.
+      #
+      #   nix build .#darling-buck2-prefix-min-narrow --max-jobs 2 --cores 4
+      packages.darling-buck2-prefix-min-narrow =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc ld64;
+            allPins = true;
+            narrowSources = true;
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc ld64;
+              allPins = true;
+              targets = import ./nix/lib/buck2-targets-min.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix-min:darling_prefix_min"
+        // { inherit (lowered) stageProject named; };
+
       # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
       # assembled tree they replace. The lowering plants pins from darling-src, which is ONE
       # path that moves when any tracked file changes, and that is what made source groups

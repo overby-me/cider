@@ -1059,12 +1059,22 @@ has been true six times running, each time a check freshly written.
      but relative links into the rest of the project.
   Rewriting every escape recursively would reconstruct the single root with absolute paths AND
   couple each store to the others, destroying the invalidation win that motivated splitting.
-  **So the mechanism for #54 is `narrowSources` (#44), not `sourceGroups`.** A `builtins.path`
-  union is rooted at the PROJECT ROOT, so the relative web resolves, and it is keyed on the
-  FILTERED CONTENT, so a target whose own files did not change keeps its path even when the
-  project moves. That is the same early cutoff, without splitting the root. Its correctness gap
-  is already closed and measured (#44: 25 quoted includes, 0 after), and what it still owes is
-  one green endpoint build with the flag on.
+  **NEITHER EXISTING FLAG CUTS IT, and an earlier version of this entry wrongly said
+  `narrowSources` did.** Probed on `libsimple_darlingserver` with `narrowSources` on and the
+  minimal target list: editing `ACAccount.m` RAN the compile and moved its output. The reason
+  is in the lowering already: `projectSrc` is ONE `srcUnion` for every target, so narrowing
+  shrinks the shared path from 306,019 files to about 131,048 and it stays shared.
+  So the two flags each have one half:
+  - `sourceGroups` has the right GRANULARITY (per target) and the wrong MECHANISM (it splits
+    the root, and the relative symlink web does not survive that).
+  - `narrowSources` has the right MECHANISM (one root, keyed on filtered content) and the
+    wrong GRANULARITY (one union shared by all targets).
+  **The thing that can work is their combination: a PER-TARGET `builtins.path` rooted at the
+  project root.** One root, so the web resolves; per-target content, so a target whose own
+  files did not change keeps its path. The cost to find out is the per-target file lists at
+  evaluation, which is exactly what #54 avoided by precomputing groups: `target-sources.json`
+  is 356 MB and reading it took eval from 21.4s to 75.6s and heap from 1.76 to 3.40 GB. That
+  price, once, is the next measurement worth taking.
   Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
   ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
   4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took
