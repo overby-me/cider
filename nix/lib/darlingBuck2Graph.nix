@@ -31,6 +31,12 @@
   allPins ? false,
   # Darling's own ld64, which the link rules invoke by absolute path.
   ld64 ? null,
+  # Feed the dump a SKELETON instead of the project (#56): every C family file outside
+  # buck-src, buck-rust and src/external emptied, keeping the name and dropping the bytes,
+  # except the five that feed a generator this derivation runs. OFF BY DEFAULT and an
+  # EXPERIMENT until the resulting graph is shown equivalent to the one the project produces;
+  # see packages.darling-buck2-graph-skeleton and scripts/buck-graph-equiv.py.
+  skeleton ? false,
   targets,
 }: let
   inherit (pkgs) lib;
@@ -138,6 +144,32 @@
           "flake.lock"
         ]);
     };
+
+  # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
+  # file emptied except those under buck-src, buck-rust and src/external and the five that
+  # feed a generator this dump RUNS. scripts/buck-skeleton.py holds the rules and
+  # scripts/buck-codegen-closure.py is what computed the five.
+  #
+  # CONTENT ADDRESSED, and that is the whole mechanism rather than a detail: editing a .c
+  # changes no file NAME, so this output is byte identical, the graph derivation behind it
+  # does not rerun, and the 18m34s disappears from that edit. Editing a BUCK file, a .defs, a
+  # grammar or one of the five generator inputs DOES change it, and the graph correctly
+  # rebuilds.
+  #
+  # It takes projectSrc, so it still rebuilds on any edit. That is fine and it is cheap: it
+  # is a file copy, and only its OUTPUT feeds the expensive derivation.
+  #
+  # The pins are NOT skeletonised, because they never come through here: assembleProject
+  # materialises them from darlingSrc after this tree is unpacked.
+  skeletonSrc = pkgs.runCommand "darling-buck2-skeleton" {
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    nativeBuildInputs = [ pkgs.python3 ];
+  } ''
+    python3 ${../../scripts/buck-skeleton.py} ${projectSrc} $out \
+      --keep ${../../scripts/buck-codegen-keep.txt}
+  '';
 
   # The tree BOTH passes work on: the pins materialised under buck-src, the vendored Rust
   # crates, and the symlink normalisation buck2 refuses to load without. Shared rather than
@@ -255,7 +287,14 @@
     # scripts/buck-skeleton.py is kept: the idea is sound for the ANALYSIS half, and it is
     # verified to load the identical target graph. What it needs first is the codegen input
     # closure, so that exactly the files this derivation compiles keep their contents.
-    src = projectSrc;
+    #
+    # THAT CLOSURE NOW EXISTS (#56, scripts/buck-codegen-closure.py): 1,743 files of 74,621
+    # must keep real contents, and all but FIVE were already covered, the five being
+    # rtsig.c, wrapgen.cpp and three libsimple files. buck-skeleton.py keeps them. Pass
+    # skeleton = true to try it, which is what packages.darling-buck2-graph-skeleton does.
+    # It stays OFF here until the graph it produces is shown equivalent by
+    # scripts/buck-graph-equiv.py, because a wrong skeleton fails SILENTLY.
+    src = if skeleton then skeletonSrc else projectSrc;
 
     nativeBuildInputs =
       [

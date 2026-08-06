@@ -242,6 +242,52 @@
           targets = import ./nix/lib/buck2-targets.nix;
         };
 
+      # THE SKELETON EXPERIMENT (#56). The same graph the minimal endpoint uses, dumped from a
+      # tree whose C family is emptied rather than from the project, so that editing a .c
+      # leaves the dump input byte identical and the 18m34s graph rebuild disappears from that
+      # edit. Everything else is identical to what prefix-min lowers.
+      #
+      # A SEPARATE ATTRIBUTE, and it stays one until the graphs are shown equal. A wrong
+      # skeleton does NOT fail loudly: an emptied generator input compiles, links, runs and
+      # writes an empty output, so the dump comes out quietly wrong. The check is
+      #
+      #   scripts/buck-graph-equiv.py <project-graph> <project-data> <skeleton-graph> <data>
+      #
+      # which compares by MEANING (every action with its argv, env, inputs and outputs; every
+      # staged artifact by content hash; every farm by reconstructed links) rather than byte
+      # for byte, since the tables have two encodings.
+      #
+      # THIS DOES NOT BUILD YET, and it is kept because each failure has been worth more than
+      # it cost. Three runs so far, each finding a different missing input:
+      #   1. 8s    the skeleton itself died, os.stat following a dangling SDK symlink.
+      #   2. 374s  bindgen got an emptied linux/server/wrapper.h, wrote nothing, and the
+      #            daemon failed with 83 rustc errors on an unresolved crate::bindings. The
+      #            codegen closure was rooted only at staged farms and never saw it.
+      #   3. 431s  with the closure widened to every generator CATEGORY, a long list of
+      #            buck-src _xtrace_mig_obj compiles plus dyld, compiler_rt_final and
+      #            system_dyld_final fail. Those targets own sources are intact (buck-src is
+      #            never emptied), so what they are missing is emptied darwin/ SDK headers,
+      #            and the open question is why materialize.bxl reaches a COMPILE at all when
+      #            it deliberately stopped ensuring default outputs. buck2 own error text is
+      #            truncated in the nix log, so answering it needs buck2 run directly.
+      #
+      #   nix build .#darling-buck2-graph-min-skeleton -L
+      packages.darling-buck2-graph-min-skeleton =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+        in
+        import ./nix/lib/darlingBuck2Graph.nix {
+          inherit pkgs darlingSrc ld64;
+          allPins = true;
+          skeleton = true;
+          targets = import ./nix/lib/buck2-targets-min.nix;
+        };
+
       # The same graph, LOWERED: one Nix derivation per buck2 action, from the single
       # IFD of graph.json. This is the endpoint the port is aiming at -- per-action
       # caching a binary cache can serve, with buck2 as the definition authority.
