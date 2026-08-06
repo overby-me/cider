@@ -1069,12 +1069,18 @@ has been true six times running, each time a check freshly written.
     the root, and the relative symlink web does not survive that).
   - `narrowSources` has the right MECHANISM (one root, keyed on filtered content) and the
     wrong GRANULARITY (one union shared by all targets).
-  **The thing that can work is their combination: a PER-TARGET `builtins.path` rooted at the
-  project root.** One root, so the web resolves; per-target content, so a target whose own
-  files did not change keeps its path. The cost to find out is the per-target file lists at
-  evaluation, which is exactly what #54 avoided by precomputing groups: `target-sources.json`
-  is 356 MB and reading it took eval from 21.4s to 75.6s and heap from 1.76 to 3.40 GB. That
-  price, once, is the next measurement worth taking.
+  **Their combination is what can work, but NOT at evaluation time.** A per-target
+  `builtins.path` rooted at the project root gives one root and per-target content. Measured
+  before building it: eval is 22s with the shared source and 26s with ONE union, so a union
+  costs about **4 seconds**, and 3,225 of them is **3.6 hours of evaluation**. That closes the
+  eval-time route.
+  What is left is the same idea at BUILD time: one **content-addressed subset derivation per
+  target**, copying that target's files out of the shared `projectSrc` and reproducing the
+  project layout. It reruns whenever `projectSrc` moves, which is cheap, but its OUTPUT is
+  addressed by the subset, so a target whose own files did not change collapses to the same
+  path and its compile does not rerun. It also keeps ONE shared input rather than many, which
+  matters: 147 distinct pin paths per staging script is what took the daemon to 4.9 GB and
+  stalled it, while one shared 4 GB input is a single path.
   Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
   ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
   4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took
