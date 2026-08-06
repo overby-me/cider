@@ -202,9 +202,21 @@
   # The per-pin stores are byte identical to what the assembled tree holds, by NAR hash for
   # all 147, and scripts/buck-pin-store-check.nu is that check. The fallback is kept for a
   # caller that passes a darlingSrc without the attribute.
+  # THROUGH A FARM, not 147 paths per script, and that distinction is measured. Naming each
+  # pin store directly gives every staging script 147 inputs, and with source groups there is
+  # one staging script PER TARGET rather than one shared: 3,225 scripts times 147 is close to
+  # half a million path references. The endpoint build then sat for 35 minutes with the
+  # nix-daemon worker growing 230 MB a minute, zero builders started and not one .drv written,
+  # which is #48 again. A farm is ONE input per script and moves only when a pin does.
+  pinsWithStores = lib.filter (p: (darlingSrc.pinPaths or {}) ? ${p}) wantedPins;
+  pinsFarm = pkgs.linkFarm "darling-pins" (map (p: {
+    name = lib.strings.sanitizeDerivationName p;
+    path = darlingSrc.pinPaths.${p};
+  }) pinsWithStores);
+
   pinPath = p:
     if darlingSrc != null && ((darlingSrc.pinPaths or {}) ? ${p})
-    then "${darlingSrc.pinPaths.${p}}"
+    then "${pinsFarm}/${lib.strings.sanitizeDerivationName p}"
     else "${darlingSrc}/${p}";
 
   # ---- the graph, grouped the way this lowers it -------------------------
