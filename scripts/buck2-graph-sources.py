@@ -21,6 +21,7 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -272,6 +273,31 @@ def main(argv: list) -> int:
     with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
         json.dump(per_target, fh, sort_keys=True)
         fh.write("\n")
+
+    # PER-TARGET FILE LISTS AS FILES, and an INDEX naming them (#54). The lowering builds one
+    # source subset per target, and it must not learn those lists through Nix: 2,339 targets
+    # times a median of 4,048 files is 9.5 million entries, which is the same shape that made
+    # the staged-tree scripts 40 percent of evaluation before #47 moved them into tables.
+    # Written here, the lowering carries ONE string per target, the path to its list.
+    #
+    # Named by content, like the treelinks tables since #63, so targets that read exactly the
+    # same set share a file. Measured on this graph: it collapses 2,339 lists to far fewer.
+    subdir = os.path.join(outdir, "subsets")
+    os.makedirs(subdir, exist_ok=True)
+    written, index = {}, {}
+    for label, files in per_target.items():
+        text = "".join(p + "\n" for p in sorted(files))
+        rel = written.get(text)
+        if rel is None:
+            rel = "subsets/" + hashlib.sha256(text.encode()).hexdigest()[:16] + ".txt"
+            written[text] = rel
+            with open(os.path.join(outdir, rel), "w") as fh:
+                fh.write(text)
+        index[label] = rel
+    with open(os.path.join(outdir, "target-subsets.json"), "w") as fh:
+        json.dump(index, fh, sort_keys=True)
+        fh.write("\n")
+    print(f"  {len(index)} target subset(s) sharing {len(written)} distinct list file(s)")
 
     groups = target_groups(per_target)
     with open(os.path.join(outdir, "target-groups.json"), "w") as fh:
