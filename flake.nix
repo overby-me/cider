@@ -411,9 +411,27 @@
             baseSrc = ./.;
           };
         in
+        # Nested at src/external/<pin> because that is where they are staged, so the farm reads
+        # like the tree it stands in for. It does NOT fix the escaping links, and the attempt
+        # to make it do so is worth recording because it eliminates a whole approach.
+        #
+        # A LINK FARM CAN NEVER REPAIR A RELATIVE ESCAPE. 14 of the 21 links that reach out of
+        # a pin point at a SIBLING pin three levels up, and laying the farm out at
+        # src/external/<pin> puts that sibling exactly where the ../../../ says. It still
+        # dangles, because the kernel resolves .. against the REAL parent directory once it has
+        # crossed the farm symlink, not against the path you typed. Measured:
+        #   readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu
+        #   -> /nix/store/xnu
+        # three levels up from the PIN STORE, which is /nix/store, while
+        # <farm>/src/external/xnu exists and is never consulted.
+        #
+        # So every one of the 21 needs rewriting to an absolute path, or the pins have to live
+        # in one real tree, which is the assembled darling-src they came from.
+        #
+        # Check with: scripts/buck-escape-check.py resolve <this farm>
         pkgs.linkFarm "darling-pin-stores" (
           pkgs.lib.mapAttrsToList (path: drv: {
-            name = pkgs.lib.strings.sanitizeDerivationName path;
+            name = path;
             path = drv;
           }) darlingSrc.pinPaths
         );

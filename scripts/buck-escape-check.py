@@ -169,15 +169,37 @@ def main(argv):
         dangling, walked = [], 0
         for r in roots:
             base = r if os.path.isabs(r) else os.path.join(tree, r)
-            for dp, dns, fns in os.walk(base, followlinks=False):
-                dns[:] = [d for d in dns if d not in (".git", ".jj")]
-                for n in dns + fns:
-                    p = os.path.join(dp, n)
-                    if not os.path.islink(p):
+            # A HAND WALK THAT DESCENDS THROUGH SYMLINKED DIRECTORIES, keeping the LOGICAL
+            # path. os.walk with followlinks=False stops at a symlinked directory, and on a
+            # linkFarm every entry IS one, so it walked 147 links and reported a clean 0 for a
+            # farm holding thousands. That is the third false pass of the night from the same
+            # mistake: a check has to be pointed at the thing it claims to measure.
+            #
+            # followlinks=True instead would loop on a cyclic symlink, and this tree has had
+            # one (#20, JavaScriptCore), so the realpath set is the cycle guard.
+            seen = set()
+            stack = [base]
+            while stack:
+                d = stack.pop()
+                real = os.path.realpath(d)
+                if real in seen:
+                    continue
+                seen.add(real)
+                try:
+                    entries = os.listdir(d)
+                except OSError:
+                    continue
+                for n in entries:
+                    if n in (".git", ".jj"):
                         continue
-                    walked += 1
-                    if not os.path.exists(p):  # exists FOLLOWS links, lexists would not
-                        dangling.append((os.path.relpath(p, base), os.readlink(p)))
+                    p = os.path.join(d, n)
+                    if os.path.islink(p):
+                        walked += 1
+                        if not os.path.exists(p):  # exists FOLLOWS, lexists would not
+                            dangling.append((os.path.relpath(p, base), os.readlink(p)))
+                            continue
+                    if os.path.isdir(p):
+                        stack.append(p)
         print(f"resolve {' '.join(roots)}: {len(dangling)} dangling of {walked} symlinks")
         if walked == 0:
             print("  REFUSING: no symlink was walked, so this proved nothing")
