@@ -1093,6 +1093,55 @@ has been true six times running, each time a check freshly written.
   hour. Reducing it means changing WHAT it depends on in cmake, not which files reach the
   derivation, and that work should start from the ninja graph (26,351 edges) rather than from
   guesses about directories. Both experiments are reverted.
+- **DONE (#68): one command, one evaluation, and a counter that self-tests.**
+  `.#darling-buck2-one` is the endpoint's OWN derivation for `libsimple_darlingserver`,
+  reached through `darling-buck2-prefix-min` rather than lowered again, so it is the same drv
+  the endpoint builds (both evaluate to `jahgjqzjq…`). `scripts/buck-quick-check.nu` builds it
+  and counts builders that RAN, with a probe mode that edits, rebuilds, counts and reverts by
+  stripping its own marker, so an interrupted run leaves something the next one can clean up.
+  IT PROVES ITS COUNTER FIRST, by building a derivation carrying a fresh nonce that must
+  report exactly 1; otherwise `ran=0` could mean the log format changed rather than nothing
+  rebuilt. Verified both ways: a fresh build reads 1, a rerun reads 0.
+  **The 12s evaluation is paid once per change to the FLAKE SOURCE TREE, not per build**:
+  rerun unchanged 0.3s, rerun after editing `nix/` 12.3s with ran=0, first build 12.7s. So it
+  bites only when iterating on the lowering itself, which is much less of the loop than the
+  14.5s one-target figure suggested, and it is exactly what #66 is aimed at. That probe also
+  confirms for the first time what the source filters promise: a `nix/` edit rebuilds nothing.
+- **#69 MEASURED: the declaration gap is a PER-TARGET question, and it is 675 files.**
+  `scripts/buck-declaration-gap.py` splits each target's source set into what buck2 SAYS (argv
+  tokens, staged-tree link targets) and what the closure pass COMPENSATES for (include roots
+  taken wholesale, quoted includes), and verifies that partition against
+  `buck2-graph-sources.py` on all 2,339 targets. On the current graph, union 74,620 files:
+  wholesale include roots are **2 directories, 25 files, 2 targets**; quoted includes are
+  **675 files over 693 edges, reached by 1,266 targets**.
+  THIS DOES NOT CONTRADICT the 5-then-0 of `buck-include-closure-check.py`, which asks whether
+  the UNION misses a file entirely and only for `../` escapes. A header can be declared for
+  one target through its staged tree and be quoted-only for another. Both stand.
+  WHY THE PORT WORKS ANYWAY: `cc_objects` declares only `srcs`. `finger_obj` lists five `.c`
+  files and no headers, while `lprint.c` includes `finger.h` from its own directory. Compiles
+  run IN THE PROJECT TREE against project-relative paths, so that resolves only because every
+  target is staged with the whole project. The missing declarations and the #54 cascade are
+  one fact seen from two sides.
+  THE MECHANICAL ROUTE beats hand-written globs: the reference `build.ninja` carries depfiles
+  on **26,198 of 40,014 edges**, so one cmake build with its `.d` files kept states every
+  header each object really read, angle-bracket includes included.
+  `scripts/gen-buck-from-ninja.py` already generates these targets from that same ninja.
+- **#65: the recorded ld64 blocker is WRONG, established by reading and costing no build.**
+  `src/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
+  `<mach/machine/vm_types.h>` and asks for `cctools/include/foreign` on the include path. Four
+  facts say otherwise. `mach-o/loader.h` guards ALL its mach includes behind `#ifdef __APPLE__`
+  and typedefs `cpu_type_t`, `cpu_subtype_t` and `vm_prot_t` itself in the `#else`, so a host
+  compile never reaches `machine.h`, which is why the reference needs nothing, and its real
+  `getuuid.c.o` command carries only `src/include`, `src/buildtools/include` and
+  `cctools/include`. `cctools/include/mach/machine.h` has NO `#include` lines, so it cannot be
+  the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
+  64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
+  `include_subdirs`, so `foreign/` cannot collide into the root. And `include/mach/` has no
+  `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first. Adding `foreign`
+  is almost certainly the wrong fix; the leading hypothesis is that the failing header is
+  Darling's own SDK one, reached because the host-tier compile carries Darwin flags it should
+  not. The stale comment stays put on purpose: it is a BUCK file, so correcting it alone costs
+  ld64 plus the graph.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
