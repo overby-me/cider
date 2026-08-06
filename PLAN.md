@@ -1043,11 +1043,28 @@ has been true six times running, each time a check freshly written.
   Concentrated though: `darwin/Developer/Platforms` 2,189, `darwin/frameworks/
   SystemConfiguration` 52, `src/opendirectory_internal/include` 24, `src/startup/mldr` 16,
   `src/libm/include` 7, and ten groups with three or fewer.
-  **1,989 of the 2,306 land in an UNGROUPED destination**, which is to say in the pins. So the
-  rewrite target for the great majority is a pin, and that is why the pins have to become self
-  contained FIRST: they are not (21 escapes of their own), and rewriting group escapes at
-  `${darlingSrc}/src/external/...` instead would make the SDK group depend on the whole
-  assembled tree and hand back the entire cascade.
+  **1,989 of the 2,306 land in an UNGROUPED destination**, which is to say in the pins.
+  **SPLITTING THE SOURCE INTO PER-SUBTREE STORES CANNOT WORK FOR THIS TREE, and that is now
+  measured rather than suspected.** Two results kill it:
+  1. A link farm cannot repair a relative escape. Laying the pin farm out at
+     `src/external/<pin>` puts the sibling exactly where `../../../` points, and
+     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` still gives
+     `/nix/store/xnu`, because the kernel resolves `..` against the REAL parent once it has
+     crossed the farm symlink. The sibling is present the whole time and never consulted.
+  2. Rewriting escapes to absolute store paths just relocates the problem, because the
+     destination store has escapes of its own. Doing it for the pins took them from 143
+     dangling links to **413**. The reason is the SDK: extracted on its own,
+     `darwin/Developer/.../MacOSX.sdk/usr/include` has **1,987 dangling of 1,987 symlinks**,
+     every single one, against 0 of 2,928 inside the assembled tree. That directory is nothing
+     but relative links into the rest of the project.
+  Rewriting every escape recursively would reconstruct the single root with absolute paths AND
+  couple each store to the others, destroying the invalidation win that motivated splitting.
+  **So the mechanism for #54 is `narrowSources` (#44), not `sourceGroups`.** A `builtins.path`
+  union is rooted at the PROJECT ROOT, so the relative web resolves, and it is keyed on the
+  FILTERED CONTENT, so a target whose own files did not change keeps its path even when the
+  project moves. That is the same early cutoff, without splitting the root. Its correctness gap
+  is already closed and measured (#44: 25 quoted includes, 0 after), and what it still owes is
+  one green endpoint build with the flag on.
   Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
   ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
   4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took
