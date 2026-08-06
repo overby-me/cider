@@ -285,6 +285,28 @@
       # Answer it by printing, per ensured artifact, which target it is bound to.
       #
       #   nix build .#darling-buck2-graph-min-skeleton -L
+      # The SAME graph from the PROJECT, so the skeleton has something honest to be compared
+      # against. Without this the only project-fed graph addressable on its own is the full
+      # one, and comparing a minimal skeleton graph to a full project graph would report
+      # differences that are just the target list. Identical arguments to the attribute below
+      # except skeleton, which is the point.
+      #
+      #   nix build .#darling-buck2-graph-min -L
+      packages.darling-buck2-graph-min =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
+        in
+        import ./nix/lib/darlingBuck2Graph.nix {
+          inherit pkgs darlingSrc ld64;
+          allPins = true;
+          targets = import ./nix/lib/buck2-targets-min.nix;
+        };
+
       packages.darling-buck2-graph-min-skeleton =
         pkgs:
         let
