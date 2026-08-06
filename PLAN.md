@@ -1093,6 +1093,36 @@ has been true six times running, each time a check freshly written.
   hour. Reducing it means changing WHAT it depends on in cmake, not which files reach the
   derivation, and that work should start from the ninja graph (26,351 edges) rather than from
   guesses about directories. Both experiments are reverted.
+- **#70 CORRECTS THE ABOVE: it was never a property of ld64, it was two wrong target names.**
+  Taking #64's own advice and starting from the ninja graph, the transitive closure over
+  inputs, implicit inputs and order-only inputs says:
+
+  | target set | edges | compiles | dirs |
+  |---|---|---|---|
+  | `x86_64-apple-darwin20-ld` alone | 42 | **40** | 7 |
+  | ld64 + everything `cctools-port/misc` offers | 82 | **62** | 9 |
+  | bare `install_name_tool` | 3,510 | 3,113 | 197 |
+  | bare `nmedit` | 3,510 | 3,113 | 197 |
+  | **the four names `buildFlags` passed** | 3,515 | **3,114** | **197** |
+
+  `cctools-port/cctools/misc` defines NO `install_name_tool` and NO `nmedit`, only `lipo`, so
+  ninja resolved those bare names to the GUEST tools under `src/xcselect`. That is where libc
+  (635 compiles), icu (446), xnu (415), compiler-rt (139), corefoundation (127) and Libinfo
+  (106) came from, and it is the 369 directories.
+  **AND THE RESULT WAS DISCARDED**, which is what made the fix safe rather than a trade-off:
+  `installPhase` looked for them under `cctools-port/cctools/misc`, where those targets never
+  wrote, so its `find` failed and the `note: not built` branch fired. Checked three ways that
+  nothing consumed them: the lowering never names them, no action's argv invokes them, and the
+  only actions mentioning them BUILD them (precisely the `src/xcselect` shims ninja resolved to).
+  VERIFIED: dropping the two names reproduces
+  `sha256-tHH+BndVNL2V8g9iM7++iD/aGY3Pz5AirmcwEqJSblc=` exactly and collapses onto an EXISTING
+  store path, so no consumer moves. The oracle was confirmed live first: three separate ld64
+  outputs in the store all carry that hash.
+  **THE WALL-CLOCK SAVING IS NOT THE 50x THE COMPILE COUNTS SUGGEST.** It ran in 1,290s (21.5
+  min) against a recorded 26 to 28, but it shared the machine with a 1,049-derivation endpoint
+  build throughout, and the recorded baseline was taken under unknown load. The compile cut
+  (3,114 to 62) is certain; the time saving is not cleanly attributed, because the whole-project
+  cmake CONFIGURE that both pay is now the dominant term. A fair number needs an idle re-measure.
 - **DONE (#68): one command, one evaluation, and a counter that self-tests.**
   `.#darling-buck2-one` is the endpoint's OWN derivation for `libsimple_darlingserver`,
   reached through `darling-buck2-prefix-min` rather than lowered again, so it is the same drv
