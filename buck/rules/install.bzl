@@ -145,10 +145,38 @@ def _prefix_tree_impl(ctx):
     for dest in sorted(ctx.attrs.links):
         lines.append(cmd_args("link", dest, ctx.attrs.links[dest], delimiter = "\t"))
 
-    manifest = ctx.actions.write(ctx.label.name + "__manifest.tsv", lines, with_inputs = True)
+    # TWO WRITES OF THE SAME TEXT, and the split is the whole point.
+    #
+    # This used to be one `write(..., with_inputs = True)`, and with_inputs attaches every
+    # artifact the manifest NAMES as an input of the resulting artifact. The manifest names
+    # every file the prefix installs. buck/bxl/materialize.bxl ensures InProcInfo.artifacts,
+    # and the manifest is in there, so "materialize the in-process artifacts" quietly meant
+    # BUILD THE ENTIRE PREFIX -- inside the graph DUMP, which is supposed to run no compiles at
+    # all. MEASURED: with a skeleton source tree the dump tries to compile libtrustd_obj,
+    # darling-coredump, dyld, compiler_rt_final and system_dyld_final, every one of them
+    # something this manifest lists. On the real tree they simply succeed, which is why it went
+    # unnoticed, and it is a large part of the graph derivation's 18m34s.
+    #
+    # So: `manifest` is TEXT ONLY and is what travels to the Nix endpoint, keeping its name so
+    # the dump stages it and the lowering replays the same argv. `manifest_deps` is the same
+    # text with the inputs attached, added HIDDEN so the local prefix build still materialises
+    # every source before build.sh copies from it, without the path appearing on the command
+    # line.
+    #
+    # The recorded action should be UNCHANGED either way: argv still names __manifest.tsv, and
+    # hidden arguments are inputs as far as aquery is concerned, so graph.json sees the same
+    # inputs. What changes is only what ensuring the manifest alone drags in.
+    manifest = ctx.actions.write(ctx.label.name + "__manifest.tsv", lines)
+    manifest_deps = ctx.actions.write(
+        ctx.label.name + "__manifest-deps.tsv",
+        lines,
+        with_inputs = True,
+    )
     builder = ctx.actions.write(ctx.label.name + "__build.sh", _BUILD_PREFIX, is_executable = True)
+    cmd = cmd_args(["bash", builder, out.as_output(), manifest])
+    cmd.add(cmd_args(hidden = manifest_deps))
     ctx.actions.run(
-        cmd_args(["bash", builder, out.as_output(), manifest]),
+        cmd,
         category = "prefix_tree",
         identifier = ctx.label.name,
     )
