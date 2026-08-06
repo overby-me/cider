@@ -214,10 +214,31 @@
     path = darlingSrc.pinPaths.${p};
   }) pinsWithStores);
 
-  pinPath = p:
-    if darlingSrc != null && ((darlingSrc.pinPaths or {}) ? ${p})
-    then "${pinsFarm}/${lib.strings.sanitizeDerivationName p}"
-    else "${darlingSrc}/${p}";
+  # NOT YET. Staging a pin from its own store path breaks 21 relative symlinks that reach OUT
+  # of the pin, and it broke the endpoint: AppKit_obj died on IOKit/IOTypes.h, reached through
+  # a staged farm whose link ran into src/external/IOKitUser/darling/submodules/xnu, which is a
+  # link to ../../../xnu/ and resolves only when the pins share a root.
+  #
+  # SCRIPTS/BUCK-PIN-STORE-CHECK.NU PASSED ANYWAY, and that is the lesson. It compares a pin
+  # store to the assembled tree by NAR hash, and a NAR hash records a symlink TARGET as a
+  # string. Two identical strings, resolving to different places because the root moved, are
+  # identical to that check. It could not fail on this, which makes it worth exactly nothing
+  # for this question, whatever it is worth for patches and the SDK repoint.
+  #
+  # The 21, measured, in two classes:
+  #   14 point at a SIBLING pin (IOKitUser -> IONetworkingFamily, IOStorageFamily, xnu;
+  #      JavaScriptCore -> WTF; vim -> ruby; glut and iokitd -> IOKitUser; ...). Laying the
+  #      farm out as <farm>/<pin> rather than by sanitised name fixes every one of these,
+  #      because the number of ../ from the link up to src/external is preserved.
+  #    7 leave src/external entirely: 6 from bootstrap_cmds and libnotify into
+  #      darwin/Developer/Platforms/.../usr/include, and security -> darlingserver/duct-tape/
+  #      xnu, which is first-party vendored and not a pin at all. Those need rewriting to an
+  #      absolute store path, the same treatment #54 needs for group escapes.
+  #
+  # Until both classes are handled the pins come from the assembled tree, which is what they
+  # always did. With sourceGroups off this costs nothing: stageProject already embeds the whole
+  # projectSrc, so the pins are not what keeps that path shared.
+  pinPath = p: "${darlingSrc}/${p}";
 
   # ---- the graph, grouped the way this lowers it -------------------------
 
