@@ -1146,10 +1146,13 @@ has been true six times running, each time a check freshly written.
   and `fat.h` and that **`mach/machine.h` is never opened at all**, and the host clang defines
   no `__APPLE__`, which is the guard doing its job. So no include path change is needed and
   `foreign` must NOT be added.
-  WHAT IS STILL UNTESTED is buck2's own staging of that root, which is a different question
-  from whether the headers work: `cc_header_root` copies into a tree, and buck2 globs do not
-  traverse a symlinked directory (the recorded DBusKit trap), and `foreign/` does contain one
-  (`arm -> i386`). That is what running buck2 would answer.
+  The one remaining doubt was buck2's own staging, since globs do not traverse a symlinked
+  directory (the recorded DBusKit trap) and `foreign/` contains one. **Bounded, and it does not
+  matter here**: the whole root holds 331 real headers and exactly TWO symlinked directories,
+  `foreign/arm` and `foreign/mach/arm`, both pointing at `i386`, together reaching 31 ARM
+  headers that x86_64 never needs and that `foreign/` keeps off the include path anyway. The
+  two headers these tools do need are real files. So nothing about staging blocks the host
+  tools; running buck2 only confirms it.
   The stale comment stays put on purpose: it is a BUCK file, so correcting it alone costs ld64
   plus the graph. Fold it into the next batch.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
