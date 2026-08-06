@@ -1026,81 +1026,35 @@ has been true six times running, each time a check freshly written.
   `.drv` for a store path finds nothing and the derivation has to come from the closure;
   and for the same reason the check is whether nix RERUNS THE BUILDER, not whether a
   drvPath moved.
-- **#55 DONE, #54 PROVEN ON ONE TARGET AND THEN TURNED BACK OFF.** Correcting an earlier
-  version of this entry that claimed #54 was done: it cut the cascade and it broke the
-  endpoint, so it is off in `packages.darling-buck2-prefix-min` and lives in
-  `packages.darling-buck2-prefix-grouped` until the escape rewrite below exists.
-  WHY IT BROKE: the endpoint failed 1,194 targets on missing headers after 1,163 had built,
-  first `CoreServices/MacTypes.h`. Not a group-LIST gap: `Accounts_obj` does stage
-  `darwin/frameworks/CoreServices`, and that group store does hold the header. The header is
-  ITSELF a relative symlink to `../../../../basic-headers/MacTypes.h`, which under one shared
-  `projectSrc` resolved inside the same store path and under groups resolves four levels above
-  the CoreServices store path and dangles. **2,306 of the 2,970 symlinks under darwin, src and
-  linux are relative and cross a group boundary**, across 15 groups, so that is the rule, not
-  an exception. (Corrected from 2,490 across 8: the first measurement approximated the
-  grouping rule instead of using the one in `scripts/buck2-graph-sources.py`, and the wrong
-  numbers reached commit 18f54931. `scripts/buck-escape-check.py` now copies the real rule.)
-  Concentrated though: `darwin/Developer/Platforms` 2,189, `darwin/frameworks/
-  SystemConfiguration` 52, `src/opendirectory_internal/include` 24, `src/startup/mldr` 16,
-  `src/libm/include` 7, and ten groups with three or fewer.
-  **1,989 of the 2,306 land in an UNGROUPED destination**, which is to say in the pins.
-  **SPLITTING THE SOURCE INTO PER-SUBTREE STORES CANNOT WORK FOR THIS TREE, and that is now
-  measured rather than suspected.** Two results kill it:
-  1. A link farm cannot repair a relative escape. Laying the pin farm out at
-     `src/external/<pin>` puts the sibling exactly where `../../../` points, and
-     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` still gives
-     `/nix/store/xnu`, because the kernel resolves `..` against the REAL parent once it has
-     crossed the farm symlink. The sibling is present the whole time and never consulted.
-  2. Rewriting escapes to absolute store paths just relocates the problem, because the
-     destination store has escapes of its own. Doing it for the pins took them from 143
-     dangling links to **413**. The reason is the SDK: extracted on its own,
-     `darwin/Developer/.../MacOSX.sdk/usr/include` has **1,987 dangling of 1,987 symlinks**,
-     every single one, against 0 of 2,928 inside the assembled tree. That directory is nothing
-     but relative links into the rest of the project.
-  Rewriting every escape recursively would reconstruct the single root with absolute paths AND
-  couple each store to the others, destroying the invalidation win that motivated splitting.
-  **NEITHER EXISTING FLAG CUTS IT, and an earlier version of this entry wrongly said
-  `narrowSources` did.** Probed on `libsimple_darlingserver` with `narrowSources` on and the
-  minimal target list: editing `ACAccount.m` RAN the compile and moved its output. The reason
-  is in the lowering already: `projectSrc` is ONE `srcUnion` for every target, so narrowing
-  shrinks the shared path from 306,019 files to about 131,048 and it stays shared.
-  So the two flags each have one half:
-  - `sourceGroups` has the right GRANULARITY (per target) and the wrong MECHANISM (it splits
-    the root, and the relative symlink web does not survive that).
-  - `narrowSources` has the right MECHANISM (one root, keyed on filtered content) and the
-    wrong GRANULARITY (one union shared by all targets).
-  **Their combination is what can work, but NOT at evaluation time.** A per-target
-  `builtins.path` rooted at the project root gives one root and per-target content. Measured
-  before building it: eval is 22s with the shared source and 26s with ONE union, so a union
-  costs about **4 seconds**, and 3,225 of them is **3.6 hours of evaluation**. That closes the
-  eval-time route.
-  What is left is the same idea at BUILD time: one **content-addressed subset derivation per
-  target**, copying that target's files out of the shared `projectSrc` and reproducing the
-  project layout. It reruns whenever `projectSrc` moves, which is cheap, but its OUTPUT is
-  addressed by the subset, so a target whose own files did not change collapses to the same
-  path and its compile does not rerun. It also keeps ONE shared input rather than many, which
-  matters: 147 distinct pin paths per staging script is what took the daemon to 4.9 GB and
-  stalled it, while one shared 4 GB input is a single path.
-  Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
-  ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
-  4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took
-  that to 0, and the order the parts had to arrive in is the lesson.
-  SOURCE GROUPS ALONE BOUGHT NOTHING. With `sourceGroups` on and nothing else, the same edit
-  changed 588 of the 601 lines in the target's grouped staging script, and every changed line
-  was a `darling-src` path: the 295 pin symlinks were planted from the assembled tree, which
-  is ONE path holding the whole project. Splitting the first-party side left the shared path
-  alive through the pins. Three parts were needed: `darling-src` exposes `passthru.pinPaths`,
-  one store path per pin (same fetch, patch and SDK-symlink-repoint the assembled tree does);
-  `nix/cctools-port.nix` is content addressed, because the two ld64 builds from the clean and
-  edited trees are BIT IDENTICAL so CA collapses them; and the pins are staged through a
-  linkFarm, not named individually.
-  THE FARM IS NOT COSMETIC. With source groups there is one staging script PER TARGET, so
-  3,225 scripts naming 147 pin paths each is half a million references: the endpoint build sat
-  35 minutes with the daemon worker growing 230 MB a minute to 4.9 GB, zero builders started.
-  Through a farm the worker is flat at 1.44 GB. That is #48 again, data per derivation.
-  `scripts/buck-pin-store-check.nu` compares all 147 per-pin stores to the assembled tree by
-  NAR hash and is verified both ways (the unpatched xnu fetch does NOT match). Still paid on
-  every edit, and not hidden: an ld64 rebuild (#64) and a graph rebuild (#56), 26 minutes.
+- **#55 DONE. #54 IS NOT, AND EVERY SHORTCUT TO IT IS NOW CLOSED BY MEASUREMENT.** The goal is
+  reachable: with `sourceGroups` on, editing `ACAccount.m` and rebuilding
+  `libsimple_darlingserver` ran **0 builders**, against 323 with neither flag. What fails is
+  every available way of getting there.
+  **Splitting the source into per-subtree stores cannot work for this tree.** A group is staged
+  as one symlink to its own store path, and **2,306 of the 2,970 symlinks under `darwin`, `src`
+  and `linux` are relative and cross a group boundary** (15 groups; `darwin/Developer/Platforms`
+  2,189, `frameworks/SystemConfiguration` 52, `src/opendirectory_internal/include` 24). The
+  endpoint failed 1,194 targets on `CoreServices/MacTypes.h`, which is itself a link to
+  `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
+  1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
+     parent once it crosses the farm symlink, so
+     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` gives `/nix/store/xnu`
+     while `<farm>/src/external/xnu` exists and is never consulted.
+  2. REWRITING ESCAPES TO ABSOLUTE PATHS RELOCATES THE PROBLEM, since the destination store has
+     escapes of its own: for the pins it took 143 dangling links to **413**. The SDK
+     `usr/include` extracted alone is **1,987 dangling of 1,987 symlinks**, against 0 of 2,928
+     inside the assembled tree. It is nothing but relative links into the rest of the project.
+  **Neither existing flag cuts it either.** `sourceGroups` has the right granularity and the
+  wrong mechanism; `narrowSources` the reverse, since `projectSrc` is ONE `srcUnion` for every
+  target (probed: the compile RAN). And their combination is closed at evaluation time: one
+  `builtins.path` union costs **~4 seconds**, so 3,225 of them is **3.6 hours of eval**.
+  **What is left untried** is the same idea at BUILD time: one CONTENT-ADDRESSED SUBSET
+  DERIVATION PER TARGET, cut from the shared `projectSrc` and reproducing the project layout.
+  One root so the web resolves, one shared input so the daemon does not blow up (147 distinct
+  paths per staging script is what took it to 4.9 GB and stalled it), and an output addressed
+  by the subset so an unchanged target collapses to the same path.
+  `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
+  <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
