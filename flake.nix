@@ -498,6 +498,30 @@
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
             inherit pkgs darlingSrc ld64;
             allPins = true;
+            # COARSE PINS ON (#67), and THIS endpoint is the one it was verified against.
+            # buck-src is 59 percent of the graph and nobody edits a file in it: a pin moves
+            # as a whole new upstream release or not at all, so one derivation per target
+            # there buys nothing and costs a staging pass each.
+            #
+            # MEASURED here by evaluation, before anything was built:
+            #   derivations in the closure   10,093 -> 9,490   (603 fewer)
+            #   of which stage-trees          4,159 -> 4,159   (unchanged)
+            #   real target derivations       2,333 -> 1,730   (25.8 percent fewer)
+            # The estimate this replaces said about 1,196 fewer and 31 percent fewer staging
+            # passes. That number was the FULL prefix, not this one.
+            #
+            # THEN BUILT AND COMPARED BY CONTENT, which is the only valid check here because
+            # the prefix output is deferred and its path moves either way. 1,049 derivations
+            # built, zero failures, and the result is byte identical to the fine grained
+            # baseline: 9,979 entries and sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=
+            # both ways, at two DIFFERENT store paths.
+            #
+            # THE FULL PREFIX IS NOT VERIFIED COARSE, which is why this is set here and the
+            # default in darlingBuck2Lower.nix stays off. That endpoint carries the GUI and
+            # scripting cones this one drops, and packages.darling-buck2-prefix-coarse is the
+            # vehicle for checking it the same way. Deleting this one line restores the fine
+            # grained baseline.
+            coarsePins = true;
             # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
             # extraTools exists: a wrap_elf action's fifth argument is the elf_lib_dirs
             # string, so the recorded argv carries those store paths as PLAIN TEXT, the
@@ -712,46 +736,6 @@
           };
         in
         lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
-
-      # COARSE PINS ON THE MINIMAL PREFIX (#67), which is the one that can actually be checked.
-      # darling-buck2-prefix-coarse above lowers the FULL target list, and the content oracle
-      # this port verifies against is the minimal prefix, so proving "coarse changes nothing"
-      # needs a coarse build of the same prefix the oracle describes.
-      #
-      # Identical to darling-buck2-prefix-min in every other argument, on purpose and by
-      # duplication rather than by a shared function, for the reason the narrow variant states:
-      # the comparison is only honest if the baseline expression stays byte for byte what it
-      # was, and a refactor cannot promise that without a second evaluation to check it.
-      #
-      #   nix build .#darling-buck2-prefix-min-coarse
-      packages.darling-buck2-prefix-min-coarse =
-        pkgs:
-        let
-          darlingSrc = import ./nix/lib/darling-src.nix {
-            inherit pkgs;
-            baseSrc = ./.;
-          };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
-          lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
-            allPins = true;
-            coarsePins = true;
-            # Same reason as every other endpoint here: a wrap_elf argv carries these store
-            # paths as PLAIN TEXT, so Nix cannot see the dependency and the sandbox would not
-            # have them.
-            extraTools =
-              let
-                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
-              in
-              di.wrappedLibs ++ di.hostHeaderLibs;
-            graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
-              allPins = true;
-              targets = import ./nix/lib/buck2-targets-min.nix;
-            };
-          };
-        in
-        lowered.named."root//buck/prefix-min:darling_prefix_min" // { inherit (lowered) stageProject named; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.
