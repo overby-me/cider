@@ -210,7 +210,14 @@ def main(argv: list[str]) -> int:
             # executable that arrives without its +x bit fails at exec time, a long way from
             # here and with nothing pointing back at the skeleton. Applied to emptied files
             # too, so the tree differs from the original in CONTENT only.
-            os.chmod(dst, os.stat(p).st_mode & 0o7777)
+            #
+            # NOT FOR SYMLINKS, and that is not a nicety: os.stat FOLLOWS the link, this tree
+            # is full of DANGLING ones (the SDK farm alone points at headers that projectSrc
+            # does not contain), and the first run died on
+            # AppKit.framework/Headers with FileNotFoundError. A symlink has no mode of its
+            # own that survives being recreated anyway.
+            if not os.path.islink(p):
+                os.chmod(dst, os.stat(p).st_mode & 0o7777)
 
     print(f"skeleton: {copied} file(s) copied whole, {emptied} emptied, "
           f"{links} symlinks, {dirs} directories", file=sys.stderr)
