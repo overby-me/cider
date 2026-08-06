@@ -39,6 +39,7 @@ Usage:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -509,8 +510,27 @@ def main(argv: list[str]) -> int:
     # A tab separates the two, so neither field may contain one, and neither may contain a
     # newline. Nothing in buck2's output does. Assert rather than trust it: a corrupted
     # table would surface as a dangling symlink an hour into a build.
+    # NAMED BY CONTENT, not by farm index. Measured on the real output: 5,254 farms wrote
+    # 10,508 files and 125.5 MB, but only 1,316 of those files were distinct, so 96 percent
+    # of the data output was the same table staged again under another number (2,066 of the
+    # .dirs files were empty alone). Two farms that stage the same links get one file here,
+    # which takes the data output to about 5 MB, and every derivation that reads a table
+    # references that instead.
     tree_index = {}
-    for i, path in enumerate(sorted(trees)):
+    written = {}
+
+    def write_once(text: str, ext: str) -> str:
+        """Write text once under a content derived name and return its relative path."""
+        key = (ext, text)
+        rel = written.get(key)
+        if rel is None:
+            rel = "treelinks/" + hashlib.sha256(text.encode()).hexdigest()[:16] + ext
+            written[key] = rel
+            with open(os.path.join(outdir, rel), "w") as fh:
+                fh.write(text)
+        return rel
+
+    for path in sorted(trees):
         links = trees[path]
         if not links:
             tree_index[path] = {"n": 0}
@@ -518,7 +538,6 @@ def main(argv: list[str]) -> int:
         for name, target in links.items():
             if "\t" in name or "\n" in name or "\t" in target or "\n" in target:
                 raise SystemExit(f"link name or target holds a tab or newline: {path} {name!r} -> {target!r}")
-        base = f"treelinks/{i:05d}"
         os.makedirs(os.path.join(outdir, "treelinks"), exist_ok=True)
 
         # DERIVABLE TARGETS. A link target is almost always ("../" * up) + prefix + the link
@@ -560,20 +579,18 @@ def main(argv: list[str]) -> int:
                         f"treelinks: derived target does not reproduce the real one for {path}:"
                         f" {name!r} is {target!r} but the rule gives {rebuilt!r}")
 
-        with open(os.path.join(outdir, base + ".tsv"), "w") as fh:
-            if derive_k is not None:
-                for name in sorted(links):
-                    fh.write(name + "\n")
-            else:
-                for name, target in sorted(links.items()):
-                    fh.write(f"{name}\t{target}\n")
+        if derive_k is not None:
+            table = "".join(name + "\n" for name in sorted(links))
+        else:
+            table = "".join(f"{name}\t{target}\n" for name, target in sorted(links.items()))
         # The directories to make, ONCE and sorted, so the staging script does not run a
         # dirname subshell per link at BUILD time as well.
         dirs = sorted({os.path.dirname(n) for n in links} - {""})
-        with open(os.path.join(outdir, base + ".dirs"), "w") as fh:
-            for d in dirs:
-                fh.write(d + "\n")
-        tree_index[path] = {"n": len(links), "table": base + ".tsv", "dirs": base + ".dirs"}
+        tree_index[path] = {
+            "n": len(links),
+            "table": write_once(table, ".tsv"),
+            "dirs": write_once("".join(d + "\n" for d in dirs), ".dirs"),
+        }
         if derive_k is not None:
             # The reader is told HOW to read the table here rather than by a header line in
             # it, so the staging script never parses a format marker.
@@ -631,6 +648,9 @@ def main(argv: list[str]) -> int:
     print(f"  {len(tree_index)} staged tree(s) holding "
           f"{sum(t['n'] for t in tree_index.values())} link(s), written as tables beside "
           f"the graph rather than inside it")
+    if written:
+        print(f"  {len(written)} distinct table file(s) for {2 * sum(1 for t in tree_index.values() if t['n'])} "
+              f"farm slots, named by content so identical farms share one file")
 
     # The join is only sound while no argument contains the separator. Check it against
     # whatever the last invocation ran rather than assuming it stays true.
