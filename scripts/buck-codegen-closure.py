@@ -73,7 +73,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # The two the revert was about must be IN; two ordinary buck-src sources must be OUT. A closure
 # that cannot fail this is not measuring anything.
-MUST_BE_REAL = ("src/startup/rtsig.c", "src/libelfloader/wrapgen/wrapgen.cpp")
+# linux/server/wrapper.h is here because it ESCAPED the first version of this closure and cost
+# a failed skeleton graph build to find. bindgen reads it, the daemon includes the result, and
+# emptying it produced 83 rustc errors rather than anything pointing at the skeleton.
+MUST_BE_REAL = (
+    "src/startup/rtsig.c",
+    "src/libelfloader/wrapgen/wrapgen.cpp",
+    "linux/server/wrapper.h",
+)
 MUST_NOT_BE = ("buck-src/adv_cmds/finger/finger.c", "buck-src/vim/vim/src/main.c")
 
 
@@ -86,6 +93,29 @@ def _load_generator():
     return mod
 
 
+def action_category(identity: str) -> str:
+    """The trailing "(category detail)" of an aquery identity, e.g. c_compile or bindgen."""
+    parts = identity.rsplit("(", 1)
+    return parts[1].split(" ")[0].rstrip(")") if len(parts) > 1 else ""
+
+
+# EVERY CATEGORY THAT RUNS SOMETHING AND FEEDS SOMETHING ELSE. Taken from the port's own rules
+# rather than guessed, and it is the complement of the four that only consume: c_compile,
+# cxx_compile, darwin_link, archive, link, rustc, rustc_link.
+#
+# THE STAGED FARM ROOTS ALONE WERE NOT ENOUGH, and this is what proved it. The first version of
+# this script rooted only artifacts a staged farm contains, which finds mig, the ELF wrappers
+# and rtsig but MISSES bindgen: dtape_bindings is consumed by a cargo build through OUT_DIR and
+# never lands in a farm. So linux/server/wrapper.h was emptied, bindgen wrote nothing, and the
+# skeleton graph died with 83 rustc errors in sched.rs on an unresolved crate::bindings. The
+# experiment is what found it; the closure did not.
+_GENERATOR_CATEGORIES = frozenset([
+    "mig", "elf_wrapper", "bison", "flex", "bindgen", "configure_file",
+    "forwarded_headers", "stdout_gen", "script_gen", "host_gen", "preprocess",
+    "prefix_gen_dir", "prefix_tree",
+])
+
+
 def codegen_targets(graph: dict, trees: dict) -> set:
     actions = graph["actions"]
     producer, by_target = {}, collections.defaultdict(list)
@@ -95,7 +125,7 @@ def codegen_targets(graph: dict, trees: dict) -> set:
         for o in a.get("outputs") or []:
             producer[str(o)] = label
 
-    # The roots: artifacts a staged farm actually contains that came out of the build rather
+    # Root 1: artifacts a staged farm actually contains that came out of the build rather
     # than out of the project. buck2-graph-sources.py keeps the complement of this set, the
     # links that resolve to project sources.
     generated = set()
@@ -106,6 +136,12 @@ def codegen_targets(graph: dict, trees: dict) -> set:
                 generated.add(dest)
 
     need = {producer[d] for d in generated if d in producer}
+    # Root 2: anything that RUNS a generator, whether or not its output is ever staged.
+    need |= {
+        a["identity"].split(" (")[0]
+        for a in actions
+        if action_category(a["identity"]) in _GENERATOR_CATEGORIES
+    }
     frontier = set(need)
     while frontier:
         nxt = set()

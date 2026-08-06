@@ -148,7 +148,13 @@ def main(argv: list[str]) -> int:
 
     if keep_path:
         with open(keep_path) as fh:
-            fresh = {ln.strip() for ln in fh if ln.strip()}
+            fresh = {
+                ln.strip() for ln in fh
+                if ln.strip() and not ln.lstrip().startswith("#")
+            }
+        # The generated list is the DELTA against _NEVER_EMPTY, so union rather than replace:
+        # the five below are inside src/ and would otherwise have to be restated in it.
+        fresh |= set(_NEVER_EMPTY_FILES)
         # A keep list that empties one of the five below would reintroduce the silent failure,
         # so a fresh list REPLACES the default only after it is shown to cover it.
         missing = _NEVER_EMPTY_FILES - fresh
