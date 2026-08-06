@@ -27,8 +27,15 @@ The one thing that DOES need real contents is the include closure, which parses
 #include "..." out of real bytes. That is not analysis and it does not belong here; it runs
 as its own pass over the real tree.
 
+THE GENERATOR INPUTS ARE NOW COVERED, which is what the skeleton was missing when it was
+reverted. Emptying the C family outside src/external still emptied five files that are
+compiled into generators this derivation RUNS, and an emptied generator does not fail, it
+writes an empty output. scripts/buck-codegen-closure.py computes the set that must keep real
+contents, 1,743 files of 74,621, and all but five are already covered by _NEVER_EMPTY. Those
+five are listed below and can be replaced with a freshly computed list via --keep.
+
 Usage:
-  buck-skeleton.py <src> <out>
+  buck-skeleton.py <src> <out> [--keep <file of paths to never empty>]
 """
 from __future__ import annotations
 
@@ -76,8 +83,39 @@ _EMPTIABLE = (
 _NEVER_EMPTY = ("buck-src/", "buck-rust/", "src/external/")
 
 
+# THE FIVE FILES THE PREFIX LIST ABOVE DOES NOT COVER, and the reason the skeleton was
+# reverted rather than fixed. These are C family and outside src/external, so they were
+# emptied, and every one of them is compiled into a GENERATOR that this derivation then RUNS.
+# An emptied rtsig.c does not fail: it compiles, links, runs, and writes an EMPTY header, so
+# the graph comes out quietly wrong and the failure lands somewhere else entirely.
+#
+# NOT A GUESS AND NOT A HAND LIST. scripts/buck-codegen-closure.py computes which files must
+# keep real contents, from the staged farms rather than from argv reachability, and says 1,743
+# of 74,621. Intersecting that with may_empty leaves exactly these five: the other 1,738 are
+# already covered by _NEVER_EMPTY.
+#
+# REGENERATE THIS, DO NOT EDIT IT BY HAND. Adding a codegen edge whose sources are not here
+# reintroduces the silent failure above. Recompute with
+#   scripts/buck-codegen-closure.py <graph.json> <graph-data> --sources <target-sources.json>
+# and prefer --keep below, which takes a freshly computed list, over this baked default.
+_NEVER_EMPTY_FILES = frozenset([
+    "src/libelfloader/wrapgen/wrapgen.cpp",
+    "src/libsimple/include/libsimple/base.h",
+    "src/libsimple/include/libsimple/lock.h",
+    "src/libsimple/src/lock.c",
+    "src/startup/rtsig.c",
+])
+
+# Replaced wholesale by --keep when one is given.
+_keep_files = _NEVER_EMPTY_FILES
+
+
 def may_empty(rel: str) -> bool:
-    return rel.endswith(_EMPTIABLE) and not rel.startswith(_NEVER_EMPTY)
+    return (
+        rel.endswith(_EMPTIABLE)
+        and not rel.startswith(_NEVER_EMPTY)
+        and rel not in _keep_files
+    )
 
 
 def is_build_file(rel: str) -> bool:
@@ -93,10 +131,37 @@ def is_build_file(rel: str) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        print(__doc__.strip().splitlines()[-2], file=sys.stderr)
+    global _keep_files
+    args = list(argv[1:])
+    keep_path = ""
+    if "--keep" in args:
+        i = args.index("--keep")
+        if i + 1 >= len(args):
+            print("--keep needs a file of project-relative paths", file=sys.stderr)
+            return 2
+        keep_path = args[i + 1]
+        del args[i:i + 2]
+    if len(args) != 2:
+        print(__doc__.strip().splitlines()[-1], file=sys.stderr)
         return 2
-    src, out = os.path.abspath(argv[1]), os.path.abspath(argv[2])
+    src, out = os.path.abspath(args[0]), os.path.abspath(args[1])
+
+    if keep_path:
+        with open(keep_path) as fh:
+            fresh = {ln.strip() for ln in fh if ln.strip()}
+        # A keep list that empties one of the five below would reintroduce the silent failure,
+        # so a fresh list REPLACES the default only after it is shown to cover it.
+        missing = _NEVER_EMPTY_FILES - fresh
+        if missing:
+            print("skeleton: the --keep list drops files known to feed a generator:",
+                  file=sys.stderr)
+            for m in sorted(missing):
+                print("    " + m, file=sys.stderr)
+            print("  An emptied generator input does not fail, it produces an empty output.",
+                  file=sys.stderr)
+            return 2
+        _keep_files = frozenset(fresh)
+        print(f"skeleton: keeping {len(_keep_files)} file(s) from {keep_path}", file=sys.stderr)
 
     copied = emptied = links = dirs = 0
     for root, dirnames, filenames in os.walk(src, followlinks=False):
