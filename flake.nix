@@ -265,11 +265,24 @@
       #            codegen closure was rooted only at staged farms and never saw it.
       #   3. 431s  with the closure widened to every generator CATEGORY, a long list of
       #            buck-src _xtrace_mig_obj compiles plus dyld, compiler_rt_final and
-      #            system_dyld_final fail. Those targets own sources are intact (buck-src is
-      #            never emptied), so what they are missing is emptied darwin/ SDK headers,
-      #            and the open question is why materialize.bxl reaches a COMPILE at all when
-      #            it deliberately stopped ensuring default outputs. buck2 own error text is
-      #            truncated in the nix log, so answering it needs buck2 run directly.
+      #            system_dyld_final fail.
+      #   4. 539s  THE ACTUAL CAUSE, once the dump stopped truncating buck2 stderr to the last
+      #            1500 characters. Inside the BXL step buck2 prints
+      #              Waiting on //linux/server:dtape_bindings -- action (bindgen ...)
+      #              Waiting on //src/hosttools:darling-coredump -- action (cxx_compile ...)
+      #              Action failed: //buck-src:libtrustd_obj (c_compile TrustURLSessionCache.m)
+      #            on Foundation/NSAppleEventDescriptor.h "expected a type".
+      #
+      # SO THE DUMP COMPILES, and that is the blocker rather than the keep list. Widening the
+      # list only feeds more real headers to compiles that should not run at all.
+      # buck/bxl/materialize.bxl says in its own comment that it stopped ensuring DEFAULT
+      # OUTPUTS for exactly this reason, and that part of its code is correct: the loop adds
+      # only CcLibInfo.include_dirs and InProcInfo.artifacts. Something in those still reaches
+      # objects. For libtrustd_obj specifically, audited: its InProcInfo.artifacts is EMPTY and
+      # every CcLibInfo.include_dir is bound to a DIFFERENT target, so it is not being pulled
+      # in through its own providers. Unproven hypothesis: the symlinked dependency FARMS that
+      # InProcInfo carries link to build outputs, so ensuring a farm builds its contents.
+      # Answer it by printing, per ensured artifact, which target it is bound to.
       #
       #   nix build .#darling-buck2-graph-min-skeleton -L
       packages.darling-buck2-graph-min-skeleton =
