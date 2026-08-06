@@ -1026,11 +1026,26 @@ has been true six times running, each time a check freshly written.
   `.drv` for a store path finds nothing and the derivation has to come from the closure;
   and for the same reason the check is whether nix RERUNS THE BUILDER, not whether a
   drvPath moved.
-- **DONE (#55 then #54): a first-party source edit now rebuilds ZERO compiles.** Measured on
-  one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/ACAccount.m`
-  which it does not read. #55 content-addressed the lowered derivations: 0 of 4,159
-  stage-trees ran, but 323 compiles still did and were climbing. #54 closed that, and the
-  order the parts had to arrive in is the lesson.
+- **#55 DONE, #54 PROVEN ON ONE TARGET AND THEN TURNED BACK OFF.** Correcting an earlier
+  version of this entry that claimed #54 was done: it cut the cascade and it broke the
+  endpoint, so it is off in `packages.darling-buck2-prefix-min` and lives in
+  `packages.darling-buck2-prefix-grouped` until the escape rewrite below exists.
+  WHY IT BROKE: the endpoint failed 1,194 targets on missing headers after 1,163 had built,
+  first `CoreServices/MacTypes.h`. Not a group-LIST gap: `Accounts_obj` does stage
+  `darwin/frameworks/CoreServices`, and that group store does hold the header. The header is
+  ITSELF a relative symlink to `../../../../basic-headers/MacTypes.h`, which under one shared
+  `projectSrc` resolved inside the same store path and under groups resolves four levels above
+  the CoreServices store path and dangles. **2,490 of the 2,970 symlinks under darwin, src and
+  linux are relative and cross a group boundary**, so that is the rule, not an exception.
+  Concentrated though: `darwin/Developer/Platforms` 2,189, `darwin/frameworks/
+  SystemConfiguration` 52, `src/opendirectory_internal/include` 24, `src/startup/mldr` 16, and
+  four groups with two or fewer. The fix is to rewrite an escaping link to an ABSOLUTE path
+  into the store of the group or pin it lands in, at group build time; most land in pins,
+  which now have stable per-pin stores.
+  Measured on one target, `libsimple_darlingserver`, editing `darwin/frameworks/Accounts/src/
+  ACAccount.m` which it does not read. #55 content-addressed the lowered derivations: 0 of
+  4,159 stage-trees ran, but 323 compiles still did and were climbing. #54 with groups on took
+  that to 0, and the order the parts had to arrive in is the lesson.
   SOURCE GROUPS ALONE BOUGHT NOTHING. With `sourceGroups` on and nothing else, the same edit
   changed 588 of the 601 lines in the target's grouped staging script, and every changed line
   was a `darling-src` path: the 295 pin symlinks were planted from the assembled tree, which
