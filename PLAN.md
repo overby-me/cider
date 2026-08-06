@@ -1137,11 +1137,21 @@ has been true six times running, each time a check freshly written.
   the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
   64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
   `include_subdirs`, so `foreign/` cannot collide into the root. And `include/mach/` has no
-  `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first. Adding `foreign`
-  is almost certainly the wrong fix; the leading hypothesis is that the failing header is
-  Darling's own SDK one, reached because the host-tier compile carries Darwin flags it should
-  not. The stale comment stays put on purpose: it is a BUCK file, so correcting it alone costs
-  ld64 plus the graph.
+  `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first.
+  **THEN MEASURED, and the compile the comment says fails SUCCEEDS.** Run clang directly, no
+  buck2 and no Nix, against the same include root the BUCK targets already name:
+  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c src/buildtools/getuuid.c` exits
+  0, and so does `elfdep.c`. Verified it can fail: drop that one `-I` and it dies on
+  `mach-o/loader.h` not found. `-H` says the headers opened are cctools' own `mach-o/loader.h`
+  and `fat.h` and that **`mach/machine.h` is never opened at all**, and the host clang defines
+  no `__APPLE__`, which is the guard doing its job. So no include path change is needed and
+  `foreign` must NOT be added.
+  WHAT IS STILL UNTESTED is buck2's own staging of that root, which is a different question
+  from whether the headers work: `cc_header_root` copies into a tree, and buck2 globs do not
+  traverse a symlinked directory (the recorded DBusKit trap), and `foreign/` does contain one
+  (`arm -> i386`). That is what running buck2 would answer.
+  The stale comment stays put on purpose: it is a BUCK file, so correcting it alone costs ld64
+  plus the graph. Fold it into the next batch.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
