@@ -1055,6 +1055,21 @@ has been true six times running, each time a check freshly written.
   by the subset so an unchanged target collapses to the same path.
   `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
   <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
+- **#64: ld64 is content addressed, and narrowing its source is NOT possible as scoped.** The
+  rebuild no longer propagates (its outputs from a clean tree and from an edited one are bit
+  identical), but it still costs 26 to 28 minutes on any first-party edit. The plan was to drop
+  `darwin/frameworks` and `darwin/private-frameworks` on the premise that the linker compiles
+  nothing in them. **That premise is false**, and two fast experiments show it:
+  deleting the trees fails at cmake GENERATE, not on dangling SDK symlinks but on
+  `add_dependencies(QuartzCore CoreVideo)` in `src/external/cocotron` reaching a target defined
+  under `darwin/frameworks`; and blanking only the implementation files gets past configure and
+  then fails at LINK, because CFNetwork needs `_SCNetworkReachabilitySetCallback` and friends
+  that `darwin/frameworks/SystemConfiguration` defines.
+  One measurement explains both: **this ld64 derivation compiles across 369 distinct
+  directories**. It is most of Darling, not a cctools build, which is also why it takes half an
+  hour. Reducing it means changing WHAT it depends on in cmake, not which files reach the
+  derivation, and that work should start from the ninja graph (26,351 edges) rather than from
+  guesses about directories. Both experiments are reverted.
 - **DONE (#50): the graph derivation has two outputs and is content addressed, so a
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
