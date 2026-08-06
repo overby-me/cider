@@ -17,6 +17,18 @@
 # It is a check that CAN fail: drop the patch loop or the repoint from pinStore and pins that
 # need them come out different, which is exactly the drift a shared string could not prevent.
 #
+# WHAT IT CANNOT CATCH, and this bit hard. A NAR hash records a symlink TARGET as a STRING, so
+# two identical strings that resolve to different places because the ROOT moved are identical
+# to it. It passed the change that staged pins from their own store paths, and that change
+# broke 1,194 targets: 21 links reach out of their pin, and one of them is a directory link, so
+# the effect was 143 dangling links. For that question use scripts/buck-escape-check.py:
+#   buck-escape-check.py pins --root <assembled darling-src>   # are they self contained
+#   buck-escape-check.py resolve <staged tree>                 # does it work AS STAGED
+# Per-pin staging is REVERTED and the approach is disproven (a subtree of this project has no
+# self contained existence: the SDK usr/include alone is 1,987 dangling of 1,987 symlinks when
+# extracted). This check remains useful only for the narrower question it actually asks, which
+# is whether pinStore reproduces the assembled tree's BYTES.
+#
 # Usage:
 #   scripts/buck-pin-store-check.nu                          # build both sides, compare all
 #   scripts/buck-pin-store-check.nu --src <darling-src path> # compare against a given tree
