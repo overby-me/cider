@@ -25,9 +25,17 @@ nix/lib/darling-src.nix and only exists in the assembled store path. Walking the
 walks nothing and finds nothing wrong. So pins mode requires --root and refuses to pass on a
 boundary that held no symlinks at all.
 
+COUNT THE EFFECT, NOT JUST THE CAUSE. `pins` finds 21 escaping links across 12 pins, which
+sounds negligible. `resolve` on the same pin stores finds **143 dangling links of 3,861 across
+15 pins**, because one escaping DIRECTORY link carries every file link under it: IOKitUser has
+3 escapes and 117 dangling links, since darling/include/IOKit/*.h all point through
+darling/submodules/xnu. Seven times the blast radius of the escape count. Quote the resolve
+number when describing the damage.
+
 Usage:
   buck-escape-check.py pins --root /nix/store/...-darling-src   # per-pin store boundary
   buck-escape-check.py groups                                   # the #54 source-group boundary
+  buck-escape-check.py resolve <dir> ...                        # does a tree AS STAGED work
   buck-escape-check.py path <dir> ...                           # arbitrary boundaries
 
 Find the assembled tree with:
@@ -151,6 +159,37 @@ def main(argv):
         found, walked = escapes(boundary, ["darwin", "src", "linux"], tree)
         found = [f for f in found if f[3] != "<no group>"]
         return report("groups", found, walked)
+
+    if mode == "resolve":
+        # The OTHER half of the question. `groups` and `pins` ask whether a subtree could be
+        # staged on its own; this asks whether a tree AS STAGED actually works, by following
+        # every symlink in it. That is what a compiler does, and it is the check to run on a
+        # pin farm or a staged group once the escapes have been rewritten.
+        roots = rest or ["."]
+        dangling, walked = [], 0
+        for r in roots:
+            base = r if os.path.isabs(r) else os.path.join(tree, r)
+            for dp, dns, fns in os.walk(base, followlinks=False):
+                dns[:] = [d for d in dns if d not in (".git", ".jj")]
+                for n in dns + fns:
+                    p = os.path.join(dp, n)
+                    if not os.path.islink(p):
+                        continue
+                    walked += 1
+                    if not os.path.exists(p):  # exists FOLLOWS links, lexists would not
+                        dangling.append((os.path.relpath(p, base), os.readlink(p)))
+        print(f"resolve {' '.join(roots)}: {len(dangling)} dangling of {walked} symlinks")
+        if walked == 0:
+            print("  REFUSING: no symlink was walked, so this proved nothing")
+            return 2
+        if not dangling:
+            print("  every symlink resolves where it is")
+            return 0
+        for rel, t in dangling[:10]:
+            print(f"    {rel}  ->  {t}")
+        if len(dangling) > 10:
+            print(f"    ... and {len(dangling) - 10} more")
+        return 1
 
     if mode == "path":
         roots = rest
