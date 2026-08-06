@@ -456,15 +456,28 @@
                 di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
-            # #54, ON HERE FIRST because this endpoint is the cheap one to prove it on. The
-            # #55 probe measured what is left of the cascade: one first-party source edited,
-            # 0 of 4,159 stage-trees ran and 323 compiles did, because every target stages the
-            # ONE projectSrc and a byte anywhere in it moves that path. Source groups split it
-            # so a target depends only on the groups it reads.
+            # #54 IS OFF AGAIN HERE, and what turning it on bought and cost is worth keeping.
+            # It DID cut the cascade: editing one unrelated ObjC file rebuilt 0 compiles rather
+            # than 323, verified on libsimple_darlingserver. Then the endpoint build failed
+            # 1,194 targets on missing headers, the first being CoreServices/MacTypes.h.
             #
-            # The full prefix above stays off until this one has run green and been probed, so
-            # the parity endpoint is never the thing an experiment breaks.
-            sourceGroups = true;
+            # The cause is not the group LIST. Accounts_obj does stage
+            # darwin/frameworks/CoreServices. It is that a group is staged as ONE SYMLINK to
+            # its own store path, while 2,490 of the 2,970 symlinks in this tree are relative
+            # and cross a group boundary. darwin/frameworks/CoreServices/include/CoreServices/
+            # MacTypes.h is itself a link to ../../../../basic-headers/MacTypes.h: under one
+            # shared projectSrc that resolves inside the same store path, and under groups it
+            # resolves inside the CoreServices store path and dangles.
+            #
+            # The escapes are concentrated, which is what makes a fix tractable:
+            # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
+            # src/opendirectory_internal/include 24, src/startup/mldr 16, and four groups with
+            # two or fewer. The fix is to rewrite an escaping link to an ABSOLUTE path into the
+            # store of the group or pin it lands in, at group build time; most land in pins,
+            # which now have stable per-pin store paths of their own.
+            #
+            # packages.darling-buck2-prefix-grouped below is where that gets tried next, so
+            # this endpoint stays buildable meanwhile.
             graph = import ./nix/lib/darlingBuck2Graph.nix {
               inherit pkgs darlingSrc ld64;
               allPins = true;
