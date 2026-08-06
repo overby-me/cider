@@ -205,6 +205,12 @@ def main(argv: list[str]) -> int:
                 with open(p, "rb") as fh_in, open(dst, "wb") as fh_out:
                     fh_out.write(fh_in.read())
                 copied += 1
+            # THE MODE, which writing bytes does not carry. buck2 EXECUTES things out of this
+            # tree -- mig.sh, generate-rpc-wrappers.py, configure scripts -- and an
+            # executable that arrives without its +x bit fails at exec time, a long way from
+            # here and with nothing pointing back at the skeleton. Applied to emptied files
+            # too, so the tree differs from the original in CONTENT only.
+            os.chmod(dst, os.stat(p).st_mode & 0o7777)
 
     print(f"skeleton: {copied} file(s) copied whole, {emptied} emptied, "
           f"{links} symlinks, {dirs} directories", file=sys.stderr)
