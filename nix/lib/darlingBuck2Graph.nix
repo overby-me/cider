@@ -77,9 +77,16 @@
     if allPins
     then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
     else pins;
-  # The project as Nix sees it, filtered to what the build can possibly read. Two
-  # derivations take it: the SKELETON below, which is what buck2 gets, and the source
-  # closure, which is the one pass that needs real bytes.
+  # The project as Nix sees it, filtered to what the build can possibly read. BOTH
+  # derivations take it whole: the graph dump and the source closure.
+  #
+  # This used to say buck2 gets a SKELETON instead. It does not, and there is no skeleton
+  # derivation in this file: the attempt was reverted, for the reason recorded at `src =
+  # projectSrc` below, and the same false claim survived in scripts/buck2-graph-sources.py
+  # until it was corrected. It matters because it understates the cost of a source edit by an
+  # entire graph build, about 18m34s, which is the number the scheduling decisions here get
+  # made against. scripts/buck-skeleton.py is now five files short of correct rather than
+  # conceptually wrong (#56), but adopting it is still an open change.
   projectSrc = builtins.path {
       name = "darling-buck2-project";
       path = src;
