@@ -5,12 +5,22 @@ This is the ONE part of the graph that depends on source file CONTENTS rather th
 build definition, because a quoted include is resolved by parsing #include "..." out of the
 file. Everything else buck2 reports is analysis, which cannot read a source at all.
 
-That is why it lives here instead of in buck2-graph-dump.py. The dump now runs against a
-skeleton (scripts/buck-skeleton.py: build files verbatim, every other file present but
-empty), so editing a .c cannot rerun it, 30 to 47 minutes saved on every edit. This pass
-does need the real bytes, but it is a python walk rather than a buck2 build, and its output
-is content addressed: editing a .c changes no FILE NAME, so the output is byte identical and
-nothing downstream moves. Adding an include changes it, which is exactly when the consumers
+That is why it lives here instead of in buck2-graph-dump.py.
+
+THIS PARAGRAPH USED TO SAY THE DUMP RUNS AGAINST A SKELETON, so that editing a .c could not
+rerun it and 30 to 47 minutes were saved on every edit. THAT IS NOT TRUE AND WAS NEVER LEFT
+IN PLACE. The skeleton was tried and REVERTED; nix/lib/darlingBuck2Graph.nix passes
+`src = projectSrc` to BOTH darling-buck2-graph and darling-buck2-sources, and the comment
+above it says why: this derivation does not only analyse, it also runs first-party generators
+it builds itself, and an emptied rtsig.c compiles, links, runs and writes an EMPTY header, so
+the graph comes out quietly wrong. A mechanism whose failure mode is silence is worse than
+the cost it removes. scripts/buck-skeleton.py is kept because the idea is sound for the
+ANALYSIS half, but it needs the codegen input closure first.
+
+So editing a .c DOES rerun both derivations. What is true, and is the part worth keeping, is
+that this pass is a python walk rather than a buck2 build and its output is CONTENT
+ADDRESSED: editing a .c changes no FILE NAME, so the output is byte identical and nothing
+downstream of it moves. Adding an include does change it, which is exactly when the consumers
 should rebuild.
 
 It reads the graph for the actions and the staged farms, and the farms themselves from the

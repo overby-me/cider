@@ -95,21 +95,47 @@ stdenv.mkDerivation {
   env.LD_LIBRARY_PATH = ldLibraryPath;
   dontPatchShebangs = true;
 
-  # Build only the ld64 target (+ its deps: libstuff, the misc cctools like
-  # install_name_tool/lipo/nmedit that the darwin link's `-B .../misc/` invokes).
+  # Build only the ld64 target (+ its deps: libstuff, and the cctools `lipo` that the darwin
+  # link's `-B .../misc/` invokes).
+  #
+  # `install_name_tool` AND `nmedit` USED TO BE HERE AND WERE 98 PERCENT OF THIS BUILD, all of
+  # it thrown away. Measured on the reference ninja graph, by transitive closure over inputs,
+  # implicit inputs and order-only inputs:
+  #
+  #   ld64 alone                                    42 edges,    40 compiles,   7 directories
+  #   ld64 + everything cctools-port/misc offers    82 edges,    62 compiles,   9 directories
+  #   bare install_name_tool                     3,510 edges, 3,113 compiles, 197 directories
+  #   bare nmedit                                3,510 edges, 3,113 compiles, 197 directories
+  #   the four names this used to pass           3,515 edges, 3,114 compiles, 197 directories
+  #
+  # cctools-port/cctools/misc defines NO install_name_tool and NO nmedit -- only `lipo`. So
+  # ninja resolved those two bare names to the GUEST tools under src/xcselect, which is why
+  # this derivation dragged in libc (635 compiles), icu (446), xnu (415), compiler-rt (139),
+  # corefoundation (127), Libinfo (106) and corecrypto (55). That is the "369 distinct
+  # directories, it is most of Darling" of task #64: not a property of ld64, two wrong names.
+  #
+  # AND THE RESULT WAS DISCARDED, which is what makes this safe rather than a trade-off. The
+  # installPhase below looks for them under cctools-port/cctools/misc, where those targets
+  # never wrote anything, so its `find` failed and the `|| echo "note: $t not built"` branch
+  # fired. Every darling-ld64 output in the store holds exactly two binaries, `lipo` and
+  # x86_64-apple-darwin20-ld. Nothing downstream could have been consuming them.
+  #
+  # `lipo` stays a bare name deliberately: it resolves to the host cctools one (27 edges, 22
+  # compiles, 2 directories) and is the binary already installed, so renaming it by path would
+  # risk changing which binary this produces for no gain.
   buildFlags = [
     "${triplet}-ld"
-    "install_name_tool"
     "lipo"
-    "nmedit"
   ];
 
   installPhase = ''
     runHook preInstall
     mkdir -p $out/bin
     cp src/external/cctools-port/cctools/ld64/src/${triplet}-ld $out/bin/
-    # the misc cctools the link references via -B .../misc/
-    for t in install_name_tool lipo nmedit; do
+    # the misc cctools the link references via -B .../misc/. Only lipo: see buildFlags above,
+    # cctools-port defines no install_name_tool and no nmedit, and asking for them by bare name
+    # built the guest ones and then found nothing to copy here.
+    for t in lipo; do
       f=$(find src/external/cctools-port/cctools/misc -maxdepth 2 -name "$t" -type f 2>/dev/null | head -1)
       [ -n "$f" ] && cp "$f" $out/bin/ || echo "note: $t not built"
     done
