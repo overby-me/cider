@@ -326,7 +326,16 @@ new:
 
 After #54 the TARGET no longer rebuilds at all: the two that run are `darling-buck2-skeleton`
 and `darling-buck2-sources`, the graph-side content passes. Wall clock is flat because those
-two now ARE the loop, so they are the next lever, not the cascade.
+two now ARE the loop, so they are the next lever, not the cascade. **Timed per pass:**
+
+| pass | time | share |
+|---|---|---|
+| `darling-buck2-skeleton` | 10 s | 12% |
+| **`darling-buck2-sources`** | **64 s** | **79%** |
+
+`sources` is `scripts/buck2-graph-sources.py`, a SINGLE THREADED python walk over ~306,000
+files that reads contents to resolve quoted includes. It MUST rerun when a content changes, so
+the lever is making it faster (it is one process on a multi-core box), not avoiding it.
 
 The last row is the whole point of the exercise: **32 minutes to 97 seconds**, measured on
 `darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
