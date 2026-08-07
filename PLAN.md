@@ -1249,6 +1249,22 @@ has been true six times running, each time a check freshly written.
   at all. Every remaining grouped-staging failure has been an instance of this, so the fix is
   the transitive closure and not another destination.
 
+  **AND POINTING pinPath AT THE PER-PIN STORES BROKE THE DEFAULT ENDPOINT. Reverted (#74).**
+  Seven pins carry nested submodules, and the per-pin store does not have their content, so the
+  pin's own link `darling/include/IOKit/IOReturn.h ->
+  ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
+  `stageProject` uses `pinPath` too, so this was not confined to grouped staging:
+  `SecItemShimOSX_obj` failed on `prefix-min`, an endpoint that had built green with a matching
+  prefix hash. The revert rebuilt **0 builders**, i.e. it resolved to the cached pre-regression
+  output.
+  Not pinStore's fault: it is a faithful `cp -a` of the fetch, and THE FETCH IS EMPTY THERE
+  (1 entry against 23 in the assembled tree) even though the pin is `recursive: true` and takes
+  the `fetchgit fetchSubmodules` branch. The assembled tree gets that content by some other
+  route, and finding it is step one of #74.
+  `scripts/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
+  hash records a symlink TARGET as a STRING. `buck-escape-check.py` documents that exact trap,
+  for this exact class of bug, and the pin check still uses the method it warns against.
+
   **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
   `"${darlingSrc}/${p}"` and `darlingSrc` is the whole project, so every staging script that
   named a pin moved on any edit. Taking pins from `darlingSrc.pinPaths` instead, which the
