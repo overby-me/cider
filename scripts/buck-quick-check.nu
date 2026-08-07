@@ -121,7 +121,7 @@ def probe-cost []: string -> string {
     if ($free | any {|p| $path | str starts-with $p }) {
         "Excluded from both source filters, so this re-evaluates but rebuilds nothing: about 12s."
     } else {
-        "This moves darling-src, so ld64 (about 26 min) and the graph (about 18 min) rebuild first."
+        "This moves darling-src, so ld64 and the graph rebuild first. MEASURED end to end on one .m file: 8 builders, 32 minutes."
     }
 }
 
