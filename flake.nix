@@ -507,6 +507,14 @@
             inherit pkgs darlingSrc;
             allPins = true;
             narrowSources = true;
+            # THE SAME SETTINGS THE UNNARROWED ENDPOINT USES, and leaving them off is what made
+            # the first cascade measurement worthless. narrowSources cannot cut anything while
+            # the GRAPH still moves on a source edit, because every lowered derivation is
+            # downstream of it. Measured without these: a one line edit to one .m needed 6,502
+            # derivations, the whole endpoint, which is the number the unnarrowed endpoint
+            # posts too. So the narrowing was measured on an endpoint where it could not
+            # possibly show, and the result said nothing about narrowSources at all.
+            coarsePins = true;
             extraTools =
               let
                 di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
@@ -515,6 +523,7 @@
             graph = import ./nix/lib/darlingBuck2Graph.nix {
               inherit pkgs darlingSrc;
               allPins = true;
+              skeleton = true;
               targets = import ./nix/lib/buck2-targets-min.nix;
             };
           };
