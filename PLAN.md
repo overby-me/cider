@@ -333,9 +333,25 @@ two now ARE the loop, so they are the next lever, not the cascade. **Timed per p
 | `darling-buck2-skeleton` | 10 s | 12% |
 | **`darling-buck2-sources`** | **64 s** | **79%** |
 
-`sources` is `scripts/buck2-graph-sources.py`, a SINGLE THREADED python walk over ~306,000
-files that reads contents to resolve quoted includes. It MUST rerun when a content changes, so
-the lever is making it faster (it is one process on a multi-core box), not avoiding it.
+`sources` is `scripts/buck2-graph-sources.py`. Profiled and then optimised: `target_sources`
+went **27.9 s to 17.4 s** by computing a farm's closure once per FARM instead of once per
+(target, farm), and the whole derivation 64 s to 51 s.
+
+**WHAT IS LEFT IS NOT THE SCRIPT.** Its phases total 19 s of a 51 s derivation. The other ~32 s
+is `unpackPhase` copying the filtered project into the sandbox plus `assembleProject` on top,
+about 1.1 GB of copying. Three shortcuts were considered and all are CLOSED:
+
+* `cd ${darlingSrc}` instead of unpacking: WRONG TREE. `assembleProject` puts pins at
+  `buck-src/<pin>`, where `darlingSrc` has them at `src/external/<pin>`, and it normalises
+  symlinks the upstream trees get wrong (the libnotify `notify.defs` case).
+* symlink the top-level directories, the way `stageProject` does: **`os.walk` with
+  `followlinks=False` STOPS at a symlinked directory**, which is the false-pass documented in
+  `buck-escape-check.py`. The walks would silently see nothing.
+* skip the 357 MB `target-sources.json` that nothing reads: done, and worth **2 s**. Hashing and
+  copying the output was never the cost.
+
+So the copy is structural: the script needs a real assembled tree, and giving it one costs what
+it costs.
 
 The last row is the whole point of the exercise: **32 minutes to 97 seconds**, measured on
 `darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
