@@ -24,9 +24,13 @@
 # the effect was 143 dangling links. For that question use scripts/buck-escape-check.py:
 #   buck-escape-check.py pins --root <assembled darling-src>   # are they self contained
 #   buck-escape-check.py resolve <staged tree>                 # does it work AS STAGED
-# Per-pin staging is REVERTED and the approach is disproven (a subtree of this project has no
-# self contained existence: the SDK usr/include alone is 1,987 dangling of 1,987 symlinks when
-# extracted). This check remains useful only for the narrower question it actually asks, which
+# THAT "DISPROVEN" IS NO LONGER TRUE, and the correction matters: a subtree of this project
+# indeed has no self contained existence, but ALL THE PINS TOGETHER do. pinsTree (#74) mirrors
+# every pin into one tree -- real directories, one link per file, each source symlink re-created
+# by its own target string -- so a link to a SIBLING pin lands inside it, and its escape
+# destinations are carried too. It is what made source groups work, and sourceGroups is ON by
+# default now. scripts/buck-pins-tree-check.nu is the check for that property, since this one
+# still cannot see it. This check remains useful only for the narrower question it actually asks, which
 # is whether pinStore reproduces the assembled tree's BYTES.
 #
 # Usage:
