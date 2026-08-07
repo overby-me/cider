@@ -248,9 +248,22 @@
   # darling-src.nix exposes pinPaths, and nix/lib/darlingBuck2Graph.nix has taken its pins
   # from there since the per-pin split; only the lowering was left behind. Same throw as the
   # graph, so a missing pin is loud rather than silently falling back to the assembled tree.
-  pinPath = p:
-    darlingSrc.pinPaths.${p}
-      or (throw "darlingBuck2Lower: no pin store for ${p}; darling-src.nix did not pin it");
+  # BACK TO THE ASSEMBLED TREE, because the per-pin stores are INCOMPLETE. Seven pins carry
+  # NESTED submodules under buck-src/<pin>/darling/submodules, and a per-pin store does not
+  # populate them: buck-src/IOKitUser/darling/submodules/xnu has 24 entries in the repo and 1
+  # in the store. The pin's own link
+  #   darling/include/IOKit/IOReturn.h -> ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h
+  # therefore dangles INSIDE the store, and SecItemShimOSX_obj fails on IOKit/IOReturn.h.
+  #
+  # I had switched this to darlingSrc.pinPaths and called the cascade cut, verified on
+  # libsimple_darlingserver and pin-apr. Neither reads through a nested submodule, so the
+  # check could not fail. It regressed the DEFAULT endpoint too, since stageProject uses this
+  # as well, and that endpoint had built green with a matching prefix hash before.
+  #
+  # scripts/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
+  # trap buck-escape-check.py already documents: a NAR hash records a symlink TARGET as a
+  # STRING, so two identical strings that resolve to different places look identical.
+  pinPath = p: "${darlingSrc}/${p}";
 
   # ---- the graph, grouped the way this lowers it -------------------------
 
