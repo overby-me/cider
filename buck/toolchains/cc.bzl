@@ -11,8 +11,6 @@
 # flags. Keeping them separate targets is the point: a host compile can never
 # accidentally inherit guest flags or header roots, and vice versa.
 
-load("@root//buck/rules:inproc.bzl", "InProcInfo")
-
 CcToolchainInfo = provider(
     fields = [
         # Command names (resolved from PATH) or absolute paths.
@@ -38,44 +36,12 @@ CcToolchainInfo = provider(
         # The lowering needs nothing new for this: migcom is the same shape already, a host
         # tool built by this graph that appears in the INPUTS of all 110 actions running it.
         "ld_artifact",
-        # ONE driver script for the whole toolchain, not one per link. See the impl.
-        "ld_driver",
     ],
 )
 
-# The two lines that make an artifact linker usable. -fuse-ld= is the only thing that selects
-# the linker here (-B alone loses to the nixpkgs clang wrapper and the link goes to binutils
-# ld.bfd, "unrecognised emulation mode: llvm"), and it needs a genuinely ABSOLUTE path, which a
-# Starlark rule does not have. A shell resolves $PWD at RUN time, in the action's own working
-# directory, which is the project root.
-_LD_DRIVER = """#!/bin/sh
-exec {cc} -fuse-ld="$PWD/{ld}" "$@"
-"""
-
 def _cc_toolchain_impl(ctx):
-    # WRITTEN ONCE PER TOOLCHAIN, deliberately. Writing it per link instead produced 863
-    # identical scripts, one for every darwin link, and the graph dump then failed with "863
-    # in-process artifact(s) were never materialised": ctx.actions.write makes an IN-PROCESS
-    # artifact, and buck/bxl/materialize.bxl can only ensure what a rule DECLARES through
-    # InProcInfo. One artifact declared here is both cheaper and the only copy anyone has to
-    # remember to declare.
-    driver = None
-    if ctx.attrs.ld_target:
-        ld = ctx.attrs.ld_target[DefaultInfo].default_outputs[0]
-        driver = ctx.actions.write(
-            ctx.label.name + "__ld_driver.sh",
-            cmd_args(
-                "#!/bin/sh",
-                cmd_args("exec", ctx.attrs.cc, cmd_args(ld, format = '-fuse-ld="$PWD/{}"'), '"$@"', delimiter = " "),
-                delimiter = "\n",
-            ),
-            is_executable = True,
-            with_inputs = True,
-        )
-
     return [
         DefaultInfo(),
-        InProcInfo(artifacts = [driver] if driver else []),
         CcToolchainInfo(
             cc = ctx.attrs.cc,
             cxx = ctx.attrs.cxx,
@@ -89,7 +55,6 @@ def _cc_toolchain_impl(ctx):
                 ctx.attrs.ld_target[DefaultInfo].default_outputs[0]
                 if ctx.attrs.ld_target else None
             ),
-            ld_driver = driver,
         ),
     ]
 

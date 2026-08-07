@@ -30,6 +30,7 @@
 
 load(":cc.bzl", "CcLibInfo", "CcObjectsInfo", "compile_objects", "merge_dep_libs", "stage_include_root")
 load("@toolchains//:cc.bzl", "CcToolchainInfo")
+load("//buck/rules:inproc.bzl", "InProcInfo")
 
 DarwinDylibInfo = provider(fields = [
     # The -install_name this dylib will have at runtime.
@@ -56,11 +57,25 @@ def _merge_dylib_files(deps):
     return out
 
 def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
-    # THE TOOLCHAIN'S driver when it has one, so there is a single script for the whole
-    # toolchain rather than one per link. buck/toolchains/cc.bzl writes it and declares it
-    # through InProcInfo, which is what lets the graph dump materialise it.
-    driver = tc.ld_driver if getattr(tc, "ld_driver", None) else tc.cc
-    cmd = cmd_args(driver)
+    # PER RULE, and returned so the caller can DECLARE it. The toolchain could write one
+    # shared script instead, and that is nicer, but buck2 audit output cannot parse where a
+    # toolchain artifact lands ("Path does not have a platform configuration or content-based
+    # hash") and the graph dump runs audit output over every buck-out path in an argv. An
+    # ordinary target artifact it resolves every day, so the script lives here and each rule
+    # puts it in InProcInfo.artifacts.
+    driver = None
+    if getattr(tc, "ld_artifact", None):
+        driver = ctx.actions.write(
+            ctx.label.name + "__ld_driver.sh",
+            cmd_args(
+                "#!/bin/sh",
+                cmd_args("exec", tc.cc, cmd_args(tc.ld_artifact, format = '-fuse-ld="$PWD/{}"'), '"$@"', delimiter = " "),
+                delimiter = "\n",
+            ),
+            is_executable = True,
+            with_inputs = True,
+        )
+    cmd = cmd_args(driver if driver else tc.cc)
     cmd.add(tc.cflags)
     cmd.add(tc.ldflags)
     # The Mach-O linker is selected by -B plus the target triple: clang's driver
@@ -99,6 +114,7 @@ def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
     for name, art in dylib_files:
         cmd.add(cmd_args(art, format = "-Wl,-dylib_file," + name + ":{}"))
     ctx.actions.run(cmd, category = "darwin_link", identifier = ctx.label.name)
+    return driver
 
 def _darwin_dylib_impl(ctx):
     tc = ctx.attrs.toolchain[CcToolchainInfo]
@@ -171,13 +187,16 @@ def _darwin_dylib_impl(ctx):
     dylib_files = _merge_dylib_files(
         ctx.attrs.siblings + ctx.attrs.upward + ctx.attrs.reexport + ctx.attrs.deps,
     )
-    _darwin_link(ctx, tc, out, objects, flags, link_libs, dylib_files)
+    ld_driver = _darwin_link(ctx, tc, out, objects, flags, link_libs, dylib_files)
 
     own = []
     if ctx.attrs.install_name:
         own = [(ctx.attrs.install_name, out)]
 
     return [
+        # The driver script is WRITTEN, never run by another action, so nothing else reaches it
+        # and buck/bxl/materialize.bxl only ensures what is declared here.
+        InProcInfo(artifacts = [ld_driver] if ld_driver else []),
         DefaultInfo(default_output = out),
         CcObjectsInfo(objects = objects),
         DarwinDylibInfo(
@@ -274,8 +293,11 @@ def _darwin_binary_impl(ctx):
     bin_flags = ["-nostdlib"] + list(ctx.attrs.linker_flags)
     for flag, art in ctx.attrs.link_flag_files.items():
         bin_flags.append(cmd_args(art, format = flag + ",{}"))
-    _darwin_link(ctx, tc, out, objects, bin_flags, link_libs, dylib_files)
-    return [DefaultInfo(default_output = out)]
+    ld_driver = _darwin_link(ctx, tc, out, objects, bin_flags, link_libs, dylib_files)
+    return [
+        InProcInfo(artifacts = [ld_driver] if ld_driver else []),
+        DefaultInfo(default_output = out),
+    ]
 
 darwin_binary = rule(
     impl = _darwin_binary_impl,
