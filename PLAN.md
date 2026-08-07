@@ -489,8 +489,18 @@ the shell before the probe can report.
   patched (see Build system).
 - **#68 finish the repo reorg** — move the C++ darlingserver + duct-tape from `src/external`
   into `linux/darlingserver/`, completing the `darwin/` (guest) + `linux/` (host) seam.
-- **Linker (#57 tail)**: `packages.darling-ld64` (`nix/cctools-port.nix`) done; validate a real
-  darwin dylib link with `-DDARLING_LD64_DIR`.
+- **Linker (#57 tail)**: `packages.darling-ld64` (`nix/cctools-port.nix`) done. **The darwin
+  dylib link is validated (2026-08-07), and ld64 now builds under buck2 (#65)**: 30 `.cpp` plus
+  10 `.c` objects and the link all succeed, `-v` prints `PROJECT:ld64`, and pointing `ld` and
+  `ld64_dir` at it links `//src/libsimple:libsimple_darling_dylib` to a real 64-bit Mach-O
+  (magic `cffaedfe`). Two generator bugs had to be fixed first, both of which would silently
+  hit any C++ target generated next: `gen-buck-from-ninja.py` never globbed `.hpp` (ld64's
+  `abstraction/` is all `.hpp`, so that header root staged EMPTY) and never set `link_cxx`
+  (cmake records it in the ninja RULE NAME `CXX_EXECUTABLE_LINKER__`).
+  **Watch for a GC:** `.buckconfig.local` holds `ld`/`ld64_dir` as store paths, and when that
+  ld64 is collected every darwin link fails with `clang: error: invalid linker name in
+  argument '-fuse-ld=...'`, which names the flag and not the missing file. Re-run
+  `scripts/buck-setup.nu`.
   **DO NOT "fold in `install_name_tool`/`nmedit`", which is what this line used to say.**
   cctools-port defines neither; only `lipo`. Asking ninja for them by bare name resolves to the
   GUEST `src/xcselect` shims and costs **3,113 compiles across 197 directories** instead of 62
