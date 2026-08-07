@@ -80,6 +80,13 @@
       # Darling's in-tree ld64 (cctools Mach-O linker) built standalone and cached
       # -- "Path B" of the cctools de-vendoring (PLAN.md). Uses
       # the off-submodules darling-src tree, so no ?submodules=1.
+      #
+      # NO ENDPOINT USES THIS ANY MORE (#65). buck2 builds ld64 itself and the darwin
+      # toolchain drives that one through ld_target, so this is a standalone escape hatch:
+      # a linker to point [darling] ld at in .buckconfig.local when debugging a link
+      # outside Nix. It stays out of every endpoint closure, which is the point, because its
+      # src is the whole assembled project and it cost 15 of the 17.5 minutes a first-party
+      # source edit used to take.
       #   nix build .#darling-ld64
       packages.darling-ld64 =
         pkgs:
@@ -220,7 +227,7 @@
       # endpoint once, while the graph the endpoint actually uses was failing.
       #
       # This is byte-identical to the graph darling-buck2-prefix builds (same darlingSrc,
-      # same ld64, allPins, same target list), so it is the way to exercise or debug the
+      # allPins, same target list), so it is the way to exercise or debug the
       # graph derivation ALONE. That matters because the two halves cost very differently:
       # the graph is one derivation of roughly 40 minutes, the lowering that follows it is
       # hundreds. Every one of tasks #35 to #38 was a graph-stage failure, and each cost a
@@ -234,10 +241,9 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
         in
         import ./nix/lib/darlingBuck2Graph.nix {
-          inherit pkgs darlingSrc ld64;
+          inherit pkgs darlingSrc;
           allPins = true;
           targets = import ./nix/lib/buck2-targets.nix;
         };
@@ -299,10 +305,9 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
         in
         import ./nix/lib/darlingBuck2Graph.nix {
-          inherit pkgs darlingSrc ld64;
+          inherit pkgs darlingSrc;
           allPins = true;
           targets = import ./nix/lib/buck2-targets-min.nix;
         };
@@ -314,10 +319,9 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
         in
         import ./nix/lib/darlingBuck2Graph.nix {
-          inherit pkgs darlingSrc ld64;
+          inherit pkgs darlingSrc;
           allPins = true;
           skeleton = true;
           targets = import ./nix/lib/buck2-targets-min.nix;
@@ -364,8 +368,8 @@
         ).final;
 
       # The endpoint on a GUEST-tier dylib: libsystem_blocks is small, but its link runs
-      # Darling's own ld64 and goes through the firstpass/final pair, which is the shape
-      # every one of the port's 132 dylibs has.
+      # Darling's own ld64, now the buck2 BUILT one (#65), and goes through the
+      # firstpass/final pair, which is the shape every one of the port's 132 dylibs has.
       #
       #   systemd-run --user --scope -p MemoryMax=8G nix build .#darling-buck2-blocks
       packages.darling-buck2-blocks =
@@ -376,13 +380,12 @@
               inherit pkgs;
               baseSrc = ./.;
             };
-            ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           in
           import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = [ "//buck-src:system_blocks_final" ];
             };
@@ -425,9 +428,8 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
             # extraTools exists: a wrap_elf action's fifth argument is the elf_lib_dirs
@@ -450,7 +452,7 @@
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = import ./nix/lib/buck2-targets.nix;
             };
@@ -474,8 +476,9 @@
       # nix/lib/darlingBuck2Lower.nix or by dropping the narrowing.
       #
       # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
-      # flake source gives a different darling-src and therefore a different ld64, so it
-      # rebuilds 26k objects and then compares against a baseline that is not this one.
+      # flake source gives a different darling-src, which moves the graph and with it every
+      # lowered derivation, so it rebuilds the world and then compares against a baseline
+      # that is not this one. (It used to move ld64 as well, 26k objects; #65 removed that.)
       # THE MINIMAL ENDPOINT WITH narrowSources ON (#54). packages.darling-buck2-prefix-narrow
       # exists already but lowers the FULL target list and the full prefix, so testing the flag
       # there costs a graph this store may not hold plus a two hour build. This pairs the flag
@@ -500,9 +503,8 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             narrowSources = true;
             extraTools =
@@ -511,7 +513,7 @@
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = import ./nix/lib/buck2-targets-min.nix;
             };
@@ -575,7 +577,6 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
             inherit pkgs darlingSrc;
             # NO ld64 (#65). The darwin toolchain now drives the buck2 BUILT linker through
@@ -715,8 +716,9 @@
       # nix/lib/darlingBuck2Lower.nix or by dropping the narrowing.
       #
       # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
-      # flake source gives a different darling-src and therefore a different ld64, so it
-      # rebuilds 26k objects and then compares against a baseline that is not this one.
+      # flake source gives a different darling-src, which moves the graph and with it every
+      # lowered derivation, so it rebuilds the world and then compares against a baseline
+      # that is not this one. (It used to move ld64 as well, 26k objects; #65 removed that.)
 
       packages.darling-buck2-prefix-narrow =
         pkgs:
@@ -725,9 +727,8 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             narrowSources = true;
             # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
@@ -751,7 +752,7 @@
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = import ./nix/lib/buck2-targets.nix;
             };
@@ -793,9 +794,8 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             sourceGroups = true;
             extraTools =
@@ -804,7 +804,7 @@
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = import ./nix/lib/buck2-targets.nix;
             };
@@ -819,9 +819,8 @@
             inherit pkgs;
             baseSrc = ./.;
           };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
             allPins = true;
             coarsePins = true;
             # Same reason as the narrow variant above: a wrap_elf argv carries these store
@@ -833,7 +832,7 @@
               in
               di.wrappedLibs ++ di.hostHeaderLibs;
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
               allPins = true;
               targets = import ./nix/lib/buck2-targets.nix;
             };
@@ -872,12 +871,6 @@
           darlingSrc = import ./nix/lib/darling-src.nix {
             inherit pkgs;
             baseSrc = ./.;
-          };
-          ld64 = pkgs.callPackage ./nix/cctools-port.nix {
-            src = import ./nix/lib/darling-src.nix {
-              inherit pkgs;
-              baseSrc = ./.;
-            };
           };
           allPins = true;
           targets = import ./nix/lib/buck2-targets.nix;

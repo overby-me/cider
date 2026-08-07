@@ -311,6 +311,31 @@ and produces a graph **byte-identical** to the project-fed one, but it was never
 it closes only the `src` input. `scripts/buck-codegen-closure.py` computes the 1,743 files that
 must keep real contents; `scripts/buck-codegen-keep.txt` is the 119-file delta.
 
+**The buck2 built ld64 aborted on 73 targets, and the cause was a GENERATOR bug.** Dropping
+the external ld64 exposed it: `nix build .#darling-buck2-prefix-min` failed on 73 links with
+
+    stl_vector.h:1263: std::vector<ld::Fixup>::operator[]: Assertion __n < this->size() failed
+    clang: error: unable to execute command: Aborted (core dumped)
+
+which reads as a linker crash. It was a MISSING DEFINE. `gen-buck-from-ninja.py` strips
+`ENV_FLAGS` from a generated target because `//darwin:sdk_env` re-supplies them, but a HOST
+tool does not use `sdk_env`, so for host targets they were dropped for good. `-DDARLING` is
+the one that bites: it guards real code in six ld64 files including `passes/compact_unwind.cpp`
+and `passes/objc.cpp`. The generator already computed `unit["host"]`; it just did not consult
+it when filtering. One line, plus a regenerate of the two ld64 object targets: 16 added flags,
+of which 8 are `-Wno-*` and inert.
+
+Verified BOTH ways on a real negative control: `keymgr_firstpass` aborted with that assertion
+in the failing run, and after the fix it builds (7 builders, 32 s, 0 assertions), as do
+`platform_firstpass`, `system_kernel_firstpass`, `compiler_rt_firstpass` and
+`system_asl_firstpass`. The only semantic change reaching `darling-src` between the two runs
+is that define.
+
+Residual, not a blocker: 12 of 13 host cmake targets lose `-DDARLING` this way, but only ld64
+and migcom have `DARLING`-guarded sources, and migcom's block is hand-written and already
+carries it. The cctools host tools (lipo, ranlib, stuff, ar) have zero guarded sources, so
+theirs is a parity gap with no behavioural effect.
+
 **ld64 is now out of that path (#65).** The darwin toolchain drives the buck2 built linker
 through `ld_target`, so the `@LD64@` placeholder is referenced by 0 of 17,552 actions and the
 minimal endpoint passes no `ld64` at all. `nix/cctools-port.nix` was an input of every lowered

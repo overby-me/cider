@@ -588,7 +588,14 @@ def own_flags_of(unit):
         if f in ("-B", "-isystem"):
             skip = True
             continue
-        if f in ENV_FLAGS or f in TOOLCHAIN_FLAGS or "resource-root" in f:
+        # ENV_FLAGS ONLY FOR DARWIN COMPILES. //darwin:sdk_env is what re-supplies them,
+        # and a HOST tool does not use sdk_env, so stripping them there drops them for
+        # good. -DDARLING is the one that bites: it guards real code in six ld64 files,
+        # including passes/compact_unwind.cpp and passes/objc.cpp, and an ld64 built
+        # without it aborts inside std::vector<ld::Fixup>::operator[] partway through a
+        # link ("Assertion __n < this->size() failed"), which reads as a linker crash
+        # rather than a missing define. The other eight are -Wno-* and inert.
+        if (not unit["host"] and f in ENV_FLAGS) or f in TOOLCHAIN_FLAGS or "resource-root" in f:
             continue
         flags.append(f)
     return flags, prefix
