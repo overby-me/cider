@@ -1249,6 +1249,25 @@ has been true six times running, each time a check freshly written.
   at all. Every remaining grouped-staging failure has been an instance of this, so the fix is
   the transitive closure and not another destination.
 
+  **#54 IS DONE. THE GROUPED ENDPOINT IS BYTE IDENTICAL AND THE CASCADE IS CUT.**
+
+  | | |
+  |---|---|
+  | `.#darling-buck2-prefix-min-grouped` | 1,617 builders, 0 root failures, 70 min |
+  | content hash | `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`, the recorded one |
+  | probe: unrelated `.m` edit, `SecItemShimOSX_obj` | **2 builders**, target NOT rebuilt, output path IDENTICAL |
+
+  The probe target is the one that reads through a nested submodule and exposed the per-pin
+  store regression, so it is a check that can fail. The two builders that do run are
+  `darling-buck2-skeleton` and `darling-buck2-sources`, the graph-side content passes.
+  What made it work, after `sourceGroups` had the right granularity and the wrong mechanism for
+  months: MIRRORING instead of directory links (groups AND pins), and `pinsTree`, one CA tree of
+  all 147 pins whose escape destinations come from their own store paths rather than from the
+  project.
+  Root failures on the way down, each from a real run: **90** (coarse pins had no group entry)
+  to **9** (non-pin `src/external`) to **1** (a `script_gen` needs those too, not just compiles)
+  to **0**.
+
   **AND POINTING pinPath AT THE PER-PIN STORES BROKE THE DEFAULT ENDPOINT. Reverted (#74).**
   Seven pins carry nested submodules, and the per-pin store does not have their content, so the
   pin's own link `darling/include/IOKit/IOReturn.h ->
