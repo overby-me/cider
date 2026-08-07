@@ -688,6 +688,30 @@
   # edits the SDK itself.
   sdkGroup = "darwin/Developer/Platforms";
 
+  # AND THE FOUR src/external DIRECTORIES THAT ARE NOT PINS. The SDK is nothing but links out
+  # of itself, and some of them land here:
+  #   .../MacOSX.sdk/usr/include/os/log_private.h
+  #     -> ../../../../../../../../../../src/external/libtrace/include/os/log_private.h
+  # src/external is _UNGROUPED in the closure because pins are staged wholesale by revision,
+  # and these are in NO pin manifest, so they fall through both mechanisms and nothing stages
+  # them. Ran the real staging script into a scratch tree to see it: the link is staged and
+  # correct, src/external/libtrace is absent, and it dangles. 442 src/external plantings in
+  # that script, zero of them libtrace.
+  #
+  # The repo holds real content for exactly these four, because the 147 pins are EMPTY MOUNT
+  # POINTS here and darling-src.nix fills them. Derived rather than hardcoded, so a fifth one
+  # appearing is picked up instead of failing a build weeks later.
+  pinNames = map builtins.baseNameOf wantedPins;
+
+  nonPinExternal = let
+    dir = srcRaw + "/src/external";
+  in
+    if !builtins.pathExists dir
+    then []
+    else
+      map (n: "src/external/" + n) (builtins.filter (n: !(builtins.elem n pinNames))
+        (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
+
   compiles = lib.listToAttrs (map (a: {
       name = groupOf a;
       value = true;
@@ -699,7 +723,10 @@
     entries = map (m: targetGroups.${m} or {}) members;
     groups = lib.unique (
       (lib.concatMap (e: e.groups or []) entries)
-      ++ lib.optional (compiles ? ${label} && builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup
+      ++ lib.optionals (compiles ? ${label}) (
+        lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup
+        ++ nonPinExternal
+      )
     );
     shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
   in ''
