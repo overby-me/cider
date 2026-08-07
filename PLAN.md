@@ -294,6 +294,12 @@ The last row is the whole point of the exercise: **32 minutes to 97 seconds**, m
 `darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
 `buck2-stage-project`, the target and its `-out`. Nothing else.
 
+**And the prefix is unchanged by all of it.** `.#darling-buck2-prefix-min` rebuilt green
+(1,652 builders, 0 errors, 72 min) and hashes to
+`sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`, the SAME content hash as before ld64
+was touched. Content, not path: the drvPath moves on every graph rebuild by construction
+(#72), so it is evidence of nothing.
+
 Two causes, and neither was the one this section assumed for months:
 
 1. **`buck/rules/install.bzl` wrote the prefix manifest `with_inputs = True`.** That attaches
