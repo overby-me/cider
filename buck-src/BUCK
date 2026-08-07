@@ -63383,3 +63383,24 @@ cc_objects(
     visibility = ["PUBLIC"],
 )
 # END generated: x86_64-apple-darwin20-ld
+
+# BEGIN generated: x86_64-apple-darwin20-ld binary
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py --binaries x86_64-apple-darwin20-ld   -- review before committing.
+# Links 1 cmake object library/ies, 2 flag groups in total.
+# buck-registry: src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin20-ld = x86_64-apple-darwin20-ld
+
+cc_binary(
+    name = "x86_64-apple-darwin20-ld",
+    link_cxx = True,
+    objs = [
+        # x86_64-apple-darwin20-ld
+        ":x86_64-apple-darwin20-ld_obj",
+        ":x86_64-apple-darwin20-ld_obj2",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: x86_64-apple-darwin20-ld binary

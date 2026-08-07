@@ -2081,6 +2081,27 @@ def ninja_rule_name(target: str) -> str:
     return "".join(c if (c.isalnum() or c in "_-") else ".%02x" % ord(c) for c in target)
 
 
+def links_cxx(target: str, edges) -> bool:
+    """Does the reference link this executable with the C++ driver?
+
+    cmake records it in the RULE NAME: CXX_EXECUTABLE_LINKER__<target>_ against
+    C_EXECUTABLE_LINKER__<target>_. Reading the rule is the same principle exe_edge uses,
+    and it is the only place the answer is written down; the object extensions cannot say
+    it, because a target can compile .c and still need libstdc++ through a dependency.
+
+    WHY IT MATTERS: linked with the C driver, a C++ program leaves every std:: symbol
+    undefined. ld64 failed exactly that way, hundreds of lines of
+    basic_string::_M_create and operator delete, which reads as a missing library rather
+    than a wrong driver. src/hosttools/BUCK carries the same note for darling-coredump,
+    where it had to be set by hand.
+    """
+    want = "CXX_EXECUTABLE_LINKER__" + ninja_rule_name(target) + "_"
+    for _outs, rule, _inputs, _vars in edges:
+        if want in rule:
+            return True
+    return False
+
+
 def exe_edge(target: str, edges):
     """The executable link edge that produces `target`.
 
@@ -2207,6 +2228,9 @@ def generate_binary(target: str, edges):
     host = target in HOST_TARGETS
     w("cc_binary(" if host else "darwin_binary(")
     w(f'    name = "{target}",')
+    # From the ninja RULE name, not guessed from the sources. See links_cxx.
+    if links_cxx(target, edges):
+        w("    link_cxx = True,")
     # The block keeps the CMAKE target's name so the generator stays addressable by it,
     # but the FILE has to come out under the name the reference installs -- clang_shim
     # installs as clang. exe_name is what carries that across.
