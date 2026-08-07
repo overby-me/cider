@@ -40,8 +40,12 @@ it is still over an hour.
    by a check.
 3. **#73, regenerate the remaining host targets.** Mechanical, no measured behavioural effect,
    so it rides along with the next invalidating change rather than buying its own rebuild.
-4. **#66 / dynamic derivations, ONLY when a trigger fires.** Not now: eval is about 12 s of a
-   97 s loop. Triggers, any one: eval exceeds roughly a third of the edit loop once #54 lands;
+4. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
+   with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
+   the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
+   was a third. Also corrects two stale numbers: `sourceGroups` eval is **18.8 s**, not the
+   32.6 s recorded, so it is now CHEAPER than the 22.6 s figure it used to be compared against.
+   Not now: eval is about 9% of the loop. Triggers, any one: eval exceeds roughly a third of the edit loop once #54 lands;
    per-target data is forced into the evaluator (`target-sources.json` is 588 MB and takes eval
    21.4 s to 75.6 s); the full prefix hits an eval memory wall; or a #5805 instance appears
    that cannot be worked around. Cheap pre-check first, on a toy: does `builtins.outputOf` work
