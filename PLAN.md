@@ -1257,10 +1257,17 @@ has been true six times running, each time a check freshly written.
   `SecItemShimOSX_obj` failed on `prefix-min`, an endpoint that had built green with a matching
   prefix hash. The revert rebuilt **0 builders**, i.e. it resolved to the cached pre-regression
   output.
-  Not pinStore's fault: it is a faithful `cp -a` of the fetch, and THE FETCH IS EMPTY THERE
-  (1 entry against 23 in the assembled tree) even though the pin is `recursive: true` and takes
-  the `fetchgit fetchSubmodules` branch. The assembled tree gets that content by some other
-  route, and finding it is step one of #74.
+  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/darling/submodules/
+  xnu` IS ITSELF A SYMLINK, to `../../../xnu/`, which resolves to a SIBLING PIN. The "1 entry"
+  was that link. In the assembled tree it resolves (23 entries); planted as
+  `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,
+  so it dangles. THE SAME MECHANISM as the group-directory link that failed 1,194 targets on
+  `MacTypes.h`. `scripts/buck-escape-check.py` documents this exact case, naming this exact
+  file, and I walked into it anyway.
+  **So the fix is the session's own result applied to pins: ONE CA `pinsTree` holding all 147
+  pins MIRRORED (real directories, one link per file) at their `src/external/<name>` paths.**
+  Self contained, so a sibling escape resolves inside it; input is the frozen pins, so it moves
+  only on a pin bump, which is the cascade cut per-pin `pinPath` was reaching for.
   `scripts/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
   hash records a symlink TARGET as a STRING. `buck-escape-check.py` documents that exact trap,
   for this exact class of bug, and the pin check still uses the method it warns against.
