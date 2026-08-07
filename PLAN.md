@@ -280,9 +280,38 @@ to rebuild when the graph moves.
 
 ### Iteration cost: what the graph derivation really needs (#56, #58)
 
-Editing one `.c` reruns the graph derivation, **30 to 90 minutes**, before any compile can
-start. Content addressing keeps that from cascading into the lowered derivations, so it is a
-fixed tax per edit.
+**#56 IS DONE (2026-08-07). A first-party source edit no longer rebuilds the graph.** Measured
+with `scripts/buck-quick-check.nu` on a file never probed before, so the source was genuinely
+new:
+
+| probe of one first-party `.m` | builders | time | graph rebuilt |
+|---|---|---|---|
+| before | 8 | 32 min | yes |
+| after | 6 | **17.5 min** | **no** |
+
+Two causes, and neither was the one this section assumed for months:
+
+1. **`buck/rules/install.bzl` wrote the prefix manifest `with_inputs = True`.** That attaches
+   every artifact the manifest NAMES as a build input, and the manifest lists every file the
+   prefix installs, and `materialize.bxl` ensures it. So the graph **DUMP was building the
+   entire prefix**. On the real tree those compiles just succeeded, which is why nobody saw it.
+   Fixed by attaching them as hidden arguments: graph **18m34s to about 10 minutes**.
+2. **The graph copied pins from `${darlingSrc}`**, the whole assembled project, so any source
+   edit moved it. Now per-pin stores. Proven before building: old `materialize-pins.drv` had 5
+   references including `darling-src.drv`, new has 151 of which 147 are pin stores and none is
+   `darling-src`. Graph output byte-identical either way.
+
+The SKELETON (`scripts/buck-skeleton.py`, `skeleton = true` on the minimal endpoint) is correct
+and produces a graph **byte-identical** to the project-fed one, but it was never *sufficient*:
+it closes only the `src` input. `scripts/buck-codegen-closure.py` computes the 1,743 files that
+must keep real contents; `scripts/buck-codegen-keep.txt` is the 119-file delta.
+
+What remains of the 17.5 minutes is **ld64** (#65) and `buck2-stage-project` plus the target
+recompile (#54). See also **#72: `graph.json` action order is nondeterministic**, so a graph
+rebuild that changes nothing still moves every lowered derivation.
+
+Historical, for context: editing one `.c` used to rerun the graph derivation, 30 to 90 minutes,
+before any compile could start.
 
 **A skeleton does not fix it, and the reason is worth keeping.** buck2 analysis genuinely
 cannot read a source file, and that was verified both ways: buck2 loads a skeleton with the
