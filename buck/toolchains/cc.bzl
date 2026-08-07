@@ -26,6 +26,16 @@ CcToolchainInfo = provider(
         # whatever clang's driver already finds.
         "ld",
         "ld_search_dirs",
+        # The linker as a BUILT TARGET rather than a path (#65). None keeps the string
+        # path above, which is what every configuration used before ld64 was portable.
+        #
+        # WHY IT MATTERS: as a path, ld64 is an external nix derivation whose src is the
+        # ENTIRE assembled project, so it rebuilds on every first-party edit, about 15 of the
+        # 17.5 minutes such an edit costs. As a target its sources are under
+        # buck-src/cctools-port, a PIN, which does not move when a first-party file changes.
+        # The lowering needs nothing new for this: migcom is the same shape already, a host
+        # tool built by this graph that appears in the INPUTS of all 110 actions running it.
+        "ld_artifact",
     ],
 )
 
@@ -41,6 +51,10 @@ def _cc_toolchain_impl(ctx):
             ldflags = ctx.attrs.ldflags,
             ld = ctx.attrs.ld,
             ld_search_dirs = ctx.attrs.ld_search_dirs,
+            ld_artifact = (
+                ctx.attrs.ld_target[DefaultInfo].default_outputs[0]
+                if ctx.attrs.ld_target else None
+            ),
         ),
     ]
 
@@ -56,6 +70,9 @@ cc_toolchain = rule(
         "ld": attrs.string(default = ""),
         "ldflags": attrs.list(attrs.string(), default = []),
         "ld_search_dirs": attrs.list(attrs.string(), default = []),
+        # exec_dep: the linker runs on the machine doing the build, not on the target
+        # platform it emits Mach-O for.
+        "ld_target": attrs.option(attrs.exec_dep(), default = None),
     },
     is_toolchain_rule = True,
 )

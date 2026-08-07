@@ -59,6 +59,18 @@ cc_toolchain(
     # -fuse-ld needs an absolute path, so it is opt-in per machine.
     ld = read_root_config("darling", "ld", ""),
     ld_search_dirs = [_LD64_DIR],
+    # ld_target = "root//buck-src:x86_64-apple-darwin20-ld" IS THE GOAL (#65) AND IS BLOCKED.
+    # cc_toolchain and darwin.bzl accept it, and ld64 itself builds and links a valid Mach-O
+    # when driven by an absolute path. What fails is selecting it from a rule:
+    #   -B <dir> alone does NOT win. Measured: clang went to binutils ld.bfd anyway and died
+    #     with "unrecognised emulation mode: llvm", because the nixpkgs clang wrapper supplies
+    #     its own linker and the -B lookup does not override it.
+    #   -fuse-ld= DOES win but needs a genuinely ABSOLUTE path, and a rule only has
+    #     project-relative ones. cmd_args(..., absolute_prefix = "$PWD/") emits that text
+    #     LITERALLY and clang answers "invalid linker name in argument -fuse-ld=$PWD/...".
+    # The way through is a generated wrapper script that resolves $PWD at RUN time and execs
+    # clang with an absolute -fuse-ld. Until then this stays on the machine-local path below,
+    # which works.
     ldflags = [
         # -Z: do not search the standard library/framework dirs. Darling links
         # entirely against its own tree.

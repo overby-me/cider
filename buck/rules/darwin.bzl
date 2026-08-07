@@ -64,10 +64,28 @@ def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
     # it x86_64-apple-darwin20-ld. (-fuse-ld= would also work but only with an
     # ABSOLUTE path, which a Starlark rule cannot compute; set [darling] ld in
     # .buckconfig.local to an absolute path to use it instead.)
-    for d in tc.ld_search_dirs:
-        cmd.add(["-B", d])
-    if tc.ld:
-        cmd.add(cmd_args(tc.ld, format = "-fuse-ld={}"))
+    # THE LINKER AS A BUILT ARTIFACT, when the toolchain was given one (#65). Passing the
+    # artifact rather than a string is what makes the link DEPEND on it: buck2 builds ld64
+    # first and the Nix lowering records it as an input, exactly as it already does for
+    # migcom, which appears in the inputs of all 110 actions that run it.
+    #
+    # -B wants the DIRECTORY, because clang's driver looks for <triple>-ld inside it; parent
+    # is how cmd_args names an artifact's directory without turning it into a string and
+    # losing the dependency.
+    if getattr(tc, "ld_artifact", None):
+        # -B ONLY, no -fuse-ld. The driver finds <triple>-ld inside a -B dir, which is the
+        # documented mechanism above and is why cctools names it x86_64-apple-darwin20-ld.
+        # -fuse-ld needs a genuinely ABSOLUTE path and a rule cannot compute one: passing
+        # the artifact with absolute_prefix = "$PWD/" emits that text literally and clang
+        # answers "invalid linker name in argument -fuse-ld=$PWD/buck-out/...", because it
+        # does not expand shell variables. -B takes the project-relative path happily, since
+        # the action already runs at the project root.
+        cmd.add(cmd_args(tc.ld_artifact, format = "-B{}", parent = 1))
+    else:
+        for d in tc.ld_search_dirs:
+            cmd.add(["-B", d])
+        if tc.ld:
+            cmd.add(cmd_args(tc.ld, format = "-fuse-ld={}"))
     cmd.add(extra_flags)
     cmd.add(["-o", out.as_output()])
     cmd.add(objects)
