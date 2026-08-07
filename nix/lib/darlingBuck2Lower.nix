@@ -855,10 +855,17 @@
     entries = map (m: targetGroups.${m} or {}) members;
     groups = lib.unique (
       (lib.concatMap (e: e.groups or []) entries)
-      ++ lib.optionals (compiles ? ${label}) (
-        lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup
-        ++ nonPinExternal
-      )
+      # THE SDK ONLY FOR A COMPILE, but the non-pin externals for EVERY target. Gating both on
+      # `compiles` was too narrow: root//src/external/darlingserver:dserver_rpc is a script_gen,
+      # not a compile, and it runs
+      # src/external/darlingserver/scripts/generate-rpc-wrappers.py out of one of those four
+      # directories. It failed with `python3: can't open file ... No such file or directory`,
+      # the last root failure of the grouped endpoint. They are four directories, so giving them
+      # to every target costs almost nothing; the SDK is bigger and a link or a rust crate has
+      # no use for it.
+      ++ lib.optionals (compiles ? ${label})
+        (lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup)
+      ++ nonPinExternal
     );
     shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
   in ''
