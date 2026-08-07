@@ -137,7 +137,48 @@ def _quoted_includes(rel: str) -> list:
     return found
 
 
-def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict:
+def _staged_file(data: str, path: str) -> str:
+    """Where scripts/buck2-graph-dump.py parked a staged artifact. Same rule as the dump."""
+    return os.path.join(data, "staged", re.sub(r"[^A-Za-z0-9_.-]+", "_", path))
+
+
+_manifest_cache: dict = {}
+
+
+def _manifest_sources(data: str, path: str) -> list:
+    """Project files a staged TSV names, for an action that reads its inputs from a FILE.
+
+    A SOURCE ONLY TARGET IS INVISIBLE EVERYWHERE ELSE. The prefix installs
+    //etc:resolv.conf, an export_file over a plain source, and buck2 reports 763 declared
+    inputs for that action of which every one is an artifact WITH a producing action:
+    resolv.conf appears neither in buck.all_ineligible_for_dedup_inputs nor in the cmd. So
+    argv scraping cannot see it, the declared-input scrape cannot see it, and the narrowed
+    union dropped it, which failed the prefix on `cp: cannot stat 'etc/resolv.conf'` at the
+    very last derivation of a 2,333 builder run.
+
+    The manifest itself does carry it, as `file<TAB>libexec/.../etc/resolv.conf<TAB>etc/resolv.conf`,
+    and the dump already stages the manifest as DATA because it is an in-process write. So
+    read it. Any column that names an existing project file counts, which also covers the
+    two column farm tables without needing to know which form a given TSV is in.
+    """
+    hit = _manifest_cache.get(path)
+    if hit is not None:
+        return hit
+    found = []
+    try:
+        with open(_staged_file(data, path)) as fh:
+            for line in fh:
+                for col in line.rstrip("\n").split("\t"):
+                    if (col and not col.startswith(("/", "@", "buck-out/"))
+                            and not col.startswith("..") and os.path.lexists(col)):
+                        found.append(col)
+    except OSError:
+        found = []
+    _manifest_cache[path] = found
+    return found
+
+
+def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: str) -> dict:
     known = set(producer) | set(staged) | set(trees)
 
     def owner_of(path: str):
@@ -183,6 +224,10 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict) -> dict
             for d in _include_roots(a["argv"]):
                 if not d.startswith(("/", "@", "buck-out/")) and os.path.isdir(d):
                     srcs |= under(d)
+            # An action that reads its inputs from a FILE, see _manifest_sources.
+            for i in a.get("inputs", []):
+                if i.endswith(".tsv") and i in staged:
+                    srcs.update(_manifest_sources(data, i))
         owners = {o for o in (owner_of(i) for a in acts for i in a.get("inputs", [])) if o}
         for o in owners:
             if o in tree_srcs:
@@ -294,7 +339,7 @@ def main(argv: list) -> int:
         graph = json.load(fh)
 
     trees = read_trees(graph, data)
-    per_target = target_sources(graph["actions"], trees, graph["staged"], graph["producers"])
+    per_target = target_sources(graph["actions"], trees, graph["staged"], graph["producers"], data)
     union = sorted({p for v in per_target.values() for p in v})
 
     # TWO FILES, for the same reason the dump split this out of graph.json: the per-target
