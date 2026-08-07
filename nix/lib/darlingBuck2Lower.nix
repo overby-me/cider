@@ -353,7 +353,11 @@
     PYEOF
   '');
 
-  pinPath = p: "${darlingSrc}/${p}";
+  # FROM pinsTree (#74). Not the assembled tree, which moves on every first-party edit, and not
+  # the per-pin stores, which cannot satisfy a pin's link to a SIBLING pin. pinsTree is mirrored
+  # and self contained, so a plant link into it resolves escapes INSIDE it, and its inputs are
+  # the frozen pins, so it does not move when a source is edited.
+  pinPath = p: "${pinsTree}/${p}";
 
   # ---- the graph, grouped the way this lowers it -------------------------
 
