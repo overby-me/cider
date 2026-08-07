@@ -321,7 +321,12 @@ new:
 |---|---|---|---|
 | before | 8 | 32 min | yes |
 | after #56 | 6 | 17.5 min | **no** |
-| after #65 (external ld64 dropped) | 5 | **97 s** | no |
+| after #65 (external ld64 dropped) | 5 | 97 s | no |
+| after #54 (sourceGroups on) | **2** | **92.3 s** | no |
+
+After #54 the TARGET no longer rebuilds at all: the two that run are `darling-buck2-skeleton`
+and `darling-buck2-sources`, the graph-side content passes. Wall clock is flat because those
+two now ARE the loop, so they are the next lever, not the cascade.
 
 The last row is the whole point of the exercise: **32 minutes to 97 seconds**, measured on
 `darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
