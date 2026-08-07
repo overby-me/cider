@@ -56,35 +56,10 @@ def _merge_dylib_files(deps):
     return out
 
 def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
-    # A GENERATED DRIVER WRAPPER, when the toolchain carries the linker as an artifact (#65).
-    #
-    # -fuse-ld= is the only thing that actually selects the linker here: -B alone loses to the
-    # nixpkgs clang wrapper, which supplies its own and sends the link to binutils ld.bfd
-    # ("unrecognised emulation mode: llvm"). But -fuse-ld= needs a genuinely ABSOLUTE path and
-    # a rule has only project-relative ones; cmd_args(absolute_prefix = "$PWD/") emits that
-    # text LITERALLY and clang rejects it, because clang does not expand shell variables.
-    #
-    # A shell DOES. So the rule writes two lines that resolve $PWD at RUN time, in the action's
-    # own working directory, which is the project root. with_inputs is what makes the link
-    # depend on ld64 rather than merely mention it.
-    driver = tc.cc
-    if getattr(tc, "ld_artifact", None):
-        driver = ctx.actions.write(
-            ctx.label.name + "__ld_driver.sh",
-            cmd_args(
-                "#!/bin/sh",
-                cmd_args(
-                    "exec",
-                    tc.cc,
-                    cmd_args(tc.ld_artifact, format = '-fuse-ld="$PWD/{}"'),
-                    '"$@"',
-                    delimiter = " ",
-                ),
-                delimiter = "\n",
-            ),
-            is_executable = True,
-            with_inputs = True,
-        )
+    # THE TOOLCHAIN'S driver when it has one, so there is a single script for the whole
+    # toolchain rather than one per link. buck/toolchains/cc.bzl writes it and declares it
+    # through InProcInfo, which is what lets the graph dump materialise it.
+    driver = tc.ld_driver if getattr(tc, "ld_driver", None) else tc.cc
     cmd = cmd_args(driver)
     cmd.add(tc.cflags)
     cmd.add(tc.ldflags)

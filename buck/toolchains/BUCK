@@ -83,6 +83,17 @@ cc_toolchain(
     # darwin_binary have to put it in InProcInfo.artifacts.
     #
     #   ld_target = "root//buck-src:x86_64-apple-darwin20-ld",
+    #
+    # STILL OFF. BOTH placements of the driver script fail the DUMP, for different reasons, and
+    # that is the whole remaining problem:
+    #   per LINK      863 in-process artifacts were never materialised, one script per darwin
+    #                 link, none declared through InProcInfo.
+    #   per TOOLCHAIN buck2 audit output cannot parse the path a toolchain artifact lands at,
+    #                 buck-out/nix/art/toolchains/<hash>-<hash>/__darwin_cc__/...:
+    #                 "Path does not have a platform configuration or content-based hash".
+    # The per RULE route is the one that can work, because the dump already resolves ordinary
+    # target artifacts: _darwin_link has to return the script and darwin_dylib and
+    # darwin_binary have to declare it in InProcInfo.artifacts.
     ldflags = [
         # -Z: do not search the standard library/framework dirs. Darling links
         # entirely against its own tree.
