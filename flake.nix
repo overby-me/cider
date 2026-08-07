@@ -656,6 +656,13 @@
             # scripting cones this one drops, and packages.darling-buck2-prefix-coarse is the
             # vehicle for checking it the same way. Deleting this one line restores the fine
             # grained baseline.
+            # SOURCE GROUPS ON BY DEFAULT (#54). The grouped endpoint is verified byte
+            # identical to this one: 1,617 builders, 0 root failures, and the prefix hashes to
+            # sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=, the recorded content. With it
+            # on, an unrelated source edit no longer rebuilds a target: SecItemShimOSX_obj
+            # measured at 2 builders with its output path unchanged, against a full rebuild
+            # before.
+            sourceGroups = true;
             coarsePins = true;
             # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
             # extraTools exists: a wrap_elf action's fifth argument is the elf_lib_dirs
