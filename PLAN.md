@@ -51,8 +51,16 @@ it is still over an hour.
    that cannot be worked around. Cheap pre-check first, on a toy: does `builtins.outputOf` work
    at all on 2.34.x, and does early cutoff SURVIVE it, given a consumer binds to the producing
    derivation rather than its content.
-5. **#71, port duct-tape to Rust.** User-requested, and explicitly not while an iteration-speed
-   task is open.
+5. **#71, port duct-tape to Rust. SCOPED, and the task's own numbers were wrong.**
+   19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
+   not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
+   Five files are 74% of the glue (`kern_synch.c` 2,805, `thread.c` 2,072, `task.c` 1,766,
+   `memory.c` 1,554, `kern_support.c` 1,020), and the tail is small enough to start on:
+   `traps.c` 29, `condvar.c` 49, `semaphore.c` 60, `timer.c` 93.
+   Order: leaves first, keeping the existing `dtape_*` symbol names so the Rust daemon links
+   unchanged; verify by BOOTING the container and running bash, which is a check that exists
+   and can fail. NOT `kern_synch.c` first: it is the psynch path, where this daemon already had
+   a silent SIGSEGV from a null `pthread_list_mlock`.
 
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
