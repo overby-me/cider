@@ -421,9 +421,20 @@ def main(argv: list) -> int:
     with open(os.path.join(outdir, "sources.json"), "w") as fh:
         json.dump({"projectSources": union}, fh, sort_keys=True)
         fh.write("\n")
-    with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
-        json.dump(per_target, fh, sort_keys=True)
-        fh.write("\n")
+    # 357 MB THAT NOTHING AUTOMATED READS, and nix has to hash it and copy it into the store on
+    # every run. The lowering reads target-groups.json (1.5 MB); the only references to this
+    # file are comments plus an optional --sources flag on scripts/buck-codegen-closure.py,
+    # which a person runs by hand. Measured: the script's own phases are 19 s of a 53 s
+    # derivation, so the rest is nix moving data, and this file is 87 percent of the output.
+    #
+    # Set DARLING_EMIT_TARGET_SOURCES=1 when a hand-run tool wants it.
+    if os.environ.get("DARLING_EMIT_TARGET_SOURCES") != "1":
+        print("  skipping target-sources.json (set DARLING_EMIT_TARGET_SOURCES=1 to emit)",
+              file=sys.stderr)
+    else:
+      with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
+          json.dump(per_target, fh, sort_keys=True)
+          fh.write("\n")
 
     # PER-TARGET FILE LISTS AS FILES, and an INDEX naming them (#54). The lowering builds one
     # source subset per target, and it must not learn those lists through Nix: 2,339 targets
