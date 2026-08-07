@@ -1219,6 +1219,26 @@ has been true six times running, each time a check freshly written.
   28 real directories, and the store source is unmodified afterwards. The only 2 dangling links
   point at `src/external/...`, which this partial stage deliberately did not plant, because
   pins arrive from the `wantedPins` section rather than from a group.
+  **AND THE SDK INVERTS THE WHOLE IDEA FOR A COMPILING TARGET, measured.** Every darwin compile
+  needs `darwin/Developer/Platforms`, and that tree is a HUB: 2,633 symlinks reaching TWELVE
+  roots (1,898 `src/external`, 444 `darwin/Developer`, 118 `darwin/frameworks`, 57
+  `darwin/private-frameworks`, 34 `build/src`, 23 `darwin/basic-headers`, then `src/launchd`,
+  `src/libm`, `src/sandbox`, `src/CoreAudio`, `src/libacm`,
+  `src/libDiagnosticMessagesClient`). Counted as GROUPS:
+
+  | | |
+  |---|---|
+  | distinct groups referenced by all 2,339 targets combined | **90** |
+  | groups the SDK alone links into | **255** |
+  | median groups per target | 24 |
+
+  So staging the SDK as groups gives every compiling target 255+ groups, 283% of what the whole
+  project references and 10x the median. The recorded "0 builders with `sourceGroups`" was
+  measured on `libsimple`, whose own argv names its includes; targets reaching the SDK through
+  `//darwin:sdk_env` were never in that sample. THE SDK HAS TO BE ONE PRE-ASSEMBLED CONTENT
+  ADDRESSED ARTIFACT, staged as a single input, or grouped staging is worse than what it
+  replaces.
+
   **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
   `"${darlingSrc}/${p}"` and `darlingSrc` is the whole project, so every staging script that
   named a pin moved on any edit. Taking pins from `darlingSrc.pinPaths` instead, which the
