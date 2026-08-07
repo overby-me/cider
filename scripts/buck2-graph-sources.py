@@ -65,6 +65,16 @@ def _project_candidates(tok: str):
             rest = tok[len(g):]
             if not rest.startswith(("/", "@", "buck-out/")):
                 yield rest
+    # A COMMA JOINED -Wl, TOKEN HIDES A FILE. darwin.bzl emits link_flag_files as
+    # `<flag>,<path>` in ONE argv token, so `-Wl,-alias_list,src/libm/Exports/x.alias`
+    # never matched anything and the alias file stayed out of the narrowed union. The
+    # link then died with `ld: can't open alias file: ...`, naming a path that is right
+    # there in the tree. Splitting is safe: a part that is not a path simply does not
+    # exist and is dropped by the lexists test at the call site.
+    if tok.startswith("-Wl,") and "," in tok[4:]:
+        for part in tok[4:].split(","):
+            if part and not part.startswith(("/", "@", "buck-out/", "-")):
+                yield part
 
 
 def _include_roots(argv: list):
@@ -107,8 +117,22 @@ def _quoted_includes(rel: str) -> list:
             target = m.group(1).decode("utf-8", "replace")
             res = os.path.normpath(os.path.join(base, target))
             # Escaping the project entirely is a system header by another name.
-            if not res.startswith("..") and os.path.exists(res):
-                found.append(res)
+            if res.startswith("..") or not os.path.lexists(res):
+                continue
+            found.append(res)
+            # LEXISTS, AND THE DESTINATION TOO. This test used to be os.path.exists, which
+            # FOLLOWS the link, so a header that is a symlink to a sibling subtree reads as
+            # absent whenever the staged tree the closure runs over does not carry the
+            # destination, and the header is dropped. That is exactly
+            # darwin/frameworks/DirectoryServices/src/DirectoryService.h, a link to
+            # ../include/DirectoryService/DirectoryService.h, and losing it failed
+            # DirectoryService_obj with `fatal error: 'DirectoryService.h' file not found`
+            # after 1,500 builders. Recording the link alone would stage something pointing
+            # at nothing, so record BOTH.
+            if os.path.islink(res):
+                dest = os.path.normpath(os.path.join(os.path.dirname(res), os.readlink(res)))
+                if not dest.startswith(("..", "/")) and os.path.lexists(dest):
+                    found.append(dest)
     _quoted_cache[rel] = found
     return found
 
