@@ -658,8 +658,16 @@
       # Mirroring with REAL directories and one link per FILE fixes it, because the containing
       # directory is real and inside our own tree. Two steps, and the second one is not
       # optional:
-      #   cp -as   is the fast bulk pass, C rather than shell, and it is why this is not a
-      #            per-file loop over 17,223 files for darwin/frameworks alone.
+      #   cp -Rsf --no-preserve=all is the fast bulk pass, C rather than shell, and it is why
+      #            this is not a per-file loop over 17,223 files for darwin/frameworks alone.
+      #            --no-preserve=all IS LOAD BEARING AND WAS NOT THERE FIRST. With -a (or any
+      #            preserve at all) cp applies the source mode to the symlink it just created,
+      #            and chmod FOLLOWS a symlink, so it walks back through the link and changes
+      #            THE SOURCE. Caught because a scratch test left three tracked files at 755:
+      #            darwin/basic-headers/MacTypes.h and two CoreServices headers, all of them
+      #            targets of links. Against a group store the same call would try to chmod
+      #            inside /nix/store. Measured: -a, -Rs and -rs all move a link target 644 to
+      #            755; only --no-preserve=all leaves it alone.
       #   the loop RE-CREATES each source symlink with its own target string. cp -as points our
       #            link AT the store's symlink, which then resolves inside the STORE, so a
       #            target in another group store dangles. Measured with clang on the exact
@@ -669,7 +677,7 @@
       _g=${groupStore g}
       _d=${lib.escapeShellArg g}
       mkdir -p "$_d"
-      cp -asf "$_g/." "$_d/"
+      cp -Rsf --no-preserve=all "$_g/." "$_d/"
       (cd "$_g" && find . -mindepth 1 -type l -printf '%P\n') | while read -r _l; do
         ln -sfn "$(readlink "$_g/$_l")" "$_d/$_l"
       done
