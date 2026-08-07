@@ -238,7 +238,19 @@
   # Until both classes are handled the pins come from the assembled tree, which is what they
   # always did. With sourceGroups off this costs nothing: stageProject already embeds the whole
   # projectSrc, so the pins are not what keeps that path shared.
-  pinPath = p: "${darlingSrc}/${p}";
+  # PER PIN, NOT OUT OF THE ASSEMBLED TREE. This was "${darlingSrc}/${p}", and darlingSrc is
+  # the whole project, so every staging script that named a pin embedded a path that moves on
+  # ANY tracked edit. That is the last shared input in the grouped staging: with sourceGroups
+  # on and the groups mirrored, editing one .m in darwin/frameworks still rebuilt
+  # buck2-stage-project-grouped and the target, 6 builders, because of this expression and
+  # nothing else. The groups themselves were already unaffected.
+  #
+  # darling-src.nix exposes pinPaths, and nix/lib/darlingBuck2Graph.nix has taken its pins
+  # from there since the per-pin split; only the lowering was left behind. Same throw as the
+  # graph, so a missing pin is loud rather than silently falling back to the assembled tree.
+  pinPath = p:
+    darlingSrc.pinPaths.${p}
+      or (throw "darlingBuck2Lower: no pin store for ${p}; darling-src.nix did not pin it");
 
   # ---- the graph, grouped the way this lowers it -------------------------
 
