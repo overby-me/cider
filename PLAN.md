@@ -1232,12 +1232,22 @@ has been true six times running, each time a check freshly written.
   | groups the SDK alone links into | **255** |
   | median groups per target | 24 |
 
-  So staging the SDK as groups gives every compiling target 255+ groups, 283% of what the whole
-  project references and 10x the median. The recorded "0 builders with `sourceGroups`" was
-  measured on `libsimple`, whose own argv names its includes; targets reaching the SDK through
-  `//darwin:sdk_env` were never in that sample. THE SDK HAS TO BE ONE PRE-ASSEMBLED CONTENT
-  ADDRESSED ARTIFACT, staged as a single input, or grouped staging is worse than what it
-  replaces.
+  **CORRECTION, and the conclusion I first drew from those numbers was WRONG.** A compile does
+  not read the SDK at its project path at all. Every one of the 58 include roots of
+  `SecItemShimOSX_obj` is a `buck-out` STAGED FARM, the SDK among them as
+  `.../__sdk_repo_include__/...`, and the lowering stages farms by their own mechanism. So the
+  255 counts links INSIDE a tree that is reached through a farm, and staging the SDK as groups,
+  or as one pre-assembled artifact, addresses neither. I built that artifact, it was correct
+  (it carried the destinations and its internal links resolved), and the target failed exactly
+  as before. Removed.
+
+  **THE REAL RULE IS ONE LINE: A STAGED FARM'S LINK DESTINATIONS MUST BE STAGED, TRANSITIVELY.**
+  The closure records hop one (the farm's link target). It misses the hops after it, and this
+  tree is full of them: `usr/include/os/log_private.h` is a link to
+  `src/external/libtrace/...`, and `usr/include/IOKit` is a link to
+  `../../System/Library/Frameworks/IOKit.framework/Headers` which does not resolve in the repo
+  at all. Every remaining grouped-staging failure has been an instance of this, so the fix is
+  the transitive closure and not another destination.
 
   **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
   `"${darlingSrc}/${p}"` and `darlingSrc` is the whole project, so every staging script that
