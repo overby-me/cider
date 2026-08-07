@@ -85,6 +85,37 @@ def _include_roots(argv: list):
             yield t[2:]
 
 
+# EVERY PATH TEST MEMOISED. target_sources is 27.9 s of the 64 s sources derivation, and the
+# cost is not parsing (1.1 s for the 481 MB graph), not writing (1.9 s for 357 MB), not reading
+# contents (4.2 s for all 106,770 C-family files) and not the include fixpoint (1.2 s over
+# 6,419,328 pairs). It is the sheer NUMBER of path tests: 27,591 actions of roughly 90 argv
+# tokens each, every token yielding up to five candidates, so on the order of ten million
+# lexists at about 1.25 microseconds apiece.
+#
+# The same candidate string recurs constantly across actions, since flags, include roots and
+# shared headers repeat, so a dict collapses those millions of syscalls to one per DISTINCT
+# path. Safe because nothing writes to the tree while this runs: the derivation's source is a
+# read-only store path.
+_lex_cache: dict = {}
+_dir_cache: dict = {}
+
+
+def _lexists(p: str) -> bool:
+    hit = _lex_cache.get(p)
+    if hit is None:
+        hit = os.path.lexists(p)
+        _lex_cache[p] = hit
+    return hit
+
+
+def _isdir(p: str) -> bool:
+    hit = _dir_cache.get(p)
+    if hit is None:
+        hit = os.path.isdir(p)
+        _dir_cache[p] = hit
+    return hit
+
+
 _C_FAMILY = (".c", ".cc", ".cpp", ".cxx", ".m", ".mm", ".h", ".hpp", ".hh", ".inc")
 _QUOTED_INCLUDE = re.compile(rb'^[ \t]*#[ \t]*include[ \t]*"([^"]+)"', re.M)
 _quoted_cache: dict = {}
@@ -208,34 +239,59 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
             whole[d] = found
         return whole[d]
 
+    # ONCE PER OWNER, NOT ONCE PER TARGET. This used to walk every destination of every farm a
+    # target consumes, calling owner_of on each, and owner_of is itself a segment-by-segment
+    # prefix search. With 2,339 targets sharing a few hundred farms that repeated the same work
+    # thousands of times over: SUBPHASE trees measured 10.8 s of the 25.2 s in this function.
+    # The closure of a farm is a property of the FARM, so it is computed once and reused.
+    _closure_cache: dict = {}
+
+    def _tree_closure(o):
+        hit = _closure_cache.get(o)
+        if hit is None:
+            hit = set(tree_srcs[o])
+            for dest in tree_srcs[o]:
+                sub = owner_of(dest)
+                if sub and sub in tree_srcs:
+                    hit |= tree_srcs[sub]
+            _closure_cache[o] = hit
+        return hit
+
     by_target = {}
     for a in ran:
         by_target.setdefault(a["identity"].split(" (")[0], []).append(a)
 
     out = {}
+    import time as _tm
+    _acc = {"argv": 0.0, "roots": 0.0, "manifest": 0.0, "trees": 0.0, "fixpoint": 0.0}
     for label, acts in by_target.items():
         srcs = set()
+        _t = _tm.time()
         for a in acts:
             for tok in a["argv"]:
                 for cand in _project_candidates(tok):
-                    if os.path.lexists(cand):
+                    if _lexists(cand):
                         srcs.add(cand)
                         break
+        _acc["argv"] += _tm.time() - _t
+        _t = _tm.time()
+        for a in acts:
             for d in _include_roots(a["argv"]):
-                if not d.startswith(("/", "@", "buck-out/")) and os.path.isdir(d):
+                if not d.startswith(("/", "@", "buck-out/")) and _isdir(d):
                     srcs |= under(d)
+        _acc["roots"] += _tm.time() - _t
+        _t = _tm.time()
+        for a in acts:
             # An action that reads its inputs from a FILE, see _manifest_sources.
             for i in a.get("inputs", []):
                 if i.endswith(".tsv") and i in staged:
                     srcs.update(_manifest_sources(data, i))
+        _acc["manifest"] += _tm.time() - _t
+        _t = _tm.time()
         owners = {o for o in (owner_of(i) for a in acts for i in a.get("inputs", [])) if o}
         for o in owners:
             if o in tree_srcs:
-                srcs |= tree_srcs[o]
-                for dest in tree_srcs[o]:
-                    sub = owner_of(dest)
-                    if sub and sub in tree_srcs:
-                        srcs |= tree_srcs[sub]
+                srcs |= _tree_closure(o)
         # A quoted include resolves against the INCLUDING FILE own directory, which buck2
         # never declares, so it has to be recovered here or the narrowed source set drops a
         # header the compile really reads and the build dies late. To a fixpoint, because
@@ -249,6 +305,8 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
         # The whole real gap is five files: the three otool disassemblers reaching for
         # cctools/as/*-opcode.h, gripes.c reaching for catopen/catopen.c, which is a .c and
         # not a header, and CFOpenDirectory.c reaching for its generated-stubs.h.
+        _acc["trees"] += _tm.time() - _t
+        _t = _tm.time()
         pending = list(srcs)
         while pending:
             nxt = []
@@ -258,7 +316,10 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
                         srcs.add(r)
                         nxt.append(r)
             pending = nxt
+        _acc["fixpoint"] += _tm.time() - _t
         out[label] = sorted(srcs)
+    for k, v in sorted(_acc.items(), key=lambda kv: -kv[1]):
+        print(f"  SUBPHASE {k}: {v:.1f}s", file=sys.stderr)
     return out
 
 # Grouping (#54). Every target stages ONE shared source path today, so a byte changing
