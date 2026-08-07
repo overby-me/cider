@@ -615,8 +615,11 @@ def main(argv: list[str]) -> int:
 
     # WHICH PROJECT FILES EACH TARGET READS IS NOT COMPUTED HERE ANY MORE. It is the only
     # answer that depends on source file CONTENTS, because a quoted include is found by
-    # parsing #include "..." out of the file, and this dump now runs against a SKELETON
-    # (scripts/buck-skeleton.py) so that editing a .c cannot rerun it. That pass lives in
+    # parsing #include "..." out of the file, and this dump runs against a SKELETON
+    # (scripts/buck-skeleton.py) WHEN THE CALLER ASKS FOR ONE, which the minimal endpoint now
+    # does, so that editing a .c cannot rerun it. It was NOT true when this comment first
+    # claimed it, and the same false claim had to be corrected in two other places. That pass
+    # lives in
     # scripts/buck2-graph-sources.py and runs against the real tree, reading this graph plus
     # the link tables. Verified equivalent when it was moved: 124,055 of 124,056 sources
     # identical, the one difference being a quoted include whose target is inside an

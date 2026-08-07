@@ -651,6 +651,21 @@
             graph = import ./nix/lib/darlingBuck2Graph.nix {
               inherit pkgs darlingSrc ld64;
               allPins = true;
+              # THE SKELETON (#56), and this is what stops a C edit rebuilding the graph.
+              # The dump gets a tree whose C family is emptied outside buck-src, buck-rust and
+              # src/external, keeping the 119 files that feed a generator
+              # (scripts/buck-codegen-keep.txt). Editing a .c changes no file NAME, so that
+              # tree is byte identical, the dump does not rerun, and about 10 minutes leaves
+              # every source edit.
+              #
+              # SAFE BECAUSE THE GRAPHS ARE IDENTICAL, not merely equivalent. Built both ways
+              # from different derivations, they resolve to the same content addressed outputs:
+              #   out   8rsv2w3c71rg5iacmw8h205g4lxbq05f-darling-buck2-graph
+              #   data  4pybgzfvbrrfkkg1pqkhzcx09a33bdyj-darling-buck2-graph-data
+              # See packages.darling-buck2-graph-min, which exists to make that comparison
+              # honest, and scripts/buck-graph-equiv.py for the by-meaning check if the two
+              # ever stop collapsing.
+              skeleton = true;
               targets = import ./nix/lib/buck2-targets-min.nix;
             };
           };

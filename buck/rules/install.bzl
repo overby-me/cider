@@ -145,36 +145,31 @@ def _prefix_tree_impl(ctx):
     for dest in sorted(ctx.attrs.links):
         lines.append(cmd_args("link", dest, ctx.attrs.links[dest], delimiter = "\t"))
 
-    # TWO WRITES OF THE SAME TEXT, and the split is the whole point.
+    # THE MANIFEST IS TEXT ONLY, and the sources it names are attached HIDDEN instead.
     #
-    # This used to be one `write(..., with_inputs = True)`, and with_inputs attaches every
-    # artifact the manifest NAMES as an input of the resulting artifact. The manifest names
-    # every file the prefix installs. buck/bxl/materialize.bxl ensures InProcInfo.artifacts,
-    # and the manifest is in there, so "materialize the in-process artifacts" quietly meant
-    # BUILD THE ENTIRE PREFIX -- inside the graph DUMP, which is supposed to run no compiles at
-    # all. MEASURED: with a skeleton source tree the dump tries to compile libtrustd_obj,
-    # darling-coredump, dyld, compiler_rt_final and system_dyld_final, every one of them
-    # something this manifest lists. On the real tree they simply succeed, which is why it went
-    # unnoticed, and it is a large part of the graph derivation's 18m34s.
+    # This used to be `write(..., with_inputs = True)`, and with_inputs attaches every artifact
+    # the manifest NAMES as an input of the resulting artifact. The manifest names every file
+    # the prefix installs. buck/bxl/materialize.bxl ensures InProcInfo.artifacts, and the
+    # manifest is in there, so "materialize the in-process artifacts" quietly meant BUILD THE
+    # ENTIRE PREFIX -- inside the graph DUMP, which is supposed to run no compiles at all.
+    # MEASURED: with a skeleton tree the dump tried to compile libtrustd_obj, darling-coredump,
+    # dyld, compiler_rt_final and system_dyld_final, every one of them something this manifest
+    # lists. On the real tree they simply succeeded, which is why it went unnoticed for so long,
+    # and removing them roughly HALVED the graph derivation, 18m34s to about 10 minutes.
     #
-    # So: `manifest` is TEXT ONLY and is what travels to the Nix endpoint, keeping its name so
-    # the dump stages it and the lowering replays the same argv. `manifest_deps` is the same
-    # text with the inputs attached, added HIDDEN so the local prefix build still materialises
-    # every source before build.sh copies from it, without the path appearing on the command
-    # line.
+    # The prefix build still needs those sources materialised before build.sh copies from them,
+    # so they go on as hidden arguments: inputs to the action, absent from the command line.
     #
-    # The recorded action should be UNCHANGED either way: argv still names __manifest.tsv, and
-    # hidden arguments are inputs as far as aquery is concerned, so graph.json sees the same
-    # inputs. What changes is only what ensuring the manifest alone drags in.
+    # NOT A SECOND `write`, and that was measured rather than assumed. Writing the same text a
+    # second time with with_inputs set worked, but it INSERTS AN ACTION, and the lowering keys
+    # on action ids: scripts/buck-graph-equiv.py reported every action identical and every
+    # staged artifact identical, with only the prefix target ids renumbered (build.sh 1 to 2,
+    # the prefix 2 to 3), which is enough to move the derivation and rebuild the endpoint for
+    # no gain. Attaching the artifacts directly adds no action at all.
     manifest = ctx.actions.write(ctx.label.name + "__manifest.tsv", lines)
-    manifest_deps = ctx.actions.write(
-        ctx.label.name + "__manifest-deps.tsv",
-        lines,
-        with_inputs = True,
-    )
     builder = ctx.actions.write(ctx.label.name + "__build.sh", _BUILD_PREFIX, is_executable = True)
     cmd = cmd_args(["bash", builder, out.as_output(), manifest])
-    cmd.add(cmd_args(hidden = manifest_deps))
+    cmd.add(cmd_args(hidden = list(mapping.values()) + list(exec_mapping.values())))
     ctx.actions.run(
         cmd,
         category = "prefix_tree",
