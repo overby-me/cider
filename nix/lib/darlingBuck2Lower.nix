@@ -655,10 +655,27 @@
       path = srcRaw + ("/" + p);
     };
 
+  # A COARSE PIN IS NOT A BUCK2 TARGET, so it has no entry of its own. target-groups.json is
+  # keyed by REAL labels (root//buck-src:apr_obj, apr_dylib); groupOfLabel folds those into
+  # root//buck-src:pin-apr when coarsePins is on, and that synthetic label is in no such file.
+  # `targetGroups.${label} or {}` therefore quietly gave a coarse pin ZERO groups and ZERO
+  # shallow files, so it staged an EMPTY tree and every compile in it lost the SDK.
+  #
+  # Measured before this existed: 90 root failures on the minimal grouped endpoint, dominated
+  # by buck2-pin-* (pin-IOKitTools, pin-adv_cmds, pin-apr, pin-BerkeleyDB), 53 of them
+  # 'sys/_symbol_aliasing.h' file not found plus Availability.h, os/log_private.h and
+  # TargetConditionals.h. Ordinary targets passed, which is exactly the shape of a lookup that
+  # misses only synthetic labels.
+  #
+  # groupOfLabel is the identity for a label with no pin, so this is also correct, and a
+  # single-element union, for every ordinary target.
+  membersOf = lib.groupBy groupOfLabel (builtins.attrNames targetGroups);
+
   stageGroupsFor = label: let
-    entry = targetGroups.${label} or {};
-    groups = entry.groups or [];
-    shallow = entry.shallow or [];
+    members = membersOf.${label} or [label];
+    entries = map (m: targetGroups.${m} or {}) members;
+    groups = lib.unique (lib.concatMap (e: e.groups or []) entries);
+    shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
   in ''
     ${lib.concatMapStrings (g: ''
       # A GROUP IS MIRRORED, NOT LINKED. `ln -sfn <groupStore> <g>` is what killed source
