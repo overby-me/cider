@@ -208,6 +208,29 @@
       python3 ${../../scripts/buck-src-normalise.py} --repo "$PWD" buck-src/*
   '';
 
+  # PER PIN STORES, NOT THE ASSEMBLED TREE, and this is what stops a source edit rebuilding
+  # the graph. This script used to copy from ${darlingSrc}/<pin>, and darlingSrc is the WHOLE
+  # assembled project, first party included. So editing one .m moved darlingSrc, moved this
+  # script, and moved the graph derivation. MEASURED before the change, on
+  # darwin/frameworks/Accounts/src/ACAccount.m: 8 builders in 32 minutes, darling-buck2-graph
+  # among them, and the skeleton (#56) could not prevent it because the skeleton only closes
+  # the `src` input. This was the other one.
+  #
+  # A pin store holds one upstream tree and moves only when that pin is bumped.
+  #
+  # NOT THE SAME SITUATION as the per-pin experiment that failed earlier, and the difference
+  # is the reason this can work. That one had the LOWERING SYMLINK a pin into place, where 21
+  # relative links escape their own pin and dangle once the root moves. Here the CONTENTS are
+  # copied into buck-src/<name>/, the same destination as before, so every relative link
+  # resolves exactly as it does today and buck-src-normalise.py still runs over the assembled
+  # result afterwards.
+  #
+  # A missing pin store THROWS rather than falling back to darlingSrc: a silent fallback would
+  # quietly reintroduce the dependency for that pin and undo the whole point.
+  pinSrc = p:
+    darlingSrc.pinPaths.${p}
+      or (throw "darlingBuck2Graph: no pin store for ${p}; darling-src.nix did not pin it");
+
   # As a SCRIPT, not inline: 147 pins of shell in the builder's environment is
   # "Argument list too long" before it is anything else.
   materializePins = pkgs.writeShellScript "materialize-pins" (
@@ -219,7 +242,7 @@
         # split, so the destination already exists and `cp -a src dest` would nest the
         # whole tree one level down as buck-src/<pin>/<pin>.
         mkdir -p buck-src/${name}
-        cp -a --reflink=auto ${darlingSrc}/${p}/. buck-src/${name}/
+        cp -a --reflink=auto ${pinSrc p}/. buck-src/${name}/
         chmod -R u+w buck-src/${name}
         # And where the SDK expects it. Darling's SDK is a farm of ~1,900 committed
         # symlinks into src/external/<pin>, and this flake is built WITHOUT git submodules,
