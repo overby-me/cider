@@ -59,7 +59,9 @@ cc_toolchain(
     # -fuse-ld needs an absolute path, so it is opt-in per machine.
     ld = read_root_config("darling", "ld", ""),
     ld_search_dirs = [_LD64_DIR],
-    # ld_target = "root//buck-src:x86_64-apple-darwin20-ld" IS THE GOAL (#65) AND IS BLOCKED.
+    # THE LINKER BUILT BY THIS GRAPH (#65). darwin.bzl writes a two line driver wrapper that
+    # resolves $PWD at RUN time and execs clang with an absolute -fuse-ld, which is the only
+    # thing that actually selects the linker here. The history is worth keeping:
     # cc_toolchain and darwin.bzl accept it, and ld64 itself builds and links a valid Mach-O
     # when driven by an absolute path. What fails is selecting it from a rule:
     #   -B <dir> alone does NOT win. Measured: clang went to binutils ld.bfd anyway and died
@@ -68,9 +70,19 @@ cc_toolchain(
     #   -fuse-ld= DOES win but needs a genuinely ABSOLUTE path, and a rule only has
     #     project-relative ones. cmd_args(..., absolute_prefix = "$PWD/") emits that text
     #     LITERALLY and clang answers "invalid linker name in argument -fuse-ld=$PWD/...".
-    # The way through is a generated wrapper script that resolves $PWD at RUN time and execs
-    # clang with an absolute -fuse-ld. Until then this stays on the machine-local path below,
-    # which works.
+    # That wrapper is now in darwin.bzl and WORKS for buck2, but setting ld_target still
+    # breaks the NIX DUMP, so it stays off until the last piece lands:
+    #
+    #   863 in-process artifact(s) were never materialised. Each one has to be reachable from
+    #   a provider that buck/bxl/materialize.bxl ensures, which means the rule making it must
+    #   declare it through InProcInfo.
+    #
+    # 863 is exactly the number of darwin links: every one now writes its own __ld_driver.sh,
+    # and ctx.actions.write makes an IN-PROCESS artifact that the dump can only materialise if
+    # the rule declares it. So _darwin_link has to hand the script back and darwin_dylib and
+    # darwin_binary have to put it in InProcInfo.artifacts.
+    #
+    #   ld_target = "root//buck-src:x86_64-apple-darwin20-ld",
     ldflags = [
         # -Z: do not search the standard library/framework dirs. Darling links
         # entirely against its own tree.

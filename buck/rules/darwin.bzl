@@ -56,7 +56,36 @@ def _merge_dylib_files(deps):
     return out
 
 def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
-    cmd = cmd_args(tc.cc)
+    # A GENERATED DRIVER WRAPPER, when the toolchain carries the linker as an artifact (#65).
+    #
+    # -fuse-ld= is the only thing that actually selects the linker here: -B alone loses to the
+    # nixpkgs clang wrapper, which supplies its own and sends the link to binutils ld.bfd
+    # ("unrecognised emulation mode: llvm"). But -fuse-ld= needs a genuinely ABSOLUTE path and
+    # a rule has only project-relative ones; cmd_args(absolute_prefix = "$PWD/") emits that
+    # text LITERALLY and clang rejects it, because clang does not expand shell variables.
+    #
+    # A shell DOES. So the rule writes two lines that resolve $PWD at RUN time, in the action's
+    # own working directory, which is the project root. with_inputs is what makes the link
+    # depend on ld64 rather than merely mention it.
+    driver = tc.cc
+    if getattr(tc, "ld_artifact", None):
+        driver = ctx.actions.write(
+            ctx.label.name + "__ld_driver.sh",
+            cmd_args(
+                "#!/bin/sh",
+                cmd_args(
+                    "exec",
+                    tc.cc,
+                    cmd_args(tc.ld_artifact, format = '-fuse-ld="$PWD/{}"'),
+                    '"$@"',
+                    delimiter = " ",
+                ),
+                delimiter = "\n",
+            ),
+            is_executable = True,
+            with_inputs = True,
+        )
+    cmd = cmd_args(driver)
     cmd.add(tc.cflags)
     cmd.add(tc.ldflags)
     # The Mach-O linker is selected by -B plus the target triple: clang's driver
@@ -73,14 +102,16 @@ def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
     # is how cmd_args names an artifact's directory without turning it into a string and
     # losing the dependency.
     if getattr(tc, "ld_artifact", None):
-        # -B ONLY, no -fuse-ld. The driver finds <triple>-ld inside a -B dir, which is the
-        # documented mechanism above and is why cctools names it x86_64-apple-darwin20-ld.
-        # -fuse-ld needs a genuinely ABSOLUTE path and a rule cannot compute one: passing
-        # the artifact with absolute_prefix = "$PWD/" emits that text literally and clang
-        # answers "invalid linker name in argument -fuse-ld=$PWD/buck-out/...", because it
-        # does not expand shell variables. -B takes the project-relative path happily, since
-        # the action already runs at the project root.
-        cmd.add(cmd_args(tc.ld_artifact, format = "-B{}", parent = 1))
+        # NOTHING HERE. The generated driver above already carries -fuse-ld with an absolute
+        # path, which is what selects the linker.
+        #
+        # DO NOT ADD -B<dir> BACK. It looks harmless and it breaks the DUMP: a -B argument is
+        # a DIRECTORY, and scripts/buck2-graph-dump.py runs `buck2 audit output` over every
+        # buck-out path in an argv to learn which action produced it. A directory is not an
+        # output, so audit fails the whole dump with "Malformed buck-out path ... No output
+        # artifacts found" naming that directory. Measured: the buck2 build was green and the
+        # Nix graph derivation died on exactly this.
+        pass
     else:
         for d in tc.ld_search_dirs:
             cmd.add(["-B", d])
