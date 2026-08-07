@@ -671,10 +671,36 @@
   # single-element union, for every ordinary target.
   membersOf = lib.groupBy groupOfLabel (builtins.attrNames targetGroups);
 
+  # THE SDK CANNOT BE DISCOVERED FROM AN ARGV, so it is a rule rather than a finding.
+  # //darwin:sdk_env contributes the include flags, and a dep contributes them at ANALYSIS
+  # time: the recorded compile for root//linux/server:dserver_fast_context is six tokens,
+  # `clang -DDSERVER_FAST_CONTEXT=1 -c <src> -o <obj>`, with no -I and an empty env. So the
+  # closure cannot see the SDK for such a target, and 1,265 of 2,339 targets list the SDK group
+  # only because their generated argv happens to name it explicitly.
+  #
+  # Measured: with the coarse-pin union fixed, the endpoint went 90 root failures to 9, and
+  # every one of the 9 was this, 10 os/log_private.h and 1 IOKit/IOReturn.h, both SDK headers
+  # under darwin/Developer/Platforms.
+  #
+  # Given to every target that COMPILES anything rather than to all of them, since a link or a
+  # rust crate has no use for it. Cheap: the group is 44 files, 2,633 symlinks and 11 MB, and
+  # it is a frozen vendored tree, so the coupling it adds costs a rebuild only when someone
+  # edits the SDK itself.
+  sdkGroup = "darwin/Developer/Platforms";
+
+  compiles = lib.listToAttrs (map (a: {
+      name = groupOf a;
+      value = true;
+    })
+    (lib.filter (a: lib.hasInfix "_compile " a.identity) g.actions));
+
   stageGroupsFor = label: let
     members = membersOf.${label} or [label];
     entries = map (m: targetGroups.${m} or {}) members;
-    groups = lib.unique (lib.concatMap (e: e.groups or []) entries);
+    groups = lib.unique (
+      (lib.concatMap (e: e.groups or []) entries)
+      ++ lib.optional (compiles ? ${label} && builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup
+    );
     shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
   in ''
     ${lib.concatMapStrings (g: ''
