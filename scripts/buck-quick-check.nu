@@ -45,9 +45,11 @@
 #
 # --probe is only quick for a path both source filters exclude (scripts/, nix/, docs/,
 # PLAN.md), and probing those tests nothing about the cascade for the same reason they are
-# cheap. A probe anywhere else moves darling-src, so ld64 (about 26 min, content addressed and
-# collapsing to the same output) and the graph (about 18 min) rebuild before the target is
-# reached. The script says which of the two it is before it starts.
+# cheap. A probe anywhere else moves darling-src, which USED to mean ld64 (about 26 min) and
+# the graph (about 18 min) rebuilt before the target was reached. Both are gone now: #56 took
+# the project out of the graph inputs, and #65 replaced the external ld64 with the buck2 built
+# one, so the minimal endpoint no longer passes ld64 at all. Measured on
+# darwin/frameworks/AVFoundation/constants.m: 5 builders, 97 seconds, no graph and no ld64.
 
 # THE PROBE TEXT MUST BE NEW EVERY RUN, and that is not cosmetic. It used to be a fixed string,
 # so probing the same file twice reproduced a source tree that was ALREADY IN THE STORE, along

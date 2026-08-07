@@ -287,7 +287,12 @@ new:
 | probe of one first-party `.m` | builders | time | graph rebuilt |
 |---|---|---|---|
 | before | 8 | 32 min | yes |
-| after | 6 | **17.5 min** | **no** |
+| after #56 | 6 | 17.5 min | **no** |
+| after #65 (external ld64 dropped) | 5 | **97 s** | no |
+
+The last row is the whole point of the exercise: **32 minutes to 97 seconds**, measured on
+`darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
+`buck2-stage-project`, the target and its `-out`. Nothing else.
 
 Two causes, and neither was the one this section assumed for months:
 
@@ -306,9 +311,16 @@ and produces a graph **byte-identical** to the project-fed one, but it was never
 it closes only the `src` input. `scripts/buck-codegen-closure.py` computes the 1,743 files that
 must keep real contents; `scripts/buck-codegen-keep.txt` is the 119-file delta.
 
-What remains of the 17.5 minutes is **ld64** (#65) and `buck2-stage-project` plus the target
-recompile (#54). See also **#72: `graph.json` action order is nondeterministic**, so a graph
-rebuild that changes nothing still moves every lowered derivation.
+**ld64 is now out of that path (#65).** The darwin toolchain drives the buck2 built linker
+through `ld_target`, so the `@LD64@` placeholder is referenced by 0 of 17,552 actions and the
+minimal endpoint passes no `ld64` at all. `nix/cctools-port.nix` was an input of every lowered
+derivation and its `src` is the whole assembled project, so it rebuilt on every first-party
+edit. Its build output is no longer anywhere in the endpoint closure; only the cctools source
+pins and a patch file remain, which is correct, because buck2 builds ld64 from that source.
+
+What remains of the 97 seconds is `buck2-stage-project` plus the target recompile (#54).
+See also **#72: `graph.json` action order is nondeterministic**, so a graph rebuild that
+changes nothing still moves every lowered derivation.
 
 Historical, for context: editing one `.c` used to rerun the graph derivation, 30 to 90 minutes,
 before any compile could start.

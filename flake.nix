@@ -577,7 +577,13 @@
           };
           ld64 = pkgs.callPackage ./nix/cctools-port.nix { src = darlingSrc; };
           lowered = import ./nix/lib/darlingBuck2Lower.nix {
-            inherit pkgs darlingSrc ld64;
+            inherit pkgs darlingSrc;
+            # NO ld64 (#65). The darwin toolchain now drives the buck2 BUILT linker through
+            # ld_target, so the @LD64@ placeholder is referenced by 0 of 17,552 actions and
+            # nothing needs the external one on PATH. Passing it anyway kept
+            # nix/cctools-port.nix an input of every lowered derivation, and its src is the
+            # ENTIRE assembled project, so it rebuilt on every first party edit: about 15 of
+            # the 17.5 minutes such an edit cost.
             allPins = true;
             # COARSE PINS ON (#67), and THIS endpoint is the one it was verified against.
             # buck-src is 59 percent of the graph and nobody edits a file in it: a pin moves
@@ -649,7 +655,9 @@
             # packages.darling-buck2-prefix-grouped below is where that gets tried next, so
             # this endpoint stays buildable meanwhile.
             graph = import ./nix/lib/darlingBuck2Graph.nix {
-              inherit pkgs darlingSrc ld64;
+              inherit pkgs darlingSrc;
+              # NO ld64 here either: it also wrote ld and ld64_dir into the buckconfig the dump
+              # uses, which ld_target supersedes.
               allPins = true;
               # THE SKELETON (#56), and this is what stops a C edit rebuilding the graph.
               # The dump gets a tree whose C family is emptied outside buck-src, buck-rust and
