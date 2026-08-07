@@ -23,6 +23,39 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 ---
 
 
+## Buck2 port: the order to work in
+
+Iteration speed first, because everything below is paid for at the current rate until #54
+lands: a one-line edit rebuilds ONE target in 97 s, but re-checking the whole endpoint after
+it is still over an hour.
+
+1. **#54, cut the cascade.** Per-file staging into mirrored real directories, keyed on
+   `target-groups.json` (2.06 MB, already read when `sourceGroups` is on). Verify on ONE
+   target and only then on the endpoint against
+   `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`.
+2. **#69, close the declaration gaps for real and delete the closure pass.** Straight after
+   #54, because #54's correctness rests on the per-target file lists being RIGHT, and today
+   they are inferred: a regex over quoted includes, blind to `#if`, so an include assembled by
+   macro is missed silently. Three gaps this session were each found by a build failing, not
+   by a check.
+3. **#73, regenerate the remaining host targets.** Mechanical, no measured behavioural effect,
+   so it rides along with the next invalidating change rather than buying its own rebuild.
+4. **#66 / dynamic derivations, ONLY when a trigger fires.** Not now: eval is about 12 s of a
+   97 s loop. Triggers, any one: eval exceeds roughly a third of the edit loop once #54 lands;
+   per-target data is forced into the evaluator (`target-sources.json` is 588 MB and takes eval
+   21.4 s to 75.6 s); the full prefix hits an eval memory wall; or a #5805 instance appears
+   that cannot be worked around. Cheap pre-check first, on a toy: does `builtins.outputOf` work
+   at all on 2.34.x, and does early cutoff SURVIVE it, given a consumer binds to the producing
+   derivation rather than its content.
+5. **#71, port duct-tape to Rust.** User-requested, and explicitly not while an iteration-speed
+   task is open.
+
+Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
+rewiring, not a bump).
+
+---
+
+
 ## Buck2 port: where it stands
 
 Every in-scope link edge of the reference graph is ported and builds: **1452 of 1452**,
