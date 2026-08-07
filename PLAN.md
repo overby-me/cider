@@ -1249,6 +1249,21 @@ has been true six times running, each time a check freshly written.
   at all. Every remaining grouped-staging failure has been an instance of this, so the fix is
   the transitive closure and not another destination.
 
+  **THE CLOSURE'S ONE SILENT FAILURE MODE IS MEASURABLY ABSENT HERE (#69).** The per-target file
+  list is inferred, and the way that could be wrong WITHOUT a build error is an `#include`
+  the regex cannot resolve, i.e. one assembled from a macro. Counted:
+
+  | | files | non-literal `#include` |
+  |---|---|---|
+  | first-party (`darwin`, `src`, `linux`) | 26,884 | **0** |
+  | pins (`buck-src`) | 81,835 | 424 (0.52%) |
+
+  The pin ones cannot bite, because pins are staged WHOLESALE: `pinsTree` carries each pin in
+  full, so a macro include inside one always resolves. The inferred list only gates FIRST-PARTY
+  groups, and there the count is zero. The regex also over-approximates by ignoring `#if`, which
+  is the safe direction. So #69 is about genericity and deleting a pass, NOT about correctness
+  risk, and the "silent wrong output" framing was wrong.
+
   **#54 IS DONE. THE GROUPED ENDPOINT IS BYTE IDENTICAL AND THE CASCADE IS CUT.**
 
   | | |
