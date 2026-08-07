@@ -263,6 +263,44 @@
   # scripts/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
   # trap buck-escape-check.py already documents: a NAR hash records a symlink TARGET as a
   # STRING, so two identical strings that resolve to different places look identical.
+  # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
+  #
+  # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
+  # can point at a SIBLING pin: src/external/IOKitUser/darling/submodules/xnu is a link to
+  # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
+  # the STORE, where there is no sibling. scripts/buck-escape-check.py documents exactly this
+  # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
+  # SecItemShimOSX_obj because stageProject uses pinPath too.
+  #
+  # Assembled ONCE, mirrored the same way a source group is: real directories and one symlink
+  # per file, then each source symlink RE-CREATED with its own target string. That makes the
+  # tree SELF CONTAINED, so a sibling escape resolves inside it, and only then is a single
+  # directory link to it safe for a consumer.
+  #
+  # 261,939 files, 3,865 symlinks and 35,969 directories, built from the 147 per-pin stores. Its
+  # inputs are frozen pins, so unlike "${darlingSrc}/${p}" it does NOT move when a first-party
+  # source is edited, which is the whole point.
+  pinsTree = pkgs.runCommand "darling-pins-tree" {
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+  } (''
+    mkdir -p "$out"
+  ''
+  + lib.concatMapStrings (p: let
+      store = darlingSrc.pinPaths.${p} or null;
+    in
+      lib.optionalString (store != null) ''
+        _d="$out"/${lib.escapeShellArg p}
+        mkdir -p "$_d"
+        cp -Rsf --no-preserve=all ${store}/. "$_d"/
+        (cd ${store} && find . -mindepth 1 -type l -printf '%P
+') | while read -r _l; do
+          ln -sfn "$(readlink ${store}/"$_l")" "$_d/$_l"
+        done
+      '')
+    wantedPins);
+
   pinPath = p: "${darlingSrc}/${p}";
 
   # ---- the graph, grouped the way this lowers it -------------------------
@@ -1086,7 +1124,7 @@
   (g.targetOutputs or {});
 in
   assert unstageable == [] || throw "buck2 lower: unstageable artifacts: ${toString unstageable}"; {
-  inherit drvs named g;
+  inherit drvs named g pinsTree;
 
   # The staging script on its own, so it can be checked without building anything that uses
   # it. scripts/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
