@@ -1213,6 +1213,18 @@ has been true six times running, each time a check freshly written.
   relative symlink **exit 0**; the same include with the destination NOT staged **exit 1**.
   The rule that makes it hold is the one the closure already applies: when a staged path is a
   symlink, stage its DESTINATION too.
+  **AND IT HOLDS AGAINST REAL READ-ONLY STORE PATHS**, which the scratch test did not cover:
+  the two groups realised with `builtins.path` (mode 444, `dr-xr-xr-x`), staged by the exact
+  shell `stageGroupsFor` now emits. 0 staging errors, `MacTypes.h` resolves, 147 symlinks and
+  28 real directories, and the store source is unmodified afterwards. The only 2 dangling links
+  point at `src/external/...`, which this partial stage deliberately did not plant, because
+  pins arrive from the `wantedPins` section rather than from a group.
+  **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
+  `"${darlingSrc}/${p}"` and `darlingSrc` is the whole project, so every staging script that
+  named a pin moved on any edit. Taking pins from `darlingSrc.pinPaths` instead, which the
+  GRAPH has done since the per-pin split, is what finally cut it: on one target, an unrelated
+  `.m` edit went from 6 builders to **2**, neither of them the target, and the target's output
+  is the SAME store path either side of the edit.
 - **#54 MEASURED, and per-target granularity is worth a lot: the median edit would rebuild 5
   targets instead of 2,339.** From `target-sources.json`: 2,339 targets, 74,621 distinct files,
   6,419,328 (target, file) pairs. Blast radius of editing ONE file, if each target depended
