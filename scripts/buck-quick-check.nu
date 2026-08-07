@@ -49,7 +49,15 @@
 # collapsing to the same output) and the graph (about 18 min) rebuild before the target is
 # reached. The script says which of the two it is before it starts.
 
-const MARKER = "/* buck-quick-check probe: safe to delete */"
+# THE PROBE TEXT MUST BE NEW EVERY RUN, and that is not cosmetic. It used to be a fixed string,
+# so probing the same file twice reproduced a source tree that was ALREADY IN THE STORE, along
+# with everything built from it. The second probe then reported ran=0 in 15.7s and read as total
+# success while measuring nothing at all: the check could not fail. Rerunning on a file that had
+# never been probed gave 6 builders and 17.5 minutes.
+#
+# So the marker carries a nonce. Reverting still works after a kill, because it strips any line
+# containing MARKER_TAG rather than matching the whole string.
+const MARKER_TAG = "buck-quick-check probe"
 const DEFAULT_ATTR = ".#darling-buck2-one"
 
 def say [msg: string] { print -e $msg }
@@ -117,28 +125,38 @@ def counter-selftest [] {
 # anything else moves darling-src and drags ld64 and the graph in ahead of the target.
 def probe-cost []: string -> string {
     let path = $in
-    let free = ["scripts/", "nix/", "docs/", "PLAN.md"]
+    let free = ["docs/", "PLAN.md"]
+    # scripts/ and nix/ are excluded from the SOURCE FILTERS, so they do not move darling-src,
+    # but that is not the same as free: several are nix path INPUTS, referenced as
+    # ${../../scripts/<name>}, so editing one moves the derivation that uses it. Measured:
+    # probing scripts/buck-codegen-keep.txt rebuilt darling-buck2-skeleton. This message used
+    # to say those paths rebuild nothing at all, which was wrong.
+    let filtered = ["scripts/", "nix/"]
     if ($free | any {|p| $path | str starts-with $p }) {
-        "Excluded from both source filters, so this re-evaluates but rebuilds nothing: about 12s."
+        "Excluded from everything, so this re-evaluates but rebuilds nothing: about 12s."
+    } else if ($filtered | any {|p| $path | str starts-with $p }) {
+        "Outside both source filters, so darling-src does not move, but a script or nix file used as a nix INPUT still rebuilds whatever consumes it."
     } else {
-        "This moves darling-src, so ld64 and the graph rebuild first. MEASURED end to end on one .m file: 8 builders, 32 minutes."
+        "This moves darling-src, so ld64 rebuilds. The GRAPH no longer does (#56). MEASURED end to end on one .m file: 6 builders, 17.5 minutes."
     }
 }
 
 def has-probe [path: string] {
-    (open --raw $path | str contains $MARKER)
+    (open --raw $path | str contains $MARKER_TAG)
 }
 
 def apply-probe [path: string] {
     let text = (open --raw $path)
     let sep = (if ($text | str ends-with "\n") { "" } else { "\n" })
-    $"($text)($sep)($MARKER)\n" | save -f $path
+    # The nonce is what makes this a real probe rather than a replay of a cached tree.
+    let marker = $"/* ($MARKER_TAG) (random chars --length 16): safe to delete */"
+    $"($text)($sep)($marker)\n" | save -f $path
 }
 
 # Reverting by STRIPPING THE MARKER rather than restoring a backup, so an interrupted run
 # leaves something a later run can clean up by itself. A backup file cannot promise that.
 def revert-probe [path: string] {
-    let kept = (open --raw $path | lines | where {|l| ($l | str trim) != $MARKER })
+    let kept = (open --raw $path | lines | where {|l| not ($l | str contains $MARKER_TAG) })
     ($kept | str join "\n") + "\n" | save -f $path
 }
 
