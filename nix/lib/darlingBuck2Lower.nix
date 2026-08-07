@@ -299,7 +299,59 @@
           ln -sfn "$(readlink ${store}/"$_l")" "$_d/$_l"
         done
       '')
-    wantedPins);
+    wantedPins
+  + ''
+    # AND THE DESTINATIONS THE PINS ESCAPE TO, or the tree is not self contained and a single
+    # directory link to it dangles. Measured before this pass: 17 dangling against 6 in the
+    # assembled tree, and all 11 extra were one class, links leaving src/external altogether.
+    # Eight are bootstrap_cmds/darling/include/{mach,machine,libkern,i386,sys/...} reaching into
+    # darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
+    # src/external/darlingserver, which is a NON-PIN external and so is in no pin store.
+    #
+    # Resolved rather than listed, so a new escape is carried instead of failing a build weeks
+    # later. The pre-existing 6 stay dangling on purpose: they dangle in the assembled tree too
+    # (two documented dtrace links, a homebrew absolute path, libcxx/test/std/pstl), and the bar
+    # is PARITY with that tree, not zero.
+    ${pkgs.python3}/bin/python3 - "$out" ${src} <<'PYEOF'
+    import os, shutil, sys
+    out, src = sys.argv[1], sys.argv[2]
+
+    def carry(rel, depth=0):
+        if depth > 8:
+            return
+        dst = os.path.join(out, rel)
+        s = os.path.join(src, rel)
+        if os.path.lexists(dst) or not os.path.lexists(s):
+            return
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        if os.path.islink(s):
+            os.symlink(os.readlink(s), dst)
+        elif os.path.isdir(s):
+            shutil.copytree(s, dst, symlinks=True)
+        else:
+            shutil.copy2(s, dst, follow_symlinks=False)
+
+    for _ in range(4):
+        pending = []
+        for dp, dn, fn in os.walk(out):
+            for name in list(dn) + list(fn):
+                p = os.path.join(dp, name)
+                if not os.path.islink(p) or os.path.exists(p):
+                    continue
+                t = os.readlink(p)
+                if t.startswith("/"):
+                    continue
+                d = os.path.normpath(os.path.join(os.path.dirname(p), t))
+                rel = os.path.relpath(d, out)
+                if rel.startswith("..") or not os.path.lexists(os.path.join(src, rel)):
+                    continue
+                pending.append(rel)
+        if not pending:
+            break
+        for rel in pending:
+            carry(rel)
+    PYEOF
+  '');
 
   pinPath = p: "${darlingSrc}/${p}";
 
