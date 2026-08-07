@@ -63169,7 +63169,217 @@ darwin_dylib(
 )
 # END generated: DBusKit dylibs
 
+# BEGIN generated: x86_64-apple-darwin20-ld
+# GENERATED from the reference build.ninja by
+# scripts/gen-buck-from-ninja.py x86_64-apple-darwin20-ld   -- review before committing.
+# cmake target: x86_64-apple-darwin20-ld  ->  src/external/cctools-port/cctools/ld64/src/x86_64-apple-darwin20-ld
+# 40 sources in 2 flag groups: cmake gives individual
+# files their own defines and -include shims, and those decide symbol aliasing.
+# TODO these include dirs are GENERATED (codegen output):
+#   src/include
 
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "x86_64-apple-darwin20-ld_inc_cctools_port_cctools_include",
+    headers = glob([
+        "cctools-port/cctools/include/**/*",
+        "cctools-port/cctools/include/foreign/**/*",
+    ]),
+    root = "cctools-port/cctools/include",
+    include_subdirs = [
+        ".",
+        "foreign",
+    ],
+    visibility = ["PUBLIC"],
+)
 
+# Sibling include dirs, staged as ONE tree with -I into each: headers here
+# reach each other with `#include "../<dir>/x.h"`, which only resolves if
+# the sibling is in the same staged tree.
+cc_header_root(
+    name = "x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src",
+    headers = glob([
+        "cctools-port/cctools/ld64/src/ld/*.h",
+        "cctools-port/cctools/ld64/src/ld/**/*.h",
+        "cctools-port/cctools/ld64/src/ld/*.hpp",
+        "cctools-port/cctools/ld64/src/ld/**/*.hpp",
+        "cctools-port/cctools/ld64/src/ld/*.c",
+        "cctools-port/cctools/ld64/src/ld/parsers/*.h",
+        "cctools-port/cctools/ld64/src/ld/parsers/**/*.h",
+        "cctools-port/cctools/ld64/src/ld/parsers/*.hpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/**/*.hpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/*.c",
+        "cctools-port/cctools/ld64/src/3rd/*.h",
+        "cctools-port/cctools/ld64/src/3rd/**/*.h",
+        "cctools-port/cctools/ld64/src/3rd/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/**/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/*.c",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/*.h",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/**/*.h",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/**/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/*.c",
+        "cctools-port/cctools/ld64/src/3rd/include/*.h",
+        "cctools-port/cctools/ld64/src/3rd/include/**/*.h",
+        "cctools-port/cctools/ld64/src/3rd/include/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/include/**/*.hpp",
+        "cctools-port/cctools/ld64/src/3rd/include/*.c",
+        "cctools-port/cctools/ld64/src/**/*",
+    ]),
+    root = "cctools-port/cctools/ld64/src",
+    include_subdirs = [
+        "ld",
+        "ld/parsers",
+        "3rd",
+        "3rd/BlocksRuntime",
+        "3rd/include",
+        ".",
+    ],
+    visibility = ["PUBLIC"],
+)
 
+cc_header_root(
+    name = "x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src_abstraction",
+    headers = glob(["cctools-port/cctools/ld64/src/abstraction/*.h", "cctools-port/cctools/ld64/src/abstraction/**/*.h", "cctools-port/cctools/ld64/src/abstraction/*.hpp", "cctools-port/cctools/ld64/src/abstraction/**/*.hpp", "cctools-port/cctools/ld64/src/abstraction/*.c"]),
+    root = "cctools-port/cctools/ld64/src/abstraction",
+    visibility = ["PUBLIC"],
+)
 
+cc_objects(
+    name = "x86_64-apple-darwin20-ld_obj",
+    srcs = [
+        "cctools-port/cctools/ld64/src/ld/InputFiles.cpp",
+        "cctools-port/cctools/ld64/src/ld/Options.cpp",
+        "cctools-port/cctools/ld64/src/ld/OutputFile.cpp",
+        "cctools-port/cctools/ld64/src/ld/PlatformSupport.cpp",
+        "cctools-port/cctools/ld64/src/ld/Resolver.cpp",
+        "cctools-port/cctools/ld64/src/ld/Snapshot.cpp",
+        "cctools-port/cctools/ld64/src/ld/SymbolTable.cpp",
+        "cctools-port/cctools/ld64/src/ld/code-sign-blobs/blob.cpp",
+        "cctools-port/cctools/ld64/src/ld/ld.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/archive_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/lto_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/macho_dylib_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/macho_relocatable_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/opaque_section_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/parsers/textstub_dylib_file.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/bitcode_bundle.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/branch_island.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/branch_shim.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/code_dedup.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/compact_unwind.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/dtrace_dof.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/dylibs.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/got.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/huge.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/inits.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/objc.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/order.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/stubs/stubs.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/thread_starts.cpp",
+        "cctools-port/cctools/ld64/src/ld/passes/tlvp.cpp",
+    ],
+    compiler_flags = [
+        "-DEMULATED_HOST_CPU_SUBTYPE=3",
+        "-DEMULATED_HOST_CPU_TYPE=16777223",
+        "-DHAVE_BCMP=1",
+        "-DHAVE_BCOPY=1",
+        "-DHAVE_BZERO=1",
+        "-DHAVE_DLFCN_H=1",
+        "-DHAVE_EXECINFO_H=1",
+        "-DHAVE_INDEX=1",
+        "-DHAVE_INTTYPES_H=1",
+        "-DHAVE_MEMORY_H=1",
+        "-DHAVE_RINDEX=1",
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_STDLIB_H=1",
+        "-DHAVE_STRINGS_H=1",
+        "-DHAVE_STRING_H=1",
+        "-DHAVE_SYS_STAT_H=1",
+        "-DHAVE_SYS_TYPES_H=1",
+        "-DHAVE_UNISTD_H=1",
+        "-DPROGRAM_PREFIX=\"x86_64-apple-darwin20-\"",
+        "-DSTDC_HEADERS=1",
+        "-D__DARWIN_UNIX03",
+        "-D__STDC_CONSTANT_MACROS=1",
+        "-D__STDC_LIMIT_MACROS=1",
+        "-Du_short=uint16_t",
+        "-fblocks",
+        "-std=c++11",
+        "-Wno-long-long",
+        "-Wno-import",
+        "-Wno-format",
+        "-Wno-deprecated",
+        "-Wno-unused-variable",
+        "-Wno-unused-private-field",
+        "-Wno-unused-function",
+        "-Wno-invalid-offsetof",
+        "-Wno-int-conversion",
+        "-Wno-char-subscripts",
+        "-Wno-shift-negative-value",
+        "-U__APPLE__",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+        "//src/include:darling_config",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_include",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src_abstraction",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+cc_objects(
+    name = "x86_64-apple-darwin20-ld_obj2",
+    srcs = [
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/data.c",
+        "cctools-port/cctools/ld64/src/3rd/BlocksRuntime/runtime.c",
+        "cctools-port/cctools/ld64/src/3rd/eprintf.c",
+        "cctools-port/cctools/ld64/src/3rd/helper.c",
+        "cctools-port/cctools/ld64/src/3rd/md5.c",
+        "cctools-port/cctools/ld64/src/3rd/mkpath_np.c",
+        "cctools-port/cctools/ld64/src/3rd/qsort_r.c",
+        "cctools-port/cctools/ld64/src/3rd/strlcat.c",
+        "cctools-port/cctools/ld64/src/3rd/strlcpy.c",
+        "cctools-port/cctools/ld64/src/ld/debugline.c",
+    ],
+    compiler_flags = [
+        "-DEMULATED_HOST_CPU_SUBTYPE=3",
+        "-DEMULATED_HOST_CPU_TYPE=16777223",
+        "-DHAVE_BCMP=1",
+        "-DHAVE_BCOPY=1",
+        "-DHAVE_BZERO=1",
+        "-DHAVE_DLFCN_H=1",
+        "-DHAVE_EXECINFO_H=1",
+        "-DHAVE_INDEX=1",
+        "-DHAVE_INTTYPES_H=1",
+        "-DHAVE_MEMORY_H=1",
+        "-DHAVE_RINDEX=1",
+        "-DHAVE_STDINT_H=1",
+        "-DHAVE_STDLIB_H=1",
+        "-DHAVE_STRINGS_H=1",
+        "-DHAVE_STRING_H=1",
+        "-DHAVE_SYS_STAT_H=1",
+        "-DHAVE_SYS_TYPES_H=1",
+        "-DHAVE_UNISTD_H=1",
+        "-DPROGRAM_PREFIX=\"x86_64-apple-darwin20-\"",
+        "-DSTDC_HEADERS=1",
+        "-D__DARWIN_UNIX03",
+        "-D__STDC_CONSTANT_MACROS=1",
+        "-D__STDC_LIMIT_MACROS=1",
+        "-Du_short=uint16_t",
+        "-Wno-everything",
+        "-U__APPLE__",
+    ],
+    toolchain = "toolchains//:native_cc",
+    deps = [
+        "//src/include:darling_config",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_include",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src",
+        ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src_abstraction",
+    ],
+    visibility = ["PUBLIC"],
+)
+# END generated: x86_64-apple-darwin20-ld

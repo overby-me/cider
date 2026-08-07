@@ -930,8 +930,14 @@ def generate(target: str, edges):
             if extensionless_headers(p) or unusual_header_exts(p):
                 w(f'        "{p}/**/*",')
             else:
+                # .hpp as well as .h: ld64's abstraction/ holds ONLY .hpp
+                # (MachOFileAbstraction.hpp and two siblings), so a .h-only glob staged
+                # that root EMPTY and every parser failed on a missing include. C++
+                # headers are not unusual enough for UNUSUAL_HEADER_EXTS; they belong here.
                 w(f'        "{p}/*.h",')
                 w(f'        "{p}/**/*.h",')
+                w(f'        "{p}/*.hpp",')
+                w(f'        "{p}/**/*.hpp",')
                 w(f'        "{p}/*.c",')
         ex = glob_excludes(ps)
         if ex:
@@ -992,7 +998,9 @@ def generate(target: str, edges):
                 # *.c at the root level too: some sources are #included rather than
                 # compiled (ncurses' capdefaults.c, libedit's history.c), and they
                 # resolve through an -I of the source dir like any header.
-                w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.c"]{exarg}),')
+                # .hpp too: see the sibling-root branch above. ld64's abstraction/ is
+                # all .hpp and staged empty without it.
+                w(f'    headers = glob(["{p}/*.h", "{p}/**/*.h", "{p}/*.hpp", "{p}/**/*.hpp", "{p}/*.c"]{exarg}),')
             w(f'    root = "{p}",')
             w('    visibility = ["PUBLIC"],')
             w(")")
