@@ -280,6 +280,31 @@
   # 261,939 files, 3,865 symlinks and 35,969 directories, built from the 147 per-pin stores. Its
   # inputs are frozen pins, so unlike "${darlingSrc}/${p}" it does NOT move when a first-party
   # source is edited, which is the whole point.
+  # THE ESCAPE DESTINATIONS, EACH FROM ITS OWN STORE PATH. pinsTree used to resolve them against
+  # ${src}, the whole filtered project, which made it move on EVERY source edit and took
+  # stage-project and every target with it: 4 builders for an unrelated .m, and the target output
+  # moved. One shared moving input traded for another.
+  #
+  # The pins are frozen; only the escape destinations dragged the project back in, and they are
+  # few. darwin/Developer/Platforms is the SDK, and the rest are the non-pin src/external
+  # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
+  escapeRoots = ["darwin/Developer/Platforms"] ++ nonPinExternal;
+
+  escapeSrc = pkgs.runCommand "darling-pin-escape-roots" {} (''
+    mkdir -p "$out"
+  ''
+  + lib.concatMapStrings (r: let
+      store = builtins.path {
+        name = "darling-escape-" + lib.strings.sanitizeDerivationName r;
+        path = srcRaw + ("/" + r);
+      };
+    in
+      lib.optionalString (builtins.pathExists (srcRaw + ("/" + r))) ''
+        mkdir -p "$out"/${lib.escapeShellArg (builtins.dirOf r)}
+        cp -a --no-preserve=ownership ${store} "$out"/${lib.escapeShellArg r}
+      '')
+    escapeRoots);
+
   pinsTree = pkgs.runCommand "darling-pins-tree" {
     __contentAddressed = true;
     outputHashMode = "recursive";
@@ -312,7 +337,7 @@
     # later. The pre-existing 6 stay dangling on purpose: they dangle in the assembled tree too
     # (two documented dtrace links, a homebrew absolute path, libcxx/test/std/pstl), and the bar
     # is PARITY with that tree, not zero.
-    ${pkgs.python3}/bin/python3 - "$out" ${src} <<'PYEOF'
+    ${pkgs.python3}/bin/python3 - "$out" ${escapeSrc} <<'PYEOF'
     import os, shutil, sys
     out, src = sys.argv[1], sys.argv[2]
 
