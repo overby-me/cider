@@ -649,8 +649,30 @@
     shallow = entry.shallow or [];
   in ''
     ${lib.concatMapStrings (g: ''
-      mkdir -p ${lib.escapeShellArg (builtins.dirOf g)}
-      ln -sfn ${groupStore g} ${lib.escapeShellArg g}
+      # A GROUP IS MIRRORED, NOT LINKED. `ln -sfn <groupStore> <g>` is what killed source
+      # groups: the group arrives as one symlink to a DIRECTORY, so a relative parent inside
+      # it is resolved by the kernel against the REAL parent in the store and leaves our tree.
+      # 2,306 of the 2,970 symlinks under darwin, src and linux are relative and cross a group
+      # boundary, so this is the common case, not a corner.
+      #
+      # Mirroring with REAL directories and one link per FILE fixes it, because the containing
+      # directory is real and inside our own tree. Two steps, and the second one is not
+      # optional:
+      #   cp -as   is the fast bulk pass, C rather than shell, and it is why this is not a
+      #            per-file loop over 17,223 files for darwin/frameworks alone.
+      #   the loop RE-CREATES each source symlink with its own target string. cp -as points our
+      #            link AT the store's symlink, which then resolves inside the STORE, so a
+      #            target in another group store dangles. Measured with clang on the exact
+      #            cross-group case: cp -as alone fails with `'rel.h' file not found`, the
+      #            fixup gives exit 0, and dropping the fixup again fails. It is a real
+      #            negative control, so the pass means something.
+      _g=${groupStore g}
+      _d=${lib.escapeShellArg g}
+      mkdir -p "$_d"
+      cp -asf "$_g/." "$_d/"
+      (cd "$_g" && find . -mindepth 1 -type l -printf '%P\n') | while read -r _l; do
+        ln -sfn "$(readlink "$_g/$_l")" "$_d/$_l"
+      done
     '')
     groups}
     ${lib.concatMapStrings (p: ''

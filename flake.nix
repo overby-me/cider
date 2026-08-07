@@ -531,6 +531,44 @@
         lowered.named."root//buck/prefix-min:darling_prefix_min"
         // { inherit (lowered) stageProject named; };
 
+      # THE MINIMAL ENDPOINT WITH sourceGroups ON (#54), which is the flag with the RIGHT
+      # granularity: with it on, editing ACAccount.m and rebuilding libsimple_darlingserver ran
+      # 0 builders against 323 with neither flag. What it lacked was a staging that survives a
+      # relative escape, and stageGroupsFor now mirrors a group with real directories and one
+      # link per file instead of linking the group directory. packages.darling-buck2-prefix-
+      # grouped exists already but lowers the FULL target list, so testing the flag there costs
+      # a graph this store may not hold; this pairs it with buck2-targets-min.nix, which reuses
+      # the graph the minimal endpoint already built, so ONE target can be tried in minutes.
+      #
+      #   nix build .#darling-buck2-prefix-min-grouped.named.\"root//src/libsimple:libsimple_darlingserver\"
+      packages.darling-buck2-prefix-min-grouped =
+        pkgs:
+        let
+          darlingSrc = import ./nix/lib/darling-src.nix {
+            inherit pkgs;
+            baseSrc = ./.;
+          };
+          lowered = import ./nix/lib/darlingBuck2Lower.nix {
+            inherit pkgs darlingSrc;
+            allPins = true;
+            sourceGroups = true;
+            coarsePins = true;
+            extraTools =
+              let
+                di = pkgs.callPackage ./nix/darlingBuildInputs.nix { };
+              in
+              di.wrappedLibs ++ di.hostHeaderLibs;
+            graph = import ./nix/lib/darlingBuck2Graph.nix {
+              inherit pkgs darlingSrc;
+              allPins = true;
+              skeleton = true;
+              targets = import ./nix/lib/buck2-targets-min.nix;
+            };
+          };
+        in
+        lowered.named."root//buck/prefix-min:darling_prefix_min"
+        // { inherit (lowered) stageProject named; };
+
       # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
       # assembled tree they replace. The lowering plants pins from darling-src, which is ONE
       # path that moves when any tracked file changes, and that is what made source groups
