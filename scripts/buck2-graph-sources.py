@@ -334,13 +334,24 @@ def main(argv: list) -> int:
         print(__doc__.strip().splitlines()[-1], file=sys.stderr)
         return 2
     graph_path, data, outdir = argv[1], argv[2], argv[3]
+    import time as _t
+    _t0 = _t.time()
+    def _phase(name):
+        nonlocal _t0
+        now = _t.time()
+        print(f"PHASE {name}: {now - _t0:.1f}s", file=sys.stderr)
+        _t0 = now
     os.makedirs(outdir, exist_ok=True)
     with open(graph_path) as fh:
         graph = json.load(fh)
+    _phase("load graph.json")
 
     trees = read_trees(graph, data)
+    _phase("read_trees")
     per_target = target_sources(graph["actions"], trees, graph["staged"], graph["producers"], data)
+    _phase("target_sources")
     union = sorted({p for v in per_target.values() for p in v})
+    _phase("union")
 
     # TWO FILES, for the same reason the dump split this out of graph.json: the per-target
     # breakdown is 10.5 million entries and only the narrowSources path ever looks at it,
