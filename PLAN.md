@@ -1171,6 +1171,15 @@ has been true six times running, each time a check freshly written.
   by the subset so an unchanged target collapses to the same path.
   `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
   <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
+  **THE LAYOUT THAT SUBSET DERIVATION HAS TO REPRODUCE IS NOW KNOWN, and it is cheaper than a
+  copy: REAL DIRECTORIES PLUS ONE SYMLINK PER FILE.** What broke the link farm was that a GROUP
+  was staged as one symlink to a DIRECTORY, so `..` left the tree. Per FILE it does not: the
+  containing directory is real and inside our own tree. Tested with clang on a scratch tree,
+  both cases that matter and a negative control that really fails:
+  `#include "../d.h"` through a per-file link **exit 0**; a staged source that is ITSELF a
+  relative symlink **exit 0**; the same include with the destination NOT staged **exit 1**.
+  The rule that makes it hold is the one the closure already applies: when a staged path is a
+  symlink, stage its DESTINATION too.
 - **#54 MEASURED, and per-target granularity is worth a lot: the median edit would rebuild 5
   targets instead of 2,339.** From `target-sources.json`: 2,339 targets, 74,621 distinct files,
   6,419,328 (target, file) pairs. Blast radius of editing ONE file, if each target depended
