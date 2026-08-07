@@ -464,7 +464,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.darling-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named drvs; };
 
       # Task #44, the experiment and nothing more: the same lowering with narrowSources on.
       #
@@ -529,7 +529,7 @@
           };
         in
         lowered.named."root//buck/prefix-min:darling_prefix_min"
-        // { inherit (lowered) stageProject named; };
+        // { inherit (lowered) stageProject named drvs; };
 
       # THE MINIMAL ENDPOINT WITH sourceGroups ON (#54), which is the flag with the RIGHT
       # granularity: with it on, editing ACAccount.m and rebuilding libsimple_darlingserver ran
@@ -567,7 +567,7 @@
           };
         in
         lowered.named."root//buck/prefix-min:darling_prefix_min"
-        // { inherit (lowered) stageProject named; };
+        // { inherit (lowered) stageProject named drvs; };
 
       # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
       # assembled tree they replace. The lowering plants pins from darling-src, which is ONE
@@ -732,7 +732,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.darling-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix-min:darling_prefix_min" // { inherit (lowered) stageProject named; };
+        lowered.named."root//buck/prefix-min:darling_prefix_min" // { inherit (lowered) stageProject named drvs; };
 
       # ONE TARGET, ONE COMMAND, ONE EVAL (task #68). The most common operation in this work is
       # "does this one target still build, and what RAN", and it used to cost TWO evaluations of
@@ -811,7 +811,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.darling-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named drvs; };
 
       # The same endpoint with each buck-src PIN lowered as one derivation instead of one
       # per target (#53). buck-src is 58.9 percent of the actions and only moves when a
@@ -857,7 +857,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named drvs; };
 
       packages.darling-buck2-prefix-coarse =
         pkgs:
@@ -885,7 +885,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named; };
+        lowered.named."root//buck/prefix:darling_prefix" // { inherit (lowered) stageProject named drvs; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.
