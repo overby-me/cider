@@ -501,6 +501,18 @@ the shell before the probe can report.
   ld64 is collected every darwin link fails with `clang: error: invalid linker name in
   argument '-fuse-ld=...'`, which names the flag and not the missing file. Re-run
   `scripts/buck-setup.nu`.
+  **The lowering already supports the finished shape, and `migcom` is the precedent.** It is a
+  host tool built by this same graph, referenced by its `buck-out` path, and it appears in the
+  INPUTS of all **110** actions that run it, so the lowering stages it as a dependency like any
+  other produced artifact. ld64 would be identical with **863** consumers: that is how many
+  darwin links currently carry the `@LD64@` placeholder
+  (`-B @LD64@/bin -fuse-ld=@LD64@/bin/x86_64-apple-darwin20-ld`), which exists only because
+  ld64 is an external prebuilt.
+  **And that is the whole payoff, measured rather than assumed.** Today those 863 links depend
+  on a nix derivation whose `src` is the entire `darlingSrc`, so it rebuilds on every
+  first-party edit, about 15 of the 17.5 minutes such an edit still costs. As a buck2 target
+  ld64's sources are under `buck-src/cctools-port/`, a PIN, which does not move when a
+  first-party file changes. The 15 minutes leaves the per-edit path entirely.
   **DO NOT "fold in `install_name_tool`/`nmedit`", which is what this line used to say.**
   cctools-port defines neither; only `lipo`. Asking ninja for them by bare name resolves to the
   GUEST `src/xcselect` shims and costs **3,113 compiles across 197 directories** instead of 62
