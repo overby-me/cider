@@ -39,7 +39,9 @@ Usage:
 """
 from __future__ import annotations
 
+import collections
 import hashlib
+import heapq
 import json
 import os
 import re
@@ -281,6 +283,80 @@ def portable(value: str, subs: dict) -> str:
     for path in sorted(subs, key=len, reverse=True):
         value = value.replace(path, subs[path])
     return value
+
+
+
+def deterministic_action_order(actions: list) -> list:
+    """The same actions, in a TOPOLOGICAL order that does not change between runs (#72).
+
+    THE PROBLEM: aquery does not hand these back in a stable order. Two dumps of an unchanged
+    tree produced graph.json files of exactly the same size, 307,041,054 bytes, that
+    scripts/buck-graph-equiv.py called the same graph on every dimension, and which still
+    differed at byte 49 because the action list started with a different action. The lowering
+    reads graph.json at EVALUATION, so a byte difference moves every lowered derivation: any
+    graph rebuild then invalidated the whole endpoint for nothing, which quietly undercut the
+    content addressing of #50 and #55.
+
+    WHY NOT sorted(actions, key=identity), which is the obvious fix and is WRONG:
+    nix/lib/darlingBuck2Lower.nix requires this list to be GLOBALLY TOPOLOGICAL and says so.
+    Coarse pin regrouping is only valid because of it, and #52 concurrency correctness rests on
+    it, since an action reading none of its siblings outputs cannot depend on anything already
+    launched. A plain sort breaks that into a RACE rather than an error, which is the worst
+    kind of regression to ship.
+
+    So: Kahn, with the ready set kept in a heap keyed on identity. Topological because it is
+    Kahn, deterministic because the tie break is total and the identities are unique.
+
+    VERIFIED BOTH PROPERTIES on the minimal graph, 17,511 actions:
+      topological  walking the list while accumulating produced outputs finds 0 inputs read
+                   before written, and 81,891 over the reversed list. Identical to the
+                   numbers before this change, so the ordering did not weaken it. COUNT ONLY
+                   INPUTS SOME ACTION PRODUCES: counting every buck-out input reads 738,915
+                   and looks broken, because staged farms are made in process by buck2 and
+                   never appear as an action output.
+      unchanged    scripts/buck-graph-equiv.py against the graph from before this change
+                   reports THE SAME GRAPH on every dimension.
+      reproducible two dumps of an unchanged tree produce a BYTE IDENTICAL graph.json, which
+                   is the property that was missing and the whole reason this exists.
+    """
+    producer = {}
+    for i, a in enumerate(actions):
+        for o in a.get("outputs") or []:
+            producer[str(o)] = i
+
+    indegree = [0] * len(actions)
+    dependents = collections.defaultdict(list)
+    for i, a in enumerate(actions):
+        deps = set()
+        for inp in a.get("inputs") or []:
+            j = producer.get(str(inp))
+            # j == i happens when an action lists its own output as an input; it is not a
+            # dependency on anything and would deadlock the queue.
+            if j is not None and j != i:
+                deps.add(j)
+        indegree[i] = len(deps)
+        for j in deps:
+            dependents[j].append(i)
+
+    ready = [(actions[i]["identity"], i) for i in range(len(actions)) if indegree[i] == 0]
+    heapq.heapify(ready)
+    out = []
+    while ready:
+        _, i = heapq.heappop(ready)
+        out.append(actions[i])
+        for k in dependents[i]:
+            indegree[k] -= 1
+            if indegree[k] == 0:
+                heapq.heappush(ready, (actions[k]["identity"], k))
+
+    if len(out) != len(actions):
+        # Loudly, because a silently truncated action list is a graph that builds most of the
+        # port and then fails somewhere unrelated.
+        raise SystemExit(
+            "graph dump: %d of %d actions ordered; the action graph has a cycle"
+            % (len(out), len(actions))
+        )
+    return out
 
 
 def main(argv: list[str]) -> int:
@@ -627,7 +703,8 @@ def main(argv: list[str]) -> int:
 
     graph = {
         "targets": targets,
-        "actions": ran,
+        # Deterministically ordered, and still topological: see deterministic_action_order.
+        "actions": deterministic_action_order(ran),
         "staged": copied,
         # {staged tree: {n, table, dirs}} -- the links themselves are in the table file.
         "stagedTrees": tree_index,
