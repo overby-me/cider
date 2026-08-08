@@ -46,6 +46,8 @@
 #include <kern/timer_call.h>
 #include <kern/timer_queue.h>
 #include <mach/mach_time.h>
+/* traps.c: the Mach trap entry points and their argument structs. */
+#include <mach/mach_traps.h>
 #include <i386/rtclock_protos.h>
 /* host.c fills three info structs by FIELD, so those three have to be real rather than opaque:
  * host_basic_info, host_priority_info and host_preferred_user_arch. The vm_statistics pair

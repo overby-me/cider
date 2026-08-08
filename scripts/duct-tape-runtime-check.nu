@@ -128,9 +128,25 @@ def link_check [] {
     true
 }
 
+# The 29 trap wrappers in traps_generated.rs are emitted from the RPC table by
+# scripts/gen-dtape-traps.py and CHECKED IN, so they can go stale if that table moves. The C
+# they replace could not: it was a macro expanded at compile time. This restores that property.
+def traps_check [] {
+    say "traps_generated.rs -- still matches the RPC table it was generated from"
+    let r = (do -i { ^python3 scripts/gen-dtape-traps.py --check } | complete)
+    if $r.exit_code != 0 {
+        say "  FAIL: the generated trap wrappers are stale"
+        say ($r.stderr | lines | last 3 | str join "\n")
+        return false
+    }
+    say $"  ok: ($r.stdout | str trim)"
+    true
+}
+
 def main [--seconds: int = 90] {
     mut failed = 0
     if not (link_check) { $failed += 1 }
+    if not (traps_check) { $failed += 1 }
     for d in $DEMOS {
         if not (run_one $d.target $d.verdict $d.covers $seconds) { $failed += 1 }
     }

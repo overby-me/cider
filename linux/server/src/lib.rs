@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/traps.c: six hand-written trap wrappers (#71, tenth file), plus the 29 that
+// DSERVER_DTAPE_DEFS generates, emitted by scripts/gen-dtape-traps.py.
+pub mod dtape_traps;
+pub mod traps_generated;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

@@ -147,6 +147,19 @@ bindgen_gen(
         "--allowlist-var=FILTER_ACTIVE",
         "--allowlist-var=IPC_MQUEUE_RECEIVE",
         "--allowlist-type=dserver_kqchan_reply_mach_port_read_t",
+        # traps.c (#71): the trap arg structs and the trap entry points themselves.
+        "--allowlist-type=.*_trap_args",
+        "--allowlist-function=.*_trap$",
+        # Three traps whose names do NOT end in _trap, and whose arg structs are _args rather
+        # than _trap_args, so the patterns above miss all six.
+        "--allowlist-function=mach_reply_port",
+        "--allowlist-function=thread_get_special_reply_port",
+        "--allowlist-function=pid_for_task",
+        "--allowlist-function=task_for_pid",
+        "--allowlist-function=task_name_for_pid",
+        "--allowlist-type=pid_for_task_args",
+        "--allowlist-type=task_for_pid_args",
+        "--allowlist-type=task_name_for_pid_args",
         "--allowlist-type=knote",
         "--allowlist-type=kevent_qos_s",
         "--allowlist-type=kevent_ctx_s",

@@ -726,7 +726,6 @@ cc_objects(
         "src/stubs.c",
         "src/task.c",
         "src/thread.c",
-        "src/traps.c",
         "xnu/libkern/c++/priority_queue.cpp",
         "xnu/libkern/gen/OSAtomicOperations.c",
         "xnu/libkern/os/refcnt.c",
