@@ -104,7 +104,7 @@ is further down and in the commit history.
    and the daemon plus all three demos still build. Adding the timer headers took the total to
    61 structs / 49,304 B. Never cite that cost again without the number.
 
-   **`host.c` IS PORTED. 4 of 16 done.** The reason it had been backed off was real but was
+   **`host.c` IS PORTED.** The reason it had been backed off was real but was
    answered rather than avoided: every export is a MIG SERVER ROUTINE reached through generated
    dispatch, so a mismatched signature is not a compile error but silent corruption. Answer: do
    not transcribe any of them. All twelve signatures are written in GENERATED types, including
@@ -121,23 +121,44 @@ is further down and in the commit history.
    22 CPUs both ways. Comparing sysconf against sysconf would have agreed with itself however
    wrong the layout was.
 
-   **`processor.c` is NOT next, and the ranker DID see why. I did not ask it.** It ranks well
-   (2 blockers,
-   30 exports, 10 calls out), and reopening `processor` plus `processor_set` is affordable:
-   **measured +15 structs, +8.2 KB**, both come out real rather than blobs. The blocker is one
-   macro CALL, `kalloc`, which the preprocessor shows expanding to a statement expression
-   holding a function-static `vm_allocation_site_t`:
-   `({ static vm_allocation_site_t site = {...}; kalloc_ext(KHEAP_DEFAULT, size, Z_WAITOK, &site).addr; })`
-   Initialising that by field means un-opaquing part of `vm_.*`, the family deliberately left
-   opaque, and that cost is unmeasured. `simple_lock_init` is fine, it is `usimple_lock_init`,
-   a real symbol.
+   **8 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks. What
+   remains, ranked by GLUE lines rather than total, since duct-tape marks every region lifted
+   from XNU and the two halves are different work:
 
-   **`--file` had already said so, and it was not read.** `duct-tape-portability.py --file
-   processor.c` names `vm_allocation_site_t` outright and says porting means relaxing it. The
-   summary table only showed the count 5. So the table now NAMES the opaque types, novel ones
-   first, since the ones already allowlisted are not news and were burying the one that
-   mattered. **Two lessons: run `--file` before starting a port, and a blocker COUNT is a lower
-   bound on the work, never an estimate, because one macro call can hide a whole type family.**
+   | file | lines | glue | note |
+   |---|---|---|---|
+   | `traps.c` | 29 | 29 | one blocker, `DSERVER_DTAPE_DEFS`, needs a Rust emitter for ~29 generated wrappers |
+   | `psynch.c` | 678 | **218** | 67 percent is XNU `kern_synch.c`, the sleep path with signal handling |
+   | `kqchan.c` | 394 | 279 | SLIST macros, same shape as the TAILQ ones already written |
+   | `task.c` | 1766 | 771 | |
+   | `memory.c` | 1554 | 1175 | 47 opaque types, the most of anything left |
+   | `thread.c` | 2072 | **1397** | the largest glue body |
+   | `stubs.c`, `misc.c` | | | BLOCKED: 1 and 3 variadic DEFINITIONS, which stable Rust cannot express |
+
+   **THE SHIM IS THE MAIN TOOL, and it is what made the second half tractable.**
+   `duct-tape/src/dtape_rs_shims.c` exports twelve macro-only or inline-only operations as real
+   symbols, with a header so bindgen generates the signatures. Each exists because Rust cannot
+   reach the thing, never for convenience: `kalloc` and `kheap_alloc` expand to statement
+   expressions holding a static `vm_allocation_site_t`; `io_release` is `static inline` so
+   there is no symbol at all; `MACH_PORT_MAKE` has two definitions selected by `NO_PORT_GEN`;
+   `ip_object_to_port` is a `__container_of`.
+
+   **REOPENING IS THE ALTERNATIVE, AND IT IS USUALLY THE WRONG ONE. Measured, every time:**
+
+   | reopen | cost | verdict |
+   |---|---|---|
+   | `ipc_.*` | +16 structs, +34.5 KB | DONE, debug.c genuinely walks those fields |
+   | `processor` + `processor_set` | +15 structs, +8.2 KB | DONE |
+   | `host` | +2 structs, +767 B | DONE, cheaper than a shim |
+   | `thread` + `waitq` | +17 structs, +68 KB | REFUSED, 3 fields, 3 shims |
+   | `task` | +22 structs, **+94 KB** | REFUSED, 1 field, 1 shim |
+
+   **FOUR RANKING BUGS, all the same shape: the measurement was right and the SUMMARY of it
+   misled.** The tool preprocessed files with a missing generated header and reported the
+   partial result (`traps.c` ranked first with zero blockers for weeks because its one blocker
+   lives in the header that was not found); it counted function names as opaque TYPES; its type
+   probe stopped at clang's 20-error limit; and it counted macros that expand to nothing or
+   forward to a real symbol. Run `--file` before starting a port, and read GLUE, not LINES.
 
    `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
    `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
