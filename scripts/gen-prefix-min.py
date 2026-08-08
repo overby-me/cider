@@ -41,6 +41,23 @@ EXCLUDE_PKGS = (
     "//buck-src/ruby",
 )
 
+# Individual labels to drop, for packages that are otherwise kept. Matched EXACTLY, because
+# the package prefix cannot discriminate: jsc lives in //buck-src alongside most of the
+# minimal prefix.
+#
+# //buck-src:jsc is the JavaScriptCore command-line shell, and it is the ONLY thing in this
+# prefix that pulls JavaScriptCore. Measured with buck2 cquery:
+#   somepath(//buck/prefix-min:darling_prefix_min, //buck-src:JavaScriptCore_obj)
+#     -> darling_prefix_min -> jsc -> JavaScriptCore_dylib -> JavaScriptCore_obj
+#   rdeps(deps(darling_prefix_min), //buck-src:JavaScriptCore_dylib, 1)
+#     -> jsc, and nothing else
+# One install entry, libexec/darling/usr/bin/jsc, therefore drags in 1,082 compiles. That is
+# the single biggest item in this prefix and it is dead weight for the stated goal: boot, run
+# bash, run nix. The FULL prefix keeps it, so parity is unaffected.
+EXCLUDE_LABELS = (
+    "//buck-src:jsc",
+)
+
 # Source-file entries (the `files` and `trees` sections name repo paths, not labels).
 EXCLUDE_SRC = (
     "darwin/frameworks/",
@@ -67,6 +84,8 @@ _DEST = re.compile(r'^\s*"([^"]+)"\s*:')
 def excluded(line: str) -> bool:
     m = _LABEL.search(line)
     if m and m.group(1).startswith(EXCLUDE_PKGS):
+        return True
+    if m and m.group(1) in EXCLUDE_LABELS:
         return True
     d = _DEST.match(line)
     if d and d.group(1).startswith(EXCLUDE_DEST):

@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.
-# Entries dropped from the full prefix: 1923.
+# Entries dropped from the full prefix: 1924.
 prefix_tree(
     name = "darling_prefix_min",
     entries = {
@@ -235,7 +235,6 @@ prefix_tree(
         "libexec/darling/usr/bin/iprofiler": "//src/xcselect:iprofiler_shim",
         "libexec/darling/usr/bin/join": "//buck-src:join",
         "libexec/darling/usr/bin/jot": "//buck-src:jot",
-        "libexec/darling/usr/bin/jsc": "//buck-src:jsc",
         "libexec/darling/usr/bin/killall": "//buck-src:killall",
         "libexec/darling/usr/bin/kpgo": "//buck-src/system_cmds:kpgo",
         "libexec/darling/usr/bin/lam": "//buck-src:lam",
