@@ -128,7 +128,6 @@ bindgen_gen(
         "--allowlist-type=knote",
         "--allowlist-type=kevent_qos_s",
         "--allowlist-type=kevent_ctx_s",
-        "--allowlist-type=kevent_internal_s",
         "--allowlist-type=klist",
         "--allowlist-type=ipc_space",
         "--allowlist-type=ipc_entry",
