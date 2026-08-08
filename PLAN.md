@@ -66,9 +66,15 @@ it is still over an hour.
    * `timer.c` (93) and `misc.c` (150) touch only `dtape_hooks->*`, which is a table of function
      pointers. Those are the real first candidates: a clean boundary and actual logic.
 
-   Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged. Verify by
-   BOOTING the container (`checks.darling-buck2-smoke`), which can fail; note it builds the FULL
-   prefix, so the first run is a ~2 h baseline and later ones rebuild only the daemon and the VM.
+   Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged.
+   **THE VERIFICATION IS ITSELF A PROBLEM, and this was checked before writing any port code.**
+   `checks.darling-buck2-smoke` builds the FULL prefix, and at `--max-jobs 5` it ran 106 minutes,
+   2,212 builders, **zero builder failures**, and then died with
+   `error: Nix daemon disconnected unexpectedly (maybe it crashed?)` in the stage-tree phase.
+   That is #48's mechanism: daemon memory tracks DATA per derivation, and the full prefix has
+   far more stage-trees than the minimal one. Retrying at `--max-jobs 2`. If the full prefix
+   cannot complete on this box, #71 needs a cheaper gate than the full-prefix VM boot, because a
+   change that cannot be verified is worse than no change.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
 
