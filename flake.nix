@@ -918,6 +918,23 @@
           prefix = "${pkgs.darling-buck2-prefix}/darling_prefix__prefix";
         };
 
+      # THE SAME PACKAGE OVER THE MINIMAL PREFIX, so there is a runtime gate that can actually
+      # finish on this machine. checks.darling-buck2-smoke builds the FULL prefix, and that
+      # OOM-kills the nix daemon here: measured twice, 14.6 GB RSS at --max-jobs 5 and 16.1 GB
+      # at --max-jobs 2, both times killed by the kernel in the stage-tree phase with zero
+      # builder failures. Lower concurrency made it worse, because daemon memory tracks DATA per
+      # derivation and not job count (#48).
+      #
+      # The minimal prefix completes (1,617 builders, prefix hash matching) and carries what a
+      # boot needs: bin/darling, bin/darlingserver, libexec/darling/bin/bash and sbin/launchd.
+      # That is exactly the surface a darlingserverd change touches, so it is the right gate for
+      # #71 and for anything else host-side.
+      packages.darling-buck2-min =
+        pkgs:
+        pkgs.callPackage ./nix/buck2-package.nix {
+          prefix = "${pkgs.darling-buck2-prefix-min}/darling_prefix_min__prefix";
+        };
+
       packages.darling-buck2-all-graph =
         pkgs:
         import ./nix/lib/darlingBuck2Graph.nix {
@@ -1379,6 +1396,13 @@
           darling-buck2-smoke = import ./tests/darling-buck2-smoke.nix {
             inherit pkgs;
             darling = pkgs.darling-buck2;
+          };
+
+          # The same VM harness over the MINIMAL prefix. This is the one that can finish on
+          # this box; darling-buck2-smoke above needs the full prefix and OOMs the daemon.
+          darling-buck2-min-smoke = import ./tests/darling-buck2-smoke.nix {
+            inherit pkgs;
+            darling = pkgs.darling-buck2-min;
           };
 
           # ── Nix-in-Darling integration test (Phase 6.1) ────────────────
