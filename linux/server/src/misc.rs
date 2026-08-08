@@ -187,7 +187,7 @@ pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
 ///
 /// The C reaches `dtape_log` through variadic MACROS (`dtape_log_debug` and friends). Rust
 /// formats first and passes `%s`, which cannot disagree with its arguments.
-fn log(level: dtape_log_level_t, message: &str) {
+pub(crate) fn log(level: dtape_log_level_t, message: &str) {
     let c = match CString::new(message) {
         Ok(c) => c,
         // An interior NUL can only come from a %s of foreign data; log the prefix rather than
@@ -263,7 +263,7 @@ pub unsafe extern "C" fn Assert(file: *const c_char, line: c_int, expression: *c
 }
 
 /// A C string as a `&str`, lossily, for the two log paths. Never on a hot path.
-unsafe fn cstr<'a>(p: *const c_char) -> std::borrow::Cow<'a, str> {
+pub(crate) unsafe fn cstr<'a>(p: *const c_char) -> std::borrow::Cow<'a, str> {
     if p.is_null() {
         return std::borrow::Cow::Borrowed("(null)");
     }

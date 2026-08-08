@@ -61,6 +61,7 @@ PORTED_TO_RUST = [
     "src/traps.c",
     "src/psynch.c",
     "src/misc.c",
+    "src/stubs.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

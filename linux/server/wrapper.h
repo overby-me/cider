@@ -109,6 +109,18 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <mach/i386/thread_status.h>
 #include <ipc/ipc_kmsg.h>
 #include <darlingserver/duct-tape/log.h>
+/* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
+#include <darlingserver/duct-tape/stubs.h>
+#include <kern/policy_internal.h>
+#include <sys/file_internal.h>
+#include <pthread/workqueue_internal.h>
+#include <mach_debug/lockgroup_info.h>
+#include <mach/kmod.h>
+/* stubs.c takes DTAPE_FATAL_STUBS from the command line if it is set and 0 otherwise, and the
+ * port has to make the same choice, so the same #ifndef decides it here. */
+#ifndef DTAPE_FATAL_STUBS
+	#define DTAPE_FATAL_STUBS 0
+#endif
 /* the macro-only operations exported as symbols for the port */
 #include <darlingserver/duct-tape/rs_shims.h>
 
@@ -180,6 +192,9 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* stubs.c: whether an unknown-safety stub aborts. A build-time choice, so it is the C that
+	 * makes it rather than a constant written into Rust. */
+	DTAPE_RS_DTAPE_FATAL_STUBS = DTAPE_FATAL_STUBS,
 	/* misc.c: the _MachineStateCount table. Both halves are macros, the flavor an integer
 	 * and the count a sizeof expression, so both are evaluated here rather than written
 	 * into Rust. The table is indexed BY the flavor, so a wrong index would be silent. */

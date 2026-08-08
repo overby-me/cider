@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/stubs.c: the XNU entry points duct-tape does not implement, plus the stub
+// logger every other glue file calls (#71, thirteenth file). panic, the fourth and last
+// variadic definition, stays in C in dtape_rs_shims.c.
+pub mod stubs;
+
 // duct-tape/src/misc.c: the machine-state table, the kmsg trace and the odds and ends
 // (#71, twelfth file). Its three VARIADIC definitions stay in C, in dtape_rs_shims.c, because
 // stable Rust cannot define a variadic function; Rust calls them instead.

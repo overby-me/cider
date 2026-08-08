@@ -168,6 +168,32 @@ unsigned int dtape_rs_waitq_held(struct waitq* wq) {
  */
 int vsnprintf(char* buffer, size_t buffer_size, const char* format, va_list args);
 
+/* panic, the fourth variadic definition, from stubs.c. The #undef is load bearing and comes
+ * straight from stubs.c: XNU makes panic a MACRO, so without this the definition below expands
+ * into something else entirely. */
+#undef panic
+
+__attribute__((noreturn))
+void abort(void);
+
+typedef struct FILE FILE;
+extern FILE* stdout;
+
+int fflush(FILE* stream);
+int printf(const char* format, ...);
+int vprintf(const char* format, va_list args);
+
+void panic(const char* message, ...) {
+	va_list args;
+	va_start(args, message);
+	printf("darlingserver duct-tape panic: ");
+	vprintf(message, args);
+	va_end(args);
+	printf("\n");
+	fflush(stdout);
+	abort();
+};
+
 void dtape_logv(dtape_log_level_t level, const char* format, va_list args) {
 	char message[4096];
 	vsnprintf(message, sizeof(message), format, args);

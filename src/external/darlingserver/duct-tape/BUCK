@@ -721,7 +721,6 @@ cc_objects(
     srcs = [
         "src/dtape_rs_shims.c",
         "src/memory.c",
-        "src/stubs.c",
         "src/task.c",
         "src/thread.c",
         "xnu/libkern/c++/priority_queue.cpp",

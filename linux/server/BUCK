@@ -193,6 +193,22 @@ bindgen_gen(
         "--allowlist-type=mach_msg_header_t",
         "--allowlist-type=dtape_log_level_t",
         "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
+        # stubs.c (#71). Two of these are load bearing rather than cosmetic: machine_info and
+        # dead_task_statistics are GLOBALS that XNU writes into, so their sizes have to be the
+        # real ones. The rest are parameter types of stubs that ignore their arguments.
+        "--allowlist-type=machine_info",
+        "--allowlist-type=expired_task_statistics_t",
+        "--allowlist-type=vm_object_t",
+        "--allowlist-type=ipc_voucher_t",
+        "--allowlist-type=thread_group",
+        "--allowlist-type=fileglob",
+        "--allowlist-type=waitq_set_prepost_hook_t",
+        "--allowlist-type=suid_cred_t",
+        "--allowlist-type=kmod_t",
+        "--allowlist-type=kmod_args_t",
+        "--allowlist-type=kmod_info_array_t",
+        "--allowlist-type=kmod_control_flavor_t",
+        "--allowlist-var=TASK_POLICY_LATENCY_QOS",
         "--allowlist-var=EWOULDBLOCK",
         "--constified-enum=zalloc_flags_t",
         "--allowlist-var=Z_WAITOK",
@@ -359,6 +375,22 @@ bindgen_gen(
         "--allowlist-type=mach_msg_header_t",
         "--allowlist-type=dtape_log_level_t",
         "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
+        # stubs.c (#71). Two of these are load bearing rather than cosmetic: machine_info and
+        # dead_task_statistics are GLOBALS that XNU writes into, so their sizes have to be the
+        # real ones. The rest are parameter types of stubs that ignore their arguments.
+        "--allowlist-type=machine_info",
+        "--allowlist-type=expired_task_statistics_t",
+        "--allowlist-type=vm_object_t",
+        "--allowlist-type=ipc_voucher_t",
+        "--allowlist-type=thread_group",
+        "--allowlist-type=fileglob",
+        "--allowlist-type=waitq_set_prepost_hook_t",
+        "--allowlist-type=suid_cred_t",
+        "--allowlist-type=kmod_t",
+        "--allowlist-type=kmod_args_t",
+        "--allowlist-type=kmod_info_array_t",
+        "--allowlist-type=kmod_control_flavor_t",
+        "--allowlist-var=TASK_POLICY_LATENCY_QOS",
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.
@@ -393,6 +425,9 @@ bindgen_gen(
         # and semaphore_create/semaphore_destroy are declared only in the generated one.
         # (XNU's kern/sync_sema.h declares just semaphore_destroy_all.)
         "//src/external/darlingserver/duct-tape:mig_mach_task",
+        # kern/policy_internal.h includes mach/resource_notify.h, which is MIG output, so the
+        # stubs.c half of the wrapper does not parse without it.
+        "//src/external/darlingserver/duct-tape:mig_mach_resource_notify",
         "//src/external/darlingserver/duct-tape:dt_include",
         "//src/external/darlingserver/duct-tape:dt_internal_include",
         "//src/external/darlingserver/duct-tape:dt_defines",
