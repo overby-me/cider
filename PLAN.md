@@ -481,6 +481,14 @@ and all six spot checks pass (`bin/bash`, `bin/sh`, `usr/lib/dyld`,
 `usr/lib/libSystem.B.dylib`, `usr/lib/system/libsystem_kernel.dylib`, the ICU data).
 Read the `NIX EXIT` line and the `-o` link, never the wrapper status.
 
+**AND LAUNCH IT ONLY FROM A CLEAN WORKING COPY.** jj snapshots the working copy into `@` on
+every command, so uncommitted edits ARE what nix builds; there is no staging step in between.
+gate6 was started at `ce103dcf` with `processor.rs` half written and failed three hours later
+on imports that were fixed minutes after launch and committed as `afa7652c`. It was building a
+tree that never existed as a commit. A real failure and this one look identical in the log, so
+the way to tell them apart is to check whether the failing file was committed AFTER the gate
+started, then rebuild that one target at the current head, which takes seconds.
+
 **The CMAKE-built Nix prefix ships REAL Swift libraries. The BUCK2 one does not.** Say which
 prefix, because the sentence is otherwise a trap and it caught me once: `buck-dylib-shape.nu`
 over the cmake-built `darling-unstable-2025` reports 227 installed `.dylib` files, **227
