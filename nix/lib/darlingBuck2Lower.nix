@@ -835,14 +835,39 @@
   # appearing is picked up instead of failing a build weeks later.
   pinNames = map builtins.baseNameOf wantedPins;
 
+  # NARROWED, because the whole point of the escape tree is that it does not move.
+  #
+  # An escape root is only ever READ THROUGH: it exists so a pin's relative `../` link resolves
+  # to something. Taking a whole directory is therefore free ONLY while that directory is
+  # frozen, and one of these is not: src/external/darlingserver is where duct-tape lives, which
+  # is edited every increment. gate10 measured the cost of that: a change confined to
+  # linux/server and duct-tape rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
+  # ApplicationServices ...), none of which use duct-tape. nix-diff named the chain exactly:
+  # buck2-AddressBook_obj -> buck2-stage-project -> darling-pins-tree -> darling-pin-escape-roots,
+  # whose buildCommand copies darling-escape-src-external-darlingserver.
+  #
+  # So each root is narrowed to the subtree that is actually escaped INTO. Measured on the
+  # working tree, counting relative links from OUTSIDE each directory: every one of the 2,077
+  # escapes into darlingserver lands in `duct-tape/xnu` and nowhere else, and XNU is frozen by
+  # policy. libtrace (4) and libpthread_workqueue (2) are escaped into at their root and are
+  # vendored, so they stay whole.
+  #
+  # Narrowing rather than dropping is deliberate: #74 and buck-escape-check.py record that
+  # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
+  # NOT catch it, because a symlink target is recorded as a string.
+  escapeNarrow = {
+    "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
+  };
+
   nonPinExternal = let
     dir = srcRaw + "/src/external";
   in
     if !builtins.pathExists dir
     then []
     else
-      map (n: "src/external/" + n) (builtins.filter (n: !(builtins.elem n pinNames))
-        (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
+      map (n: let r = "src/external/" + n; in escapeNarrow.${r} or r)
+        (builtins.filter (n: !(builtins.elem n pinNames))
+          (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
 
   compiles = lib.listToAttrs (map (a: {
       name = groupOf a;
