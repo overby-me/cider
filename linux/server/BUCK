@@ -173,6 +173,31 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
+# condvar_demo: the same shape as scheduler_demo, for the condvar port. A microthread waits
+# on a duct-tape condvar (which drops its mutex and suspends it) and a signal from the main
+# thread wakes it. condvar had no runtime coverage otherwise.
+rust_binary(
+    name = "condvar_demo",
+    crate_root = "src/bin/condvar_demo.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
