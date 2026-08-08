@@ -279,6 +279,11 @@ def main():
                 except OSError:
                     pass
 
+    # Types the bindings ALREADY allowlist, so they are bound and crossing today rather than
+    # being work a port would have to do.
+    allowlisted = set(re.findall(r'"--allowlist-type=([A-Za-z_][A-Za-z0-9_]*)"',
+                                 open(BUCK_SERVER).read()))
+
     rows = []
     for f in files:
         r = measure(os.path.join(srcdir, f), cargs)
@@ -299,6 +304,23 @@ def main():
         if r["solved"] and not r["ported"]:
             top += f" (+{len(r['solved'])} already in Rust)" if top else \
                    f"none ({len(r['solved'])} already in Rust)"
+        # NAME the opaque types, do not just count them. The count alone reads as a minor
+        # column, and it is not: for processor.c the two blockers are both cheap
+        # (usimple_lock_init is a real symbol) while ONE of its five opaque types,
+        # vm_allocation_site_t, is what makes the port expensive, because kalloc expands to a
+        # statement expression that initialises one by field and vm_.* is deliberately opaque.
+        # That was already visible under --file and got missed anyway, so it belongs in the
+        # table where the decision is actually made. A macro CALL can hide a whole type family,
+        # which makes the blocker count a lower bound on the work rather than an estimate.
+        if r["opaque"] and not r["ported"]:
+            # Types ALREADY allowlisted are not news: they are bound and crossing fine today.
+            # Listing them first actively hides the ones that decide the cost -- the first cut
+            # of this printed "host, host_t +3" for processor.c, burying vm_allocation_site_t
+            # behind the +3, which is the single type that makes that port expensive.
+            novel = [t for t in r["opaque"] if t not in allowlisted]
+            shown = ", ".join(novel[:4]) or "all already bound"
+            more = f" +{len(novel) - 4}" if len(novel) > 4 else ""
+            top = f"{top} | opaque: {shown}{more}" if top else f"opaque: {shown}{more}"
         note = "PORTED (Rust)" if r["ported"] else top
         ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
         co = str(r["ffi"]["calls"]) if r["ffi"] else "-"

@@ -121,7 +121,8 @@ is further down and in the commit history.
    22 CPUs both ways. Comparing sysconf against sysconf would have agreed with itself however
    wrong the layout was.
 
-   **`processor.c` is NOT next, and the ranker cannot see why.** It ranks well (2 blockers,
+   **`processor.c` is NOT next, and the ranker DID see why. I did not ask it.** It ranks well
+   (2 blockers,
    30 exports, 10 calls out), and reopening `processor` plus `processor_set` is affordable:
    **measured +15 structs, +8.2 KB**, both come out real rather than blobs. The blocker is one
    macro CALL, `kalloc`, which the preprocessor shows expanding to a statement expression
@@ -129,8 +130,14 @@ is further down and in the commit history.
    `({ static vm_allocation_site_t site = {...}; kalloc_ext(KHEAP_DEFAULT, size, Z_WAITOK, &site).addr; })`
    Initialising that by field means un-opaquing part of `vm_.*`, the family deliberately left
    opaque, and that cost is unmeasured. `simple_lock_init` is fine, it is `usimple_lock_init`,
-   a real symbol. **The lesson for the ranker: one macro call can hide a whole type family, so
-   the blocker COUNT is a lower bound on the work, never an estimate of it.**
+   a real symbol.
+
+   **`--file` had already said so, and it was not read.** `duct-tape-portability.py --file
+   processor.c` names `vm_allocation_site_t` outright and says porting means relaxing it. The
+   summary table only showed the count 5. So the table now NAMES the opaque types, novel ones
+   first, since the ones already allowlisted are not news and were burying the one that
+   mattered. **Two lessons: run `--file` before starting a port, and a blocker COUNT is a lower
+   bound on the work, never an estimate, because one macro call can hide a whole type family.**
 
    `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
    `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
