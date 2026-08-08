@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.
-# Entries dropped from the full prefix: 1949.
+# Entries dropped from the full prefix: 1963.
 prefix_tree(
     name = "darling_prefix_min",
     entries = {
@@ -285,15 +285,12 @@ prefix_tree(
         "libexec/darling/usr/bin/nslookup": "//buck-src:nslookup",
         "libexec/darling/usr/bin/nsupdate": "//buck-src:nsupdate",
         "libexec/darling/usr/bin/objdump": "//src/xcselect:objdump_shim",
-        "libexec/darling/usr/bin/open": "//src/tools:open",
         "libexec/darling/usr/bin/opendiff": "//src/xcselect:opendiff_shim",
         "libexec/darling/usr/bin/openssl": "//buck-src:openssl",
         "libexec/darling/usr/bin/otool": "//src/xcselect:otool_shim",
         "libexec/darling/usr/bin/pagestuff": "//src/xcselect:pagestuff_shim",
         "libexec/darling/usr/bin/paste": "//buck-src:paste",
         "libexec/darling/usr/bin/pathchk": "//buck-src:pathchk",
-        "libexec/darling/usr/bin/pbcopy": "//src/pboard:pbcopy",
-        "libexec/darling/usr/bin/pbpaste": "//src/pboard:pbpaste",
         "libexec/darling/usr/bin/pcregrep": "//buck-src:pcregrep",
         "libexec/darling/usr/bin/pcretest": "//buck-src:pcretest",
         "libexec/darling/usr/bin/pfbtops": "//buck-src/groff:pfbtops",
@@ -479,10 +476,6 @@ prefix_tree(
         "libexec/darling/usr/lib/libcompression.dylib": "//src/libcompression:compression_dylib",
         "libexec/darling/usr/lib/libcoretls.dylib": "//buck-src:coretls_dylib",
         "libexec/darling/usr/lib/libcoretls_cfhelpers.dylib": "//buck-src/coretls:coretls_cfhelpers_final",
-        "libexec/darling/usr/lib/libcrypto.0.9.8.dylib": "//buck-src:crypto098_dylib",
-        "libexec/darling/usr/lib/libcrypto.35.dylib": "//buck-src:crypto35_dylib",
-        "libexec/darling/usr/lib/libcrypto.41.dylib": "//buck-src:crypto41_dylib",
-        "libexec/darling/usr/lib/libcrypto.42.dylib": "//buck-src:crypto42_dylib",
         "libexec/darling/usr/lib/libcrypto.44.dylib": "//buck-src:crypto44_dylib",
         "libexec/darling/usr/lib/libcups.2.dylib": "//buck-src:cups_dylib",
         "libexec/darling/usr/lib/libcupsimage.2.dylib": "//buck-src:cupsimage_dylib",
@@ -516,16 +509,9 @@ prefix_tree(
         "libexec/darling/usr/lib/libsandbox.1.dylib": "//src/libsandbox:sandbox_not_system_dylib",
         "libexec/darling/usr/lib/libsasl2.2.dylib": "//buck-src:sasl_dylib",
         "libexec/darling/usr/lib/libsqlite3.0.dylib": "//buck-src:sqlite3_dylib",
-        "libexec/darling/usr/lib/libssl.0.9.8.dylib": "//buck-src:ssl098_dylib",
-        "libexec/darling/usr/lib/libssl.35.dylib": "//buck-src:ssl35_dylib",
-        "libexec/darling/usr/lib/libssl.43.dylib": "//buck-src:ssl43_dylib",
-        "libexec/darling/usr/lib/libssl.44.dylib": "//buck-src:ssl44_dylib",
         "libexec/darling/usr/lib/libssl.46.dylib": "//buck-src:ssl46_dylib",
         "libexec/darling/usr/lib/libsysmon.dylib": "//src/libsysmon:sysmon_dylib",
-        "libexec/darling/usr/lib/libtls.15.dylib": "//buck-src:tls15_dylib",
-        "libexec/darling/usr/lib/libtls.16.dylib": "//buck-src:tls16_dylib",
         "libexec/darling/usr/lib/libtls.18.dylib": "//buck-src:tls18_dylib",
-        "libexec/darling/usr/lib/libtls.6.dylib": "//buck-src:tls6_dylib",
         "libexec/darling/usr/lib/libutil1.0.dylib": "//buck-src:util_dylib",
         "libexec/darling/usr/lib/libxar.1.dylib": "//buck-src:xar_dylib",
         "libexec/darling/usr/lib/libxcselect.dylib": "//src/xcselect:xcselect_dylib",

@@ -90,6 +90,37 @@ EXCLUDE_LABELS = (
     "//buck-src:hdiutil",
     "//buck-src:installer",
     "//buck-src/groff:eqn",
+
+    # The GUI cone, reached through three small tools. pbcopy, pbpaste and open are the ONLY
+    # prefix entries that reach AppKit or CoreImage (checked by walking every entry's cone),
+    # and between them they pull 752 actions of framework into a prefix defined as having no
+    # GUI frameworks. Same shape as jsc: a small tool carrying a large cone.
+    "//src/pboard:pbcopy",
+    "//src/pboard:pbpaste",
+    "//src/tools:open",
+
+    # The SUPERSEDED libcrypto/libssl/libtls versions. Darling ships five libcrypto builds for
+    # binary compatibility with guest software linking a specific versioned dylib. Only
+    # crypto44 has real consumers -- curl_dylib, curlexe, openssl, scp, sftp -- and the other
+    # four are self-contained islands, each linked solely by its own ssl/tls sibling:
+    #   crypto098 505 + ssl098 44                = 549
+    #   crypto35  543 + ssl35  43 + tls6      6  = 592
+    #   crypto41  544 + ssl43  38 + tls15    10  = 592
+    #   crypto42  539 + ssl44  38 + tls16    10  = 587
+    # 2,320 actions for versions nothing in this prefix links. nix carries its own openssl in
+    # its store closure, so it needs none of them; the system curl needs crypto44/ssl46/tls18,
+    # which stay.
+    "//buck-src:crypto098_dylib",
+    "//buck-src:ssl098_dylib",
+    "//buck-src:crypto35_dylib",
+    "//buck-src:ssl35_dylib",
+    "//buck-src:tls6_dylib",
+    "//buck-src:crypto41_dylib",
+    "//buck-src:ssl43_dylib",
+    "//buck-src:tls15_dylib",
+    "//buck-src:crypto42_dylib",
+    "//buck-src:ssl44_dylib",
+    "//buck-src:tls16_dylib",
 )
 
 # DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:
