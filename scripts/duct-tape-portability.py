@@ -262,20 +262,43 @@ def main():
         if m:
             ported = {os.path.basename(p) for p in re.findall(r'"([^"]+)"', m.group(1))}
 
+    # A macro is only a blocker while it has NO Rust equivalent. dtape_stub, dtape_stub_safe
+    # and dtape_stub_unsafe live in linux/server/src/dtape_stub.rs and were ported precisely so
+    # that the files calling them could be, yet they kept ranking as blockers for host.c and
+    # processor.c and pushed both down the list. Read the crate for macro_rules! rather than
+    # keeping a hand written list here, for the same reason PORTED_TO_RUST is read from the
+    # generator: a second copy drifts, and this tool is only useful if it is trusted.
+    have = set()
+    for dirpath, _, names in os.walk(os.path.join(ROOT, "linux/server/src")):
+        for n in names:
+            if n.endswith(".rs"):
+                try:
+                    have |= set(re.findall(r"^\s*macro_rules!\s+(\w+)",
+                                           open(os.path.join(dirpath, n), errors="ignore").read(),
+                                           re.M))
+                except OSError:
+                    pass
+
     rows = []
     for f in files:
         r = measure(os.path.join(srcdir, f), cargs)
         r["ported"] = f in ported
+        # The raw counts stay as measured; what changes is which of them still BLOCK.
+        r["fn_blockers"] = [m for m in r["fn_macros"] if m not in have]
+        r["solved"] = [m for m in r["fn_macros"] if m in have]
         rows.append((f, r))
     # cheapest first, ported files last: variadics are unfixable in Rust, so they dominate
     rows.sort(key=lambda kv: (kv[1]["ported"],
                               len(kv[1]["variadic"]) * 100
-                              + len(kv[1]["fn_macros"]) + len(kv[1]["ob_macros"])))
+                              + len(kv[1]["fn_blockers"]) + len(kv[1]["ob_macros"])))
 
     print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>9}{'FNMAC':>7}{'OBJMAC':>8}"
           f"{'EXPORTS':>9}{'CALLSOUT':>10}{'OPAQUE':>8}  blockers")
     for f, r in rows:
-        top = ", ".join(r["fn_macros"][:3])
+        top = ", ".join(r["fn_blockers"][:3])
+        if r["solved"] and not r["ported"]:
+            top += f" (+{len(r['solved'])} already in Rust)" if top else \
+                   f"none ({len(r['solved'])} already in Rust)"
         note = "PORTED (Rust)" if r["ported"] else top
         ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
         co = str(r["ffi"]["calls"]) if r["ffi"] else "-"
