@@ -650,7 +650,6 @@ bindgen_gen(
         "--constified-enum=dtape_memory_flags",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
-        "--opaque-type=thread",
         "--opaque-type=os_ref.*",
         "--opaque-type=waitq.*",
         "--opaque-type=zone.*",
