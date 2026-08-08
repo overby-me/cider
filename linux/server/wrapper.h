@@ -122,6 +122,9 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <mach_debug/zone_info.h>
 #include <mach_debug/vm_info.h>
 #include <vm/vm_kern.h>
+/* thread.c: the thread state flavors it loads and stores, and the exception path. */
+#include <mach/thread_act.h>
+#include <sys/ux_exception.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <darlingserver/duct-tape/stubs.h>
 #include <kern/policy_internal.h>

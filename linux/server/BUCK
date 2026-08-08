@@ -254,6 +254,37 @@ bindgen_gen(
         "--allowlist-var=USEC_PER_SEC",
         "--allowlist-var=TASK_POLICY_ROLE",
         "--allowlist-var=TF_64B_ADDR",
+        # thread.c (#71, last file). struct thread is reopened for it, so what remains is the
+        # XNU entry points it calls: thread lifecycle, the IPC thread half, the wait timer, the
+        # turnstile it owns, and the exception path signals go through.
+        "--allowlist-function=clear_wait_internal",
+        "--allowlist-function=ipc_thread_init",
+        "--allowlist-function=ipc_thread_disable",
+        "--allowlist-function=ipc_thread_terminate",
+        "--allowlist-function=ipc_voucher_release",
+        "--allowlist-function=port_name_to_thread",
+        "--allowlist-function=thread_suspend",
+        "--allowlist-function=thread_resume",
+        "--allowlist-function=timer_call_setup",
+        "--allowlist-function=timer_call_cancel",
+        "--allowlist-function=turnstile_alloc",
+        "--allowlist-function=turnstile_deallocate",
+        "--allowlist-function=exception_triage_thread",
+        "--allowlist-function=thread_timer_expire",
+        "--allowlist-type=qos_policy_params_t",
+        "--allowlist-type=x86_thread_state64_t",
+        "--allowlist-type=x86_float_state64_t",
+        "--allowlist-type=x86_thread_state32_t",
+        "--allowlist-type=x86_float_state32_t",
+        "--allowlist-type=thread_state_t",
+        "--allowlist-var=TH_RUN",
+        "--allowlist-var=TH_WAIT",
+        "--allowlist-var=TH_UNINT",
+        "--allowlist-var=TH_TERMINATE",
+        "--allowlist-var=TH_SUSP",
+        "--allowlist-var=IPC_THREAD_INIT_NONE",
+        "--allowlist-var=PORT_TO_THREAD_NONE",
+        "--allowlist-var=kThreadWaitNone",
         # memory.c (#71). The vm_ family is no longer marked opaque: measured at +3 structs and
         # 1,780 bytes, because reopening struct task for task.c had already pulled most of it in.
         # struct zone stays opaque and gets accessors instead, since it is XNU's and memory.c
@@ -557,6 +588,37 @@ bindgen_gen(
         "--allowlist-var=USEC_PER_SEC",
         "--allowlist-var=TASK_POLICY_ROLE",
         "--allowlist-var=TF_64B_ADDR",
+        # thread.c (#71, last file). struct thread is reopened for it, so what remains is the
+        # XNU entry points it calls: thread lifecycle, the IPC thread half, the wait timer, the
+        # turnstile it owns, and the exception path signals go through.
+        "--allowlist-function=clear_wait_internal",
+        "--allowlist-function=ipc_thread_init",
+        "--allowlist-function=ipc_thread_disable",
+        "--allowlist-function=ipc_thread_terminate",
+        "--allowlist-function=ipc_voucher_release",
+        "--allowlist-function=port_name_to_thread",
+        "--allowlist-function=thread_suspend",
+        "--allowlist-function=thread_resume",
+        "--allowlist-function=timer_call_setup",
+        "--allowlist-function=timer_call_cancel",
+        "--allowlist-function=turnstile_alloc",
+        "--allowlist-function=turnstile_deallocate",
+        "--allowlist-function=exception_triage_thread",
+        "--allowlist-function=thread_timer_expire",
+        "--allowlist-type=qos_policy_params_t",
+        "--allowlist-type=x86_thread_state64_t",
+        "--allowlist-type=x86_float_state64_t",
+        "--allowlist-type=x86_thread_state32_t",
+        "--allowlist-type=x86_float_state32_t",
+        "--allowlist-type=thread_state_t",
+        "--allowlist-var=TH_RUN",
+        "--allowlist-var=TH_WAIT",
+        "--allowlist-var=TH_UNINT",
+        "--allowlist-var=TH_TERMINATE",
+        "--allowlist-var=TH_SUSP",
+        "--allowlist-var=IPC_THREAD_INIT_NONE",
+        "--allowlist-var=PORT_TO_THREAD_NONE",
+        "--allowlist-var=kThreadWaitNone",
         # memory.c (#71). The vm_ family is no longer marked opaque: measured at +3 structs and
         # 1,780 bytes, because reopening struct task for task.c had already pulled most of it in.
         # struct zone stays opaque and gets accessors instead, since it is XNU's and memory.c
@@ -672,6 +734,8 @@ bindgen_gen(
         "//src/external/darlingserver/duct-tape:mig_mach_resource_notify",
         # task.c includes mach/mach_port.h, also MIG output.
         "//src/external/darlingserver/duct-tape:mig_mach_mach_port",
+        # thread.c includes mach/thread_act.h, also MIG output.
+        "//src/external/darlingserver/duct-tape:mig_mach_thread_act",
         "//src/external/darlingserver/duct-tape:dt_include",
         "//src/external/darlingserver/duct-tape:dt_internal_include",
         "//src/external/darlingserver/duct-tape:dt_defines",

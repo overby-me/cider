@@ -211,6 +211,16 @@ dtape_map_shared_entry_t* dtape_rs_shared_entries_next(dtape_map_shared_entry_t*
 	return RB_NEXT(dtape_map_shared_entry_head, NULL, entry);
 };
 
+/* thread.c: thread_reference and task_reference_internal are macros over os_ref, the same
+ * shape as the task_reference shim above. */
+void dtape_rs_thread_reference(struct thread* thread) {
+	thread_reference(thread);
+};
+
+void dtape_rs_task_reference_internal(struct task* task) {
+	task_reference_internal(task);
+};
+
 /* task.c: is_release is a macro over the ipc_space refcount. */
 void dtape_rs_is_release(ipc_space_t space) {
 	is_release(space);
