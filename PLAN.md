@@ -91,6 +91,12 @@ it is still over an hour.
 
    **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo. **2 of 16 done.**
 
+   **THE PREFIX GATE ALSO PASSED WITH `condvar.c` IN** (gate4: 1,875 builders, zero failures,
+   `NIX_EXIT=0`, `/nix/store/m8nihyc7s2pr3p9095830msxq4ql6p4w-vm-test-run-darling-buck2-smoke`;
+   same VM assertions, `exit 0` in 0.31 s and the `exit 1` arm correctly failing).
+   **`timer.c` is NOT covered by it**: gate4 was launched at `c3e2e26f` and the timer port
+   landed two commits later, so timer still rests on symbols, a unit test and the demos.
+
    **THE PREFIX GATE PASSED ON THE SEMAPHORE PORT** (`darling-buck2-min-smoke`, 1,875 builders,
    **zero** builder failures, `NIX_EXIT=0`,
    `/nix/store/f0h9xzhq7qfmc393s4sqzm0cdrn7fkw4-vm-test-run-darling-buck2-smoke`). Not a

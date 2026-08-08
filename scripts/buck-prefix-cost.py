@@ -119,11 +119,30 @@ def reachability(roots, deps, index):
     return reach
 
 
+# Entries allowed to be expensive, because they ARE the goal. dyld is the dynamic loader,
+# bash is what the prefix exists to run, darlingserverd is the daemon under test. Removing any
+# of them does not produce a smaller prefix, it produces no prefix.
+EXEMPT = {
+    "root//buck-src/dyld:dyld",
+    "root//buck-src:bash",
+    "root//linux/server:darlingserverd",
+}
+
+# --check fails when a non-exempt entry exclusively pulls in more than this many actions.
+# Chosen from the measured distribution rather than picked round: the worst non-exempt entry
+# today is secd at 738, and jsc was 1,298, so 800 sits between "what is already here" and
+# "another jsc". Lowering it means first deciding what to do about secd.
+DEFAULT_BUDGET = 800
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--graph", default=None)
     ap.add_argument("--prefix", default="buck/prefix-min/BUCK")
     ap.add_argument("--top", type=int, default=25)
+    ap.add_argument("--check", action="store_true",
+                    help="exit 1 if a non-exempt entry exceeds the budget")
+    ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
     args = ap.parse_args()
 
     graph = args.graph or newest_graph()
@@ -172,6 +191,23 @@ def main():
 
     rows.sort(reverse=True)
     total_actions = sum(cost.values())
+
+    if args.check:
+        over = [r for r in rows if r[3] not in EXEMPT and r[0] > args.budget]
+        print(f"budget: {args.budget} exclusive actions per non-exempt entry")
+        for excl_cost, excl_n, total, label in over:
+            print(f"  OVER: {label} pulls {excl_cost} actions ({excl_n} targets) that nothing "
+                  f"else in this prefix needs")
+            print(f"        installs at {dests[label][0]}")
+        if over:
+            print(f"\nFAIL: {len(over)} entry(ies) over budget. Either the prefix needs them "
+                  f"(add to EXEMPT, with the reason) or they are dead weight (add to "
+                  f"EXCLUDE_LABELS in scripts/gen-prefix-min.py).")
+            sys.exit(1)
+        worst = next((r for r in rows if r[3] not in EXEMPT), (0, 0, 0, "none"))
+        print(f"PASS: worst non-exempt entry is {worst[3]} at {worst[0]} of {args.budget}")
+        return
+
     print(f"total actions in graph: {total_actions}\n")
     print(f"{'EXCLUSIVE':>10}{'TARGETS':>9}{'TOTAL':>9}  LABEL / where it installs")
     shown = 0
