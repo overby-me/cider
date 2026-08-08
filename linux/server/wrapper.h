@@ -57,6 +57,12 @@
 #include <mach/host_info.h>
 #include <mach/vm_statistics.h>
 #include <kern/sched.h>
+/* processor.c: the processor and pset structs it defines and fills. */
+#include <kern/processor.h>
+#include <kern/machine.h>
+#include <kern/simple_lock.h>
+/* the macro-only operations exported as symbols for the port */
+#include <darlingserver/duct-tape/rs_shims.h>
 
 /* THE COUNT AND CPU MACROS, RE-EXPRESSED AS ENUMERATORS.
  *
@@ -82,4 +88,9 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_CPU_TYPE_X86 = CPU_TYPE_X86,
 	DTAPE_RS_CPU_SUBTYPE_X86_64_ALL = CPU_SUBTYPE_X86_64_ALL,
 	DTAPE_RS_CPU_THREADTYPE_NONE = CPU_THREADTYPE_NONE,
+	/* processor.c, same sizeof-expression shape as the host counts above. */
+	DTAPE_RS_PROCESSOR_BASIC_INFO_COUNT = PROCESSOR_BASIC_INFO_COUNT,
+	DTAPE_RS_PROCESSOR_CPU_LOAD_INFO_COUNT = PROCESSOR_CPU_LOAD_INFO_COUNT,
+	DTAPE_RS_PROCESSOR_SET_LOAD_INFO_COUNT = PROCESSOR_SET_LOAD_INFO_COUNT,
+	DTAPE_RS_MAX_SCHED_CPUS = MAX_SCHED_CPUS,
 };

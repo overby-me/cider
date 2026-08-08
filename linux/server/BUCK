@@ -117,6 +117,32 @@ bindgen_gen(
         "--allowlist-type=boolean_t",
         "--allowlist-type=task_t",
         "--allowlist-type=UNDServerRef",
+        # processor.c (#71). It fills processor_basic_info and processor_cpu_load_info by
+        # field, and DEFINES pset0 and processor_array, so processor and processor_set have to
+        # be real. Measured cost of reopening the pair: +15 structs, +8.2 KB, both real rather
+        # than blobs. struct host stays opaque: processor_info only takes its ADDRESS.
+        "--allowlist-type=processor",
+        "--allowlist-type=processor_set",
+        "--allowlist-type=processor_basic_info",
+        "--allowlist-type=processor_cpu_load_info",
+        "--allowlist-type=processor_set_load_info",
+        "--allowlist-type=processor_flavor_t",
+        "--allowlist-type=processor_info_t",
+        "--allowlist-type=processor_set_info_t",
+        "--allowlist-type=processor_t",
+        "--allowlist-type=processor_set_t",
+        "--allowlist-type=simple_lock_data_t",
+        "--allowlist-type=dtape_load_info_t",
+        "--allowlist-var=MAX_SCHED_CPUS",
+        "--allowlist-var=PROCESSOR_BASIC_INFO",
+        "--allowlist-var=PROCESSOR_CPU_LOAD_INFO",
+        "--allowlist-var=PROCESSOR_SET_LOAD_INFO",
+        "--allowlist-var=CPU_STATE_.*",
+        "--allowlist-var=KERN_INVALID_PROCESSOR_SET",
+        "--allowlist-function=usimple_lock_init",
+        # A PATTERN, not a list: every shim added to duct-tape/src/dtape_rs_shims.c should bind
+        # without anyone remembering to come back here.
+        "--allowlist-function=dtape_rs_.*",
         "--allowlist-type=mach_port_t",
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,

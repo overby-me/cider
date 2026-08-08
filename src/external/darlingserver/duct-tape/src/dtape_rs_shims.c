@@ -32,9 +32,9 @@
  * those files being portable and not.
  */
 
-#include <kern/kalloc.h>
+#include <darlingserver/duct-tape/rs_shims.h>
 
-#include <stddef.h>
+#include <kern/kalloc.h>
 
 /* kalloc, as a symbol. Returns NULL on failure, exactly as the macro does. */
 void* dtape_rs_kalloc(size_t size) {
@@ -46,4 +46,10 @@ void* dtape_rs_kalloc(size_t size) {
  * silent heap error rather than a crash, so the Rust side must keep the size it allocated. */
 void dtape_rs_kfree(void* address, size_t size) {
 	kfree(address, size);
+};
+
+/* simple_lock_init, as a symbol. duct-tape passes a tag of 0 at every call site, so the tag is
+ * fixed here rather than crossing the FFI as an argument nobody varies. */
+void dtape_rs_simple_lock_init(simple_lock_data_t* lock) {
+	simple_lock_init(lock, 0);
 };
