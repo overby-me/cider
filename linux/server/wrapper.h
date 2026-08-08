@@ -115,6 +115,13 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <mach/mach_port.h>
 #include <ipc/ipc_hash.h>
 #include <darlingserver/duct-tape/memory.h>
+/* memory.c: the region info structs it fills, the VM flag families and the zone info types. */
+#include <mach/vm_region.h>
+#include <mach/vm_prot.h>
+#include <mach/memory_object_types.h>
+#include <mach_debug/zone_info.h>
+#include <mach_debug/vm_info.h>
+#include <vm/vm_kern.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <darlingserver/duct-tape/stubs.h>
 #include <kern/policy_internal.h>
@@ -198,6 +205,17 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* memory.c: the protection, sync and behavior values are CAST macros, so bindgen
+	 * cannot emit them and the allowlist matched nothing. Enumerators instead. */
+	DTAPE_RS_VM_PROT_NONE = VM_PROT_NONE,
+	DTAPE_RS_VM_PROT_READ = VM_PROT_READ,
+	DTAPE_RS_VM_PROT_WRITE = VM_PROT_WRITE,
+	DTAPE_RS_VM_PROT_EXECUTE = VM_PROT_EXECUTE,
+	DTAPE_RS_VM_PROT_ALL = VM_PROT_ALL,
+	DTAPE_RS_VM_SYNC_ASYNCHRONOUS = VM_SYNC_ASYNCHRONOUS,
+	DTAPE_RS_VM_SYNC_SYNCHRONOUS = VM_SYNC_SYNCHRONOUS,
+	DTAPE_RS_VM_SYNC_INVALIDATE = VM_SYNC_INVALIDATE,
+	DTAPE_RS_VM_BEHAVIOR_DEFAULT = VM_BEHAVIOR_DEFAULT,
 	/* task.c: the default role, an enum variant of a type nothing else needs. */
 	DTAPE_RS_TASK_UNSPECIFIED = TASK_UNSPECIFIED,
 	/* task.c: the info-flavor counts, every one a sizeof expression the C must evaluate. */

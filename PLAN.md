@@ -131,16 +131,24 @@ is further down and in the commit history.
    reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
    `traps.c`.
 
-   **13 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
-   traps, psynch, misc, stubs. What
-   remains, ranked by GLUE lines rather than total, since duct-tape marks every region lifted
-   from XNU and the two halves are different work:
+   **14 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
+   traps, psynch, misc, stubs, task. Two remain, and **all three big files were SPLIT along the
+   XNU boundary they already marked**, so what is left of each is glue only:
 
-   | file | lines | glue | note |
+   | file | was | glue left | copied XNU, now in `*_xnu.c` |
    |---|---|---|---|
-   | `task.c` | 1766 | 771 | 12 distinct fields through the opaque `struct task` |
-   | `memory.c` | 1554 | 1175 | 47 opaque types, but ZERO task/thread fields |
-   | `thread.c` | 2072 | **1397** | the largest glue body, 18 fields through `struct thread` |
+   | `memory.c` | 1554 | **1170** | 384 (`vm_user.c`, `vm_map.c`) |
+   | `thread.c` | 2072 | **1383** | 689 (`sched_prim.c`, `thread.c`, `syscall_subr.c`, `thread_act.c`, `ux_exception.c`) |
+
+   `task.c` got the same split first: 1,766 down to 763 glue, 1,003 lines of XNU moved out.
+   Verified by archive symbol set, which is the strong invariant for a pure move: identical
+   apart from the new member, except `thread_handoff_internal`, which is glue the copied code
+   calls and so had to lose its `static`.
+
+   **The `vm_.*` opaque blanket was costing almost nothing**, which corrects the note above that
+   memory.c had "47 opaque types, the most of anything left". Removing it entirely measures at
+   **+3 structs and 1,780 bytes**, because reopening `struct task` had already pulled the family
+   in. Marginal cost is the number that matters.
 
    **NOT COVERED AT RUNTIME: psynch.** None of the four demos reaches it, since it needs a
    guest program with CONTENDED pthread locks; `dtape_psynch_init` runs only from
