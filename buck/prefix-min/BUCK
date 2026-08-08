@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.
-# Entries dropped from the full prefix: 2061.
+# Entries dropped from the full prefix: 2066.
 prefix_tree(
     name = "darling_prefix_min",
     entries = {
@@ -2063,13 +2063,8 @@ prefix_tree(
         "libexec/darling/usr/bin/groups": "libexec/darling/usr/bin/id",
         "libexec/darling/usr/bin/gunzip": "libexec/darling/usr/bin/gzip",
         "libexec/darling/usr/bin/gzcat": "libexec/darling/usr/bin/gzip",
-        "libexec/darling/usr/bin/lsbom": "libexec/darling/usr/bin/installer",
-        "libexec/darling/usr/bin/more": "libexec/darling/usr/bin/less",
-        "libexec/darling/usr/bin/pkgutil": "libexec/darling/usr/bin/installer",
-        "libexec/darling/usr/bin/uninstaller": "libexec/darling/usr/bin/installer",
         "libexec/darling/usr/bin/whoami": "libexec/darling/usr/bin/id",
         "libexec/darling/usr/bin/zcat": "libexec/darling/usr/bin/gzip",
-        "libexec/darling/usr/bin/zipinfo": "libexec/darling/usr/bin/unzip",
         "libexec/darling/usr/share/man/man1/more.1": "libexec/darling/usr/share/man/man1/less.1",
     },
     links = {
