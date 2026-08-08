@@ -45,6 +45,9 @@
 #include <ipc/ipc_object.h>
 #include <ipc/ipc_port.h>
 #include <mach/port.h>
+#include <darlingserver/duct-tape/log.h>
+#include <darlingserver/duct-tape/hooks.internal.h>
+#include <stdarg.h>
 
 /* kalloc, as a symbol. Returns NULL on failure, exactly as the macro does. */
 void* dtape_rs_kalloc(size_t size) {
@@ -144,4 +147,55 @@ int dtape_rs_imq_is_set(struct ipc_mqueue* mq) {
 /* thread->map, the one field psynch.c needs through the opaque struct thread. */
 void* dtape_rs_thread_map(struct thread* thread) {
 	return thread->map;
+};
+
+/* waitq_held reaches four structs down through the opaque struct waitq. Returning the owner
+ * rather than a pointer keeps the comparison, and the type of the thing compared, on this side. */
+unsigned int dtape_rs_waitq_held(struct waitq* wq) {
+	return wq->dtape_waitq_interlock.dtape_interlock.dtape_interlock.dtape_mutex.dtape_owner == (uintptr_t)current_thread();
+};
+
+/* THE VARIADIC FRONT ENDS, from misc.c (#71).
+ *
+ * Stable Rust can CALL a C variadic function but cannot DEFINE one, and duct-tape exports four
+ * variadic definitions. These three are misc.c's; the fourth, panic, stays in stubs.c until that
+ * file is ported. Each does the one thing Rust cannot, which is start a va_list; everything
+ * else about misc.c is Rust now. dtape_logv is here for the same reason at one remove, since
+ * its parameter IS a va_list.
+ *
+ * Rust does not need any of them to log: it formats with format! and calls dtape_log with a
+ * plain "%s", which is a variadic CALL and therefore fine.
+ */
+int vsnprintf(char* buffer, size_t buffer_size, const char* format, va_list args);
+
+void dtape_logv(dtape_log_level_t level, const char* format, va_list args) {
+	char message[4096];
+	vsnprintf(message, sizeof(message), format, args);
+	dtape_hooks->log(level, message);
+};
+
+void dtape_log(dtape_log_level_t level, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	dtape_logv(level, format, args);
+	va_end(args);
+};
+
+void kprintf(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	dtape_logv(dtape_log_level_info, fmt, args);
+	va_end(args);
+};
+
+int scnprintf(char* buffer, size_t buffer_size, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	int code = vsnprintf(buffer, buffer_size, format, args);
+	va_end(args);
+	if (code < 0) {
+		return code;
+	} else {
+		return strnlen(buffer, buffer_size);
+	}
 };

@@ -182,6 +182,17 @@ bindgen_gen(
         "--allowlist-var=PSPIN",
         "--allowlist-var=EINTR",
         "--allowlist-var=ERESTART",
+        # misc.c (#71). The kmsg trace reads the header and, for a complex message, the first
+        # descriptor; Assert and the trace both log, and Rust CALLS those variadics rather than
+        # defining them.
+        "--allowlist-function=ipc_port_get_receiver_task",
+        "--allowlist-function=dtape_log",
+        "--allowlist-function=panic",
+        "--allowlist-type=mach_msg_body_t",
+        "--allowlist-type=mach_msg_type_descriptor_t",
+        "--allowlist-type=mach_msg_header_t",
+        "--allowlist-type=dtape_log_level_t",
+        "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
         "--allowlist-var=EWOULDBLOCK",
         "--constified-enum=zalloc_flags_t",
         "--allowlist-var=Z_WAITOK",
@@ -337,6 +348,17 @@ bindgen_gen(
         "--allowlist-var=EWOULDBLOCK",
         "--allowlist-var=EINTR",
         "--allowlist-var=ERESTART",
+        # misc.c (#71). The kmsg trace reads the header and, for a complex message, the first
+        # descriptor; Assert and the trace both log, and Rust CALLS those variadics rather than
+        # defining them.
+        "--allowlist-function=ipc_port_get_receiver_task",
+        "--allowlist-function=dtape_log",
+        "--allowlist-function=panic",
+        "--allowlist-type=mach_msg_body_t",
+        "--allowlist-type=mach_msg_type_descriptor_t",
+        "--allowlist-type=mach_msg_header_t",
+        "--allowlist-type=dtape_log_level_t",
+        "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.

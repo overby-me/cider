@@ -656,13 +656,6 @@ struct generic_hash_head {
     lh_first: *mut c_void,
 }
 
-/// `fls`, find last set: the 1-based index of the most significant set bit. Only called with a
-/// positive `elements`, which the panic above it guarantees.
-#[inline]
-fn fls(x: c_int) -> u32 {
-    u32::BITS - (x as u32).leading_zeros()
-}
-
 /// General routine to allocate a hash table.
 #[no_mangle]
 pub unsafe extern "C" fn hashinit(
@@ -677,7 +670,8 @@ pub unsafe extern "C" fn hashinit(
         panic!("hashinit: bad cnt");
     }
 
-    let hashsize: usize = 1usize << (fls(elements) - 1);
+    // misc.c exports fls, and misc.c is Rust now, so this is the same one the C called.
+    let hashsize: usize = 1usize << (crate::misc::fls(elements as ::std::os::raw::c_uint) - 1);
     let hashtbl = bindings::dtape_rs_kheap_alloc(
         hashsize * size_of::<generic_hash_head>(),
         (dtape_rs_host_consts_DTAPE_RS_Z_WAITOK | dtape_rs_host_consts_DTAPE_RS_Z_ZERO) as c_int,

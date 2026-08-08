@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/misc.c: the machine-state table, the kmsg trace and the odds and ends
+// (#71, twelfth file). Its three VARIADIC definitions stay in C, in dtape_rs_shims.c, because
+// stable Rust cannot define a variadic function; Rust calls them instead.
+pub mod misc;
+
 // duct-tape/src/psynch.c: the pthread kext glue and the BSD sleep path (#71, eleventh file).
 // NAMED dtape_psynch because linux/server/src/psynch.rs already exists and is the DAEMON side,
 // the RPC handlers the guest calls; this is the layer under it.

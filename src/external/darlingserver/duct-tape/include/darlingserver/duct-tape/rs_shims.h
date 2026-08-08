@@ -70,6 +70,9 @@ void* dtape_rs_kheap_alloc(size_t size, int flags);
  * __typeof__ cast, so it is a macro twice over. The Rust caller drops its own copy. */
 void dtape_rs_kheap_free(void* elem, size_t size);
 
+/* misc.c: waitq_held reads four structs down through the opaque struct waitq. */
+unsigned int dtape_rs_waitq_held(struct waitq* wq);
+
 /* psynch.c reaches thread->map, another field through the opaque struct thread. */
 void* dtape_rs_thread_map(struct thread* thread);
 
