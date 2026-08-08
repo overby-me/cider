@@ -254,6 +254,31 @@ bindgen_gen(
         "--allowlist-var=USEC_PER_SEC",
         "--allowlist-var=TASK_POLICY_ROLE",
         "--allowlist-var=TF_64B_ADDR",
+        # memory.c (#71). The vm_ family is no longer marked opaque: measured at +3 structs and
+        # 1,780 bytes, because reopening struct task for task.c had already pulled most of it in.
+        # struct zone stays opaque and gets accessors instead, since it is XNU's and memory.c
+        # only ever touches two fields of it.
+        "--allowlist-type=zone_or_view_t",
+        "--allowlist-type=zalloc_flags_t",
+        "--allowlist-type=kalloc_heap_t",
+        "--allowlist-type=kalloc_result",
+        "--allowlist-type=vm_map_copy",
+        "--allowlist-type=vm_map_copy_t",
+        "--allowlist-type=vm_tag_t",
+        "--allowlist-type=kma_flags_t",
+        "--allowlist-type=vm_map_address_t",
+        "--allowlist-type=vm_map_size_t",
+        "--allowlist-type=vm_map_kernel_flags_t",
+        "--allowlist-type=zone_id_t",
+        # reopening the vm_ family surfaced a reference to this from kalloc_heap.
+        "--allowlist-type=zone_kheap_id_t",
+        "--allowlist-type=vm_inherit_t",
+        "--allowlist-type=vm_behavior_t",
+        "--allowlist-type=memory_object_offset_t",
+        "--allowlist-function=mach_vm_allocate_kernel",
+        "--allowlist-var=kernel_map",
+        "--allowlist-var=ipc_kernel_map",
+        "--constified-enum=kma_flags_t",
         "--allowlist-type=task_pend_token_t",
         "--allowlist-type=task_policy_flavor_t",
         "--allowlist-type=task_policy_t",
@@ -496,6 +521,31 @@ bindgen_gen(
         "--allowlist-var=USEC_PER_SEC",
         "--allowlist-var=TASK_POLICY_ROLE",
         "--allowlist-var=TF_64B_ADDR",
+        # memory.c (#71). The vm_ family is no longer marked opaque: measured at +3 structs and
+        # 1,780 bytes, because reopening struct task for task.c had already pulled most of it in.
+        # struct zone stays opaque and gets accessors instead, since it is XNU's and memory.c
+        # only ever touches two fields of it.
+        "--allowlist-type=zone_or_view_t",
+        "--allowlist-type=zalloc_flags_t",
+        "--allowlist-type=kalloc_heap_t",
+        "--allowlist-type=kalloc_result",
+        "--allowlist-type=vm_map_copy",
+        "--allowlist-type=vm_map_copy_t",
+        "--allowlist-type=vm_tag_t",
+        "--allowlist-type=kma_flags_t",
+        "--allowlist-type=vm_map_address_t",
+        "--allowlist-type=vm_map_size_t",
+        "--allowlist-type=vm_map_kernel_flags_t",
+        "--allowlist-type=zone_id_t",
+        # reopening the vm_ family surfaced a reference to this from kalloc_heap.
+        "--allowlist-type=zone_kheap_id_t",
+        "--allowlist-type=vm_inherit_t",
+        "--allowlist-type=vm_behavior_t",
+        "--allowlist-type=memory_object_offset_t",
+        "--allowlist-function=mach_vm_allocate_kernel",
+        "--allowlist-var=kernel_map",
+        "--allowlist-var=ipc_kernel_map",
+        "--constified-enum=kma_flags_t",
         "--allowlist-type=task_pend_token_t",
         "--allowlist-type=task_policy_flavor_t",
         "--allowlist-type=task_policy_t",
@@ -526,7 +576,6 @@ bindgen_gen(
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=thread",
-        "--opaque-type=vm_.*",
         "--opaque-type=os_ref.*",
         "--opaque-type=waitq.*",
         "--opaque-type=zone.*",
