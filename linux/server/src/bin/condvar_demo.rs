@@ -23,14 +23,17 @@
 use darling::bindings::{dtape_condvar_t, dtape_mutex_t};
 use darling::sched;
 
-extern "C" {
-    fn dtape_mutex_init(mutex: *mut dtape_mutex_t);
-    fn dtape_mutex_lock(mutex: *mut dtape_mutex_t);
-    fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t);
-    fn dtape_condvar_init(condvar: *mut dtape_condvar_t);
-    fn dtape_condvar_signal(condvar: *mut dtape_condvar_t, count: usize);
-    fn dtape_condvar_wait(condvar: *mut dtape_condvar_t, mutex: *mut dtape_mutex_t);
-}
+// These were `extern "C"` declarations resolving through the linker back into the darling
+// crate, from when duct-tape was C. It is Rust now (#71), so they are imported (#75).
+//
+// A BIN CRATE, so the path is darling:: and not crate:: . The seven files under src/bin are
+// separate rust_binary targets that depend on :darling; crate:: would not compile here, and
+// the original #75 edit list had it wrong for all of them.
+//
+// All six matched their definitions already, so no call site changes: the declarations spelled
+// dtape_mutex_t and dtape_condvar_t exactly as locks.rs and condvar.rs do.
+use darling::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
+use darling::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
 
 fn main() {
     unsafe {

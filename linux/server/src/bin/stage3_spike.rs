@@ -5,16 +5,25 @@
 //!   Phase 3 microbench   -- N suspend/resume round-trips
 //! DUCT_TAPE_LIB=<dir> cargo run --bin stage3-spike
 
+use darling::bindings::dtape_semaphore_t;
+use darling::dtape_thread::thread_block;
+use darling::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
+
+// The semaphore trio and thread_block were declared through the linker, from when duct-tape was
+// C. Rust now (#71), so imported (#75). A BIN CRATE, so darling:: and not crate:: .
+//
+// assert_wait and thread_wakeup_prim STAY declared: they are XNU, living in the duct-tape
+// archive, and there is no Rust definition to import.
+//
+// The thread_block declaration removed here was CORRECT, unlike the one gate10 found in
+// dtape_kqchan.rs: wait_result_t is c_int and thread_continue_t is
+// Option<fn(*mut c_void, wait_result_t)>, so it matched. Checked rather than assumed.
 use darling::sched;
 use std::os::raw::{c_int, c_void};
 
 extern "C" {
-    fn dtape_semaphore_create(task: *mut c_void, initial: c_int) -> *mut c_void;
-    fn dtape_semaphore_up(sem: *mut c_void);
-    fn dtape_semaphore_down_simple(sem: *mut c_void) -> bool;
     // Raw XNU scheduler primitives (in the duct-tape .a) for the continuation vehicle.
     fn assert_wait(event: *const c_void, interruptible: c_int) -> c_int;
-    fn thread_block(cont: Option<unsafe extern "C" fn(param: *mut c_void, wr: c_int)>) -> c_int;
     fn thread_wakeup_prim(event: *const c_void, one_thread: c_int, result: c_int) -> c_int;
 }
 static EVENT: u8 = 0;
@@ -27,11 +36,11 @@ fn main() {
         let kt = sched::init();
 
         // Phase 1: stackful suspend/resume via a semaphore.
-        let sem = dtape_semaphore_create(kt as *mut c_void, 0);
+        let sem = dtape_semaphore_create(kt, 0);
         let sa = sem as usize;
         let p1 = sched::spawn(kt, Box::new(move || {
             eprintln!("[p1] down (blocks -> stackful suspend)...");
-            if dtape_semaphore_down_simple(sa as *mut c_void) {
+            if dtape_semaphore_down_simple(sa as *mut dtape_semaphore_t) {
                 println!("SPIKE_RESUMED_OK");
             }
         }));
@@ -58,11 +67,11 @@ fn main() {
 
         // Phase 3: microbench the suspend/resume round-trip.
         const N: u64 = 500_000;
-        let bsem = dtape_semaphore_create(kt as *mut c_void, 0);
+        let bsem = dtape_semaphore_create(kt, 0);
         let ba = bsem as usize;
         let bench = sched::spawn(kt, Box::new(move || {
             for _ in 0..N {
-                dtape_semaphore_down_simple(ba as *mut c_void);
+                dtape_semaphore_down_simple(ba as *mut dtape_semaphore_t);
             }
         }));
         sched::run(bench);
