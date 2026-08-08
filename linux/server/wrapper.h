@@ -125,6 +125,8 @@ extern void _pth_proc_hashdelete(proc_t p);
 /* thread.c: the thread state flavors it loads and stores, and the exception path. */
 #include <mach/thread_act.h>
 #include <sys/ux_exception.h>
+#include <mach/thread_info.h>
+#include <mach/i386/thread_status.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <darlingserver/duct-tape/stubs.h>
 #include <kern/policy_internal.h>
@@ -208,6 +210,16 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* thread.c: the composite state counts and the thread info counts, all sizeof
+	 * expressions, plus the exception code array bound. */
+	DTAPE_RS_x86_THREAD_STATE_COUNT = x86_THREAD_STATE_COUNT,
+	DTAPE_RS_x86_FLOAT_STATE_COUNT = x86_FLOAT_STATE_COUNT,
+	DTAPE_RS_x86_DEBUG_STATE_COUNT = x86_DEBUG_STATE_COUNT,
+	DTAPE_RS_x86_DEBUG_STATE32_COUNT = x86_DEBUG_STATE32_COUNT,
+	DTAPE_RS_x86_DEBUG_STATE64_COUNT = x86_DEBUG_STATE64_COUNT,
+	DTAPE_RS_THREAD_IDENTIFIER_INFO_COUNT = THREAD_IDENTIFIER_INFO_COUNT,
+	DTAPE_RS_THREAD_BASIC_INFO_COUNT = THREAD_BASIC_INFO_COUNT,
+	DTAPE_RS_EXCEPTION_CODE_MAX = EXCEPTION_CODE_MAX,
 	/* memory.c: the region info counts are sizeof expressions and the address ceiling is a
 	 * cast macro, so none of them can come through the allowlist. */
 	DTAPE_RS_MACH_VM_MAX_ADDRESS = MACH_VM_MAX_ADDRESS,
