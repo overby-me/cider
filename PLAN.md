@@ -71,10 +71,22 @@ it is still over an hour.
    `checks.darling-buck2-smoke` builds the FULL prefix, and at `--max-jobs 5` it ran 106 minutes,
    2,212 builders, **zero builder failures**, and then died with
    `error: Nix daemon disconnected unexpectedly (maybe it crashed?)` in the stage-tree phase.
-   That is #48's mechanism: daemon memory tracks DATA per derivation, and the full prefix has
-   far more stage-trees than the minimal one. Retrying at `--max-jobs 2`. If the full prefix
-   cannot complete on this box, #71 needs a cheaper gate than the full-prefix VM boot, because a
-   change that cannot be verified is worse than no change.
+   **THE FULL PREFIX CANNOT COMPLETE ON THIS BOX. The kernel OOM-killed nix-daemon, twice,
+   and LOWER parallelism made it worse:**
+
+   | run | `--max-jobs` | daemon RSS at kill |
+   |---|---|---|
+   | first | 5 | **14.6 GB** |
+   | retry | 2 | **16.1 GB** |
+
+   `oom-kill: constraint=CONSTRAINT_NONE, global_oom, task=nix-daemon` on a 30 GB machine, both
+   times in the stage-tree phase, both times with ZERO builder failures. This is #48 with exact
+   numbers: daemon memory tracks DATA per derivation, NOT concurrency, which is why halving the
+   jobs did not help. Two attempts is the limit; not relaunching a third time.
+
+   **So #71 must gate on the MINIMAL endpoint**, which completes (1,617 builders, verified this
+   session, prefix hash matching). A duct-tape change lands in `darlingserverd`, so the gate it
+   needs is a boot against the minimal prefix, not a full-prefix VM.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
 
