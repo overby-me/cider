@@ -56,7 +56,50 @@ EXCLUDE_PKGS = (
 # bash, run nix. The FULL prefix keeps it, so parity is unaffected.
 EXCLUDE_LABELS = (
     "//buck-src:jsc",
+
+    # Userland tools nix can FETCH once it runs. The prefix exists to get nix up; anything
+    # nix could install afterwards is being paid for twice, once here and once in the store.
+    # None of these participates in booting the container or in running bash.
+    #
+    # Editors, pagers, shells other than bash, terminal multiplexers.
+    "//buck-src:vim",
+    "//buck-src:nano",
+    "//buck-src:less",
+    "//buck-src:tcsh",
+    "//buck-src:zsh",
+    "//buck-src:ash",
+    "//buck-src/screen:screen",
+    # Archivers and compressors.
+    "//buck-src:gnutar",
+    "//buck-src:zip",
+    "//buck-src:unzip",
+    "//buck-src:unzipsfx",
+    "//buck-src:xz",
+    "//buck-src:pax",
+    # Network clients and daemons.
+    "//buck-src:sshd",
+    "//buck-src:rsync",
+    "//buck-src:netstat",
+    "//buck-src:cupsd",
+    # Misc userland.
+    "//buck-src:top",
+    "//buck-src:mail",
+    "//buck-src:patch",
+    "//buck-src/file:file",
+    "//buck-src:otool",
+    "//buck-src:hdiutil",
+    "//buck-src:installer",
+    "//buck-src/groff:eqn",
 )
+
+# DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:
+#   grep         shell scripts in the prefix may call it, and it is cheap
+#   curl, openssl  nix brings its own, but the SYSTEM ones may back the Security stack
+#   iokitd       a guest daemon, not obviously inert
+#   secd, securityd, trustd  the security daemons are 738/68/18 exclusive actions and the
+#     biggest remaining prize, but nix does HTTPS and TLS trust on Darwin goes through
+#     Security. That cannot be settled statically, and nix-in-guest cannot currently be run
+#     to settle it empirically, so they stay until it can.
 
 # Source-file entries (the `files` and `trees` sections name repo paths, not labels).
 EXCLUDE_SRC = (
