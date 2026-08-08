@@ -42,6 +42,12 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 # files by what Rust cannot express (C variadic definitions, and macro calls, which bindgen
 # never binds). semaphore.c went first because it is 60 lines with one macro while still
 # exercising the whole seam -- exported C ABI, called from C, calling into XNU.
+# First-party sources compiled INTO duct-tape that upstream does not list. See
+# src/dtape_rs_shims.c for why a shim beats a Rust reimplementation for these.
+RUST_SHIM_SOURCES = [
+    "src/dtape_rs_shims.c",
+]
+
 PORTED_TO_RUST = [
     "src/semaphore.c",
     "src/condvar.c",
@@ -216,6 +222,14 @@ def main(argv: list[str]) -> int:
     # This list belongs HERE rather than in the BUCK file, which is generated: deleting the
     # source line there would come back on the next upstream bump.
     own_srcs = [s for s in own_srcs if s not in PORTED_TO_RUST]
+
+    # ... and the reverse direction: first-party C that is NOT in upstream CMakeLists and must
+    # be compiled anyway. These export macro-only duct-tape operations as real symbols, because
+    # bindgen binds no macros and some of them are not worth reimplementing in Rust (kalloc
+    # expands to a statement expression holding a static vm_allocation_site_t, so writing it in
+    # Rust would mean un-opaquing part of vm_.* for the whole crate). Added here rather than in
+    # the BUCK file for the same reason PORTED_TO_RUST is: the BUCK file is generated.
+    own_srcs += [s for s in RUST_SHIM_SOURCES if s not in own_srcs]
 
     compile_map: dict[str, list[str]] = {m["defs"]: [] for m in migs}
     unclaimed = []

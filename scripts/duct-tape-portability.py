@@ -224,6 +224,53 @@ def measure(path, args):
     }
 
 
+
+
+def solved_macro_names_and_allowlist():
+    """The macros already answered, and the types already bound.
+
+    A module function rather than inline in the table path, because --file needs the same
+    answer and did not have it: it printed a KeyError on r[solved] instead. That was hidden
+    for one run by a grep filter over the output, which is a good reminder that filtering a
+    command's output can hide its traceback.
+    """
+
+    # A macro is only a blocker while it has NO Rust equivalent. dtape_stub, dtape_stub_safe
+    # and dtape_stub_unsafe live in linux/server/src/dtape_stub.rs and were ported precisely so
+    # that the files calling them could be, yet they kept ranking as blockers for host.c and
+    # processor.c and pushed both down the list. Read the crate for macro_rules! rather than
+    # keeping a hand written list here, for the same reason PORTED_TO_RUST is read from the
+    # generator: a second copy drifts, and this tool is only useful if it is trusted.
+    # Macros solved by a C SHIM count as solved too. duct-tape/src/dtape_rs_shims.c exports
+    # macro-only operations as real symbols, named dtape_rs_<macro>, for the cases where a Rust
+    # reimplementation would cost more than it saves: kalloc expands to a statement expression
+    # holding a static vm_allocation_site_t, so writing it in Rust would mean un-opaquing part
+    # of vm_.* for the whole crate. Read the shim rather than listing them here, same rule as
+    # everywhere else in this file.
+    have = set()
+    shim = os.path.join(DT, "src/dtape_rs_shims.c")
+    if os.path.exists(shim):
+        have |= set(re.findall(r"^\w[\w \*]*\bdtape_rs_(\w+)\s*\(",
+                               open(shim, errors="ignore").read(), re.M))
+
+    for dirpath, _, names in os.walk(os.path.join(ROOT, "linux/server/src")):
+        for n in names:
+            if n.endswith(".rs"):
+                try:
+                    have |= set(re.findall(r"^\s*macro_rules!\s+(\w+)",
+                                           open(os.path.join(dirpath, n), errors="ignore").read(),
+                                           re.M))
+                except OSError:
+                    pass
+
+    # Types the bindings ALREADY allowlist, so they are bound and crossing today rather than
+    # being work a port would have to do.
+    allowlisted = set(re.findall(r'"--allowlist-type=([A-Za-z_][A-Za-z0-9_]*)"',
+                                 open(BUCK_SERVER).read()))
+
+    return have, allowlisted
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--file", help="explain a single glue file")
@@ -240,12 +287,26 @@ def main():
     if args_ns.file:
         if args_ns.file not in files:
             sys.exit(f"{args_ns.file} is not a glue source (have: {', '.join(files)})")
+        have, _allowlisted = solved_macro_names_and_allowlist()
         r = measure(os.path.join(srcdir, args_ns.file), cargs)
+        r["solved"] = [x for x in r["fn_macros"] if x in have]
         print(f"{args_ns.file}: {r['lines']} lines")
         print(f"  variadic definitions ({len(r['variadic'])}): {', '.join(r['variadic']) or 'none'}")
         print(f"  function-like macros ({len(r['fn_macros'])}): {', '.join(r['fn_macros']) or 'none'}")
         print(f"  object-like macros ({len(r['ob_macros'])}): {', '.join(r['ob_macros']) or 'none'}")
         print(f"  OPAQUE xnu types touched ({len(r['opaque'])}): {', '.join(r['opaque']) or 'none'}")
+        if r["solved"]:
+            # KNOWN OVER-REPORT, stated rather than silently wrong. This list is measured on the
+            # C file after macro expansion, so a type reached ONLY through a macro that is now
+            # shimmed still shows up, even though a Rust port calls the shim and never expands
+            # it. processor.c is the live example: vm_allocation_site_t is listed, and it comes
+            # entirely from the kalloc expansion, which dtape_rs_kalloc now absorbs.
+            # Not corrected automatically because it needs types attributed to the macro that
+            # introduced them. The obvious cheap fix does NOT work: passing -Dkalloc(a0)=... on
+            # the command line changes nothing, because kern/kalloc.h redefines the macro
+            # afterwards and the header wins. Measured, both ways came out identical.
+            print(f"    NOTE: {', '.join(r['solved'])} already solved in Rust or by a shim, so"
+                  f" any opaque type reached only through those is not this port's problem")
         if r["opaque"]:
             print("    porting this means RELAXING those in linux/server/BUCK, which is what")
             print("    keeps struct task from dragging most of osfmk into the bindings")
@@ -261,28 +322,7 @@ def main():
         m = re.search(r"^PORTED_TO_RUST = \[(.*?)^\]", open(gen).read(), re.M | re.S)
         if m:
             ported = {os.path.basename(p) for p in re.findall(r'"([^"]+)"', m.group(1))}
-
-    # A macro is only a blocker while it has NO Rust equivalent. dtape_stub, dtape_stub_safe
-    # and dtape_stub_unsafe live in linux/server/src/dtape_stub.rs and were ported precisely so
-    # that the files calling them could be, yet they kept ranking as blockers for host.c and
-    # processor.c and pushed both down the list. Read the crate for macro_rules! rather than
-    # keeping a hand written list here, for the same reason PORTED_TO_RUST is read from the
-    # generator: a second copy drifts, and this tool is only useful if it is trusted.
-    have = set()
-    for dirpath, _, names in os.walk(os.path.join(ROOT, "linux/server/src")):
-        for n in names:
-            if n.endswith(".rs"):
-                try:
-                    have |= set(re.findall(r"^\s*macro_rules!\s+(\w+)",
-                                           open(os.path.join(dirpath, n), errors="ignore").read(),
-                                           re.M))
-                except OSError:
-                    pass
-
-    # Types the bindings ALREADY allowlist, so they are bound and crossing today rather than
-    # being work a port would have to do.
-    allowlisted = set(re.findall(r'"--allowlist-type=([A-Za-z_][A-Za-z0-9_]*)"',
-                                 open(BUCK_SERVER).read()))
+    have, allowlisted = solved_macro_names_and_allowlist()
 
     rows = []
     for f in files:
