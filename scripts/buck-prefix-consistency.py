@@ -45,18 +45,56 @@ def installed_destinations(text):
     return dests
 
 
+def plist_source(label):
+    """Where a plist label's source file actually lives.
+
+    DERIVED FROM THE LABEL, not globbed, because globbing one directory silently skipped the
+    most important plist in the prefix: shellspawn is `//src/shellspawn:...`, so a glob rooted
+    at buck-src/ never found it, and shellspawn is what `darling shell` uses to spawn the guest
+    shell. A check that quietly cannot see its most important case is worse than no check.
+
+    Three forms, in order:
+      //src/shellspawn:org.darlinghq.shellspawn.plist -> src/shellspawn/org.darling....plist
+      //buck-src:security_OSX_sec_ipc_com.apple.secd.plist -> the name's underscores are path
+          separators: buck-src/security/OSX/sec/ipc/com.apple.secd.plist
+      anything else -> a repo-wide glob on the file name, as a last resort
+    """
+    pkg, _, name = label.lstrip("/").partition(":")
+    direct = os.path.join(ROOT, pkg, name)
+    if os.path.exists(direct):
+        return direct
+    # underscore-encoded path, peeled from the left so a dotted file name survives
+    parts = name.split("_")
+    for i in range(len(parts) - 1, 0, -1):
+        cand = os.path.join(ROOT, pkg, *parts[:i], "_".join(parts[i:]))
+        if os.path.exists(cand):
+            return cand
+    # Last resort, over the SOURCE roots only. A repo-wide `**` glob is not an option: it
+    # walks buck-out, which is hundreds of thousands of build artifacts, and the first version
+    # of this took the check from under a second to over ten MINUTES. Filtering buck-out out
+    # of the results afterwards does not help, because the walk has already happened.
+    # The label NAME is the underscore-encoded path, so the file on disk is only its last
+    # component: `remote_cmds_talkd.tproj_ntalk.plist` is `.../talkd.tproj/ntalk.plist`.
+    # Globbing the whole name finds nothing, which is how ntalk and tftp stayed "not checked"
+    # even though both were sitting in the tree.
+    leaf = name.split("_")[-1]
+    for root in ("src", "buck-src", "darwin", "linux", "buck"):
+        hits = glob.glob(os.path.join(ROOT, root, "**", leaf), recursive=True)
+        if hits:
+            return hits[0]
+    return None
+
+
 def plist_program(label):
     """The Program a launchd plist names, read from its source in the repo.
 
-    The label's last underscore-separated component is the file name, which is enough to find
-    it. A plist whose source cannot be found is REPORTED, not silently passed: an unreadable
-    input is not evidence of correctness.
+    A plist whose source cannot be found is REPORTED, not silently passed: an unreadable input
+    is not evidence of correctness.
     """
-    fname = label.split(":")[-1].split("_")[-1]
-    hits = glob.glob(os.path.join(ROOT, "buck-src", "**", fname), recursive=True)
-    if not hits:
+    src = plist_source(label)
+    if not src:
         return None, "source not found"
-    text = open(hits[0], errors="ignore").read()
+    text = open(src, errors="ignore").read()
     m = re.search(
         r"<key>Program(?:Arguments)?</key>\s*(?:<array>\s*)?<string>([^<]+)</string>", text)
     if not m:
