@@ -202,9 +202,10 @@ normalised build environment rather than the paths.
 | minus `jsc` | 4,293 | 16,234 | 92.5% |
 | minus userland nix can fetch | 4,194 | 15,399 | 87.7% |
 | minus the GUI cone and 4 superseded libcryptos | 4,080 | 12,051 | 68.7% |
-| minus the security daemons | 3,993 | **10,902** | **62.1%** |
+| minus the security daemons | 3,993 | 10,902 | 62.1% |
+| minus ssh, curl, openssl, the LAST libcrypto, BerkeleyDB, BIND, libarchive, APR | 3,776 | **9,003** | **51.3%** |
 
-**6,630 actions gone, 37.8%.** The principle that got there: the prefix carries what nix needs
+**8,549 actions gone, 48.7%: the minimal endpoint is now under half what it was.** The principle that got there: the prefix carries what nix needs
 TO START, and nix pulls the rest from nixpkgs once it runs. `tests/nix-in-darling.nix` shows
 the bootstrap does no network I/O at all -- the HOST fetches and extracts the installer and
 copies it in, and the guest runs `bash -x install --no-daemon` then local eval/store commands.

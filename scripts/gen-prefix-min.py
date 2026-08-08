@@ -147,6 +147,68 @@ EXCLUDE_LABELS = (
     "//buck-src:securityd_exe",
     "//buck-src:trustd",
     "//buck-src:securitytool_macos",
+
+    # The OpenSSH suite, and with it openbsd_compat (82 actions, reached by nothing else).
+    "//buck-src:ssh",
+    "//buck-src:scp",
+    "//buck-src:sftp",
+    "//buck-src:sftp-server",
+    "//buck-src:ssh-add",
+    "//buck-src:ssh-agent",
+    "//buck-src:ssh-keygen",
+    "//buck-src:ssh-keyscan",
+    "//buck-src:ssh-keysign",
+    "//buck-src:ssh-pkcs11-helper",
+    "//buck-src:sshd-keygen-wrapper",
+
+    # curl, openssl and the LAST libcrypto. Keeping crypto44 was justified earlier by "curl
+    # needs it", which was the wrong question: the bootstrap does no network I/O, so CURL is
+    # not needed either, and the whole chain goes. crypto44_obj alone is 543 actions, the
+    # single largest item left in the prefix, plus curl_obj 135.
+    "//buck-src:curlexe",
+    "//buck-src:curl_dylib",
+    "//buck-src:openssl",
+    "//buck-src:crypto44_dylib",
+    "//buck-src:ssl46_dylib",
+    "//buck-src:tls18_dylib",
+
+    # The Berkeley DB command line tools: 225 actions of berkeley_db_obj reached by these
+    # twelve and nothing else.
+    "//buck-src:db_archive",
+    "//buck-src:db_checkpoint",
+    "//buck-src:db_codegen",
+    "//buck-src:db_deadlock",
+    "//buck-src:db_dump",
+    "//buck-src:db_hotbackup",
+    "//buck-src:db_load",
+    "//buck-src:db_printlog",
+    "//buck-src:db_recover",
+    "//buck-src:db_stat",
+    "//buck-src:db_upgrade",
+    "//buck-src:db_verify",
+
+    # The BIND DNS diagnostic tools: bind9_dns_obj 84 and bind9_isc_obj 82 are reached by
+    # these six and nothing else. Resolution itself is libnetwork/libc, not these.
+    "//buck-src:dig",
+    "//buck-src:host",
+    "//buck-src:nslookup",
+    "//buck-src:nsupdate",
+    "//buck-src:delv",
+    "//buck-src:ddns-confgen",
+
+    # libarchive's tools (archive_obj 115) and the Apache Portable Runtime (apr_obj 82).
+    # RESIDUAL RISK, the one place in this batch where the bootstrap could conceivably care:
+    # the nix installer is a shell script, and if it ever shells out to tar it would want
+    # these. Neither prefix installs /usr/bin/tar under that name at all, and the guest only
+    # runs `install --no-daemon` over files the HOST already extracted, so it should not. If
+    # that turns out wrong, restoring bsdtar is one line.
+    "//buck-src:bsdtar",
+    "//buck-src:cpio",
+    # and libarchive itself, which after those two is installed for its own sake
+    # with nothing left consuming it.
+    "//buck-src:archive_dylib",
+    "//buck-src:apr_dylib",
+    "//buck-src:aprutil_dylib",
 )
 
 # DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:
