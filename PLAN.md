@@ -57,10 +57,20 @@ it is still over an hour.
    Five files are 74% of the glue (`kern_synch.c` 2,805, `thread.c` 2,072, `task.c` 1,766,
    `memory.c` 1,554, `kern_support.c` 1,020), and the tail is small enough to start on:
    `traps.c` 29, `condvar.c` 49, `semaphore.c` 60, `timer.c` 93.
-   Order: leaves first, keeping the existing `dtape_*` symbol names so the Rust daemon links
-   unchanged; verify by BOOTING the container and running bash, which is a check that exists
-   and can fail. NOT `kern_synch.c` first: it is the psynch path, where this daemon already had
-   a silent SIGSEGV from a null `pthread_list_mlock`.
+   **ORDER BY INTERFACE COUPLING, NOT BY SIZE**, which reading the files changed:
+   * `condvar.c` is 49 lines and is NOT a leaf. It reaches into `dtape_thread_t` through
+     `__container_of(link, dtape_thread_t, mutex_link)` and an intrusive `TAILQ`, so porting it
+     alone needs the Rust side to know `thread.c`'s struct layout.
+   * `traps.c` is 29 lines and IS a leaf, but every line is a wrapper around an XNU trap, so the
+     Rust version is an equally thin FFI shim calling the same C. It buys nothing.
+   * `timer.c` (93) and `misc.c` (150) touch only `dtape_hooks->*`, which is a table of function
+     pointers. Those are the real first candidates: a clean boundary and actual logic.
+
+   Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged. Verify by
+   BOOTING the container (`checks.darling-buck2-smoke`), which can fail; note it builds the FULL
+   prefix, so the first run is a ~2 h baseline and later ones rebuild only the daemon and the VM.
+   NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
+   SIGSEGV from a null `pthread_list_mlock`.
 
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
