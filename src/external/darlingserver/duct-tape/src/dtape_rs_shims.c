@@ -211,6 +211,25 @@ dtape_map_shared_entry_t* dtape_rs_shared_entries_next(dtape_map_shared_entry_t*
 	return RB_NEXT(dtape_map_shared_entry_head, NULL, entry);
 };
 
+/* thread.c: the four thread lock macros, each a simple_lock over a field of struct thread.
+ * The lock group they name is file-static to XNU, so these cannot be written in Rust even
+ * with the struct reopened. */
+void dtape_rs_thread_lock(struct thread* thread) {
+	thread_lock(thread);
+};
+
+void dtape_rs_thread_unlock(struct thread* thread) {
+	thread_unlock(thread);
+};
+
+void dtape_rs_thread_lock_init(struct thread* thread) {
+	thread_lock_init(thread);
+};
+
+void dtape_rs_wake_lock_init(struct thread* thread) {
+	wake_lock_init(thread);
+};
+
 /* thread.c: thread_reference and task_reference_internal are macros over os_ref, the same
  * shape as the task_reference shim above. */
 void dtape_rs_thread_reference(struct thread* thread) {

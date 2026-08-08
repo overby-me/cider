@@ -49,12 +49,12 @@ pub(crate) unsafe fn task_for_xnu_task(xnu_task: task_t) -> *mut dtape_task {
 
 /// `task_lock` / `task_unlock`, macros over the mutex that is now a reachable field.
 #[inline]
-unsafe fn task_lock(xtask: task_t) {
+pub(crate) unsafe fn task_lock(xtask: task_t) {
     bindings::lck_mtx_lock(&mut (*xtask).lock);
 }
 
 #[inline]
-unsafe fn task_unlock(xtask: task_t) {
+pub(crate) unsafe fn task_unlock(xtask: task_t) {
     bindings::lck_mtx_unlock(&mut (*xtask).lock);
 }
 

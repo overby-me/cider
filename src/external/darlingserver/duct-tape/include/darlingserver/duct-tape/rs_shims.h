@@ -83,6 +83,12 @@ void dtape_rs_shared_entries_remove(struct dtape_map_shared_entry_head* head, st
 struct dtape_map_shared_entry* dtape_rs_shared_entries_first(struct dtape_map_shared_entry_head* head);
 struct dtape_map_shared_entry* dtape_rs_shared_entries_next(struct dtape_map_shared_entry* entry);
 
+/* thread.c: the four thread lock macros, each a simple_lock over a struct thread field. */
+void dtape_rs_thread_lock(struct thread* thread);
+void dtape_rs_thread_unlock(struct thread* thread);
+void dtape_rs_thread_lock_init(struct thread* thread);
+void dtape_rs_wake_lock_init(struct thread* thread);
+
 /* thread.c: thread_reference and task_reference_internal are macros over os_ref. */
 void dtape_rs_thread_reference(struct thread* thread);
 void dtape_rs_task_reference_internal(struct task* task);

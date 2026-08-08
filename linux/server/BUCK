@@ -285,6 +285,9 @@ bindgen_gen(
         "--allowlist-var=IPC_THREAD_INIT_NONE",
         "--allowlist-var=PORT_TO_THREAD_NONE",
         "--allowlist-var=kThreadWaitNone",
+        "--allowlist-function=bsd_exception",
+        # thread.c ANDs the handoff option, which a Rust enum cannot do.
+        "--constified-enum=thread_handoff_option_t",
         # thread.c, second round: the COMPOSITE x86 state structs, which carry a flavor header
         # and a union of the 32 and 64 bit forms, and which thread_set_state and
         # thread_get_state_internal dispatch on. The leaf types alone are not enough.
@@ -653,6 +656,9 @@ bindgen_gen(
         "--allowlist-var=IPC_THREAD_INIT_NONE",
         "--allowlist-var=PORT_TO_THREAD_NONE",
         "--allowlist-var=kThreadWaitNone",
+        "--allowlist-function=bsd_exception",
+        # thread.c ANDs the handoff option, which a Rust enum cannot do.
+        "--constified-enum=thread_handoff_option_t",
         # thread.c, second round: the COMPOSITE x86 state structs, which carry a flavor header
         # and a union of the 32 and 64 bit forms, and which thread_set_state and
         # thread_get_state_internal dispatch on. The leaf types alone are not enough.

@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/thread.c: thread lifecycle, blocking, saved x86 register state, and the path
+// Linux signals take to become Mach exceptions (#71, SIXTEENTH AND LAST file). NAMED
+// dtape_thread because linux/server/src/thread.rs is the daemon side.
+pub mod dtape_thread;
+
 // duct-tape/src/memory.c: the zone and kalloc allocators, the copyin/copyout family, the
 // vm_map_copy path, the region queries and the memfd-backed shared remap (#71, fifteenth file).
 // The red-black tree of shared entries stays C in dtape_rs_shims.c: RB_PROTOTYPE_SC makes every

@@ -74,6 +74,10 @@ extern int _psynch_mutexwait(proc_t p, user_addr_t mutex, uint32_t mgen, uint32_
 extern int _psynch_rw_rdlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
 extern int _psynch_rw_unlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
 extern int _psynch_rw_wrlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
+/* thread.c calls bsd_exception, which no reachable header declares. Same situation as the
+ * psynch entry points above, and the same answer: declare it here so bindgen types it. */
+extern void bsd_exception(int exception, long long* codes, int code_count);
+
 extern void psynch_zoneinit(void);
 extern void _pth_proc_hashinit(proc_t p);
 extern void _pth_proc_hashdelete(proc_t p);
@@ -126,6 +130,7 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <mach/thread_act.h>
 #include <sys/ux_exception.h>
 #include <mach/thread_info.h>
+#include <rtsig.h>
 #include <mach/i386/thread_status.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <darlingserver/duct-tape/stubs.h>
@@ -210,6 +215,13 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* thread.c: the leaf state counts, the wait result and the RT signal number. */
+	DTAPE_RS_x86_THREAD_STATE32_COUNT = x86_THREAD_STATE32_COUNT,
+	DTAPE_RS_x86_THREAD_STATE64_COUNT = x86_THREAD_STATE64_COUNT,
+	DTAPE_RS_x86_FLOAT_STATE32_COUNT = x86_FLOAT_STATE32_COUNT,
+	DTAPE_RS_x86_FLOAT_STATE64_COUNT = x86_FLOAT_STATE64_COUNT,
+	DTAPE_RS_THREAD_WAITING = THREAD_WAITING,
+	DTAPE_RS_LINUX_SIGRTMIN = LINUX_SIGRTMIN,
 	/* thread.c: the composite state counts and the thread info counts, all sizeof
 	 * expressions, plus the exception code array bound. */
 	DTAPE_RS_x86_THREAD_STATE_COUNT = x86_THREAD_STATE_COUNT,

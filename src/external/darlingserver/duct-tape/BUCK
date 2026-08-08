@@ -722,7 +722,6 @@ cc_objects(
         "src/dtape_rs_shims.c",
         "src/memory_xnu.c",
         "src/task_xnu.c",
-        "src/thread.c",
         "src/thread_xnu.c",
         "xnu/libkern/c++/priority_queue.cpp",
         "xnu/libkern/gen/OSAtomicOperations.c",
