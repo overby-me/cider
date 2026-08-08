@@ -121,15 +121,23 @@ is further down and in the commit history.
    22 CPUs both ways. Comparing sysconf against sysconf would have agreed with itself however
    wrong the layout was.
 
-   **8 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks. What
+   **THE PREFIX AND SIX PORTS ARE GATE-VERIFIED (gate7, head 85841249).** 1,577 builders, ZERO
+   errors, zero failed builders, NIX_EXIT=0, 1 h 15 m, and the VM assertions held: exit codes
+   propagate out of the container, script finished in 14.50 s,
+   `/nix/store/y0nq738fh7acsgims1w2r5pja5jsdwpq-vm-test-run-darling-buck2-smoke`.
+   That covers the minimal prefix at 853 entries (jsc and Swift removed), the timer, host,
+   processor, init, debug and locks ports, twelve shims, and the ipc, host and processor
+   reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
+   `traps.c`.
+
+   **10 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks. What
+   (semaphore, condvar, timer, host, processor, init, debug, locks, kqchan, traps.) What
    remains, ranked by GLUE lines rather than total, since duct-tape marks every region lifted
    from XNU and the two halves are different work:
 
    | file | lines | glue | note |
    |---|---|---|---|
-   | `traps.c` | 29 | 29 | one blocker, `DSERVER_DTAPE_DEFS`, needs a Rust emitter for ~29 generated wrappers |
    | `psynch.c` | 678 | **218** | 67 percent is XNU `kern_synch.c`, the sleep path with signal handling |
-   | `kqchan.c` | 394 | 279 | SLIST macros, same shape as the TAILQ ones already written |
    | `task.c` | 1766 | 771 | |
    | `memory.c` | 1554 | 1175 | 47 opaque types, the most of anything left |
    | `thread.c` | 2072 | **1397** | the largest glue body |
