@@ -94,6 +94,14 @@ it is still over an hour.
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
    since `kqchan.c` stays C and calls `dtape_semaphore_up`.
 
+   **The runtime check for a port is `scripts/duct-tape-runtime-check.nu`, about a minute**,
+   not the hour-long minimal-prefix gate. It builds `//linux/server:scheduler_demo` and blocks
+   a microthread on a duct-tape semaphore, so `dtape_semaphore_create`, `down_simple` and `up`
+   all run for real, down through XNU and back out through the suspend/resume hooks. It asserts
+   on the OUTPUT (`SCHED_DEMO_OK`), never the exit code: breaking `down_simple` to report every
+   successful wait as interrupted prints `SCHED_DEMO_DOWN_FAILED` and STILL EXITS 0, because the
+   demo's own asserts (did it suspend, did it finish) both still hold.
+
    **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
    is not vacuous: in `libdarlingserver_duct_tape.a` the four `dtape_semaphore_*` are `U` and
    `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come

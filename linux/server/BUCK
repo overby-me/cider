@@ -139,6 +139,40 @@ rust_library(
     visibility = ["PUBLIC"],
 )
 
+# scheduler_demo: a microthread blocks on a duct-tape semaphore, suspends, and is woken.
+#
+# This exists as a TARGET now because it is the fastest runtime check of the ported glue
+# (#71). It drives dtape_semaphore_create, dtape_semaphore_down_simple and
+# dtape_semaphore_up, which are Rust as of the semaphore port, all the way down through XNU
+# and back out through the thread_suspend/thread_resume hooks, and it asserts that the
+# microthread actually suspended and actually finished. It builds and runs in about a minute,
+# against roughly an hour for checks.darling-buck2-min-smoke, so a broken port is visible
+# immediately rather than at the end of a prefix build.
+#
+# Same link shape as the daemon: everything above duct-tape is Rust, the C below it comes in
+# as static archives.
+rust_binary(
+    name = "scheduler_demo",
+    crate_root = "src/bin/scheduler_demo.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
