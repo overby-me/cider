@@ -351,6 +351,38 @@ def opaque_types_touched(expanded, pats):
     return sorted(hits)
 
 
+# Lines inside a <copied from="xnu://..."> or <adapted from=...> block. duct-tape marks every
+# region it lifted from XNU this way.
+_XNU_OPEN = re.compile(r"<(?:copied|adapted) from=")
+_XNU_CLOSE = re.compile(r"</(?:copied|adapted)>")
+
+
+def adapted_xnu_lines(src):
+    """How much of this file is TRANSCRIBED XNU rather than duct-tape glue.
+
+    A different axis from every other column, and the one that would have stopped psynch.c
+    being picked as the next port. Its blocker and opaque counts read cheap, and it is 678
+    lines, but 460 of those are XNU's bsd/kern/kern_synch.c sleep path with its signal
+    handling. That is not glue moving to Rust, it is a transcription where the semantics have
+    to match exactly and nothing about the port gets easier for having done it.
+
+    GLUE is lines minus this, and it is the number worth ranking on:
+        thread.c 1397, memory.c 1175, task.c 771, kqchan.c 279, psynch.c 218
+    """
+    inside = False
+    count = 0
+    for line in src.split("\n"):
+        if _XNU_OPEN.search(line):
+            inside = True
+            continue
+        if _XNU_CLOSE.search(line):
+            inside = False
+            continue
+        if inside:
+            count += 1
+    return count
+
+
 def measure(path, args):
     src = open(path).read()
     dirty = preprocesses_cleanly(path, args)
@@ -362,6 +394,7 @@ def measure(path, args):
     ob_used = sorted((words & ob) - fn)
     return {
         "lines": src.count("\n"),
+        "adapted": adapted_xnu_lines(src),
         "dirty": dirty,
         "code_macros": sorted(words & code_ob),
         "variadic": sorted(m.group(0).split("(")[0].split()[-1]
@@ -509,7 +542,7 @@ def main():
                               len(kv[1]["variadic"]) * 100 + len(kv[1]["fn_blockers"]),
                               len(kv[1]["opaque"])))
 
-    print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>9}{'FNMAC':>7}{'OBJMAC':>8}"
+    print(f"{'FILE':<14}{'LINES':>7}{'GLUE':>7}{'VARIADIC':>9}{'FNMAC':>7}"
           f"{'EXPORTS':>9}{'CALLSOUT':>10}{'OPAQUE':>8}  blockers")
     for f, r in rows:
         top = ", ".join(r["fn_blockers"][:3])
@@ -540,8 +573,8 @@ def main():
             note = f"MEASUREMENT INVALID: {r['dirty']}"
         ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
         co = str(r["ffi"]["calls"]) if r["ffi"] else "-"
-        print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>9}"
-              f"{len(r['fn_macros']):>7}{len(r['ob_macros']):>8}{ex:>9}{co:>10}"
+        print(f"{f:<14}{r['lines']:>7}{r['lines'] - r['adapted']:>7}"
+              f"{len(r['variadic']):>9}{len(r['fn_macros']):>7}{ex:>9}{co:>10}"
               f"{len(r['opaque']):>8}  {note}")
     if not any(r["ffi"] for _, r in rows):
         print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
