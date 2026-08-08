@@ -163,29 +163,29 @@ it is still over an hour.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
 
-**OPEN, MEASURED BUT NOT EXPLAINED: 117 pin derivations re-run on a change that cannot reach
-them.** Two consecutive minimal-endpoint gates, differing only by the duct-tape Rust ports and
-some `linux/server` targets:
+**CLOSED, AND IT WAS A FALSE ALARM OF MY OWN MAKING: comparing pin counts across two gate logs
+counts RESOLVED and UNRESOLVED derivations as if they were different builds.** The scare was
+that 117 pin derivations, `buck2-pin-JavaScriptCore` among them, appeared to re-run on a change
+that cannot reach them (gate3, semaphore only: 1,875 builders / 202 pins; gate4, plus condvar
+and timer: 572 / 117).
 
-| | builders that RAN | distinct pin drvs that RAN |
-|---|---|---|
-| gate3 (semaphore only) | 1,875 | 202 |
-| gate4 (+ condvar, timer) | 572 | 117 |
+The two JSC pin `.drv`s are **the same build**. Diffing their build environments with store
+hashes AND CA placeholders normalised leaves **2 differing lines out of 37**, and both are
+representation, not content:
+* one has a CA `/PLACEHOLDER` where the other has the realised
+  `/nix/store/...-buck2-stage-project-grouped`;
+* `"out": ""` against a concrete output path.
 
-The **572 against 1,875** is the cascade cut working: most downstream work was reused. But
-`buck2-pin-JavaScriptCore` re-ran in both, and its inputs include NOTHING from duct-tape or
-`linux/server` (checked with `nix-store --query --references`: no match for duct/darlingserver/
-server, and the same 185 stage-tree inputs on both sides).
+That is Nix's RESOLVED DERIVATION: before building a CA derivation it substitutes realised
+inputs and builds that instead, under a different store path. It is also why one side's
+`--query --references` ends in `.drv` and the other's does not, and why a build failure earlier
+in this work was reported as `build of resolved derivation ... failed`.
 
-**Not yet explained, and the obvious method is confounded.** Comparing the two pin `.drv`s
-directly does not work: gate3's records input DERIVATIONS while gate4's records realised
-OUTPUTS, because Nix resolves a CA derivation's inputs once they exist. So a `nix-diff` between
-them reads as hundreds of added sources that are really the same inputs in a different form.
-Moved drv paths are not evidence either, by the standing rule.
-
-**The clean test is the controlled one, and it needs an idle store:** touch one file that
-cannot affect JSC, then `nix build --dry-run` the minimal endpoint and count the pins it says
-it would build. Not run yet because a gate was building at the time and would have contended.
+**So there is no cascade leak here, and the 572 against 1,875 remains the cut working.**
+The lesson is narrower than the scare: **counting derivations across two logs is not a
+measurement**, because the same build appears under two paths. Judge by builders that RAN
+WITHIN ONE run, which is the standing rule, and if two runs must be compared, compare the
+normalised build environment rather than the paths.
 
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
