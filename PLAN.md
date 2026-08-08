@@ -253,8 +253,17 @@ other 298 are action-less `export_file` targets, plists and conf files, legitima
 from an ACTION graph); the wrong one resolved 128 (14 percent). Floor is 50 percent.
 
 Re-measured on a pinned graph, so the shrink table is like-for-like rather than against a
-graph total: **17,532 actions / 4,324 targets / 2,016 labels becomes 8,700 / 3,491 / 899.**
+graph total: **17,532 actions / 4,324 targets / 2,016 labels becomes 8,696 / 3,485 / 853.**
 Half the actions, 50.4 percent.
+
+**THIS LEVER IS NOW SPENT, which is worth stating so nobody spends another day on it.** The
+three costliest entries are exactly the three EXEMPT ones, dyld 644, bash 182 and
+darlingserverd 136, which are the goal rather than dead weight. The worst non-exempt entry is
+`iokitd` at **32**. Everything still large is shared base that no entry owns: libsyscall 453
+pulled by 547 entries, icucore 446 by 178, XNU emulation 288 by 546, compiler-rt 138 by 540.
+Nothing sizeable can be removed by dropping entries any more, so `--check` (budget tightened
+150 to **60**) is now a ratchet against regression rather than a search tool. Further build-time
+work has to come from the invalidation cascade, not from the prefix.
 
 Worth doing in the next INVALIDATING batch, not on its own: give each graph attribute a
 distinct derivation name. That is the root cause of the store ambiguity, but renaming a

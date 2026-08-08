@@ -191,13 +191,19 @@ EXEMPT = {
 # --check fails when a non-exempt entry exclusively pulls in more than this many actions.
 # Taken from the measured distribution, not picked round.
 #
-# It was 800 while secd was still here, sitting between what was already present (secd at 738)
-# and another jsc (1,298), with a note that lowering it meant first deciding about secd. That
-# is decided: the security daemons are gone, so the three costliest entries are now exactly
-# the exempt ones (dyld 644, bash 182, darlingserverd 136) and the worst NON-exempt is openssl
-# at 51. 150 leaves that about 3x headroom while catching anything jsc- or secd-shaped the
-# moment it appears.
-DEFAULT_BUDGET = 150
+# It was 800 while secd was still here, then 150 once the security daemons went. Now 60.
+#
+# Each drop follows the measured distribution rather than taste, and the distribution has
+# stopped moving: the three costliest entries are exactly the three EXEMPT ones (dyld 644,
+# bash 182, darlingserverd 136), which are the goal rather than dead weight, and the worst
+# non-exempt is iokitd at 32, then grep 30 and nghttp2 24. 60 keeps about 2x headroom over
+# iokitd while catching anything jsc-shaped (1,298) or secd-shaped (738) the moment it appears.
+#
+# Tightening matters more now than it did, because the SEARCH is over: with the prefix at 853
+# entries every remaining large target is shared base (libsyscall 453 pulled by 547 entries,
+# icucore 446 by 178, XNU emulation 288 by 546), so nothing sizeable can be removed by dropping
+# entries any more. From here this guard is a ratchet against regression, not a search tool.
+DEFAULT_BUDGET = 60
 
 
 def main():
