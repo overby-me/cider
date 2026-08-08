@@ -55,8 +55,9 @@ is further down and in the commit history.
    **THE ORDERING ABOVE WAS WRONG, and `scripts/duct-tape-portability.py` now measures it**
    instead of arguing it. Only two things are hard blockers: a C VARIADIC DEFINITION (stable
    Rust cannot write `extern "C" fn(...)`) and a MACRO CALL (bindgen binds no macros).
-   * `misc.c` was named a first candidate. It is **last of sixteen**: it DEFINES three variadic
-     functions (`dtape_log`, `kprintf`, `scnprintf`), which Rust cannot express at all.
+   * `misc.c` was named a first candidate. It ranked **last of sixteen** because it DEFINES
+     three variadic functions (`dtape_log`, `kprintf`, `scnprintf`), which Rust cannot express.
+     That verdict was too strong and it went twelfth: see the variadic note below.
    * `timer.c` was the other. It calls `mpqueue_init`, a MACRO, so it needs a shim either way.
    * `traps.c` is not blocker-free either: its last line is `DSERVER_DTAPE_DEFS`, a generated
      object-like macro. (It is still a thin FFI shim that buys little.)
@@ -130,18 +131,28 @@ is further down and in the commit history.
    reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
    `traps.c`.
 
-   **10 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
-   traps. What
+   **13 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
+   traps, psynch, misc, stubs. What
    remains, ranked by GLUE lines rather than total, since duct-tape marks every region lifted
    from XNU and the two halves are different work:
 
    | file | lines | glue | note |
    |---|---|---|---|
-   | `psynch.c` | 678 | **218** | 67 percent is XNU `kern_synch.c`, the sleep path with signal handling |
-   | `task.c` | 1766 | 771 | |
-   | `memory.c` | 1554 | 1175 | 47 opaque types, the most of anything left |
-   | `thread.c` | 2072 | **1397** | the largest glue body |
-   | `stubs.c`, `misc.c` | | | BLOCKED: 1 and 3 variadic DEFINITIONS, which stable Rust cannot express |
+   | `task.c` | 1766 | 771 | 12 distinct fields through the opaque `struct task` |
+   | `memory.c` | 1554 | 1175 | 47 opaque types, but ZERO task/thread fields |
+   | `thread.c` | 2072 | **1397** | the largest glue body, 18 fields through `struct thread` |
+
+   **NOT COVERED AT RUNTIME: psynch.** None of the four demos reaches it, since it needs a
+   guest program with CONTENDED pthread locks; `dtape_psynch_init` runs only from
+   `dtape_init_in_thread`, which is the daemon path. The gate boots a container, so it covers
+   init; the lock paths themselves are covered by nothing yet. A demo for them is open work.
+
+   **THE VARIADIC BLOCKER IS CLOSED.** `stubs.c` and `misc.c` were called blocked on 1 and 3
+   variadic DEFINITIONS. All four are pure forwarders to a `v`-variant, so all four stay in C in
+   `duct-tape/src/dtape_rs_shims.c` beside the macro shims, and everything else in both files is
+   Rust. Rust can CALL a variadic even though it cannot define one, so the ported code formats
+   with `format!` and passes a plain `%s`, which is safer than the C it replaces: a specifier
+   that disagrees with its argument is now a compile error. No remaining file is blocked.
 
    **THE SHIM IS THE MAIN TOOL, and it is what made the second half tractable.**
    `duct-tape/src/dtape_rs_shims.c` exports twelve macro-only or inline-only operations as real
@@ -158,8 +169,22 @@ is further down and in the commit history.
    | `ipc_.*` | +16 structs, +34.5 KB | DONE, debug.c genuinely walks those fields |
    | `processor` + `processor_set` | +15 structs, +8.2 KB | DONE |
    | `host` | +2 structs, +767 B | DONE, cheaper than a shim |
-   | `thread` + `waitq` | +17 structs, +68 KB | REFUSED, 3 fields, 3 shims |
-   | `task` | +22 structs, **+94 KB** | REFUSED, 1 field, 1 shim |
+   | `thread` + `waitq` | +17 structs, +68 KB | refused THEN, revisit: `thread.c` reaches 18 fields |
+   | `task` | +21 structs, **+91 KB** | refused THEN, revisit: `task.c` reaches 12 fields |
+
+   **The last two verdicts were taken when reopening would have saved ONE shim, and the files
+   that need them tell a different story:** `task.c` reaches **12** distinct fields through the
+   opaque `struct task` and `thread.c` reaches **18** through `struct thread`. `memory.c`
+   reaches **zero** of either, so it needs neither reopening. Re-measured 2026-08-08 at +21 and
+   91,372 B, close to the original figure.
+
+   **The reason to hesitate was that reopening might lay the fields out differently from C, and
+   that is now measured rather than feared.** `linux/server/src/layout.rs` asserts Rust against
+   the C compiler at BUILD time (sizes and container offsets for task and thread; `wrapper.h`
+   supplies the C answers as enumerators). It holds both with `task` opaque and with it
+   reopened: 1616 bytes, `xnu_task` at offset 112 either way. Perturbing an expected size by 8
+   fails the build, so the check is not vacuous. bindgen ran with `--no-layout-tests`, so before
+   this **nothing at all** checked the invariant that every `container_of` port depends on.
 
    **FOUR RANKING BUGS, all the same shape: the measurement was right and the SUMMARY of it
    misled.** The tool preprocessed files with a missing generated header and reported the
