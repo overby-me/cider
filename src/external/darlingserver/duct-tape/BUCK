@@ -719,7 +719,6 @@ mig_gen(
 cc_objects(
     name = "dt_objects",
     srcs = [
-        "src/debug.c",
         "src/dtape_rs_shims.c",
         "src/kqchan.c",
         "src/locks.c",

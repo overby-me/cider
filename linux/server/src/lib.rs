@@ -64,6 +64,9 @@ pub mod processor;
 // init.c: duct-tape start-up, and the dtape_hooks global (#71, sixth file ported).
 pub mod init;
 
+// debug.c: the Mach debug queries (#71, seventh file ported).
+pub mod debug;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 
