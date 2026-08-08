@@ -206,11 +206,13 @@ EXCLUDE_LABELS = (
     "//buck-src:ddns-confgen",
 
     # libarchive's tools (archive_obj 115) and the Apache Portable Runtime (apr_obj 82).
-    # RESIDUAL RISK, the one place in this batch where the bootstrap could conceivably care:
-    # the nix installer is a shell script, and if it ever shells out to tar it would want
-    # these. Neither prefix installs /usr/bin/tar under that name at all, and the guest only
-    # runs `install --no-daemon` over files the HOST already extracted, so it should not. If
-    # that turns out wrong, restoring bsdtar is one line.
+    # I flagged these as a residual risk on the grounds that the nix installer might shell out
+    # to tar. It does not, and the evidence was already in tests/nix-in-darling.nix when I
+    # wrote that: EVERY extraction step is on the HOST. The host curls the tarball, the host
+    # runs `tar -xf`, the host `cp -a`s the extracted directory into the prefix, and the guest
+    # then runs `install --no-daemon` over plain files. That installer copies $self/store into
+    # /nix/store with `cp -RPp` and loads the DB from .reginfo; there is no archive left to
+    # unpack guest-side. No tar is needed in the guest.
     "//buck-src:bsdtar",
     "//buck-src:cpio",
     # and libarchive itself, which after those two is installed for its own sake
