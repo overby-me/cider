@@ -61,6 +61,11 @@ EXCLUDE_PKGS = (
 # the single biggest item in this prefix and it is dead weight for the stated goal: boot, run
 # bash, run nix. The FULL prefix keeps it, so parity is unaffected.
 EXCLUDE_LABELS = (
+    # The swift and swiftc launchers, which select a toolchain that is not installed. Same
+    # reasoning as the runtime dylibs under EXCLUDE_DEST: nix does not need Swift to start.
+    "//src/xcselect:swift_shim",
+    "//src/xcselect:swiftc_shim",
+
     "//buck-src:jsc",
 
     # Userland tools nix can FETCH once it runs. The prefix exists to get nix up; anything
@@ -290,6 +295,16 @@ EXCLUDE_DEST = (
     "libexec/darling/usr/share/file/",       # file(1) is gone
     "libexec/darling/usr/lib/sasl2/",        # SASL plugins, for the mail and ssh world
     "libexec/darling/System/Library/Components/",  # the CoreAudio component
+
+    # THE SWIFT RUNTIME, 44 dylibs. Zero build actions, since they are file copies, so this is
+    # not a speed removal, it is a correctness one, and it is the safest removal in this file.
+    # Every one of those dylibs is a 131-byte GIT LFS POINTER rather than a library (task #39).
+    # So a 131-byte text file named libswiftCoreGraphics.dylib is either never loaded, in which
+    # case dropping it changes nothing, or it IS loaded and fails, in which case it is already
+    # broken. There is no state in which it currently works, so removal cannot regress anything.
+    # On the standing criterion it would go anyway: nix does not need Swift to start, and once
+    # nix runs it can pull a real Swift from nixpkgs rather than a pointer file.
+    "libexec/darling/usr/lib/swift/",
 )
 
 _LABEL = re.compile(r'"\s*:\s*"(//[^"]+)"')
