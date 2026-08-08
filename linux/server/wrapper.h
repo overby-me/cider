@@ -109,6 +109,12 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <mach/i386/thread_status.h>
 #include <ipc/ipc_kmsg.h>
 #include <darlingserver/duct-tape/log.h>
+/* task.c: the info flavors it fills and the IPC entry points it drives. */
+#include <kern/ipc_tt.h>
+#include <kern/restartable.h>
+#include <mach/mach_port.h>
+#include <ipc/ipc_hash.h>
+#include <darlingserver/duct-tape/memory.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
 #include <darlingserver/duct-tape/stubs.h>
 #include <kern/policy_internal.h>
@@ -192,6 +198,22 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* task.c: the default role, an enum variant of a type nothing else needs. */
+	DTAPE_RS_TASK_UNSPECIFIED = TASK_UNSPECIFIED,
+	/* task.c: the info-flavor counts, every one a sizeof expression the C must evaluate. */
+	DTAPE_RS_TASK_BASIC_INFO_32_COUNT = TASK_BASIC_INFO_32_COUNT,
+	DTAPE_RS_TASK_BASIC_INFO_64_COUNT = TASK_BASIC_INFO_64_COUNT,
+	DTAPE_RS_MACH_TASK_BASIC_INFO_COUNT = MACH_TASK_BASIC_INFO_COUNT,
+	DTAPE_RS_TASK_THREAD_TIMES_INFO_COUNT = TASK_THREAD_TIMES_INFO_COUNT,
+	DTAPE_RS_TASK_DYLD_INFO_COUNT = TASK_DYLD_INFO_COUNT,
+	DTAPE_RS_TASK_AUDIT_TOKEN_COUNT = TASK_AUDIT_TOKEN_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV0_COUNT = TASK_VM_INFO_REV0_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV1_COUNT = TASK_VM_INFO_REV1_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV2_COUNT = TASK_VM_INFO_REV2_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV3_COUNT = TASK_VM_INFO_REV3_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV4_COUNT = TASK_VM_INFO_REV4_COUNT,
+	DTAPE_RS_TASK_VM_INFO_REV5_COUNT = TASK_VM_INFO_REV5_COUNT,
+	DTAPE_RS_TASK_FLAGS_INFO_COUNT = TASK_FLAGS_INFO_COUNT,
 	/* stubs.c: whether an unknown-safety stub aborts. A build-time choice, so it is the C that
 	 * makes it rather than a constant written into Rust. */
 	DTAPE_RS_DTAPE_FATAL_STUBS = DTAPE_FATAL_STUBS,

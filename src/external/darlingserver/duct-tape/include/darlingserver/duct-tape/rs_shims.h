@@ -70,6 +70,10 @@ void* dtape_rs_kheap_alloc(size_t size, int flags);
  * __typeof__ cast, so it is a macro twice over. The Rust caller drops its own copy. */
 void dtape_rs_kheap_free(void* elem, size_t size);
 
+/* task.c: task_set_64Bit_addr and _data are macros over t_flags. */
+void dtape_rs_task_set_64bit_addr(struct task* task);
+void dtape_rs_task_set_64bit_data(struct task* task);
+
 /* misc.c: waitq_held reads four structs down through the opaque struct waitq. */
 unsigned int dtape_rs_waitq_held(struct waitq* wq);
 

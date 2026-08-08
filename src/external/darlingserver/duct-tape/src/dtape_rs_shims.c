@@ -155,6 +155,15 @@ unsigned int dtape_rs_waitq_held(struct waitq* wq) {
 	return wq->dtape_waitq_interlock.dtape_interlock.dtape_interlock.dtape_mutex.dtape_owner == (uintptr_t)current_thread();
 };
 
+/* task.c: the two 64-bit flag setters are macros over t_flags. */
+void dtape_rs_task_set_64bit_addr(struct task* task) {
+	task_set_64Bit_addr(task);
+};
+
+void dtape_rs_task_set_64bit_data(struct task* task) {
+	task_set_64Bit_data(task);
+};
+
 /* THE VARIADIC FRONT ENDS, from misc.c (#71).
  *
  * Stable Rust can CALL a C variadic function but cannot DEFINE one, and duct-tape exports four
