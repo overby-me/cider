@@ -97,6 +97,35 @@ def macros_visible_to(path, args):
     return fn, ob
 
 
+# Where buck2 leaves the compiled glue objects. Present only after a buck2 build; the FFI
+# columns are skipped when they are not there rather than making the whole tool need one.
+OBJDIR = os.path.join(
+    ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/src/external/darlingserver"
+          "/duct-tape/__dt_objects__/__objs/src")
+
+
+def ffi_surface(name):
+    """How many symbols a Rust port of this file would have to export and to call out to.
+
+    Read off the OBJECT, not the source, because that is the truth the linker sees: a
+    definition the port must supply is a defined symbol, and every call it has to make across
+    the FFI is an undefined one. This is a different axis from the macro count and it does
+    not agree with it -- init.c has one macro and FORTY undefined symbols, which makes it a
+    much bigger job than its line count or its blocker count suggests.
+    """
+    obj = os.path.join(OBJDIR, name + ".o")
+    if not os.path.exists(obj):
+        return None
+    try:
+        defined = subprocess.run(["nm", "--defined-only", obj],
+                                 capture_output=True, text=True).stdout
+        undef = subprocess.run(["nm", "-u", obj], capture_output=True, text=True).stdout
+    except FileNotFoundError:
+        return None
+    exports = sum(1 for l in defined.splitlines() if re.search(r" [TDBR] ", l))
+    return {"exports": exports, "calls": len([l for l in undef.splitlines() if l.strip()])}
+
+
 def measure(path, args):
     src = open(path).read()
     fn, ob = macros_visible_to(path, args)
@@ -111,6 +140,7 @@ def measure(path, args):
                            for m in VARIADIC_DEF.finditer(src)),
         "fn_macros": fn_used,
         "ob_macros": ob_used,
+        "ffi": ffi_surface(os.path.basename(path)),
     }
 
 
@@ -156,15 +186,32 @@ def main():
                               len(kv[1]["variadic"]) * 100
                               + len(kv[1]["fn_macros"]) + len(kv[1]["ob_macros"])))
 
-    print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>10}{'FNMACRO':>9}{'OBJMACRO':>10}  blockers")
+    print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>9}{'FNMAC':>7}{'OBJMAC':>8}"
+          f"{'EXPORTS':>9}{'CALLSOUT':>10}  blockers")
     for f, r in rows:
-        top = ", ".join(r["fn_macros"][:4])
+        top = ", ".join(r["fn_macros"][:3])
         note = "PORTED (Rust)" if r["ported"] else top
-        print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>10}"
-              f"{len(r['fn_macros']):>9}{len(r['ob_macros']):>10}  {note}")
+        ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
+        co = str(r["ffi"]["calls"]) if r["ffi"] else "-"
+        print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>9}"
+              f"{len(r['fn_macros']):>7}{len(r['ob_macros']):>8}{ex:>9}{co:>10}  {note}")
+    if not any(r["ffi"] for _, r in rows):
+        print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
+              "/duct-tape:dt_objects)")
     done = sum(1 for _, r in rows if r["ported"])
-    print(f"\n{done} of {len(rows)} ported; next by this ranking: "
-          f"{next((f for f, r in rows if not r['ported']), 'none left')}")
+    todo = [(f, r) for f, r in rows if not r["ported"]]
+    print(f"\n{done} of {len(rows)} ported.")
+    if todo:
+        # The two axes disagree, so say so rather than printing one winner. Blockers say what
+        # Rust CANNOT express; FFI surface says how big the job is. semaphore.c was small on
+        # both, which is why it went first and worked.
+        by_ffi = sorted((x for x in todo if x[1]["ffi"]),
+                        key=lambda kv: kv[1]["ffi"]["exports"] + kv[1]["ffi"]["calls"])
+        print(f"  fewest blockers: {todo[0][0]}")
+        if by_ffi:
+            print(f"  smallest FFI surface: {by_ffi[0][0]} "
+                  f"({by_ffi[0][1]['ffi']['exports']} exports, "
+                  f"{by_ffi[0][1]['ffi']['calls']} calls out)")
 
 
 if __name__ == "__main__":

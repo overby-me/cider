@@ -66,7 +66,21 @@ it is still over an hour.
    * `timer.c` was the other. It calls `mpqueue_init`, a MACRO, so it needs a shim either way.
    * `traps.c` is not blocker-free either: its last line is `DSERVER_DTAPE_DEFS`, a generated
      object-like macro. (It is still a thin FFI shim that buys little.)
-   * `init.c` (137) is the best remaining profile: no variadics, one macro (`dtape_log_debug`).
+   * `init.c` (137) has the best BLOCKER profile: no variadics, one macro (`dtape_log_debug`).
+
+   **BLOCKERS ARE NOT THE ONLY AXIS, and the two disagree.** The tool also reads the FFI
+   surface off each compiled object, which is the truth the linker sees: symbols the port must
+   EXPORT, and symbols it must CALL OUT to. `semaphore.c`, which went first and worked, was
+   5 exports / 7 calls. By that measure `init.c` is the WORST of the small files at 4 / **40**,
+   and `traps.c` (fewest blockers) is 35 / 36 because `DSERVER_DTAPE_DEFS` expands to so much.
+   **`condvar.c` is 3 / 7**, the closest match to the file that worked, and its five macros are
+   `TAILQ_*` and `__container_of`, all trivial intrusive-list operations to write in Rust.
+   So `condvar.c` is the next one, not `init.c`.
+
+   `init.c` is still worth doing, and its one real unknown is already retired: it defines the
+   `dtape_hooks` GLOBAL that every other C glue file dereferences, and a C archive reading a
+   Rust-defined global was verified to link and run (negative control: removing it fails the
+   link with undefined reference).
 
    Two mechanisms were proven by experiment before any port code, both with negative controls:
    bindgen PARSES the XNU internal headers given duct-tape's own flags (`-fblocks` is load
