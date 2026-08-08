@@ -123,6 +123,13 @@ bindgen_gen(
         # init.c (#71). It creates zones sized by these structs, and an OPAQUE binding carries
         # the size, which is all zone_create needs; none of their fields are touched.
         "--allowlist-type=host",
+        # kqchan.c fills knote and kevent_qos_s fields. Reopening the kevent family measured
+        # +1 struct and 657 bytes, so it is bound rather than shimmed.
+        "--allowlist-type=knote",
+        "--allowlist-type=kevent_qos_s",
+        "--allowlist-type=kevent_ctx_s",
+        "--allowlist-type=kevent_internal_s",
+        "--allowlist-type=klist",
         "--allowlist-type=ipc_space",
         "--allowlist-type=ipc_entry",
         "--allowlist-type=ipc_mqueue",
@@ -235,7 +242,6 @@ bindgen_gen(
         "--opaque-type=os_ref.*",
         "--opaque-type=waitq.*",
         "--opaque-type=zone.*",
-        "--opaque-type=kevent.*",
         "--opaque-type=dtape_thread_user_state.*",
         # Function-pointer struct fields become Option<unsafe extern "C" fn ...>, which is
         # what lets the daemon zero the vtable and fill only the hooks it implements.
