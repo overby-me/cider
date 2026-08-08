@@ -121,6 +121,32 @@ EXCLUDE_LABELS = (
     "//buck-src:crypto42_dylib",
     "//buck-src:ssl44_dylib",
     "//buck-src:tls16_dylib",
+
+    # The security DAEMONS and the security CLI. Together about 1,390 actions: secd alone is
+    # 738 exclusive and additionally pulls CloudKit 257 and AppleAccount 235, and with
+    # securitytool it pulls SecurityFoundation 161.
+    #
+    # The question is not what nix NEEDS, it is what nix needs TO START; once installed it
+    # pulls anything else from nixpkgs. Read tests/nix-in-darling.nix for what the guest
+    # actually does: the HOST downloads and extracts the installer tarball and copies it in,
+    # then the guest runs `bash -x install --no-daemon` followed by nix --version,
+    # nix-instantiate --eval, nix eval, nix-store --verify and a trivial derivation. NONE of
+    # that does network I/O, so there is no TLS, no trust evaluation and no keychain on the
+    # bootstrap path.
+    #
+    # This cannot regress anything currently verified, and that is checkable rather than
+    # hopeful: nix-in-darling runs against the cmake-built FULL `darling`, not this prefix, so
+    # no existing test exercises nix here. And Security.framework itself is ALREADY absent from
+    # this prefix (0 entries reach Security_dylib; it lives under System/Library/Frameworks,
+    # which EXCLUDE_DEST drops), so if nix needed it the minimal prefix was already unable to
+    # run nix, independently of these four.
+    #
+    # If nix-in-guest is ever pointed at this prefix and turns out to need Security, the fix is
+    # the Security DYLIB, which is a different and much smaller thing than these daemons.
+    "//buck-src:secd",
+    "//buck-src:securityd_exe",
+    "//buck-src:trustd",
+    "//buck-src:securitytool_macos",
 )
 
 # DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:

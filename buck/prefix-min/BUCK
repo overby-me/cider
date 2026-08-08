@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.
-# Entries dropped from the full prefix: 1963.
+# Entries dropped from the full prefix: 1967.
 prefix_tree(
     name = "darling_prefix_min",
     entries = {
@@ -324,7 +324,6 @@ prefix_tree(
         "libexec/darling/usr/bin/sdef": "//src/xcselect:sdef_shim",
         "libexec/darling/usr/bin/sdiff": "//buck-src:sdiff",
         "libexec/darling/usr/bin/sdp": "//src/xcselect:sdp_shim",
-        "libexec/darling/usr/bin/security": "//buck-src:securitytool_macos",
         "libexec/darling/usr/bin/sed": "//buck-src:sed",
         "libexec/darling/usr/bin/segedit": "//src/xcselect:segedit_shim",
         "libexec/darling/usr/bin/seq": "//buck-src:seq",
@@ -674,7 +673,6 @@ prefix_tree(
         "libexec/darling/usr/libexec/opendirectoryd": "//buck-src:opendirectoryd",
         "libexec/darling/usr/libexec/path_helper": "//buck-src:path_helper",
         "libexec/darling/usr/libexec/periodic-wrapper": "//buck-src:periodic-wrapper",
-        "libexec/darling/usr/libexec/secd": "//buck-src:secd",
         "libexec/darling/usr/libexec/sftp-server": "//buck-src:sftp-server",
         "libexec/darling/usr/libexec/shellspawn": "//src/shellspawn:shellspawn",
         "libexec/darling/usr/libexec/ssh-keysign": "//buck-src:ssh-keysign",
@@ -683,7 +681,6 @@ prefix_tree(
         "libexec/darling/usr/libexec/telnetd": "//buck-src:telnetd",
         "libexec/darling/usr/libexec/tftp": "//buck-src:tftp",
         "libexec/darling/usr/libexec/tftpd": "//buck-src:tftpd",
-        "libexec/darling/usr/libexec/trustd": "//buck-src:trustd",
         "libexec/darling/usr/libexec/xip_extract_cpio": "//src/unxip:xip_extract_cpio",
         "libexec/darling/usr/sbin/ac": "//buck-src/system_cmds:ac",
         "libexec/darling/usr/sbin/accton": "//buck-src/system_cmds:accton",
@@ -717,7 +714,6 @@ prefix_tree(
         "libexec/darling/usr/sbin/rarpd": "//buck-src:rarpd",
         "libexec/darling/usr/sbin/rtadvd": "//buck-src:rtadvd",
         "libexec/darling/usr/sbin/sa": "//buck-src/system_cmds:sa",
-        "libexec/darling/usr/sbin/securityd": "//buck-src:securityd_exe",
         "libexec/darling/usr/sbin/softwareupdate": "//src/tools:softwareupdate",
         "libexec/darling/usr/sbin/spctl": "//src/tools:spctl",
         "libexec/darling/usr/sbin/sysctl": "//buck-src/system_cmds:sysctl",

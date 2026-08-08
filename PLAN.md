@@ -193,6 +193,30 @@ measurement**, because the same build appears under two paths. Judge by builders
 WITHIN ONE run, which is the standing rule, and if two runs must be compared, compare the
 normalised build environment rather than the paths.
 
+**THE MINIMAL PREFIX IS 62.1% OF WHAT IT WAS, measured on the cone, not the clock**
+(the box has a concurrent session running builds, so wall time is not comparable):
+
+| | targets | actions | share |
+|---|---|---|---|
+| original | 4,324 | 17,532 | 99.9% |
+| minus `jsc` | 4,293 | 16,234 | 92.5% |
+| minus userland nix can fetch | 4,194 | 15,399 | 87.7% |
+| minus the GUI cone and 4 superseded libcryptos | 4,080 | 12,051 | 68.7% |
+| minus the security daemons | 3,993 | **10,902** | **62.1%** |
+
+**6,630 actions gone, 37.8%.** The principle that got there: the prefix carries what nix needs
+TO START, and nix pulls the rest from nixpkgs once it runs. `tests/nix-in-darling.nix` shows
+the bootstrap does no network I/O at all -- the HOST fetches and extracts the installer and
+copies it in, and the guest runs `bash -x install --no-daemon` then local eval/store commands.
+So TLS, trust and keychain are off the bootstrap path.
+
+`scripts/buck-prefix-cost.py` is what finds these. Two modes, because there are two questions:
+`--top` ranks entries by EXCLUSIVE cost (which single line is safe to delete) and
+`--expensive` ranks TARGETS with their pullers (what is costly and who asks for it). The
+second is not derivable from the first: AppKit and CoreImage were 752 actions pulled by four
+tools, and no single one of them showed in the exclusive ranking. `--check` guards it at 150
+exclusive actions per non-exempt entry, verified to catch both `jsc` and `secd`.
+
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
 

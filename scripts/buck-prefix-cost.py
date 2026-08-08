@@ -129,10 +129,15 @@ EXEMPT = {
 }
 
 # --check fails when a non-exempt entry exclusively pulls in more than this many actions.
-# Chosen from the measured distribution rather than picked round: the worst non-exempt entry
-# today is secd at 738, and jsc was 1,298, so 800 sits between "what is already here" and
-# "another jsc". Lowering it means first deciding what to do about secd.
-DEFAULT_BUDGET = 800
+# Taken from the measured distribution, not picked round.
+#
+# It was 800 while secd was still here, sitting between what was already present (secd at 738)
+# and another jsc (1,298), with a note that lowering it meant first deciding about secd. That
+# is decided: the security daemons are gone, so the three costliest entries are now exactly
+# the exempt ones (dyld 644, bash 182, darlingserverd 136) and the worst NON-exempt is openssl
+# at 51. 150 leaves that about 3x headroom while catching anything jsc- or secd-shaped the
+# moment it appears.
+DEFAULT_BUDGET = 150
 
 
 def main():
