@@ -448,8 +448,13 @@ hand-edited) by `scripts/gen-prefix-min.py` from the generated full prefix, and 
 
 The build is bounded by the survivors closure, not by the entry list: dropping 44% of install
 entries removed 36.5% of actions, because buck2 still builds what the remaining targets
-depend on. **zsh was NOT excluded** (the exclusion list omits `//buck-src/zsh` although the
-prose claimed it), so more is still available.
+depend on. **zsh IS excluded from the minimal prefix now**, and it is safe: darling does NOT
+inherit the macOS zsh default. `src/shellspawn/shellspawn.c` hardcodes `/bin/bash` in
+both exec paths (line 141 and the `execv` fallback), so `darling shell` with no argument
+gets bash. The only zsh consumer in the suite, `scripts/buck-scripting-check.nu`, builds
+`//buck/prefix:darling_prefix`, the FULL prefix, which still ships zsh and its 35 modules.
+This entry previously read that zsh was NOT excluded, the exclusion list having omitted
+`//buck-src/zsh` while the prose claimed it. That gap is closed.
 
 This also shrinks #54 and #55 without solving either: fewer targets means fewer stage-trees
 to rebuild when the graph moves.
