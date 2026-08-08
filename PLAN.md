@@ -91,6 +91,19 @@ it is still over an hour.
 
    **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo. **2 of 16 done.**
 
+   **THE PREFIX GATE PASSED ON THE SEMAPHORE PORT** (`darling-buck2-min-smoke`, 1,875 builders,
+   **zero** builder failures, `NIX_EXIT=0`,
+   `/nix/store/f0h9xzhq7qfmc393s4sqzm0cdrn7fkw4-vm-test-run-darling-buck2-smoke`). Not a
+   vacuous pass: inside the VM, `command -v darling-buck2` succeeded, `darling-buck2 shell
+   /bin/bash -c 'exit 0'` succeeded in 0.17 s, the `exit 1` arm correctly FAILED, and exit
+   codes propagated out of the container. So a buck2-built Darling whose `dtape_semaphore_*`
+   come from Rust boots a container and runs bash in the guest.
+   **That run was launched on the semaphore-only commit, so it validates `semaphore.c` and NOT
+   `condvar.c`**; condvar's prefix gate is a separate run.
+
+   The stress number, for whatever changes this path next: **500,000 suspend/resume round-trips
+   in 5.79 s, 11,587 ns each**, no assertion. There is no pre-port figure to compare against.
+
    **Two files were backed off ON EVIDENCE rather than attempted:**
    * `timer.c` needs `mpqueue_head`'s internals for `mpqueue_init`, but `queue_.*`, `_?lck_.*`
      and `priority_queue.*` are deliberately `--opaque-type` so `struct task` does not drag
