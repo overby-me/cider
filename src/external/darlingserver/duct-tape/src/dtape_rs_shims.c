@@ -100,3 +100,13 @@ uint32_t dtape_rs_thread_sched_flags(struct thread* thread) {
 void* dtape_rs_waitq_interlock(struct waitq* wq) {
 	return &wq->dtape_waitq_interlock;
 };
+
+/* current_task(), as a symbol. The macro forwards to current_task_fast(), which is inline. */
+struct task* dtape_rs_current_task(void) {
+	return current_task();
+};
+
+/* kheap_alloc, as a symbol, on the default heap. Same statement-expression shape as kalloc. */
+void* dtape_rs_kheap_alloc(size_t size, int flags) {
+	return kheap_alloc(KHEAP_DEFAULT, size, flags);
+};

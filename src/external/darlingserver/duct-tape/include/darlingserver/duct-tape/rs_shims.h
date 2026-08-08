@@ -45,6 +45,14 @@ void* dtape_rs_task_ipc_space(struct dtape_task* task);
 struct thread;
 struct waitq;
 
+/* psynch.c. current_task() forwards to current_task_fast(), which is not a symbol either, and
+ * kheap_alloc is the same statement-expression shape as kalloc. Every psynch call site passes
+ * KHEAP_DEFAULT, so the heap is fixed here rather than crossing as an argument nobody varies. */
+struct task;
+
+struct task* dtape_rs_current_task(void);
+void* dtape_rs_kheap_alloc(size_t size, int flags);
+
 int* dtape_rs_thread_rwlock_count(struct thread* thread);
 uint32_t dtape_rs_thread_sched_flags(struct thread* thread);
 void* dtape_rs_waitq_interlock(struct waitq* wq);
