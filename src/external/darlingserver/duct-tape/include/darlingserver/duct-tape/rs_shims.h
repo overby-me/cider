@@ -39,6 +39,16 @@ struct ipc_object;
 struct dtape_task;
 void* dtape_rs_task_ipc_space(struct dtape_task* task);
 
+/* locks.c reaches three fields through types the bindings keep opaque. Reopening struct thread
+ * and struct waitq to get them was measured at +68 KB and +17 structs; these are three lines.
+ * rwlock_count comes back as a POINTER because the C increments and decrements it in place. */
+struct thread;
+struct waitq;
+
+int* dtape_rs_thread_rwlock_count(struct thread* thread);
+uint32_t dtape_rs_thread_sched_flags(struct thread* thread);
+void* dtape_rs_waitq_interlock(struct waitq* wq);
+
 uint32_t dtape_rs_mach_port_make(uint32_t index, uint32_t gen);
 void dtape_rs_io_release(struct ipc_object* object);
 struct ipc_port* dtape_rs_ip_object_to_port(struct ipc_object* object);

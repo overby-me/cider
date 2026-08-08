@@ -38,6 +38,9 @@
 
 #include <darlingserver/duct-tape/task.h>
 
+#include <kern/thread.h>
+#include <kern/waitq.h>
+
 #include <ipc/ipc_object.h>
 #include <ipc/ipc_port.h>
 #include <mach/port.h>
@@ -82,4 +85,18 @@ struct ipc_port* dtape_rs_ip_object_to_port(struct ipc_object* object) {
  * ported glue file needs. */
 void* dtape_rs_task_ipc_space(struct dtape_task* task) {
 	return task->xnu_task.itk_space;
+};
+
+/* The three fields locks.c needs through opaque types. See the header for why these are shims
+ * rather than a reopening. */
+int* dtape_rs_thread_rwlock_count(struct thread* thread) {
+	return &thread->rwlock_count;
+};
+
+uint32_t dtape_rs_thread_sched_flags(struct thread* thread) {
+	return thread->sched_flags;
+};
+
+void* dtape_rs_waitq_interlock(struct waitq* wq) {
+	return &wq->dtape_waitq_interlock;
 };

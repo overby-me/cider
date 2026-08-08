@@ -141,6 +141,7 @@ bindgen_gen(
         "--allowlist-type=lck_mtx_t",
         "--allowlist-var=IOT_NUMBER",
         "--allowlist-var=IE_BITS_.*",
+        "--allowlist-var=TH_SFLAG_RW_PROMOTED",
         "--allowlist-function=ipc_kmsg_queue_next",
         "--allowlist-function=ipc_entry_lookup",
         "--allowlist-function=ipc_mqueue_copyin",
