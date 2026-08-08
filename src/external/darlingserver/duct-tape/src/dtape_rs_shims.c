@@ -36,6 +36,12 @@
 
 #include <kern/kalloc.h>
 
+#include <darlingserver/duct-tape/task.h>
+
+#include <ipc/ipc_object.h>
+#include <ipc/ipc_port.h>
+#include <mach/port.h>
+
 /* kalloc, as a symbol. Returns NULL on failure, exactly as the macro does. */
 void* dtape_rs_kalloc(size_t size) {
 	return kalloc(size);
@@ -52,4 +58,28 @@ void dtape_rs_kfree(void* address, size_t size) {
  * fixed here rather than crossing the FFI as an argument nobody varies. */
 void dtape_rs_simple_lock_init(simple_lock_data_t* lock) {
 	simple_lock_init(lock, 0);
+};
+
+/* MACH_PORT_MAKE, as a symbol. The macro has two definitions selected by NO_PORT_GEN, so the
+ * shim keeps whichever this build actually compiles rather than picking one in Rust. */
+uint32_t dtape_rs_mach_port_make(uint32_t index, uint32_t gen) {
+	return MACH_PORT_MAKE(index, gen);
+};
+
+/* io_release, as a symbol. It is static inline in ipc_object.h, so there is nothing to link
+ * against without this. */
+void dtape_rs_io_release(struct ipc_object* object) {
+	io_release((ipc_object_t)object);
+};
+
+/* ip_object_to_port, as a symbol: a __container_of, so the offset comes from the compiler. */
+struct ipc_port* dtape_rs_ip_object_to_port(struct ipc_object* object) {
+	return ip_object_to_port((ipc_object_t)object);
+};
+
+/* task->xnu_task.itk_space, as a symbol. struct task stays opaque in the bindings because
+ * reopening it costs about 94 KB of generated Rust, and this is the only field of it that any
+ * ported glue file needs. */
+void* dtape_rs_task_ipc_space(struct dtape_task* task) {
+	return task->xnu_task.itk_space;
 };
