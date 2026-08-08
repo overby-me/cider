@@ -160,6 +160,40 @@ is further down and in the commit history.
    probe stopped at clang's 20-error limit; and it counted macros that expand to nothing or
    forward to a real symbol. Run `--file` before starting a port, and read GLUE, not LINES.
 
+   **WHAT ELSE COULD GO TO RUST AFTER #71, measured rather than guessed.** All first-party
+   C/C++ outside the vendored trees, by lines:
+
+   | subsystem | lines | origin | verdict |
+   |---|---|---|---|
+   | `src/CoreAudio` | 73,619 | Darling | largest first-party body, but a media stack over ffmpeg and on no path the minimal prefix exercises |
+   | `src/libm` | 61,868 | Apple/BSD | NO, bundled upstream |
+   | `src/launchd` | 26,842 | **Apple** | NO, bundled upstream |
+   | `src/OpenDirectoryOld` | 7,354 | Apple-era | NO |
+   | `src/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
+   | `src/hosttools` + `src/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
+   | `src/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
+   | `src/xcselect` | 679 | Darling | |
+   | `src/shellspawn` | 634 | Darling | load-bearing: it is what `darling shell` uses, and it is in the minimal prefix |
+   | `src/libsimple` | 562 | Darling | the lock and log layer duct-tape sits on; the Rust daemon ALREADY links it as a C archive |
+
+   **TWO EXCLUSIONS THAT ARE NOT ABOUT EFFORT.** The 10,104 `.m` files under `darwin/` are
+   reimplementations of Apple's ObjC frameworks and have to stay ObjC, since they implement ObjC
+   runtime APIs. And Apple-origin bundled code (`launchd`, `libm`) should NOT be ported at all:
+   it is upstream code this project tracks rather than owns, and rewriting it forfeits the
+   ability to take upstream fixes. That is the same de-vendoring rule as everywhere else here.
+
+   **THE HOST TOOLS ARE THE BEST FIRST TARGET, and the argument is risk profile rather than
+   size.** `coredump` (1,153 lines), `elfdep` (182) and `getuuid` (174) run on the BUILD
+   MACHINE: no guest ABI, no Mach semantics, no microthreads, and a mistake fails loudly at
+   build time. That is the exact inverse of duct-tape, where the recurring hazard has been the
+   silent wrong answer: a mis-filled `host_info` field, or an `always_inline` that linked
+   everywhere except the daemon. A first port outside duct-tape should buy experience without
+   buying that failure mode.
+
+   `src/libsimple` is the other one worth naming, for a different reason: the Rust daemon
+   already links it, so porting it would remove a C archive from that link entirely. It stays
+   C-ABI either way, since the still-C glue calls it too.
+
    `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
    `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
    remaining files that use them do not each re-derive it.
