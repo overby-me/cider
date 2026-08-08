@@ -165,8 +165,8 @@ is further down and in the commit history.
 
    | subsystem | lines | origin | verdict |
    |---|---|---|---|
-   | `src/CoreAudio` | 73,619 | Darling | largest first-party body, but a media stack over ffmpeg and on no path the minimal prefix exercises |
-   | `src/libm` | 61,868 | Apple/BSD | NO, bundled upstream |
+   | `src/CoreAudio` | 73,619 | **MIXED, mostly Apple** | 233 of 316 files are Apple: `CoreAudioUtilityClasses` (195) is Apple's published sample library, `AudioFileTools` (38) is Apple's. Darling's own is ~83 files, the component and toolbox glue plus the ffmpeg bridge |
+   | `src/libm` | 61,868 | Apple Libm, containing Sun 1993 fdlibm | NO, upstream |
    | `src/launchd` | 26,842 | **Apple** | NO, bundled upstream |
    | `src/OpenDirectoryOld` | 7,354 | Apple-era | NO |
    | `src/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
@@ -175,6 +175,11 @@ is further down and in the commit history.
    | `src/xcselect` | 679 | Darling | |
    | `src/shellspawn` | 634 | Darling | load-bearing: it is what `darling shell` uses, and it is in the minimal prefix |
    | `src/libsimple` | 562 | Darling | the lock and log layer duct-tape sits on; the Rust daemon ALREADY links it as a C archive |
+
+   **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
+   `src/external/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
+   not a decision anyone made about `libm` in particular; it is how the whole tree works. The
+   distinction that matters for porting is ORIGIN, not how the content arrived.
 
    **TWO EXCLUSIONS THAT ARE NOT ABOUT EFFORT.** The 10,104 `.m` files under `darwin/` are
    reimplementations of Apple's ObjC frameworks and have to stay ObjC, since they implement ObjC
