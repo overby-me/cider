@@ -205,7 +205,13 @@ normalised build environment rather than the paths.
 | minus the security daemons | 3,993 | 10,902 | 62.1% |
 | minus ssh, curl, openssl, the LAST libcrypto, BerkeleyDB, BIND, libarchive, APR | 3,776 | **9,003** | **51.3%** |
 
-**8,549 actions gone, 48.7%: the minimal endpoint is now under half what it was.** The principle that got there: the prefix carries what nix needs
+**8,549 actions gone, 48.7%: the minimal endpoint is now under half what it was.**
+
+**CONFIRMED IN A REAL BUILD, not only in the cone.** Two gate logs, same endpoint, before and
+after the `jsc` removal: **167,477 JavaScriptCore mentions and 2 build lines become 4 mentions
+and ZERO build lines.** JavaScriptCore is not compiled at all any more. Wall clock is not
+quotable on this box (a concurrent session runs its own nix builds), which is exactly why the
+check is "did the derivation run", not "how long did it take". The principle that got there: the prefix carries what nix needs
 TO START, and nix pulls the rest from nixpkgs once it runs. `tests/nix-in-darling.nix` shows
 the bootstrap does no network I/O at all -- the HOST fetches and extracts the installer and
 copies it in, and the guest runs `bash -x install --no-daemon` then local eval/store commands.
