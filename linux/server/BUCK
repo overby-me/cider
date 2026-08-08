@@ -153,6 +153,17 @@ bindgen_gen(
         # Three traps whose names do NOT end in _trap, and whose arg structs are _args rather
         # than _trap_args, so the patterns above miss all six.
         # psynch.c (#71): the BSD sleep path entry points and the pthread kext callback table.
+        "--allowlist-function=_psynch_.*",
+        "--allowlist-function=pth_global_hashinit",
+        "--allowlist-function=psynch_zoneinit",
+        "--allowlist-function=psynch_wq_cleanup",
+        "--allowlist-function=thread_call_allocate",
+        "--allowlist-function=thread_syscall_return",
+        "--allowlist-function=lck_mtx_alloc_init",
+        "--allowlist-var=pthread_list_mlock",
+        "--allowlist-var=pthread_lck_grp",
+        "--allowlist-var=pthread_lck_attr",
+        "--allowlist-var=psynch_thcall",
         "--allowlist-function=fls",
         "--allowlist-function=thread_should_abort",
         "--allowlist-function=nanoseconds_to_absolutetime",
@@ -284,6 +295,40 @@ bindgen_gen(
         # without anyone remembering to come back here.
         "--allowlist-function=dtape_rs_.*",
         "--allowlist-type=mach_port_t",
+        # psynch (#71). The nine pthread-kext entry points psynch.c forwards to, plus the
+        # per-proc hash the task hooks drive and the zone init. They live in the pthread kext,
+        # and wrapper.h declares them directly: the kext header cannot be included here, see
+        # the note there.
+        "--allowlist-function=_psynch_.*",
+        "--allowlist-function=psynch_zoneinit",
+        "--allowlist-function=_pth_proc_hash.*",
+        "--allowlist-function=dtape_psynch_thread_dying",
+        # The mutex and sleep primitives _sleep drives. lck_mtx_sleep and its deadline form
+        # are the msleep path; the plain lock/unlock are the relock after a block.
+        "--allowlist-function=lck_mtx_lock",
+        "--allowlist-function=lck_mtx_lock_spin",
+        "--allowlist-function=lck_mtx_unlock",
+        "--allowlist-function=lck_mtx_sleep",
+        "--allowlist-function=lck_mtx_sleep_deadline",
+        "--allowlist-function=assert_wait_deadline_with_leeway",
+        # Turnstiles: psynch inherits priority from a mutex holder, so the wait shims are
+        # written against the turnstile API rather than the bare waitq.
+        "--allowlist-function=turnstile_cleanup",
+        "--allowlist-function=turnstile_complete",
+        "--allowlist-function=turnstile_prepare",
+        "--allowlist-function=turnstile_update_inheritor",
+        "--allowlist-function=turnstile_update_inheritor_complete",
+        "--allowlist-function=waitq_assert_wait64_leeway",
+        "--allowlist-function=waitq_wakeup64_thread",
+        "--allowlist-function=thread_wakeup_thread",
+        "--allowlist-function=thread_set_pending_block_hint",
+        "--allowlist-var=TURNSTILE_.*",
+        "--allowlist-var=TIMEOUT_URGENCY_USER_NORMAL",
+        "--allowlist-var=LCK_SLEEP_.*",
+        "--allowlist-var=NSEC_PER_USEC",
+        "--allowlist-var=EWOULDBLOCK",
+        "--allowlist-var=EINTR",
+        "--allowlist-var=ERESTART",
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.

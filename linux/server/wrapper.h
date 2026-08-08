@@ -54,6 +54,29 @@
 #include <kern/clock.h>
 #include <sys/proc.h>
 #include <sys/pthread_shims.h>
+#include <kern/thread_call.h>
+/* The pthread kext entry points psynch.c forwards to, declared here rather than by including
+ * the kext's own kern_internal.h. That header cannot be used: something earlier in this wrapper
+ * already claims its guard, _SYS_PTHREAD_INTERNAL_H_, so its body is skipped and the
+ * declarations never arrive, and undefining the guard to force it through makes it drag in
+ * sys/stat.h and net/if.h, which do not parse in this configuration (unknown type nlink_t,
+ * incomplete struct if_data).
+ *
+ * These are copied from the extern block at the top of duct-tape/src/psynch.c, which re-declares
+ * them for the same reason. When psynch.c becomes Rust the block has to live somewhere, and
+ * here bindgen types it rather than the port transcribing nine signatures by hand. */
+extern int _psynch_cvbroad(proc_t p, user_addr_t cv, uint64_t cvlsgen, uint64_t cvudgen, uint32_t flags, user_addr_t mutex, uint64_t mugen, uint64_t tid, uint32_t* retval);
+extern int _psynch_cvclrprepost(proc_t p, user_addr_t cv, uint32_t cvgen, uint32_t cvugen, uint32_t cvsgen, uint32_t prepocnt, uint32_t preposeq, uint32_t flags, int* retval);
+extern int _psynch_cvsignal(proc_t p, user_addr_t cv, uint64_t cvlsgen, uint32_t cvugen, int threadport, user_addr_t mutex, uint64_t mugen, uint64_t tid, uint32_t flags, uint32_t* retval);
+extern int _psynch_cvwait(proc_t p, user_addr_t cv, uint64_t cvlsgen, uint32_t cvugen, user_addr_t mutex, uint64_t mugen, uint32_t flags, int64_t sec, uint32_t nsec, uint32_t* retval);
+extern int _psynch_mutexdrop(proc_t p, user_addr_t mutex, uint32_t mgen, uint32_t ugen, uint64_t tid, uint32_t flags, uint32_t* retval);
+extern int _psynch_mutexwait(proc_t p, user_addr_t mutex, uint32_t mgen, uint32_t ugen, uint64_t tid, uint32_t flags, uint32_t* retval);
+extern int _psynch_rw_rdlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
+extern int _psynch_rw_unlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
+extern int _psynch_rw_wrlock(proc_t p, user_addr_t rwlock, uint32_t lgenval, uint32_t ugenval, uint32_t rw_wc, int flags, uint32_t* retval);
+extern void psynch_zoneinit(void);
+extern void _pth_proc_hashinit(proc_t p);
+extern void _pth_proc_hashdelete(proc_t p);
 #include <i386/rtclock_protos.h>
 /* host.c fills three info structs by FIELD, so those three have to be real rather than opaque:
  * host_basic_info, host_priority_info and host_preferred_user_arch. The vm_statistics pair
@@ -144,4 +167,8 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_THREAD_AWAKENED = THREAD_AWAKENED,
 	DTAPE_RS_THREAD_RESTART = THREAD_RESTART,
 	DTAPE_RS_THREAD_TIMED_OUT = THREAD_TIMED_OUT,
+	/* CONFIG_THREAD_MAX comes from a -D on the command line rather than from a header, and
+	 * bindgen only surfaces macros it can attribute to a file, so allowlisting it by name
+	 * matches nothing. As an enumerator the compiler evaluates it like any other. */
+	DTAPE_RS_CONFIG_THREAD_MAX = CONFIG_THREAD_MAX,
 };
