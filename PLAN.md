@@ -130,8 +130,8 @@ is further down and in the commit history.
    reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
    `traps.c`.
 
-   **10 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks. What
-   (semaphore, condvar, timer, host, processor, init, debug, locks, kqchan, traps.) What
+   **10 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
+   traps. What
    remains, ranked by GLUE lines rather than total, since duct-tape marks every region lifted
    from XNU and the two halves are different work:
 
