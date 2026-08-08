@@ -47,3 +47,39 @@
 #include <kern/timer_queue.h>
 #include <mach/mach_time.h>
 #include <i386/rtclock_protos.h>
+/* host.c fills three info structs by FIELD, so those three have to be real rather than opaque:
+ * host_basic_info, host_priority_info and host_preferred_user_arch. The vm_statistics pair
+ * stays opaque deliberately -- host_statistics and vm_stats only ever memset them to zero and
+ * never name a field, so all the port needs from them is their SIZE, which an opaque binding
+ * still carries. kern/sched.h is here for the priority constants the HOST_PRIORITY_INFO case
+ * copies out of XNU. */
+#include <kern/host.h>
+#include <mach/host_info.h>
+#include <mach/vm_statistics.h>
+#include <kern/sched.h>
+
+/* THE COUNT AND CPU MACROS, RE-EXPRESSED AS ENUMERATORS.
+ *
+ * bindgen binds a plain integer #define and nothing else. It cannot const-evaluate either
+ * shape host.c relies on:
+ *
+ *   #define HOST_BASIC_INFO_COUNT  ((mach_msg_type_number_t)(sizeof(host_basic_info_data_t) \
+ *                                                            / sizeof(integer_t)))
+ *   #define CPU_TYPE_X86           ((cpu_type_t) 7)
+ *
+ * so both come out missing rather than wrong, which is the good failure but still a failure.
+ * An enumerator initialiser IS an integer constant expression, so the compiler evaluates these
+ * from the REAL macros and bindgen emits the values. Nothing is transcribed, so nothing drifts:
+ * if host_basic_info gains a field, the count follows on the next build.
+ */
+enum dtape_rs_host_consts {
+	DTAPE_RS_HOST_BASIC_INFO_COUNT = HOST_BASIC_INFO_COUNT,
+	DTAPE_RS_HOST_BASIC_INFO_OLD_COUNT = HOST_BASIC_INFO_OLD_COUNT,
+	DTAPE_RS_HOST_PRIORITY_INFO_COUNT = HOST_PRIORITY_INFO_COUNT,
+	DTAPE_RS_HOST_PREFERRED_USER_ARCH_COUNT = HOST_PREFERRED_USER_ARCH_COUNT,
+	DTAPE_RS_HOST_VM_INFO_REV0_COUNT = HOST_VM_INFO_REV0_COUNT,
+	DTAPE_RS_HOST_VM_INFO64_COUNT = HOST_VM_INFO64_COUNT,
+	DTAPE_RS_CPU_TYPE_X86 = CPU_TYPE_X86,
+	DTAPE_RS_CPU_SUBTYPE_X86_64_ALL = CPU_SUBTYPE_X86_64_ALL,
+	DTAPE_RS_CPU_THREADTYPE_NONE = CPU_THREADTYPE_NONE,
+};

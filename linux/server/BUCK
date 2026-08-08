@@ -71,6 +71,32 @@ bindgen_gen(
         "--allowlist-function=semaphore_wait",
         "--allowlist-var=KERN_SUCCESS",
         "--allowlist-var=KERN_ABORTED",
+        # host.c (#71). The three structs it fills by field, plus the flavor selectors and the
+        # priority constants it copies out of XNU. vm_statistics is allowlisted but stays
+        # OPAQUE below: host_statistics and vm_stats only memset it, never name a field, so the
+        # port needs its size and nothing else.
+        "--allowlist-type=host_basic_info",
+        "--allowlist-type=host_priority_info",
+        "--allowlist-type=host_preferred_user_arch",
+        "--allowlist-type=vm_statistics",
+        "--allowlist-type=vm_statistics64",
+        "--allowlist-var=HOST_.*",
+        "--allowlist-var=CPU_TYPE_X86",
+        "--allowlist-var=CPU_SUBTYPE_X86_64_ALL",
+        "--allowlist-var=CPU_THREADTYPE_NONE",
+        "--allowlist-var=MINPRI.*",
+        "--allowlist-var=MAXPRI.*",
+        "--allowlist-var=BASEPRI.*",
+        "--allowlist-var=DEPRESSPRI",
+        "--allowlist-var=IDLEPRI",
+        "--allowlist-var=KERN_INVALID_ARGUMENT",
+        "--allowlist-var=KERN_FAILURE",
+        "--allowlist-var=KERN_NOT_SUPPORTED",
+        "--allowlist-type=dtape_rs_host_consts",
+        # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
+        # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
+        # so bindgen aliases one to the other. Constified, each is simply its own value.
+        "--constified-enum=dtape_rs_host_consts",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=task",
