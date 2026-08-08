@@ -242,6 +242,50 @@ def own_code_after_expansion(path, args):
     return "\n".join(own)
 
 
+def archive_defined_symbols():
+    """Symbols the duct-tape archive DEFINES, for deciding whether a macro is really a blocker.
+
+    A macro that merely forwards to a real function is not a blocker: Rust cannot DEFINE a C
+    variadic but it can CALL one, which is how semaphore.rs calls panic. dtape_log_debug is the
+    same shape,
+
+        #define dtape_log_debug(format, ...) dtape_log(dtape_log_level_debug, format, ...)
+
+    and dtape_log is T in the archive, so a port calls it and moves on. Counting it as a blocker
+    kept init.c looking blocked when it is not.
+    """
+    a = os.path.join(ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/linux/server"
+                           "/__duct_tape_lib__/duct_tape_lib/libdarlingserver_duct_tape.a")
+    if not os.path.exists(a):
+        return set()
+    try:
+        out = subprocess.run(["nm", "--defined-only", a],
+                             capture_output=True, text=True).stdout
+    except (OSError, subprocess.SubprocessError):
+        return set()
+    return set(re.findall(r"^[0-9a-f]* [TDBRW] (\w+)$", out, re.M))
+
+
+def macros_that_only_forward(path, args, macro_names, defined):
+    """Of these macros, the ones whose expansion just calls a symbol that already exists."""
+    if not macro_names or not defined:
+        return set()
+    p = subprocess.run(["clang", "-E", "-dM", "-x", "c", *args, path],
+                       capture_output=True, text=True)
+    bodies = {}
+    for line in p.stdout.splitlines():
+        m = re.match(r"#define (\w+)\([^)]*\)\s+(.*)", line)
+        if m:
+            bodies[m.group(1)] = m.group(2)
+    out = set()
+    for name in macro_names:
+        body = bodies.get(name, "")
+        called = set(re.findall(r"\b(\w+)\s*\(", body))
+        if called & defined:
+            out.add(name)
+    return out
+
+
 def keep_only_types(path, args, candidates):
     """Which of these identifiers are actually TYPES, asked of the compiler.
 
@@ -429,6 +473,7 @@ def main():
         if m:
             ported = {os.path.basename(p) for p in re.findall(r'"([^"]+)"', m.group(1))}
     have, allowlisted = solved_macro_names_and_allowlist()
+    defined_syms = archive_defined_symbols()
 
     rows = []
     for f in files:
@@ -438,14 +483,21 @@ def main():
         # A code-emitting object-like macro is as much a blocker as a function-like one, and
         # for traps.c it is the ONLY one: DSERVER_DTAPE_DEFS expands to about 29 function
         # definitions, so porting the file means writing a Rust emitter for that table.
-        r["fn_blockers"] = ([m for m in r["fn_macros"] if m not in have]
-                            + [m for m in r["code_macros"] if m not in have])
-        r["solved"] = [m for m in r["fn_macros"] if m in have]
+        forwards = macros_that_only_forward(
+            os.path.join(srcdir, f), cargs, r["fn_macros"], defined_syms)
+        r["solved"] = [x for x in r["fn_macros"] if x in have or x in forwards]
+        solved_here = have | forwards
+        r["fn_blockers"] = ([m for m in r["fn_macros"] if m not in solved_here]
+                            + [m for m in r["code_macros"] if m not in solved_here])
         rows.append((f, r))
     # cheapest first, ported files last: variadics are unfixable in Rust, so they dominate
+    # Sort on BLOCKERS, not on the raw object-like count. That count is dominated by plain
+    # integer constants, which bindgen binds perfectly well, and it was what kept traps.c
+    # (1 blocker, 2 object-like macros) ahead of init.c (0 blockers, 5 constants). Variadic
+    # DEFINITIONS still dominate everything, since Rust cannot express them at all.
     rows.sort(key=lambda kv: (kv[1]["ported"],
-                              len(kv[1]["variadic"]) * 100
-                              + len(kv[1]["fn_blockers"]) + len(kv[1]["ob_macros"])))
+                              len(kv[1]["variadic"]) * 100 + len(kv[1]["fn_blockers"]),
+                              len(kv[1]["opaque"])))
 
     print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>9}{'FNMAC':>7}{'OBJMAC':>8}"
           f"{'EXPORTS':>9}{'CALLSOUT':>10}{'OPAQUE':>8}  blockers")
