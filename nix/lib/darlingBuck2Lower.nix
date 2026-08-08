@@ -855,6 +855,21 @@
   # Narrowing rather than dropping is deliberate: #74 and buck-escape-check.py record that
   # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
   # NOT catch it, because a symlink target is recorded as a string.
+  #
+  # MEASURED, both ways, by appending one comment line to duct-tape/src/dtape_rs_shims.c and
+  # evaluating darling-buck2-prefix-min.pinsTree.drvPath either side of it:
+  #
+  #   wide root, src/external/darlingserver     knklrz6g... -> bdbznvsi...   MOVED
+  #   narrow root, the table below              y06vi4ym... -> y06vi4ym...   UNCHANGED
+  #
+  # The negative control was produced by emptying this table, and it landed on knklrz6g, which
+  # is one of the two pins-tree derivations in gate10s own log. So the control is not a
+  # synthetic construction, it reproduces the exact prior state.
+  #
+  # That is the whole cascade in one number. pinPath below is "${pinsTree}/${p}", so pinsTree
+  # is embedded in every target that stages a pin; when it moved, they all moved, which is why
+  # gate10 rebuilt 1,464 guest objects for a change confined to duct-tape. Now it does not
+  # move, so the cascade cannot start rather than merely happening not to.
   escapeNarrow = {
     "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
   };
