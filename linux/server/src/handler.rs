@@ -208,25 +208,13 @@ struct DserverDebugMessage {
     sender: u32,
     size: u64,
 }
-extern "C" {
-    fn dtape_debug_task_list_ports(
-        task: *mut crate::bindings::dtape_task_t,
-        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_port_t) -> bool>,
-        context: *mut libc::c_void,
-    ) -> u64;
-    fn dtape_debug_portset_list_members(
-        task: *mut crate::bindings::dtape_task_t,
-        portset: u32,
-        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_port_t) -> bool>,
-        context: *mut libc::c_void,
-    ) -> u64;
-    fn dtape_debug_port_list_messages(
-        task: *mut crate::bindings::dtape_task_t,
-        port: u32,
-        iterator: Option<unsafe extern "C" fn(*mut libc::c_void, *const crate::bindings::dtape_debug_message_t) -> bool>,
-        context: *mut libc::c_void,
-    ) -> u64;
-}
+
+// Rust since #71, so imported rather than declared through the linker (#75). Each walks a task
+// port table and calls the iterator back per entry, returning the count.
+use crate::debug::{
+    dtape_debug_port_list_messages, dtape_debug_portset_list_members, dtape_debug_task_list_ports,
+};
+
 /// dtape port iterator: write each port as a dserver_debug_port_t to the pipe fd in `context`
 /// (a *RawFd). Mirrors the C++ lambda in DebugListPorts/Members (call.cpp:1122).
 unsafe extern "C" fn debug_port_writer(context: *mut libc::c_void, port: *const crate::bindings::dtape_debug_port_t) -> bool {

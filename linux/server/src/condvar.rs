@@ -41,12 +41,13 @@ extern "C" {
     /// the easy direction; `init.c` moving to Rust is what would make this a Rust global.
     static dtape_hooks: *const dtape_hooks_t;
 
-    fn current_thread() -> thread_t;
     fn libsimple_lock_lock(lock: *mut libsimple_lock_t);
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
-    fn dtape_mutex_lock(mutex: *mut dtape_mutex_t);
-    fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t);
 }
+
+// Rust since #71, so imported rather than declared (#75). libsimple above stays foreign.
+use crate::dtape_thread::current_thread;
+use crate::locks::{dtape_mutex_lock, dtape_mutex_unlock};
 
 /// `libsimple_lock_init`, which is a `static` function in libsimple/lock.h and so has no
 /// symbol to call.

@@ -7,33 +7,26 @@
 //! copyout and never block). Mirrors call.cpp's TaskSelfTrap/... handlers. See
 //! PLAN.md (bucket A, mach IPC core).
 
-extern "C" {
-    fn dtape_task_self_trap() -> u32;
-    fn dtape_host_self_trap() -> u32;
-    fn dtape_thread_self_trap() -> u32;
-    fn dtape_mach_reply_port() -> u32;
-    // Generated dtape trap wrappers (they call the XNU _kernelrpc_*_trap on the current
-    // task's ipc space). `name`/`name_out` are GUEST addresses; the trap copies results
-    // out to them via copyout -> the task_write_memory hook.
-    fn dtape_mach_port_allocate(target: u32, right: i32, name_out: u64) -> i32;
-    fn dtape_mach_port_deallocate(target: u32, name: u32) -> i32;
-    fn dtape_mach_port_type(target: u32, name: u32, ptype_out: u64) -> i32;
-    fn dtape_mach_port_mod_refs(target: u32, name: u32, right: i32, delta: i32) -> i32;
-    // The mach_msg trap. `msg`/`rcv_msg` are GUEST addresses; the trap copies the
-    // message IN from `msg` (copyinmsg -> read_memory) and, on receive, copies it OUT
-    // to `rcv_msg` (copyoutmsg -> write_memory). Blocks via thread_suspend if a receive
-    // has to wait.
-    fn dtape_mach_msg_overwrite(
-        msg: u64,
-        option: i32,
-        send_size: u32,
-        rcv_size: u32,
-        rcv_name: u32,
-        timeout: u32,
-        priority: u32,
-        rcv_msg: u64,
-    ) -> i32;
-}
+// Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
+// now (#75), because the linker matched those by name and rustc never compared them against
+// the definitions.
+//
+//   the four self traps         task, host, thread and reply port, each returning a guest name
+//   the port traps              generated dtape wrappers that call the XNU _kernelrpc_*_trap on
+//                               the current task ipc space. name and name_out are GUEST
+//                               addresses; the trap copies results out through copyout, which
+//                               is the task_write_memory hook.
+//   dtape_mach_msg_overwrite    the mach_msg trap. msg and rcv_msg are GUEST addresses: the
+//                               message is copied IN from msg (copyinmsg, read_memory) and on
+//                               receive OUT to rcv_msg (copyoutmsg, write_memory). Blocks via
+//                               thread_suspend when a receive has to wait.
+use crate::dtape_traps::{
+    dtape_host_self_trap, dtape_mach_reply_port, dtape_task_self_trap, dtape_thread_self_trap,
+};
+use crate::traps_generated::{
+    dtape_mach_msg_overwrite, dtape_mach_port_allocate, dtape_mach_port_deallocate,
+    dtape_mach_port_mod_refs, dtape_mach_port_type,
+};
 
 /// Mach port right kinds (MACH_PORT_RIGHT_*).
 pub const MACH_PORT_RIGHT_RECEIVE: i32 = 1;

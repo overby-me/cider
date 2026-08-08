@@ -47,6 +47,13 @@ use crate::bindings::{
 #[no_mangle]
 pub static mut dtape_hooks: *const dtape_hooks_t = ptr::null();
 
+// duct-tape is Rust since #71, so its four initialisers are imported rather than declared
+// through the linker (#75).
+use crate::dtape_psynch::dtape_psynch_init;
+use crate::dtape_task::dtape_task_init;
+use crate::memory::dtape_memory_init;
+use crate::timer::dtape_timer_init;
+
 extern "C" {
     // The zones and the lock this file fills in. The C declares these extern itself, at the top
     // of init.c, for the same reason: they live in XNU translation units with no header.
@@ -57,11 +64,8 @@ extern "C" {
     static mut ipc_importance_lock_data: lck_spin_t;
 
     // The subsystem initialisers, in the order dtape_init runs them. Declared rather than bound
-    // because init.c declares most of them itself; they are all void(void).
-    fn dtape_memory_init();
-    fn dtape_task_init();
-    fn dtape_psynch_init();
-    fn dtape_timer_init();
+    // because init.c declares most of them itself; they are all void(void). The four that are
+    // RUST now are imported below instead (#75); what stays here is XNU.
     fn dtape_mk_timer_init();
     fn timer_call_init();
     fn ipc_table_init();
