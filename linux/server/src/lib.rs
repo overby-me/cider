@@ -58,6 +58,9 @@ pub mod semaphore;
 // host.c: the machine-description entry points (#71, fourth file ported).
 pub mod host;
 
+// processor.c: processors and processor sets (#71, fifth file ported).
+pub mod processor;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

@@ -726,7 +726,6 @@ cc_objects(
         "src/locks.c",
         "src/memory.c",
         "src/misc.c",
-        "src/processor.c",
         "src/psynch.c",
         "src/stubs.c",
         "src/task.c",

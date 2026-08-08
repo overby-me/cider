@@ -12,7 +12,7 @@
 #   scheduler_demo  dtape_semaphore_create / down_simple / up      (semaphore.c port)
 #   condvar_demo    dtape_condvar_wait / signal, over a dtape_mutex (condvar.c port)
 #   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
-#   host_demo       host_info / host_statistics against /proc        (host.c port)
+#   host_demo       host_info, host_statistics, processor_set_info      (host.c, processor.c)
 #
 # host_demo is a DIFFERENT KIND of check, because host.c fails differently. The first three
 # files hang or crash when they are wrong, so finishing at all is most of the proof. host.c
@@ -46,7 +46,7 @@ const DEMOS = [
     ["scheduler_demo", "SCHED_DEMO_OK", "semaphore.c"]
     ["condvar_demo", "CONDVAR_DEMO_OK", "condvar.c"]
     ["stage3_spike", "SPIKE_RESUMED_OK", "semaphore.c under 500k round-trips"]
-    ["host_demo", "HOST_DEMO_OK", "host.c, cross-checked against /proc"]
+    ["host_demo", "HOST_DEMO_OK", "host.c and processor.c, cross-checked against /proc"]
 ]
 
 def say [msg: string] { print -e $msg }

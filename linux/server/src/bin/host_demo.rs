@@ -209,6 +209,51 @@ fn main() {
         "HOST_VM_INFO zeroed PAST the count it was given".to_string(),
     );
 
+    // ---- processor.c, the same numbers question one level down ----
+    // dtape_processor_init has already run (sched init calls it), so processor_array, pset0
+    // and master_processor are populated. PROCESSOR_SET_BASIC_INFO reports the CPU count, which
+    // is checked against /proc/cpuinfo exactly as the host one was.
+    let mut psbuf = [0i32; 32];
+    let mut pscount: mach_msg_type_number_t = 8;
+    let mut host_out: host_t = std::ptr::null_mut();
+    let rc = unsafe {
+        darling::processor::processor_set_info(
+            darling::processor::pset0_for_test(),
+            darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
+            &mut host_out,
+            psbuf.as_mut_ptr(),
+            &mut pscount,
+        )
+    };
+    check(rc == KERN_SUCCESS as i32, format!("PROCESSOR_SET_BASIC_INFO returned {rc}"));
+    let psbasic = unsafe { *(psbuf.as_ptr() as *const darling::bindings::processor_set_basic_info) };
+    let pcount = psbasic.processor_count;
+    let dpolicy = psbasic.default_policy;
+    println!("  processor_set_basic_info: processor_count={pcount} default_policy={dpolicy}");
+    check(
+        pcount == expect_cpus,
+        format!("processor_count {pcount} but /proc/cpuinfo has {expect_cpus}"),
+    );
+    check(
+        !host_out.is_null(),
+        "processor_set_info did not hand back a host".to_string(),
+    );
+    // A short buffer is refused rather than overrun, same guard as the host side.
+    let mut tiny: mach_msg_type_number_t = 0;
+    let rc = unsafe {
+        darling::processor::processor_set_info(
+            darling::processor::pset0_for_test(),
+            darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
+            &mut host_out,
+            psbuf.as_mut_ptr(),
+            &mut tiny,
+        )
+    };
+    check(
+        rc == KERN_FAILURE as i32,
+        format!("a zero-length processor_set_info returned {rc}"),
+    );
+
     if failures.is_empty() {
         println!("HOST_DEMO_OK");
     } else {

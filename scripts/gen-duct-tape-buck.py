@@ -53,6 +53,7 @@ PORTED_TO_RUST = [
     "src/condvar.c",
     "src/timer.c",
     "src/host.c",
+    "src/processor.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in
