@@ -67,6 +67,9 @@ struct ipc_mqueue;
 int dtape_rs_imq_is_set(struct ipc_mqueue* mq);
 void* dtape_rs_kheap_alloc(size_t size, int flags);
 
+/* psynch.c reaches thread->map, another field through the opaque struct thread. */
+void* dtape_rs_thread_map(struct thread* thread);
+
 int* dtape_rs_thread_rwlock_count(struct thread* thread);
 uint32_t dtape_rs_thread_sched_flags(struct thread* thread);
 void* dtape_rs_waitq_interlock(struct waitq* wq);

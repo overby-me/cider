@@ -135,3 +135,8 @@ unsigned long long dtape_rs_ipc_mqueue_receive_event(void) {
 int dtape_rs_imq_is_set(struct ipc_mqueue* mq) {
 	return imq_is_set(mq) ? 1 : 0;
 };
+
+/* thread->map, the one field psynch.c needs through the opaque struct thread. */
+void* dtape_rs_thread_map(struct thread* thread) {
+	return thread->map;
+};

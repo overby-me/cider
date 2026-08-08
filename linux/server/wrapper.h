@@ -48,6 +48,12 @@
 #include <mach/mach_time.h>
 /* traps.c: the Mach trap entry points and their argument structs. */
 #include <mach/mach_traps.h>
+/* psynch.c: the pthread kext callback table and the BSD sleep path. */
+#include <darlingserver/duct-tape/psynch.h>
+#include <kern/sched_prim.h>
+#include <kern/clock.h>
+#include <sys/proc.h>
+#include <sys/pthread_shims.h>
 #include <i386/rtclock_protos.h>
 /* host.c fills three info structs by FIELD, so those three have to be real rather than opaque:
  * host_basic_info, host_priority_info and host_preferred_user_arch. The vm_statistics pair
@@ -133,4 +139,9 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_KN_VANISHED = KN_VANISHED,
 	DTAPE_RS_THREAD_INTERRUPTIBLE = THREAD_INTERRUPTIBLE,
 	DTAPE_RS_THREAD_INTERRUPTED = THREAD_INTERRUPTED,
+	/* psynch.c: more anonymous-enum wait results and the abortsafe level. */
+	DTAPE_RS_THREAD_ABORTSAFE = THREAD_ABORTSAFE,
+	DTAPE_RS_THREAD_AWAKENED = THREAD_AWAKENED,
+	DTAPE_RS_THREAD_RESTART = THREAD_RESTART,
+	DTAPE_RS_THREAD_TIMED_OUT = THREAD_TIMED_OUT,
 };
