@@ -205,6 +205,12 @@ enum dtape_rs_host_consts {
 	 * does not otherwise need, so they come across as values rather than reopening the type. */
 	DTAPE_RS_Z_WAITOK = Z_WAITOK,
 	DTAPE_RS_Z_ZERO = Z_ZERO,
+	/* memory.c: the region info counts are sizeof expressions and the address ceiling is a
+	 * cast macro, so none of them can come through the allowlist. */
+	DTAPE_RS_MACH_VM_MAX_ADDRESS = MACH_VM_MAX_ADDRESS,
+	DTAPE_RS_VM_REGION_BASIC_INFO_COUNT = VM_REGION_BASIC_INFO_COUNT,
+	DTAPE_RS_VM_REGION_BASIC_INFO_COUNT_64 = VM_REGION_BASIC_INFO_COUNT_64,
+	DTAPE_RS_VM_REGION_SUBMAP_SHORT_INFO_COUNT_64 = VM_REGION_SUBMAP_SHORT_INFO_COUNT_64,
 	/* memory.c: the protection, sync and behavior values are CAST macros, so bindgen
 	 * cannot emit them and the allowlist matched nothing. Enumerators instead. */
 	DTAPE_RS_VM_PROT_NONE = VM_PROT_NONE,

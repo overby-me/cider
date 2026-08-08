@@ -720,7 +720,6 @@ cc_objects(
     name = "dt_objects",
     srcs = [
         "src/dtape_rs_shims.c",
-        "src/memory.c",
         "src/memory_xnu.c",
         "src/task_xnu.c",
         "src/thread.c",

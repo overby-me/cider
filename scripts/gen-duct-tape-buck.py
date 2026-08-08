@@ -69,6 +69,7 @@ PORTED_TO_RUST = [
     "src/misc.c",
     "src/stubs.c",
     "src/task.c",
+    "src/memory.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

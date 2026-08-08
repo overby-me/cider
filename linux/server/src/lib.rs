@@ -75,6 +75,12 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/memory.c: the zone and kalloc allocators, the copyin/copyout family, the
+// vm_map_copy path, the region queries and the memfd-backed shared remap (#71, fifteenth file).
+// The red-black tree of shared entries stays C in dtape_rs_shims.c: RB_PROTOTYPE_SC makes every
+// tree function file-local, and this file never looked anything up by key.
+pub mod memory;
+
 // duct-tape/src/task.c: task creation and teardown, task_info and the task_for_pid family
 // (#71, fourteenth file). NAMED dtape_task because linux/server/src/task.rs is the daemon side.
 // The copied-XNU half of the file stays C, in duct-tape/src/task_xnu.c.

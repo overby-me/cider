@@ -70,6 +70,9 @@ void* dtape_rs_kheap_alloc(size_t size, int flags);
  * __typeof__ cast, so it is a macro twice over. The Rust caller drops its own copy. */
 void dtape_rs_kheap_free(void* elem, size_t size);
 
+void dtape_rs_os_ref_retain(struct os_refcnt* rc);
+void dtape_rs_os_ref_release_live(struct os_refcnt* rc);
+
 /* memory.c: the shared-entry red-black tree, which RB_PROTOTYPE_SC makes entirely
  * file-local. Five operations, which is all memory.c ever used; there is no lookup by key. */
 struct dtape_map_shared_entry;

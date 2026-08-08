@@ -156,6 +156,15 @@ unsigned int dtape_rs_waitq_held(struct waitq* wq) {
 	return wq->dtape_waitq_interlock.dtape_interlock.dtape_interlock.dtape_mutex.dtape_owner == (uintptr_t)current_thread();
 };
 
+/* memory.c: the remaining os_ref operations, inline like the two already here. */
+void dtape_rs_os_ref_retain(struct os_refcnt* rc) {
+	os_ref_retain(rc);
+};
+
+void dtape_rs_os_ref_release_live(struct os_refcnt* rc) {
+	os_ref_release_live(rc);
+};
+
 /* memory.c: the shared-entry tree.
  *
  * RB_GENERATE expands to an entire red-black tree implementation, and RB_PROTOTYPE_SC makes
