@@ -279,7 +279,14 @@ def macros_that_only_forward(path, args, macro_names, defined):
             bodies[m.group(1)] = m.group(2)
     out = set()
     for name in macro_names:
-        body = bodies.get(name, "")
+        body = bodies.get(name, "").strip()
+        # A NO-OP is not a blocker either, and this is not a corner case: XNU compiles its
+        # tracing away, so KERNEL_DEBUG(x,a,b,c,d,e) is literally `do {} while (0)`. A Rust port
+        # omits the call and loses nothing. MACHDBG_CODE only ever appears as an ARGUMENT to
+        # KERNEL_DEBUG, so it never evaluates either, but it was being counted all the same.
+        if body in ("", "do {} while (0)", "do { } while (0)", "(void)0", "((void)0)"):
+            out.add(name)
+            continue
         called = set(re.findall(r"\b(\w+)\s*\(", body))
         if called & defined:
             out.add(name)
