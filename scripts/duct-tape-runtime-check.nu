@@ -101,14 +101,42 @@ def run_one [target: string, verdict: string, covers: string, seconds: int] {
     true
 }
 
+# THE LINK CHECK, and it runs FIRST because it is the cheapest way to be wrong.
+#
+# Every port before locks.c was proven with the demos plus a symbol table check, and both
+# PASSED on a debug.rs that could not link. dtape_task_for_xnu_task is always_inline static in
+# task.h, so there is no symbol; the port declared it extern, and the DEMOS still linked because
+# nothing in them reaches that path and the linker garbage collected it. Only darlingserverd,
+# where handler.rs really calls it, produced the undefined reference.
+#
+# So a demo binary is NOT an artifact that contains everything a port touches. The daemon is.
+# It is built, not run: linking is the whole question here.
+def link_check [] {
+    say "darlingserverd -- does everything a port declares actually resolve"
+    let built = (do -i { ^buck2 build //linux/server:darlingserverd } | complete)
+    if $built.exit_code != 0 {
+        say "  FAIL: darlingserverd did not link"
+        let undef = ($built.stderr | lines | where {|l| $l =~ 'undefined reference' })
+        if not ($undef | is-empty) {
+            say $"  ($undef | first)"
+            say "  an always_inline or static inline C function has NO symbol to link against;"
+            say "  compute it in Rust instead, as condvar.rs does for dtape_thread_for_xnu_thread"
+        }
+        return false
+    }
+    say "  ok: darlingserverd links"
+    true
+}
+
 def main [--seconds: int = 90] {
     mut failed = 0
+    if not (link_check) { $failed += 1 }
     for d in $DEMOS {
         if not (run_one $d.target $d.verdict $d.covers $seconds) { $failed += 1 }
     }
     if $failed > 0 {
-        say $"FAIL: ($failed) of ($DEMOS | length) runtime checks failed"
+        say $"FAIL: ($failed) of (($DEMOS | length) + 1) checks failed"
         exit 1
     }
-    say $"PASS: ($DEMOS | length) runtime checks over the ported duct-tape files"
+    say $"PASS: the daemon links and ($DEMOS | length) runtime checks pass over the ported files"
 }
