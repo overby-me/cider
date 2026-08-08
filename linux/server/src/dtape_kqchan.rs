@@ -56,8 +56,6 @@ extern "C" {
     fn panic(format: *const std::os::raw::c_char, ...);
     fn dtape_log(level: c_int, format: *const std::os::raw::c_char, ...);
 
-    fn thread_block(continuation: Option<unsafe extern "C" fn()>) -> wait_result_t;
-
     /// NOT allowlisted as a binding: several daemon modules do `use crate::bindings::*` and
     /// have their own parameter called kernel_task, which a bound static would shadow.
     static mut kernel_task: crate::bindings::task_t;
@@ -354,7 +352,7 @@ unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_resul
             0,
         );
         if wait_result == THREAD_WAITING {
-            wait_result = thread_block(None);
+            wait_result = crate::dtape_thread::thread_block(None);
         }
 
         if wait_result == THREAD_INTERRUPTED as wait_result_t {
