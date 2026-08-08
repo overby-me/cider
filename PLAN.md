@@ -38,8 +38,15 @@ it is still over an hour.
    they are inferred: a regex over quoted includes, blind to `#if`, so an include assembled by
    macro is missed silently. Three gaps this session were each found by a build failing, not
    by a check.
-3. **#73, regenerate the remaining host targets.** Mechanical, no measured behavioural effect,
-   so it rides along with the next invalidating change rather than buying its own rebuild.
+3. **#73, regenerate the remaining host targets: CLOSED, and no rebuild was needed.** The
+   residual was only ever a parity gap, and re-testing that rather than trusting it confirmed
+   there is nothing behind it. Every `DARLING`-guarded source in the cctools trees is either
+   ld64 (`Options.h`, `compact_unwind.cpp`, `objc.cpp`, `macho_relocatable_file.cpp`, all fixed
+   by #65) or `cctools/misc/redo_prebinding.c` -- and that one is compiled by
+   `redo_prebinding_cctools_misc_obj`, a GUEST target on `toolchains//:darwin_cc` with
+   `//darwin:sdk_env`, so `sdk_env` hands `-DDARLING` straight back. No host target compiles a
+   guarded source. The note below listing lipo/ranlib/stuff/ar was checking the wrong files and
+   still landed on the right answer; the guarded file is `redo_prebinding.c`, and it is a guest.
 4. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
