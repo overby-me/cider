@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/psynch.c: the pthread kext glue and the BSD sleep path (#71, eleventh file).
+// NAMED dtape_psynch because linux/server/src/psynch.rs already exists and is the DAEMON side,
+// the RPC handlers the guest calls; this is the layer under it.
+pub mod dtape_psynch;
+
 // duct-tape/src/traps.c: six hand-written trap wrappers (#71, tenth file), plus the 29 that
 // DSERVER_DTAPE_DEFS generates, emitted by scripts/gen-dtape-traps.py.
 pub mod dtape_traps;

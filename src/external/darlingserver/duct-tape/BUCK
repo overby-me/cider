@@ -722,7 +722,6 @@ cc_objects(
         "src/dtape_rs_shims.c",
         "src/memory.c",
         "src/misc.c",
-        "src/psynch.c",
         "src/stubs.c",
         "src/task.c",
         "src/thread.c",

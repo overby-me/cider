@@ -112,6 +112,11 @@ void* dtape_rs_kheap_alloc(size_t size, int flags) {
 	return kheap_alloc(KHEAP_DEFAULT, size, flags);
 };
 
+/* kheap_free, as a symbol: it is a statement expression that NULLs the caller variable. */
+void dtape_rs_kheap_free(void* elem, size_t size) {
+	kheap_free(KHEAP_DEFAULT, elem, size);
+};
+
 /* task_reference, as a symbol: it is a macro. */
 void dtape_rs_task_reference(struct task* task) {
 	task_reference(task);

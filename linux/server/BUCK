@@ -220,6 +220,10 @@ bindgen_gen(
         # locks.c (#71): the sleep-action flags, the wait results, and the entry points the
         # XNU-copied sleep routines call.
         "--allowlist-var=LCK_SLEEP_.*",
+        # msleep takes a struct timespec*, and psynch.c defines the three lock-group globals
+        # the kext declares extern, so their types have to be real rather than respelled.
+        "--allowlist-type=timespec",
+        "--allowlist-type=lck_grp_attr_t",
         "--allowlist-var=LCK_ASSERT_.*",
         "--allowlist-var=NSEC_PER_USEC",
         "--allowlist-type=lck_ticket_t",
@@ -325,6 +329,10 @@ bindgen_gen(
         "--allowlist-var=TURNSTILE_.*",
         "--allowlist-var=TIMEOUT_URGENCY_USER_NORMAL",
         "--allowlist-var=LCK_SLEEP_.*",
+        # msleep takes a struct timespec*, and psynch.c defines the three lock-group globals
+        # the kext declares extern, so their types have to be real rather than respelled.
+        "--allowlist-type=timespec",
+        "--allowlist-type=lck_grp_attr_t",
         "--allowlist-var=NSEC_PER_USEC",
         "--allowlist-var=EWOULDBLOCK",
         "--allowlist-var=EINTR",
@@ -338,6 +346,9 @@ bindgen_gen(
         "--constified-enum=zone_create_flags_t",
         # kqchan.c does kn_status |= KN_VANISHED, which a Rust enum cannot express.
         "--constified-enum=kn_status_t",
+        # psynch.c ORs the turnstile update flags (TURNSTILE_IMMEDIATE_UPDATE |
+        # TURNSTILE_INHERITOR_THREAD), which a Rust enum cannot express.
+        "--constified-enum=turnstile_update_flags",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=task",

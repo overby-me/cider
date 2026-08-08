@@ -167,8 +167,13 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_THREAD_AWAKENED = THREAD_AWAKENED,
 	DTAPE_RS_THREAD_RESTART = THREAD_RESTART,
 	DTAPE_RS_THREAD_TIMED_OUT = THREAD_TIMED_OUT,
+	DTAPE_RS_THREAD_UNINT = THREAD_UNINT,
 	/* CONFIG_THREAD_MAX comes from a -D on the command line rather than from a header, and
 	 * bindgen only surfaces macros it can attribute to a file, so allowlisting it by name
 	 * matches nothing. As an enumerator the compiler evaluates it like any other. */
 	DTAPE_RS_CONFIG_THREAD_MAX = CONFIG_THREAD_MAX,
+	/* hashinit allocates with Z_WAITOK | Z_ZERO. Enumerators of zalloc_flags_t, which the port
+	 * does not otherwise need, so they come across as values rather than reopening the type. */
+	DTAPE_RS_Z_WAITOK = Z_WAITOK,
+	DTAPE_RS_Z_ZERO = Z_ZERO,
 };
