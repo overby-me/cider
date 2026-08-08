@@ -195,6 +195,19 @@ enum dtape_rs_host_consts {
 	/* stubs.c: whether an unknown-safety stub aborts. A build-time choice, so it is the C that
 	 * makes it rather than a constant written into Rust. */
 	DTAPE_RS_DTAPE_FATAL_STUBS = DTAPE_FATAL_STUBS,
+	/* THE LAYOUT INVARIANT THE WHOLE PORT RESTS ON.
+	 *
+	 * Five ported files walk back from an embedded XNU struct to the duct-tape one that
+	 * contains it, using offset_of. That is only correct while Rust and C agree on the layout
+	 * of both, and nothing checks it: bindgen runs with --no-layout-tests, and marking a type
+	 * opaque or reopening it is exactly the kind of change that could move a field silently.
+	 * These are the C compiler answers, asserted against Rust in linux/server/src/layout.rs. */
+	DTAPE_RS_SIZEOF_XNU_TASK = sizeof(struct task),
+	DTAPE_RS_SIZEOF_XNU_THREAD = sizeof(struct thread),
+	DTAPE_RS_SIZEOF_DTAPE_TASK = sizeof(struct dtape_task),
+	DTAPE_RS_SIZEOF_DTAPE_THREAD = sizeof(struct dtape_thread),
+	DTAPE_RS_OFFSETOF_DTAPE_TASK_XNU_TASK = __builtin_offsetof(struct dtape_task, xnu_task),
+	DTAPE_RS_OFFSETOF_DTAPE_THREAD_XNU_THREAD = __builtin_offsetof(struct dtape_thread, xnu_thread),
 	/* misc.c: the _MachineStateCount table. Both halves are macros, the flavor an integer
 	 * and the count a sizeof expression, so both are evaluated here rather than written
 	 * into Rust. The table is indexed BY the flavor, so a wrong index would be silent. */

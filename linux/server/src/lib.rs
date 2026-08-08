@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// The layout invariant every container_of style port depends on, asserted against the C
+// compiler at build time (#71). bindgen runs with --no-layout-tests, so without this nothing
+// checks that Rust and C agree on the structs the offsets are taken from.
+pub mod layout;
+
 // duct-tape/src/stubs.c: the XNU entry points duct-tape does not implement, plus the stub
 // logger every other glue file calls (#71, thirteenth file). panic, the fourth and last
 // variadic definition, stays in C in dtape_rs_shims.c.
