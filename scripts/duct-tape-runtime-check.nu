@@ -12,6 +12,14 @@
 #   scheduler_demo  dtape_semaphore_create / down_simple / up      (semaphore.c port)
 #   condvar_demo    dtape_condvar_wait / signal, over a dtape_mutex (condvar.c port)
 #   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
+#   host_demo       host_info / host_statistics against /proc        (host.c port)
+#
+# host_demo is a DIFFERENT KIND of check, because host.c fails differently. The first three
+# files hang or crash when they are wrong, so finishing at all is most of the proof. host.c
+# hands NUMBERS back to the guest, and a wrong field offset does not crash anything, it just
+# tells the guest the machine has the wrong amount of memory. So that demo compares the answers
+# against /proc/meminfo and /proc/cpuinfo, which share no code path with the sysinfo and
+# sysconf calls the port uses, and it drives the refusal paths as well as the happy one.
 #
 # The spike is the one that would catch a leak, a corrupted queue or an off-by-one, which a
 # single block-and-wake cannot. Measured after the port: 500,000 round-trips in 5.79 s,
@@ -38,6 +46,7 @@ const DEMOS = [
     ["scheduler_demo", "SCHED_DEMO_OK", "semaphore.c"]
     ["condvar_demo", "CONDVAR_DEMO_OK", "condvar.c"]
     ["stage3_spike", "SPIKE_RESUMED_OK", "semaphore.c under 500k round-trips"]
+    ["host_demo", "HOST_DEMO_OK", "host.c, cross-checked against /proc"]
 ]
 
 def say [msg: string] { print -e $msg }
@@ -101,5 +110,5 @@ def main [--seconds: int = 90] {
         say $"FAIL: ($failed) of ($DEMOS | length) runtime checks failed"
         exit 1
     }
-    say $"PASS: ($DEMOS | length) ported duct-tape files block and wake a microthread"
+    say $"PASS: ($DEMOS | length) runtime checks over the ported duct-tape files"
 }

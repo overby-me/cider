@@ -93,12 +93,38 @@ bindgen_gen(
         "--allowlist-var=KERN_FAILURE",
         "--allowlist-var=KERN_NOT_SUPPORTED",
         "--allowlist-type=dtape_rs_host_consts",
+        # The scalar typedefs the host.c signatures are written in. Allowlisted rather than
+        # respelled in Rust: an ABI typedef transcribed by hand is one that goes wrong quietly.
+        # struct host stays opaque, so host_t crossing does not reopen it.
+        "--allowlist-type=mach_msg_type_number_t",
+        "--allowlist-type=host_flavor_t",
+        "--allowlist-type=host_info_t",
+        "--allowlist-type=host_t",
+        "--allowlist-type=host_priv_t",
+        # The stub signatures too, including the two structs passed BY VALUE
+        # (security_token_t is 8 bytes and goes in a register, audit_token_t is 32 and goes on
+        # the stack). Those are exactly the shapes a hand-written mirror gets wrong quietly, so
+        # they are generated like everything else.
+        "--allowlist-type=host_security_t",
+        "--allowlist-type=memory_object_default_t",
+        "--allowlist-type=memory_object_cluster_size_t",
+        "--allowlist-type=kernel_boot_info_t",
+        "--allowlist-type=lockgroup_info_array_t",
+        "--allowlist-type=ledger_port_array_t",
+        "--allowlist-type=hash_info_bucket_array_t",
+        "--allowlist-type=security_token_t",
+        "--allowlist-type=audit_token_t",
+        "--allowlist-type=boolean_t",
+        "--allowlist-type=task_t",
+        "--allowlist-type=UNDServerRef",
+        "--allowlist-type=mach_port_t",
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.
         "--constified-enum=dtape_rs_host_consts",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
+        "--opaque-type=host",
         "--opaque-type=task",
         "--opaque-type=thread",
         "--opaque-type=ipc_.*",
@@ -235,6 +261,35 @@ rust_binary(
 rust_binary(
     name = "condvar_demo",
     crate_root = "src/bin/condvar_demo.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+# host_demo: the host.c port answers with NUMBERS, so this checks them against an INDEPENDENT
+# source rather than against the code that produced them. host_info reaches its answers through
+# sysinfo(2) and sysconf(3); the demo reads /proc/meminfo and /proc/cpuinfo, which share no code
+# path with either, so a field written at the wrong offset shows up as a wrong number instead of
+# agreeing with itself. It also drives the two refusal paths, a buffer too short for even the
+# legacy structure and an unrecognised flavor, since a guard that never runs is a guard nobody
+# knows is broken.
+rust_binary(
+    name = "host_demo",
+    crate_root = "src/bin/host_demo.rs",
     out_dir = ":dtape_bindings",
     deps = [
         ":darling",

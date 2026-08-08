@@ -720,7 +720,6 @@ cc_objects(
     name = "dt_objects",
     srcs = [
         "src/debug.c",
-        "src/host.c",
         "src/init.c",
         "src/kqchan.c",
         "src/locks.c",

@@ -46,6 +46,7 @@ PORTED_TO_RUST = [
     "src/semaphore.c",
     "src/condvar.c",
     "src/timer.c",
+    "src/host.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

@@ -55,6 +55,9 @@ pub mod condvar;
 /// still-C kqchan.c links against this.
 pub mod semaphore;
 
+// host.c: the machine-description entry points (#71, fourth file ported).
+pub mod host;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 
