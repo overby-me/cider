@@ -26,6 +26,7 @@
 # `transitive` is the whole closure, not just this crate: rustc needs --extern for every
 # crate that appears in the dependency graph, direct or not, and passing them all by name is
 # simpler than reconstructing -L search directories from artifact paths.
+load("//buck/rules:cc.bzl", "CcLibInfo")
 load("//buck/rules:inproc.bzl", "InProcInfo")
 
 RustLibInfo = provider(fields = ["crate_name", "rlib", "transitive"])
@@ -253,7 +254,16 @@ exec "$tool" "$header" -o "$out" "$@"
     cmd.add(ctx.attrs.flags)
     cmd.add("--")
     for d in ctx.attrs.include_dirs:
-        cmd.add(cmd_args(d[DefaultInfo].default_outputs[0], format = "-I{}"))
+        # A dep that already knows its own include roots is asked, rather than guessed at.
+        # cc_header_root's default output IS its include root, so the fallback is right for
+        # it -- but a code generator's is its FIRST DECLARED OUTPUT, which is a file. Taking
+        # that gave -I<...>/darlingserver/rpc.h, and the include next to it then failed to
+        # resolve: rpc.internal.h not found, from a header that plainly sits beside it.
+        if CcLibInfo in d:
+            for inc in d[CcLibInfo].include_dirs:
+                cmd.add(cmd_args(inc, format = "-I{}"))
+        else:
+            cmd.add(cmd_args(d[DefaultInfo].default_outputs[0], format = "-I{}"))
     cmd.add(ctx.attrs.clang_flags)
     cmd.add(cmd_args(hidden = ctx.attrs.srcs))
     ctx.actions.run(cmd, category = "bindgen", identifier = ctx.label.name)

@@ -12,14 +12,6 @@ extern "C" {
     // loaded-image list. duct-tape/src/task.c:198.
     fn dtape_task_set_dyld_info(task: *mut dtape_task_t, address: u64, length: u64);
 
-    // Object-level semaphores owned by a task (not the name-based semaphore traps). Used
-    // for the fork-wait handshake: the parent blocks on its own semaphore, the forked
-    // child ups it on checkin. duct-tape/src/semaphore.c.
-    fn dtape_semaphore_create(owning_task: *mut dtape_task_t, initial_value: i32) -> *mut dtape_semaphore_t;
-    fn dtape_semaphore_up(semaphore: *mut dtape_semaphore_t);
-    fn dtape_semaphore_down_simple(semaphore: *mut dtape_semaphore_t) -> bool;
-    fn dtape_semaphore_destroy(semaphore: *mut dtape_semaphore_t);
-
     // ptrace sigexc: enable/disable Mach-exception-based signal delivery on a task (a debugger
     // uses PT_SIGEXC so signals arrive as Mach exceptions it can intercept), then try to resume
     // the task if it was stopped waiting for the debugger. duct-tape.h:89-90.
@@ -41,22 +33,27 @@ pub unsafe fn set_dyld_info(task: *mut dtape_task_t, address: u64, length: u64) 
     dtape_task_set_dyld_info(task, address, length);
 }
 
+// The object-level semaphores used to be four more extern declarations here, against
+// duct-tape/src/semaphore.c. That file is Rust now (#71), so these forward into the crate
+// rather than out through the FFI. The signatures are unchanged, and the symbols are still
+// exported with the C ABI, because kqchan.c is still C and calls them.
+
 /// Create a semaphore owned by `task` with `initial` value.
 pub unsafe fn semaphore_create(task: *mut dtape_task_t, initial: i32) -> *mut dtape_semaphore_t {
-    dtape_semaphore_create(task, initial)
+    crate::semaphore::dtape_semaphore_create(task, initial)
 }
 /// Increment (signal) `sem`.
 pub unsafe fn semaphore_up(sem: *mut dtape_semaphore_t) {
-    dtape_semaphore_up(sem);
+    crate::semaphore::dtape_semaphore_up(sem);
 }
 /// Decrement (wait on) `sem`, blocking the current microthread until it is signaled.
 /// Returns false if interrupted.
 pub unsafe fn semaphore_down_simple(sem: *mut dtape_semaphore_t) -> bool {
-    dtape_semaphore_down_simple(sem)
+    crate::semaphore::dtape_semaphore_down_simple(sem)
 }
 /// Destroy `sem`.
 pub unsafe fn semaphore_destroy(sem: *mut dtape_semaphore_t) {
-    dtape_semaphore_destroy(sem);
+    crate::semaphore::dtape_semaphore_destroy(sem);
 }
 
 /// The host-side parent pid (PPid) of `pid`, from /proc/<pid>/status. Used to link a

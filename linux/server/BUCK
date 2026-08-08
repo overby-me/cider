@@ -1,5 +1,9 @@
 load("//buck/rules:cc.bzl", "cc_lib_dir", "cc_library")
 load("//buck/rules:rust.bzl", "bindgen_gen", "rust_binary", "rust_library")
+# duct-tape's own defines and warning flags, generated alongside its BUCK file. bindgen has
+# to parse the XNU headers with the IDENTICAL set for the ported glue (#71); they do not
+# parse without it, since osfmk/kern/priority_queue.h uses blocks and needs -fblocks.
+load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLAGS")
 
 # The C libraries the Rust daemon links, staged into the single directory its
 # build.rs expects in DUCT_TAPE_LIB:
@@ -41,14 +45,59 @@ bindgen_gen(
         "--allowlist-type=dtape_.*_f",
         "--allowlist-type=libsimple_lock_t",
         "--allowlist-var=DTAPE_.*",
+        # The internal structs and XNU entry points the ported glue needs (#71). semaphore.c
+        # is Rust now and walks owning_task->xnu_task, so the offset of xnu_task inside
+        # struct dtape_task has to be GENERATED; a hand-written offset drifts silently the
+        # next time that struct gains a field.
+        "--allowlist-type=dtape_semaphore",
+        "--allowlist-type=dtape_task",
+        "--allowlist-function=semaphore_create",
+        "--allowlist-function=semaphore_destroy",
+        "--allowlist-function=semaphore_signal",
+        "--allowlist-function=semaphore_wait",
+        "--allowlist-var=KERN_SUCCESS",
+        "--allowlist-var=KERN_ABORTED",
+        # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
+        # osfmk into the bindings for no gain: nothing here reads its fields.
+        "--opaque-type=task",
+        "--opaque-type=thread",
+        "--opaque-type=ipc_.*",
+        "--opaque-type=vm_.*",
+        "--opaque-type=_?lck_.*",
+        "--opaque-type=queue_.*",
+        "--opaque-type=priority_queue.*",
+        "--opaque-type=os_ref.*",
+        "--opaque-type=waitq.*",
+        "--opaque-type=zone.*",
         # Function-pointer struct fields become Option<unsafe extern "C" fn ...>, which is
         # what lets the daemon zero the vtable and fill only the hooks it implements.
         "--default-enum-style=rust_non_exhaustive",
         "--no-layout-tests",
     ],
+    # duct-tape's own defines and warning flags. The XNU headers do not parse without them:
+    # priority_queue.h uses blocks, so -fblocks in particular is load bearing.
+    clang_flags = DUCT_TAPE_DEFINES + DUCT_TAPE_FLAGS,
     include_dirs = [
+        # mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header,
+        # and semaphore_create/semaphore_destroy are declared only in the generated one.
+        # (XNU's kern/sync_sema.h declares just semaphore_destroy_all.)
+        "//src/external/darlingserver/duct-tape:mig_mach_task",
         "//src/external/darlingserver/duct-tape:dt_include",
+        "//src/external/darlingserver/duct-tape:dt_internal_include",
+        "//src/external/darlingserver/duct-tape:dt_defines",
+        "//src/external/darlingserver/duct-tape:xnu_osfmk",
+        "//src/external/darlingserver/duct-tape:xnu_bsd",
+        "//src/external/darlingserver/duct-tape:xnu_libkern",
+        "//src/external/darlingserver/duct-tape:xnu_osfmk_libsa",
+        "//src/external/darlingserver/duct-tape:xnu_pexpert",
+        "//src/external/darlingserver/duct-tape:xnu_iokit",
+        "//src/external/darlingserver/duct-tape:xnu_external_headers",
+        "//src/external/darlingserver/duct-tape:xnu_root",
         "//src/libsimple:libsimple_headers",
+        "//src/external/darlingserver:dserver_headers",
+        # duct-tape.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
+        "//src/external/darlingserver:dserver_rpc",
+        "//src/startup:rtsig_header",
     ],
 )
 

@@ -54,17 +54,30 @@ it is still over an hour.
 5. **#71, port duct-tape to Rust. SCOPED, and the task's own numbers were wrong.**
    19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
    not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
-   Five files are 74% of the glue (`kern_synch.c` 2,805, `thread.c` 2,072, `task.c` 1,766,
-   `memory.c` 1,554, `kern_support.c` 1,020), and the tail is small enough to start on:
-   `traps.c` 29, `condvar.c` 49, `semaphore.c` 60, `timer.c` 93.
-   **ORDER BY INTERFACE COUPLING, NOT BY SIZE**, which reading the files changed:
-   * `condvar.c` is 49 lines and is NOT a leaf. It reaches into `dtape_thread_t` through
-     `__container_of(link, dtape_thread_t, mutex_link)` and an intrusive `TAILQ`, so porting it
-     alone needs the Rust side to know `thread.c`'s struct layout.
-   * `traps.c` is 29 lines and IS a leaf, but every line is a wrapper around an XNU trap, so the
-     Rust version is an equally thin FFI shim calling the same C. It buys nothing.
-   * `timer.c` (93) and `misc.c` (150) touch only `dtape_hooks->*`, which is a table of function
-     pointers. Those are the real first candidates: a clean boundary and actual logic.
+   Re-counted: `duct-tape/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
+   in `pthread/kern_synch.c` 2,805 and `kern_support.c` 1,020, which sit outside that dir).
+   `thread.c` 2,072, `task.c` 1,766 and `memory.c` 1,554 are 63% of it.
+
+   **THE ORDERING ABOVE WAS WRONG, and `scripts/duct-tape-portability.py` now measures it**
+   instead of arguing it. Only two things are hard blockers: a C VARIADIC DEFINITION (stable
+   Rust cannot write `extern "C" fn(...)`) and a MACRO CALL (bindgen binds no macros).
+   * `misc.c` was named a first candidate. It is **last of sixteen**: it DEFINES three variadic
+     functions (`dtape_log`, `kprintf`, `scnprintf`), which Rust cannot express at all.
+   * `timer.c` was the other. It calls `mpqueue_init`, a MACRO, so it needs a shim either way.
+   * `traps.c` is not blocker-free either: its last line is `DSERVER_DTAPE_DEFS`, a generated
+     object-like macro. (It is still a thin FFI shim that buys little.)
+   * `init.c` (137) is the best remaining profile: no variadics, one macro (`dtape_log_debug`).
+
+   Two mechanisms were proven by experiment before any port code, both with negative controls:
+   bindgen PARSES the XNU internal headers given duct-tape's own flags (`-fblocks` is load
+   bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
+   since `kqchan.c` stays C and calls `dtape_semaphore_up`.
+
+   **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
+   is not vacuous: in `libdarlingserver_duct_tape.a` the four `dtape_semaphore_*` are `U` and
+   `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come
+   from bindgen, not transcription: `linux/server/wrapper.h` binds the internal structs, and
+   `flags.bzl` (generated) keeps the buck2 and cargo include sets identical.
 
    Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged.
    **THE VERIFICATION IS ITSELF A PROBLEM, and this was checked before writing any port code.**

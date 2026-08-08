@@ -38,6 +38,11 @@ pub mod mach;
 /// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
 pub mod task;
 
+/// Object-level duct-tape semaphores: the Rust replacement for duct-tape/src/semaphore.c,
+/// the first glue file ported off C (#71). Exports the dtape_semaphore_* C ABI, so the
+/// still-C kqchan.c links against this.
+pub mod semaphore;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

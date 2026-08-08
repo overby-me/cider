@@ -18,15 +18,82 @@ fn main() {
     // <repo>/src/external/darlingserver. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
-    let dtape_inc = manifest.join("../../src/external/darlingserver/duct-tape/include");
+    let dtape = manifest.join("../../src/external/darlingserver/duct-tape");
+    let dtape_inc = dtape.join("include");
     let libsimple_inc = manifest.join("../../src/libsimple/include");
     let fast_context = manifest.join("../../src/external/darlingserver/src/fast_context.c");
 
     // ---- (1) bindgen: the hooks contract + types (source headers only) ----
-    let bindings = bindgen::Builder::default()
+    let mut builder = bindgen::Builder::default()
         .header("wrapper.h")
         .clang_arg(format!("-I{}", dtape_inc.display()))
-        .clang_arg(format!("-I{}", libsimple_inc.display()))
+        .clang_arg(format!("-I{}", libsimple_inc.display()));
+
+    // The internal structs the ported glue needs (#71). wrapper.h reaches internal-include,
+    // the XNU roots, and two GENERATED trees: darlingserver/rpc.h (the RPC wrapper
+    // generator, via duct-tape.h) and the MIG output for mach/task.h, which is the only
+    // place semaphore_create and semaphore_destroy are declared.
+    //
+    // The generated trees do not exist in a bare checkout, so cargo is TOLD where they are
+    // rather than guessing: DTAPE_GEN_INCLUDE, colon separated, exactly as -I takes them.
+    // It is required, not optional. Making it optional would mean a cargo build and a buck2
+    // build produce crates with different contents from identical sources, and a divergence
+    // like that surfaces later as a bug that only reproduces under one of them.
+    println!("cargo:rerun-if-env-changed=DTAPE_GEN_INCLUDE");
+    let gen_roots = env::var("DTAPE_GEN_INCLUDE").unwrap_or_default();
+    let gen_roots: Vec<&str> = gen_roots.split(':').filter(|s| !s.is_empty()).collect();
+    if gen_roots.is_empty() {
+        panic!(
+            "DTAPE_GEN_INCLUDE is not set.\n\
+             wrapper.h binds duct-tape's internal structs, which reach two GENERATED header \
+             trees (darlingserver/rpc.h and the MIG mach/task.h). Point this at their \
+             directories, colon separated. buck2 wires them as target deps, so the usual \
+             fix is to build through buck2 (//linux/server:darlingserverd), or to run \
+             buck2 build //src/external/darlingserver:dserver_rpc \
+             //src/external/darlingserver/duct-tape:mig_mach_task and pass their output \
+             directories here."
+        );
+    }
+    // mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header, and
+    // semaphore_create/semaphore_destroy are declared only in the generated one.
+    for root in &gen_roots {
+        builder = builder.clang_arg(format!("-I{root}"));
+    }
+    for root in [
+        "internal-include", "defines", "xnu/osfmk", "xnu/bsd", "xnu/libkern",
+        "xnu/osfmk/libsa", "xnu/pexpert", "xnu/iokit", "xnu/EXTERNAL_HEADERS", "xnu",
+    ] {
+        builder = builder.clang_arg(format!("-I{}", dtape.join(root).display()));
+    }
+    builder = builder
+        .clang_arg(format!(
+            "-I{}",
+            manifest.join("../../src/external/darlingserver/include").display()
+        ))
+        // The XNU headers do not parse without duct-tape's own flags; -fblocks above all,
+        // since osfmk/kern/priority_queue.h uses blocks. The buck2 path loads the full set
+        // from src/external/darlingserver/duct-tape/flags.bzl, which the generator writes
+        // from the same CMakeLists these come from.
+        .clang_arg("-fblocks")
+        .clang_arg("-Wno-nullability-completeness")
+        .clang_arg("-Wno-expansion-to-defined")
+        .clang_arg("-Wno-elaborated-enum-base")
+        .allowlist_type("dtape_semaphore")
+        .allowlist_type("dtape_task")
+        .allowlist_function("semaphore_create")
+        .allowlist_function("semaphore_destroy")
+        .allowlist_function("semaphore_signal")
+        .allowlist_function("semaphore_wait")
+        .allowlist_var("KERN_SUCCESS")
+        .allowlist_var("KERN_ABORTED");
+    // Only the SIZE of the XNU giants crosses; nothing here reads their fields. Without
+    // this, struct task drags most of osfmk into the bindings for no gain.
+    for t in ["task", "thread", "ipc_.*", "vm_.*", "_?lck_.*", "queue_.*",
+              "priority_queue.*", "os_ref.*", "waitq.*", "zone.*"] {
+        builder = builder.opaque_type(t);
+    }
+
+    let bindings = builder
         // The dtape surface we care about; keep the XNU/libsimple internals out.
         .allowlist_type("dtape_hooks_t")
         .allowlist_type("dtape_hooks")

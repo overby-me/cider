@@ -8,198 +8,82 @@ load("//buck/rules:codegen.bzl", "mig_gen")
 # (osfmk/bsd) into libdarlingserver_duct_tape.a, which the Rust daemon links
 # via DUCT_TAPE_LIB. Host tier: native ELF, no cross toolchain, no Mach-O.
 
-DUCT_TAPE_DEFINES = [
-    "-DDARLING",
-    "-DDSERVER_ASAN=0",
-    "-DDSERVER_UBSAN=0",
-    "-DDSERVER_EXTENDED_DEBUG=0",
-    "-DDSERVER_SINGLE_THREADED=1",
-    "-D__DARLING__",
-    "-DDARLING_DEBUG",
-    "-DPAGE_SIZE_FIXED",
-    "-DCONFIG_SCHED_TRADITIONAL",
-    "-DCONFIG_SCHED_TIMESHARE_CORE",
-    "-DAPPLE",
-    "-DKERNEL",
-    "-DKERNEL_PRIVATE",
-    "-DXNU_KERNEL_PRIVATE",
-    "-DPRIVATE",
-    "-D__MACHO__=1",
-    "-Dvolatile=__volatile",
-    "-DNEXT",
-    "-D__LITTLE_ENDIAN__=1",
-    "-D__private_extern__=extern",
-    "-D_NLINK_T",
-    "-DVM32_SUPPORT=1",
-    "-DMACH_KERNEL_PRIVATE",
-    "-DARCH_PRIVATE",
-    "-DDRIVER_PRIVATE",
-    "-D_KERNEL_BUILD",
-    "-DKERNEL_BUILD",
-    "-DMACH_KERNEL",
-    "-DBSD_BUILD",
-    "-DBSD_KERNEL_PRIVATE",
-    "-DLP64KERN=1",
-    "-DLP64_DEBUG=0",
-    "-DTIMEZONE=0",
-    "-DPST=0",
-    "-DQUOTA",
-    "-DABSOLUTETIME_SCALAR_TYPE",
-    "-DCONFIG_LCTX",
-    "-DMACH",
-    "-DCONFIG_ZLEAKS",
-    "-DNO_DIRECT_RPC",
-    "-DIPFIREWALL_FORWARD",
-    "-DIPFIREWALL_DEFAULT_TO_ACCEPT",
-    "-DTRAFFIC_MGT",
-    "-DRANDOM_IP_ID",
-    "-DTCP_DROP_SYNFIN",
-    "-DICMP_BANDLIM",
-    "-DIFNET_INPUT_SANITY_CHK",
-    "-DPSYNCH",
-    "-DSECURE_KERNEL",
-    "-DOLD_SEMWAIT_SIGNAL",
-    "-DCONFIG_MBUF_JUMBO",
-    "-DCONFIG_WORKQUEUE",
-    "-DCONFIG_HFS_STD",
-    "-DCONFIG_HFS_TRIM",
-    "-DCONFIG_TASK_MAX=512",
-    "-DCONFIG_IPC_TABLE_ENTRIES_STEPS=256",
-    "-DNAMEDSTREAMS",
-    "-DCONFIG_VOLFS",
-    "-DCONFIG_IMGSRC_ACCESS",
-    "-DCONFIG_TRIGGERS",
-    "-DCONFIG_VFS_FUNNEL",
-    "-DCONFIG_EXT_RESOLVER",
-    "-DCONFIG_SEARCHFS",
-    "-DIPSEC",
-    "-DIPSEC_ESP",
-    "-DIPV6FIREWALL_DEFAULT_TO_ACCEPT",
-    "-Dcrypto",
-    "-Drandomipid",
-    "-DCONFIG_KN_HASHSIZE=64",
-    "-DCONFIG_VNODES=750",
-    "-DCONFIG_VNODE_FREE_MIN=75",
-    "-DCONFIG_NC_HASH=1024",
-    "-DCONFIG_VFS_NAMES=2048",
-    "-DCONFIG_MAX_CLUSTERS=4",
-    "-DKAUTH_CRED_PRIMES_COUNT=3",
-    "-DCONFIG_MIN_NBUF=64",
-    "-DCONFIG_MIN_NIOBUF=32",
-    "-DCONFIG_TCBHASHSIZE=128",
-    "-DCONFIG_ICMP_BANDLIM=50",
-    "-DCONFIG_AIO_MAX=10",
-    "-DCONFIG_AIO_PROCESS_MAX=4",
-    "-DCONFIG_AIO_THREAD_COUNT=2",
-    "-DCONFIG_THREAD_MAX=1024",
-    "-DCONFIG_MAXVIFS=2",
-    "-DCONFIG_MFCTBLSIZ=16",
-    "-DCONFIG_MSG_BSIZE=4096",
-    "-DCONFIG_ENFORCE_SIGNED_CODE",
-    "-DCONFIG_MEMORYSTATUS",
-    "-DCONFIG_JETSAM",
-    "-DCONFIG_FREEZE",
-    "-DCONFIG_ZLEAK_ALLOCATION_MAP_NUM=8192",
-    "-DCONFIG_ZLEAK_TRACE_MAP_NUM=4096",
-    "-DVM_PRESSURE_EVENTS",
-    "-DCONFIG_KERNEL_0DAY_SYSCALL_HANDLER",
-    "-DEVENTMETER",
-    "-DCONFIG_APP_PROFILE=0",
-    "-DCC_USING_FENTRY=1",
-    "-DIMPORTANCE_INHERITANCE=1",
-    "-DCONFIG_REQUIRES_U32_MUNGING=1",
-    "-DKERNEL_SERVER=1",
-    "-DKERNEL_USER=1",
-    "-DMACH_NOTIFY_SEND_POSSIBLE_EXPECTED",
-    "-DXNU_TARGET_OS_OSX=1",
-    "-D_CLOCK_T=1",
-    "-DNO_KDEBUG=1",
-    "-DCONFIG_IPC_KERNEL_MAP_SIZE=64",
-    "-D__DARWIN_LITTLE_ENDIAN=1234",
-    "-D__DARWIN_BYTE_ORDER=__DARWIN_LITTLE_ENDIAN",
-]
-
-DUCT_TAPE_FLAGS = [
-    "-Wno-error=implicit-function-declaration",
-    "-Wno-nullability-completeness",
-    "-Wno-deprecated-declarations",
-    "-Wno-availability",
-    "-Wno-expansion-to-defined",
-    "-Wno-elaborated-enum-base",
-    "-Wno-undef-prefix",
-    "-fblocks",
-    "-ffunction-sections",
-    "-fdata-sections",
-    "-Wno-incompatible-library-redeclaration",
-    "-Wno-error=int-conversion",
-]
+load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLAGS")
 
 cc_header_root(
     name = "dt_defines",
     headers = glob(["defines/**/*.h", "defines/**/*.defs"]),
     root = "defines",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_osfmk",
     headers = glob(["xnu/osfmk/**/*.h", "xnu/osfmk/**/*.defs"]),
     root = "xnu/osfmk",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_bsd",
     headers = glob(["xnu/bsd/**/*.h", "xnu/bsd/**/*.defs"]),
     root = "xnu/bsd",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_libkern",
     headers = glob(["xnu/libkern/**/*.h", "xnu/libkern/**/*.defs"]),
     root = "xnu/libkern",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_osfmk_libsa",
     headers = glob(["xnu/osfmk/libsa/**/*.h", "xnu/osfmk/libsa/**/*.defs"]),
     root = "xnu/osfmk/libsa",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_pexpert",
     headers = glob(["xnu/pexpert/**/*.h", "xnu/pexpert/**/*.defs"]),
     root = "xnu/pexpert",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_iokit",
     headers = glob(["xnu/iokit/**/*.h", "xnu/iokit/**/*.defs"]),
     root = "xnu/iokit",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_external_headers",
     headers = glob(["xnu/EXTERNAL_HEADERS/**/*.h", "xnu/EXTERNAL_HEADERS/**/*.defs"]),
     root = "xnu/EXTERNAL_HEADERS",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "xnu_root",
     headers = glob(["xnu/**/*.h", "xnu/**/*.defs"]),
     root = "xnu",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "dt_internal_include",
     headers = glob(["internal-include/**/*.h", "internal-include/**/*.defs"]),
     root = "internal-include",
+    visibility = ["PUBLIC"],
 )
 
 cc_header_root(
     name = "dt_include",
     headers = glob(["include/**/*.h", "include/**/*.defs"]),
     root = "include",
-    # PUBLIC because the daemon binds this contract: linux/server runs bindgen over
-    # hooks.h to generate the 36-field vtable rather than transcribing it.
     visibility = ["PUBLIC"],
 )
 
@@ -248,6 +132,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -265,6 +150,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -279,6 +165,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -293,6 +180,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -310,6 +198,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -327,6 +216,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -344,6 +234,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -362,6 +253,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -376,6 +268,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -393,6 +286,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -410,6 +304,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -427,6 +322,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -444,6 +340,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -462,6 +359,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -479,6 +377,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -493,6 +392,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -510,6 +410,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -527,6 +428,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -544,6 +446,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -561,6 +464,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -578,6 +482,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -592,6 +497,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -606,6 +512,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -620,6 +527,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -637,6 +545,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -654,6 +563,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -671,6 +581,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -685,6 +596,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -702,6 +614,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -719,6 +632,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -733,6 +647,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -750,6 +665,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -764,6 +680,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -781,6 +698,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 mig_gen(
@@ -795,6 +713,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [":dt_env"],
+    visibility = ["PUBLIC"],
 )
 
 cc_objects(
@@ -810,7 +729,6 @@ cc_objects(
         "src/misc.c",
         "src/processor.c",
         "src/psynch.c",
-        "src/semaphore.c",
         "src/stubs.c",
         "src/task.c",
         "src/thread.c",
@@ -982,7 +900,7 @@ cc_objects(
 cc_objects(
     name = "dt_pthread_objects",
     srcs = ["pthread/kern_synch.c"],
-    headers = glob(["pthread/*.h", "pthread/**/*.h"]),
+    headers = glob(["pthread/**/*.h"]),
     include_root = "pthread",
     deps = [
         ":dt_env",
@@ -1032,7 +950,7 @@ cc_static_lib(
         ":dt_mig_objects",
         ":dt_pthread_objects",
     ],
-    exported_headers = glob(["include/*.h", "include/**/*.h"]),
+    exported_headers = glob(["include/**/*.h"]),
     include_root = "include",
     deps = [
         "//src/libsimple:libsimple_darlingserver",
