@@ -163,6 +163,30 @@ it is still over an hour.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
 
+**OPEN, MEASURED BUT NOT EXPLAINED: 117 pin derivations re-run on a change that cannot reach
+them.** Two consecutive minimal-endpoint gates, differing only by the duct-tape Rust ports and
+some `linux/server` targets:
+
+| | builders that RAN | distinct pin drvs that RAN |
+|---|---|---|
+| gate3 (semaphore only) | 1,875 | 202 |
+| gate4 (+ condvar, timer) | 572 | 117 |
+
+The **572 against 1,875** is the cascade cut working: most downstream work was reused. But
+`buck2-pin-JavaScriptCore` re-ran in both, and its inputs include NOTHING from duct-tape or
+`linux/server` (checked with `nix-store --query --references`: no match for duct/darlingserver/
+server, and the same 185 stage-tree inputs on both sides).
+
+**Not yet explained, and the obvious method is confounded.** Comparing the two pin `.drv`s
+directly does not work: gate3's records input DERIVATIONS while gate4's records realised
+OUTPUTS, because Nix resolves a CA derivation's inputs once they exist. So a `nix-diff` between
+them reads as hundreds of added sources that are really the same inputs in a different form.
+Moved drv paths are not evidence either, by the standing rule.
+
+**The clean test is the controlled one, and it needs an idle store:** touch one file that
+cannot affect JSC, then `nix build --dry-run` the minimal endpoint and count the pins it says
+it would build. Not run yet because a gate was building at the time and would have contended.
+
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
 
