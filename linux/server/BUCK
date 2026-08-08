@@ -120,6 +120,23 @@ bindgen_gen(
         "--allowlist-type=thread_array_t",
         "--allowlist-type=vm_size_t",
         "--allowlist-type=vm_offset_t",
+        # init.c (#71). It creates zones sized by these structs, and an OPAQUE binding carries
+        # the size, which is all zone_create needs; none of their fields are touched.
+        "--allowlist-type=host",
+        "--allowlist-type=ipc_space",
+        "--allowlist-type=ipc_port",
+        "--allowlist-type=ipc_pset",
+        "--allowlist-type=ipc_importance_task",
+        "--allowlist-type=ipc_importance_inherit",
+        "--allowlist-type=semaphore",
+        "--allowlist-type=zone_t",
+        "--allowlist-type=zone_create_flags_t",
+        "--allowlist-type=dtape_rs_task_id_token",
+        "--allowlist-function=zone_create",
+        "--allowlist-function=lck_mtx_init",
+        "--allowlist-function=lck_spin_init",
+        "--allowlist-var=ZC_.*",
+        "--allowlist-var=IOT_.*",
         "--allowlist-type=UNDServerRef",
         # processor.c (#71). It fills processor_basic_info and processor_cpu_load_info by
         # field, and DEFINES pset0 and processor_array, so processor and processor_set have to
@@ -173,7 +190,6 @@ bindgen_gen(
         "--constified-enum=dtape_rs_host_consts",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
-        "--opaque-type=host",
         "--opaque-type=task",
         "--opaque-type=thread",
         "--opaque-type=ipc_.*",

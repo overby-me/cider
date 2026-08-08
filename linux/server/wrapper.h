@@ -61,8 +61,27 @@
 #include <kern/processor.h>
 #include <kern/machine.h>
 #include <kern/simple_lock.h>
+/* init.c: the zones it creates, the locks it initialises, and the host it reaches into. */
+#include <ipc/ipc_importance.h>
+#include <ipc/ipc_init.h>
+#include <ipc/ipc_pset.h>
+#include <ipc/ipc_space.h>
+#include <kern/ipc_host.h>
+#include <kern/sync_sema.h>
+#include <kern/zalloc.h>
 /* the macro-only operations exported as symbols for the port */
 #include <darlingserver/duct-tape/rs_shims.h>
+
+/* struct task_id_token is defined in XNU osfmk/kern/task_ident.c, NOT in a header, and init.c
+ * redefines it locally purely to get its SIZE for zone_create. The port needs the same size, so
+ * the definition lives here where the C compiler computes it rather than as a number written
+ * into Rust. Same three fields, same order, as both XNU and init.c have them.
+ */
+struct dtape_rs_task_id_token {
+	struct proc_ident ident;
+	ipc_port_t        port;
+	os_refcnt_t       tidt_refs;
+};
 
 /* THE COUNT AND CPU MACROS, RE-EXPRESSED AS ENUMERATORS.
  *
@@ -100,4 +119,7 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_POLICY_TIMESHARE_BASE_COUNT = POLICY_TIMESHARE_BASE_COUNT,
 	DTAPE_RS_POLICY_FIFO_BASE_COUNT = POLICY_FIFO_BASE_COUNT,
 	DTAPE_RS_POLICY_RR_BASE_COUNT = POLICY_RR_BASE_COUNT,
+	/* init.c: sizes for zone_create, and the one macro-valued size among them. */
+	DTAPE_RS_SIZEOF_TASK_ID_TOKEN = sizeof(struct dtape_rs_task_id_token),
+	DTAPE_RS_IKM_SAVED_KMSG_SIZE = IKM_SAVED_KMSG_SIZE,
 };
