@@ -130,6 +130,16 @@ def ffi_surface(name):
 BUCK_SERVER = os.path.join(ROOT, "linux/server/BUCK")
 
 
+# MEASURED COST OF REOPENING, so the OPAQUE column is read as a price and not a veto. Twice
+# now I treated "it needs an opaque type reopened" as a blocker without measuring it, and both
+# times the real number was small:
+#   queue_.*, _?lck_.*, priority_queue.*  (what timer.c needed):  +9 structs, +7 KB
+#   ipc_.*                                (what debug.c needs):  +21 structs, +27 KB
+# Neither is "most of osfmk", which is what the first refusal claimed. The bindings are ~49 KB
+# with the timer set reopened, so ipc roughly doubles them; that is a real cost to weigh, not
+# a reason to stop.
+
+
 def opaque_patterns():
     """The XNU types the shared bindings deliberately keep OPAQUE.
 
