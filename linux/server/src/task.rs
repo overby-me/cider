@@ -6,18 +6,16 @@
 
 use crate::bindings::{dtape_semaphore_t, dtape_task_t};
 
-extern "C" {
-    // Record the guest's dyld all-image-info (address + length) on the task, so later
-    // introspection (e.g. a debugger, or task_info(TASK_DYLD_INFO)) can find the guest's
-    // loaded-image list. duct-tape/src/task.c:198.
-    fn dtape_task_set_dyld_info(task: *mut dtape_task_t, address: u64, length: u64);
-
-    // ptrace sigexc: enable/disable Mach-exception-based signal delivery on a task (a debugger
-    // uses PT_SIGEXC so signals arrive as Mach exceptions it can intercept), then try to resume
-    // the task if it was stopped waiting for the debugger. duct-tape.h:89-90.
-    fn dtape_task_set_sigexc_enabled(task: *mut dtape_task_t, enabled: bool);
-    fn dtape_task_try_resume(task: *mut dtape_task_t) -> bool;
-}
+// These were `extern "C"` declarations resolving back into this crate through the linker;
+// imported directly since duct-tape became Rust (#71, #75).
+//
+//   dtape_task_set_dyld_info       records the guest dyld all-image-info (address and length)
+//                                  on the task, so later introspection (a debugger, or
+//                                  task_info(TASK_DYLD_INFO)) can find the loaded-image list.
+//   dtape_task_set_sigexc_enabled  ptrace sigexc: a debugger uses PT_SIGEXC so signals arrive
+//                                  as Mach exceptions it can intercept.
+//   dtape_task_try_resume          resume the task if it was stopped waiting for the debugger.
+use crate::dtape_task::{dtape_task_set_dyld_info, dtape_task_set_sigexc_enabled, dtape_task_try_resume};
 
 /// Enable or disable sigexc (Mach-exception signal delivery) on `task` -- PT_SIGEXC.
 pub unsafe fn set_sigexc_enabled(task: *mut dtape_task_t, enabled: bool) {

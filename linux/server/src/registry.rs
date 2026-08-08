@@ -9,8 +9,31 @@ use crate::sched::{self, Microthread, TaskCtx};
 use std::collections::HashMap;
 use std::os::raw::c_void;
 
-extern "C" {
-    fn dtape_task_create(parent: *mut dtape_task_t, nsid: u32, context: *mut c_void, arch: u32) -> *mut dtape_task_t;
+// Was an `extern "C"` declaration resolving back into this crate through the linker; imported
+// directly since duct-tape became Rust (#71, #75).
+use crate::dtape_task::dtape_task_create;
+
+/// The architecture arrives from the RPC wire as a plain u32; dtape_task_create takes the
+/// bindgen ENUM.
+///
+/// THIS CONVERSION WAS ALREADY HAPPENING, just invisibly. The extern declaration removed above
+/// said `arch: u32` while the definition has always taken dserver_rpc_architecture_t, and
+/// rustc does not check a declaration against a definition, so the raw wire value was handed
+/// straight to an enum parameter. An out-of-range value therefore became an invalid
+/// discriminant, which is undefined behaviour rather than a wrong answer. A guest is what
+/// supplies it.
+///
+/// Matched explicitly instead, with anything unrecognised mapping to the invalid variant that
+/// already exists for the purpose.
+fn arch_from_wire(arch: u32) -> crate::bindings::dserver_rpc_architecture_t {
+    use crate::bindings::dserver_rpc_architecture_t as A;
+    match arch {
+        x if x == A::dserver_rpc_architecture_i386 as u32 => A::dserver_rpc_architecture_i386,
+        x if x == A::dserver_rpc_architecture_x86_64 as u32 => A::dserver_rpc_architecture_x86_64,
+        x if x == A::dserver_rpc_architecture_arm32 as u32 => A::dserver_rpc_architecture_arm32,
+        x if x == A::dserver_rpc_architecture_arm64 as u32 => A::dserver_rpc_architecture_arm64,
+        _ => A::dserver_rpc_architecture_invalid,
+    }
 }
 
 pub struct Registry {
@@ -73,7 +96,7 @@ impl Registry {
             })
             .and_then(|pnsid| self.tasks.get(&pnsid).copied())
             .unwrap_or(std::ptr::null_mut());
-        let t = dtape_task_create(parent, pid, ctx_ptr, arch);
+        let t = dtape_task_create(parent, pid, ctx_ptr, arch_from_wire(arch));
         assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
         self.tasks.insert(pid, t);
         self.ctxs.insert(pid, ctx);

@@ -20,9 +20,9 @@
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 
-extern "C" {
-    fn dtape_stub_log(function_name: *const c_char, safety: c_int, subsection: *const c_char);
-}
+// Was an `extern "C"` declaration resolving back into this crate through the linker; imported
+// directly since duct-tape became Rust (#71, #75).
+use crate::stubs::dtape_stub_log;
 
 /// Call through to duct-tape's own stub logger. Cold path by construction, so the two small
 /// allocations for NUL termination are not worth avoiding.

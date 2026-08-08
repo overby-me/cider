@@ -17,17 +17,14 @@
 //! `Call::<name>::processCall` passes; see the handler wiring in `handler.rs`. See
 //! PLAN.md (the psynch bucket).
 
-extern "C" {
-    fn dtape_psynch_cvbroad(cv: u64, cvlsgen: u64, cvudgen: u64, flags: u32, mutex: u64, mugen: u64, tid: u64, retval: *mut u32) -> i32;
-    fn dtape_psynch_cvclrprepost(cv: u64, cvgen: u32, cvugen: u32, cvsgen: u32, prepocnt: u32, preposeq: u32, flags: u32, retval: *mut u32) -> i32;
-    fn dtape_psynch_cvsignal(cv: u64, cvlsgen: u64, cvugen: u32, threadport: i32, mutex: u64, mugen: u64, tid: u64, flags: u32, retval: *mut u32) -> i32;
-    fn dtape_psynch_cvwait(cv: u64, cvlsgen: u64, cvugen: u32, mutex: u64, mugen: u64, flags: u32, sec: i64, nsec: u32, retval: *mut u32) -> i32;
-    fn dtape_psynch_mutexdrop(mutex: u64, mgen: u32, ugen: u32, tid: u64, flags: u32, retval: *mut u32) -> i32;
-    fn dtape_psynch_mutexwait(mutex: u64, mgen: u32, ugen: u32, tid: u64, flags: u32, retval: *mut u32) -> i32;
-    fn dtape_psynch_rw_rdlock(rwlock: u64, lgenval: u32, ugenval: u32, rw_wc: u32, flags: i32, retval: *mut u32) -> i32;
-    fn dtape_psynch_rw_unlock(rwlock: u64, lgenval: u32, ugenval: u32, rw_wc: u32, flags: i32, retval: *mut u32) -> i32;
-    fn dtape_psynch_rw_wrlock(rwlock: u64, lgenval: u32, ugenval: u32, rw_wc: u32, flags: i32, retval: *mut u32) -> i32;
-}
+// Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
+// now (#75). All nine are the thin forwarding wrappers in dtape_psynch, which supply
+// current_proc() and pass the rest through to the pthread kext.
+use crate::dtape_psynch::{
+    dtape_psynch_cvbroad, dtape_psynch_cvclrprepost, dtape_psynch_cvsignal, dtape_psynch_cvwait,
+    dtape_psynch_mutexdrop, dtape_psynch_mutexwait, dtape_psynch_rw_rdlock,
+    dtape_psynch_rw_unlock, dtape_psynch_rw_wrlock,
+};
 
 /// A pthread cond broadcast: wake every waiter on `cv`.
 pub unsafe fn cvbroad(cv: u64, cvlsgen: u64, cvudgen: u64, flags: u32, mutex: u64, mugen: u64, tid: u64, retval: *mut u32) -> i32 {
