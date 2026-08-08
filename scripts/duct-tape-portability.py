@@ -55,12 +55,22 @@ DEF_FN = re.compile(r"^#define ([A-Za-z_][A-Za-z0-9_]*)\(")
 DEF_OB = re.compile(r"^#define ([A-Za-z_][A-Za-z0-9_]*)[ \t]")
 
 
+FLAGS_BZL = os.path.join(ROOT, "buck/generated/duct_tape_flags.bzl")
+
+
 def buck_list(name):
-    """Pull a flag list out of the BUCK file rather than duplicating it here."""
-    text = open(os.path.join(DT, "BUCK")).read()
+    """Pull a flag list from the generated flags file rather than duplicating it here.
+
+    These lived inline in the duct-tape BUCK file until the Rust port needed the identical
+    set for bindgen; a BUCK file cannot be load()ed, so gen-duct-tape-buck.py now writes
+    them to buck/generated/duct_tape_flags.bzl and both BUCK files load that.
+    """
+    if not os.path.exists(FLAGS_BZL):
+        sys.exit(f"{FLAGS_BZL} is missing; run scripts/gen-duct-tape-buck.py")
+    text = open(FLAGS_BZL).read()
     m = re.search(rf"^{name} = \[(.*?)^\]", text, re.M | re.S)
     if not m:
-        sys.exit(f"could not find {name} in the duct-tape BUCK file")
+        sys.exit(f"could not find {name} in {FLAGS_BZL}")
     return re.findall(r'"([^"]+)"', m.group(1))
 
 
@@ -125,19 +135,36 @@ def main():
         print(f"  object-like macros ({len(r['ob_macros'])}): {', '.join(r['ob_macros']) or 'none'}")
         return
 
+    # Already ported files still EXIST on disk -- duct-tape is a submodule, so a port removes
+    # the file from the BUILD (PORTED_TO_RUST in gen-duct-tape-buck.py) rather than deleting
+    # upstream's copy. Read that list rather than keeping a second one here, or this tool
+    # goes on recommending a file that is already Rust.
+    ported = set()
+    gen = os.path.join(ROOT, "scripts/gen-duct-tape-buck.py")
+    if os.path.exists(gen):
+        m = re.search(r"^PORTED_TO_RUST = \[(.*?)^\]", open(gen).read(), re.M | re.S)
+        if m:
+            ported = {os.path.basename(p) for p in re.findall(r'"([^"]+)"', m.group(1))}
+
     rows = []
     for f in files:
         r = measure(os.path.join(srcdir, f), cargs)
+        r["ported"] = f in ported
         rows.append((f, r))
-    # cheapest first: variadics are unfixable in Rust, so they dominate the sort
-    rows.sort(key=lambda kv: (len(kv[1]["variadic"]) * 100
+    # cheapest first, ported files last: variadics are unfixable in Rust, so they dominate
+    rows.sort(key=lambda kv: (kv[1]["ported"],
+                              len(kv[1]["variadic"]) * 100
                               + len(kv[1]["fn_macros"]) + len(kv[1]["ob_macros"])))
 
     print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>10}{'FNMACRO':>9}{'OBJMACRO':>10}  blockers")
     for f, r in rows:
         top = ", ".join(r["fn_macros"][:4])
+        note = "PORTED (Rust)" if r["ported"] else top
         print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>10}"
-              f"{len(r['fn_macros']):>9}{len(r['ob_macros']):>10}  {top}")
+              f"{len(r['fn_macros']):>9}{len(r['ob_macros']):>10}  {note}")
+    done = sum(1 for _, r in rows if r["ported"])
+    print(f"\n{done} of {len(rows)} ported; next by this ranking: "
+          f"{next((f for f, r in rows if not r['ported']), 'none left')}")
 
 
 if __name__ == "__main__":
