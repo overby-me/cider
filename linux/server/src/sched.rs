@@ -18,41 +18,45 @@ use std::mem::MaybeUninit;
 use std::os::raw::{c_int, c_void};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-// ---- FFI ----
-extern "C" {
-    fn dtape_init(hooks: *const dtape_hooks_t);
-    // The SECOND init phase (init.c:117). dtape_init (phase 1) only sets up processor/
-    // memory/timer/task; the rest -- thread_call_initialize, ipc_thread_call_init,
-    // clock_service_create, thread_deallocate_daemon_init, ux_handler_setup, AND
-    // dtape_psynch_init -- lives here and MUST run on a kernel microthread (it needs a
-    // current-thread context and spawns kernel daemon threads). The C++ daemon does exactly
-    // `Thread::kernelSync(dtape_init_in_thread)` after dtape_init (server.cpp:533). Omitting
-    // it left psynch's pthread_list_mlock NULL, so the first contended pthread wait crashed.
-    fn dtape_init_in_thread();
-    fn dtape_task_create(parent: *mut dtape_task_t, nsid: u32, context: *mut c_void, arch: u32) -> *mut dtape_task_t;
-    // Bump a task's refcount, so a task_lookup(retain=true) result stays alive for its caller
-    // (paired with a dtape_task_release by the caller). duct-tape.h:85.
-    fn dtape_task_retain(task: *mut dtape_task_t);
-    fn dtape_thread_create(task: *mut dtape_task_t, nsid: u64, context: *mut c_void) -> *mut dtape_thread_t;
-    fn dtape_thread_entering(thread: *mut dtape_thread_t);
-    fn dtape_thread_exiting(thread: *mut dtape_thread_t);
-    // Resolve a guest Mach thread port to its dtape_thread, and recover the void* context we
-    // handed dtape_thread_create (our *mut Microthread). Backs thread_for_port. duct-tape.h:71.
-    fn dtape_thread_for_port(thread_port: u32) -> *mut dtape_thread_t;
-    fn dtape_thread_context(thread: *mut dtape_thread_t) -> *mut c_void;
-    // Bump a thread's refcount, so a thread_lookup(retain=true) result stays alive for its
-    // caller (paired with the caller's dtape_thread_release). duct-tape.h:77.
-    fn dtape_thread_retain(thread: *mut dtape_thread_t);
+// ---- duct-tape, which is Rust now (#71), so these are plain imports rather than the
+// ---- `extern "C"` declarations they used to be (#75). The linker matched those by name and
+// ---- rustc never compared them against the definitions, so each was free to disagree.
+//
+//   dtape_init_in_thread   the SECOND init phase (init.c:117). dtape_init (phase 1) only sets
+//                          up processor, memory, timer and task; the rest, thread_call_initialize,
+//                          ipc_thread_call_init, clock_service_create,
+//                          thread_deallocate_daemon_init, ux_handler_setup AND dtape_psynch_init,
+//                          lives here and MUST run on a kernel microthread (it needs a
+//                          current-thread context and spawns kernel daemon threads). The C++
+//                          daemon did Thread::kernelSync(dtape_init_in_thread) after dtape_init
+//                          (server.cpp:533). Omitting it left psynch pthread_list_mlock NULL, so
+//                          the first contended pthread wait crashed. psynch_demo asserts on that
+//                          now (#77).
+//   dtape_task_retain      bump a task refcount so a task_lookup(retain=true) result stays alive
+//                          for its caller, paired with a dtape_task_release. duct-tape.h:85.
+//   dtape_thread_for_port  resolve a guest Mach thread port to its dtape_thread, and recover the
+//                          void* context handed to dtape_thread_create (our *mut Microthread).
+//                          Backs thread_for_port. duct-tape.h:71.
+//   dtape_thread_retain    same as the task one, duct-tape.h:77.
+//   dtape_timer_fired      invoked when a timer armed via the timer_arm hook expires; wakes any
+//                          XNU threads whose deadline has passed. May itself briefly wait, so it
+//                          runs on a kernel microthread.
+use crate::dtape_task::{dtape_task_create, dtape_task_retain};
+use crate::dtape_thread::{
+    dtape_thread_context, dtape_thread_create, dtape_thread_entering, dtape_thread_exiting,
+    dtape_thread_for_port, dtape_thread_retain,
+};
+use crate::init::{dtape_init, dtape_init_in_thread};
+use crate::timer::dtape_timer_fired;
 
+// ---- FFI. What is left here is genuinely foreign: the fast context switch helpers and
+// ---- libsimple, both C, neither part of duct-tape.
+extern "C" {
     fn dserver_fast_getcontext(ucp: *mut libc::ucontext_t) -> c_int;
     fn dserver_fast_setcontext(ucp: *const libc::ucontext_t);
     fn dserver_fast_makecontext(ucp: *mut libc::ucontext_t, func: extern "C" fn(), argc: c_int, ...);
 
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
-
-    // Invoked when a timer armed via the timer_arm hook expires; wakes any XNU threads
-    // whose deadline has passed. May itself briefly wait, so it runs on a kernel microthread.
-    fn dtape_timer_fired();
 }
 
 const KERNEL_NSID_BASE: u64 = 1 << 22; // DTAPE_KERNEL_THREAD_ID_THRESHOLD
@@ -1043,7 +1047,14 @@ fn make_hooks() -> dtape_hooks_t {
 pub unsafe fn init() -> *mut dtape_task_t {
     let hooks = Box::leak(Box::new(make_hooks()));
     dtape_init(hooks);
-    let kt = dtape_task_create(std::ptr::null_mut(), 0, std::ptr::null_mut(), 0);
+    // The kernel task has no architecture. This was a bare 0 while the declaration claimed the
+    // parameter was a u32; it is the bindgen enum, and the zero variant is named, so say so.
+    let kt = dtape_task_create(
+        std::ptr::null_mut(),
+        0,
+        std::ptr::null_mut(),
+        crate::bindings::dserver_rpc_architecture_t::dserver_rpc_architecture_invalid,
+    );
     hooks::KERNEL_TASK = kt;
     // Phase 2 (init.c:117) on a kernel microthread -- C++'s Thread::kernelSync(
     // dtape_init_in_thread). Sets up thread_call/ipc/clock/psynch; spawns kernel daemon
