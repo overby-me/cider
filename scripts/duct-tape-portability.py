@@ -310,7 +310,10 @@ def keep_only_types(path, args, candidates):
         f.write("\n".join(body) + "\n")
         probe = f.name
     try:
-        r = subprocess.run(["clang", "-fsyntax-only", "-x", "c", *args, probe],
+        # -ferror-limit=0: clang stops at 20 errors by default, and every typedef of a
+        # non-type is an error, so a file with more than 20 of them had the rest silently
+        # KEPT as types. init.c is how that showed up: zone_create, a function, survived.
+        r = subprocess.run(["clang", "-fsyntax-only", "-ferror-limit=0", "-x", "c", *args, probe],
                            capture_output=True, text=True)
         not_types = set(re.findall(r"unknown type name '([A-Za-z_][A-Za-z0-9_]*)'", r.stderr))
     except OSError:
