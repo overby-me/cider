@@ -32,10 +32,12 @@ Usage:
 """
 
 import argparse
+import glob
 import os
 import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OPAQUE = []
@@ -75,18 +77,68 @@ def buck_list(name):
     return re.findall(r'"([^"]+)"', m.group(1))
 
 
+def generated_include_roots():
+    """The GENERATED header trees, discovered under buck-out.
+
+    WITHOUT THESE THE PREPROCESSOR FAILS AND THE TOOL REPORTS THE PARTIAL RESULT AS IF IT WERE
+    THE ANSWER. Measured: debug.c and traps.c both died on darlingserver/rpc.internal.h and
+    host.c on mach/mach_host.h, and every one of them still produced thousands of macros for
+    the columns to be computed from. That is how traps.c came to rank FIRST with zero blockers
+    in every run: its one blocker, DSERVER_DTAPE_DEFS, is defined in rpc.internal.h, the very
+    header that was not found.
+
+    mig FIRST, matching the include order linux/server/BUCK documents: mach/task.h exists both
+    as a MIG output and as a hand-written XNU header, and the generated one is the right one.
+    """
+    roots = []
+    roots += sorted(glob.glob(os.path.join(
+        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/duct-tape/__mig_*__/mig_*__gen")))
+    roots += sorted(glob.glob(os.path.join(
+        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/__dserver_rpc__/*gen_include")))
+    # thread.c reaches src/startup for rtsig.h, which linux/server/BUCK also lists.
+    roots += sorted(glob.glob(os.path.join(
+        ROOT, "buck-out/v2/art/root/*/src/startup/__rtsig_header__/*")))
+    return [r for r in roots if os.path.isdir(r)]
+
+
 def clang_args():
-    incs = [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
+    incs = [f"-I{r}" for r in generated_include_roots()]
+    incs += [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
     incs.append(f"-I{os.path.join(ROOT, 'src/libsimple/include')}")
     incs.append(f"-I{os.path.join(ROOT, 'src/external/darlingserver/include')}")
     return buck_list("DUCT_TAPE_DEFINES") + buck_list("DUCT_TAPE_FLAGS") + incs
 
 
+def preprocesses_cleanly(path, args):
+    """Did the preprocessor actually get through this file, or is the measurement partial?
+
+    A check the tool did without for far too long. clang -E keeps going after a missing header
+    and prints what it had, so a truncated run is indistinguishable from a clean one in the
+    OUTPUT; the only signal is the exit status, which nothing was reading.
+    """
+    r = subprocess.run(["clang", "-E", "-dM", "-x", "c", *args, path],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        return None
+    for line in r.stderr.splitlines():
+        if "fatal error" in line:
+            return line.strip().split("fatal error:")[-1].strip()
+    return "preprocessing failed"
+
+
 def macros_visible_to(path, args):
-    """Every macro defined at the end of preprocessing THIS file, split by kind."""
+    """Every macro defined at the end of preprocessing THIS file, split by kind.
+
+    Object-like macros are split again, into plain values and ones that EMIT CODE. bindgen
+    binds a plain integer define, so those are not blockers; a macro whose body contains a
+    brace or a semicolon expands to declarations or statements and bindgen cannot help at all.
+    That distinction is what traps.c turns on: its single object-like macro,
+    DSERVER_DTAPE_DEFS, expands to about 29 function DEFINITIONS, and while it was lumped in
+    with the constants the file read as blocker-free in every run.
+    """
     p = subprocess.run(["clang", "-E", "-dM", "-x", "c", *args, path],
                        capture_output=True, text=True)
-    fn, ob = set(), set()
+    fn, ob, code = set(), set(), set()
     for line in p.stdout.splitlines():
         m = DEF_FN.match(line)
         if m:
@@ -95,7 +147,10 @@ def macros_visible_to(path, args):
         m = DEF_OB.match(line)
         if m:
             ob.add(m.group(1))
-    return fn, ob
+            body = line.split(" ", 2)[2] if line.count(" ") >= 2 else ""
+            if "{" in body or ";" in body:
+                code.add(m.group(1))
+    return fn, ob, code
 
 
 # Where buck2 leaves the compiled glue objects. Present only after a buck2 build; the FFI
@@ -187,6 +242,43 @@ def own_code_after_expansion(path, args):
     return "\n".join(own)
 
 
+def keep_only_types(path, args, candidates):
+    """Which of these identifiers are actually TYPES, asked of the compiler.
+
+    THE OPAQUE PATTERNS ARE REGEXES OVER NAMES, so they match FUNCTIONS just as happily as
+    types. `ipc_.*` was counting ipc_init, ipc_entry_lookup, ipc_mqueue_copyin,
+    ipc_kmsg_queue_next and ipc_mqueue_set_gather_member_names as opaque TYPES a port would
+    have to reopen. Every one of those is a function, which a port simply CALLS. The effect was
+    not neutral: it inflated the apparent cost of init.c (23) and debug.c (13), the two files
+    being deferred on exactly that number.
+
+    Short of parsing C there is no way to tell from the text, so this asks clang. A probe
+    translation unit includes the file itself, for its exact include context, and then tries
+    `typedef <name> probe_N;` for each candidate. A non-type produces "unknown type name",
+    which is read back off stderr. One clang run per file.
+    """
+    if not candidates:
+        return []
+    ordered = sorted(candidates)
+    body = ['#include "%s"' % path]
+    body += ["typedef %s dtape_probe_%d;" % (c, i) for i, c in enumerate(ordered)]
+    with tempfile.NamedTemporaryFile("w", suffix=".c", delete=False) as f:
+        f.write("\n".join(body) + "\n")
+        probe = f.name
+    try:
+        r = subprocess.run(["clang", "-fsyntax-only", "-x", "c", *args, probe],
+                           capture_output=True, text=True)
+        not_types = set(re.findall(r"unknown type name '([A-Za-z_][A-Za-z0-9_]*)'", r.stderr))
+    except OSError:
+        return ordered
+    finally:
+        try:
+            os.unlink(probe)
+        except OSError:
+            pass
+    return [c for c in ordered if c not in not_types]
+
+
 def opaque_types_touched(expanded, pats):
     """Distinct opaque XNU type names the file's own EXPANDED code names.
 
@@ -207,7 +299,8 @@ def opaque_types_touched(expanded, pats):
 
 def measure(path, args):
     src = open(path).read()
-    fn, ob = macros_visible_to(path, args)
+    dirty = preprocesses_cleanly(path, args)
+    fn, ob, code_ob = macros_visible_to(path, args)
     calls = set(CALL.findall(src))
     words = set(WORD.findall(src))
     fn_used = sorted(calls & fn)
@@ -215,12 +308,15 @@ def measure(path, args):
     ob_used = sorted((words & ob) - fn)
     return {
         "lines": src.count("\n"),
+        "dirty": dirty,
+        "code_macros": sorted(words & code_ob),
         "variadic": sorted(m.group(0).split("(")[0].split()[-1]
                            for m in VARIADIC_DEF.finditer(src)),
         "fn_macros": fn_used,
         "ob_macros": ob_used,
         "ffi": ffi_surface(os.path.basename(path)),
-        "opaque": opaque_types_touched(own_code_after_expansion(path, args), OPAQUE),
+        "opaque": keep_only_types(
+            path, args, opaque_types_touched(own_code_after_expansion(path, args), OPAQUE)),
     }
 
 
@@ -281,6 +377,16 @@ def main():
     OPAQUE = opaque_patterns()
     srcdir = os.path.join(DT, "src")
     files = sorted(f for f in os.listdir(srcdir) if f.endswith(".c"))
+    # The macro shims are infrastructure this port ADDS, not upstream glue it has to move, so
+    # they do not belong in the ranking or in the "N of 16" count. Read from the generator,
+    # same rule as PORTED_TO_RUST.
+    shim_names = set()
+    _gen = os.path.join(ROOT, "scripts/gen-duct-tape-buck.py")
+    if os.path.exists(_gen):
+        _m = re.search(r"^RUST_SHIM_SOURCES = \[(.*?)^\]", open(_gen).read(), re.M | re.S)
+        if _m:
+            shim_names = {os.path.basename(x) for x in re.findall(r'"([^"]+)"', _m.group(1))}
+    files = [f for f in files if f not in shim_names]
     if not files:
         sys.exit("no glue sources found; has the port finished, or is the path wrong?")
 
@@ -329,7 +435,11 @@ def main():
         r = measure(os.path.join(srcdir, f), cargs)
         r["ported"] = f in ported
         # The raw counts stay as measured; what changes is which of them still BLOCK.
-        r["fn_blockers"] = [m for m in r["fn_macros"] if m not in have]
+        # A code-emitting object-like macro is as much a blocker as a function-like one, and
+        # for traps.c it is the ONLY one: DSERVER_DTAPE_DEFS expands to about 29 function
+        # definitions, so porting the file means writing a Rust emitter for that table.
+        r["fn_blockers"] = ([m for m in r["fn_macros"] if m not in have]
+                            + [m for m in r["code_macros"] if m not in have])
         r["solved"] = [m for m in r["fn_macros"] if m in have]
         rows.append((f, r))
     # cheapest first, ported files last: variadics are unfixable in Rust, so they dominate
@@ -362,6 +472,10 @@ def main():
             more = f" +{len(novel) - 4}" if len(novel) > 4 else ""
             top = f"{top} | opaque: {shown}{more}" if top else f"opaque: {shown}{more}"
         note = "PORTED (Rust)" if r["ported"] else top
+        if r["dirty"]:
+            # LOUD, and it sorts nothing: a file whose preprocess died has no measurement at
+            # all, and every column for it is whatever clang had got to before it stopped.
+            note = f"MEASUREMENT INVALID: {r['dirty']}"
         ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
         co = str(r["ffi"]["calls"]) if r["ffi"] else "-"
         print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>9}"
@@ -370,6 +484,13 @@ def main():
     if not any(r["ffi"] for _, r in rows):
         print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
               "/duct-tape:dt_objects)")
+    bad = [f for f, r in rows if r["dirty"]]
+    if bad:
+        print(f"\n{len(bad)} file(s) DID NOT PREPROCESS, so their columns above mean nothing: "
+              f"{', '.join(bad)}")
+        print("  clang -E prints what it had and exits non-zero, so a truncated run looks "
+              "exactly like a clean one\n  unless the exit status is read. Fix the include "
+              "roots rather than reading the numbers.")
     done = sum(1 for _, r in rows if r["ported"])
     todo = [(f, r) for f, r in rows if not r["ported"]]
     print(f"\n{done} of {len(rows)} ported.")
