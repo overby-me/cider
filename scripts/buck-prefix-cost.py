@@ -61,28 +61,30 @@ MIN_COVERAGE = 0.50
 
 
 def candidate_graphs():
-    """Every built graph dump with its action count, most actions first.
+    """Every built graph dump with its SIZE, largest first.
 
     ALL FOUR graph attributes -- the single-target demo, -all, -min and -min-skeleton --
     build a derivation NAMED darling-buck2-graph, so nothing in the store path says which
-    is which and a glob matches all of them. Action count is what tells them apart:
-    roughly 27,600 is -all, 17,550 is -min, and anything well below that is a demo, a
-    skeleton, or a dump from an older target list.
+    is which and a glob matches all of them.
+
+    SIZE, not action count, and that is a deliberate downgrade. The first version of this
+    counted actions, which meant reading every candidate end to end: 27 dumps, some of them
+    1.6 GB, about 8 GB of I/O to print a 12 line list, while a build was running on the same
+    box. Size is a stat, it is free, and it separates them just as well in practice:
+
+        ~455 MB   -all           (about 27,600 actions)
+        ~294 MB   -min           (17,552)
+        smaller   a demo, a skeleton, or a dump from an older target list
+
+    The listing only has to be good enough to choose from. What actually protects the numbers
+    is the coverage assertion below, which runs on whichever graph gets picked.
     """
     out = []
     for p in glob.glob("/nix/store/*-darling-buck2-graph/graph.json"):
-        n = 0
         try:
-            with open(p, "rb") as f:
-                # Chunked: these are up to 1.6 GB and there are dozens of them.
-                while True:
-                    chunk = f.read(8 << 20)
-                    if not chunk:
-                        break
-                    n += chunk.count(b'"identity"')
+            out.append((os.path.getsize(p), p))
         except OSError:
             continue
-        out.append((n, p))
     out.sort(reverse=True)
     return out
 
@@ -99,9 +101,10 @@ def refuse_to_guess():
     """
     print("REFUSING TO GUESS which graph to read.\n")
     print("Every graph attribute emits the same derivation NAME, so the store cannot tell")
-    print("them apart, and their mtimes are all the epoch. Pick the one you mean:\n")
+    print("them apart, and their mtimes are all the epoch. Pick the one you mean")
+    print("(about 455 MB is -all, 294 MB is -min, smaller is a demo or a skeleton):\n")
     for n, p in candidate_graphs()[:12]:
-        print(f"  {n:>7} actions  {p}")
+        print(f"  {n / 1e6:>7.0f} MB  {p}")
     sys.exit("\npass --graph <path>, or build the one you want:\n"
              "  nix build .#darling-buck2-graph-min --print-out-paths --no-link   (minimal)\n"
              "  nix build .#darling-buck2-graph-all --print-out-paths --no-link   (full)")
@@ -237,7 +240,7 @@ def main():
     if coverage < MIN_COVERAGE:
         print()
         for n, p in candidate_graphs()[:12]:
-            print(f"  {n:>7} actions  {p}")
+            print(f"  {n / 1e6:>7.0f} MB  {p}")
         sys.exit(f"\nthis graph resolves only {100 * coverage:.0f} percent of the prefix's "
                  f"labels, below the {100 * MIN_COVERAGE:.0f} percent floor.\nIt is the wrong "
                  f"graph for this prefix: a demo, a skeleton, or a dump from another target "
