@@ -13,6 +13,16 @@
 #   condvar_demo    dtape_condvar_wait / signal, over a dtape_mutex (condvar.c port)
 #   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
 #   host_demo       host_info, host_statistics, processor_set_info      (host.c, processor.c)
+#   psynch_demo     the init invariants and the callback vtable          (psynch.c port)
+#
+# psynch_demo is a THIRD kind of check, and it is shaped by how psynch fails. It does not hang
+# like the first three or answer with a wrong number like host_demo: it fails SILENTLY. Omitting
+# init phase 2 left pthread_list_mlock NULL and the symptom was a SIGSEGV inside the kext on the
+# first contended pthread wait, which surfaced only as a guest task exiting -111. So rather than
+# drive a wait and hope, it asserts on the state init left behind: both allocations non-null,
+# and all 18 callback vtable entries the port fills present. The other 78 entries come from a
+# zeroed const and are SUPPOSED to be None, so the check names its 18 rather than sweeping,
+# because a sweep would either fail on the legitimate Nones or pass on everything.
 #
 # host_demo is a DIFFERENT KIND of check, because host.c fails differently. The first three
 # files hang or crash when they are wrong, so finishing at all is most of the proof. host.c
@@ -47,6 +57,7 @@ const DEMOS = [
     ["condvar_demo", "CONDVAR_DEMO_OK", "condvar.c"]
     ["stage3_spike", "SPIKE_RESUMED_OK", "semaphore.c under 500k round-trips"]
     ["host_demo", "HOST_DEMO_OK", "host.c and processor.c, cross-checked against /proc"]
+    ["psynch_demo", "PSYNCH_DEMO_OK", "psynch.c init invariants and the 18 vtable entries"]
 ]
 
 def say [msg: string] { print -e $msg }

@@ -971,6 +971,34 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
+# psynch_demo: psynch was the one ported glue file nothing drove (#77). It is also the one that
+# fails SILENTLY rather than loudly, so this checks state instead of waiting for a crash: that
+# init phase 2 left pthread_list_mlock and psynch_thcall allocated (a null first one was a real
+# SIGSEGV once, surfacing only as a guest task exiting -111), and that all 18 callback vtable
+# entries the port fills are non-null. The other 78 entries come from a zeroed const and are
+# SUPPOSED to be None, which is why the check is by name rather than a sweep.
+rust_binary(
+    name = "psynch_demo",
+    crate_root = "src/bin/psynch_demo.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
