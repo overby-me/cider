@@ -46,6 +46,10 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 # src/dtape_rs_shims.c for why a shim beats a Rust reimplementation for these.
 RUST_SHIM_SOURCES = [
     "src/dtape_rs_shims.c",
+    # The copied-XNU half of task.c, split out when the glue half moved to Rust (#71).
+    # Listed here rather than picked up by the glob because the glob is what PORTED_TO_RUST
+    # subtracts from, and this file must survive its own source file being excluded.
+    "src/task_xnu.c",
 ]
 
 PORTED_TO_RUST = [
