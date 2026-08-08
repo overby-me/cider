@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_tree")
 # The full prefix minus the GUI frameworks, the private frameworks and the
 # scripting languages. It exists for one purpose: a prefix that boots, runs bash
 # and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.
-# Entries dropped from the full prefix: 2066.
+# Entries dropped from the full prefix: 2073.
 prefix_tree(
     name = "darling_prefix_min",
     entries = {
@@ -684,9 +684,6 @@ prefix_tree(
     files = {
         "libexec/darling/System/Library/Components/CoreAudio.component/Contents/Info.plist": "//src/CoreAudio:CoreAudioComponent_Info.plist",
         "libexec/darling/System/Library/Components/CoreAudio.component/Contents/Resources/CoreAudio.rsrc": "//src/CoreAudio:CoreAudioComponent_CoreAudio.rsrc",
-        "libexec/darling/System/Library/LaunchAgents/com.apple.secd.plist": "//buck-src:security_OSX_sec_ipc_com.apple.secd.plist",
-        "libexec/darling/System/Library/LaunchAgents/com.apple.trustd.agent.plist": "//buck-src:security_trust_trustd_macOS_com.apple.trustd.agent.plist",
-        "libexec/darling/System/Library/LaunchAgents/com.openssh.ssh-agent.plist": "//buck-src:openssh_com.openssh.ssh-agent.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.FileCoordination.plist": "//buck-src:foundation_services_filecoordinationd_com.apple.FileCoordination.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.aslmanager.plist": "//buck-src/syslog:aslmanager.tproj_com.apple.aslmanager.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.atrun.plist": "//buck-src/system_cmds:atrun.tproj_com.apple.atrun.plist",
@@ -695,16 +692,12 @@ prefix_tree(
         "libexec/darling/System/Library/LaunchDaemons/com.apple.periodic-daily.plist": "//buck-src/crontabs:files_LaunchDaemons_com.apple.periodic-daily.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.periodic-monthly.plist": "//buck-src/crontabs:files_LaunchDaemons_com.apple.periodic-monthly.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.periodic-weekly.plist": "//buck-src/crontabs:files_LaunchDaemons_com.apple.periodic-weekly.plist",
-        "libexec/darling/System/Library/LaunchDaemons/com.apple.securityd.plist": "//buck-src:security_securityd_etc_com.apple.securityd.plist",
         "libexec/darling/System/Library/LaunchDaemons/com.apple.syslogd.plist": "//buck-src/syslog:syslogd.tproj_com.apple.syslogd.plist",
-        "libexec/darling/System/Library/LaunchDaemons/com.apple.trustd.plist": "//buck-src:security_trust_trustd_macOS_com.apple.trustd.plist",
         "libexec/darling/System/Library/LaunchDaemons/memberd.plist": "//buck-src/OpenDirectory:memberd-21.1_memberd.plist",
         "libexec/darling/System/Library/LaunchDaemons/ntalk.plist": "//buck-src:remote_cmds_talkd.tproj_ntalk.plist",
         "libexec/darling/System/Library/LaunchDaemons/org.cups.cups-lpd.plist": "//buck-src:cups_cups_scheduler_org.cups.cups-lpd.plist",
-        "libexec/darling/System/Library/LaunchDaemons/org.cups.cupsd.plist": "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist",
         "libexec/darling/System/Library/LaunchDaemons/org.darlinghq.iokitd.plist": "//buck-src:iokitd_org.darlinghq.iokitd.plist",
         "libexec/darling/System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist": "//src/shellspawn:org.darlinghq.shellspawn.plist",
-        "libexec/darling/System/Library/LaunchDaemons/ssh.plist": "//buck-src:openssh_com.openssh.sshd.plist",
         "libexec/darling/System/Library/LaunchDaemons/tftp.plist": "//buck-src:remote_cmds_tftpd.tproj_tftp.plist",
         "libexec/darling/System/Library/OpenSSL/certs/ACCVRAIZ1.crt": "//buck-src:openssl_certificates_certs_ACCVRAIZ1.crt",
         "libexec/darling/System/Library/OpenSSL/certs/ACRAIZFNMT-RCM.crt": "//buck-src:openssl_certificates_certs_ACRAIZFNMT-RCM.crt",

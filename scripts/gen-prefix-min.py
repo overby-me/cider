@@ -218,6 +218,18 @@ EXCLUDE_LABELS = (
     "//buck-src:archive_dylib",
     "//buck-src:apr_dylib",
     "//buck-src:aprutil_dylib",
+
+    # launchd plists whose Program no longer exists, orphaned by the removals above. launchd
+    # would try to spawn each of these at boot and fail. THE SMOKE TEST CANNOT CATCH THIS: it
+    # runs with DARLING_NO_LAUNCHD=1, so the job graph is never exercised. Found by reading
+    # each plist Program/ProgramArguments and checking it against the install destinations.
+    "//buck-src:security_OSX_sec_ipc_com.apple.secd.plist",
+    "//buck-src:security_securityd_etc_com.apple.securityd.plist",
+    "//buck-src:security_trust_trustd_macOS_com.apple.trustd.plist",
+    "//buck-src:security_trust_trustd_macOS_com.apple.trustd.agent.plist",
+    "//buck-src:openssh_com.openssh.ssh-agent.plist",
+    "//buck-src:openssh_com.openssh.sshd.plist",
+    "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist",
 )
 
 # DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:
