@@ -38,6 +38,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OPAQUE = []
 DT = os.path.join(ROOT, "src/external/darlingserver/duct-tape")
 
 # duct-tape's include roots, in the BUCK file's order (dt_env).
@@ -126,6 +127,74 @@ def ffi_surface(name):
     return {"exports": exports, "calls": len([l for l in undef.splitlines() if l.strip()])}
 
 
+BUCK_SERVER = os.path.join(ROOT, "linux/server/BUCK")
+
+
+def opaque_patterns():
+    """The XNU types the shared bindings deliberately keep OPAQUE.
+
+    Read from linux/server/BUCK so there is one source of truth. A file that dereferences
+    fields of one of these cannot be ported without RELAXING that opacity, and the opacity is
+    what stops struct task dragging most of osfmk into bindings the whole daemon reads. So
+    this is a real cost, and it is invisible in both of the other columns.
+    """
+    if not os.path.exists(BUCK_SERVER):
+        return []
+    pats = re.findall(r'"--opaque-type=([^"]+)"', open(BUCK_SERVER).read())
+    out = []
+    for p in pats:
+        try:
+            out.append(re.compile(r"^(?:%s)(?:_t)?$" % p))
+        except re.error:
+            pass
+    return out
+
+
+def own_code_after_expansion(path, args):
+    """The file's OWN code with macros expanded, and nothing from the headers.
+
+    clang -E emits line markers naming the file each region came from, so the regions
+    attributed to this .c are exactly its own text after expansion. Reading the raw source
+    instead is WRONG here and was wrong when first written: timer.c never writes the name
+    queue_entry, lck_mtx or priority_queue anywhere, yet mpqueue_init expands into field
+    accesses on all three, so the raw-source version scored it 0 and recommended it as the
+    cheapest file -- the exact file already ruled out for needing those types reopened.
+    Keeping the whole -E output would be equally wrong the other way: every type in every
+    header would count.
+    """
+    p = subprocess.run(["clang", "-E", "-x", "c", *args, path],
+                       capture_output=True, text=True)
+    own, keep = [], False
+    target = os.path.realpath(path)
+    for line in p.stdout.splitlines():
+        if line.startswith("# "):
+            m = re.match(r'# \d+ "([^"]*)"', line)
+            if m:
+                keep = os.path.realpath(m.group(1)) == target
+            continue
+        if keep:
+            own.append(line)
+    return "\n".join(own)
+
+
+def opaque_types_touched(expanded, pats):
+    """Distinct opaque XNU type names the file's own EXPANDED code names.
+
+    A file that names one of these is dereferencing it, and porting it then means RELAXING
+    that opacity in linux/server/BUCK. debug.c is the case that motivated the column: 4
+    exports and 11 calls out, which reads cheap, while it walks ipc_space, ipc_entry,
+    ipc_port, ipc_mqueue and ipc_kmsg fields.
+    """
+    hits = set()
+    for word in set(WORD.findall(expanded)):
+        base = word[:-2] if word.endswith("_t") else word
+        for p in pats:
+            if p.match(word) or p.match(base):
+                hits.add(word)
+                break
+    return sorted(hits)
+
+
 def measure(path, args):
     src = open(path).read()
     fn, ob = macros_visible_to(path, args)
@@ -141,6 +210,7 @@ def measure(path, args):
         "fn_macros": fn_used,
         "ob_macros": ob_used,
         "ffi": ffi_surface(os.path.basename(path)),
+        "opaque": opaque_types_touched(own_code_after_expansion(path, args), OPAQUE),
     }
 
 
@@ -150,6 +220,8 @@ def main():
     args_ns = ap.parse_args()
 
     cargs = clang_args()
+    global OPAQUE
+    OPAQUE = opaque_patterns()
     srcdir = os.path.join(DT, "src")
     files = sorted(f for f in os.listdir(srcdir) if f.endswith(".c"))
     if not files:
@@ -163,6 +235,10 @@ def main():
         print(f"  variadic definitions ({len(r['variadic'])}): {', '.join(r['variadic']) or 'none'}")
         print(f"  function-like macros ({len(r['fn_macros'])}): {', '.join(r['fn_macros']) or 'none'}")
         print(f"  object-like macros ({len(r['ob_macros'])}): {', '.join(r['ob_macros']) or 'none'}")
+        print(f"  OPAQUE xnu types touched ({len(r['opaque'])}): {', '.join(r['opaque']) or 'none'}")
+        if r["opaque"]:
+            print("    porting this means RELAXING those in linux/server/BUCK, which is what")
+            print("    keeps struct task from dragging most of osfmk into the bindings")
         return
 
     # Already ported files still EXIST on disk -- duct-tape is a submodule, so a port removes
@@ -187,14 +263,15 @@ def main():
                               + len(kv[1]["fn_macros"]) + len(kv[1]["ob_macros"])))
 
     print(f"{'FILE':<14}{'LINES':>7}{'VARIADIC':>9}{'FNMAC':>7}{'OBJMAC':>8}"
-          f"{'EXPORTS':>9}{'CALLSOUT':>10}  blockers")
+          f"{'EXPORTS':>9}{'CALLSOUT':>10}{'OPAQUE':>8}  blockers")
     for f, r in rows:
         top = ", ".join(r["fn_macros"][:3])
         note = "PORTED (Rust)" if r["ported"] else top
         ex = str(r["ffi"]["exports"]) if r["ffi"] else "-"
         co = str(r["ffi"]["calls"]) if r["ffi"] else "-"
         print(f"{f:<14}{r['lines']:>7}{len(r['variadic']):>9}"
-              f"{len(r['fn_macros']):>7}{len(r['ob_macros']):>8}{ex:>9}{co:>10}  {note}")
+              f"{len(r['fn_macros']):>7}{len(r['ob_macros']):>8}{ex:>9}{co:>10}"
+              f"{len(r['opaque']):>8}  {note}")
     if not any(r["ffi"] for _, r in rows):
         print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
               "/duct-tape:dt_objects)")
@@ -205,7 +282,9 @@ def main():
         # The two axes disagree, so say so rather than printing one winner. Blockers say what
         # Rust CANNOT express; FFI surface says how big the job is. semaphore.c was small on
         # both, which is why it went first and worked.
-        by_ffi = sorted((x for x in todo if x[1]["ffi"]),
+        # A file touching opaque XNU types is not cheap however small its other columns
+        # look, so it is not offered as the smallest-surface pick.
+        by_ffi = sorted((x for x in todo if x[1]["ffi"] and not x[1]["opaque"]),
                         key=lambda kv: kv[1]["ffi"]["exports"] + kv[1]["ffi"]["calls"])
         print(f"  fewest blockers: {todo[0][0]}")
         if by_ffi:
