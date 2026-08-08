@@ -70,6 +70,11 @@ pub mod debug;
 // locks.c: mutexes, spin locks and the sleep routines (#71, eighth file ported).
 pub mod locks;
 
+// duct-tape/src/kqchan.c: the XNU side of Mach-port kqueue channels (#71, ninth file).
+// NAMED dtape_kqchan because linux/server/src/kqchan.rs already exists and is the DAEMON side,
+// the socketpair protocol the guest talks; the two are different layers of the same feature.
+pub mod dtape_kqchan;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

@@ -125,6 +125,28 @@ bindgen_gen(
         "--allowlist-type=host",
         # kqchan.c fills knote and kevent_qos_s fields. Reopening the kevent family measured
         # +1 struct and 657 bytes, so it is bound rather than shimmed.
+        # kqchan.c (#71): the XNU entry points it calls and the constants it tests.
+        "--allowlist-function=task_reference",
+        "--allowlist-function=task_deallocate",
+        "--allowlist-function=thread_deallocate",
+        "--allowlist-function=thread_terminate_self",
+        "--allowlist-function=kernel_thread_start",
+        "--allowlist-function=clear_wait",
+        "--allowlist-function=waitq_assert_wait64",
+        "--allowlist-function=ipc_mqueue_peek",
+        "--allowlist-function=ipc_mqueue_set_peek",
+        "--allowlist-function=os_ref_init_count",
+        "--allowlist-function=os_ref_release",
+        "--allowlist-var=EVFILT_MACHPORT",
+        "--allowlist-var=EV_ERROR",
+        "--allowlist-var=EV_CLEAR",
+        "--allowlist-var=EV_DISPATCH2",
+        "--allowlist-var=EV_ONESHOT",
+        "--allowlist-var=EV_VANISHED",
+        "--allowlist-var=KN_VANISHED",
+        "--allowlist-var=FILTER_ACTIVE",
+        "--allowlist-var=IPC_MQUEUE_RECEIVE",
+        "--allowlist-type=dserver_kqchan_reply_mach_port_read_t",
         "--allowlist-type=knote",
         "--allowlist-type=kevent_qos_s",
         "--allowlist-type=kevent_ctx_s",
@@ -233,6 +255,8 @@ bindgen_gen(
         # init.c ORs the zone flags together (ZC_NOENCRYPT | ZC_CACHING | ...), which a Rust
         # enum cannot express. Constified, they are plain integers and the OR is the C one.
         "--constified-enum=zone_create_flags_t",
+        # kqchan.c does kn_status |= KN_VANISHED, which a Rust enum cannot express.
+        "--constified-enum=kn_status_t",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=task",

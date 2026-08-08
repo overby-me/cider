@@ -60,6 +60,11 @@
 /* processor.c: the processor and pset structs it defines and fills. */
 #include <kern/processor.h>
 #include <kern/machine.h>
+/* kqchan.c: the kqueue channel, its knote and the mqueue peeks it does. */
+#include <darlingserver/duct-tape/kqchan.h>
+#include <sys/event.h>
+#include <ipc/ipc_mqueue.h>
+#include <os/refcnt.h>
 #include <kern/simple_lock.h>
 /* init.c: the zones it creates, the locks it initialises, and the host it reaches into. */
 #include <ipc/ipc_importance.h>
@@ -122,4 +127,8 @@ enum dtape_rs_host_consts {
 	/* init.c: sizes for zone_create, and the one macro-valued size among them. */
 	DTAPE_RS_SIZEOF_TASK_ID_TOKEN = sizeof(struct dtape_rs_task_id_token),
 	DTAPE_RS_IKM_SAVED_KMSG_SIZE = IKM_SAVED_KMSG_SIZE,
+	/* kqchan.c: anonymous-enum values and macros bindgen does not surface by name. */
+	DTAPE_RS_KN_VANISHED = KN_VANISHED,
+	DTAPE_RS_THREAD_INTERRUPTIBLE = THREAD_INTERRUPTIBLE,
+	DTAPE_RS_THREAD_INTERRUPTED = THREAD_INTERRUPTED,
 };

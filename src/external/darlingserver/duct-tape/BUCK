@@ -720,7 +720,6 @@ cc_objects(
     name = "dt_objects",
     srcs = [
         "src/dtape_rs_shims.c",
-        "src/kqchan.c",
         "src/memory.c",
         "src/misc.c",
         "src/psynch.c",

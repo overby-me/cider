@@ -51,6 +51,20 @@ struct waitq;
 struct task;
 
 struct task* dtape_rs_current_task(void);
+
+/* kqchan.c. task_reference is a macro, os_ref_init and os_ref_release are inline, and
+ * IPC_MQUEUE_RECEIVE is an event address rather than a small integer, so it comes back as a
+ * value rather than through the enum. */
+struct os_refcnt;
+
+void dtape_rs_task_reference(struct task* task);
+void dtape_rs_os_ref_init(struct os_refcnt* rc);
+unsigned int dtape_rs_os_ref_release(struct os_refcnt* rc);
+unsigned long long dtape_rs_ipc_mqueue_receive_event(void);
+
+/* imq_is_set is a macro over waitqs_is_set, which is itself inline. */
+struct ipc_mqueue;
+int dtape_rs_imq_is_set(struct ipc_mqueue* mq);
 void* dtape_rs_kheap_alloc(size_t size, int flags);
 
 int* dtape_rs_thread_rwlock_count(struct thread* thread);

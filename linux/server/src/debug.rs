@@ -47,7 +47,7 @@ use crate::bindings::{
 /// produced the undefined reference. Same shape as `dtape_thread_for_xnu_thread`, which
 /// condvar.rs computes for the same reason.
 #[inline]
-unsafe fn dtape_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut dtape_task_t {
+pub(crate) unsafe fn dtape_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut dtape_task_t {
     if xnu_task.is_null() {
         return ptr::null_mut();
     }

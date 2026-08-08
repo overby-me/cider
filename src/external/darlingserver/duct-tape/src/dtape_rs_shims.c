@@ -41,6 +41,7 @@
 #include <kern/thread.h>
 #include <kern/waitq.h>
 
+#include <ipc/ipc_mqueue.h>
 #include <ipc/ipc_object.h>
 #include <ipc/ipc_port.h>
 #include <mach/port.h>
@@ -109,4 +110,28 @@ struct task* dtape_rs_current_task(void) {
 /* kheap_alloc, as a symbol, on the default heap. Same statement-expression shape as kalloc. */
 void* dtape_rs_kheap_alloc(size_t size, int flags) {
 	return kheap_alloc(KHEAP_DEFAULT, size, flags);
+};
+
+/* task_reference, as a symbol: it is a macro. */
+void dtape_rs_task_reference(struct task* task) {
+	task_reference(task);
+};
+
+/* The os_refcnt pair, which are inline. */
+void dtape_rs_os_ref_init(struct os_refcnt* rc) {
+	os_ref_init(rc, NULL);
+};
+
+unsigned int dtape_rs_os_ref_release(struct os_refcnt* rc) {
+	return os_ref_release(rc);
+};
+
+/* IPC_MQUEUE_RECEIVE is an event ADDRESS, so it cannot be an enumerator. */
+unsigned long long dtape_rs_ipc_mqueue_receive_event(void) {
+	return (unsigned long long)IPC_MQUEUE_RECEIVE;
+};
+
+/* imq_is_set, as a symbol: a macro over an inline. */
+int dtape_rs_imq_is_set(struct ipc_mqueue* mq) {
+	return imq_is_set(mq) ? 1 : 0;
 };

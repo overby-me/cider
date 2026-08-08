@@ -57,6 +57,7 @@ PORTED_TO_RUST = [
     "src/init.c",
     "src/debug.c",
     "src/locks.c",
+    "src/kqchan.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in
