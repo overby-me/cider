@@ -70,6 +70,10 @@ void* dtape_rs_kheap_alloc(size_t size, int flags);
  * __typeof__ cast, so it is a macro twice over. The Rust caller drops its own copy. */
 void dtape_rs_kheap_free(void* elem, size_t size);
 
+/* task.c: is_release is a macro over the ipc_space refcount. */
+struct ipc_space;
+void dtape_rs_is_release(struct ipc_space* space);
+
 /* task.c: task_set_64Bit_addr and _data are macros over t_flags. */
 void dtape_rs_task_set_64bit_addr(struct task* task);
 void dtape_rs_task_set_64bit_data(struct task* task);

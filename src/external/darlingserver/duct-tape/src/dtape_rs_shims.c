@@ -155,6 +155,11 @@ unsigned int dtape_rs_waitq_held(struct waitq* wq) {
 	return wq->dtape_waitq_interlock.dtape_interlock.dtape_interlock.dtape_mutex.dtape_owner == (uintptr_t)current_thread();
 };
 
+/* task.c: is_release is a macro over the ipc_space refcount. */
+void dtape_rs_is_release(ipc_space_t space) {
+	is_release(space);
+};
+
 /* task.c: the two 64-bit flag setters are macros over t_flags. */
 void dtape_rs_task_set_64bit_addr(struct task* task) {
 	task_set_64Bit_addr(task);

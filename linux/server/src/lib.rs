@@ -75,6 +75,11 @@ pub mod locks;
 // the socketpair protocol the guest talks; the two are different layers of the same feature.
 pub mod dtape_kqchan;
 
+// duct-tape/src/task.c: task creation and teardown, task_info and the task_for_pid family
+// (#71, fourteenth file). NAMED dtape_task because linux/server/src/task.rs is the daemon side.
+// The copied-XNU half of the file stays C, in duct-tape/src/task_xnu.c.
+pub mod dtape_task;
+
 // The layout invariant every container_of style port depends on, asserted against the C
 // compiler at build time (#71). bindgen runs with --no-layout-tests, so without this nothing
 // checks that Rust and C agree on the structs the offsets are taken from.
