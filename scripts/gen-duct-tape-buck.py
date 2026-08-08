@@ -50,6 +50,8 @@ RUST_SHIM_SOURCES = [
     # Listed here rather than picked up by the glob because the glob is what PORTED_TO_RUST
     # subtracts from, and this file must survive its own source file being excluded.
     "src/task_xnu.c",
+    "src/memory_xnu.c",
+    "src/thread_xnu.c",
 ]
 
 PORTED_TO_RUST = [
