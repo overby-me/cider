@@ -131,29 +131,38 @@ is further down and in the commit history.
    reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
    `traps.c`.
 
-   **14 OF 16 PORTED**: semaphore, condvar, timer, host, processor, init, debug, locks, kqchan,
-   traps, psynch, misc, stubs, task. Two remain, and **all three big files were SPLIT along the
-   XNU boundary they already marked**, so what is left of each is glue only:
+   **#71 IS COMPLETE: 16 OF 16 PORTED.** semaphore, condvar, timer, host, processor, init,
+   debug, locks, kqchan, traps, psynch, misc, stubs, task, memory, thread.
 
-   | file | was | glue left | copied XNU, now in `*_xnu.c` |
+   **Verified by the archive, not by assertion:** every one of the sixteen `.c.o` is gone from
+   `libdarlingserver_duct_tape.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
+   remain, which is the boundary the task set. (`host.c.o` in that archive is XNU
+   `osfmk/kern/host.c`, not duct-tape's; `host_info` is undefined there.) darlingserverd links
+   and `scripts/duct-tape-runtime-check.nu` passes.
+
+   **THE THREE BIG FILES WERE SPLIT along the XNU boundary they already marked**, rather than
+   translating lifted kernel code:
+
+   | file | was | glue ported | copied XNU left in C |
    |---|---|---|---|
-   | `memory.c` | 1554 | **1170** | 384 (`vm_user.c`, `vm_map.c`) |
-   | `thread.c` | 2072 | **1383** | 689 (`sched_prim.c`, `thread.c`, `syscall_subr.c`, `thread_act.c`, `ux_exception.c`) |
+   | `task.c` | 1766 | 763 | 1003 |
+   | `memory.c` | 1554 | 1170 | 384 |
+   | `thread.c` | 2072 | 1383 | 689 |
 
-   `task.c` got the same split first: 1,766 down to 763 glue, 1,003 lines of XNU moved out.
-   Verified by archive symbol set, which is the strong invariant for a pure move: identical
-   apart from the new member, except `thread_handoff_internal`, which is glue the copied code
-   calls and so had to lose its `static`.
+   Each split was proved by the archive SYMBOL SET being unchanged apart from the new member.
+   `thread.c` did not split cleanly: `LockTimeOutUsec` and `thread_handoff_internal` crossed the
+   boundary, and the second is glue the copied code calls, so it lost its `static` and Rust
+   provides the symbol now.
 
-   **The `vm_.*` opaque blanket was costing almost nothing**, which corrects the note above that
-   memory.c had "47 opaque types, the most of anything left". Removing it entirely measures at
-   **+3 structs and 1,780 bytes**, because reopening `struct task` had already pulled the family
-   in. Marginal cost is the number that matters.
+   **26 shims**, each because Rust genuinely cannot reach the thing: macros, `static inline`,
+   statement expressions, a file-static lock group, and an intrusive red-black tree that
+   `RB_PROTOTYPE_SC` makes entirely file-local.
 
-   **NOT COVERED AT RUNTIME: psynch.** None of the four demos reaches it, since it needs a
-   guest program with CONTENDED pthread locks; `dtape_psynch_init` runs only from
-   `dtape_init_in_thread`, which is the daemon path. The gate boots a container, so it covers
-   init; the lock paths themselves are covered by nothing yet. A demo for them is open work.
+   **Reopening beat shimming for the big three types, and the recorded REFUSALS were reversed on
+   evidence:** `task` at +21 structs and 91 KB for 12 fields, `thread` at +13 and 58 KB for 18,
+   and the `vm_.*` blanket removed for +3 and 1,780 B. `linux/server/src/layout.rs` is what made
+   that safe: it asserts sizes and container offsets against the C compiler at BUILD time, and a
+   perturbed expectation fails the build.
 
    **THE VARIADIC BLOCKER IS CLOSED.** `stubs.c` and `misc.c` were called blocked on 1 and 3
    variadic DEFINITIONS. All four are pure forwarders to a `v`-variant, so all four stay in C in
