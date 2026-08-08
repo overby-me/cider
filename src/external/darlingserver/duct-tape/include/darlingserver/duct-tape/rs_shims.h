@@ -70,6 +70,16 @@ void* dtape_rs_kheap_alloc(size_t size, int flags);
  * __typeof__ cast, so it is a macro twice over. The Rust caller drops its own copy. */
 void dtape_rs_kheap_free(void* elem, size_t size);
 
+/* memory.c: the shared-entry red-black tree, which RB_PROTOTYPE_SC makes entirely
+ * file-local. Five operations, which is all memory.c ever used; there is no lookup by key. */
+struct dtape_map_shared_entry;
+struct dtape_map_shared_entry_head;
+void dtape_rs_shared_entries_init(struct dtape_map_shared_entry_head* head);
+void dtape_rs_shared_entries_insert(struct dtape_map_shared_entry_head* head, struct dtape_map_shared_entry* entry);
+void dtape_rs_shared_entries_remove(struct dtape_map_shared_entry_head* head, struct dtape_map_shared_entry* entry);
+struct dtape_map_shared_entry* dtape_rs_shared_entries_first(struct dtape_map_shared_entry_head* head);
+struct dtape_map_shared_entry* dtape_rs_shared_entries_next(struct dtape_map_shared_entry* entry);
+
 /* task.c: is_release is a macro over the ipc_space refcount. */
 struct ipc_space;
 void dtape_rs_is_release(struct ipc_space* space);

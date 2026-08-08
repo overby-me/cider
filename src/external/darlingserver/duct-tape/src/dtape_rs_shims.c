@@ -48,6 +48,7 @@
 #include <darlingserver/duct-tape/log.h>
 #include <darlingserver/duct-tape/hooks.internal.h>
 #include <stdarg.h>
+#include <darlingserver/duct-tape/memory.h>
 
 /* kalloc, as a symbol. Returns NULL on failure, exactly as the macro does. */
 void* dtape_rs_kalloc(size_t size) {
@@ -153,6 +154,52 @@ void* dtape_rs_thread_map(struct thread* thread) {
  * rather than a pointer keeps the comparison, and the type of the thing compared, on this side. */
 unsigned int dtape_rs_waitq_held(struct waitq* wq) {
 	return wq->dtape_waitq_interlock.dtape_interlock.dtape_interlock.dtape_mutex.dtape_owner == (uintptr_t)current_thread();
+};
+
+/* memory.c: the shared-entry tree.
+ *
+ * RB_GENERATE expands to an entire red-black tree implementation, and RB_PROTOTYPE_SC makes
+ * every one of its functions file-local, so there is no symbol for Rust to call. The tree is
+ * also completely private to memory.c: no other translation unit, not even memory_xnu.c, so
+ * much as names dtape_map_shared_entry.
+ *
+ * So it stays in C. Hand-writing a red-black tree in Rust to replace it would be a few hundred
+ * lines whose rebalancing has to be exactly right, to gain nothing observable. Rust drives it
+ * through the five operations memory.c actually used, and it never looked anything up by key:
+ * the only reads are an in-order walk and a drain.
+ */
+static int dtape_map_shared_entry_compare(dtape_map_shared_entry_t* first, dtape_map_shared_entry_t* second) {
+	if (first->address < second->address) {
+		return -1;
+	} else if (first->address > second->address) {
+		return 1;
+	} else {
+		return 0;
+	}
+};
+
+RB_PROTOTYPE_SC(static, dtape_map_shared_entry_head, dtape_map_shared_entry, link, dtape_map_shared_entry_compare);
+RB_GENERATE(dtape_map_shared_entry_head, dtape_map_shared_entry, link, dtape_map_shared_entry_compare);
+
+void dtape_rs_shared_entries_init(dtape_map_shared_entry_head_t* head) {
+	RB_INIT(head);
+};
+
+void dtape_rs_shared_entries_insert(dtape_map_shared_entry_head_t* head, dtape_map_shared_entry_t* entry) {
+	RB_INSERT(dtape_map_shared_entry_head, head, entry);
+};
+
+void dtape_rs_shared_entries_remove(dtape_map_shared_entry_head_t* head, dtape_map_shared_entry_t* entry) {
+	RB_REMOVE(dtape_map_shared_entry_head, head, entry);
+};
+
+/* The in-order walk, as a first/next pair, which is what RB_FOREACH is underneath. */
+dtape_map_shared_entry_t* dtape_rs_shared_entries_first(dtape_map_shared_entry_head_t* head) {
+	return RB_MIN(dtape_map_shared_entry_head, head);
+};
+
+dtape_map_shared_entry_t* dtape_rs_shared_entries_next(dtape_map_shared_entry_t* entry) {
+	return RB_NEXT(dtape_map_shared_entry_head, NULL, entry);
 };
 
 /* task.c: is_release is a macro over the ipc_space refcount. */
