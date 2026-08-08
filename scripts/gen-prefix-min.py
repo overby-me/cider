@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 
 # Packages whose installed output the goal does not need. Each is matched against the
@@ -384,6 +385,24 @@ def main(argv: list[str]) -> int:
           f"({100 * dropped // max(total, 1)} percent), wrote {dst}")
     if dropped == 0:
         raise SystemExit("prefix-min: nothing was dropped, the exclusion list is wrong")
+
+    # A generated prefix that REFERS to something it does not install is a defect, and both
+    # kinds of reference have already bitten: five symlinks orphaned by removing a multi-call
+    # binary, then seven launchd plists whose Program went with the daemon. The symlink half is
+    # fixed above by construction; the plist half cannot be, because a plist's Program lives in
+    # its source file rather than in this BUCK file. So the check runs HERE, and generation
+    # fails rather than emitting a prefix someone would only find broken at boot -- which the
+    # smoke test would not do anyway, since it runs with DARLING_NO_LAUNCHD=1.
+    checker = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           "buck-prefix-consistency.py")
+    if os.path.exists(checker):
+        r = subprocess.run([sys.executable, checker, "--prefix", "buck/prefix-min/BUCK"],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            print(r.stdout, file=sys.stderr)
+            raise SystemExit(
+                "prefix-min: the generated prefix refers to something it does not install; "
+                "exclude the referring entry too (see the FAIL lines above)")
     return 0
 
 
