@@ -76,7 +76,7 @@ is further down and in the commit history.
    Rust-defined global was verified to link and run (negative control: removing it fails the
    link with undefined reference).
 
-   **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo. **2 of 16 done.**
+   **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo.
 
    **THE PREFIX GATE ALSO PASSED WITH `condvar.c` IN** (gate4: 1,875 builders, zero failures,
    `NIX_EXIT=0`, `/nix/store/m8nihyc7s2pr3p9095830msxq4ql6p4w-vm-test-run-darling-buck2-smoke`;
@@ -97,7 +97,7 @@ is further down and in the commit history.
    The stress number, for whatever changes this path next: **500,000 suspend/resume round-trips
    in 5.79 s, 11,587 ns each**, no assertion. There is no pre-port figure to compare against.
 
-   **`timer.c` IS PORTED. 3 of 16 done**, and the reason it was skipped twice was WRONG.
+   **`timer.c` IS PORTED**, and the reason it was skipped twice was WRONG.
    The claim was that reopening the `queue_.*`, `_?lck_.*` and `priority_queue.*` opaque types
    for `mpqueue_init` would drag most of osfmk into the shared bindings. That was asserted,
    never measured. **Measured: +9 structs and +7 KB** (49 structs / 40,546 B to 58 / 47,749 B),
