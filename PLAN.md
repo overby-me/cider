@@ -25,29 +25,16 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 
 ## Buck2 port: the order to work in
 
-Iteration speed first, because everything below is paid for at the current rate until #54
-lands: a one-line edit rebuilds ONE target in 97 s, but re-checking the whole endpoint after
-it is still over an hour.
+**DONE and no longer in this list:** #54 (cascade cut, per-file staging into mirrored real
+directories), #55 (lowered derivations content-addressed), #73 (closed by re-testing it: no
+host target compiles a `DARLING`-guarded source, so there was nothing behind it). Their detail
+is further down and in the commit history.
 
-1. **#54, cut the cascade.** Per-file staging into mirrored real directories, keyed on
-   `target-groups.json` (2.06 MB, already read when `sourceGroups` is on). Verify on ONE
-   target and only then on the endpoint against
-   `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`.
-2. **#69, close the declaration gaps for real and delete the closure pass.** Straight after
-   #54, because #54's correctness rests on the per-target file lists being RIGHT, and today
-   they are inferred: a regex over quoted includes, blind to `#if`, so an include assembled by
-   macro is missed silently. Three gaps this session were each found by a build failing, not
-   by a check.
-3. **#73, regenerate the remaining host targets: CLOSED, and no rebuild was needed.** The
-   residual was only ever a parity gap, and re-testing that rather than trusting it confirmed
-   there is nothing behind it. Every `DARLING`-guarded source in the cctools trees is either
-   ld64 (`Options.h`, `compact_unwind.cpp`, `objc.cpp`, `macho_relocatable_file.cpp`, all fixed
-   by #65) or `cctools/misc/redo_prebinding.c` -- and that one is compiled by
-   `redo_prebinding_cctools_misc_obj`, a GUEST target on `toolchains//:darwin_cc` with
-   `//darwin:sdk_env`, so `sdk_env` hands `-DDARLING` straight back. No host target compiles a
-   guarded source. The note below listing lipo/ranlib/stuff/ar was checking the wrong files and
-   still landed on the right answer; the guarded file is `redo_prebinding.c`, and it is a guest.
-4. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
+1. **#69, close the declaration gaps for real and delete the closure pass.** The next real
+   item. #54's correctness rests on the per-target file lists being RIGHT, and today they are
+   inferred: a regex over quoted includes, blind to `#if`, so an include assembled by macro is
+   missed silently. Three gaps were each found by a build failing, not by a check.
+2. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
    was a third. Also corrects two stale numbers: `sourceGroups` eval is **18.8 s**, not the
@@ -58,7 +45,7 @@ it is still over an hour.
    that cannot be worked around. Cheap pre-check first, on a toy: does `builtins.outputOf` work
    at all on 2.34.x, and does early cutoff SURVIVE it, given a consumer binds to the producing
    derivation rather than its content.
-5. **#71, port duct-tape to Rust. SCOPED, and the task's own numbers were wrong.**
+3. **#71, port duct-tape to Rust. SCOPED, and the task's own numbers were wrong.**
    19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
    not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
    Re-counted: `duct-tape/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
