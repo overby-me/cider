@@ -89,6 +89,18 @@ it is still over an hour.
    Rust-defined global was verified to link and run (negative control: removing it fails the
    link with undefined reference).
 
+   **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo. **2 of 16 done.**
+
+   **Two files were backed off ON EVIDENCE rather than attempted:**
+   * `timer.c` needs `mpqueue_head`'s internals for `mpqueue_init`, but `queue_.*`, `_?lck_.*`
+     and `priority_queue.*` are deliberately `--opaque-type` so `struct task` does not drag
+     most of osfmk into the shared bindings. Relaxing that perturbs bindings the whole daemon
+     depends on, for 93 lines.
+   * `host.c` reads as cheap at 12 exports / 6 calls out, but every export is a MIG SERVER
+     ROUTINE reached through generated dispatch tables. A mismatched signature is not a
+     compile error, it is silent corruption at dispatch. The risk is transcribing twelve of
+     those, not the 245 lines.
+
    Two mechanisms were proven by experiment before any port code, both with negative controls:
    bindgen PARSES the XNU internal headers given duct-tape's own flags (`-fblocks` is load
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
