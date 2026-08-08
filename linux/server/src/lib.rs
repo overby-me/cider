@@ -38,6 +38,11 @@ pub mod mach;
 /// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
 pub mod task;
 
+/// duct-tape condition variables: the Rust replacement for duct-tape/src/condvar.c, the
+/// second glue file ported off C (#71). Exports the dtape_condvar_* C ABI, so the still-C
+/// locks.c and thread.c link against this.
+pub mod condvar;
+
 /// Object-level duct-tape semaphores: the Rust replacement for duct-tape/src/semaphore.c,
 /// the first glue file ported off C (#71). Exports the dtape_semaphore_* C ABI, so the
 /// still-C kqchan.c links against this.

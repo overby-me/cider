@@ -719,7 +719,6 @@ mig_gen(
 cc_objects(
     name = "dt_objects",
     srcs = [
-        "src/condvar.c",
         "src/debug.c",
         "src/host.c",
         "src/init.c",

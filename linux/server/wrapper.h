@@ -36,5 +36,9 @@
  */
 #include <darlingserver/duct-tape/semaphore.h>
 #include <darlingserver/duct-tape/task.h>
+/* condvar.c walks back from a queue link to the containing dtape_thread, so the port needs
+ * the offsets of mutex_link and of the embedded XNU thread. */
+#include <darlingserver/duct-tape/thread.h>
+#include <darlingserver/duct-tape/condvar.h>
 #include <mach/task.h>
 #include <mach/semaphore.h>

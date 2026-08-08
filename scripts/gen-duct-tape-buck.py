@@ -44,6 +44,7 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 # exercising the whole seam -- exported C ABI, called from C, calling into XNU.
 PORTED_TO_RUST = [
     "src/semaphore.c",
+    "src/condvar.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

@@ -51,6 +51,13 @@ bindgen_gen(
         # next time that struct gains a field.
         "--allowlist-type=dtape_semaphore",
         "--allowlist-type=dtape_task",
+        "--allowlist-type=dtape_thread",
+        "--allowlist-type=dtape_condvar",
+        "--allowlist-type=dtape_mutex.*",
+        "--allowlist-function=current_thread",
+        "--allowlist-function=dtape_mutex_lock",
+        "--allowlist-function=dtape_mutex_unlock",
+        "--allowlist-function=libsimple_lock_.*",
         "--allowlist-function=semaphore_create",
         "--allowlist-function=semaphore_destroy",
         "--allowlist-function=semaphore_signal",
@@ -69,6 +76,8 @@ bindgen_gen(
         "--opaque-type=os_ref.*",
         "--opaque-type=waitq.*",
         "--opaque-type=zone.*",
+        "--opaque-type=kevent.*",
+        "--opaque-type=dtape_thread_user_state.*",
         # Function-pointer struct fields become Option<unsafe extern "C" fn ...>, which is
         # what lets the daemon zero the vtable and fill only the hooks it implements.
         "--default-enum-style=rust_non_exhaustive",
