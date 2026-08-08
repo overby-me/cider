@@ -221,6 +221,13 @@ EXCLUDE_LABELS = (
     "//buck-src:apr_dylib",
     "//buck-src:aprutil_dylib",
 
+    # The ncurses ADD-ON libraries. libform, libmenu and libpanel are the form, menu and
+    # panel toolkits; their consumers were vim, less, top and screen, all removed. ncurses
+    # itself stays, since 60-odd entries still reach it.
+    "//buck-src:form_dylib",
+    "//buck-src:menu_dylib",
+    "//buck-src:panel_dylib",
+
     # launchd plists whose Program no longer exists, orphaned by the removals above. launchd
     # would try to spawn each of these at boot and fail. THE SMOKE TEST CANNOT CATCH THIS: it
     # runs with DARLING_NO_LAUNCHD=1, so the job graph is never exercised. Found by reading
@@ -232,6 +239,9 @@ EXCLUDE_LABELS = (
     "//buck-src:openssh_com.openssh.ssh-agent.plist",
     "//buck-src:openssh_com.openssh.sshd.plist",
     "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist",
+    # and cups-lpd, whose Program lives under the usr/libexec/cups tree that
+    # EXCLUDE_DEST now drops. Caught by buck-prefix-consistency.py, not by hand.
+    "//buck-src:cups_cups_scheduler_org.cups.cups-lpd.plist",
 )
 
 # DELIBERATELY NOT EXCLUDED, so the reasoning is not lost:
@@ -260,6 +270,25 @@ EXCLUDE_DEST = (
     "libexec/darling/System/Library/PrivateFrameworks/",
     "libexec/darling/usr/lib/python",
     "libexec/darling/System/Library/Perl/",
+
+    # Documentation. 810 entries, 44 percent of everything the prefix still installs, and
+    # ZERO build actions: they are file copies. They cost prefix SIZE and assembly time, not
+    # compile time, and a prefix whose job is to get nix started has no reader for them.
+    "libexec/darling/usr/share/man/",
+
+    # DATA ORPHANED BY THE BINARY REMOVALS. Each of these is config or runtime support for a
+    # program that is no longer installed, so it is unreachable rather than merely unused.
+    # Same class as the dangling symlinks and the launchd plists, just without a reference to
+    # make it detectable.
+    "libexec/darling/usr/share/cups/",       # cupsd is gone
+    "libexec/darling/usr/libexec/cups/",     # 85 actions, the only one of these that compiles
+    "libexec/darling/private/etc/cups/",
+    "libexec/darling/usr/share/vim/",        # vim is gone
+    "libexec/darling/private/etc/ssh/",      # the ssh suite is gone
+    "libexec/darling/private/etc/ssl/",      # openssl is gone
+    "libexec/darling/usr/share/file/",       # file(1) is gone
+    "libexec/darling/usr/lib/sasl2/",        # SASL plugins, for the mail and ssh world
+    "libexec/darling/System/Library/Components/",  # the CoreAudio component
 )
 
 _LABEL = re.compile(r'"\s*:\s*"(//[^"]+)"')
