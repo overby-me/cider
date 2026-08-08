@@ -11,6 +11,11 @@
 #
 #   scheduler_demo  dtape_semaphore_create / down_simple / up      (semaphore.c port)
 #   condvar_demo    dtape_condvar_wait / signal, over a dtape_mutex (condvar.c port)
+#   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
+#
+# The spike is the one that would catch a leak, a corrupted queue or an off-by-one, which a
+# single block-and-wake cannot. Measured after the port: 500,000 round-trips in 5.79 s,
+# 11,587 ns each, no assertion. There is no pre-port number to compare it against.
 #
 # TWO THINGS THIS GETS RIGHT THAT ARE EASY TO GET WRONG:
 #
@@ -32,6 +37,7 @@ const DEMOS = [
     [target, verdict, covers];
     ["scheduler_demo", "SCHED_DEMO_OK", "semaphore.c"]
     ["condvar_demo", "CONDVAR_DEMO_OK", "condvar.c"]
+    ["stage3_spike", "SPIKE_RESUMED_OK", "semaphore.c under 500k round-trips"]
 ]
 
 def say [msg: string] { print -e $msg }
@@ -62,17 +68,21 @@ def run_one [target: string, verdict: string, covers: string, seconds: int] {
         return false
     }
 
-    let got = ($run.stdout | lines | where {|l| $l =~ '_DEMO_' })
-    if ($got | is-empty) {
-        say "  FAIL: no verdict printed, so it did not reach the wake"
+    # Presence, not equality: a binary may print several verdicts (stage3_spike prints two).
+    # Presence alone would be too weak, so a failure marker anywhere is also fatal -- that is
+    # what catches SCHED_DEMO_DOWN_FAILED being printed ALONGSIDE something that looks fine.
+    let lines = ($run.stdout | lines)
+    let bad = ($lines | where {|l| ($l =~ 'FAILED') or ($l =~ 'UNEXPECTED') })
+    if not ($bad | is-empty) {
+        say $"  FAIL: ($bad | first)"
+        return false
+    }
+    if not ($lines | any {|l| $l == $verdict }) {
+        say $"  FAIL: never printed ($verdict); saw: ($lines | str join ', ')"
         say ($run.stderr | lines | last 10 | str join "\n")
         return false
     }
-    let line = ($got | first)
-    if $line != $verdict {
-        say $"  FAIL: expected ($verdict), got ($line)"
-        return false
-    }
+    let line = $verdict
     # Checked SECOND, deliberately: it is the weaker of the two signals.
     if $run.exit_code != 0 {
         say $"  FAIL: verdict was ($line) but it exited ($run.exit_code)"

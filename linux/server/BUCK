@@ -173,6 +173,32 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
+# stage3_spike: the STRESS version of the same path. Phase 3 drives 500,000
+# suspend/resume round-trips through dtape_semaphore_down_simple and dtape_semaphore_up,
+# which are Rust as of the semaphore port, so a leak, a corrupted queue or an off-by-one
+# shows up here where a single round-trip would not. It also prints ns/round-trip.
+rust_binary(
+    name = "stage3_spike",
+    crate_root = "src/bin/stage3_spike.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # condvar_demo: the same shape as scheduler_demo, for the condvar port. A microthread waits
 # on a duct-tape condvar (which drops its mutex and suspends it) and a signal from the main
 # thread wakes it. condvar had no runtime coverage otherwise.
