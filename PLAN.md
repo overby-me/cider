@@ -104,10 +104,33 @@ is further down and in the commit history.
    and the daemon plus all three demos still build. Adding the timer headers took the total to
    61 structs / 49,304 B. Never cite that cost again without the number.
 
-   **`host.c` IS still backed off, on a reason that holds:** it reads as cheap at 12 exports /
-   6 calls out, but every export is a MIG SERVER ROUTINE reached through generated dispatch
-   tables. A mismatched signature is not a compile error, it is silent corruption at dispatch.
-   The risk is transcribing twelve of those, not the 245 lines.
+   **`host.c` IS PORTED. 4 of 16 done.** The reason it had been backed off was real but was
+   answered rather than avoided: every export is a MIG SERVER ROUTINE reached through generated
+   dispatch, so a mismatched signature is not a compile error but silent corruption. Answer: do
+   not transcribe any of them. All twelve signatures are written in GENERATED types, including
+   the two structs passed BY VALUE (`security_token_t` 8 bytes in a register, `audit_token_t` 32
+   in memory), which are exactly the shapes a hand mirror gets wrong quietly.
+   Cost of reopening: **+11 structs, +7.8 KB** (61 / 49,304 B to 72 / 57,134 B).
+   `vm_statistics` stays OPAQUE: those paths only zero it, so only its SIZE is needed.
+
+   **The verification had to be a different KIND**, and that generalises to the rest of the
+   file set. semaphore, condvar and timer fail LOUDLY, so finishing at all is most of the proof.
+   `host.c` hands NUMBERS to the guest, and a wrong offset crashes nothing. So `host_demo`
+   checks against `/proc/meminfo` and `/proc/cpuinfo`, which share no code path with the
+   `sysinfo`/`sysconf` calls the port uses. Exact, not close: max_mem 33072345088 both ways,
+   22 CPUs both ways. Comparing sysconf against sysconf would have agreed with itself however
+   wrong the layout was.
+
+   **`processor.c` is NOT next, and the ranker cannot see why.** It ranks well (2 blockers,
+   30 exports, 10 calls out), and reopening `processor` plus `processor_set` is affordable:
+   **measured +15 structs, +8.2 KB**, both come out real rather than blobs. The blocker is one
+   macro CALL, `kalloc`, which the preprocessor shows expanding to a statement expression
+   holding a function-static `vm_allocation_site_t`:
+   `({ static vm_allocation_site_t site = {...}; kalloc_ext(KHEAP_DEFAULT, size, Z_WAITOK, &site).addr; })`
+   Initialising that by field means un-opaquing part of `vm_.*`, the family deliberately left
+   opaque, and that cost is unmeasured. `simple_lock_init` is fine, it is `usimple_lock_init`,
+   a real symbol. **The lesson for the ranker: one macro call can hide a whole type family, so
+   the blocker COUNT is a lower bound on the work, never an estimate of it.**
 
    `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
    `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
