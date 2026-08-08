@@ -67,6 +67,9 @@ pub mod init;
 // debug.c: the Mach debug queries (#71, seventh file ported).
 pub mod debug;
 
+// locks.c: mutexes, spin locks and the sleep routines (#71, eighth file ported).
+pub mod locks;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

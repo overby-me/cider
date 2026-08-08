@@ -56,6 +56,7 @@ PORTED_TO_RUST = [
     "src/processor.c",
     "src/init.c",
     "src/debug.c",
+    "src/locks.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

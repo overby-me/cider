@@ -51,14 +51,14 @@ extern "C" {
 /// `libsimple_lock_init`, which is a `static` function in libsimple/lock.h and so has no
 /// symbol to call.
 #[inline]
-unsafe fn lock_init(lock: *mut libsimple_lock_t) {
+pub(crate) unsafe fn lock_init(lock: *mut libsimple_lock_t) {
     (*lock).state = 0;
 }
 
 /// `dtape_thread_for_xnu_thread`: XNU's thread is EMBEDDED in the duct-tape one, so this
 /// walks back by the field offset. `always_inline` in C, so there is no symbol for it.
 #[inline]
-unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {
+pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {
     if xnu_thread.is_null() {
         return ptr::null_mut();
     }
@@ -67,29 +67,31 @@ unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {
 
 /// `__container_of(link, dtape_thread_t, mutex_link)`.
 #[inline]
-unsafe fn thread_for_mutex_link(link: *mut dtape_mutex_link_t) -> *mut dtape_thread {
+pub(crate) unsafe fn thread_for_mutex_link(link: *mut dtape_mutex_link_t) -> *mut dtape_thread {
     (link as *mut u8).sub(offset_of!(dtape_thread, mutex_link)) as *mut dtape_thread
 }
 
-// --- the four TAILQ macros this file uses, on dtape_mutex_head_t / dtape_mutex_link_t ---
+// --- the four TAILQ macros this file uses (pub(crate): locks.rs needs the same four, on the
+// same dtape_mutex_head_t, and duplicating intrusive-list arithmetic is how it goes wrong) ---
+// --- originally: the four TAILQ macros this file uses, on dtape_mutex_head_t / dtape_mutex_link_t ---
 
 /// `TAILQ_INIT`: empty list, and tqh_last points AT the head's own first-pointer, which is
 /// what makes an insert into an empty list write through to tqh_first.
 #[inline]
-unsafe fn tailq_init(head: *mut crate::bindings::dtape_mutex_head_t) {
+pub(crate) unsafe fn tailq_init(head: *mut crate::bindings::dtape_mutex_head_t) {
     (*head).tqh_first = ptr::null_mut();
     (*head).tqh_last = ptr::addr_of_mut!((*head).tqh_first);
 }
 
 /// `TAILQ_FIRST`.
 #[inline]
-unsafe fn tailq_first(head: *mut crate::bindings::dtape_mutex_head_t) -> *mut dtape_mutex_link_t {
+pub(crate) unsafe fn tailq_first(head: *mut crate::bindings::dtape_mutex_head_t) -> *mut dtape_mutex_link_t {
     (*head).tqh_first
 }
 
 /// `TAILQ_INSERT_TAIL`.
 #[inline]
-unsafe fn tailq_insert_tail(
+pub(crate) unsafe fn tailq_insert_tail(
     head: *mut crate::bindings::dtape_mutex_head_t,
     elm: *mut dtape_mutex_link_t,
 ) {
@@ -103,7 +105,7 @@ unsafe fn tailq_insert_tail(
 /// through it is what unlinks; when there is no successor the head's tail pointer takes
 /// this element's tqe_prev instead.
 #[inline]
-unsafe fn tailq_remove(
+pub(crate) unsafe fn tailq_remove(
     head: *mut crate::bindings::dtape_mutex_head_t,
     elm: *mut dtape_mutex_link_t,
 ) {

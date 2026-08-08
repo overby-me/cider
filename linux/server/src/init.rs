@@ -26,9 +26,11 @@
 use std::os::raw::{c_char, c_int};
 use std::ptr;
 
+use crate::locks::{lck_mtx_init, lck_spin_init};
+
 use crate::bindings::{
     dtape_hooks_t, ipc_kmsg_zone, ipc_object_zones, ipc_space_zone, lck_attr_t, lck_grp_t,
-    lck_mtx_init, lck_spin_init, lck_spin_t, processor_t, realhost, zone_create,
+    lck_spin_t, processor_t, realhost, zone_create,
     zone_create_flags_t, zone_t, IOT_PORT, IOT_PORT_SET,
 };
 
