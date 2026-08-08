@@ -61,6 +61,9 @@ pub mod host;
 // processor.c: processors and processor sets (#71, fifth file ported).
 pub mod processor;
 
+// init.c: duct-tape start-up, and the dtape_hooks global (#71, sixth file ported).
+pub mod init;
+
 /// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 

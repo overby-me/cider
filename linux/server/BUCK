@@ -133,6 +133,13 @@ bindgen_gen(
         "--allowlist-type=zone_create_flags_t",
         "--allowlist-type=dtape_rs_task_id_token",
         "--allowlist-function=zone_create",
+        "--allowlist-type=lck_spin_t",
+        "--allowlist-type=lck_mtx_t",
+        "--allowlist-var=IOT_NUMBER",
+        "--allowlist-var=ipc_space_zone",
+        "--allowlist-var=ipc_kmsg_zone",
+        "--allowlist-var=ipc_object_zones",
+        "--allowlist-var=realhost",
         "--allowlist-function=lck_mtx_init",
         "--allowlist-function=lck_spin_init",
         "--allowlist-var=ZC_.*",
@@ -188,6 +195,9 @@ bindgen_gen(
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.
         "--constified-enum=dtape_rs_host_consts",
+        # init.c ORs the zone flags together (ZC_NOENCRYPT | ZC_CACHING | ...), which a Rust
+        # enum cannot express. Constified, they are plain integers and the OR is the C one.
+        "--constified-enum=zone_create_flags_t",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=task",

@@ -54,6 +54,7 @@ PORTED_TO_RUST = [
     "src/timer.c",
     "src/host.c",
     "src/processor.c",
+    "src/init.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

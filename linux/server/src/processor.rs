@@ -62,15 +62,10 @@ use crate::bindings::{
 
 const MAX_CPUS: usize = MAX_SCHED_CPUS as usize;
 
+use crate::bindings::realhost;
+use crate::init::dtape_hooks;
+
 extern "C" {
-    /// XNU's global host object. Only ever address-taken here, so `host` stays opaque in the
-    /// bindings; `processor_info` and `processor_set_info` hand its address back to the caller.
-    static mut realhost: crate::bindings::host;
-
-    /// The hooks vtable duct-tape calls back into. `init.c` still defines it (it is C), and
-    /// `processor_set_statistics` reads the task and thread counts through it.
-    static dtape_hooks: *const crate::bindings::dtape_hooks;
-
     /// glibc, declared here for the same reason processor.c declares them itself: they are
     /// Linux functions with no XNU header, and the vendored libc crate does not expose them.
     fn get_nprocs() -> c_int;
