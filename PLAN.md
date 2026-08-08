@@ -442,12 +442,21 @@ and all six spot checks pass (`bin/bash`, `bin/sh`, `usr/lib/dyld`,
 `usr/lib/libSystem.B.dylib`, `usr/lib/system/libsystem_kernel.dylib`, the ICU data).
 Read the `NIX EXIT` line and the `-o` link, never the wrapper status.
 
-**The Nix prefix ships REAL Swift libraries.** `buck-dylib-shape.nu` over it reports 227
-installed `.dylib` files, **227 Mach-O, 0 git LFS pointers**, and the 44 under
-`usr/lib/swift` are genuine (libswiftCore 6.7 MB, libswiftFoundation 3.2 MB), because the
-nix pins fetch LFS content. The HOST tree still installs the 131-byte pointers, which is
-what the check's exception covers, so the two prefixes differ in exactly that set. This is
-reported, not acted on: #39 stays as the user left it.
+**The CMAKE-built Nix prefix ships REAL Swift libraries. The BUCK2 one does not.** Say which
+prefix, because the sentence is otherwise a trap and it caught me once: `buck-dylib-shape.nu`
+over the cmake-built `darling-unstable-2025` reports 227 installed `.dylib` files, **227
+Mach-O, 0 git LFS pointers**, with the 44 under `usr/lib/swift` genuine (libswiftCore 6.7 MB).
+
+That is a different SOURCE PATH, not a different fetch. The cmake build reads
+`src/external/swift/`, which has real Mach-O; buck2 reads `buck-src/swift/`, which is 132-byte
+LFS pointers **including inside the staged `darling-buck2-project` in the store**. Checked
+both, in the store rather than in the working tree, since the working tree proves nothing about
+what a pure build sees.
+
+So the buck2 prefix was installing 44 pointer files under `.dylib` names. Dropped from the
+MINIMAL prefix (see the prefix section above): 4 actions, because they are file copies, so it
+is a correctness removal rather than a speed one. #39 stays open for the FULL prefix, where
+they are still installed and still not libraries.
 
 ### The endpoint builds green on the rebuilt graph (2026-08-05)
 
