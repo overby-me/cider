@@ -211,6 +211,25 @@ second is not derivable from the first: AppKit and CoreImage were 752 actions pu
 tools, and no single one of them showed in the exclusive ranking. `--check` guards it at 150
 exclusive actions per non-exempt entry, verified to catch both `jsc` and `secd`.
 
+**`--graph` IS REQUIRED, and that is the interesting part.** It used to default to the "newest"
+dump in the store, which was never a choice: Nix pins store mtimes to the epoch, so all 27
+tie and `max()` returns whatever the glob yields first. All four graph attributes (the
+single-target demo, `-all`, `-min`, `-min-skeleton`) also build a derivation with the SAME
+NAME, so the path cannot distinguish a 5,709 action demo from the 17,552 action minimal graph.
+It drew a small one and printed a ranking that looked entirely sensible. Two changes: the tool
+now lists the candidates with action counts and refuses to pick, and it asserts LABEL COVERAGE
+on every run. The correct min graph resolves 601 of the prefix's 899 labels (67 percent; the
+other 298 are action-less `export_file` targets, plists and conf files, legitimately absent
+from an ACTION graph); the wrong one resolved 128 (14 percent). Floor is 50 percent.
+
+Re-measured on a pinned graph, so the shrink table is like-for-like rather than against a
+graph total: **17,532 actions / 4,324 targets / 2,016 labels becomes 8,700 / 3,491 / 899.**
+Half the actions, 50.4 percent.
+
+Worth doing in the next INVALIDATING batch, not on its own: give each graph attribute a
+distinct derivation name. That is the root cause of the store ambiguity, but renaming a
+derivation rebuilds everything downstream of it.
+
 Out of this thread: #39 (Swift LFS pointers), #61 (configd needs upstream SystemConfiguration
 rewiring, not a bump).
 

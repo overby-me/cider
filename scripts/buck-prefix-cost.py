@@ -23,10 +23,18 @@ them saves nothing on its own.
 
 Reads the graph dump the port already produces, so it needs no buck2 query and no build.
 
+WHICH GRAPH IS NOT OPTIONAL. This used to pick the "newest" dump out of the store, which was
+not a choice at all: Nix pins every store path's mtime to the epoch, so all 27 of them tie and
+max() returns whatever the glob yields first. Worse, all four graph attributes (the
+single-target demo, -all, -min and -min-skeleton) build a derivation with the SAME NAME, so the
+glob cannot tell a 5,709 action demo from a 17,552 action minimal graph. It drew the small one
+and printed a ranking that looked perfectly sensible. So: --graph is required, and the coverage
+of the prefix's labels is asserted on every run.
+
 Usage:
-  scripts/buck-prefix-cost.py                          # newest built graph, minimal prefix
-  scripts/buck-prefix-cost.py --graph <graph.json>
-  scripts/buck-prefix-cost.py --prefix buck/prefix/BUCK --top 40
+  scripts/buck-prefix-cost.py --graph <path>           # required; a dir or a graph.json
+  scripts/buck-prefix-cost.py                          # lists the candidates and exits
+  scripts/buck-prefix-cost.py --graph <path> --prefix buck/prefix/BUCK --top 40
 """
 
 import argparse
@@ -43,11 +51,60 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _LABEL = re.compile(r'"\s*:\s*"(//[^"]+)"')
 
 
-def newest_graph():
-    paths = glob.glob("/nix/store/*-darling-buck2-graph/graph.json")
-    if not paths:
-        sys.exit("no built graph found; pass --graph, or build .#darling-buck2-graph")
-    return max(paths, key=os.path.getmtime)
+# Minimum share of a prefix's labels a graph must resolve before its numbers mean anything.
+# MEASURED, not picked round. Against a correct min graph the current prefix resolves 601 of
+# 899 labels, 67 percent. The 298 it does not are all ACTION-LESS targets -- plists, bashrc,
+# profile, newsyslog.conf -- installed by an export_file rule that never runs a build action,
+# so they are legitimately absent from an ACTION graph. The wrong graph that motivated this
+# guard resolved 128 of 899, 14 percent. Half sits well clear of both.
+MIN_COVERAGE = 0.50
+
+
+def candidate_graphs():
+    """Every built graph dump with its action count, most actions first.
+
+    ALL FOUR graph attributes -- the single-target demo, -all, -min and -min-skeleton --
+    build a derivation NAMED darling-buck2-graph, so nothing in the store path says which
+    is which and a glob matches all of them. Action count is what tells them apart:
+    roughly 27,600 is -all, 17,550 is -min, and anything well below that is a demo, a
+    skeleton, or a dump from an older target list.
+    """
+    out = []
+    for p in glob.glob("/nix/store/*-darling-buck2-graph/graph.json"):
+        n = 0
+        try:
+            with open(p, "rb") as f:
+                # Chunked: these are up to 1.6 GB and there are dozens of them.
+                while True:
+                    chunk = f.read(8 << 20)
+                    if not chunk:
+                        break
+                    n += chunk.count(b'"identity"')
+        except OSError:
+            continue
+        out.append((n, p))
+    out.sort(reverse=True)
+    return out
+
+
+def refuse_to_guess():
+    """Print the candidates and exit, rather than picking one.
+
+    This replaces max(paths, key=os.path.getmtime), which was not a selection at all: Nix
+    pins every store path's mtime to the epoch, so all 27 dumps tie and max() returns
+    whichever the glob happened to yield first. That drew a 5,709 action graph, resolved
+    128 of 899 prefix labels, and still printed a ranking that looked entirely reasonable --
+    libsyscall on top, sensible percentages, nothing visibly wrong. A measurement whose
+    input is chosen at random is worse than no measurement, because it gets quoted.
+    """
+    print("REFUSING TO GUESS which graph to read.\n")
+    print("Every graph attribute emits the same derivation NAME, so the store cannot tell")
+    print("them apart, and their mtimes are all the epoch. Pick the one you mean:\n")
+    for n, p in candidate_graphs()[:12]:
+        print(f"  {n:>7} actions  {p}")
+    sys.exit("\npass --graph <path>, or build the one you want:\n"
+             "  nix build .#darling-buck2-graph-min --print-out-paths --no-link   (minimal)\n"
+             "  nix build .#darling-buck2-graph-all --print-out-paths --no-link   (full)")
 
 
 def load_graph(path):
@@ -152,7 +209,13 @@ def main():
                     help="the N costliest TARGETS in the cone, and which entries pull each")
     args = ap.parse_args()
 
-    graph = args.graph or newest_graph()
+    if not args.graph:
+        refuse_to_guess()
+    graph = args.graph
+    if os.path.isdir(graph):
+        graph = os.path.join(graph, "graph.json")
+    if not os.path.exists(graph):
+        sys.exit(f"{graph} does not exist")
     prefix = os.path.join(ROOT, args.prefix)
     if not os.path.exists(prefix):
         sys.exit(f"{prefix} does not exist")
@@ -164,6 +227,21 @@ def main():
           f"{sum(len(v) for v in dests.values())} entries")
 
     known = [l for l in dests if l in cost or l in deps]
+    # THE GUARD THAT WOULD HAVE CAUGHT IT. Refusing to guess stops the tool choosing a wrong
+    # graph; this stops it staying quiet about one it was HANDED. Every number below is a cone
+    # measured from these labels, so a graph that resolves few of them does not produce a small
+    # answer, it produces a confident answer about a different question.
+    coverage = len(known) / len(dests) if dests else 0.0
+    print(f"resolved: {len(known)} of {len(dests)} labels ({100 * coverage:.0f} percent) "
+          f"appear in this graph")
+    if coverage < MIN_COVERAGE:
+        print()
+        for n, p in candidate_graphs()[:12]:
+            print(f"  {n:>7} actions  {p}")
+        sys.exit(f"\nthis graph resolves only {100 * coverage:.0f} percent of the prefix's "
+                 f"labels, below the {100 * MIN_COVERAGE:.0f} percent floor.\nIt is the wrong "
+                 f"graph for this prefix: a demo, a skeleton, or a dump from another target "
+                 f"list.\nPick one of the above with --graph.")
     if not known:
         sys.exit("no prefix label appears in the graph; wrong graph for this prefix?")
 
