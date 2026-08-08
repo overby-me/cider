@@ -143,6 +143,8 @@ def main():
     ap.add_argument("--check", action="store_true",
                     help="exit 1 if a non-exempt entry exceeds the budget")
     ap.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
+    ap.add_argument("--expensive", type=int, metavar="N", default=0,
+                    help="the N costliest TARGETS in the cone, and which entries pull each")
     args = ap.parse_args()
 
     graph = args.graph or newest_graph()
@@ -163,6 +165,42 @@ def main():
     index = {}
     reach = reachability(known, deps, index)
     rev = {i: t for t, i in index.items()}
+
+    if args.expensive:
+        # The OTHER question, and the one the exclusive ranking cannot answer: what is
+        # expensive, and who is asking for it. AppKit and CoreImage were 752 actions pulled by
+        # pbcopy, pbpaste and open, and NONE of the three showed up in the exclusive ranking,
+        # because the cost is shared between them so no single entry owns it. Finding that by
+        # hand meant writing a reverse BFS; it belongs here instead.
+        in_cone = set()
+        for label in known:
+            m = reach.get(label, 0)
+            while m:
+                b = m & -m
+                in_cone.add(rev[b.bit_length() - 1])
+                m ^= b
+        pullers = collections.defaultdict(list)
+        for label in known:
+            m = reach.get(label, 0)
+            while m:
+                b = m & -m
+                pullers[rev[b.bit_length() - 1]].append(label)
+                m ^= b
+        cone_total = sum(cost.get(t, 0) for t in in_cone)
+        print(f"cone: {len(in_cone)} targets, {cone_total} actions\n")
+        for t in sorted(in_cone, key=lambda x: -cost.get(x, 0))[:args.expensive]:
+            c = cost.get(t, 0)
+            if not c:
+                break
+            who = pullers[t]
+            print(f"{c:>6} {100*c/cone_total:>5.1f}%  {t}")
+            # Few pullers means it is removable by dropping them; many means it is base.
+            if len(who) <= 6:
+                for w in sorted(who):
+                    print(f"{'':>14}<- {w}")
+            else:
+                print(f"{'':>14}<- {len(who)} entries (shared base, not removable this way)")
+        return
 
     # How many entries reach each target. A target reached by exactly one is exclusive to it.
     hits = collections.Counter()
