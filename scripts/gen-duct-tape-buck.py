@@ -45,6 +45,7 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 PORTED_TO_RUST = [
     "src/semaphore.c",
     "src/condvar.c",
+    "src/timer.c",
 ]
 
 # Inherited from the top-level CMakeLists and src/external/darlingserver's, in

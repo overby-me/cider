@@ -104,15 +104,21 @@ it is still over an hour.
    The stress number, for whatever changes this path next: **500,000 suspend/resume round-trips
    in 5.79 s, 11,587 ns each**, no assertion. There is no pre-port figure to compare against.
 
-   **Two files were backed off ON EVIDENCE rather than attempted:**
-   * `timer.c` needs `mpqueue_head`'s internals for `mpqueue_init`, but `queue_.*`, `_?lck_.*`
-     and `priority_queue.*` are deliberately `--opaque-type` so `struct task` does not drag
-     most of osfmk into the shared bindings. Relaxing that perturbs bindings the whole daemon
-     depends on, for 93 lines.
-   * `host.c` reads as cheap at 12 exports / 6 calls out, but every export is a MIG SERVER
-     ROUTINE reached through generated dispatch tables. A mismatched signature is not a
-     compile error, it is silent corruption at dispatch. The risk is transcribing twelve of
-     those, not the 245 lines.
+   **`timer.c` IS PORTED. 3 of 16 done**, and the reason it was skipped twice was WRONG.
+   The claim was that reopening the `queue_.*`, `_?lck_.*` and `priority_queue.*` opaque types
+   for `mpqueue_init` would drag most of osfmk into the shared bindings. That was asserted,
+   never measured. **Measured: +9 structs and +7 KB** (49 structs / 40,546 B to 58 / 47,749 B),
+   and the daemon plus all three demos still build. Adding the timer headers took the total to
+   61 structs / 49,304 B. Never cite that cost again without the number.
+
+   **`host.c` IS still backed off, on a reason that holds:** it reads as cheap at 12 exports /
+   6 calls out, but every export is a MIG SERVER ROUTINE reached through generated dispatch
+   tables. A mismatched signature is not a compile error, it is silent corruption at dispatch.
+   The risk is transcribing twelve of those, not the 245 lines.
+
+   `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
+   `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
+   remaining files that use them do not each re-derive it.
 
    Two mechanisms were proven by experiment before any port code, both with negative controls:
    bindgen PARSES the XNU internal headers given duct-tape's own flags (`-fblocks` is load

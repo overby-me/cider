@@ -42,3 +42,8 @@
 #include <darlingserver/duct-tape/condvar.h>
 #include <mach/task.h>
 #include <mach/semaphore.h>
+/* what timer.c itself includes: the timer queue it owns, and the XNU entry points it calls */
+#include <kern/timer_call.h>
+#include <kern/timer_queue.h>
+#include <mach/mach_time.h>
+#include <i386/rtclock_protos.h>

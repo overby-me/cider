@@ -38,6 +38,13 @@ pub mod mach;
 /// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
 pub mod task;
 
+/// The dtape_stub family, shared by every ported glue file that stubs an XNU entry point.
+pub mod dtape_stub;
+
+/// duct-tape's timer queue: the Rust replacement for duct-tape/src/timer.c, the third glue
+/// file ported off C (#71).
+pub mod timer;
+
 /// duct-tape condition variables: the Rust replacement for duct-tape/src/condvar.c, the
 /// second glue file ported off C (#71). Exports the dtape_condvar_* C ABI, so the still-C
 /// locks.c and thread.c link against this.
