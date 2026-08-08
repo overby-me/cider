@@ -37,10 +37,22 @@ use crate::bindings::{
     IE_BITS_GEN_MASK, IE_BITS_TYPE_MASK, IE_BITS_UREFS_MASK, KERN_SUCCESS,
 };
 
-extern "C" {
-    /// The duct-tape task wrapping an XNU one. Declared rather than bound because it is
-    /// reachable only through headers this file does not otherwise need.
-    fn dtape_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut dtape_task_t;
+/// `dtape_task_for_xnu_task`: XNU's task is EMBEDDED in the duct-tape one, so this walks back
+/// by the field offset.
+///
+/// COMPUTED, NOT CALLED, and the first version of this file got that wrong. The C is
+/// `__attribute__((always_inline)) static`, so there is NO SYMBOL to link against. Declaring it
+/// extern compiled and even linked the demos, because nothing in them reaches this path and the
+/// linker garbage collected it; only building darlingserverd, where handler.rs does call it,
+/// produced the undefined reference. Same shape as `dtape_thread_for_xnu_thread`, which
+/// condvar.rs computes for the same reason.
+#[inline]
+unsafe fn dtape_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut dtape_task_t {
+    if xnu_task.is_null() {
+        return ptr::null_mut();
+    }
+    (xnu_task as *mut u8).sub(std::mem::offset_of!(crate::bindings::dtape_task, xnu_task))
+        as *mut dtape_task_t
 }
 
 /// `MACH_PORT_TYPE_NONE`, the empty capability. Spelled out because it is `0` by construction
