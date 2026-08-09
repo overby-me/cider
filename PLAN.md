@@ -26,15 +26,28 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 ## Buck2 port: the order to work in
 
 **DONE and no longer in this list:** #54 (cascade cut, per-file staging into mirrored real
-directories), #55 (lowered derivations content-addressed), #73 (closed by re-testing it: no
-host target compiles a `DARLING`-guarded source, so there was nothing behind it). Their detail
-is further down and in the commit history.
+directories), #55 (lowered derivations content-addressed), #71 (duct-tape ported to Rust, 16 of
+16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
+was nothing behind it). Their detail is further down and in the commit history.
 
-1. **#69, close the declaration gaps for real and delete the closure pass.** The next real
-   item. #54's correctness rests on the per-target file lists being RIGHT, and today they are
-   inferred: a regex over quoted includes, blind to `#if`, so an include assembled by macro is
-   missed silently. Three gaps were each found by a build failing, not by a check.
-2. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
+1. **#79 NEEDS A DECISION, and it is the live blocker.** The cascade is NOT cut. Measured on
+   `.#darling-buck2-one` by builders that RAN: no-op **0** (a control that can fail), one
+   `duct-tape/src` edit **6**, with `root//src/libsimple:libsimple_darlingserver` recompiling
+   `src/lock.c`. `nix-diff` named the only cause, and it was neither the graph nor the sources
+   (both byte identical), it was the darlingserver GROUP STORE interpolated as `_g`.
+   Narrowing that group cuts it (same edit then rebuilds only skeleton, graph, sources) but
+   STARVES the compiles: `clang: error: no such file or directory: .../dtape_rs_shims.c`.
+   `scripts/buck2-graph-sources.py` excludes `buck-src` and `src/external` from grouping as
+   pins staged wholesale, so for those four directories the whole-directory group is the ONLY
+   supplier. **Either bring `src/external` into the per-target unions, or accept that any
+   `src/external` edit rebuilds every target.** Tried, measured, reverted.
+2. **#69, close the declaration gaps for real and delete the closure pass.** #54's correctness
+   rests on the per-target file lists being RIGHT, and today they are inferred: a regex over
+   quoted includes, blind to `#if`, so an include assembled by macro is missed silently. Three
+   gaps were each found by a build failing, not by a check. First evidence in: two targets
+   through the narrowed lowering, a compile and a generator, exit 0 in 340 s. The endpoint hash
+   and the `narrowSources` default flip are still unverified.
+3. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
    was a third. Also corrects two stale numbers: `sourceGroups` eval is **18.8 s**, not the
@@ -45,7 +58,8 @@ is further down and in the commit history.
    that cannot be worked around. Cheap pre-check first, on a toy: does `builtins.outputOf` work
    at all on 2.34.x, and does early cutoff SURVIVE it, given a consumer binds to the producing
    derivation rather than its content.
-3. **#71, port duct-tape to Rust. SCOPED, and the task's own numbers were wrong.**
+4. **#71, DONE (16 of 16). Kept only for the numbers, which were wrong when the task was
+   written.**
    19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
    not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
    Re-counted: `duct-tape/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
