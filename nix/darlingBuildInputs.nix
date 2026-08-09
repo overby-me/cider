@@ -33,8 +33,6 @@
   pulseaudio,
   makeWrapper,
   python3,
-  cmake,
-  ninja,
   pkg-config,
   bison,
   flex,
@@ -139,10 +137,8 @@ in
   nativeBuildInputs = [
     bison
     ccWrapperBypass
-    cmake
     flex
     makeWrapper
-    ninja
     pkg-config
     python3
   ];
@@ -164,11 +160,6 @@ in
       libXdmcp
     ];
 
-  cmakeFlags = [
-    "-DTARGET_i386=OFF"
-    "-DCOMPILE_PY2_BYTECODE=OFF"
-    "-DDARLINGSERVER_XDG_USER_DIR_CMD=${xdg-user-dirs}/bin/xdg-user-dir"
-  ];
 
   # wrapgen dlopen's these Linux .so's during the build.
   ldLibraryPath = lib.makeLibraryPath wrappedLibs;

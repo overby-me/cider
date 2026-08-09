@@ -12,8 +12,6 @@ in {
 
   packages = with pkgs; [
     # ── Build dependencies ──────────────────────────────────────
-    cmake
-    ninja
     # Buck2 for the gradual port (plan/buck2-port.md). Same binary the Nix
     # endpoint would use, so the toolchain is pinned from day 1 even while we
     # iterate outside a derivation. watchman is buck2's file watcher here: the
@@ -94,11 +92,9 @@ in {
   shellHook = ''
     echo "🍎 darling-nix devShell loaded"
     echo "   clang: $(clang --version | head -1)"
-    echo "   cmake: $(cmake --version | head -1)"
     echo ""
     echo "Quick start:"
-    echo "  mkdir -p build && cd build"
-    echo "  cmake -G Ninja .."
-    echo "  ninja -j\$(nproc)"
+    echo "  nix build .#darling-buck2-prefix-min --max-jobs 6 --cores 2"
+    echo "  buck2 build //..."
   '';
 }
