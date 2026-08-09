@@ -78,7 +78,12 @@ to a BUCK file, so reporting them would be noise. And the pin check tests `lexis
 `darwin/Developer` is written for the STAGED layout and 2,002 of its 2,636 links dangle in a
 checkout by design.
 
-**THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/xnu-sys-runtime-check.nu` covers the
+**THE DAEMON RUNTIME GATE IS 23 CHECKS, 140 to 152 s** (four consecutive runs on the renamed
+tree; the older 115 s figure predates the Rust demos being restored). **It is INDEPENDENT of
+the nix endpoint**, because it builds through buck2 in the dev shell, and it stayed green
+through every one of the endpoint failures above. Use it as the fast signal that the
+first-party code is coherent; an endpoint failure on its own says nothing about the daemon.
+`scripts/xnu-sys-runtime-check.nu` covers the
 six ported xnu-sys files plus the 17 proofs that `checks.server` used to run: Mach ports,
 `mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
 routing, persistent threads and four daemon capstones. Those 17 were orphaned by the cmake
