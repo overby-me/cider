@@ -919,11 +919,67 @@
   # because src/external is deliberately outside the per-target union mechanism. The grouping
   # rule in scripts/buck2-graph-sources.py excludes buck-src and src/external as pins staged
   # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
-  # SUPPLIER. Narrowing it and narrowing the per-target unions are the same change, and that is
-  # a bigger decision than a table here. Tried, measured, reverted; do not retry it as written.
+  # SUPPLIER. A blanket cut therefore cannot work; the answer is groupSplit further down, which
+  # gives every target the headers and the scripts but hands duct-tape/src only to the targets
+  # that compile it.
   escapeNarrow = {
     "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
   };
+
+  # THE FIX FOR THE 100 PERCENT ROW (#79), and it is CONDITIONAL rather than a blanket cut.
+  #
+  # Dropping duct-tape/src from the groups outright does cut the cascade but starves the
+  # compiles, because src/external is outside the per-target union mechanism and the group is
+  # the only supplier. The way through is that the two consumers want different sets: EVERY
+  # target needs the headers and the generator scripts, but only darlingserver OWN targets need
+  # duct-tape/src. Checked before splitting: duct-tape/src is 20 .c files and NO headers, and
+  # nothing outside darlingserver references the path except two comments in linux/server. So
+  # every other target was staging 20 C files it cannot use and paying the whole endpoint for a
+  # duct-tape edit.
+  #
+  # `shared` goes to everyone, which keeps scripts/generate-rpc-wrappers.py in reach of
+  # dserver_rpc. `owned` is added only when the label sits under ownerPrefix, which is what
+  # keeps dt_objects compiling.
+  #
+  # MEASURED on the endpoint, builders that RAN, with a settle and a restore either side:
+  #   settle after this change   1,551, exit 0, 0 errors   <- correctness, dt_objects and
+  #                                                           dserver_rpc both build
+  #   no-op control                  0                     <- so the probe can fail
+  #   one duct-tape/src edit       657 in 22 min            <- was 1,558 in 61 min
+  #   restore                        0, back to the settled output
+  # A 2.4 times cut, correctness intact. It is not the ~7 an ordinary leaf edit costs, and the
+  # residual has a named cause: ownerPrefix also matches root//src/external/darlingserver:
+  # dserver_rpc, which does not compile duct-tape/src but does regenerate rpc.h, so its whole
+  # consumer cone follows. Narrowing ownerPrefix to the duct-tape package is the next step.
+  groupSplit = {
+    "src/external/darlingserver" = {
+      shared = [
+        "src/external/darlingserver/include"
+        "src/external/darlingserver/internal-include"
+        "src/external/darlingserver/scripts"
+        "src/external/darlingserver/src"
+        "src/external/darlingserver/tools"
+        "src/external/darlingserver/duct-tape/defines"
+        "src/external/darlingserver/duct-tape/include"
+        "src/external/darlingserver/duct-tape/internal-include"
+        "src/external/darlingserver/duct-tape/pthread"
+        "src/external/darlingserver/duct-tape/xnu"
+      ];
+      ownerPrefix = "root//src/external/darlingserver";
+      owned = ["src/external/darlingserver/duct-tape/src"];
+    };
+  };
+
+  # groupOfLabel is the identity for a label with no pin, and darlingserver is a non-pin
+  # external, so `label` here really is the buck2 label and the prefix test is sound.
+  nonPinExternalFor = label:
+    lib.concatMap (r:
+      let sp = groupSplit.${r} or null;
+      in
+        if sp == null
+        then [r]
+        else sp.shared ++ lib.optionals (lib.hasPrefix sp.ownerPrefix label) sp.owned)
+    nonPinExternal;
 
   nonPinExternal = let
     dir = srcRaw + "/src/external";
@@ -956,7 +1012,10 @@
       # no use for it.
       ++ lib.optionals (compiles ? ${label})
         (lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup)
-      ++ nonPinExternal
+      # PER LABEL, not the flat list: darlingserver is expanded into siblings and the churny
+      # duct-tape/src is added only for its own targets, which is the cascade route nix-diff
+      # named. escapeRoots above still takes the unexpanded list.
+      ++ (builtins.filter (r: builtins.pathExists (srcRaw + ("/" + r))) (nonPinExternalFor label))
     );
     shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
   in ''
