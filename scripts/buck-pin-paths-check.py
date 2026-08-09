@@ -74,6 +74,36 @@ def sdk_paths():
                 yield f"buck/generated/{name}", os.path.join(root, val)
 
 
+def sdk_key_namespace():
+    """The sdk maps have TWO sides, and only one of them was ever checked here.
+
+    An entry is {staged include path: source}. The VALUE is a path or label into a pin,
+    which the other sources above resolve. The KEY is the path the header is staged AT,
+    and UPSTREAM code names that too: the xnu pin's own os/tsd.h does
+
+        #include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
+
+    The Cider sweep rewrote 302 of those keys to cider/emulation, so the headers were
+    staged where nothing looks for them, and 39 compiles failed an HOUR into the endpoint
+    with the include not found. Restoring the values, which this file already did, left
+    the keys wrong.
+
+    CHECKED BY CONSISTENCY, not by a hardcoded name, because cider/ IS a legitimate SDK
+    namespace elsewhere: usr/include/cider/mldr/elfcalls/dthreads.h is ours and resolves.
+    The rule is that the key and the value must agree about whose namespace it is. If the
+    key begins cider/ while the value names a darling_ target inside a pin, one of them is
+    wrong, and it is the key.
+    """
+    for name, root in SDK_MAPS.items():
+        path = os.path.join(GEN, name)
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding="utf-8") as fh:
+            for key, value in re.findall(r'"([^"]+)":\s*"([^"]+)"', fh.read()):
+                if key.startswith("cider/") and "darling" in value:
+                    yield f"buck/generated/{name}", f"KEY {key} but VALUE {value}"
+
+
 def submodule_paths():
     """The manifest keys a pin by its src/external path; the last component is
     the buck-src directory the pin is checked out as."""
@@ -101,6 +131,12 @@ def main():
     os.chdir(ROOT)
     checked = 0
     missing = []
+    # This one yields FINDINGS rather than candidate paths: the key and the value
+    # disagree about whose namespace the header lives in, and there is nothing to stat.
+    ns = list(sdk_key_namespace())
+    print(f"{'sdk_key_namespace':18s} {len(ns):5d} disagreements")
+    missing += ns
+
     for source in (exports_srcs, sdk_paths, submodule_paths):
         n = 0
         bad = []
@@ -123,7 +159,7 @@ def main():
         print("code is Cider. Check any recent rename against buck-src/<pin>/.")
         return 1
 
-    print(f"\nPASS: all {checked} pin paths resolve")
+    print(f"\nPASS: all {checked} pin paths resolve, and every sdk key agrees with its value")
     return 0
 
 
