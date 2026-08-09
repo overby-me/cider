@@ -83,8 +83,13 @@ def in_tree_target(link: str, target: str) -> str | None:
         # darling/submodules/xnu points at ciderd/xnu-sys/xnu that way, and
         # ciderd is at src/external/ciderd, not a pin. A dangling link is
         # not merely unused -- a glob that picks it up fails the whole package load.
+        # And the name it uses is UPSTREAM's: this is where the security pin says
+        # darlingserver/duct-tape/xnu, so the candidate goes through the rename table
+        # too. In the Nix graph derivation these links resolve INSIDE buck-src rather
+        # than to src/external, which is why fixing only the other branch left the
+        # endpoint failing with the re-pointed count still at 103.
         rel = resolved[len(BUCK_SRC) + 1:]
-        cand = os.path.join(REPO, "src", "external", rel)
+        cand = os.path.join(REPO, rename_first_party(os.path.join("src", "external", rel)))
         if os.path.lexists(cand):
             return os.path.relpath(cand, os.path.dirname(link))
         return None
