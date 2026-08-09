@@ -14,6 +14,7 @@
 #   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
 #   host_demo       host_info, host_statistics, processor_set_info      (host.c, processor.c)
 #   psynch_demo     the init invariants and the callback vtable          (psynch.c port)
+#   kqchan_demo     create, has_events and destroy on a REAL port        (kqchan.c port)
 #
 # psynch_demo is a THIRD kind of check, and it is shaped by how psynch fails. It does not hang
 # like the first three or answer with a wrong number like host_demo: it fails SILENTLY. Omitting
@@ -58,6 +59,7 @@ const DEMOS = [
     ["stage3_spike", "SPIKE_RESUMED_OK", "semaphore.c under 500k round-trips"]
     ["host_demo", "HOST_DEMO_OK", "host.c and processor.c, cross-checked against /proc"]
     ["psynch_demo", "PSYNCH_DEMO_OK", "psynch.c init invariants and the 18 vtable entries"]
+    ["kqchan_demo", "KQCHAN_DEMO_OK", "kqchan.c create, has_events and destroy on a real port"]
 ]
 
 def say [msg: string] { print -e $msg }

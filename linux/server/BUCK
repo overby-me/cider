@@ -999,6 +999,34 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
+# kqchan_demo: kqchan was the last ported file nothing drove (#80), the position psynch was in
+# before #77. Drives the real MachPortKqchan::open path on a kernel microthread, so it exercises
+# dtape_kqchan_mach_port_create, the notification callback registration, has_events, and destroy
+# through Drop. The port it watches is a REAL receive right from mach_reply_port, because a
+# made-up port number would exercise the failure path and prove much less. The guest side of the
+# socket protocol (modify, fill, disable_notifications, on_readable) is still uncovered.
+rust_binary(
+    name = "kqchan_demo",
+    crate_root = "src/bin/kqchan_demo.rs",
+    out_dir = ":dtape_bindings",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
 # darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
