@@ -37,7 +37,7 @@ about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,
 stall are not reproducible: the one real failure was a staging regression, now fixed. Do not
 plan around the endpoint being unrunnable.
 
-1. **#79 NEEDS A DECISION, and it is the live blocker.** The cascade is NOT cut.
+1. **#79 IS FIXED. The cascade is cut, 1,558 builders to 44.**
 
    **MEASURED AT ENDPOINT SCALE on the finished baseline, builders that RAN, each with its own
    restore control that came back 0 onto the identical baseline output:**
@@ -47,11 +47,24 @@ plan around the endpoint being unrunnable.
    | none (control) | **0** | 16 s | 0% | control |
    | `src/libaccessibility/src/Accessibility.m` | **7** | 165 s | 0.5% | correct, a leaf |
    | `src/startup/rtsig.c` | **570** | 19 min | 37% | correct, a header generator |
-   | `duct-tape/src/dtape_rs_shims.c` | **1,558** | 61 min | **100%** | **THE LEAK, #79** |
+   | `duct-tape/src/dtape_rs_shims.c` BEFORE | **1,558** | 61 min | **100%** | the leak |
+   | `duct-tape/src/dtape_rs_shims.c` AFTER | **44** | 2.5 min | 2.8% | **fixed** |
 
-   **An ordinary edit costs 7 builders and under 3 minutes.** So #54 and #55 did their job. The
-   leak is `src/external` alone, and it costs **222 times** an ordinary edit, 61 minutes against
-   165 seconds.
+   **An ordinary edit costs 7 builders and under 3 minutes.** So #54 and #55 did their job, and
+   the one leak was `src/external`, which cost 222 times an ordinary edit until `groupSplit`
+   below. The 44 that remain ARE the duct-tape cone and should rebuild: `dt_objects`,
+   `dt_mig_objects`, `dt_pthread_objects`, `darlingserver_duct_tape`, the `mig_*` set,
+   `dtape_bindings`, `darlingserverd`, `darling` and the prefix.
+
+   **THE FIX, `groupSplit` in `nix/lib/darlingBuck2Lower.nix`.** A blanket cut cannot work,
+   because `scripts/buck2-graph-sources.py` keeps `buck-src` and `src/external` out of the
+   grouping, so the whole-directory group is their only source supplier: dropping
+   `duct-tape/src` starves the compiles with `clang: no such file or directory`. The split is
+   conditional instead. Every target gets the headers and `scripts/`, which keeps `dserver_rpc`
+   generating; only labels under `root//src/external/darlingserver/duct-tape` also get
+   `duct-tape/src`, which keeps `dt_objects` compiling. Scoping that prefix to the duct-tape
+   package rather than all of darlingserver is worth 657 builders against 44, because
+   `dserver_rpc` regenerates `rpc.h` and drags its consumers.
 
    **ONLY THE FIRST ROW IS A LEAK, and calling the second one a second cascade was wrong.**
    `nix-diff` on the two rows says opposite things. For the duct-tape edit the cause is the
@@ -76,10 +89,7 @@ plan around the endpoint being unrunnable.
    (both byte identical), it was the darlingserver GROUP STORE interpolated as `_g`.
    Narrowing that group cuts it (same edit then rebuilds only skeleton, graph, sources) but
    STARVES the compiles: `clang: error: no such file or directory: .../dtape_rs_shims.c`.
-   `scripts/buck2-graph-sources.py` excludes `buck-src` and `src/external` from grouping as
-   pins staged wholesale, so for those four directories the whole-directory group is the ONLY
-   supplier. **Either bring `src/external` into the per-target unions, or accept that any
-   `src/external` edit rebuilds every target.** Tried, measured, reverted.
+   That is what `groupSplit` solves, conditionally, without touching the union mechanism.
 2. **#69, close the declaration gaps for real and delete the closure pass.** #54's correctness
    rests on the per-target file lists being RIGHT, and today they are inferred: a regex over
    quoted includes, blind to `#if`, so an include assembled by macro is missed silently. Three
