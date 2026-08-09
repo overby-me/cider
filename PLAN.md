@@ -1085,11 +1085,15 @@ the shell before the probe can report.
   `DARLING`, so most of the delta is the `__DARLING__` guards, which is what a patch set is
   for. It REMOVES 1,974 tracked files and 32M, and the pin tree is already on disk as
   `buck-src/xnu`, so it deduplicates rather than costing more.
-  TWO THINGS TO SETTLE FIRST: the guest side and the kernel side would be the same repo and rev
-  with DIFFERENT patch sets, which `cider-src.nix` supports because it keys patches by pin
-  PATH, but 45 of the 51 modified files are under `osfmk/` and the guest side does reference
-  `osfmk`, so the sets need checking for conflict rather than assuming disjoint. And it moves
-  source paths, so it batches with other invalidating work.
+  **DO IT AS A PATCH ON TOP OF THE EXISTING PIN, NOT AS A SECOND PIN ENTRY**, and that is a
+  correction to the first way I wrote this up. Two entries could not CONFLICT, because
+  `fetchOne` names each fetch `cider-sub-<path>` deliberately, so two submodules sharing a repo
+  get distinct store paths. The problem is the opposite: distinct names mean a fixed-output
+  derivation cannot dedupe, so the same 78M repo would be fetched and stored TWICE for one
+  revision. A small derivation that takes `pinPaths."src/external/xnu"` and applies
+  `patches/xnu-sys-xnu/*.patch` gets the same result from ONE fetch, and the 45 of 51 modified
+  files under `osfmk/` stop mattering, because the two consumers never share a checkout.
+  It moves source paths, so it batches with other invalidating work.
 - **#73 port build-time codegen to Rust** — `generate-rpc-wrappers.py` (already extended to
   emit the Rust codec, but still Python) and `tools/generate-xcode-stubs.py`.
 - **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
