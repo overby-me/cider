@@ -28,7 +28,7 @@ The output is checked in rather than built by a genrule, matching buck/generated
 duct_tape_flags.bzl, and --check re-derives it and fails if the committed file has drifted.
 
 Usage:
-  scripts/gen-dtape-traps.py             # write linux/server/src/traps_generated.rs
+  scripts/gen-dtape-traps.py             # write linux/server/src/xnu/traps_generated.rs
   scripts/gen-dtape-traps.py --check     # fail if the committed file is out of date
 """
 
@@ -39,7 +39,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "linux/server/src/traps_generated.rs")
+OUT = os.path.join(ROOT, "linux/server/src/xnu/traps_generated.rs")
 
 # C scalar types the RPC generator emits, mapped to what bindgen calls them in Rust.
 # A type NOT in this table is an error rather than a guess: silently mapping an unknown type is
