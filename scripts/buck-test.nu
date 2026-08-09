@@ -535,7 +535,15 @@ def main [flag?: string] {
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
     mut n_first = 0
     mut n_linked = 0
+    # PROGRESS, because this loop is otherwise silent for HOURS. It spawns one buck2 per
+    # target, about 15 to 30 seconds each over 568 targets, and prints only on failure, so
+    # without this it looks wedged. It is not: watch the child pid turn over. Measured
+    # 2026-08-09 after mistaking the silence for a hang twice.
+    mut n_seen = 0
+    let n_total = ($all_dylibs | length)
     for t in $all_dylibs {
+        $n_seen = $n_seen + 1
+        if ($n_seen mod 25) == 0 { say $"  ... ($n_seen) of ($n_total) dylibs checked" }
         let name = ($t | split row ":" | last)
         let f = (out_of $t)
         # Both substitutions have to tolerate failure: with `set -euo pipefail`, an
