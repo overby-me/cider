@@ -1051,3 +1051,384 @@ rust_binary(
     ],
     visibility = ["PUBLIC"],
 )
+
+# THE DAEMON PROOFS, restored to buck2 (#82 fallout). These 17 were built and RUN by
+# checks.server, which went out with the cmake removal because it was fed by the cmake
+# duct-tape package. That silently dropped 17 runtime proofs of the Rust daemon: Mach ports,
+# mach_msg, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
+# routing, persistent threads and the four daemon capstones. They were never dead code; they
+# just had no buck2 target because cargo built them. Same shape as scheduler_demo above.
+
+rust_binary(
+    name = "rpc_wire_check",
+    crate_root = "src/bin/rpc_wire_check.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "dispatch_demo",
+    crate_root = "src/bin/dispatch_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "rpc_loop_demo",
+    crate_root = "src/bin/rpc_loop_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "rpc_roundtrip_demo",
+    crate_root = "src/bin/rpc_roundtrip_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "registry_demo",
+    crate_root = "src/bin/registry_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "mem_hooks_demo",
+    crate_root = "src/bin/mem_hooks_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "mach_traps_demo",
+    crate_root = "src/bin/mach_traps_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "persistent_threads_demo",
+    crate_root = "src/bin/persistent_threads_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "mach_port_demo",
+    crate_root = "src/bin/mach_port_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "mach_port_lifecycle_demo",
+    crate_root = "src/bin/mach_port_lifecycle_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "mach_msg_demo",
+    crate_root = "src/bin/mach_msg_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "blocking_msg_demo",
+    crate_root = "src/bin/blocking_msg_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "thread_call_loop_demo",
+    crate_root = "src/bin/thread_call_loop_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "daemon_mach_demo",
+    crate_root = "src/bin/daemon_mach_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "daemon_alloc_demo",
+    crate_root = "src/bin/daemon_alloc_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "daemon_msg_demo",
+    crate_root = "src/bin/daemon_msg_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "daemon_session_demo",
+    crate_root = "src/bin/daemon_session_demo.rs",
+    out_dir = ":xnu_sys",
+    deps = [
+        ":darling",
+        "//buck-rust:libc",
+    ],
+    link_archives = [
+        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/libsimple:libsimple_darlingserver",
+        ":dserver_fast_context",
+    ],
+    link_flags = [
+        "-ldylib=pthread",
+        "-ldylib=dl",
+        "-ldylib=m",
+        "-ldylib=rt",
+    ],
+    visibility = ["PUBLIC"],
+)

@@ -60,6 +60,27 @@ const DEMOS = [
     ["host_demo", "HOST_DEMO_OK", "host.c and processor.c, cross-checked against /proc"]
     ["psynch_demo", "PSYNCH_DEMO_OK", "psynch.c init invariants and the 18 vtable entries"]
     ["kqchan_demo", "KQCHAN_DEMO_OK", "kqchan.c create, has_events and destroy on a real port"]
+
+    # RESTORED from the deleted checks.server (#82). That check was fed by the cmake duct-tape
+    # package, so removing cmake silently took 17 runtime proofs of the daemon with it. They
+    # had no buck2 target because cargo built them; they have one now.
+    ["rpc_wire_check", "RPC_WIRE_OK", "the generated RPC wire structs, their sizes and alignment"]
+    ["dispatch_demo", "DISPATCH_OK", "the generated RPC dispatch"]
+    ["rpc_loop_demo", "RPC_LOOP_OK", "the daemon receive and decode half of the RPC loop"]
+    ["rpc_roundtrip_demo", "RPC_ROUNDTRIP_OK", "the full daemon request to reply cycle"]
+    ["registry_demo", "REGISTRY_OK", "per-guest routing through the process and thread tables"]
+    ["mem_hooks_demo", "MEM_HOOKS_OK", "the guest-memory hooks, task_read_memory and task_write_memory"]
+    ["mach_traps_demo", "MACH_TRAPS_OK", "the Mach special-port traps served by the Rust daemon"]
+    ["persistent_threads_demo", "PERSISTENT_THREADS_OK", "persistent per-guest threads"]
+    ["mach_port_demo", "MACH_PORT_OK", "Mach port-right operations through XNU on a guest task"]
+    ["mach_port_lifecycle_demo", "MACH_PORT_LIFECYCLE_OK", "a full Mach port-name lifecycle"]
+    ["mach_msg_demo", "MACH_MSG_OK", "mach_msg_overwrite through real XNU"]
+    ["blocking_msg_demo", "BLOCKING_MSG_OK", "a blocking mach_msg receive across two guest threads"]
+    ["thread_call_loop_demo", "THREAD_LOOP_OK", "the persistent-thread doWork loop"]
+    ["daemon_mach_demo", "DAEMON_MACH_OK", "a real client over the socket for the special-port traps"]
+    ["daemon_alloc_demo", "DAEMON_ALLOC_OK", "cross-process copyout over a real socket"]
+    ["daemon_msg_demo", "DAEMON_MSG_OK", "a client process running a full mach_msg send and receive"]
+    ["daemon_session_demo", "DAEMON_SESSION_OK", "a full guest session on one persistent connection"]
 ]
 
 def say [msg: string] { print -e $msg }
@@ -99,7 +120,12 @@ def run_one [target: string, verdict: string, covers: string, seconds: int] {
         say $"  FAIL: ($bad | first)"
         return false
     }
-    if not ($lines | any {|l| $l == $verdict }) {
+    # STARTS WITH, not equals. The comment above says presence and the code said equality,
+    # which is fine while every demo prints its marker bare, and wrong the moment one prints
+    # "MARKER: detail". The 17 restored from checks.server all do, and all 17 were reported
+    # as failures while their output plainly contained the marker. Starts-with keeps this
+    # stricter than a bare contains: the marker still has to open the line.
+    if not ($lines | any {|l| ($l == $verdict) or ($l | str starts-with $"($verdict):") }) {
         say $"  FAIL: never printed ($verdict); saw: ($lines | str join ', ')"
         say ($run.stderr | lines | last 10 | str join "\n")
         return false
