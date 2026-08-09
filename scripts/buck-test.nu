@@ -267,7 +267,17 @@ def main [flag?: string] {
     } else {
         let r = (do { ^buck2 build ...$targets } | complete)
         if $r.exit_code != 0 {
-            say "buck2 build FAILED; re-run with -v"
+            # The reason was in $r.stderr all along and this used to throw it away, so a
+            # failure here read as "re-run with -v" and cost a whole extra round trip every
+            # time. Print which targets failed and the first real diagnostic: the last one
+            # was a missing stdbool.h forty lines down, which named the cause exactly.
+            say "buck2 build FAILED"
+            let err = ($r.stderr | lines)
+            let failed = ($err | where {|l| $l | str contains "Failed to build" })
+            if ($failed | is-not-empty) { $failed | first 12 | each {|l| print -e $"       ($l)" } | ignore }
+            let diag = ($err | where {|l| ($l | str contains "error:") or ($l | str contains "fatal error") })
+            if ($diag | is-not-empty) { $diag | first 6 | each {|l| print -e $"       ($l)" } | ignore }
+            say "  full output: re-run with -v"
             exit 1
         }
     }
