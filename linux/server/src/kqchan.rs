@@ -259,6 +259,28 @@ struct Kev {
     data: i64,
     ext: [u64; 4],
 }
+/// COMPARED AGAINST THE GENERATED BINDING, 2026-08-09, and it has NOT drifted (#75).
+///
+/// This is a hand-written mirror of a wire struct that dtape_kqchan_mach_port_fill WRITES
+/// THROUGH, and the definition takes dserver_kqchan_reply_mach_port_read_t, so a drifted copy
+/// here would be memory corruption rather than a type complaint. Field by field:
+///
+///   Kev against dserver_kqchan_reply_mach_port_read__bindgen_ty_1
+///     ident u64, filter i16, flags u16, qos i32, udata u64, fflags u32, xflags u32,
+///     data i64, ext [u64; 4]                                      identical
+///   Replyhdr against dserver_kqchan_replyhdr
+///     number u32 against dserver_kqchan_msgnum_t, which is a re-export of a #[repr(u32)]
+///     enum, so four bytes either way; code i32 against c_int      identical
+///
+/// The repr is easy to miss: bindgen puts #[repr(u32)] about 1,400 characters ahead of the
+/// enum, behind #[non_exhaustive] and a long doc comment, so a short grep window reports no
+/// repr at all and invites the wrong conclusion.
+///
+/// NOT REPLACED BY THE BINDING TYPE, deliberately. Replyhdr, Kev, ReplyProcModify,
+/// ReplyMachPortModify and CallMachPortRead are one family covering the whole kqchan wire
+/// protocol, so swapping only this one would leave the file half in bindings types and half in
+/// local ones. Moving the family to the generated mirrors is a reasonable cleanup, but it is a
+/// refactor rather than a fix: there is no bug here to justify it.
 #[repr(C)]
 struct ReplyMachPortRead {
     header: Replyhdr,
