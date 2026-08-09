@@ -130,15 +130,21 @@ plan around the endpoint being unrunnable.
    builders, 0 errors**, and its prefix is BYTE IDENTICAL to the unnarrowed one,
    `sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=` both ways.
 
-   **THE DEFAULT STILL DID NOT FLIP, and that is a measurement rather than caution.** Flipping
-   it looked like a clean pass, 0 builders and a matching hash, but that was an illusion:
-   `narrowSources` is INERT for `.#darling-buck2-prefix-min`, which sets `sourceGroups = true`,
-   so staging goes through `stageProjectFor` and `projectSrc` is never read. Evaluating the
-   endpoint with the flag both ways gives the SAME drvPath, which is what proves inertness
-   rather than cheapness. So the green run covers ONE configuration, the one
-   `prefix-min-narrow` uses, and flipping the default would newly narrow 8 of the 11 lowering
-   call sites that nothing has tested. Next: a narrowed variant of the grouped endpoints, or
-   verify the remaining call sites, and only then flip.
+   **AND THE DEFAULT SHOULD NOT FLIP, because #54 SUPERSEDED THIS FLAG.** Flipping it looked
+   like a clean pass, 0 builders and a matching hash, but that was an illusion: `narrowSources`
+   is INERT for `.#darling-buck2-prefix-min`. Evaluating that endpoint with the flag both ways
+   gives the SAME drvPath, which is what distinguishes inert from merely cheap.
+
+   The reason is structural, and `stageProjectFor` states it: *under #54 a target stages ONLY
+   its groups plus the pins, and deliberately references no shared project path at all*. The
+   shipping endpoint sets `sourceGroups = true`, so `projectSrc` is never read and the union
+   `narrowSources` builds is never consumed. Both flags narrow the same thing; #54 does it
+   per-target and won.
+
+   Every cascade number in this file was measured on the GROUPED endpoint, so #54 is what
+   delivers them. **So the open question is not "flip narrowSources", it is "delete it".** That
+   would drop the flag, `projectSrc`, `srcUnion` and the two `-narrow` endpoints. It is a
+   user-facing removal (flake outputs) and wants a decision, not a unilateral sweep.
 3. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
