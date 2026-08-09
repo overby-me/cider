@@ -69,6 +69,15 @@ LABEL = re.compile(r'"//([A-Za-z0-9_./+-]*):([A-Za-z0-9_.+-]+)"')
 CONFIG = re.compile(r'read_root_config\(\s*"([a-z_]+)"')
 CONFIG_SECTION = "cider"
 
+# load("//pkg:file.bzl", "SYM", ALIAS = "SYM") -- the FILE has to exist and each
+# symbol has to be defined in it. Renaming the load and not the file is how the
+# duct-tape sweep broke the endpoint:
+#   File not found: root//buck/generated/xnu_sys_flags.bzl
+# and renaming the file but not the symbol fails the same way one line later.
+LOAD = re.compile(r'load\(\s*"//([A-Za-z0-9_./+-]*):([A-Za-z0-9_.+-]+\.bzl)"([^)]*)\)', re.S)
+LOAD_SYMS = re.compile(r'"([A-Za-z_][A-Za-z0-9_]*)"')
+DEFINES = re.compile(r'^([A-Za-z_][A-Za-z0-9_]*)\s*=', re.M)
+
 # Upstream Bazel files vendored inside a pin, using Bazel labels that are not
 # ours to resolve. Matched as a path prefix, not by label text.
 IGNORE_PREFIXES = ("buck-src/libcxx/utils/google-benchmark/",)
@@ -111,10 +120,27 @@ def main():
                 counts[key] += 1
                 where[key].add(rel)
 
+        for pkg, name, rest in LOAD.findall(text):
+            checked += 1
+            target = os.path.join(pkg, name)
+            if not os.path.exists(target):
+                key = f"load() file missing  //{pkg}:{name}"
+                counts[key] += 1
+                where[key].add(rel)
+                continue
+            with open(target, encoding="utf-8", errors="replace") as fh:
+                defined = set(DEFINES.findall(fh.read()))
+            for sym in LOAD_SYMS.findall(rest):
+                if sym not in defined:
+                    key = f"load() symbol missing  //{pkg}:{name} has no {sym}"
+                    counts[key] += 1
+                    where[key].add(rel)
+
     print(f"labels and config reads checked: {checked}")
     if not counts:
-        print("PASS: every label names a package that exists, no first-party target is "
-              "still named darling, and every config read is [cider]")
+        print("PASS: every label names a package that exists, every load() file and symbol "
+              "resolves,\n      no first-party target is still named darling, and every "
+              "config read is [cider]")
         return 0
 
     print(f"\n{sum(counts.values())} labels do not resolve:")
