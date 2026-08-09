@@ -1093,6 +1093,19 @@ the shell before the probe can report.
   that applies is a check that cannot fail; the byte count is what caught it. Rewrite the two
   header lines in the generator instead.)
 
+  **THE WIRING IS SMALLER THAN IT LOOKS, AND BUCK NEEDS NOTHING.**
+  `src/external/ciderd/xnu-sys/BUCK` names `xnu/...` 143 times, every one a package-relative
+  glob or include dir, so they all keep resolving if the tree is materialized in place. The two
+  places that DO change are the ones that read it from the project: `groupSplit.shared` and
+  `escapeNarrow`, both in the lowering, because `groupStore` is
+  `builtins.path { path = srcRaw + "/" + g; }` and `builtins.path` on a missing directory is an
+  evaluation error rather than a fallback. Give it a pin store instead. That is not a special
+  case: pins already resolve through `ciderSrc.pinPaths`, never `srcRaw`, and buck-src is
+  already 57 tracked files against 259,894 on disk, so a materialized untracked tree is the
+  normal state here. **The win is repo hygiene and upstream tracking, NOT build cost** -- the
+  cascade tables are tuned around XNU being frozen, and a frozen tree is the cheapest thing
+  there is to leave vendored.
+
   **DO IT AS A PATCH ON TOP OF THE EXISTING PIN, NOT AS A SECOND PIN ENTRY**, and that is a
   correction to the first way I wrote this up. Two entries could not CONFLICT, because
   `fetchOne` names each fetch `cider-sub-<path>` deliberately, so two submodules sharing a repo
