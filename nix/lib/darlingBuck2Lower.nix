@@ -984,6 +984,22 @@
   # 0 of 4,159 stage-trees ran, 1 stage-project ran, and 323 compiles ran and were still
   # climbing when it was stopped. So #55 cut the graph to stage-tree to compile path, and
   # #54, the ONE shared projectSrc, is what still holds the compiles.
+  #
+  # THAT LAST SENTENCE IS NOW OUT OF DATE, and the 323 with it. #54 has since landed, and the
+  # same probe re-run on 2026-08-09 shows the compiles no longer cascade either:
+  #
+  #   nix build .#darling-buck2-one          baseline, 3 buck2 derivations ran
+  #   edit src/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
+  #   output path both times                 kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
+  #
+  # SMALLER PROBE THAN THE 323 ONE, and the difference matters when comparing the numbers. That
+  # measurement swept the whole minimal endpoint; this one builds ONE target through it, which
+  # is what #55 asked for. Zero here means nothing downstream of the graph rebuilt for that
+  # target. It does not re-measure the other 4,158 stage-trees or the rest of the compiles, so
+  # do not read it as a full-endpoint 323 to 0.
+  #
+  # nix still PRINTED "these 3 derivations will be built" and named all three targets, because
+  # their drv paths moved, which a CA placeholder always does. None produced a building line.
   stageProject = caShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
