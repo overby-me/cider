@@ -87,10 +87,18 @@ derivation stages its own tree from the pin STORE, and the normaliser only ever 
 `ciderBuck2Graph.nix`, so what a compile sees is the dangling upstream link.
 `recursive` is NOT the differentiator: `security` has it false and `IOKitUser` true, and BOTH
 stores hold exactly one entry there, the symlink itself.
-**The fix belongs in `cider-src.nix` `pinStore`, so the tree is normalised ONCE at fetch and
-every consumer inherits it**, rather than in a staging path that only one consumer runs. This
-was latent for as long as a warm store satisfied those targets; the rename forced a rebuild and
-exposed it.
+**THE FIX CANNOT LIVE IN `pinStore`, and that corrects what this entry said an hour ago.**
+Measured on a copy: put the security pin store next to a tree containing
+`src/external/ciderd/xnu-sys/xnu`, run the normaliser, and the dangling upstream link becomes a
+real directory of per-file links with `security/mac.h` resolving. It reported
+`expanded 17 symlinked directories, re-pointed 7 symlinks`. So the fix NEEDS the xnu tree
+beside the pin, and a pin store is self-contained: normalising at fetch cannot see it.
+It therefore belongs wherever pin and project are assembled together, which is
+`ciderBuck2Graph.nix` (already does it) and the LOWERING's per-target staging (does not).
+Note the lowering already went BACK TO THE ASSEMBLED TREE for exactly this reason, so the
+remaining question is which staging path a compile actually takes; answer that before writing
+the fix. Latent for as long as a warm store satisfied those targets; the rename forced a
+rebuild and exposed it.
 
 **THE DAEMON RUNTIME GATE IS 23 CHECKS, 140 to 152 s** (four consecutive runs on the renamed
 tree; the older 115 s figure predates the Rust demos being restored). **It is INDEPENDENT of
