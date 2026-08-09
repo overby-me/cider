@@ -431,7 +431,7 @@ load("//buck/generated:sdk_framework_private_buck_src.bzl", FRAMEWORKS1 = "FRAME
 # scripts/gen-buck-from-ninja.py kqueue   -- review before committing.
 # cmake target: kqueue  ->  src/external/libkqueue/kqueue
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/darlingserver/include
+#   src/external/ciderd/include
 
 
 
@@ -486,10 +486,10 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/external/darlingserver:dserver_headers",
-        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
         "//buck-src/xnu:kqueue_inc_xnu",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src/xnu:kqueue_inc_emulation_include_linux_premigration_ext",
         ":kqueue_inc_src_common",
         ":kqueue_inc_include",
@@ -527,8 +527,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -555,8 +555,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -583,8 +583,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -611,8 +611,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -639,8 +639,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -667,8 +667,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -695,8 +695,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -723,8 +723,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -751,8 +751,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -779,8 +779,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -807,8 +807,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -835,8 +835,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -863,8 +863,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -891,8 +891,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -919,8 +919,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -947,8 +947,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -975,8 +975,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1002,8 +1002,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1028,8 +1028,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1054,8 +1054,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1080,8 +1080,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1106,8 +1106,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1136,8 +1136,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1166,8 +1166,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1196,8 +1196,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1226,8 +1226,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1256,8 +1256,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1286,8 +1286,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1316,8 +1316,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1346,8 +1346,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1376,8 +1376,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1406,8 +1406,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1436,8 +1436,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1466,8 +1466,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1496,8 +1496,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1526,8 +1526,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1556,8 +1556,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1586,8 +1586,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1616,8 +1616,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1646,8 +1646,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1676,8 +1676,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1706,8 +1706,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1736,8 +1736,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1766,8 +1766,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1796,8 +1796,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1826,8 +1826,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1856,8 +1856,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1886,8 +1886,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1916,8 +1916,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1946,8 +1946,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -1976,8 +1976,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2006,8 +2006,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2036,8 +2036,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2066,8 +2066,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2096,8 +2096,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2126,8 +2126,8 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
@@ -2139,7 +2139,7 @@ mig_gen(
 
 
 
-# GUEST-side MIG, as opposed to the kernel-side MIG that duct-tape uses: the
+# GUEST-side MIG, as opposed to the kernel-side MIG that xnu-sys uses: the
 # default cmake/mig.cmake suffixes and the Darwin compile environment rather than
 # the XNU one.
 #
@@ -2185,7 +2185,7 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/ciderd:dserver_rpc",
         "//darwin:sdk_env",
     ],
     compile_srcs = ["signal/mach_excUser.c"],
@@ -2212,21 +2212,21 @@ mig_gen(
     mig_sh = "//buck-src:mig.sh",
     migcom = "//buck-src:migcom",
     deps = [
-        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/ciderd:dserver_rpc",
         "//darwin:sdk_env",
     ],
     visibility = ["PUBLIC"],
 )
 # END generated-mig: emulation
 
-# The generated darlingserver RPC library source, compiled the way the reference
+# The generated ciderd RPC library source, compiled the way the reference
 # does: with dserver-rpc-defs.h force-included. rpc.c refuses to compile without
 # it ("#error Missing definitions"), and it defines every dserver_rpc_* symbol the
 # emulation layer calls -- so the FINAL pass cannot link without this target. (The
 # firstpass pass hides the gap, since it resolves nothing by design.)
 cc_objects(
     name = "emulation_rpc_obj",
-    gen_srcs = ["//src/external/darlingserver:dserver_rpc"],
+    gen_srcs = ["//src/external/ciderd:dserver_rpc"],
     prefix_headers = [
         "//buck-src/xnu:darling_src_libsystem_kernel_emulation_include_linux_premigration_resources_dserver-rpc-defs.h",
     ],
@@ -2250,9 +2250,9 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         "//buck-src/xnu:emulation_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     visibility = ["PUBLIC"],
@@ -4541,13 +4541,13 @@ cc_static_lib(
 )
 # END generated: libunwind_static.a archive
 
-# The generated darlingserver rpc.c, compiled for the STATIC (dyld) tier.
+# The generated ciderd rpc.c, compiled for the STATIC (dyld) tier.
 # Same shape as emulation_rpc_obj but with emulation_dyld's flags: the source
 # needs dserver-rpc-defs.h force-included, which no other source in the group
 # wants, so it cannot share their cc_objects.
 cc_objects(
     name = "emulation_dyld_rpc_obj",
-    gen_srcs = ["//src/external/darlingserver:dserver_rpc"],
+    gen_srcs = ["//src/external/ciderd:dserver_rpc"],
     prefix_headers = [
         "//buck-src/xnu:darling_src_libsystem_kernel_emulation_include_linux_premigration_resources_dserver-rpc-defs.h",
     ],
@@ -4573,8 +4573,8 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/include:cider_config",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src/xnu:emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
         "//src/libsimple:libsimple_headers",
     ],
@@ -13135,7 +13135,7 @@ cc_static_lib(
 # END generated: security_translocate archive
 
 # libsecurity_utilities generates its OWN mach_notify stubs, from its own copy of
-# mach_notify.defs -- not the one duct-tape generates for the kernel side. The two
+# mach_notify.defs -- not the one xnu-sys generates for the kernel side. The two
 # differ: this one is built with the Security define set, so its request/reply
 # structures match what the Security code expects to receive.
 #
@@ -63331,7 +63331,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_include",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src_abstraction",
@@ -63391,7 +63391,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_include",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src",
         ":x86_64-apple-darwin20-ld_inc_cctools_port_cctools_ld64_src_abstraction",

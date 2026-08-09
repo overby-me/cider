@@ -14,7 +14,7 @@ load("//buck/rules:files.bzl", "export_file")
 # 562 sources in 5 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/darlingserver/include
+#   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
 
 cc_header_root(
@@ -536,8 +536,8 @@ cc_objects(
         ":libsyscall_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src:ksmig_mach_clock",
         "//buck-src:ksmig_mach_clock_priv",
         "//buck-src:ksmig_mach_clock_reply",
@@ -562,7 +562,7 @@ cc_objects(
         "//buck-src:ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_clock_priv_x86_64",
@@ -732,8 +732,8 @@ cc_objects(
         ":libsyscall_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src:ksmig_mach_clock",
         "//buck-src:ksmig_mach_clock_priv",
         "//buck-src:ksmig_mach_clock_reply",
@@ -758,7 +758,7 @@ cc_objects(
         "//buck-src:ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -847,8 +847,8 @@ cc_objects(
         ":libsyscall_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src:ksmig_mach_clock",
         "//buck-src:ksmig_mach_clock_priv",
         "//buck-src:ksmig_mach_clock_reply",
@@ -873,7 +873,7 @@ cc_objects(
         "//buck-src:ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -925,8 +925,8 @@ cc_objects(
         ":libsyscall_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src:ksmig_mach_clock",
         "//buck-src:ksmig_mach_clock_priv",
         "//buck-src:ksmig_mach_clock_reply",
@@ -951,7 +951,7 @@ cc_objects(
         "//buck-src:ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1003,8 +1003,8 @@ cc_objects(
         ":libsyscall_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/external/darlingserver:dserver_rpc",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_rpc",
+        "//src/external/ciderd:dserver_headers",
         "//buck-src:ksmig_mach_clock",
         "//buck-src:ksmig_mach_clock_priv",
         "//buck-src:ksmig_mach_clock_reply",
@@ -1029,7 +1029,7 @@ cc_objects(
         "//buck-src:ksmig_mach_vm_map_internal",
         ":libsyscall_inc_darling_src_libsystem_kernel",
         ":libsyscall_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1040,7 +1040,7 @@ cc_objects(
 # scripts/gen-buck-from-ninja.py libsyscall_dynamic   -- review before committing.
 # cmake target: libsyscall_dynamic  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall_dynamic
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/darlingserver/include
+#   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
 
 cc_header_root(
@@ -1144,11 +1144,11 @@ cc_objects(
         ":libsyscall_dynamic_inc_libsyscall_mach",
         ":libsyscall_dynamic_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
-        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/ciderd:dserver_rpc",
         "//src/startup:rtsig_header",
         ":libsyscall_dynamic_inc_darling_src_libsystem_kernel",
         ":libsyscall_dynamic_inc_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -1161,10 +1161,10 @@ cc_objects(
 # 295 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these sources are GENERATED; wire a codegen target for each:
-#   src/external/darlingserver/src/rpc.c
+#   src/external/ciderd/src/rpc.c
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/darlingserver/include
+#   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
 #   src/startup
@@ -1486,10 +1486,10 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         "//src/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     gen_srcs = [
@@ -1520,10 +1520,10 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         "//src/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     visibility = ["PUBLIC"],
@@ -1555,10 +1555,10 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         "//src/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     visibility = ["PUBLIC"],
@@ -1572,10 +1572,10 @@ cc_objects(
 # 295 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these sources are GENERATED; wire a codegen target for each:
-#   src/external/darlingserver/src/rpc.c
+#   src/external/ciderd/src/rpc.c
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excUser.c
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/darlingserver/include
+#   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
 #   src/startup
@@ -1900,8 +1900,8 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/include:cider_config",
+        "//src/external/ciderd:dserver_headers",
         ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
         "//src/libsimple:libsimple_headers",
     ],
@@ -1936,8 +1936,8 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/include:cider_config",
+        "//src/external/ciderd:dserver_headers",
         ":emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
         "//src/libsimple:libsimple_headers",
     ],
@@ -2054,7 +2054,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":clock_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":clock_priv_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_clock_priv[xtrace]",
@@ -2172,7 +2172,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":clock_reply_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":clock_reply_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_clock_reply[xtrace]",
@@ -2290,7 +2290,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":clock_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":clock_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_clock[xtrace]",
@@ -2342,7 +2342,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/xtrace:xtrace_headers",
         ":exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     gen_srcs = [
@@ -2461,7 +2461,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":host_priv_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":host_priv_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_host_priv[xtrace]",
@@ -2579,7 +2579,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":host_security_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":host_security_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_host_security[xtrace]",
@@ -2697,7 +2697,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":lock_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":lock_set_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_lock_set[xtrace]",
@@ -2749,7 +2749,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//src/xtrace:xtrace_headers",
         ":mach_exc_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     gen_srcs = [
@@ -2868,7 +2868,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":mach_host_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":mach_host_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_mach_host[xtrace]",
@@ -2986,7 +2986,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":mach_port_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":mach_port_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_mach_port[xtrace]",
@@ -3104,7 +3104,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":mach_vm_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":mach_vm_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_mach_vm[xtrace]",
@@ -3222,7 +3222,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":mach_voucher_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":mach_voucher_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_mach_voucher[xtrace]",
@@ -3340,7 +3340,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":memory_entry_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":memory_entry_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_memory_entry[xtrace]",
@@ -3458,7 +3458,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":netname_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":netname_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_servers_netname[xtrace]",
@@ -3576,7 +3576,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":processor_set_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":processor_set_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_processor_set[xtrace]",
@@ -3694,7 +3694,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":processor_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":processor_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_processor[xtrace]",
@@ -3812,7 +3812,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":task_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":task_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_task[xtrace]",
@@ -3930,7 +3930,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":thread_act_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":thread_act_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_thread_act[xtrace]",
@@ -4048,7 +4048,7 @@ cc_objects(
         "//src/xtrace:xtrace_headers",
         ":vm_map_xtrace_mig_inc_xnu_darling_src_libsystem_kernel",
         ":vm_map_xtrace_mig_inc_xnu_osfmk",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
     ],
     gen_srcs = [
         "//buck-src:ksmig_mach_vm_map[xtrace]",
@@ -4285,10 +4285,10 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         "//src/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
     ],
     visibility = ["PUBLIC"],
