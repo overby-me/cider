@@ -45,6 +45,13 @@ place rather than deleted. Four read a reference `build.ninja` that nothing can 
 stop working entirely once a store GC collects `result-graph-ref`; `gen-duct-tape-buck.py` reads
 `duct-tape/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
+**THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/duct-tape-runtime-check.nu` covers the
+six ported duct-tape files plus the 17 proofs that `checks.server` used to run: Mach ports,
+`mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
+routing, persistent threads and four daemon capstones. Those 17 were orphaned by the cmake
+removal, because cargo built them through `nix/server.nix` and they had no buck2 target; they
+have one now. Run this after ANY duct-tape or linux/server change.
+
 **THE BUCK2 REGRESSION SUITE RUNS AGAIN: `scripts/buck-test.nu`, 149 passed, 0 failed, 905 s.**
 It was previously unfinishable, because two sections spawned one buck2 client PER TARGET (568
 dylibs, then the executables) at 15 to 30 s each while printing nothing. `out_map` now builds
