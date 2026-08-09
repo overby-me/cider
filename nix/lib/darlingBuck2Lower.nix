@@ -900,13 +900,27 @@
   # moves every target. Narrowing escapeRoots closed the pinsTree route and left this one open,
   # and it was open before #79 too, so #79 fixed one of two.
   #
-  # THIS IS REASONING FROM THE CODE, NOT A MEASUREMENT. What settles it is the standing rule:
-  # edit one duct-tape file and count the builders that RAN. Do that before believing either
-  # this paragraph or the drvPath numbers above. If it is confirmed, the fix is to narrow the
-  # GROUPS entry as well, to the subdirectories targets actually read (scripts, include,
-  # internal-include, src, tools) and NOT duct-tape, which is the part that churns. That has to
-  # be verified by building, since excluding duct-tape may starve the darlingserver compiles
-  # unless the per-target unions from #54 already carry those files.
+  # NOW MEASURED, on .#darling-buck2-one, counting builders that RAN:
+  #   baseline                    3 buck2 builders
+  #   no-op                       0            <- the control can fail, so the test means something
+  #   one duct-tape/src edit      6, and root//src/libsimple:libsimple_darlingserver RECOMPILED
+  #                               src/lock.c, which has no business rebuilding for a duct-tape edit
+  # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
+  # nor the sources output, both of which were byte identical:
+  #   - _g=/nix/store/4ab45bn9...-darling-src-src-external-darlingserver
+  #   + _g=/nix/store/nmj2s0wk...-darling-src-src-external-darlingserver
+  # So the groups route is confirmed, and #79 cut one of two.
+  #
+  # AND THE OBVIOUS FIX DOES NOT WORK. Expanding this root into siblings with duct-tape/src left
+  # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
+  # libsimple stays put) but it STARVES the duct-tape compiles:
+  #   clang: error: no such file or directory:
+  #     src/external/darlingserver/duct-tape/src/dtape_rs_shims.c
+  # because src/external is deliberately outside the per-target union mechanism. The grouping
+  # rule in scripts/buck2-graph-sources.py excludes buck-src and src/external as pins staged
+  # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
+  # SUPPLIER. Narrowing it and narrowing the per-target unions are the same change, and that is
+  # a bigger decision than a table here. Tried, measured, reverted; do not retry it as written.
   escapeNarrow = {
     "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
   };
