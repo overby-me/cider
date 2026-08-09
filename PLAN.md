@@ -45,6 +45,12 @@ place rather than deleted. Four read a reference `build.ninja` that nothing can 
 stop working entirely once a store GC collects `result-graph-ref`; `gen-duct-tape-buck.py` reads
 `duct-tape/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
+**THE BUCK2 REGRESSION SUITE RUNS AGAIN: `scripts/buck-test.nu`, 149 passed, 0 failed, 905 s.**
+It was previously unfinishable, because two sections spawned one buck2 client PER TARGET (568
+dylibs, then the executables) at 15 to 30 s each while printing nothing. `out_map` now builds
+each set in ONE `buck2 build --show-output --keep-going`. That run is the broad check on the
+cmake removal and the xnu module move: both green.
+
 **THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#darling-buck2-prefix-min`
 at `--max-jobs 6 --cores 2 --keep-going` ran **1,551 buck2 builders to exit 0 with 0 errors in
 about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,
