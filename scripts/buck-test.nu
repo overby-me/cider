@@ -289,14 +289,21 @@ def main [flag?: string] {
     let dt = (out_of //src/external/darlingserver/duct-tape:darlingserver_duct_tape)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
-    # 66 hand-written + 26 MIG-generated + pthread/kern_synch.c
-    if $members == 93 { ok "93 members" } else { bad $"expected 93 members, got ($members)" }
+    # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
+    # moved 16 glue .c to Rust under linux/server/src/xnu, so the C archive is smaller now and
+    # the 16 files were later deleted. This number is the post-#71 archive.
+    if $members == 81 { ok "81 members" } else { bad $"expected 81 members, got ($members)" }
     # Collect the symbol list ONCE. Note: `nm ... | grep -q` under `set -o pipefail`
     # fails even on a match, because grep -q exits early and nm dies on SIGPIPE.
     let dt_syms = (field (cap [nm --defined-only $dt]) 3 | where {|s| $s != "" } | uniq | sort)
     let sym_count = (wc_l ($dt_syms | str join "\n"))
-    if $sym_count >= 2700 { ok $"defines ($sym_count) symbols" } else { bad $"expected >= 2700 symbols, got ($sym_count)" }
-    for sym in [dtape_init dtape_init_in_thread ipc_kmsg_send mig_init thread_call_initialize] {
+    # Floor lowered from 2700 with #71 for the same reason as the member count.
+    if $sym_count >= 2100 { ok $"defines ($sym_count) symbols" } else { bad $"expected >= 2100 symbols, got ($sym_count)" }
+    # dtape_init and dtape_init_in_thread are NOT here any more: #71 made them Rust, they live
+    # at linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
+    # false. What covers them now is the darlingserverd LINK plus the demos, both in
+    # scripts/duct-tape-runtime-check.nu, which is a 40 second gate.
+    for sym in [ipc_kmsg_send mig_init thread_call_initialize] {
         if (has $dt_syms $sym) { ok $"defines ($sym)" } else { bad $"missing ($sym)" }
     }
     # The MIG-generated server stubs must be in there, not just the hand-written code.
