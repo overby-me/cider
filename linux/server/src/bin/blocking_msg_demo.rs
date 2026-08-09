@@ -11,9 +11,9 @@
 //! hook, not a Rust return. The guest task carries the demo's own pid so the message
 //! copies target our own memory. See PLAN.md (bucket A + B.2).
 
-use darling::mach;
-use darling::registry::Registry;
-use darling::sched;
+use cider::mach;
+use cider::registry::Registry;
+use cider::sched;
 use std::cell::Cell;
 use std::rc::Rc;
 

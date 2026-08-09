@@ -56,7 +56,7 @@ andl $$~15, %esp
 	movl 16+off(%ebp), %ecx ;\
 	movl %ecx, -56+off(%esp)
 
-// copy the arguments (same as in syscalls-table.S and darling_mach_syscall.S)
+// copy the arguments (same as in syscalls-table.S and cider_mach_syscall.S)
 copy_arg(0)
 copy_arg(4)
 copy_arg(8)
@@ -91,26 +91,26 @@ ret
 
 #endif
 
-.private_extern _darling_mach_syscall_entry_trampoline
-_darling_mach_syscall_entry_trampoline:
+.private_extern _cider_mach_syscall_entry_trampoline
+_cider_mach_syscall_entry_trampoline:
 	trampoline_enter
-	call _darling_mach_syscall_entry_print
+	call _cider_mach_syscall_entry_print
 	trampoline_leave
 
-.private_extern _darling_mach_syscall_exit_trampoline
-_darling_mach_syscall_exit_trampoline:
+.private_extern _cider_mach_syscall_exit_trampoline
+_cider_mach_syscall_exit_trampoline:
 	trampoline_enter
-	call _darling_mach_syscall_exit_print
+	call _cider_mach_syscall_exit_print
 	trampoline_leave
 
-.private_extern _darling_bsd_syscall_entry_trampoline
-_darling_bsd_syscall_entry_trampoline:
+.private_extern _cider_bsd_syscall_entry_trampoline
+_cider_bsd_syscall_entry_trampoline:
 	trampoline_enter
-	call _darling_bsd_syscall_entry_print
+	call _cider_bsd_syscall_entry_print
 	trampoline_leave
 
-.private_extern _darling_bsd_syscall_exit_trampoline
-_darling_bsd_syscall_exit_trampoline:
+.private_extern _cider_bsd_syscall_exit_trampoline
+_cider_bsd_syscall_exit_trampoline:
 	trampoline_enter
-	call _darling_bsd_syscall_exit_print
+	call _cider_bsd_syscall_exit_print
 	trampoline_leave

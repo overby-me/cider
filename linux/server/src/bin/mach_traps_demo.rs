@@ -6,14 +6,14 @@
 //! dispatch() so the full RPC path (decode -> handler -> encode) is exercised end to
 //! end. See PLAN.md (bucket A, mach IPC core).
 
-use darling::mach;
-use darling::registry::Registry;
-use darling::rpc_io::Message;
-use darling::rpc_wire::{
+use cider::mach;
+use cider::registry::Registry;
+use cider::rpc_io::Message;
+use cider::rpc_wire::{
     self, callnum, DserverRpcCallhdr, ReplyHostSelfTrap, ReplyMachReplyPort, ReplyTaskSelfTrap,
     ReplyThreadSelfTrap,
 };
-use darling::sched;
+use cider::sched;
 use std::cell::RefCell;
 use std::mem::size_of;
 use std::os::fd::RawFd;

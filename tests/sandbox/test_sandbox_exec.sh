@@ -1,7 +1,7 @@
 #!/bin/sh
 # test_sandbox_exec.sh — Regression tests for the sandbox-exec stub binary
 #
-# Run inside darling shell:
+# Run inside cider shell:
 #   sh /path/to/test_sandbox_exec.sh
 #
 # Expected: all tests pass (exit 0).

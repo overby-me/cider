@@ -334,7 +334,7 @@ export_file(
 # scripts/gen-buck-from-ninja.py CoreServices   -- review before committing.
 # cmake target: CoreServices  ->  src/frameworks/CoreServices/CoreServices
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "CoreServices_obj",
@@ -557,7 +557,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py AE   -- review before committing.
 # cmake target: AE  ->  src/frameworks/CoreServices/src/AE/AE
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "AE_obj",
@@ -614,7 +614,7 @@ darwin_dylib(
 # 29 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "CarbonCore_obj",
@@ -730,7 +730,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py DictionaryServices   -- review before committing.
 # cmake target: DictionaryServices  ->  src/frameworks/CoreServices/src/DictionaryServices/DictionaryServices
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "DictionaryServices_obj",
@@ -780,7 +780,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py FSEvents   -- review before committing.
 # cmake target: FSEvents  ->  src/frameworks/CoreServices/src/FSEvents/FSEvents
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "FSEvents_obj",
@@ -837,7 +837,7 @@ darwin_dylib(
 # 9 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "LaunchServices_obj",
@@ -938,7 +938,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py Metadata   -- review before committing.
 # cmake target: Metadata  ->  src/frameworks/CoreServices/src/Metadata/Metadata
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "Metadata_obj",
@@ -991,7 +991,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py OSServices   -- review before committing.
 # cmake target: OSServices  ->  src/frameworks/CoreServices/src/OSServices/OSServices
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "OSServices_obj",
@@ -1041,7 +1041,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py SearchKit   -- review before committing.
 # cmake target: SearchKit  ->  src/frameworks/CoreServices/src/SearchKit/SearchKit
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "SearchKit_obj",
@@ -1094,7 +1094,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py SharedFileList   -- review before committing.
 # cmake target: SharedFileList  ->  src/frameworks/CoreServices/src/SharedFileList/SharedFileList
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "SharedFileList_obj",
@@ -2087,7 +2087,7 @@ darwin_dylib(
 # scripts/gen-buck-from-ninja.py launchservicesd   -- review before committing.
 # cmake target: launchservicesd  ->  src/frameworks/CoreServices/src/LaunchServices/launchservicesd/launchservicesd
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "launchservicesd_obj",
@@ -2121,7 +2121,7 @@ cc_objects(
 # scripts/gen-buck-from-ninja.py fseventsd   -- review before committing.
 # cmake target: fseventsd  ->  src/frameworks/CoreServices/src/FSEvents/fseventsd
 # TODO these include dirs are GENERATED (codegen output):
-#   src/external/xnu/darling/src/libsystem_kernel/emulation/linux
+#   src/external/xnu/cider/src/libsystem_kernel/emulation/linux
 
 cc_objects(
     name = "fseventsd_obj",

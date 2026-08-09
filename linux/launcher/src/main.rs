@@ -1,9 +1,9 @@
-// darling -- the Darling launcher, Rust rewrite of src/startup/darling.c (task #64).
+// cider -- the Darling launcher, Rust rewrite of src/startup/cider.c (task #64).
 //
-// Responsibilities (darling.c does NO mounts/vchroot -- darlingserver owns those):
+// Responsibilities (cider.c does NO mounts/vchroot -- ciderd owns those):
 //   1. Acquire privilege: rootless user-namespace re-exec (or setuid-root).
 //   2. Bootstrap the prefix dir tree + passwd/group on first run.
-//   3. Start / validate / join / tear down the container by running darlingserver
+//   3. Start / validate / join / tear down the container by running ciderd
 //      as the container init, coordinating readiness (sync pipe + shellspawn.sock poll).
 //   4. Connect to the guest shellspawn socket and proxy one shell/binary.
 //
@@ -19,7 +19,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-// ---- compile-time config (darling-config.h / shellspawn.h) ----
+// ---- compile-time config (cider-config.h / shellspawn.h) ----
 const SYSTEM_ROOT: &str = "/Volumes/SystemRoot";
 const SHELLSPAWN_SOCKPATH: &str = "/var/run/shellspawn.sock";
 const INSTALL_PREFIX: &str = env!("DARLING_INSTALL_PREFIX");
@@ -61,7 +61,7 @@ fn main() {
         std::process::exit(1);
     }
 
-    // Privilege gate (darling.c:131-142).
+    // Privilege gate (cider.c:131-142).
     if unsafe { libc::geteuid() } != 0 {
         if std::env::var_os("DARLING_USERNS_STAGE2").is_none() {
             enter_userns_and_reexec(&argv); // only returns on failure
@@ -72,7 +72,7 @@ fn main() {
     }
     std::env::remove_var("DARLING_USERNS_STAGE2");
 
-    // Capture identity (darling.c:144-148). Rootless: getuid()==0 inside the userns,
+    // Capture identity (cider.c:144-148). Rootless: getuid()==0 inside the userns,
     // so orig_uid/gid == 0 and every owner/seteuid check downstream is a no-op.
     let orig_uid = unsafe { libc::getuid() };
     let orig_gid = unsafe { libc::getgid() };
@@ -81,7 +81,7 @@ fn main() {
         libc::setgid(0);
     }
 
-    // Resolve prefix (darling.c:150-161).
+    // Resolve prefix (cider.c:150-161).
     let prefix = match std::env::var("DPREFIX") {
         Ok(p) if !p.is_empty() => p,
         _ => default_prefix_path(),
@@ -100,7 +100,7 @@ fn main() {
         fix_permissions: false,
     };
 
-    // Prefix bootstrap (darling.c:163-168).
+    // Prefix bootstrap (cider.c:163-168).
     if !check_prefix_dir(&ctx.prefix) {
         setup_prefix(&ctx);
         ctx.fix_permissions = true;
@@ -108,7 +108,7 @@ fn main() {
     check_prefix_owner(&ctx);
 
     // --help / --version only when they precede the subcommand (getopt "+" semantics,
-    // darling.c:170-207).
+    // cider.c:170-207).
     match argv[1].as_str() {
         "--help" | "-h" => {
             show_help();
@@ -121,15 +121,15 @@ fn main() {
         _ => {}
     }
 
-    let mut pid_init = get_init_process(&ctx); // darling.c:209
+    let mut pid_init = get_init_process(&ctx); // cider.c:209
 
-    // shutdown subcommand, handled before any ns work (darling.c:211-239).
+    // shutdown subcommand, handled before any ns work (cider.c:211-239).
     if argv[1] == "shutdown" {
         do_shutdown(pid_init);
         std::process::exit(0);
     }
 
-    // Stale-container reap (darling.c:246-255): a prior rootless container lives in a
+    // Stale-container reap (cider.c:246-255): a prior rootless container lives in a
     // different userns whose mnt ns we cannot setns into -> discard + restart.
     if pid_init != 0 && !container_joinable(pid_init) {
         kill_container(&ctx);
@@ -138,13 +138,13 @@ fn main() {
         pid_init = 0;
     }
 
-    // Start the container if none (darling.c:258-283).
+    // Start the container if none (cider.c:258-283).
     if pid_init == 0 {
         let _ = std::fs::remove_file(format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH));
         setup_workdir(&ctx);
         pid_init = spawn_init_process(&ctx); // blocks on the sync pipe until mounts ready
         put_init_pid(&ctx, pid_init);
-        // Poll for the guest to boot shellspawn, up to 360s (darling.c:277-282).
+        // Poll for the guest to boot shellspawn, up to 360s (cider.c:277-282).
         let sock = format!("{}{}", ctx.prefix, SHELLSPAWN_SOCKPATH);
         let sock_c = cstr(&sock);
         let mut ok = false;
@@ -161,13 +161,13 @@ fn main() {
     }
 
     // Join the container mnt ns so we can connect to the overlay-resident socket
-    // (darling.c:285-287, the Linux 4.11 / overlayfs socket hack).
+    // (cider.c:285-287, the Linux 4.11 / overlayfs socket hack).
     join_namespace(pid_init, libc::CLONE_NEWNS, "mnt");
 
-    // Drop euid (darling.c:289; no-op rootless).
+    // Drop euid (cider.c:289; no-op rootless).
     unsafe { libc::seteuid(ctx.orig_uid) };
 
-    // Dispatch (darling.c:291-330).
+    // Dispatch (cider.c:291-330).
     match argv[1].as_str() {
         "shell" => spawn_shell(&ctx, &argv[2..]),
         "exec" => {
@@ -180,7 +180,7 @@ fn main() {
             spawn_binary(&ctx, &full, &a);
         }
         _ => {
-            // Bare `darling <prog> [args]`: realpath+SYSTEM_ROOT, shell-wrapped.
+            // Bare `cider <prog> [args]`: realpath+SYSTEM_ROOT, shell-wrapped.
             let full = full_path(&argv[1]);
             let mut a = vec![full];
             a.extend_from_slice(&argv[2..]);
@@ -189,10 +189,10 @@ fn main() {
     }
 }
 
-// ======================= privilege (darling.c:65-103) =======================
+// ======================= privilege (cider.c:65-103) =======================
 
 fn enter_userns_and_reexec(argv: &[String]) {
-    // Capture the REAL ids before entering the new userns (darling.c:80-81).
+    // Capture the REAL ids before entering the new userns (cider.c:80-81).
     let ruid = unsafe { libc::getuid() };
     let rgid = unsafe { libc::getgid() };
     if unsafe { libc::unshare(libc::CLONE_NEWUSER) } != 0 {
@@ -231,17 +231,17 @@ fn write_string_to_file(path: &str, content: &str) -> bool {
 
 fn missing_setuid_root() -> ! {
     eprintln!(
-        "darling: cannot set up a container: need unprivileged user namespaces \
-         (sysctl kernel.unprivileged_userns_clone=1) or a setuid-root darling binary."
+        "cider: cannot set up a container: need unprivileged user namespaces \
+         (sysctl kernel.unprivileged_userns_clone=1) or a setuid-root cider binary."
     );
     std::process::exit(1);
 }
 
-// ======================= prefix (darling.c:1075-1269) =======================
+// ======================= prefix (cider.c:1075-1269) =======================
 
 fn default_prefix_path() -> String {
     match std::env::var("HOME") {
-        Ok(h) if !h.is_empty() => format!("{h}/.darling"),
+        Ok(h) if !h.is_empty() => format!("{h}/.cider"),
         _ => die("HOME is not set and DPREFIX was not given"),
     }
 }
@@ -360,10 +360,10 @@ fn get_user_info(uid: u32) -> (String, u32, u32) {
             return (name, (*pw).pw_uid, (*pw).pw_gid);
         }
     }
-    ("darling".to_string(), uid, uid)
+    ("cider".to_string(), uid, uid)
 }
 
-// ==================== container lifecycle (darling.c) ====================
+// ==================== container lifecycle (cider.c) ====================
 
 fn get_init_process(ctx: &Ctx) -> i32 {
     let path = format!("{}/.init.pid", ctx.prefix);
@@ -378,18 +378,18 @@ fn get_init_process(ctx: &Ctx) -> i32 {
             return 0;
         }
     };
-    // liveness (darling.c:1310-ish)
+    // liveness (cider.c:1310-ish)
     if unsafe { libc::kill(pid, 0) } != 0 && errno() == libc::ESRCH {
         let _ = std::fs::remove_file(&path);
         return 0;
     }
-    // comm must be "darlingserver" (darling.c:1323)
+    // comm must be "ciderd" (cider.c:1323)
     let comm = std::fs::read_to_string(format!("/proc/{pid}/comm")).unwrap_or_default();
-    if comm.trim() != "darlingserver" {
+    if comm.trim() != "ciderd" {
         let _ = std::fs::remove_file(&path);
         return 0;
     }
-    // setuid mode only: /proc/<pid>/status Uid/Gid must match (darling.c:1331)
+    // setuid mode only: /proc/<pid>/status Uid/Gid must match (cider.c:1331)
     if ctx.orig_uid != 0 && !status_matches_ids(pid, ctx.orig_uid, ctx.orig_gid) {
         let _ = std::fs::remove_file(&path);
         return 0;
@@ -446,14 +446,14 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
         die("pipe() failed");
     }
     // Fresh UTS+IPC ns in the PARENT before fork, so launcher + daemon share them
-    // (darling.c:967).
+    // (cider.c:967).
     if unsafe { libc::unshare(libc::CLONE_NEWUTS | libc::CLONE_NEWIPC) } != 0 {
         die("unshare(CLONE_NEWUTS|CLONE_NEWIPC) failed");
     }
     // Build every CString BEFORE fork -- the child must be async-signal-safe (no alloc).
     let ds_bin = ds_bin_path();
     let ds_bin_c = cstr(&ds_bin);
-    let argv0 = cstr("darlingserver");
+    let argv0 = cstr("ciderd");
     let prefix_c = cstr(&ctx.prefix);
     let uid_c = cstr(&ctx.orig_uid.to_string());
     let gid_c = cstr(&ctx.orig_gid.to_string());
@@ -462,12 +462,12 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
     // Pre-built (the child is async-signal-safe, no alloc): detach the daemon's stdio.
     // The daemon -- and the shellspawn init it spawns -- are PERSISTENT (the launcher
     // reuses a joinable container), so if they inherit the launcher's fd-0/1/2 they pin
-    // the CALLER's stdout open forever and a one-shot `darling <cmd>` never sees its pipe
+    // the CALLER's stdout open forever and a one-shot `cider <cmd>` never sees its pipe
     // close (looks like a hang; the launcher can't exit). Per-command guest output flows
     // via explicit shellspawn fd-passing, not inheritance, so redirecting the daemon's
     // own stdio is safe. Validated: the launcher now exits cleanly after a one-shot cmd.
     let devnull_c = cstr("/dev/null");
-    let log_c = cstr(&format!("{}/darlingserver.log", ctx.prefix));
+    let log_c = cstr(&format!("{}/ciderd.log", ctx.prefix));
     let argv: [*const c_char; 7] = [
         argv0.as_ptr(),
         prefix_c.as_ptr(),
@@ -487,7 +487,7 @@ fn spawn_init_process(ctx: &Ctx) -> i32 {
         // CHILD: async-signal-safe only -- close, open/dup2, execv, _exit. No allocation.
         unsafe {
             libc::close(read_fd);
-            // stdin <- /dev/null, stdout+stderr -> prefix/darlingserver.log, so the
+            // stdin <- /dev/null, stdout+stderr -> prefix/ciderd.log, so the
             // persistent daemon/shellspawn release the caller's fd-0/1/2 (fixes the
             // one-shot teardown hang). Readiness sync uses its own high fd (pipefd[1]).
             let nfd = libc::open(devnull_c.as_ptr(), libc::O_RDONLY);
@@ -533,13 +533,13 @@ fn ds_bin_path() -> String {
     // installed launcher needs no baked absolute prefix. Falls back to INSTALL_PREFIX.
     if let Ok(exe) = std::fs::read_link("/proc/self/exe") {
         if let Some(dir) = exe.parent() {
-            let cand = dir.join("darlingserver");
+            let cand = dir.join("ciderd");
             if cand.exists() {
                 return cand.to_string_lossy().into_owned();
             }
         }
     }
-    format!("{INSTALL_PREFIX}/bin/darlingserver")
+    format!("{INSTALL_PREFIX}/bin/ciderd")
 }
 
 fn put_init_pid(ctx: &Ctx, pid: i32) {
@@ -576,7 +576,7 @@ fn kill_container(ctx: &Ctx) {
 
 fn do_shutdown(pid_init: i32) {
     if pid_init == 0 {
-        die("There is no darling container running");
+        die("There is no cider container running");
     }
     if let Ok(children) =
         std::fs::read_to_string(format!("/proc/{pid_init}/task/{pid_init}/children"))
@@ -590,12 +590,12 @@ fn do_shutdown(pid_init: i32) {
     unsafe { libc::kill(pid_init, libc::SIGKILL) };
 }
 
-// ==================== shellspawn client (darling.c:360-916) ====================
+// ==================== shellspawn client (cider.c:360-916) ====================
 
 fn spawn_shell(ctx: &Ctx, args: &[String]) -> ! {
     let sockfd = connect_shellspawn(ctx);
     setup_shellspawn_env(sockfd);
-    // Join args into one single-quoted -c string (darling.c:852-897).
+    // Join args into one single-quoted -c string (cider.c:852-897).
     if !args.is_empty() {
         let joined = args
             .iter()
@@ -709,13 +709,13 @@ fn setup_ids(ctx: &Ctx, fd: c_int) {
     push_cmd(fd, SHELLSPAWN_SETUIDGID, bytes);
 }
 
-/// setupFDs/setupPtys (darling.c:655-838). Interactive (isatty(stdin)): allocate a PTY,
+/// setupFDs/setupPtys (cider.c:655-838). Interactive (isatty(stdin)): allocate a PTY,
 /// raw-mode our terminal, hand the slave to the guest as all three fds, keep the master.
 /// Non-interactive: pass our real stdio directly. Returns (guest_fds, pty_master|-1).
 fn setup_fds() -> ([c_int; 3], c_int) {
     unsafe {
         if libc::isatty(0) == 1 {
-            let (master, slave) = openpty_darling();
+            let (master, slave) = openpty_cider();
             setup_raw_termios(master);
             ([slave, slave, slave], master)
         } else {
@@ -757,7 +757,7 @@ fn send_go_with_fds(fd: c_int, fds: &[c_int; 3]) {
     }
 }
 
-/// The proxy loop (darling.c shellLoop:491-621). Poll fds: [0]=sockfd, [1]=signal
+/// The proxy loop (cider.c shellLoop:491-621). Poll fds: [0]=sockfd, [1]=signal
 /// self-pipe, and for an interactive PTY [2]=stdin, [3]=master. Non-interactive keeps
 /// only sockfd + self-pipe (the guest holds our real fds directly). Watchdog bounds the
 /// pre-"started" wait (DARLING_SHELL_STARTUP_TIMEOUT, default 60s) then killContainer +
@@ -783,7 +783,7 @@ fn shell_loop(ctx: &Ctx, sockfd: c_int, master: c_int) -> ! {
             die("poll() failed");
         }
         if r == 0 && !started {
-            eprintln!("darling: timed out waiting for the guest program to start");
+            eprintln!("cider: timed out waiting for the guest program to start");
             kill_container(ctx);
             exit_clean(120);
         }
@@ -822,8 +822,8 @@ fn shell_loop(ctx: &Ctx, sockfd: c_int, master: c_int) -> ! {
 
 // ===================== interactive PTY + signals (Phase B) =====================
 
-unsafe fn openpty_darling() -> (c_int, c_int) {
-    // Lenient openpty (darling.c:630-653): tolerate grantpt EPERM (Debian).
+unsafe fn openpty_cider() -> (c_int, c_int) {
+    // Lenient openpty (cider.c:630-653): tolerate grantpt EPERM (Debian).
     let master = libc::posix_openpt(libc::O_RDWR);
     if master < 0 {
         die("posix_openpt() failed");
@@ -852,7 +852,7 @@ fn setup_raw_termios(master: c_int) {
         ORIG_TERMIOS.write(orig);
         TERMIOS_SAVED.store(true, Ordering::SeqCst);
         libc::atexit(restore_termios);
-        // Raw mode (darling.c:655-693).
+        // Raw mode (cider.c:655-693).
         let mut raw = orig;
         raw.c_lflag &= !(libc::ICANON | libc::ISIG | libc::IEXTEN | libc::ECHO);
         raw.c_iflag &= !(libc::BRKINT
@@ -885,7 +885,7 @@ extern "C" fn restore_termios() {
     }
 }
 
-/// Install a self-pipe + a handler for signals 1..31 (darling.c:501-506). The handler
+/// Install a self-pipe + a handler for signals 1..31 (cider.c:501-506). The handler
 /// only writes the signal number to the pipe (async-signal-safe), and the poll loop
 /// forwards it -- avoiding the C handler's malloc-in-signal-context (map 3.6).
 fn install_signal_forwarding(sockfd: c_int, master: c_int) {
@@ -926,7 +926,7 @@ fn drain_signals(pipe_r: c_int, master: c_int) {
     for &sig in &buf[..n as usize] {
         let signo = sig as c_int;
         if signo == libc::SIGWINCH && master != -1 {
-            // Copy our new window size to the master (darling.c:431-437).
+            // Copy our new window size to the master (cider.c:431-437).
             let mut ws: libc::winsize = unsafe { std::mem::zeroed() };
             unsafe {
                 if libc::ioctl(0, libc::TIOCGWINSZ, &mut ws) == 0 {
@@ -934,7 +934,7 @@ fn drain_signals(pipe_r: c_int, master: c_int) {
                 }
             }
         } else {
-            // Non-pty SIGINT -> SIGTERM (bash ignores a forwarded SIGINT) (darling.c:443-447).
+            // Non-pty SIGINT -> SIGTERM (bash ignores a forwarded SIGINT) (cider.c:443-447).
             let s = if master == -1 && signo == libc::SIGINT {
                 libc::SIGTERM
             } else {
@@ -978,7 +978,7 @@ fn cstr(s: &str) -> CString {
 }
 
 fn die(msg: &str) -> ! {
-    eprintln!("darling: {msg}");
+    eprintln!("cider: {msg}");
     std::process::exit(1);
 }
 
@@ -1064,9 +1064,9 @@ fn write_all(fd: c_int, buf: &[u8]) {
 fn show_help() {
     eprintln!(
         "Darling (Rust launcher {GIT_BRANCH}-{GIT_COMMIT})\n\
-         Usage:\n  darling shell [command...]   run a command in the container\n\
-         \x20 darling exec <binary> [args] exec a Mach-O binary\n\
-         \x20 darling shutdown             stop the container"
+         Usage:\n  cider shell [command...]   run a command in the container\n\
+         \x20 cider exec <binary> [args] exec a Mach-O binary\n\
+         \x20 cider shutdown             stop the container"
     );
 }
 

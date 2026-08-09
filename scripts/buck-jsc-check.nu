@@ -34,9 +34,9 @@ def say [msg: string] { print -e $msg }
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    # SHORT by default: the daemon's control socket lives at <prefix>/.darlingserver.sock and a
+    # SHORT by default: the daemon's control socket lives at <prefix>/.ciderd.sock and a
     # Unix socket path is capped at 108 bytes.
-    let root = ($scratch | default $"/tmp/darling-jsc-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-jsc-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -46,7 +46,7 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix =="
-    let b = (^buck2 build //buck/prefix:darling_prefix --show-output | complete)
+    let b = (^buck2 build //buck/prefix:cider_prefix --show-output | complete)
     let art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
     if ($art | path type) != "dir" {
         say "the prefix did not build"
@@ -90,10 +90,10 @@ print("JSC_OK sum=" + s + " json=" + JSON.stringify(JSON.parse("{\"a\":1}")));'
     with-env {
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 180 $"($rt)/bin/darling" shell /usr/bin/jsc -e $js out+err> $log }
+        do -i { ^timeout 180 $"($rt)/bin/cider" shell /usr/bin/jsc -e $js out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log

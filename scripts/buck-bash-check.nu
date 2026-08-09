@@ -24,7 +24,7 @@ def main [
     # An already-built prefix to test instead of building one. This is how the same check
     # covers BOTH endpoints: with no argument it builds through the buck2 daemon, and with one
     # it takes a tree the Nix endpoint produced
-    # (nix build .#darling-buck2-prefix, then result/darling_prefix__prefix).
+    # (nix build .#cider-buck2-prefix, then result/cider_prefix__prefix).
     --prefix: string = ""
     scratch?: string
 ] {
@@ -37,10 +37,10 @@ def main [
     }
 
     # SHORT by default, and that is not cosmetic: the daemon's control socket lives at
-    # <prefix>/.darlingserver.sock and a Unix socket path is capped at 108 bytes, so a scratch
+    # <prefix>/.ciderd.sock and a Unix socket path is capped at 108 bytes, so a scratch
     # directory a few levels deep makes the daemon panic with "socket path too long" after it
     # has already brought all of duct-tape up.
-    let root = ($scratch | default $"/tmp/darling-buck2-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-buck2-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -50,7 +50,7 @@ def main [
             exit 2
         }
         say "== building the prefix =="
-        let b = (^buck2 build //buck/prefix:darling_prefix --show-output | complete)
+        let b = (^buck2 build //buck/prefix:cider_prefix --show-output | complete)
         $art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
         if ($art | path type) != "dir" {
             say "the prefix did not build"
@@ -102,10 +102,10 @@ def main [
     with-env {
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd out+err> $log }
+        do -i { ^timeout 180 $"($rt)/bin/cider" shell /bin/bash -c $guest_cmd out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log

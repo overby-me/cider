@@ -5,7 +5,7 @@
 #include <errno.h>
 
 extern int lkm_call(int nr, ...);
-extern int __darling_vchroot(int dfd);
+extern int __cider_vchroot(int dfd);
 
 int main(int argc, const char** argv)
 {
@@ -37,7 +37,7 @@ int main(int argc, const char** argv)
 		return 2;
 	}
 
-	if (__darling_vchroot(dfd) < 0)
+	if (__cider_vchroot(dfd) < 0)
 	{
 		perror("vchroot");
 		return 3;

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # with-watchdog.sh - run a command under a timeout, and on expiry capture
-# stack traces of the guest process tree and darlingserver before killing it.
+# stack traces of the guest process tree and ciderd before killing it.
 #
 # Stalls (not crashes) are the signature failure mode of a subtly-wrong kernel
 # shim under Darling - typically kqueue/kevent, poll/select edge semantics, or
@@ -18,7 +18,7 @@
 #
 # Example:
 #   scripts/with-watchdog.sh --timeout 1800 --label hello-build -- \
-#     ./scripts/darling-nix nix build nixpkgs#hello
+#     ./scripts/cider-nix nix build nixpkgs#hello
 #
 # STAYS BASH (task #40). This forwards ARBITRARY argv to another program, and a nushell
 # script cannot receive that: nu parses a script's arguments against main's signature, so the
@@ -65,12 +65,12 @@ capture_stacks() {
 
     # Everything that looks like a Darling guest or the server.
     local pids
-    pids=$(pgrep -a -f 'darlingserver|mldr|/usr/libexec/darling|darling ' 2>/dev/null \
+    pids=$(pgrep -a -f 'ciderd|mldr|/usr/libexec/cider|cider ' 2>/dev/null \
       | awk '{print $1}' | sort -un)
 
     if [[ -z "$pids" ]]; then
-      echo "(no darlingserver/mldr/guest processes found via pgrep)"
-      pids=$(pgrep -f darling 2>/dev/null | sort -un)
+      echo "(no ciderd/mldr/guest processes found via pgrep)"
+      pids=$(pgrep -f cider 2>/dev/null | sort -un)
     fi
 
     for pid in $pids; do

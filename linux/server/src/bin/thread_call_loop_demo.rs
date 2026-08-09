@@ -1,16 +1,16 @@
 //! The persistent-thread doWork loop (bucket B.2, the multi-call half): a single
 //! long-lived guest thread serves MANY RPC calls over its lifetime, parking between
-//! them and resuming on the same stack -- the real darlingserver Thread model, versus a
+//! them and resuming on the same stack -- the real ciderd Thread model, versus a
 //! fresh microthread per call. Composes persistent threads (park/wake) with the
 //! generated dispatch: the loop waits for a call, dispatches it, posts the reply, then
 //! parks for the next; a per-thread stack counter proves the SAME thread served them
 //! all. See PLAN.md (bucket B.2).
 
-use darling::mach;
-use darling::registry::Registry;
-use darling::rpc_io::Message;
-use darling::rpc_wire::{self, callnum, DserverRpcCallhdr, ReplyTaskSelfTrap};
-use darling::sched;
+use cider::mach;
+use cider::registry::Registry;
+use cider::rpc_io::Message;
+use cider::rpc_wire::{self, callnum, DserverRpcCallhdr, ReplyTaskSelfTrap};
+use cider::sched;
 use std::cell::RefCell;
 use std::os::fd::RawFd;
 use std::rc::Rc;

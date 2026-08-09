@@ -3,7 +3,7 @@
 
 build.ninja cannot answer what a prefix contains: `install` is one opaque edge that shells
 out to `cmake -P cmake_install.cmake`. The real statement is the per-directory
-cmake_install.cmake files cmake writes at configure time, which nix/lib/darling-graph.nix
+cmake_install.cmake files cmake writes at configure time, which nix/lib/cider-graph.nix
 ships under install-manifests/. This reads them and emits prefix_tree / prefix_dir rules
 (buck/rules/install.bzl) so the layout is GENERATED from the reference, like every other part
 of this port, instead of transcribed from 89 install() calls by hand.
@@ -20,7 +20,7 @@ Two things the manifests do not say on their own:
 
   * A symlink installed through cmake/InstallSymlink.cmake arrives as an ordinary FILE whose
     source happens to be a symlink in the build tree. Its TARGET exists only in the link
-    itself, so darling-graph.nix records every build-tree link in install-symlinks.tsv and
+    itself, so cider-graph.nix records every build-tree link in install-symlinks.tsv and
     this reads that back. bin/sh -> bash is the one that matters for bash.
   * A dylib that goes through cmake's POST_BUILD lipo is installed under the lipo output's
     name while the port builds the linker's output (CoreFoundation vs
@@ -50,7 +50,7 @@ INSTALL_PREFIX = "/usr/local"
 # space matched only the first spelling, so every multi-file install entry in the build was
 # read as no entry at all -- silently, since a manifest that parses to nothing looks exactly
 # like a manifest with nothing in it. dirserv's three Directory Services stubs went missing
-# that way, and they are what tests/darling-smoke.nix stage 7 drives.
+# that way, and they are what tests/cider-smoke.nix stage 7 drives.
 # The RENAME group is not decoration: cmake writes
 #   file(INSTALL DESTINATION "..." TYPE FILE RENAME "Info.plist" FILES ".../X11.backend/Info.plist")
 # and the older pattern, which demanded FILES right after the type modifiers, simply did
@@ -83,11 +83,11 @@ GENERATED = {
 
 # What the reference does NOT install, but a runnable Darling needs.
 #
-# The Rust rewrite replaced the C darlingserver, launcher and mldr, and none of the three
+# The Rust rewrite replaced the C ciderd, launcher and mldr, and none of the three
 # appears in any install manifest: nix/package.nix places them by hand after cmake has run.
 # The prefix is what a Darling install IS, so it carries them here instead, at the paths the
-# launcher looks for -- it execs INSTALL_PREFIX/bin/darlingserver and the plain name is what
-# keeps /proc/<pid>/comm reading "darlingserver".
+# launcher looks for -- it execs INSTALL_PREFIX/bin/ciderd and the plain name is what
+# keeps /proc/<pid>/comm reading "ciderd".
 #
 # The _sqlite3 entry is a DELIBERATE DIVERGENCE from the reference, stated here rather than
 # done quietly. CPython 2.7 imports a C extension X by dlopening X.so and calling initX, and
@@ -103,12 +103,12 @@ GENERATED = {
 # buck-src/python/BUCK builds it from the _cursesmodule.c that already ships in the pin
 # against the ncurses _curses_panel already links, and this puts it where CPython looks.
 EXTRA = {
-    "bin/darling": "//linux/launcher:darling",
-    "bin/darlingserver": "//linux/server:darlingserverd",
-    "libexec/darling/usr/libexec/darling/mldr": "//darwin/loader:mldr",
-    "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7"
+    "bin/cider": "//linux/launcher:cider",
+    "bin/ciderd": "//linux/server:ciderd",
+    "libexec/cider/usr/libexec/cider/mldr": "//darwin/loader:mldr",
+    "libexec/cider/System/Library/Frameworks/Python.framework/Versions/2.7"
     "/lib/python2.7/lib-dynload/_sqlite3.so": "//buck-src/python:py27__sqlite_dylib",
-    "libexec/darling/System/Library/Frameworks/Python.framework/Versions/2.7"
+    "libexec/cider/System/Library/Frameworks/Python.framework/Versions/2.7"
     "/lib/python2.7/lib-dynload/_curses.so": "//buck-src/python:py27__curses_dylib",
 }
 
@@ -119,30 +119,30 @@ EXTRA = {
 EXTRA_DIRS = {
     # Security's trust store, built from the 159 .crt files and evroot.config by
     # buck-src/openssl_certificates/scripts/generate-ca-bundle.py.
-    "libexec/darling/System/Library/Security/Certificates.bundle":
+    "libexec/cider/System/Library/Security/Certificates.bundle":
         "//buck-src:certificates_bundle",
 }
 
 # Destinations deliberately left out of the prefix, with the reason. Counted apart from
 # UNMAPPED so "what is missing" stays a number that can reach zero.
 OUT_OF_SCOPE = {
-    "libexec/darling/usr/lib/libstdc++.6.dylib":
+    "libexec/cider/usr/lib/libstdc++.6.dylib":
         "libstdc++ is not ported (scripts/buck-coverage.py OUT_OF_SCOPE: GCC 4.2.1's "
         "vendored headers do not compile against this SDK), and nothing links it",
     # Two links the REFERENCE build leaves dangling, so the port has nothing to point them
     # at. buck-src/file_cmds/CMakeLists.txt:96 says
-    # InstallSymlink(zdiff libexec/darling/usr/bin/zcmp), but zdiff installs to
-    # libexec/darling/BIN (line 76), and a link value with no ../.. resolves next to the
+    # InstallSymlink(zdiff libexec/cider/usr/bin/zcmp), but zdiff installs to
+    # libexec/cider/BIN (line 76), and a link value with no ../.. resolves next to the
     # link -- in usr/bin, where no zdiff exists. Line 97 is worse: InstallSymlink(zless ...)
     # names a file no install() in the tree mentions at all. Two lines above them,
-    # InstallSymlink(../sbin/chown libexec/darling/usr/bin/chgrp) shows the spelling that
+    # InstallSymlink(../sbin/chown libexec/cider/usr/bin/chgrp) shows the spelling that
     # does cross directories, so this is a slip rather than a convention. Reproducing a
     # broken link is not worth failing the prefix rule's consistency check over, and fixing
     # it belongs upstream, not in a port whose whole discipline is matching the reference.
-    "libexec/darling/usr/bin/zcmp":
-        "the reference links it to zdiff, which installs to libexec/darling/bin rather "
+    "libexec/cider/usr/bin/zcmp":
+        "the reference links it to zdiff, which installs to libexec/cider/bin rather "
         "than the usr/bin the link resolves in (file_cmds/CMakeLists.txt:96)",
-    "libexec/darling/usr/bin/zmore":
+    "libexec/cider/usr/bin/zmore":
         "the reference links it to zless, which no install() in the tree provides "
         "(file_cmds/CMakeLists.txt:97)",
 }
@@ -224,7 +224,7 @@ def read_entries(root: str):
 
 
 # `install(DIRECTORY DESTINATION x)` with no source: cmake writes it as an INSTALL with an
-# empty file list, and it means "create this directory". libexec/darling/proc is one.
+# empty file list, and it means "create this directory". libexec/cider/proc is one.
 EMPTY_DIR = re.compile(r'file\(INSTALL DESTINATION "([^"]+)" TYPE DIRECTORY FILES ""\)')
 # cmake/InstallSymlink.cmake's other branch: an install(CODE) block that runs
 # `cmake -E create_symlink <target> <destination>`. Nothing in the file()-based manifest
@@ -596,7 +596,7 @@ def main(argv: list[str]) -> int:
     graph = graph_dir(argv)
     root = os.path.join(graph, "install-manifests")
     if not os.path.isdir(root):
-        sys.exit(f"no install manifests at {root} -- build .#darling-graph-stock first")
+        sys.exit(f"no install manifests at {root} -- build .#cider-graph-stock first")
 
     binaries = binary_index()
     links = read_symlinks(graph)
@@ -792,7 +792,7 @@ def main(argv: list[str]) -> int:
              "# GENERATED from the reference build's cmake_install.cmake manifests by",
              "# scripts/gen-install-from-manifests.py -- review before committing.",
              "prefix_tree(",
-             '    name = "darling_prefix",',
+             '    name = "cider_prefix",',
              "    entries = {"]
     for dest in sorted(built):
         lines.append(f'        "{dest}": "{built[dest]}",')

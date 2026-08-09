@@ -3,7 +3,7 @@
 //! compare sizeof/offsetof for every call) is the next increment; this proves the
 //! emitter output is well-formed and the header/nesting layout is right on x86_64.
 
-use darling::rpc_wire::*;
+use cider::rpc_wire::*;
 use std::mem::{align_of, size_of};
 
 fn main() {

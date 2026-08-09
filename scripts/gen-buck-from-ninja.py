@@ -12,10 +12,10 @@ command ninja passes, including everything a target inherits from parent cmake
 scopes (which reading a CMakeLists cannot tell you).
 
 Get the graph with:
-    nix build .#darling-graph-stock -o result-graph-ref
+    nix build .#cider-graph-stock -o result-graph-ref
 
-The port targets the STOCK component. `.#darling-graph` is the much smaller `system`
-scope and `.#darling-graph-cli` the intermediate one; both were stepping stones and
+The port targets the STOCK component. `.#cider-graph` is the much smaller `system`
+scope and `.#cider-graph-cli` the intermediate one; both were stepping stones and
 neither is what the thresholds in scripts/buck-test.nu are set against now.
 
 Usage:
@@ -55,7 +55,7 @@ GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
 BUCK_SRC = "buck-src"
 
 # The nix build's source and binary dirs, as they appear in build.ninja.
-SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-darling-cmake-src")
+SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-cider-cmake-src")
 BIN_DIR = "/build/build"
 
 # Flags //darwin:sdk_env already supplies, so a generated target does not repeat
@@ -137,7 +137,7 @@ CROSS_PACKAGE_SRCS = {
 
 CROSS_PACKAGE_ROOTS = {
     "src/libsimple/include": "//src/libsimple:libsimple_headers",
-    "src/external/darlingserver/include": "//src/external/darlingserver:dserver_headers",
+    "src/external/ciderd/include": "//src/external/ciderd:dserver_headers",
     # launchd's own headers, needed by targets in OTHER packages: xtrace's per-protocol
     # stub for liblaunch's job.defs compiles a generated source whose imports reach
     # launchd's core.h. The root staged there covers src/ and liblaunch/ both.
@@ -153,9 +153,9 @@ CROSS_PACKAGE_ROOTS = {
     # the buck-src mega-package.
     "foundation/src": "//buck-src:Foundation_inc_foundation_src",
     # Same story as corefoundation, for vim's xxd: it compiles -DDYNAMIC_RUBY and gets
-    # -Isrc/external/ruby/darling/include/ruby. ruby became a split pin when its 92
+    # -Isrc/external/ruby/cider/include/ruby. ruby became a split pin when its 92
     # targets landed, so the root has to be declared inside that package.
-    "ruby/darling/include/ruby": "//buck-src/ruby:ruby_inc_darling_include_ruby",
+    "ruby/cider/include/ruby": "//buck-src/ruby:ruby_inc_cider_include_ruby",
     # python's dbm module gets -I<sdk>/usr/include/BerkeleyDB, whose db.h and db_cxx.h are
     # DANGLING links in the committed SDK farm: they still point at src/external/BerkeleyDB
     # from before the darwin/ + linux/ reorg, like dnsinfo.h does (see the note in that
@@ -180,10 +180,10 @@ CROSS_PACKAGE_ROOTS = {
     # links that dangle in the current layout.
     "src/startup/mldr/include": "//darwin:sdk_env",
     "src/startup/mldr/elfcalls": "//src/startup:mldr_elfcalls",
-    # darling-config.h, cmake's configure_file output. Every Darwin compile reaches it
+    # cider-config.h, cmake's configure_file output. Every Darwin compile reaches it
     # through //darwin:sdk_env, but a HOST tool has no sdk_env, so it names the
     # generator directly -- src/include holds nothing else.
-    "src/include": "//src/include:darling_config",
+    "src/include": "//src/include:cider_config",
     # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
     # Mach-O out of the build tree from //src/buildtools, and the pin lives in //buck-src.
     #
@@ -308,7 +308,7 @@ def read_edges():
 DYLIB_ARTIFACTS: set = set()
 
 # Every cmake target the reference compiles for the BUILD MACHINE rather than for Darling:
-# the five host tools (bsdln, elfdep, getuuid, wrapgen, darling-coredump) plus the build
+# the five host tools (bsdln, elfdep, getuuid, wrapgen, cider-coredump) plus the build
 # tools cmake runs during the build (migcom, lipo, ld64, ar, ranlib). They get the native
 # toolchain and no SDK -- linking them against the Darwin SDK would produce a Mach-O the
 # host cannot execute.
@@ -362,7 +362,7 @@ def deref(rel: str) -> str:
     entry, so a header root pointing at one stages EMPTY (while explicit sources
     through the same symlink still resolve, which is what made this confusing).
     The materialized pins contain 3861 symlinks, including
-    xnu/darling/src/libsystem_kernel/libsyscall -> xnu/libsyscall, so roots have to
+    xnu/cider/src/libsystem_kernel/libsyscall -> xnu/libsyscall, so roots have to
     name the real directory.
     """
     real = os.path.realpath(os.path.join(REPO, rel))
@@ -1715,7 +1715,7 @@ def generate_dylibs(target: str, edges, only: str = ""):
     """The firstpass/final dylib pair for a cmake target, and its package.
 
     Darling links every circular library twice from the same objects (see
-    cmake/darling_lib.cmake add_circular): once with undefined symbols suppressed,
+    cmake/cider_lib.cmake add_circular): once with undefined symbols suppressed,
     then again against the siblings' firstpass dylibs. Both edges are in the graph,
     so both the object set and the sibling set are read rather than guessed.
     """
@@ -1985,15 +1985,15 @@ def archive_target_name(artifact: str) -> str:
 
 # Archives this port already builds under a different artifact name. The name is
 # just a path on the link line, so only the mapping matters: libsimple's Darwin
-# archive is libsimple_darling.a here and liblibsimple_darling.a in the reference
-# (cmake doubles the "lib" for a target already called libsimple_darling).
+# archive is libsimple_cider.a here and liblibsimple_cider.a in the reference
+# (cmake doubles the "lib" for a target already called libsimple_cider).
 ARCHIVE_ALIASES = {
-    "liblibsimple_darling.a": "//src/libsimple:libsimple_darling",
+    "liblibsimple_cider.a": "//src/libsimple:libsimple_cider",
     # The host tier, ported before cc_static_lib existed (both are cc_library targets
     # whose archive the Rust daemon consumes through DUCT_TAPE_LIB).
-    "libdarlingserver_duct_tape.a":
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-    "liblibsimple_darlingserver.a": "//src/libsimple:libsimple_darlingserver",
+    "libciderd_duct_tape.a":
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+    "liblibsimple_ciderd.a": "//src/libsimple:libsimple_ciderd",
 }
 
 
@@ -2103,7 +2103,7 @@ def links_cxx(target: str, edges) -> bool:
     WHY IT MATTERS: linked with the C driver, a C++ program leaves every std:: symbol
     undefined. ld64 failed exactly that way, hundreds of lines of
     basic_string::_M_create and operator delete, which reads as a missing library rather
-    than a wrong driver. src/hosttools/BUCK carries the same note for darling-coredump,
+    than a wrong driver. src/hosttools/BUCK carries the same note for cider-coredump,
     where it had to be set by hand.
     """
     want = "CXX_EXECUTABLE_LINKER__" + ninja_rule_name(target) + "_"
@@ -2349,7 +2349,7 @@ def ensure_loads(text: str, block: str) -> str:
 
 def main(argv: list[str]) -> int:
     if not os.path.exists(GRAPH):
-        sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#darling-graph-stock -o result-graph-ref")
+        sys.exit(f"no reference graph at {GRAPH}\nrun: nix build .#cider-graph-stock -o result-graph-ref")
     args = [a for a in argv[1:] if not a.startswith("--")]
     edges = read_edges()
 

@@ -31,7 +31,7 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
-SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-darling-cmake-src")
+SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-cider-cmake-src")
 BIN_DIR = "/build/build"
 
 

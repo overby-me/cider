@@ -1,4 +1,4 @@
-//! The minimal working darlingserver for the special-port traps: a real client PROCESS
+//! The minimal working ciderd for the special-port traps: a real client PROCESS
 //! makes Mach calls over a real unix socket, and the daemon serves each through the full
 //! pipeline -- recv off the socket -> route to the client's task (registry) -> run the
 //! shared Handler on a microthread via the generated dispatch -> reply over the socket.
@@ -7,11 +7,11 @@
 //! so it works under the nix build sandbox) with the client in a forked child. See
 //! PLAN.md (real-socket serving).
 
-use darling::handler::Handler;
-use darling::registry::Registry;
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{self, callnum, DserverRpcCallhdr};
-use darling::sched;
+use cider::handler::Handler;
+use cider::registry::Registry;
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{self, callnum, DserverRpcCallhdr};
+use cider::sched;
 use std::cell::RefCell;
 use std::mem::size_of;
 use std::os::fd::RawFd;

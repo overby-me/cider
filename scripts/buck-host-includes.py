@@ -20,7 +20,7 @@ purpose, where iokitd stopped at "X11/Xlib.h file not found".
 That is the class of bug this checks for, statically and in a second, rather than waiting an
 hour for a Nix build to fail. For every reference compile carrying an absolute host -I, the
 port's target must depend on //src/native:host_headers, which exports -I for each entry of
-darling.host_include_dirs.
+cider.host_include_dirs.
 
 Usage:
   scripts/buck-host-includes.py           # report, exit 1 if any target is missing it
@@ -40,7 +40,7 @@ HOST_HEADERS = "//src/native:host_headers"
 
 # The reference stages its own sources in the store too, so "absolute" is not enough to mean
 # "host library": the project's own tree is a store path as well.
-PROJECT_MARKER = "darling-cmake-src"
+PROJECT_MARKER = "cider-cmake-src"
 
 # The toolchain's own resource root, which the port supplies as clang_resource_dir rather
 # than through host_include_dirs.

@@ -28,8 +28,8 @@ def main [--prefix: string = "", scratch?: string] {
         exit 2
     }
 
-    # Short by default: <prefix>/.darlingserver.sock has to fit in a 108-byte sun_path.
-    let root = ($scratch | default $"/tmp/darling-buck2-(^id -u | str trim)")
+    # Short by default: <prefix>/.ciderd.sock has to fit in a 108-byte sun_path.
+    let root = ($scratch | default $"/tmp/cider-buck2-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix-launchd"
 
@@ -39,7 +39,7 @@ def main [--prefix: string = "", scratch?: string] {
             exit 2
         }
         say "== building the prefix =="
-        let b = (^buck2 build //buck/prefix:darling_prefix --show-output | complete)
+        let b = (^buck2 build //buck/prefix:cider_prefix --show-output | complete)
         $art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
         if ($art | path type) != "dir" {
             say "the prefix did not build"
@@ -60,7 +60,7 @@ def main [--prefix: string = "", scratch?: string] {
     # GNU rm: the overlay workdir left behind holds a `work` directory at mode 000, which
     # nushell's remove_dir_all cannot enter and GNU rm chmods its way into.
     ^rm -rf $rt $prefix_dir $"($prefix_dir).workdir"
-    # Only $rt. The prefix directory must NOT be pre-created: darling treats an existing DPREFIX
+    # Only $rt. The prefix directory must NOT be pre-created: cider treats an existing DPREFIX
     # as one it has already set up, so creating it empty skips first-time setup entirely and
     # launchd then boots into an unpopulated filesystem and stalls (deterministically, at ~509
     # lines of daemon log). The no-launchd check gets away with it because running one command
@@ -80,10 +80,10 @@ def main [--prefix: string = "", scratch?: string] {
     let log = (mktemp --tmpdir buck-launchd-check.XXXXXX)
     with-env {
         DPREFIX: $prefix_dir
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 180 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd out+err> $log }
+        do -i { ^timeout 180 $"($rt)/bin/cider" shell /bin/bash -c $guest_cmd out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log

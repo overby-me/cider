@@ -162,7 +162,7 @@ void AudioHardwareImplPA::getPAContext(void (^cb)(pa_context*))
 		if (m_context == nullptr)
 		{
 			const char* appname = appNameFromExecutable();
-			const char* appid = "org.darlinghq.some-app";
+			const char* appid = "org.ciderhq.some-app";
 
 			pa_proplist* proplist = pa_proplist_new();
 

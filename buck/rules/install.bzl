@@ -4,23 +4,23 @@
 # The reference build says nothing useful about this in build.ninja: `install` is a single
 # opaque edge that shells out to `cmake -P cmake_install.cmake`. The real statement is the
 # per-directory cmake_install.cmake files cmake writes at configure time -- 433 entries
-# across 65 destinations for the system component -- and nix/lib/darling-graph.nix now ships
+# across 65 destinations for the system component -- and nix/lib/cider-graph.nix now ships
 # them so scripts/gen-install-from-manifests.py can generate these rules from the reference
 # rather than transcribing 89 install() calls by hand (plan/buck2-port.md, bash milestone).
 #
 # Destinations follow Darling's cmake helpers: libraries and executables under
-# libexec/darling/..., frameworks under
-# libexec/darling/System/Library/Frameworks/<name>.framework/Versions/..., and the xtrace
-# MIG stubs under libexec/darling/usr/lib/darling/xtrace-mig/.
+# libexec/cider/..., frameworks under
+# libexec/cider/System/Library/Frameworks/<name>.framework/Versions/..., and the xtrace
+# MIG stubs under libexec/cider/usr/lib/cider/xtrace-mig/.
 
 load("//buck/rules:cc.bzl", "CcLibInfo")
 
 # What a prefix_dir hands to a prefix_tree: {path inside the tree: artifact}.
 #
 # The directory ARTIFACT is not enough, because cmake's install(DIRECTORY) merges: zsh
-# installs the contents of gen/install-this/ straight into libexec/darling, which already
+# installs the contents of gen/install-this/ straight into libexec/cider, which already
 # holds bin/, usr/ and everything else. symlinked_dir refuses overlapping destinations (and
-# is right to -- a symlink at libexec/darling would shadow the rest), so a tree is expanded
+# is right to -- a symlink at libexec/cider would shadow the rest), so a tree is expanded
 # into its individual files and merged path by path instead.
 load("//buck/rules:inproc.bzl", "InProcInfo")
 
@@ -39,7 +39,7 @@ _BUILD_PREFIX = """set -euo pipefail
 out="$1"; manifest="$2"
 mkdir -p "$out"
 # The manifest travels WITH the tree, at the prefix root rather than inside
-# libexec/darling, so it is never part of what the container mounts. Nothing depends on it
+# libexec/cider, so it is never part of what the container mounts. Nothing depends on it
 # now that artifacts are copied and only the layout's own links remain symlinks, but it is
 # the one place that says what the prefix is MEANT to contain, which is worth having next
 # to what it does contain.
@@ -50,7 +50,7 @@ while IFS=$'\\t' read -r kind dest src; do
     link)
       mkdir -p "$out/$(dirname "$dest")"
       # A destination that is already a REAL directory is left alone, which is what the
-      # reference does too: install(DIRECTORY DESTINATION libexec/darling/var/root) runs
+      # reference does too: install(DIRECTORY DESTINATION libexec/cider/var/root) runs
       # before the install(CODE) that would link var -> private/var, and cmake -E
       # create_symlink then fails into an execute_process nobody checks. Linking anyway
       # would put the link INSIDE the directory (var/var), dangling.
@@ -102,7 +102,7 @@ def _prefix_tree_impl(ctx):
     # Second names for things already in the tree. Darling installs these through
     # cmake/InstallSymlink.cmake, which creates the link in the build directory and then
     # install()s it as an ordinary file -- so the manifests name bin/sh but never say what it
-    # points at, and nix/lib/darling-graph.nix records the link values separately.
+    # points at, and nix/lib/cider-graph.nix records the link values separately.
     #
     # A prefix_tree is a symlink farm already, so a second name is the same artifact mapped
     # twice: whatever a consumer does with the tree (dereference it, copy it, mount it) it
@@ -126,7 +126,7 @@ def _prefix_tree_impl(ctx):
     # prefix is not only files. The reference also installs
     #
     #   17 EMPTY directories, through `install(DIRECTORY DESTINATION ...)` with no source.
-    #      libexec/darling/proc is one of them, and without it the daemon cannot mount
+    #      libexec/cider/proc is one of them, and without it the daemon cannot mount
     #      procfs for the container's PID namespace and the container init dies at once.
     #   74 SYMLINKS to paths outside the tree, through install(CODE) blocks that run
     #      cmake -E create_symlink: etc -> private/etc, var -> private/var,
@@ -152,7 +152,7 @@ def _prefix_tree_impl(ctx):
     # the prefix installs. buck/bxl/materialize.bxl ensures InProcInfo.artifacts, and the
     # manifest is in there, so "materialize the in-process artifacts" quietly meant BUILD THE
     # ENTIRE PREFIX -- inside the graph DUMP, which is supposed to run no compiles at all.
-    # MEASURED: with a skeleton tree the dump tried to compile libtrustd_obj, darling-coredump,
+    # MEASURED: with a skeleton tree the dump tried to compile libtrustd_obj, cider-coredump,
     # dyld, compiler_rt_final and system_dyld_final, every one of them something this manifest
     # lists. On the real tree they simply succeeded, which is why it went unnoticed for so long,
     # and removing them roughly HALVED the graph derivation, 18m34s to about 10 minutes.

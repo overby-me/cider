@@ -12,7 +12,7 @@ for line in fileinput.input():
     fixed = False
 
     while True:
-        proc = subprocess.Popen("readelf -Ws /home/lubos/Projects/darling-root/lib32/darling/libstdcxx.so | grep " + line + "@@", shell=True, stdout=devnull, stderr=devnull)
+        proc = subprocess.Popen("readelf -Ws /home/lubos/Projects/cider-root/lib32/cider/libstdcxx.so | grep " + line + "@@", shell=True, stdout=devnull, stderr=devnull)
         proc.wait()
 
         if proc.returncode != 0:

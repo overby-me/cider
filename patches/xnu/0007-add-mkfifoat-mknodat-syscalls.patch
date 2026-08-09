@@ -25,8 +25,8 @@
  	bsdsyscalls/_mlockall.S
  	bsdsyscalls/_mlock.S
  	bsdsyscalls/___mmap.S
---- a/darling/src/libsystem_kernel/emulation/CMakeLists.txt
-+++ b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
+--- a/cider/src/libsystem_kernel/emulation/CMakeLists.txt
++++ b/cider/src/libsystem_kernel/emulation/CMakeLists.txt
 @@ -221,6 +221,7 @@
  	src/xnu_syscall/bsd/impl/stat/mkdir.c
  	src/xnu_syscall/bsd/impl/stat/mkdirat.c
@@ -43,24 +43,24 @@
  	src/xnu_syscall/bsd/impl/unistd/pipe.c
  	src/xnu_syscall/bsd/impl/unistd/pread.c
  	src/xnu_syscall/bsd/impl/unistd/pwrite.c
---- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
-+++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+--- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
 @@ -112,6 +112,7 @@
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkdir.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkdirat.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifo.h>
-+#include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/rmdir.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/stat.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/stat/stat64_extended.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/mkdir.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/mkdirat.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/mkfifo.h>
++#include <cider/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/rmdir.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/stat.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/stat/stat64_extended.h>
 @@ -167,6 +168,7 @@
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/linkat.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/lseek.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknod.h>
-+#include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pipe.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pread.h>
- #include <darling/emulation/xnu_syscall/bsd/impl/unistd/pwrite.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/linkat.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/lseek.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/mknod.h>
++#include <cider/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/pipe.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/pread.h>
+ #include <cider/emulation/xnu_syscall/bsd/impl/unistd/pwrite.h>
 @@ -488,4 +490,8 @@
  	[517] = sys_fclonefileat,
  	[521] = sys_abort_with_payload,
@@ -111,7 +111,7 @@
 +
 +#endif
 --- /dev/null
-+++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/stat/mkfifoat.h
++++ b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/stat/mkfifoat.h
 @@ -0,0 +1,6 @@
 +#ifndef LINUX_MKFIFOAT_H
 +#define LINUX_MKFIFOAT_H
@@ -120,7 +120,7 @@
 +
 +#endif // LINUX_MKFIFOAT_H
 --- /dev/null
-+++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/mknodat.h
++++ b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/mknodat.h
 @@ -0,0 +1,6 @@
 +#ifndef LINUX_MKNODAT_H
 +#define LINUX_MKNODAT_H
@@ -129,19 +129,19 @@
 +
 +#endif // LINUX_MKNODAT_H
 --- /dev/null
-+++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c
++++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/stat/mkfifoat.c
 @@ -0,0 +1,43 @@
-+#include <darling/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
++#include <cider/emulation/xnu_syscall/bsd/impl/stat/mkfifoat.h>
 +
 +#include <sys/errno.h>
 +
-+#include <darling/emulation/conversion/stat/common.h>
-+#include <darling/emulation/common/base.h>
-+#include <darling/emulation/conversion/errno.h>
-+#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
-+#include <darling/emulation/conversion/common_at.h>
-+#include <darling/emulation/linux_premigration/vchroot_expand.h>
-+#include <darling/emulation/other/mach/lkm.h>
++#include <cider/emulation/conversion/stat/common.h>
++#include <cider/emulation/common/base.h>
++#include <cider/emulation/conversion/errno.h>
++#include <cider/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <cider/emulation/conversion/common_at.h>
++#include <cider/emulation/linux_premigration/vchroot_expand.h>
++#include <cider/emulation/other/mach/lkm.h>
 +
 +#define LINUX_S_IFIFO 0010000
 +
@@ -175,19 +175,19 @@
 +	return 0;
 +}
 --- /dev/null
-+++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c
++++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/mknodat.c
 @@ -0,0 +1,46 @@
-+#include <darling/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
++#include <cider/emulation/xnu_syscall/bsd/impl/unistd/mknodat.h>
 +
 +#include <sys/errno.h>
 +
-+#include <darling/emulation/conversion/stat/common.h>
-+#include <darling/emulation/common/base.h>
-+#include <darling/emulation/conversion/errno.h>
-+#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
-+#include <darling/emulation/conversion/common_at.h>
-+#include <darling/emulation/linux_premigration/vchroot_expand.h>
-+#include <darling/emulation/other/mach/lkm.h>
++#include <cider/emulation/conversion/stat/common.h>
++#include <cider/emulation/common/base.h>
++#include <cider/emulation/conversion/errno.h>
++#include <cider/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <cider/emulation/conversion/common_at.h>
++#include <cider/emulation/linux_premigration/vchroot_expand.h>
++#include <cider/emulation/other/mach/lkm.h>
 +
 +extern char* strcpy(char* dst, const char* src);
 +

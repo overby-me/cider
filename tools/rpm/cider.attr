@@ -1,0 +1,2 @@
+%__cider_magic      ^Mach-O.*$
+%__cider_requires   %{_rpmconfigdir}/cider-deps.req %{_builddir}/cider/build/src/buildtools/elfdep

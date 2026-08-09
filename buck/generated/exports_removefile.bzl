@@ -5,6 +5,6 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
-    "darling_include_checkint.h": "darling/include/checkint.h",
-    "darling_include_removefile.h": "darling/include/removefile.h",
+    "cider_include_checkint.h": "cider/include/checkint.h",
+    "cider_include_removefile.h": "cider/include/removefile.h",
 }

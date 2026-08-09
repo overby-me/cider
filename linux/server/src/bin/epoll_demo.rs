@@ -2,13 +2,13 @@
 //! thread connects and sends a uidgid call; the main thread's epoll loop accepts the
 //! connection, receives the message, dispatches it on a sched microthread (real
 //! dtape_task_uidgid, routed to the guest's task via the registry), and replies.
-use darling::registry::Registry;
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{
+use cider::registry::Registry;
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{
     callnum, CallUidgid, DserverRpcCallhdr, DserverRpcReplyhdr, ReplyUidgid, RpcCallUidgid, RpcReplyUidgid,
 };
-use darling::sched;
-use darling::server::{connect, Listener};
+use cider::sched;
+use cider::server::{connect, Listener};
 use std::cell::Cell;
 use std::mem::size_of;
 use std::os::raw::{c_int, c_void};

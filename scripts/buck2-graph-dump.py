@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Assemble the port's action graph from what buck2 can be asked, for the Nix endpoint.
 
-Run INSIDE nix/lib/darlingBuck2Graph.nix, right after a build, with the project root as the
+Run INSIDE nix/lib/ciderBuck2Graph.nix, right after a build, with the project root as the
 working directory. Three buck2 interfaces are needed because no single one answers
 everything (plan/buck2-port.md phase 3, and buck/bxl/probe.bxl for what was tried):
 
@@ -298,7 +298,7 @@ def deterministic_action_order(actions: list) -> list:
     content addressing of #50 and #55.
 
     WHY NOT sorted(actions, key=identity), which is the obvious fix and is WRONG:
-    nix/lib/darlingBuck2Lower.nix requires this list to be GLOBALLY TOPOLOGICAL and says so.
+    nix/lib/ciderBuck2Lower.nix requires this list to be GLOBALLY TOPOLOGICAL and says so.
     Coarse pin regrouping is only valid because of it, and #52 concurrency correctness rests on
     it, since an action reading none of its siblings outputs cannot depend on anything already
     launched. A plain sort breaks that into a RACE rather than an error, which is the worst
@@ -500,7 +500,7 @@ def main(argv: list[str]) -> int:
     #     anything.
     # By PROVIDER, through BXL, not by building targets. `buck2 build <target>` produces a
     # target's DEFAULT output and nothing else, and these artifacts hang off other
-    # providers: darling-config.h is action id 2 of //src/include:darling_config, reachable
+    # providers: cider-config.h is action id 2 of //src/include:cider_config, reachable
     # through no subtarget, and it simply went missing when a consumer came to include it.
     # buck/bxl/materialize.bxl asks for them by provider instead, which works because the
     # port's rules are its own.

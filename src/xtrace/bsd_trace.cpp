@@ -1,4 +1,4 @@
-#include <darling/emulation/common/simple.h>
+#include <cider/emulation/common/simple.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -1053,7 +1053,7 @@ static void print_args(xtrace::String* log, int nr, void* args[])
 
 
 extern "C"
-void darling_bsd_syscall_entry_print(int nr, void* args[])
+void cider_bsd_syscall_entry_print(int nr, void* args[])
 {
 	xtrace::String log;
 #if __i386__
@@ -1077,7 +1077,7 @@ void darling_bsd_syscall_entry_print(int nr, void* args[])
 }
 
 extern "C"
-void darling_bsd_syscall_exit_print(uintptr_t retval)
+void cider_bsd_syscall_exit_print(uintptr_t retval)
 {
 	xtrace::String log;
 	handle_generic_exit(&log, bsd_defs, "bsd", retval, 0);

@@ -1,7 +1,7 @@
 # Darwin/Mach-O linking: dylibs, install_name, reexport, and the firstpass
 # machinery that breaks the libSystem cycle.
 #
-# HOW THE CYCLE IS ACTUALLY BROKEN (cmake/darling_lib.cmake's add_circular, and
+# HOW THE CYCLE IS ACTUALLY BROKEN (cmake/cider_lib.cmake's add_circular, and
 # the -dylib_file list in cmake/use_ld64.cmake). This is the plan's "highest
 # risk" item, and reading the reference makes it much less scary than it sounds:
 #
@@ -81,7 +81,7 @@ def _darwin_link(ctx, tc, out, objects, extra_flags, link_libs, dylib_files):
     # The Mach-O linker is selected by -B plus the target triple: clang's driver
     # looks for `<triple>-ld` in the -B dirs, which is exactly why cctools names
     # it x86_64-apple-darwin20-ld. (-fuse-ld= would also work but only with an
-    # ABSOLUTE path, which a Starlark rule cannot compute; set [darling] ld in
+    # ABSOLUTE path, which a Starlark rule cannot compute; set [cider] ld in
     # .buckconfig.local to an absolute path to use it instead.)
     # THE LINKER AS A BUILT ARTIFACT, when the toolchain was given one (#65). Passing the
     # artifact rather than a string is what makes the link DEPEND on it: buck2 builds ld64
@@ -146,7 +146,7 @@ def _darwin_dylib_impl(ctx):
 
     # -nostdlib: clang's Darwin driver would otherwise add -lSystem, and libSystem
     # is the very thing being built. The reference build passes it too (via
-    # cmake/darling_lib.cmake), alongside -shared; -dynamiclib is the same request
+    # cmake/cider_lib.cmake), alongside -shared; -dynamiclib is the same request
     # spelled the Darwin way.
     flags = ["-dynamiclib", "-nostdlib"]
     if ctx.attrs.install_name:

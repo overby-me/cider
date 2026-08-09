@@ -35,7 +35,7 @@ def artifact_for [rows: list, pat: string] {
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let root = ($scratch | default $"/tmp/darling-audio-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-audio-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -45,10 +45,10 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix and the probe =="
-    let b = (^buck2 build //buck/prefix:darling_prefix //tests/buck2/guest:audio_probe
+    let b = (^buck2 build //buck/prefix:cider_prefix //tests/buck2/guest:audio_probe
         --show-output | complete)
     let rows = ($b.stdout | lines | each {|l| $l | split row " " } | where {|w| ($w | length) >= 2 })
-    let art = (artifact_for $rows 'darling_prefix')
+    let art = (artifact_for $rows 'cider_prefix')
     let bin = (artifact_for $rows 'audio_probe')
     for f in [$art $bin] {
         if ($f | is-empty) or (not ($f | path exists)) {
@@ -72,8 +72,8 @@ def main [scratch?: string] {
     # `cp -a`, never `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /.
     ^cp -a $"($art)/." $"($rt)/"
     ^chmod -R u+w $rt
-    ^cp $bin $"($rt)/libexec/darling/usr/bin/audio_probe"
-    ^chmod +x $"($rt)/libexec/darling/usr/bin/audio_probe"
+    ^cp $bin $"($rt)/libexec/cider/usr/bin/audio_probe"
+    ^chmod +x $"($rt)/libexec/cider/usr/bin/audio_probe"
 
     # A one-second 44.1kHz mono PCM WAV, written here rather than shipped or fetched, so the
     # check stays self-contained the way sec_probe.c is. Still python, because a WAV header and
@@ -98,7 +98,7 @@ with wave.open(sys.argv[1], "wb") as w:
         | get 0? | default ""
     )
     if ($elf_dirs | is-empty) {
-        say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
+        say "no cider.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
         exit 2
     }
 
@@ -110,10 +110,10 @@ with wave.open(sys.argv[1], "wb") as w:
         LD_LIBRARY_PATH: $ld
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 200 $"($rt)/bin/darling" shell /bin/bash -c $guest_cmd out+err> $log }
+        do -i { ^timeout 200 $"($rt)/bin/cider" shell /bin/bash -c $guest_cmd out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log

@@ -1,7 +1,7 @@
 #!/bin/sh
 # gnix-build.sh -- generic guest-side driver: build any pre-seeded derivation
 # FROM SOURCE with guest Nix under Darling, then optionally run its binary.
-# Runs INSIDE one `darling shell sh <this>` session (rootless one-shot). The
+# Runs INSIDE one `cider shell sh <this>` session (rootless one-shot). The
 # host-side counterpart scripts/build-pkg-bypass.nu sets up the prefix, seeds
 # the store DB, and passes:
 #   GDRV  the derivation to build (a /nix/store/....drv, canonical path in-guest)
@@ -10,7 +10,7 @@
 # See scripts/gnix-hello.sh for the hello-specific M1 driver and
 # PLAN.md for the launchd-bypass background.
 #
-# STAYS BASH. This runs inside the GUEST, under a darling shell session, where the
+# STAYS BASH. This runs inside the GUEST, under a cider shell session, where the
 # shell is Darwin bash 3.2.57 and there is no nushell in the prefix. The bash-to-
 # nushell conversion (task #40) covers HOST tooling only; converting this would break
 # the guest, and putting a nushell in the prefix is a different project.
@@ -43,7 +43,7 @@ echo "=NIXVER="; nix --version 2>&1 | head -1 || { echo NIX_RUN_FAIL; exit 1; }
 echo "=BUILD $GDRV="
 # ^* builds all outputs, so multi-output packages (bin/lib/dev/...) work too.
 # Retry: guest test/build binaries occasionally crash with a transient signal
-# (e.g. SIGFPE in an autoconf mbrtowc/locale probe) -- a darling execution-
+# (e.g. SIGFPE in an autoconf mbrtowc/locale probe) -- a cider execution-
 # fidelity flake, not a real build error (see PLAN.md, task #44).
 # nix builds are atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1

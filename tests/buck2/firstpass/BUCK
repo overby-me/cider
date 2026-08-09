@@ -4,7 +4,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 # dependent Mach-O dylibs. `a` calls b_value, `b` calls a_value, so neither can be
 # linked second.
 #
-# Darling's answer (cmake/darling_lib.cmake's add_circular) is to build each
+# Darling's answer (cmake/cider_lib.cmake's add_circular) is to build each
 # library TWICE from the same objects: a FIRSTPASS dylib linked with
 # -flat_namespace -undefined suppress (resolving nothing), then the real one
 # linked against the sibling's firstpass. The artifact graph is therefore acyclic.

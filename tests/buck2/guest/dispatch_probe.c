@@ -38,7 +38,7 @@ int main(void) {
 	if (once_ran != 1)
 		failures++;
 
-	dispatch_queue_t q = dispatch_queue_create("org.darling.probe", DISPATCH_QUEUE_SERIAL);
+	dispatch_queue_t q = dispatch_queue_create("org.cider.probe", DISPATCH_QUEUE_SERIAL);
 	if (q == NULL) {
 		printf("DISPATCH_PROBE queue=NULL\n");
 		return 1;

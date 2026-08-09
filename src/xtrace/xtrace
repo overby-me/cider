@@ -20,6 +20,6 @@ if [ "$#" -eq 0 ]; then
 	exit 0
 fi
 
-export DYLD_INSERT_LIBRARIES="/usr/lib/darling/libxtrace.dylib"
+export DYLD_INSERT_LIBRARIES="/usr/lib/cider/libxtrace.dylib"
 exec "$@"
 

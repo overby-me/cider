@@ -1,7 +1,7 @@
-# The Rust rewrite of the darling launcher (src/startup/darling.c), task #64. A plain
+# The Rust rewrite of the cider launcher (src/startup/cider.c), task #64. A plain
 # libc-only binary crate -- no duct-tape, no bindgen -- so it builds straight from the
-# committed source via cargoLock vendoring. Installed as bin/darling by package.nix; it
-# resolves the daemon (bin/darlingserver) next to itself, so no prefix needs baking.
+# committed source via cargoLock vendoring. Installed as bin/cider by package.nix; it
+# resolves the daemon (bin/ciderd) next to itself, so no prefix needs baking.
 #
 #   nix build .#launcher
 {
@@ -20,9 +20,9 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = with lib; {
-    description = "Rust rewrite of the darling launcher (src/startup/darling.c)";
+    description = "Rust rewrite of the cider launcher (src/startup/cider.c)";
     license = licenses.gpl3Plus;
     platforms = [ "x86_64-linux" ];
-    mainProgram = "darling";
+    mainProgram = "cider";
   };
 }

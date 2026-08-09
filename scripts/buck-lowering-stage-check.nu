@@ -31,10 +31,10 @@ def main [--script: string = ""] {
         # Attached to the prefix package with `//`, so this builds the little staging script
         # and NOT the prefix. It does need graph.json, which is an IFD: with the graph
         # derivation already in the store this is seconds, without it, it is the graph build.
-        let r = (^nix build ".#darling-buck2-prefix.stageProject"
+        let r = (^nix build ".#cider-buck2-prefix.stageProject"
             --no-link --print-out-paths | complete)
         if $r.exit_code != 0 {
-            say "could not build .#darling-buck2-prefix.stageProject"
+            say "could not build .#cider-buck2-prefix.stageProject"
             say $r.stderr
             exit 2
         }
@@ -79,7 +79,7 @@ def main [--script: string = ""] {
     if $failed {
         say ""
         say "The staging script cannot build. See the top-level exclusion list in"
-        say "nix/lib/darlingBuck2Lower.nix: src, buck-src, buck-out and buck-rust all have to"
+        say "nix/lib/ciderBuck2Lower.nix: src, buck-src, buck-out and buck-rust all have to"
         say "stay out of the symlink-everything loop, because each is rebuilt below it."
         exit 1
     }

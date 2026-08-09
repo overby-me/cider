@@ -6,7 +6,7 @@
  * the remaining command.
  *
  * Darling already provides Linux-level isolation via namespaces and
- * darlingserver, so skipping the macOS sandbox is safe for build
+ * ciderd, so skipping the macOS sandbox is safe for build
  * isolation purposes.
  *
  * Usage (matches real sandbox-exec):

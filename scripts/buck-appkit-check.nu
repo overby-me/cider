@@ -37,7 +37,7 @@ def artifact_for [rows: list, pat: string] {
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let root = ($scratch | default $"/tmp/darling-appkit-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-appkit-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -51,10 +51,10 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix and the probe =="
-    let b = (^buck2 build //buck/prefix:darling_prefix //tests/buck2/gui:appkit_probe
+    let b = (^buck2 build //buck/prefix:cider_prefix //tests/buck2/gui:appkit_probe
         --show-output | complete)
     let rows = ($b.stdout | lines | each {|l| $l | split row " " } | where {|w| ($w | length) >= 2 })
-    let art = (artifact_for $rows 'darling_prefix')
+    let art = (artifact_for $rows 'cider_prefix')
     let bin = (artifact_for $rows 'appkit_probe')
     for f in [$art $bin] {
         if ($f | is-empty) or (not ($f | path exists)) {
@@ -78,8 +78,8 @@ def main [scratch?: string] {
     # `cp -a`, never `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /.
     ^cp -a $"($art)/." $"($rt)/"
     ^chmod -R u+w $rt
-    ^cp $bin $"($rt)/libexec/darling/usr/bin/appkit_probe"
-    ^chmod +x $"($rt)/libexec/darling/usr/bin/appkit_probe"
+    ^cp $bin $"($rt)/libexec/cider/usr/bin/appkit_probe"
+    ^chmod +x $"($rt)/libexec/cider/usr/bin/appkit_probe"
 
     # A display number nobody else is on. :0 and the developer's own session are left alone.
     # random int rather than bash RANDOM, and the range is the same.
@@ -107,7 +107,7 @@ def main [scratch?: string] {
     # this the probe does not merely fail to draw: loading AppKit kills the process before main,
     # with no output at all, because the sixteen src/native stubs forward into libX11, cairo and
     # freetype through elfcalls and a stub whose .so cannot be dlopened takes the process with
-    # it. .buckconfig.local already knows the directories -- darling.elf_lib_dirs is how wrapgen
+    # it. .buckconfig.local already knows the directories -- cider.elf_lib_dirs is how wrapgen
     # found the same libraries at BUILD time -- so reuse them rather than inventing a second
     # list.
     let elf_dirs = (
@@ -117,7 +117,7 @@ def main [scratch?: string] {
         | get 0? | default ""
     )
     if ($elf_dirs | is-empty) {
-        say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
+        say "no cider.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
         do -i { job kill $xvfb }
         exit 2
     }
@@ -129,11 +129,11 @@ def main [scratch?: string] {
         LD_LIBRARY_PATH: $ld
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
         DISPLAY: $disp
     } {
-        do -i { ^timeout 180 $"($rt)/bin/darling" shell /usr/bin/appkit_probe out+err> $log }
+        do -i { ^timeout 180 $"($rt)/bin/cider" shell /usr/bin/appkit_probe out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log

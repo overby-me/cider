@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """What project files does each lowered target actually read?
 
-nix/lib/darlingBuck2Lower.nix gives every lowered target the WHOLE filtered project as its
+nix/lib/ciderBuck2Lower.nix gives every lowered target the WHOLE filtered project as its
 source, so editing any file it does not exclude relowers all of them. The precise fix is to
 give each target only the sources it names -- and this measures whether that set can be
 computed at all, and what it would buy, BEFORE the lowering is rewritten around it.
@@ -39,7 +39,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The lowering's own exclusion list, so "coarse" here is the CURRENT baseline rather than
-# the unfiltered repo. Keep in step with nix/lib/darlingBuck2Lower.nix.
+# the unfiltered repo. Keep in step with nix/lib/ciderBuck2Lower.nix.
 COARSE_EXCLUDE = {
     "plan", "docs", "nix", "scripts", "PLAN.md", "README.md", "CONTRIBUTORS.md",
     "LICENSE", ".vscode", ".claude", ".tangled", ".gdbinit", ".dfx-boot.log",

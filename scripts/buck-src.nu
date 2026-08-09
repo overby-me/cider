@@ -11,7 +11,7 @@
 # buck2 package owns its subdirectories, so one checked-in BUCK file can define targets over all
 # materialized trees without putting a BUCK file inside any of them.
 #
-# --all copies out of the nix-ASSEMBLED tree (`nix build .#darling-src`) rather than fetching
+# --all copies out of the nix-ASSEMBLED tree (`nix build .#cider-src`) rather than fetching
 # 147 pins one at a time: one derivation, and its patches and symlink fixups are already
 # applied. It is what the guest tier needs, because a Darwin compile's include path is the SDK
 # tree (darwin/Developer/.../MacOSX.sdk/usr/include), ~1900 committed symlinks into these trees
@@ -50,8 +50,8 @@ def main [--all, ...paths: string] {
     mkdir $dest_root
 
     if $all {
-        print "buck-src: realizing the assembled tree (nix build .#darling-src) ..."
-        let assembled = (^nix build $"($repo_root)#darling-src" --no-link --print-out-paths
+        print "buck-src: realizing the assembled tree (nix build .#cider-src) ..."
+        let assembled = (^nix build $"($repo_root)#cider-src" --no-link --print-out-paths
             | str trim | lines | last)
         print $"buck-src: assembled at ($assembled)"
 
@@ -122,7 +122,7 @@ def main [--all, ...paths: string] {
 
         print $"buck-src: fetching ($e.owner)/($e.repo) @ ($e.rev)"
         # getFlake for the pinned nixpkgs, and --impure because that reads a path outside the
-        # store. The same fetchFromGitHub arguments nix/lib/darling-src.nix uses, so the fetch
+        # store. The same fetchFromGitHub arguments nix/lib/cider-src.nix uses, so the fetch
         # is a store hit whenever the nix side has already been built.
         let flake = $"\(builtins.getFlake \"path:($repo_root)\"\)"
         # A list joined rather than a concatenation: in nushell a newline before an operator
@@ -160,7 +160,7 @@ def main [--all, ...paths: string] {
             print $"buck-src:   kept ($keep | length) port-owned file\(s) \(BUCK, extra-deps.json)"
         }
 
-        # Same patch application as nix/lib/darling-src.nix: patches/<name>/*.patch with
+        # Same patch application as nix/lib/cider-src.nix: patches/<name>/*.patch with
         # `patch -p1` inside the tree. xnu in particular carries the macOS identity patches, so
         # an unpatched tree is not the tree we build.
         let patch_dir = ($repo_root | path join "patches" $name)

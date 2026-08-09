@@ -1,7 +1,7 @@
-// Bake the compile-time constants darling.c gets from darling-config.h:
-//   INSTALL_PREFIX  -> the default darlingserver location (INSTALL_PREFIX/bin/darlingserver),
-//                      overridable at runtime by $DSERVER_PATH (matches darling.c:998-1001).
-//   GIT_BRANCH / GIT_COMMIT_HASH -> shown by `darling --version`.
+// Bake the compile-time constants cider.c gets from cider-config.h:
+//   INSTALL_PREFIX  -> the default ciderd location (INSTALL_PREFIX/bin/ciderd),
+//                      overridable at runtime by $DSERVER_PATH (matches cider.c:998-1001).
+//   GIT_BRANCH / GIT_COMMIT_HASH -> shown by `cider --version`.
 // INSTALL_PREFIX comes from $DARLING_INSTALL_PREFIX at build time (CMAKE_INSTALL_PREFIX
 // in the C build); default is a placeholder since iteration passes $DSERVER_PATH.
 use std::process::Command;

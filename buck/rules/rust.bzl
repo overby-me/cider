@@ -1,7 +1,7 @@
 # Rust, driven by rustc directly.
 #
-# Three of Darling's components are Rust now: the darlingserver daemon (linux/server), the
-# launcher (linux/launcher, the `darling` binary) and the Mach-O loader (darwin/loader,
+# Three of Darling's components are Rust now: the ciderd daemon (linux/server), the
+# launcher (linux/launcher, the `cider` binary) and the Mach-O loader (darwin/loader,
 # mldr). Nix builds them with buildRustPackage today; this is the buck2 side, and it does
 # what the rest of this port does with cmake -- read what the reference build actually runs,
 # and run that, rather than shelling out to the other build system.
@@ -31,8 +31,8 @@ load("//buck/rules:inproc.bzl", "InProcInfo")
 
 RustLibInfo = provider(fields = ["crate_name", "rlib", "transitive"])
 
-_RUSTC = read_root_config("darling", "rustc", "rustc")
-_BINDGEN = read_root_config("darling", "bindgen", "bindgen")
+_RUSTC = read_root_config("cider", "rustc", "rustc")
+_BINDGEN = read_root_config("cider", "bindgen", "bindgen")
 
 def _crate_name(ctx):
     # A crate name is a Rust identifier, so a target named mldr-rs compiles as mldr_rs.
@@ -257,7 +257,7 @@ exec "$tool" "$header" -o "$out" "$@"
         # A dep that already knows its own include roots is asked, rather than guessed at.
         # cc_header_root's default output IS its include root, so the fallback is right for
         # it -- but a code generator's is its FIRST DECLARED OUTPUT, which is a file. Taking
-        # that gave -I<...>/darlingserver/rpc.h, and the include next to it then failed to
+        # that gave -I<...>/ciderd/rpc.h, and the include next to it then failed to
         # resolve: rpc.internal.h not found, from a header that plainly sits beside it.
         if CcLibInfo in d:
             for inc in d[CcLibInfo].include_dirs:

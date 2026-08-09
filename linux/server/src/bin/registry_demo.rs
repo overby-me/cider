@@ -2,9 +2,9 @@
 //! (pids 100 and 200) each get their own dtape task; uidgid calls routed by pid run
 //! on the right task, so each guest has independent uid state -- proven by second
 //! calls reporting each guest's own previously-set value as "old".
-use darling::registry::Registry;
-use darling::rpc_wire::{CallUidgid, ReplyUidgid};
-use darling::sched;
+use cider::registry::Registry;
+use cider::rpc_wire::{CallUidgid, ReplyUidgid};
+use cider::sched;
 use std::cell::Cell;
 use std::os::raw::{c_int, c_void};
 use std::rc::Rc;

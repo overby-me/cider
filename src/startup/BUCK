@@ -31,7 +31,7 @@ host_gen(
 cc_header_root(
     name = "sdk_src_startup_headers",
     header_map = {
-        "darling/mldr/elfcalls/dthreads.h": "mldr/elfcalls/dthreads.h",
+        "cider/mldr/elfcalls/dthreads.h": "mldr/elfcalls/dthreads.h",
         "elfcalls.h": "mldr/elfcalls/elfcalls.h",
         "elfcalls/elfcalls.h": "mldr/elfcalls/elfcalls.h",
         "elfcalls/threads.h": "mldr/elfcalls/threads.h",

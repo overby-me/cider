@@ -20,7 +20,7 @@
 //!
 //! The verdict is the printed line rather than the exit code, matching the other demos.
 
-use darling::bindings::{
+use cider::bindings::{
     dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_COUNT as HOST_BASIC_INFO_COUNT,
     dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_OLD_COUNT as HOST_BASIC_INFO_OLD_COUNT,
     dtape_rs_host_consts_DTAPE_RS_HOST_PRIORITY_INFO_COUNT as HOST_PRIORITY_INFO_COUNT,
@@ -28,7 +28,7 @@ use darling::bindings::{
     BASEPRI_DEFAULT, HOST_BASIC_INFO, HOST_PRIORITY_INFO, KERN_FAILURE, KERN_INVALID_ARGUMENT,
     KERN_SUCCESS, MINPRI_KERNEL,
 };
-use darling::xnu::host::{host_info, host_statistics};
+use cider::xnu::host::{host_info, host_statistics};
 
 /// MemTotal from /proc/meminfo, in bytes. Nothing to do with sysinfo(2).
 fn meminfo_total_bytes() -> u64 {
@@ -194,7 +194,7 @@ fn main() {
     let rc = unsafe {
         host_statistics(
             host,
-            darling::bindings::HOST_VM_INFO as host_flavor_t,
+            cider::bindings::HOST_VM_INFO as host_flavor_t,
             vmbuf.as_mut_ptr(),
             &mut vmcount,
         )
@@ -217,16 +217,16 @@ fn main() {
     let mut pscount: mach_msg_type_number_t = 8;
     let mut host_out: host_t = std::ptr::null_mut();
     let rc = unsafe {
-        darling::xnu::processor::processor_set_info(
-            darling::xnu::processor::pset0_for_test(),
-            darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
+        cider::xnu::processor::processor_set_info(
+            cider::xnu::processor::pset0_for_test(),
+            cider::bindings::PROCESSOR_SET_BASIC_INFO as i32,
             &mut host_out,
             psbuf.as_mut_ptr(),
             &mut pscount,
         )
     };
     check(rc == KERN_SUCCESS as i32, format!("PROCESSOR_SET_BASIC_INFO returned {rc}"));
-    let psbasic = unsafe { *(psbuf.as_ptr() as *const darling::bindings::processor_set_basic_info) };
+    let psbasic = unsafe { *(psbuf.as_ptr() as *const cider::bindings::processor_set_basic_info) };
     let pcount = psbasic.processor_count;
     let dpolicy = psbasic.default_policy;
     println!("  processor_set_basic_info: processor_count={pcount} default_policy={dpolicy}");
@@ -241,9 +241,9 @@ fn main() {
     // A short buffer is refused rather than overrun, same guard as the host side.
     let mut tiny: mach_msg_type_number_t = 0;
     let rc = unsafe {
-        darling::xnu::processor::processor_set_info(
-            darling::xnu::processor::pset0_for_test(),
-            darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
+        cider::xnu::processor::processor_set_info(
+            cider::xnu::processor::pset0_for_test(),
+            cider::bindings::PROCESSOR_SET_BASIC_INFO as i32,
             &mut host_out,
             psbuf.as_mut_ptr(),
             &mut tiny,

@@ -7,8 +7,8 @@
 # built once and travel with the graph.
 #
 # `buck2 build <target>` cannot be used for that: it produces a target's DEFAULT output and
-# nothing else, and these artifacts hang off other providers. darling-config.h is the case
-# that proved it -- produced by action id 2 of //src/include:darling_config, reachable
+# nothing else, and these artifacts hang off other providers. cider-config.h is the case
+# that proved it -- produced by action id 2 of //src/include:cider_config, reachable
 # through no subtarget, and simply absent when a consumer came to include it.
 #
 # So this asks for them by PROVIDER, which works because the port's rules are its own:

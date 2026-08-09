@@ -45,7 +45,7 @@
 #
 # --probe is only quick for a path both source filters exclude (scripts/, nix/, docs/,
 # PLAN.md), and probing those tests nothing about the cascade for the same reason they are
-# cheap. A probe anywhere else moves darling-src, which USED to mean ld64 (about 26 min) and
+# cheap. A probe anywhere else moves cider-src, which USED to mean ld64 (about 26 min) and
 # the graph (about 18 min) rebuilt before the target was reached. Both are gone now: #56 took
 # the project out of the graph inputs, and #65 replaced the external ld64 with the buck2 built
 # one, so the minimal endpoint no longer passes ld64 at all. Measured on
@@ -60,7 +60,7 @@
 # So the marker carries a nonce. Reverting still works after a kill, because it strips any line
 # containing MARKER_TAG rather than matching the whole string.
 const MARKER_TAG = "buck-quick-check probe"
-const DEFAULT_ATTR = ".#darling-buck2-one"
+const DEFAULT_ATTR = ".#cider-buck2-one"
 
 def say [msg: string] { print -e $msg }
 
@@ -124,22 +124,22 @@ def counter-selftest [] {
 
 # What this probe will actually cost, which is not one number. Both source filters exclude
 # scripts/, nix/, docs/ and PLAN.md, so a probe there re-evaluates and rebuilds NOTHING;
-# anything else moves darling-src and drags ld64 and the graph in ahead of the target.
+# anything else moves cider-src and drags ld64 and the graph in ahead of the target.
 def probe-cost []: string -> string {
     let path = $in
     let free = ["docs/", "PLAN.md"]
-    # scripts/ and nix/ are excluded from the SOURCE FILTERS, so they do not move darling-src,
+    # scripts/ and nix/ are excluded from the SOURCE FILTERS, so they do not move cider-src,
     # but that is not the same as free: several are nix path INPUTS, referenced as
     # ${../../scripts/<name>}, so editing one moves the derivation that uses it. Measured:
-    # probing scripts/buck-codegen-keep.txt rebuilt darling-buck2-skeleton. This message used
+    # probing scripts/buck-codegen-keep.txt rebuilt cider-buck2-skeleton. This message used
     # to say those paths rebuild nothing at all, which was wrong.
     let filtered = ["scripts/", "nix/"]
     if ($free | any {|p| $path | str starts-with $p }) {
         "Excluded from everything, so this re-evaluates but rebuilds nothing: about 12s."
     } else if ($filtered | any {|p| $path | str starts-with $p }) {
-        "Outside both source filters, so darling-src does not move, but a script or nix file used as a nix INPUT still rebuilds whatever consumes it."
+        "Outside both source filters, so cider-src does not move, but a script or nix file used as a nix INPUT still rebuilds whatever consumes it."
     } else {
-        "This moves darling-src, so ld64 rebuilds. The GRAPH no longer does (#56). MEASURED end to end on one .m file: 6 builders, 17.5 minutes."
+        "This moves cider-src, so ld64 rebuilds. The GRAPH no longer does (#56). MEASURED end to end on one .m file: 6 builders, 17.5 minutes."
     }
 }
 

@@ -5,9 +5,9 @@
 //! task carries the demo's own pid so the type copyout lands in a local. See
 //! PLAN.md (bucket A, mach IPC core).
 
-use darling::mach;
-use darling::registry::Registry;
-use darling::sched;
+use cider::mach;
+use cider::registry::Registry;
+use cider::sched;
 use std::cell::RefCell;
 use std::rc::Rc;
 

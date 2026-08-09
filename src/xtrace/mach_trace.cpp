@@ -1,4 +1,4 @@
-#include <darling/emulation/common/simple.h>
+#include <cider/emulation/common/simple.h>
 #include <unistd.h>
 #include <dlfcn.h>
 #include <mach/message.h>
@@ -208,7 +208,7 @@ static const char* const bootstrap_errors[] = {
 };
 
 extern "C"
-void darling_mach_syscall_entry_print(int nr, void* args[])
+void cider_mach_syscall_entry_print(int nr, void* args[])
 {
 	xtrace::String log;
 #if __i386__
@@ -228,7 +228,7 @@ void darling_mach_syscall_entry_print(int nr, void* args[])
 }
 
 extern "C"
-void darling_mach_syscall_exit_print(uintptr_t retval)
+void cider_mach_syscall_exit_print(uintptr_t retval)
 {
 	xtrace::String log;
 	int nr = get_mach_call_nr();

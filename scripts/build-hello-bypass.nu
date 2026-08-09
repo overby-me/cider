@@ -3,21 +3,21 @@
 #
 # Guest Nix, running under Darling with launchd BYPASSED, builds GNU hello FROM SOURCE (the
 # official `nix build ...#hello`) and runs it. No LKM, no launchd boot -- shellspawn runs
-# directly as the guest PID1 via darlingserver's DSERVER_INIT hook, so we never hit launchd's
+# directly as the guest PID1 via ciderd's DSERVER_INIT hook, so we never hit launchd's
 # (still-open) portset/kqueue bootstrap deadlock (task #47).
 #
-# Why a bypass: `darling shell` normally waits for shellspawn, which launchd brings up during
-# `launchctl bootstrap -S System` -- and that bootstrap deadlocks in darlingserver mode.
+# Why a bypass: `cider shell` normally waits for shellspawn, which launchd brings up during
+# `launchctl bootstrap -S System` -- and that bootstrap deadlocks in ciderd mode.
 # shellspawn itself is a standalone unix-socket daemon with no launchd/mach-bootstrap
 # dependency, so we run it as PID1 directly.
 #
 # The guest-side driver is scripts/gnix-hello.sh; this script is the HOST-side orchestration
-# (build darling, seed the store db, two-boot the bypass container).
+# (build cider, seed the store db, two-boot the bypass container).
 #
 # Converted from bash (task #40) and verified the same way its generic sibling was: with nix,
-# nix-store and the darling binary stubbed on PATH, no container and no network. Both versions
+# nix-store and the cider binary stubbed on PATH, no container and no network. Both versions
 # were driven over a successful M1 transcript, one missing the Hello line, one missing
-# build_rc=0, the two noisy lines the filter drops, a darling that is not there, a dump-db that
+# build_rc=0, the two noisy lines the filter drops, a cider that is not there, a dump-db that
 # fails, and a warm-up boot that leaves no skeleton. Same output and same exit code on all of
 # them EXCEPT the two that are a deliberate fix, described next.
 #
@@ -26,7 +26,7 @@
 #   grep -qa Hello && grep -qa build_rc=0 && rc=0 || rc=${rc:-1}
 #
 # and rc was already set from the guest invocation, so ${rc:-1} kept THAT, not 1. A transcript
-# with no Hello line, or none saying build_rc=0, still exited 0 as long as darling itself
+# with no Hello line, or none saying build_rc=0, still exited 0 as long as cider itself
 # returned 0 -- which it does whenever the guest driver runs to completion and merely reports a
 # failed build. Reproduced both ways with a stub; this version exits 1, which is what the two
 # assertions were for.
@@ -35,24 +35,24 @@
 # bash printed unknown arg and exited 2.
 #
 # Usage:
-#   scripts/build-hello-bypass.nu [--mono <darling-store-path>] [--prefix <dir>]
+#   scripts/build-hello-bypass.nu [--mono <cider-store-path>] [--prefix <dir>]
 
 def say [msg: string] { print -e $msg }
 
 # One name per pkill call: a multi-pattern pkill matches nothing and exits 2. -x, never -f.
 def kill_all [] {
-    for n in [darling darlingserver mldr shellspawn] { do -i { ^pkill -9 -x $n } }
+    for n in [cider ciderd mldr shellspawn] { do -i { ^pkill -9 -x $n } }
 }
 
 def main [
-    --mono: string = ""      # a darling store path to use instead of building one
+    --mono: string = ""      # a cider store path to use instead of building one
     --prefix: string = ""    # the guest prefix directory
 ] {
     let repo = ($env.FILE_PWD | path join ".." | path expand)
     let prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        $env.DPREFIX? | default "/tmp/darling-hello-m1"
+        $env.DPREFIX? | default "/tmp/cider-hello-m1"
     }
     # nixpkgs 26.05 x86_64-darwin pins (match scripts/gnix-hello.sh defaults).
     let hello_drv = ($env.HELLO_DRV?
@@ -63,21 +63,21 @@ def main [
     #    campaign working-tree fixes).
     mut monopath = $mono
     if ($monopath | is-empty) {
-        print "== building darling (nix build '.?submodules=1#default') =="
+        print "== building cider (nix build '.?submodules=1#default') =="
         let r = (do -i { cd $repo; ^nix build '.?submodules=1#default' --no-link
             --print-out-paths } | complete)
         $monopath = ($r.stdout | lines | last | default "")
         if $r.exit_code != 0 or ($monopath | is-empty) {
-            say "darling build failed"
+            say "cider build failed"
             exit 1
         }
     }
-    if not ($"($monopath)/bin/darling" | path exists) {
-        say $"no darling at ($monopath)/bin/darling"
+    if not ($"($monopath)/bin/cider" | path exists) {
+        say $"no cider at ($monopath)/bin/cider"
         exit 1
     }
     # Immutable from here: a closure cannot capture a mut, and every container call is one.
-    let darling = $"($monopath)/bin/darling"
+    let cider = $"($monopath)/bin/cider"
     print $"MONO=($monopath)"
 
     # 2. Seed data: dump the host valid-paths DB for hello.drv's FULL closure WITH outputs (so
@@ -108,14 +108,14 @@ def main [
     }
 
     # 3. Warm-up boot: create the prefix skeleton (writable host-visible /var/run via
-    #    setupPrefix -- must be a real overlay-upper dir, NOT a tmpfs). Let darling create the
+    #    setupPrefix -- must be a real overlay-upper dir, NOT a tmpfs). Let cider create the
     #    prefix (a pre-created dir makes checkPrefixDir skip the skeleton).
     kill_all
     sleep 2sec
     if ($"($prefix)/var/run" | path type) != "dir" {
         print "== warm-up boot (skeleton + one-time chown) =="
         with-env $genv {
-            do -i { ^timeout --signal=KILL 300 $darling shell true out+err> /tmp/hello-warmup.out }
+            do -i { ^timeout --signal=KILL 300 $cider shell true out+err> /tmp/hello-warmup.out }
         }
         if ($"($prefix)/var/run" | path type) != "dir" {
             say "skeleton not created; see /tmp/hello-warmup.out"
@@ -137,7 +137,7 @@ def main [
     let guest_rc = (with-env $genv {
         # catch stays on the same line as try's closing brace, for the same reason a
         # redirection cannot start a continuation line: the newline ends the expression.
-        try { ^timeout --signal=KILL 1200 $darling shell sh $guest_driver out+err> $out; 0 } catch { $env.LAST_EXIT_CODE }
+        try { ^timeout --signal=KILL 1200 $cider shell sh $guest_driver out+err> $out; 0 } catch { $env.LAST_EXIT_CODE }
     })
     kill_all
     # The external grep, and -a: the transcript can carry bytes that are not UTF-8.

@@ -5,7 +5,7 @@
 //! XNU trap-args struct and calls the trap.
 //!
 //! Generated from the SAME table the C uses, the expansion of that macro in the built
-//! `darlingserver/rpc.internal.h`, so the two cannot disagree. Writing them by hand
+//! `ciderd/rpc.internal.h`, so the two cannot disagree. Writing them by hand
 //! would mean transcribing 29 signatures and about 90 field assignments, and a swapped
 //! field between two same-typed arguments would compile, link and return the wrong
 //! answer.

@@ -35,7 +35,7 @@ def artifact_for [rows: list, pat: string] {
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let root = ($scratch | default $"/tmp/darling-sec-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-sec-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -45,10 +45,10 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix and the probe =="
-    let b = (^buck2 build //buck/prefix:darling_prefix //tests/buck2/guest:sec_probe
+    let b = (^buck2 build //buck/prefix:cider_prefix //tests/buck2/guest:sec_probe
         --show-output | complete)
     let rows = ($b.stdout | lines | each {|l| $l | split row " " } | where {|w| ($w | length) >= 2 })
-    let art = (artifact_for $rows 'darling_prefix')
+    let art = (artifact_for $rows 'cider_prefix')
     let bin = (artifact_for $rows 'sec_probe')
     for f in [$art $bin] {
         if ($f | is-empty) or (not ($f | path exists)) {
@@ -73,8 +73,8 @@ def main [scratch?: string] {
     # `cp -a`, never `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /.
     ^cp -a $"($art)/." $"($rt)/"
     ^chmod -R u+w $rt
-    ^cp $bin $"($rt)/libexec/darling/usr/bin/sec_probe"
-    ^chmod +x $"($rt)/libexec/darling/usr/bin/sec_probe"
+    ^cp $bin $"($rt)/libexec/cider/usr/bin/sec_probe"
+    ^chmod +x $"($rt)/libexec/cider/usr/bin/sec_probe"
 
     say "== running the probe inside the container =="
     # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,
@@ -84,10 +84,10 @@ def main [scratch?: string] {
     with-env {
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 200 $"($rt)/bin/darling" shell /usr/bin/sec_probe out+err> $log }
+        do -i { ^timeout 200 $"($rt)/bin/cider" shell /usr/bin/sec_probe out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log
@@ -100,7 +100,7 @@ def main [scratch?: string] {
         ["SEC_PROBE random rc=0 nonzero=1", "SecRandomCopyBytes returns entropy"]
         ["SEC_PROBE cfdata=801", "CoreFoundation wraps the DER bytes"]
         ["SEC_PROBE certificate=parsed", "SecCertificateCreateWithData parses a real certificate"]
-        ["SEC_PROBE subject=darling-buck2-probe", "the certificate's subject decodes back out"]
+        ["SEC_PROBE subject=cider-buck2-probe", "the certificate's subject decodes back out"]
         ["SEC_PROBE_DONE", "the probe ran to completion"]
     ]
     mut fail = false

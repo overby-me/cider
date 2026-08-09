@@ -48,7 +48,7 @@ def project_sources(sources: str) -> list:
     """
     path = os.path.join(sources, "sources.json")
     if not os.path.exists(path):
-        print(f"no sources.json in {sources}; pass the darling-buck2-sources output, not "
+        print(f"no sources.json in {sources}; pass the cider-buck2-sources output, not "
               f"the graph", file=sys.stderr)
         raise SystemExit(2)
     with open(path) as fh:

@@ -1,6 +1,6 @@
 load("//buck/rules:codegen.bzl", "configure_file")
 
-# darling-config.h, cmake's configure_file output. The syscall emulation layer
+# cider-config.h, cmake's configure_file output. The syscall emulation layer
 # includes it for LIB_PATH / LIBEXEC_PATH / SYSTEM_ROOT.
 #
 # The values mirror nix/package.nix's install layout. GIT_BRANCH and
@@ -8,11 +8,11 @@ load("//buck/rules:codegen.bzl", "configure_file")
 # baking VCS state into a header would make every commit invalidate every object
 # that includes it.
 configure_file(
-    name = "darling_config",
-    out = "darling-config.h",
-    src = "darling-config.h.in",
+    name = "cider_config",
+    out = "cider-config.h",
+    src = "cider-config.h.in",
     values = {
-        "CMAKE_INSTALL_PREFIX": "/usr/libexec/darling",
+        "CMAKE_INSTALL_PREFIX": "/usr/libexec/cider",
         "CMAKE_INSTALL_LIBDIR": "lib",
         "SUFFIX": "",
         "GIT_BRANCH": "",

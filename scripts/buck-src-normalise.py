@@ -6,7 +6,7 @@ buck2 rejects two kinds of symlink outright, and both occur in the upstream tree
   * a target with a "." component ("path contains platform-specific path separator"),
     e.g. corefoundation's CFArray.h -> include/CoreFoundation/./CFArray.h;
   * a target that leaves the cell ("expected a normalized path"), e.g. libnotify's
-    darling/src/notify.defs -> ../../../../../darwin/.../usr/include/mach/notify.defs,
+    cider/src/notify.defs -> ../../../../../darwin/.../usr/include/mach/notify.defs,
     which reaches back into the repo's SDK symlink farm.
 
 Both are rewritten to point at the same file INSIDE buck-src: the SDK farm's own links
@@ -54,8 +54,8 @@ def in_tree_target(link: str, target: str) -> str | None:
             return None  # already inside the tree and resolving
         # Inside buck-src but DANGLING: the link names a sibling pin that is not
         # materialized here because it lives in the repo proper. security's
-        # darling/submodules/xnu points at darlingserver/xnu-sys/xnu that way, and
-        # darlingserver is at src/external/darlingserver, not a pin. A dangling link is
+        # cider/submodules/xnu points at ciderd/xnu-sys/xnu that way, and
+        # ciderd is at src/external/ciderd, not a pin. A dangling link is
         # not merely unused -- a glob that picks it up fails the whole package load.
         rel = resolved[len(BUCK_SRC) + 1:]
         cand = os.path.join(REPO, "src", "external", rel)
@@ -64,7 +64,7 @@ def in_tree_target(link: str, target: str) -> str | None:
         return None
     if not resolved.startswith(REPO + os.sep):
         # The link escapes the repo entirely: it was written for a tree of a different
-        # depth (libnotify's darling/src/notify.defs climbs five levels to reach what
+        # depth (libnotify's cider/src/notify.defs climbs five levels to reach what
         # is darwin/... from the repo root). Recover the intent by resolving what
         # follows the leading ../ run against the repo root.
         tail = target.lstrip("./")
@@ -99,7 +99,7 @@ def expand_dir_links(root: str) -> int:
     """Replace a symlinked DIRECTORY with a real one holding a link per file.
 
     buck2's globs do not descend into a symlinked directory, so a header behind one is
-    invisible: security ships darling/include/macOS/security_libDER/libDER as a link to
+    invisible: security ships cider/include/macOS/security_libDER/libDER as a link to
     ../libDER, and `macOS/**/*.h` staged everything EXCEPT what lived behind it. The
     compile then failed on security_libDER/libDER/libDER.h while the file was plainly
     there on disk.

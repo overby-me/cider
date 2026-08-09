@@ -9,7 +9,7 @@ load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLA
 # build.rs expects in DUCT_TAPE_LIB:
 #
 #   DUCT_TAPE_LIB=$(buck2 build --show-output //linux/server:duct_tape_lib | ...) \
-#     cargo build -p darling
+#     cargo build -p cider
 #
 # The daemon crate itself is still built by cargo (a Rust port of these rules is
 # separate work -- overby.me's nix/lib/cargo is the model); this target is the
@@ -17,8 +17,8 @@ load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLA
 cc_lib_dir(
     name = "duct_tape_lib",
     deps = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
     ],
     visibility = ["PUBLIC"],
 )
@@ -801,29 +801,29 @@ bindgen_gen(
         # mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header,
         # and semaphore_create/semaphore_destroy are declared only in the generated one.
         # (XNU's kern/sync_sema.h declares just semaphore_destroy_all.)
-        "//src/external/darlingserver/xnu-sys:mig_mach_task",
+        "//src/external/ciderd/xnu-sys:mig_mach_task",
         # kern/policy_internal.h includes mach/resource_notify.h, which is MIG output, so the
         # stubs.c half of the wrapper does not parse without it.
-        "//src/external/darlingserver/xnu-sys:mig_mach_resource_notify",
+        "//src/external/ciderd/xnu-sys:mig_mach_resource_notify",
         # task.c includes mach/mach_port.h, also MIG output.
-        "//src/external/darlingserver/xnu-sys:mig_mach_mach_port",
+        "//src/external/ciderd/xnu-sys:mig_mach_mach_port",
         # thread.c includes mach/thread_act.h, also MIG output.
-        "//src/external/darlingserver/xnu-sys:mig_mach_thread_act",
-        "//src/external/darlingserver/xnu-sys:dt_include",
-        "//src/external/darlingserver/xnu-sys:dt_internal_include",
-        "//src/external/darlingserver/xnu-sys:dt_defines",
-        "//src/external/darlingserver/xnu-sys:xnu_osfmk",
-        "//src/external/darlingserver/xnu-sys:xnu_bsd",
-        "//src/external/darlingserver/xnu-sys:xnu_libkern",
-        "//src/external/darlingserver/xnu-sys:xnu_osfmk_libsa",
-        "//src/external/darlingserver/xnu-sys:xnu_pexpert",
-        "//src/external/darlingserver/xnu-sys:xnu_iokit",
-        "//src/external/darlingserver/xnu-sys:xnu_external_headers",
-        "//src/external/darlingserver/xnu-sys:xnu_root",
+        "//src/external/ciderd/xnu-sys:mig_mach_thread_act",
+        "//src/external/ciderd/xnu-sys:dt_include",
+        "//src/external/ciderd/xnu-sys:dt_internal_include",
+        "//src/external/ciderd/xnu-sys:dt_defines",
+        "//src/external/ciderd/xnu-sys:xnu_osfmk",
+        "//src/external/ciderd/xnu-sys:xnu_bsd",
+        "//src/external/ciderd/xnu-sys:xnu_libkern",
+        "//src/external/ciderd/xnu-sys:xnu_osfmk_libsa",
+        "//src/external/ciderd/xnu-sys:xnu_pexpert",
+        "//src/external/ciderd/xnu-sys:xnu_iokit",
+        "//src/external/ciderd/xnu-sys:xnu_external_headers",
+        "//src/external/ciderd/xnu-sys:xnu_root",
         "//src/libsimple:libsimple_headers",
-        "//src/external/darlingserver:dserver_headers",
+        "//src/external/ciderd:dserver_headers",
         # duct-tape.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
-        "//src/external/darlingserver:dserver_rpc",
+        "//src/external/ciderd:dserver_rpc",
         "//src/startup:rtsig_header",
     ],
 )
@@ -833,7 +833,7 @@ bindgen_gen(
 # which is the whole point of not having cargo in the graph.
 cc_library(
     name = "dserver_fast_context",
-    srcs = ["//src/external/darlingserver:src_fast_context.c"],
+    srcs = ["//src/external/ciderd:src_fast_context.c"],
     compiler_flags = ["-DDSERVER_FAST_CONTEXT=1"],
     lib_name = "dserver_fast_context",
     visibility = ["PUBLIC"],
@@ -846,10 +846,10 @@ cc_lib_dir(
     deps = [":dserver_fast_context"],
 )
 
-# The lib crate. Named `darling` regardless of the package, since that is how every binary
+# The lib crate. Named `cider` regardless of the package, since that is how every binary
 # in src/bin imports it.
 rust_library(
-    name = "darling",
+    name = "cider",
     crate_root = "src/lib.rs",
     srcs = glob(["src/**/*.rs"]),
     out_dir = ":xnu_sys",
@@ -864,7 +864,7 @@ rust_library(
 # dtape_semaphore_up, which are Rust as of the semaphore port, all the way down through XNU
 # and back out through the thread_suspend/thread_resume hooks, and it asserts that the
 # microthread actually suspended and actually finished. It builds and runs in about a minute,
-# against roughly an hour for checks.darling-buck2-min-smoke, so a broken port is visible
+# against roughly an hour for checks.cider-buck2-min-smoke, so a broken port is visible
 # immediately rather than at the end of a prefix build.
 #
 # Same link shape as the daemon: everything above duct-tape is Rust, the C below it comes in
@@ -874,12 +874,12 @@ rust_binary(
     crate_root = "src/bin/scheduler_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -900,12 +900,12 @@ rust_binary(
     crate_root = "src/bin/stage3_spike.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -925,12 +925,12 @@ rust_binary(
     crate_root = "src/bin/condvar_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -954,12 +954,12 @@ rust_binary(
     crate_root = "src/bin/host_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -982,12 +982,12 @@ rust_binary(
     crate_root = "src/bin/psynch_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1010,12 +1010,12 @@ rust_binary(
     crate_root = "src/bin/kqchan_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1027,20 +1027,20 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
-# darlingserverd: the daemon itself. Everything above the duct-tape boundary is Rust; the
+# ciderd: the daemon itself. Everything above the duct-tape boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
 rust_binary(
-    name = "darlingserverd",
-    crate_root = "src/bin/darlingserverd.rs",
+    name = "ciderd",
+    crate_root = "src/bin/ciderd.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1064,12 +1064,12 @@ rust_binary(
     crate_root = "src/bin/rpc_wire_check.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1086,12 +1086,12 @@ rust_binary(
     crate_root = "src/bin/dispatch_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1108,12 +1108,12 @@ rust_binary(
     crate_root = "src/bin/rpc_loop_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1130,12 +1130,12 @@ rust_binary(
     crate_root = "src/bin/rpc_roundtrip_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1152,12 +1152,12 @@ rust_binary(
     crate_root = "src/bin/registry_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1174,12 +1174,12 @@ rust_binary(
     crate_root = "src/bin/mem_hooks_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1196,12 +1196,12 @@ rust_binary(
     crate_root = "src/bin/mach_traps_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1218,12 +1218,12 @@ rust_binary(
     crate_root = "src/bin/persistent_threads_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1240,12 +1240,12 @@ rust_binary(
     crate_root = "src/bin/mach_port_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1262,12 +1262,12 @@ rust_binary(
     crate_root = "src/bin/mach_port_lifecycle_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1284,12 +1284,12 @@ rust_binary(
     crate_root = "src/bin/mach_msg_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1306,12 +1306,12 @@ rust_binary(
     crate_root = "src/bin/blocking_msg_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1328,12 +1328,12 @@ rust_binary(
     crate_root = "src/bin/thread_call_loop_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1350,12 +1350,12 @@ rust_binary(
     crate_root = "src/bin/daemon_mach_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1372,12 +1372,12 @@ rust_binary(
     crate_root = "src/bin/daemon_alloc_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1394,12 +1394,12 @@ rust_binary(
     crate_root = "src/bin/daemon_msg_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [
@@ -1416,12 +1416,12 @@ rust_binary(
     crate_root = "src/bin/daemon_session_demo.rs",
     out_dir = ":xnu_sys",
     deps = [
-        ":darling",
+        ":cider",
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
-        "//src/libsimple:libsimple_darlingserver",
+        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
     link_flags = [

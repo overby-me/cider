@@ -171,9 +171,9 @@ def check_wrap_table [f: string, name: string, sedexpr: string] {
 # different bash script does not pass.
 def check_shell_scripts [] {
     let allowed = [
-        cc-under-darling.sh      # a fresh container per compile, exec'd by the build hook
-        darling-host.sh          # the host side of the same
-        run-darwin-under-darling.sh
+        cc-under-cider.sh      # a fresh container per compile, exec'd by the build hook
+        cider-host.sh          # the host side of the same
+        run-darwin-under-cider.sh
         with-watchdog.sh         # wraps a command in a stall watchdog, exec'd from bash
         gnix-hello.sh            # runs INSIDE the guest
         gnix-build.sh            # runs INSIDE the guest
@@ -212,15 +212,15 @@ def main [flag?: string] {
 
     say "== building ported targets =="
     let targets = [
-        //src/libsimple:libsimple_darlingserver
-        //src/libsimple:libsimple_darling
+        //src/libsimple:libsimple_ciderd
+        //src/libsimple:libsimple_cider
         //buck-src:migcom
         //src/startup:rtsig_header
-        //src/external/darlingserver:dserver_rpc
-        //src/external/darlingserver/xnu-sys:darlingserver_duct_tape
-        //src/external/darlingserver/tools:dserverdbg
+        //src/external/ciderd:dserver_rpc
+        //src/external/ciderd/xnu-sys:ciderd_duct_tape
+        //src/external/ciderd/tools:dserverdbg
         //linux/server:duct_tape_lib
-        //src/libsimple:libsimple_darling_dylib
+        //src/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
         //tests/buck2/firstpass:b
         //tests/buck2/firstpass:umbrella
@@ -255,13 +255,13 @@ def main [flag?: string] {
     "ok\n" | save -a $env.BT_TALLY
 
     say "== libsimple =="
-    let lib = (out_of //src/libsimple:libsimple_darlingserver)
+    let lib = (out_of //src/libsimple:libsimple_ciderd)
     if (test_f $lib) { ok "archive exists" } else { bad "archive missing" }
     let syms = (field (cap [nm --defined-only $lib]) 3 | where {|s| $s | str starts-with "libsimple_" } | length)
     if $syms >= 13 { ok $"exports ($syms) libsimple_* symbols" } else { bad $"expected >= 13 libsimple_* symbols, got ($syms)" }
 
     say "== libsimple, GUEST build (Darwin/Mach-O cross toolchain) =="
-    let dlib = (out_of //src/libsimple:libsimple_darling)
+    let dlib = (out_of //src/libsimple:libsimple_cider)
     if (test_f $dlib) { ok "archive exists" } else { bad "archive missing" }
     let obj_kind = (do {
         cd ($dlib | path dirname)
@@ -303,7 +303,7 @@ def main [flag?: string] {
     }
 
     say "== duct-tape =="
-    let dt = (out_of //src/external/darlingserver/xnu-sys:darlingserver_duct_tape)
+    let dt = (out_of //src/external/ciderd/xnu-sys:ciderd_duct_tape)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
@@ -318,7 +318,7 @@ def main [flag?: string] {
     if $sym_count >= 2100 { ok $"defines ($sym_count) symbols" } else { bad $"expected >= 2100 symbols, got ($sym_count)" }
     # dtape_init and dtape_init_in_thread are NOT here any more: #71 made them Rust, they live
     # at linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
-    # false. What covers them now is the darlingserverd LINK plus the demos, both in
+    # false. What covers them now is the ciderd LINK plus the demos, both in
     # scripts/xnu-sys-runtime-check.nu, which is a 40 second gate.
     for sym in [ipc_kmsg_send mig_init thread_call_initialize] {
         if (has $dt_syms $sym) { ok $"defines ($sym)" } else { bad $"missing ($sym)" }
@@ -331,7 +331,7 @@ def main [flag?: string] {
     }
 
     say "== dserverdbg (generated RPC source + a forced -include) =="
-    let dbg = (out_of //src/external/darlingserver/tools:dserverdbg)
+    let dbg = (out_of //src/external/ciderd/tools:dserverdbg)
     if (is_exec $dbg) { ok "dserverdbg is executable" } else { bad "dserverdbg missing" }
     # It refuses to run without setuid, which is exactly the message we expect: the
     # binary links and its RPC surface initialized enough to reach that check.
@@ -343,7 +343,7 @@ def main [flag?: string] {
     }
 
     say "== Mach-O dylib: install_name (phase 1.2) =="
-    let dyl = (out_of //src/libsimple:libsimple_darling_dylib)
+    let dyl = (out_of //src/libsimple:libsimple_cider_dylib)
     let kind = (cap [file -b $dyl])
     if ($kind | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
         ok "is a Mach-O dylib"
@@ -351,7 +351,7 @@ def main [flag?: string] {
         bad $"expected a Mach-O dylib, got: ($kind)"
     }
     let id = (macho_id $dyl)
-    if $id == "/usr/lib/system/libsimple_darling.dylib" { ok $"install_name is ($id)" } else { bad $"install_name is '($id)'" }
+    if $id == "/usr/lib/system/libsimple_cider.dylib" { ok $"install_name is ($id)" } else { bad $"install_name is '($id)'" }
 
     say "== the firstpass cycle + umbrella reexport (phase 1.3) =="
     let a = (out_of //tests/buck2/firstpass:a)
@@ -817,7 +817,7 @@ def main [flag?: string] {
 
     say "== DUCT_TAPE_LIB staging =="
     let dir = (out_of //linux/server:duct_tape_lib)
-    for a in [libdarlingserver_duct_tape.a liblibsimple_darlingserver.a] {
+    for a in [libciderd_duct_tape.a liblibsimple_ciderd.a] {
         if (test_f $"($dir)/($a)") { ok $"staged ($a)" } else { bad $"missing ($a) in DUCT_TAPE_LIB dir" }
     }
 
@@ -906,35 +906,35 @@ def main [flag?: string] {
         bad "wrapgen did not print its usage"
     }
 
-    say "== darling-coredump (a HOST tool that reads Mach-O) =="
+    say "== cider-coredump (a HOST tool that reads Mach-O) =="
     # The first of the five host tools to land (task #8). It is worth its own check because
     # what it proves is the header slice, not the program: a Linux binary that includes
     # <mach-o/loader.h> without pulling in the SDK headers that would collide with glibc's.
     # Running it is the assertion that the slice produced a real program -- it prints usage and
     # exits 0 with no arguments.
-    let cdump = (out_of //src/hosttools:darling-coredump)
-    if ((cap [file -bL $cdump]) | str contains "ELF 64-bit") { ok "darling-coredump is a host ELF binary" } else { bad "darling-coredump is not a host ELF binary" }
+    let cdump = (out_of //src/hosttools:cider-coredump)
+    if ((cap [file -bL $cdump]) | str contains "ELF 64-bit") { ok "cider-coredump is a host ELF binary" } else { bad "cider-coredump is not a host ELF binary" }
     let usage = (cap2 [$cdump])
-    if ($usage | str starts-with "Usage:") { ok "darling-coredump runs and prints usage" } else { bad "darling-coredump did not print usage" }
+    if ($usage | str starts-with "Usage:") { ok "cider-coredump runs and prints usage" } else { bad "cider-coredump did not print usage" }
 
     say "== the Rust components (no cargo in the graph) =="
     # All three of Darling's Rust crates, built by rustc under buck2: the launcher, the guest
     # loader and the daemon. The daemon is the one that proves the seam -- it links the
     # buck2-built duct-tape and libsimple archives and the bindgen-generated hooks vtable.
-    for t in [//linux/launcher:darling //darwin/loader:mldr //linux/server:darlingserverd] {
+    for t in [//linux/launcher:cider //darwin/loader:mldr //linux/server:ciderd] {
         let b = (out_of $t)
         if (is_exec $b) { ok $"built ($t | split row ':' | last)" } else { bad $"($t) did not build" }
     }
     # It refuses to run outside a container, which is exactly the message we want: reaching it
     # means the binary linked and got as far as its own startup check.
-    let dmsg = (cap2 [(out_of //linux/server:darlingserverd)])
+    let dmsg = (cap2 [(out_of //linux/server:ciderd)])
     if ($dmsg | str contains "not meant to be started manually") {
-        ok "darlingserverd links and reaches its startup check"
+        ok "ciderd links and reaches its startup check"
     } else {
-        bad "darlingserverd did not reach its startup check"
+        bad "ciderd did not reach its startup check"
     }
-    let lver = (cap2 [(out_of //linux/launcher:darling) --version])
-    if ($lver | str contains "Rust launcher") { ok "darling --version runs" } else { bad "darling --version failed" }
+    let lver = (cap2 [(out_of //linux/launcher:cider) --version])
+    if ($lver | str contains "Rust launcher") { ok "cider --version runs" } else { bad "cider --version failed" }
 
     say "== buck-src normalisation (what the Nix endpoint materialises) =="
     # The host builds from buck-src as it stands; the Nix endpoint re-runs
@@ -1018,17 +1018,17 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     # The port's product is not the link outputs, it is a laid-out prefix. This builds the
     # whole of it, which is also the broadest single check in this file: 151 targets, and a
     # failure anywhere in the port surfaces here.
-    let prefix = (out_of //buck/prefix:darling_prefix)
+    let prefix = (out_of //buck/prefix:cider_prefix)
     let n_entries = (count_files_or_links $"($prefix)/")
     if $n_entries >= 5000 { ok $"prefix has ($n_entries) entries" } else { bad $"prefix has only ($n_entries) entries" }
     for f in [bin/bash bin/sh usr/lib/dyld usr/lib/libSystem.B.dylib usr/lib/system/libsystem_kernel.dylib usr/share/icu/icudt66l.dat] {
-        if (test_e $"($prefix)/libexec/darling/($f)") { ok $"prefix has ($f)" } else { bad $"prefix is missing ($f)" }
+        if (test_e $"($prefix)/libexec/cider/($f)") { ok $"prefix has ($f)" } else { bad $"prefix is missing ($f)" }
     }
     # bin/sh is bash under a second name, which is how bash knows to start in POSIX mode.
-    let sh_link = (cap [readlink $"($prefix)/libexec/darling/bin/sh"])
-    let bash_link = (cap [readlink $"($prefix)/libexec/darling/bin/bash"])
+    let sh_link = (cap [readlink $"($prefix)/libexec/cider/bin/sh"])
+    let bash_link = (cap [readlink $"($prefix)/libexec/cider/bin/bash"])
     if $sh_link == $bash_link { ok "bin/sh is the same artifact as bin/bash" } else { bad "bin/sh does not point at bash" }
-    if ((cap [file -bL $"($prefix)/libexec/darling/bin/bash"]) | str contains "Mach-O 64-bit x86_64 executable") {
+    if ((cap [file -bL $"($prefix)/libexec/cider/bin/bash"]) | str contains "Mach-O 64-bit x86_64 executable") {
         ok "prefix bash is a Mach-O x86_64 executable"
     } else {
         bad "prefix bash is not Mach-O x86_64"
@@ -1037,7 +1037,7 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     # only one that needs a prefix_gen_dir. Both halves matter: the DER tables are what Security
     # actually parses, and EVRoots.plist is derived from evroot.config rather than copied, so an
     # empty one would mean the generator ran but found no certificates.
-    let bundle = $"($prefix)/libexec/darling/System/Library/Security/Certificates.bundle"
+    let bundle = $"($prefix)/libexec/cider/System/Library/Security/Certificates.bundle"
     let n_bundle = (count_files $"($bundle)/")
     if $n_bundle == 10 { ok "Certificates.bundle has its 10 files" } else { bad $"Certificates.bundle has ($n_bundle) files, expected 10" }
     if (test_s $"($bundle)/Contents/Resources/certsTable.data") {
@@ -1056,7 +1056,7 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     # the checkout never fetched them, so the port installs the pointer under the library's name.
     # Nothing links against them, so no build-time check could see it. Free here because the
     # prefix is already built above.
-    let ds = (cap_rc [./scripts/buck-dylib-shape.nu $"($prefix)/libexec/darling"])
+    let ds = (cap_rc [./scripts/buck-dylib-shape.nu $"($prefix)/libexec/cider"])
     if $ds.rc == 0 {
         ok (last_line_no_ok $ds.out)
     } else {

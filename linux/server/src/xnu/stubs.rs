@@ -78,7 +78,7 @@ fn log_safe_stubs() -> bool {
 }
 
 /// The stub logger every other glue file calls, through the three macros in
-/// `internal-include/darlingserver/xnu-sys/stubs.h` and their Rust equivalents in
+/// `internal-include/ciderd/xnu-sys/stubs.h` and their Rust equivalents in
 /// [`crate::xnu::stub_family`].
 #[no_mangle]
 pub unsafe extern "C" fn dtape_stub_log(

@@ -1,6 +1,6 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_header_root")
 
-# darling-coredump: turns a Linux core dump of a Darling process into a Mach-O core the
+# cider-coredump: turns a Linux core dump of a Darling process into a Mach-O core the
 # Darwin tools can read. A HOST program, so it builds with the native toolchain, but it
 # parses Mach-O and therefore needs a narrow slice of Darwin headers -- see
 # //buck-src:mldr_include and //src/startup:mldr_shim_headers for why that slice is
@@ -13,13 +13,13 @@ cc_header_root(
 )
 
 cc_binary(
-    name = "darling-coredump",
+    name = "cider-coredump",
     srcs = ["src/coredump/main.cpp"],
     # The reference links this one with CXX_EXECUTABLE_LINKER, and it has to: main.cpp uses
     # std::filesystem, so the C driver leaves every path operation undefined.
     link_cxx = True,
     # The reference's flags for this target, read off the configured build.ninja
-    # (src/hosttools/CMakeFiles/darling-coredump.dir). DARLING_COREDUMP_SANITIZE is a
+    # (src/hosttools/CMakeFiles/cider-coredump.dir). DARLING_COREDUMP_SANITIZE is a
     # cmake option that defaults OFF, so its -fsanitize flags are deliberately absent.
     compiler_flags = [
         "-DDARLING",
@@ -36,7 +36,7 @@ cc_binary(
     # putting both in one directory, where a real file simply occupies a path the farm has
     # no symlink for; here the two are separate roots, so the order is stated.
     deps = [
-        "//src/include:darling_config",
+        "//src/include:cider_config",
         ":coredump_headers",
         "//src/startup:mldr_shim_headers",
         "//buck-src:mldr_include",

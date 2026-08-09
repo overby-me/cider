@@ -1,9 +1,9 @@
-# launcher -- Rust rewrite of the darling launcher (binary: darling; was src/startup/darling.c, task #64).
+# launcher -- Rust rewrite of the cider launcher (binary: cider; was src/startup/cider.c, task #64).
 #
-# The `darling` launcher: userns re-exec (rootless), prefix bootstrap, spawn/join/
-# teardown of darlingserver-as-container-init, readiness coordination, and the
+# The `cider` launcher: userns re-exec (rootless), prefix bootstrap, spawn/join/
+# teardown of ciderd-as-container-init, readiness coordination, and the
 # shellspawn client that proxies one shell/binary into the guest. It does NO mounts
-# or vchroot -- darlingserver (already Rust) owns those. Raw libc only (matches the
+# or vchroot -- ciderd (already Rust) owns those. Raw libc only (matches the
 # server crate style, no nix dep), so it builds offline from the cached registry.
 [package]
 name = "launcher"
@@ -12,7 +12,7 @@ edition = "2021"
 publish = false
 
 [[bin]]
-name = "darling"
+name = "cider"
 path = "src/main.rs"
 
 [dependencies]

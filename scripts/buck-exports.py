@@ -105,7 +105,7 @@ def pin_index(pin: str) -> dict[str, str]:
     """{flattened name: pin-relative path} for every file in the pin.
 
     Following symlinks matters: a pin reaches part of its own tree through symlinked
-    DIRECTORIES (libunwind's darling/include/mach-o is one), and os.walk skips those by
+    DIRECTORIES (libunwind's cider/include/mach-o is one), and os.walk skips those by
     default -- so the file a label names looks absent and the export goes unwritten.
     """
     root = os.path.join(REPO, "buck-src", pin)
@@ -116,7 +116,7 @@ def pin_index(pin: str) -> dict[str, str]:
         """DFS that follows symlinked dirs but not loops.
 
         The guard is BRANCH-local, not global: a pin reaches parts of its own tree under
-        two names (libsyscall/mach/mach and darling/include/mach are the same files), and
+        two names (libsyscall/mach/mach and cider/include/mach are the same files), and
         both spellings have to be indexed -- a label minted from either one has to resolve.
         Skipping a directory just because another name for it was already seen dropped
         every entry under the second spelling.

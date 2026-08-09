@@ -12,7 +12,7 @@
  * file verifies all the timestamp-related scenarios that are exercised
  * by `touch` and other Nix build tools.
  *
- * Build inside darling shell:
+ * Build inside cider shell:
  *   cc -o test_utimensat test_utimensat.c
  *
  * Run:

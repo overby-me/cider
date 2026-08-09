@@ -15,7 +15,7 @@ pub struct ElfCalls {
     pub dlclose: extern "C" fn(*mut c_void) -> c_int,
     pub dlsym: extern "C" fn(*mut c_void, *const c_char) -> *mut c_void,
     pub dlerror: extern "C" fn() -> *mut c_char,
-    pub darling_thread_create: extern "C" fn(
+    pub cider_thread_create: extern "C" fn(
         c_ulong,
         c_ulong,
         *mut c_void,
@@ -26,8 +26,8 @@ pub struct ElfCalls {
         *const c_void,
         *mut c_void,
     ) -> *mut c_void,
-    pub darling_thread_terminate: extern "C" fn(*mut c_void, c_ulong, c_ulong) -> c_int,
-    pub darling_thread_get_stack: extern "C" fn() -> *mut c_void,
+    pub cider_thread_terminate: extern "C" fn(*mut c_void, c_ulong, c_ulong) -> c_int,
+    pub cider_thread_get_stack: extern "C" fn() -> *mut c_void,
     pub dlopen_fatal: extern "C" fn(*const c_char) -> *mut c_void,
     pub dlclose_fatal: extern "C" fn(*mut c_void) -> c_int,
     pub dlsym_fatal: extern "C" fn(*mut c_void, *const c_char) -> *mut c_void,
@@ -121,7 +121,7 @@ extern "C" fn ec_thread_create(
 ) -> *mut c_void {
     ptr::null_mut()
 }
-/// `__darling_thread_terminate` (threads.h): the last thing a guest thread does.
+/// `__cider_thread_terminate` (threads.h): the last thing a guest thread does.
 ///
 /// MUST NOT RETURN. libsystem_pthread calls this at the end of pthread_exit and, because the
 /// declaration is noreturn, the compiler emits a `ud2` immediately after the call -- so a stub
@@ -173,7 +173,7 @@ extern "C" fn ec_dserver_per_thread_socket_refresh() {
     // does not share the parent's -- otherwise the parent's dserver_rpc_fork_wait_for_child races
     // and returns -ECOMM (-70), and __mach_fork_parent executes `ud2` (SIGILL). create_thread_socket
     // binds a new autobound socket, moves it to a high CLOEXEC fd, and stores it as this thread's
-    // T_SOCKET. Mirrors C __darling_thread_rpc_socket_refresh (threads.c:397). (This works only
+    // T_SOCKET. Mirrors C __cider_thread_rpc_socket_refresh (threads.c:397). (This works only
     // because create_thread_socket/reserve_high_cloexec are movaps-free: the guest calls this
     // elfcall on a stack that is misaligned by 8, so any aligned SSE store would #GP -- see
     // reserve_high_cloexec.)
@@ -214,9 +214,9 @@ pub fn make() -> u64 {
         dlclose: ec_dlclose,
         dlsym: ec_dlsym,
         dlerror: ec_dlerror,
-        darling_thread_create: crate::threads::darling_thread_create,
-        darling_thread_terminate: ec_thread_terminate,
-        darling_thread_get_stack: ec_thread_get_stack,
+        cider_thread_create: crate::threads::cider_thread_create,
+        cider_thread_terminate: ec_thread_terminate,
+        cider_thread_get_stack: ec_thread_get_stack,
         dlopen_fatal: ec_dlopen_fatal,
         dlclose_fatal: ec_dlclose_fatal,
         dlsym_fatal: ec_dlsym_fatal,

@@ -1,6 +1,6 @@
 # Upstream Darling: what this fork is based on, and where everything went
 
-This project is a **fork of [darlinghq/darling](https://github.com/darlinghq/darling)**, not a
+This project is a **fork of [ciderhq/cider](https://github.com/ciderhq/cider)**, not a
 reimplementation. Its purpose is to record exactly which upstream commit it diverged from and
 how the directory layout was rearranged, so upstream changes can be located, judged and
 applied rather than guessed at.
@@ -12,11 +12,11 @@ each number are given so they can be re-run when they go stale.
 
 | | |
 |---|---|
-| upstream remote | `up` -> `https://github.com/darlinghq/darling` |
+| upstream remote | `up` -> `https://github.com/ciderhq/cider` |
 | **fork point (merge base)** | **`f39a29489fc630cb9b46af7ae2df1a3b603725d3`** |
 | fork point date | 2026-03-08 |
 | fork point subject | *Merge pull request #1702 from sirnacnud/skanalysis-symbols* |
-| upstream tip last fetched | `e947f0d5a3c6`, 2026-06-08, *Merge pull request #1758 from darlinghq/fedora_44_fix* |
+| upstream tip last fetched | `e947f0d5a3c6`, 2026-06-08, *Merge pull request #1758 from ciderhq/fedora_44_fix* |
 
 As of 2026-08-05:
 
@@ -36,21 +36,21 @@ jj log -r '::@ ~ ::master@up'                 # our commits
 
 This is the thing to internalise before trying to pull anything across.
 
-1. **The superproject** (`darlinghq/darling`) -- build glue, `src/**` first-party code, the
+1. **The superproject** (`ciderhq/cider`) -- build glue, `src/**` first-party code, the
    SDK tree, headers. That is what the 36 commits above are.
-2. **147 separate submodule repositories** (`darlinghq/darling-libdispatch`,
-   `darling-libc`, ...), each pinned by revision in **`nix/submodules.json`**:
+2. **147 separate submodule repositories** (`ciderhq/cider-libdispatch`,
+   `cider-libc`, ...), each pinned by revision in **`nix/submodules.json`**:
 
    ```json
-   { "path": "src/external/libdispatch", "owner": "darlinghq",
-     "repo": "darling-libdispatch", "rev": "380f03c1...", "hash": "sha256-..." }
+   { "path": "src/external/libdispatch", "owner": "ciderhq",
+     "repo": "cider-libdispatch", "rev": "380f03c1...", "hash": "sha256-..." }
    ```
 
    Upstream advances these with "Update Submodules" commits (e.g. `7276777e`). Those commits
    change *pointers*, so applying one here means **bumping `rev` and `hash` in
    `nix/submodules.json`**, not merging a diff. The 147 pinned `src/external/<pin>`
    directories are **empty mount points** in this tree; content is fetched by
-   `nix/lib/darling-src.nix` and materialised into `buck-src/<pin>` at build time.
+   `nix/lib/cider-src.nix` and materialised into `buck-src/<pin>` at build time.
 
    **But `src/external/` is not only pins.** Three trees there are vendored first-party
    content, tracked in this repo and NOT in `nix/submodules.json`, so they take patches
@@ -58,7 +58,7 @@ This is the thing to internalise before trying to pull anything across.
 
    | path | files | note |
    |---|---|---|
-   | `src/external/darlingserver/xnu-sys/` | 2,164 | the XNU shim, still built (`darlingserver_duct_tape`) |
+   | `src/external/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_duct_tape`) |
    | `src/external/libpthread_workqueue-0.8.2/` | 40 | vendored |
    | `src/external/libtrace/` | 28 | vendored, see its `VENDORED.md` |
 
@@ -89,8 +89,8 @@ directly.**
 | upstream | here | note |
 |---|---|---|
 | `src/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
-| `src/startup/darling.c` | `linux/launcher/` | the `darling` binary, rewritten |
-| `src/external/darlingserver` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `src/external/darlingserver/` and is still built unchanged |
+| `src/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
+| `src/external/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `src/external/ciderd/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the
 upstream change for its *intent* and apply that intent to the Rust.

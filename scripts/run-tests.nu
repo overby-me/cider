@@ -5,10 +5,10 @@
 # Darling's macOS toolchain (cc), and executes them. It collects results from all test suites
 # and produces a summary.
 #
-# Converted from bash (task #40) and verified against it with `darling` stubbed on PATH, no
+# Converted from bash (task #40) and verified against it with `cider` stubbed on PATH, no
 # container: every suite passing, a suite whose binary exits non-zero, a compilation failure,
 # ALL compilations failing (which is its own fatal), an unknown --suite name, a missing prefix,
-# a darling shell that does not work, --keep, --verbose and --suite. Output and exit code match
+# a cider shell that does not work, --keep, --verbose and --suite. Output and exit code match
 # on all of them, apart from the tips block naming this script instead of the .sh.
 #
 # Behaviour PRESERVED rather than fixed, because it is a judgement call about what this harness
@@ -20,13 +20,13 @@
 #   ./scripts/run-tests.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix path (default: ~/.darling or $DPREFIX)
+#   --prefix <path>       Darling prefix path (default: ~/.cider or $DPREFIX)
 #   --suite <name>        Run only the named suite (repeatable)
 #   --keep                Keep compiled test binaries in the prefix after running
 #   --verbose             Show full test output even on success
 #
 # Prerequisites:
-#   - Darling must be installed and `darling shell echo ok` must work
+#   - Darling must be installed and `cider shell echo ok` must work
 #   - The Darling prefix must be initialized
 #
 # Exit code:
@@ -48,7 +48,7 @@ const SUITES = [
 ]
 
 # Test directory inside the Darling prefix
-const DARLING_TEST_DIR = "/tmp/darling-nix-tests"
+const DARLING_TEST_DIR = "/tmp/cider-nix-tests"
 
 # Colours only on a terminal, the same condition the bash version used.
 def colours [] {
@@ -61,7 +61,7 @@ def colours [] {
 }
 
 def main [
-    --prefix: string = ""    # Darling prefix (default: ~/.darling or $DPREFIX)
+    --prefix: string = ""    # Darling prefix (default: ~/.cider or $DPREFIX)
     # COMMA-SEPARATED, because nushell has no repeatable flag: the bash version took
     # --suite a --suite b, this takes --suite a,b. Everything else about it is the same.
     --suite: string = ""
@@ -70,10 +70,10 @@ def main [
 ] {
     let c = (colours)
     let repo_dir = ($env.FILE_PWD | path join ".." | path expand)
-    let darling_prefix = if ($prefix | is-not-empty) {
+    let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".darling"))
+        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
     }
     let selected = ($suite | split row "," | each {|x| $x | str trim } | where {|x| $x != "" })
 
@@ -94,19 +94,19 @@ def main [
 
     # -- Preflight ----------------------------------------------------------
     log $c $"($c.bold)Preflight checks...($c.reset)"
-    if (which darling | is-empty) {
-        err $c "darling is not installed or not in PATH"
+    if (which cider | is-empty) {
+        err $c "cider is not installed or not in PATH"
         exit 2
     }
-    if ($darling_prefix | path type) != "dir" {
-        err $c $"Darling prefix not found at ($darling_prefix)\n   Initialize with: darling shell true"
+    if ($cider_prefix | path type) != "dir" {
+        err $c $"Darling prefix not found at ($cider_prefix)\n   Initialize with: cider shell true"
         exit 2
     }
     if (dsh_ok) == false {
-        err $c "darling shell is not functional\n   Try: darling shell echo ok"
+        err $c "cider shell is not functional\n   Try: cider shell echo ok"
         exit 2
     }
-    log $c $"  Prefix: ($darling_prefix)"
+    log $c $"  Prefix: ($cider_prefix)"
     log $c $"  Suites: ($run_suites.name | str join ' ')"
 
     for s in $run_suites {
@@ -118,7 +118,7 @@ def main [
 
     # -- Copy test sources into the prefix ----------------------------------
     log $c $"($c.bold)Copying test sources into Darling prefix...($c.reset)"
-    let prefix_test_dir = $"($darling_prefix)/private/tmp/darling-nix-tests"
+    let prefix_test_dir = $"($cider_prefix)/private/tmp/cider-nix-tests"
     mkdir $prefix_test_dir
     for s in $run_suites {
         ^cp $"($repo_dir)/($s.source)" $"($prefix_test_dir)/"
@@ -133,7 +133,7 @@ def main [
         let bin = ($base | str replace --regex '\.c$' '')
         log $c $"  Compiling ($base) ..."
         let cmd = $"cd ($DARLING_TEST_DIR) && cc -Wall -Wextra -o '($bin)' '($base)' ($s.cflags) 2>&1"
-        let r = (^darling shell bash -c $cmd | complete)
+        let r = (^cider shell bash -c $cmd | complete)
         if $r.exit_code != 0 {
             err $c $"  Compilation of ($base) FAILED:"
             $"($r.stdout)($r.stderr)" | lines | each {|l| print -e $"    ($l)" }
@@ -172,18 +172,18 @@ def main [
         mut code = 0
         if $s.type == "c" {
             let bin = ($base | str replace --regex '\.c$' '')
-            let chk = (^darling shell test -x $"($DARLING_TEST_DIR)/($bin)" | complete)
+            let chk = (^cider shell test -x $"($DARLING_TEST_DIR)/($bin)" | complete)
             if $chk.exit_code != 0 {
                 print $"  ($c.yellow)SKIPPED($c.reset) \u{2014} compilation failed"
                 print ""
                 $results = ($results | append {name: $s.name, verdict: "skip"})
                 continue
             }
-            let r = (^darling shell bash -c $"cd ($DARLING_TEST_DIR) && ./($bin) 2>&1" | complete)
+            let r = (^cider shell bash -c $"cd ($DARLING_TEST_DIR) && ./($bin) 2>&1" | complete)
             $out = $"($r.stdout)($r.stderr)"
             $code = $r.exit_code
         } else {
-            let r = (^darling shell bash -c $"cd ($DARLING_TEST_DIR) && sh '($base)' 2>&1" | complete)
+            let r = (^cider shell bash -c $"cd ($DARLING_TEST_DIR) && sh '($base)' 2>&1" | complete)
             $out = $"($r.stdout)($r.stderr)"
             $code = $r.exit_code
         }
@@ -250,9 +250,9 @@ def main [
         print -e "  \u{2022} Re-run with --verbose to see full output for passing tests"
         print -e "  \u{2022} Run a single suite: scripts/run-tests.nu --suite <name>"
         print -e "  \u{2022} Run with --keep to preserve binaries, then inspect inside:"
-        print -e $"      darling shell ($DARLING_TEST_DIR)/<test_binary>"
-        print -e "  \u{2022} Trace syscalls: strace -f -p $(pidof darlingserver) 2>&1 | head"
-        print -e $"  \u{2022} Darling xtrace: DARLING_XTRACE=1 darling shell ($DARLING_TEST_DIR)/<test_binary>"
+        print -e $"      cider shell ($DARLING_TEST_DIR)/<test_binary>"
+        print -e "  \u{2022} Trace syscalls: strace -f -p $(pidof ciderd) 2>&1 | head"
+        print -e $"  \u{2022} Darling xtrace: DARLING_XTRACE=1 cider shell ($DARLING_TEST_DIR)/<test_binary>"
         print -e ""
         exit 1
     } else if $skipped > 0 and $passed == 0 {
@@ -264,7 +264,7 @@ def main [
     }
 }
 
-# `darling shell echo ok`, as a predicate.
+# `cider shell echo ok`, as a predicate.
 def dsh_ok [] {
-    (^darling shell echo ok | complete | get exit_code) == 0
+    (^cider shell echo ok | complete | get exit_code) == 0
 }

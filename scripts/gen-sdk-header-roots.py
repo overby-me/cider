@@ -38,8 +38,8 @@ BUCK_SRC = "buck-src"
 
 
 # .c is included deliberately: Darling's SDK exposes implementation .c files under
-# its darling/emulation namespace, and the emulation layer #includes them by path
-# (<darling/emulation/.../setattrlist_generic.c>). Skipping them leaves those
+# its cider/emulation namespace, and the emulation layer #includes them by path
+# (<cider/emulation/.../setattrlist_generic.c>). Skipping them leaves those
 # includes unresolved.
 HEADER_EXTS = (".h", ".hpp", ".modulemap", ".defs", ".c")
 
@@ -144,7 +144,7 @@ def to_buck_src(repo_rel: str) -> str | None:
     The returned path is relative to the buck-src package, where the materialized
     pins live. None means "not ours to map": either the file is committed repo
     content outside src/external, or it is one of the three trees under
-    src/external that are COMMITTED rather than pinned (darlingserver, libtrace,
+    src/external that are COMMITTED rather than pinned (ciderd, libtrace,
     libpthread_workqueue), which therefore never appear in buck-src. Both cases
     belong to another buck2 package and need a header root there.
     """

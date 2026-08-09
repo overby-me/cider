@@ -27,9 +27,9 @@ def main [--all] {
     }
 
     print "== Mach-O toolchain =="
-    let ld64 = (^nix build $"($repo_root)#darling-ld64" --no-link --print-out-paths
+    let ld64 = (^nix build $"($repo_root)#cider-ld64" --no-link --print-out-paths
         | str trim)
-    print $"darling-ld64: ($ld64)"
+    print $"cider-ld64: ($ld64)"
     let triplet = "x86_64-apple-darwin20"
     if not ($"($ld64)/bin/($triplet)-ld" | path exists) {
         print -e $"no ($triplet)-ld in ($ld64)/bin"
@@ -49,7 +49,7 @@ def main [--all] {
     # be on it: dlopen("libfuse.so") fails without this even though the dev shell contains
     # fuse.
     #
-    # One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), the sixteen
+    # One entry per wrap_elf() in the tree: fuse for hdiutil (cider-dmg), the sixteen
     # src/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
     # plus pulseaudio) that AudioToolbox decodes and plays through. Looked up by SONAME
     # against the dev shell's own -L directories (NIX_LDFLAGS), because that is the
@@ -148,7 +148,7 @@ def main [--all] {
 # Absolute paths to prebuilt tools and toolchain dirs the Buck2 build drives.
 # The nix ones are store paths \(immutable\), so this file only needs regenerating
 # when the derivation that produces them changes.
-[darling]
+[cider]
 ld = ($ld64)/bin/($triplet)-ld
 ld64_dir = ($ld64)/bin
 clang_resource_dir = ($clang_resource_dir)
@@ -161,5 +161,5 @@ host_include_dirs = ($host_include_dirs | str join ':')
     open .buckconfig.local | lines | each {|l| print $"  ($l)" }
 
     print ""
-    print "ready: buck2 build //src/external/darlingserver/xnu-sys:darlingserver_duct_tape"
+    print "ready: buck2 build //src/external/ciderd/xnu-sys:ciderd_duct_tape"
 }

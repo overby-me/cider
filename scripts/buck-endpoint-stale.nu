@@ -30,7 +30,7 @@
 # wrapper can gate on it.
 
 # What the endpoint actually reads, taken from the two filters themselves rather than from a
-# listing of the result: nix/lib/darlingBuck2Graph.nix and nix/lib/darlingBuck2Lower.nix each
+# listing of the result: nix/lib/ciderBuck2Graph.nix and nix/lib/ciderBuck2Lower.nix each
 # drop these top-level names, and both additionally drop tests/**/*.nix. This is the
 # INTERSECTION of the two lists, so a path is called neutral only when BOTH filters drop it.
 # The lowering drops seven more (LICENSE, .vscode, .claude, .tangled, .gdbinit,
@@ -39,7 +39,7 @@
 # The first version of this script whitelisted the top level of a built staged project
 # instead, which said tests/ was an endpoint input. It is not: tests/buck2 holds real buck2
 # targets and passes the filter, while the NixOS VM tests beside it are Nix that buck2 never
-# reads. Editing tests/darling-buck2-smoke.nix was reported stale and the prefix derivation
+# reads. Editing tests/cider-buck2-smoke.nix was reported stale and the prefix derivation
 # did not move at all.
 const NEUTRAL_TOPS = [
     "plan" "docs" "nix" "scripts" "PLAN.md" "README.md" "CONTRIBUTORS.md"
@@ -53,8 +53,8 @@ const NEUTRAL_TOPS = [
 const OWN_INPUTS = [
     "scripts/buck2-graph-dump.py"
     "scripts/buck-src-normalise.py"
-    "nix/lib/darlingBuck2Graph.nix"
-    "nix/lib/darlingBuck2Lower.nix"
+    "nix/lib/ciderBuck2Graph.nix"
+    "nix/lib/ciderBuck2Lower.nix"
 ]
 
 def classify [path: string] {

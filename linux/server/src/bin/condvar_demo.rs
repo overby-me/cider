@@ -20,20 +20,20 @@
 //! The verdict is the printed line, not the exit code, for the same reason as
 //! scheduler_demo: the harness asserts hold in cases where the result is still wrong.
 
-use darling::bindings::{dtape_condvar_t, dtape_mutex_t};
-use darling::sched;
+use cider::bindings::{dtape_condvar_t, dtape_mutex_t};
+use cider::sched;
 
-// These were `extern "C"` declarations resolving through the linker back into the darling
+// These were `extern "C"` declarations resolving through the linker back into the cider
 // crate, from when duct-tape was C. It is Rust now (#71), so they are imported (#75).
 //
-// A BIN CRATE, so the path is darling:: and not crate:: . The seven files under src/bin are
-// separate rust_binary targets that depend on :darling; crate:: would not compile here, and
+// A BIN CRATE, so the path is cider:: and not crate:: . The seven files under src/bin are
+// separate rust_binary targets that depend on :cider; crate:: would not compile here, and
 // the original #75 edit list had it wrong for all of them.
 //
 // All six matched their definitions already, so no call site changes: the declarations spelled
 // dtape_mutex_t and dtape_condvar_t exactly as locks.rs and condvar.rs do.
-use darling::xnu::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
-use darling::xnu::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
+use cider::xnu::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
+use cider::xnu::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
 
 fn main() {
     unsafe {

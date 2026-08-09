@@ -111,7 +111,7 @@ cc_objects(
 darwin_dylib(
     name = "xtracelib_dylib",
     dylib_name = "libxtrace.dylib",
-    install_name = "/usr/lib/darling/libxtrace.dylib",
+    install_name = "/usr/lib/cider/libxtrace.dylib",
     compatibility_version = "1.0.0",
     objs = [
         # xtracelib

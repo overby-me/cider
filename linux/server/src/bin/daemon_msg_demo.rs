@@ -7,15 +7,15 @@
 //! process boundary, exactly as the real daemon does. The round trip is proven by the
 //! message id surviving. See PLAN.md (handler breadth over the socket).
 
-use darling::handler::Handler;
-use darling::mach;
-use darling::registry::Registry;
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{
+use cider::handler::Handler;
+use cider::mach;
+use cider::registry::Registry;
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{
     self, callnum, CallMachMsgOverwrite, CallMachPortAllocate, DserverRpcCallhdr,
     RpcCallMachMsgOverwrite, RpcCallMachPortAllocate,
 };
-use darling::sched;
+use cider::sched;
 use std::cell::RefCell;
 use std::mem::size_of;
 use std::os::fd::RawFd;

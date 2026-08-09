@@ -1,7 +1,7 @@
 #ifndef _XTRACELIB_H_
 #define _XTRACELIB_H_
 #include <stdint.h>
-#include <darling/emulation/common/simple.h>
+#include <cider/emulation/common/simple.h>
 
 #include "base.h"
 #include "string.h"

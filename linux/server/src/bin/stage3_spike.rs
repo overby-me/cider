@@ -5,12 +5,12 @@
 //!   Phase 3 microbench   -- N suspend/resume round-trips
 //! DUCT_TAPE_LIB=<dir> cargo run --bin stage3-spike
 
-use darling::bindings::dtape_semaphore_t;
-use darling::xnu::thread::thread_block;
-use darling::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
+use cider::bindings::dtape_semaphore_t;
+use cider::xnu::thread::thread_block;
+use cider::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
 
 // The semaphore trio and thread_block were declared through the linker, from when duct-tape was
-// C. Rust now (#71), so imported (#75). A BIN CRATE, so darling:: and not crate:: .
+// C. Rust now (#71), so imported (#75). A BIN CRATE, so cider:: and not crate:: .
 //
 // assert_wait and thread_wakeup_prim STAY declared: they are XNU, living in the duct-tape
 // archive, and there is no Rust definition to import.
@@ -18,7 +18,7 @@ use darling::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simpl
 // The thread_block declaration removed here was CORRECT, unlike the one gate10 found in
 // dtape_kqchan.rs: wait_result_t is c_int and thread_continue_t is
 // Option<fn(*mut c_void, wait_result_t)>, so it matched. Checked rather than assumed.
-use darling::sched;
+use cider::sched;
 use std::os::raw::{c_int, c_void};
 
 extern "C" {

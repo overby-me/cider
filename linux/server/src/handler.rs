@@ -32,7 +32,7 @@ fn trap(r: i32) -> Result<(), i32> {
 /// reply code 0 with the retval; Err(code) passes the errno through -- exactly C++'s
 /// `Thread::syscallReturn(dtape_psynch_<op>(..., bsdReturnValuePointer()))` +
 /// `sendBSDReply(code, _bsdReturnValue)`. For a blocking op this never returns (the
-/// continuation re-enters the doWork loop, which posts the reply); see darlingserverd.
+/// continuation re-enters the doWork loop, which posts the reply); see ciderd.
 fn psynch_op<R>(mk: impl FnOnce(u32) -> R, f: impl FnOnce(*mut u32) -> i32) -> Result<R, i32> {
     unsafe {
         let mt = sched::current();
@@ -42,12 +42,12 @@ fn psynch_op<R>(mk: impl FnOnce(u32) -> R, f: impl FnOnce(*mut u32) -> i32) -> R
         // ENTER without a matching FASTRET == the op blocked on a contended lock (its reply
         // is deferred: the continuation re-enters the doWork loop, which posts {code,retval}).
         if trace {
-            eprintln!("darlingserver: psynch ENTER");
+            eprintln!("ciderd: psynch ENTER");
         }
         let code = f((*mt).bsd_retval_ptr());
         let retval = (*mt).bsd_retval();
         if trace {
-            eprintln!("darlingserver: psynch FASTRET code={code} retval={retval}");
+            eprintln!("ciderd: psynch FASTRET code={code} retval={retval}");
         }
         if code == 0 {
             Ok(mk(retval))
@@ -403,7 +403,7 @@ impl rpc_wire::RpcHandler for Handler {
     /// A guest thread checks out on exit. Tell XNU the thread is dying so its Mach state
     /// (ports, rights, notifications) is torn down -- otherwise a later send to the dead
     /// thread's ports spins the daemon ("kmsg to pid -1"). The daemon then reaps its
-    /// microthread + slot (see darlingserverd::reap_thread). Mirrors C++ Call::Checkout ->
+    /// microthread + slot (see ciderd::reap_thread). Mirrors C++ Call::Checkout ->
     /// dtape_thread_dying. (The exec-listener branch is a later refinement.)
     fn checkout(&mut self, _call: &CallCheckout, fds: &[RawFd]) -> Result<(), i32> {
         // Checkout carries the process's `lifetime_listener_pipe` read end via SCM_RIGHTS.
@@ -510,7 +510,7 @@ impl rpc_wire::RpcHandler for Handler {
                 .unwrap_or(false);
             let hex = if got { insn.iter().map(|b| format!("{b:02x} ")).collect::<String>() } else { "?".to_string() };
             eprintln!(
-                "darlingserver: SIGNAL_DIAG sig={} code={} rip={:#x} sender_pid={} insn=[{}]",
+                "ciderd: SIGNAL_DIAG sig={} code={} rip={:#x} sender_pid={} insn=[{}]",
                 call.linux_signal_number, call.code, call.signal_address, call.sender_pid,
                 hex.trim_end()
             );
@@ -601,7 +601,7 @@ impl rpc_wire::RpcHandler for Handler {
         // with the daemon idle; see PLAN.md "M1 status 2026-07-27".)
         if code as u32 == 0x10004003 && std::env::var_os("DSERVER_TRACE_MSG").is_some() {
             eprintln!(
-                "darlingserver: mach_msg RCV TIMED_OUT rcv_name={} option={:#x} timeout={}",
+                "ciderd: mach_msg RCV TIMED_OUT rcv_name={} option={:#x} timeout={}",
                 call.rcv_name, call.option, call.timeout
             );
         }
@@ -718,7 +718,7 @@ impl rpc_wire::RpcHandler for Handler {
 
     // ---- Mach semaphore traps. The wait variants may block (dtape thread_suspend);
     // the reply is then sent when the microthread is woken -- routed by the persistent
-    // doWork serve loop (see darlingserverd). The signal variants never block. ----
+    // doWork serve loop (see ciderd). The signal variants never block. ----
     fn semaphore_signal(&mut self, call: &CallSemaphoreSignal, _fds: &[RawFd]) -> Result<(), i32> {
         trap(unsafe { traps::semaphore_signal(call.signal_name) })
     }
@@ -753,7 +753,7 @@ impl rpc_wire::RpcHandler for Handler {
     // The wait ops (mutexwait/cvwait/rw_rdlock/rw_wrlock) block on contention via a
     // continuation: this handler then never returns, and the doWork loop posts the deferred
     // reply from the stashed errno + the retval slot the continuation filled (see
-    // psynch_op + darlingserverd's deferred_reply). The wake ops return immediately. ----
+    // psynch_op + ciderd's deferred_reply). The wake ops return immediately. ----
     fn psynch_cvbroad(&mut self, call: &CallPsynchCvbroad, _fds: &[RawFd]) -> Result<ReplyPsynchCvbroad, i32> {
         psynch_op(|retval| ReplyPsynchCvbroad { retval }, |rv| unsafe {
             psynch::cvbroad(call.cv, call.cvlsgen, call.cvudgen, call.flags, call.mutex, call.mugen, call.tid, rv)

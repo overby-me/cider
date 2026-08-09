@@ -5,14 +5,14 @@ DATE=$(date +%Y%m%d)
 rm -f debian/changelog
 DISTRO=${DEB_DISTRO:-"$(lsb_release -cs)"}
 VERSION=0.1.${DATE}~${DISTRO}
-EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@darlinghq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package darling "Daily build"
+EDITOR=true NAME="Darling build server" EMAIL=${DEB_EMAIL:-noreply@ciderhq.org} dch -u low -v ${VERSION} --create --distribution ${DISTRO} --package cider "Daily build"
 
 if [ "$1" = "--dsc" ]; then
     ARG='-S -d'
-    if [ -e "../darling_${VERSION}.orig.tar.xz" ]; then
-        rm ../darling_${VERSION}.orig.tar.xz
+    if [ -e "../cider_${VERSION}.orig.tar.xz" ]; then
+        rm ../cider_${VERSION}.orig.tar.xz
     fi
-    tar -cJf ../darling_${VERSION}.orig.tar.xz .
+    tar -cJf ../cider_${VERSION}.orig.tar.xz .
 else
     ARG='-b'
 fi

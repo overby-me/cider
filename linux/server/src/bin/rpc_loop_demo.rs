@@ -2,8 +2,8 @@
 //! (with a file descriptor via SCM_RIGHTS) over a unix socket, then decode it on the
 //! other side exactly as the daemon loop will -- header -> call number -> name ->
 //! body -> passed fds -- using the generated wire codec + rpc_io.
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{callnum, CallCheckin, DserverRpcCallhdr, RpcCallCheckin};
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{callnum, CallCheckin, DserverRpcCallhdr, RpcCallCheckin};
 use std::mem::size_of;
 use std::os::fd::RawFd;
 

@@ -36,7 +36,7 @@ def artifact_for [rows: list, pat: string] {
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let root = ($scratch | default $"/tmp/darling-loadall-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-loadall-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -46,10 +46,10 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix and the probe =="
-    let b = (^buck2 build //buck/prefix:darling_prefix //tests/buck2/guest:loadall_probe
+    let b = (^buck2 build //buck/prefix:cider_prefix //tests/buck2/guest:loadall_probe
         --show-output | complete)
     let rows = ($b.stdout | lines | each {|l| $l | split row " " } | where {|w| ($w | length) >= 2 })
-    let art = (artifact_for $rows 'darling_prefix')
+    let art = (artifact_for $rows 'cider_prefix')
     let bin = (artifact_for $rows 'loadall_probe')
     for f in [$art $bin] {
         if ($f | is-empty) or (not ($f | path exists)) {
@@ -73,10 +73,10 @@ def main [scratch?: string] {
     # `cp -a`, never `cp -aL`: the prefix installs Volumes/DarlingEmulatedDrive -> /.
     ^cp -a $"($art)/." $"($rt)/"
     ^chmod -R u+w $rt
-    ^cp $bin $"($rt)/libexec/darling/usr/bin/loadall_probe"
-    ^chmod +x $"($rt)/libexec/darling/usr/bin/loadall_probe"
+    ^cp $bin $"($rt)/libexec/cider/usr/bin/loadall_probe"
+    ^chmod +x $"($rt)/libexec/cider/usr/bin/loadall_probe"
 
-    # The list, as the GUEST sees the paths: libexec/darling is the container root, so it comes
+    # The list, as the GUEST sees the paths: libexec/cider is the container root, so it comes
     # off the front. Regular files only -- the prefix is full of compatibility symlinks and
     # counting both would double every library that has one.
     # The display-dependent frameworks are NOT swept, and that is not a gap: dlopening AppKit
@@ -104,7 +104,7 @@ def main [scratch?: string] {
     # Adding them here would only make this number noisier and less true.
 
     say "== enumerating what the prefix ships =="
-    let sdk = $"($rt)/libexec/darling"
+    let sdk = $"($rt)/libexec/cider"
     let list = $"($sdk)/tmp/loadall.txt"
     mkdir ($list | path dirname)
     # find, not glob: -mindepth/-maxdepth under Frameworks and "no dot in the name" are what
@@ -148,7 +148,7 @@ def main [scratch?: string] {
         | get 0? | default ""
     )
     if ($elf_dirs | is-empty) {
-        say "no darling.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
+        say "no cider.elf_lib_dirs in .buckconfig.local -- run scripts/buck-setup.nu"
     }
     let ld = (if (($env.LD_LIBRARY_PATH? | default "") | is-empty) { $elf_dirs } else { $"($elf_dirs):($env.LD_LIBRARY_PATH)" })
 
@@ -164,11 +164,11 @@ def main [scratch?: string] {
         with-env {
             DPREFIX: $prefix_dir
             DARLING_NO_LAUNCHD: "1"
-            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-            DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+            DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
             LD_LIBRARY_PATH: $ld
         } {
-            do -i { ^timeout 900 $"($rt)/bin/darling" shell /usr/bin/loadall_probe $"/tmp/($rn)" out+err> $log }
+            do -i { ^timeout 900 $"($rt)/bin/cider" shell /usr/bin/loadall_probe $"/tmp/($rn)" out+err> $log }
         }
         let part = (open --raw $log)
         rm -f $log

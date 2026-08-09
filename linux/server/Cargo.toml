@@ -1,5 +1,5 @@
-# server -- the darling host-side daemon (Rust rewrite of darlingserver, Stage 0 onward).
-# The lib crate is named "darling", so bins import it as darling::server, darling::registry, etc.
+# server -- the cider host-side daemon (Rust rewrite of ciderd, Stage 0 onward).
+# The lib crate is named "cider", so bins import it as cider::server, cider::registry, etc.
 # See PLAN.md (plan) + PLAN.md (the make-or-break
 # spike). Stage 0: bindgen the real dtape hooks contract + link the prebuilt
 # duct-tape static lib and call the real dtape_init(&hooks). The prior end-to-end
@@ -11,7 +11,7 @@ edition = "2021"
 publish = false
 
 [lib]
-name = "darling"
+name = "cider"
 
 # Stage 0 deliverable: prove the real duct-tape links and dtape_init is callable.
 [[bin]]

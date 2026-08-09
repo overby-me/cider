@@ -1,12 +1,12 @@
 #!/usr/bin/env nu
-# tests/darling-smoke.nix's assertions, against the BUCK2-built Darling, without a VM.
+# tests/cider-smoke.nix's assertions, against the BUCK2-built Darling, without a VM.
 #
 # The smoke test itself runs in a NixOS test VM, and Darling hangs in one (a pre-existing
 # problem, not the port's -- task #12). Its assertions do not need a VM: they need a prefix
 # and a container, which scripts/buck-bash-check.nu already produces. So this drives the
 # same checks here, and what remains blocked on the VM is the harness rather than the claim.
 #
-# Stages, numbered as they are in tests/darling-smoke.nix:
+# Stages, numbered as they are in tests/cider-smoke.nix:
 #   2  shell, environment, exit codes
 #   3  macOS identity (uname, sw_vers)
 #   4  filesystem basics (files, directories, symlinks)
@@ -30,21 +30,21 @@ def say [msg: string] { print -e $msg }
 def main [] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let rt = ($env.BUCK2_RT? | default $"/tmp/darling-buck2-(^id -u | str trim)/rt")
+    let rt = ($env.BUCK2_RT? | default $"/tmp/cider-buck2-(^id -u | str trim)/rt")
     # SHORT, because the daemon's control socket lives in the prefix and a Unix socket path is
     # capped at 108 bytes.
-    let prefix_dir = ($env.DPREFIX? | default $"/tmp/darling-smoke-(^id -u | str trim)")
+    let prefix_dir = ($env.DPREFIX? | default $"/tmp/cider-smoke-(^id -u | str trim)")
 
-    if not ($"($rt)/bin/darling" | path exists) {
+    if not ($"($rt)/bin/cider" | path exists) {
         say $"no materialized prefix at ($rt)"
-        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
+        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:cider_prefix and"
         say "copies it there, which is what this check then drives."
         exit 2
     }
 
     # pkill -x, never -f: an -f pattern matches the command line of the shell running it. One
     # name per call, because a multi-pattern pkill matches nothing and exits 2.
-    for n in [darling darlingserver mldr shellspawn] { do -i { ^pkill -9 -x $n } }
+    for n in [cider ciderd mldr shellspawn] { do -i { ^pkill -9 -x $n } }
     # GNU rm: the overlay workdir holds a `work` directory at mode 000.
     ^rm -rf $prefix_dir $"($prefix_dir).workdir"
 
@@ -59,7 +59,7 @@ no() { say "SMOKE FAIL $1: $2"; }
 is() { case "$2" in *"$3"*) ok "$1" ;; *) no "$1" "$2" ;; esac; }
 
 # -- stage 2: shell ------------------------------------------------------------
-is "echo passes through"        "$(echo hello-from-darling)"      hello-from-darling
+is "echo passes through"        "$(echo hello-from-cider)"      hello-from-cider
 [ -n "$HOME" ] && ok "HOME is set" || no "HOME is set" empty
 ( exit 0 ); [ $? -eq 0 ] && ok "exit 0 propagates" || no "exit 0 propagates" "$?"
 ( exit 1 ); [ $? -eq 1 ] && ok "exit 1 propagates" || no "exit 1 propagates" "$?"
@@ -132,10 +132,10 @@ say "SMOKE DONE"'
     with-env {
         DPREFIX: $prefix_dir
         DARLING_NO_LAUNCHD: "1"
-        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-        DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+        DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+        DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {
-        do -i { ^timeout 300 $"($rt)/bin/darling" shell /bin/bash -c $guest out+err> $log }
+        do -i { ^timeout 300 $"($rt)/bin/cider" shell /bin/bash -c $guest out+err> $log }
     }
     let out = (open --raw $log | str trim --right --char "\n")
     rm -f $log
@@ -156,5 +156,5 @@ say "SMOKE DONE"'
     say ""
     say $"($passed) passed, ($failed) failed"
     if $failed != 0 { exit 1 }
-    say "PASS: the buck2-built Darling meets tests/darling-smoke.nix stages 2-7"
+    say "PASS: the buck2-built Darling meets tests/cider-smoke.nix stages 2-7"
 }

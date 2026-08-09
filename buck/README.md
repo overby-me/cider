@@ -11,7 +11,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
-buck2 build //src/external/darlingserver/xnu-sys:darlingserver_duct_tape
+buck2 build //src/external/ciderd/xnu-sys:ciderd_duct_tape
 scripts/buck-test.nu         # regression test for everything ported so far
 ```
 
@@ -72,7 +72,7 @@ ninja.)
 
 `cc_static_lib(name, objs, lib_name, exported_headers, deps)`
 : Archive object groups into one `.a`. `lib_name` covers targets whose artifact
-  name differs from the target name (`liblibsimple_darlingserver.a`).
+  name differs from the target name (`liblibsimple_ciderd.a`).
 
 `cc_library` / `cc_binary`
 : Compile + archive, and compile + link, for the common cases.
@@ -109,7 +109,7 @@ ninja.)
 ## Conventions
 
 - Flags come from the reference build's configured `build.ninja`
-  (`nix build .#darling-graph-stock`), not from reading `CMakeLists.txt`. The
+  (`nix build .#cider-graph-stock`), not from reading `CMakeLists.txt`. The
   CMakeLists does not contain what a target inherits from parent scopes.
 - Where a target's lists are large and upstream-owned, the BUCK file is
   GENERATED (`scripts/gen-duct-tape-buck.py`) and the generator is committed.

@@ -65,7 +65,7 @@ int main(int argc, const char **argv) {
 		printf("APPKIT_PROBE window=%s\n", win ? "yes" : "no");
 		fflush(stdout);
 
-		[win setTitle:@"darling buck2 probe"];
+		[win setTitle:@"cider buck2 probe"];
 		[win makeKeyAndOrderFront:nil];
 		printf("APPKIT_PROBE ordered-front\n");
 		fflush(stdout);

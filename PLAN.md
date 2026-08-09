@@ -1,6 +1,6 @@
-# darling-nix
+# cider-nix
 
-darling-nix is a Nix-packaged fork of [Darling](https://github.com/darlinghq/darling)
+cider-nix is a Nix-packaged fork of [Darling](https://github.com/ciderhq/cider)
 (a userspace macOS/Darwin compatibility layer for Linux, "Wine for macOS"). Its host and
 guest runtime have been rewritten in Rust.
 
@@ -32,12 +32,12 @@ was nothing behind it). Their detail is further down and in the commit history.
 
 **CMAKE IS GONE (#82), buck2 is the only build.** Removed 2026-08-09 on the user's word that
 they do not ship it: 13 cmake package outputs, 8 nix-ninja group outputs, 8 nix libs
-(`package.nix`, `duct-tape.nix`, `cctools-port.nix`, `darling-{graph,base,component,components}
-.nix`, `darlingNinja.nix`), 258 CMakeLists and `cmake/`, plus cmake and ninja from the dev shell
-and the toolchain. About 21,700 lines. `packages.default` is now `darling-buck2` and the checks
-build `darling-buck2-min`. VERIFIED: the minimal endpoint builds with zero cmake files present,
+(`package.nix`, `duct-tape.nix`, `cctools-port.nix`, `cider-{graph,base,component,components}
+.nix`, `ciderNinja.nix`), 258 CMakeLists and `cmake/`, plus cmake and ninja from the dev shell
+and the toolchain. About 21,700 lines. `packages.default` is now `cider-buck2` and the checks
+build `cider-buck2-min`. VERIFIED: the minimal endpoint builds with zero cmake files present,
 exit 0, 4,574 builders, 0 errors. Nothing in the buck2 path ever invoked ninja, so ninja went
-with it; the `overby` input STAYS, because `darlingBuck2.nix` uses its `buildBuck2Project.nix`.
+with it; the `overby` input STAYS, because `ciderBuck2.nix` uses its `buildBuck2Project.nix`.
 
 **THE ONE-WAY DOOR, stated plainly:** FIVE generators are now unrunnable and marked FROZEN in
 place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
@@ -58,10 +58,10 @@ dylibs, then the executables) at 15 to 30 s each while printing nothing. `out_ma
 each set in ONE `buck2 build --show-output --keep-going`. That run is the broad check on the
 cmake removal and the xnu module move: both green.
 
-**THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#darling-buck2-prefix-min`
+**THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#cider-buck2-prefix-min`
 at `--max-jobs 6 --cores 2 --keep-going` ran **1,551 buck2 builders to exit 0 with 0 errors in
 about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,
-`b4yvk9hh...-buck2-darling_prefix_min-out`. Earlier runs that looked like an unfixable daemon
+`b4yvk9hh...-buck2-cider_prefix_min-out`. Earlier runs that looked like an unfixable daemon
 stall are not reproducible: the one real failure was a staging regression, now fixed. Do not
 plan around the endpoint being unrunnable.
 
@@ -76,13 +76,13 @@ that RAN, each probe with its own restore control that came back 0 onto the iden
 | `xnu-sys/src/*.c` BEFORE | **1,558** | 61 min |
 | `xnu-sys/src/*.c` AFTER | **44** | 2.5 min |
 
-Only the last row was ever a leak. `nix-diff` named its sole cause: the darlingserver GROUP
+Only the last row was ever a leak. `nix-diff` named its sole cause: the ciderd GROUP
 STORE interpolated as `_g` into every target stage script, with no dependency edge behind it.
 `rtsig.c` is legitimate, it is a `host_gen` that GENERATES `rtsig.h`. The fix is `groupSplit` in
-`nix/lib/darlingBuck2Lower.nix`: a blanket cut starves the compiles, because
+`nix/lib/ciderBuck2Lower.nix`: a blanket cut starves the compiles, because
 `buck2-graph-sources.py` keeps `src/external` out of the grouping and the whole-directory group
 is its only supplier, so every target gets the headers and `scripts/` while only labels under
-`root//src/external/darlingserver/xnu-sys` also get `xnu-sys/src`.
+`root//src/external/ciderd/xnu-sys` also get `xnu-sys/src`.
 
 **A BUCK EDIT IS NOT A FULL REBUILD ANY MORE.** The standing advice was to batch BUCK edits
 because each costs a full rebuild. Measured 2026-08-09 with a control either side:
@@ -104,7 +104,7 @@ and they are exactly the right ones:
     skeleton, graph, sources          the graph pipeline
     Accessibility_obj                 recompiled, the flag changed it
     Accessibility_dylib               relinked
-    darling_prefix_min, -out          the prefix
+    cider_prefix_min, -out          the prefix
 
 Control 0 either side, and the restore lands back on `6fx01v8p...`. So a BUCK edit costs the
 same as an ordinary leaf source edit, 7 builders. **Batching BUCK edits is no longer required.**
@@ -176,15 +176,15 @@ decision.
    **`condvar.c` IS PORTED TOO**, and both ported files have a runtime demo.
 
    **THE PREFIX GATE ALSO PASSED WITH `condvar.c` IN** (gate4: 1,875 builders, zero failures,
-   `NIX_EXIT=0`, `/nix/store/m8nihyc7s2pr3p9095830msxq4ql6p4w-vm-test-run-darling-buck2-smoke`;
+   `NIX_EXIT=0`, `/nix/store/m8nihyc7s2pr3p9095830msxq4ql6p4w-vm-test-run-cider-buck2-smoke`;
    same VM assertions, `exit 0` in 0.31 s and the `exit 1` arm correctly failing).
    **`timer.c` is NOT covered by it**: gate4 was launched at `c3e2e26f` and the timer port
    landed two commits later, so timer still rests on symbols, a unit test and the demos.
 
-   **THE PREFIX GATE PASSED ON THE SEMAPHORE PORT** (`darling-buck2-min-smoke`, 1,875 builders,
+   **THE PREFIX GATE PASSED ON THE SEMAPHORE PORT** (`cider-buck2-min-smoke`, 1,875 builders,
    **zero** builder failures, `NIX_EXIT=0`,
-   `/nix/store/f0h9xzhq7qfmc393s4sqzm0cdrn7fkw4-vm-test-run-darling-buck2-smoke`). Not a
-   vacuous pass: inside the VM, `command -v darling-buck2` succeeded, `darling-buck2 shell
+   `/nix/store/f0h9xzhq7qfmc393s4sqzm0cdrn7fkw4-vm-test-run-cider-buck2-smoke`). Not a
+   vacuous pass: inside the VM, `command -v cider-buck2` succeeded, `cider-buck2 shell
    /bin/bash -c 'exit 0'` succeeded in 0.17 s, the `exit 1` arm correctly FAILED, and exit
    codes propagated out of the container. So a buck2-built Darling whose `dtape_semaphore_*`
    come from Rust boots a container and runs bash in the guest.
@@ -221,7 +221,7 @@ decision.
    **THE PREFIX AND SIX PORTS ARE GATE-VERIFIED (gate7, head 85841249).** 1,577 builders, ZERO
    errors, zero failed builders, NIX_EXIT=0, 1 h 15 m, and the VM assertions held: exit codes
    propagate out of the container, script finished in 14.50 s,
-   `/nix/store/y0nq738fh7acsgims1w2r5pja5jsdwpq-vm-test-run-darling-buck2-smoke`.
+   `/nix/store/y0nq738fh7acsgims1w2r5pja5jsdwpq-vm-test-run-cider-buck2-smoke`.
    That covers the minimal prefix at 853 entries (jsc and Swift removed), the timer, host,
    processor, init, debug and locks ports, twelve shims, and the ipc, host and processor
    reopenings. NOT covered, because they were committed after it launched: `kqchan.c` and
@@ -231,9 +231,9 @@ decision.
    debug, locks, kqchan, traps, psynch, misc, stubs, task, memory, thread.
 
    **Verified by the archive, not by assertion:** every one of the sixteen `.c.o` is gone from
-   `libdarlingserver_duct_tape.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
+   `libciderd_duct_tape.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
    remain, which is the boundary the task set. (`host.c.o` in that archive is XNU
-   `osfmk/kern/host.c`, not duct-tape's; `host_info` is undefined there.) darlingserverd links
+   `osfmk/kern/host.c`, not duct-tape's; `host_info` is undefined there.) ciderd links
    and `scripts/xnu-sys-runtime-check.nu` passes.
 
    **THE THREE BIG FILES WERE SPLIT along the XNU boundary they already marked**, rather than
@@ -319,7 +319,7 @@ decision.
    | `src/hosttools` + `src/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
    | `src/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
    | `src/xcselect` | 679 | Darling | |
-   | `src/shellspawn` | 634 | Darling | load-bearing: it is what `darling shell` uses, and it is in the minimal prefix |
+   | `src/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
    | `src/libsimple` | 562 | Darling | the lock and log layer duct-tape sits on; the Rust daemon ALREADY links it as a C archive |
 
    **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
@@ -363,14 +363,14 @@ decision.
    demo's own asserts (did it suspend, did it finish) both still hold.
 
    **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
-   is not vacuous: in `libdarlingserver_duct_tape.a` the four `dtape_semaphore_*` are `U` and
+   is not vacuous: in `libciderd_duct_tape.a` the four `dtape_semaphore_*` are `U` and
    `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come
    from bindgen, not transcription: `linux/server/wrapper.h` binds the internal structs, and
    `flags.bzl` (generated) keeps the buck2 and cargo include sets identical.
 
    Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged.
    **THE VERIFICATION IS ITSELF A PROBLEM, and this was checked before writing any port code.**
-   `checks.darling-buck2-smoke` builds the FULL prefix, and at `--max-jobs 5` it ran 106 minutes,
+   `checks.cider-buck2-smoke` builds the FULL prefix, and at `--max-jobs 5` it ran 106 minutes,
    2,212 builders, **zero builder failures**, and then died with
    `error: Nix daemon disconnected unexpectedly (maybe it crashed?)` in the stage-tree phase.
    **THE FULL PREFIX CANNOT COMPLETE ON THIS BOX. The kernel OOM-killed nix-daemon, twice,
@@ -387,7 +387,7 @@ decision.
    jobs did not help. Two attempts is the limit; not relaunching a third time.
 
    **So #71 must gate on the MINIMAL endpoint**, which completes (1,617 builders, verified this
-   session, prefix hash matching). A duct-tape change lands in `darlingserverd`, so the gate it
+   session, prefix hash matching). A duct-tape change lands in `ciderd`, so the gate it
    needs is a boot against the minimal prefix, not a full-prefix VM.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
@@ -435,7 +435,7 @@ after the `jsc` removal: **167,477 JavaScriptCore mentions and 2 build lines bec
 and ZERO build lines.** JavaScriptCore is not compiled at all any more. Wall clock is not
 quotable on this box (a concurrent session runs its own nix builds), which is exactly why the
 check is "did the derivation run", not "how long did it take". The principle that got there: the prefix carries what nix needs
-TO START, and nix pulls the rest from nixpkgs once it runs. `tests/nix-in-darling.nix` shows
+TO START, and nix pulls the rest from nixpkgs once it runs. `tests/nix-in-cider.nix` shows
 the bootstrap does no network I/O at all -- the HOST fetches and extracts the installer and
 copies it in, and the guest runs `bash -x install --no-daemon` then local eval/store commands.
 So TLS, trust and keychain are off the bootstrap path.
@@ -464,7 +464,7 @@ Half the actions, 50.4 percent.
 
 **THIS LEVER IS NOW SPENT, which is worth stating so nobody spends another day on it.** The
 three costliest entries are exactly the three EXEMPT ones, dyld 644, bash 182 and
-darlingserverd 136, which are the goal rather than dead weight. The worst non-exempt entry is
+ciderd 136, which are the goal rather than dead weight. The worst non-exempt entry is
 `iokitd` at **32**. Everything still large is shared base that no entry owns: libsyscall 453
 pulled by 547 entries, icucore 446 by 178, XNU emulation 288 by 546, compiler-rt 138 by 540.
 Nothing sizeable can be removed by dropping entries any more, so `--check` (budget tightened
@@ -595,13 +595,13 @@ keeps what is still true and useful, not the story of arriving at it.
 ## Status (2026-07)
 
 Done:
-- **Rust rewrite complete and default.** Host daemon (`linux/server`, crate `darling`, bin
-  `darlingserverd`), launcher (`linux/launcher`, bin `darling`), guest loader
+- **Rust rewrite complete and default.** Host daemon (`linux/server`, crate `cider`, bin
+  `ciderd`), launcher (`linux/launcher`, bin `cider`), guest loader
   (`darwin/loader`, bin `mldr`). The C++ daemon and C launcher/loader are deleted.
 - **Boots to Darwin; M1 achieved.** Guest nix 2.34.8 builds and runs `hello` (and `pv`)
   from source under rootless Darling, launchd-free. `nix eval builtins.currentSystem` →
   `"x86_64-darwin"`.
-- **Off git submodules.** Nix (`nix/submodules.json`, 147 pins + `nix/lib/darling-src.nix`)
+- **Off git submodules.** Nix (`nix/submodules.json`, 147 pins + `nix/lib/cider-src.nix`)
   is the sole source path; `.gitmodules` + gitlinks deleted, no `?submodules=1`.
 - **Full `.#default` builds green and boots.**
 - **Identity:** macOS **14.4.1** / Darwin **23.4.0** / build **23E224**
@@ -628,15 +628,15 @@ tracks below.
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
   byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
   for `process_vm_readv` because the guest is in its own PID namespace).
-- **duct-tape** (`src/external/darlingserver/xnu-sys/`, still C): kernel-emulation glue
+- **duct-tape** (`src/external/ciderd/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
   `linux/server/build.rs`: bindgen generates the 36-field `dtape_hooks_t` from source
-  headers; static libs (`libdarlingserver_duct_tape.a`, `liblibsimple_darlingserver.a`)
+  headers; static libs (`libciderd_duct_tape.a`, `liblibsimple_ciderd.a`)
   come via the `DUCT_TAPE_LIB` env var. The Rust/C seam is the frozen `dtape_*` API +
   `dtape_hooks` vtable — Rust above, C+XNU below.
 - **mldr loader** (`darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
   commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
-- **Container model:** an overlayfs prefix (`~/.darling`, macOS FS hierarchy) entered
+- **Container model:** an overlayfs prefix (`~/.cider`, macOS FS hierarchy) entered
   **rootless** via unprivileged user namespaces (needs
   `kernel.unprivileged_userns_clone=1`, kernel ≥5.11). **One command per fresh container** —
   a sibling userns cannot join a running container's mount ns.
@@ -646,7 +646,7 @@ tracks below.
 - **apple-sdk `.tbd` stubs:** binaries link against stub symbols, resolved at runtime from
   Darling's reimplemented libraries — so derivation hashes never depend on Darling.
 - **sandbox-exec** is a parse-and-ignore stub (the Linux container already isolates).
-- **Nix packaging:** `nix/lib/darling-src.nix` assembles the tree from the 147 pins +
+- **Nix packaging:** `nix/lib/cider-src.nix` assembles the tree from the 147 pins +
   `patches/<name>/`; `nix/package.nix` builds the Darwin userland and installs the Rust
   crates; `nix/{launcher,server,duct-tape,loader,cctools-port}.nix`.
 
@@ -681,7 +681,7 @@ tracks below.
 
 ### The Nix endpoint builds the prefix, green
 
-`nix build .#darling-buck2-prefix` finished with **NIX EXIT 0**: 3216 derivations, **0
+`nix build .#cider-buck2-prefix` finished with **NIX EXIT 0**: 3216 derivations, **0
 errors**, ending on the prefix derivation. The result holds **34,720** files and links,
 and all six spot checks pass (`bin/bash`, `bin/sh`, `usr/lib/dyld`,
 `usr/lib/libSystem.B.dylib`, `usr/lib/system/libsystem_kernel.dylib`, the ICU data).
@@ -697,12 +697,12 @@ started, then rebuild that one target at the current head, which takes seconds.
 
 **The CMAKE-built Nix prefix ships REAL Swift libraries. The BUCK2 one does not.** Say which
 prefix, because the sentence is otherwise a trap and it caught me once: `buck-dylib-shape.nu`
-over the cmake-built `darling-unstable-2025` reports 227 installed `.dylib` files, **227
+over the cmake-built `cider-unstable-2025` reports 227 installed `.dylib` files, **227
 Mach-O, 0 git LFS pointers**, with the 44 under `usr/lib/swift` genuine (libswiftCore 6.7 MB).
 
 That is a different SOURCE PATH, not a different fetch. The cmake build reads
 `src/external/swift/`, which has real Mach-O; buck2 reads `buck-src/swift/`, which is 132-byte
-LFS pointers **including inside the staged `darling-buck2-project` in the store**. Checked
+LFS pointers **including inside the staged `cider-buck2-project` in the store**. Checked
 both, in the store rather than in the working tree, since the working tree proves nothing about
 what a pure build sees.
 
@@ -713,7 +713,7 @@ they are still installed and still not libraries.
 
 ### The endpoint builds green on the rebuilt graph (2026-08-05)
 
-`nix build .#darling-buck2-prefix` finished **exit 0** in **2 h 6 min**: 3,442 builders,
+`nix build .#cider-buck2-prefix` finished **exit 0** in **2 h 6 min**: 3,442 builders,
 **0 errors**, on the graph rebuilt after the BXL and `InProcInfo` changes. The prefix is
 **identical to the known-good reference** -- 39,173 entries each, zero differences in either
 direction under `LC_ALL=C` -- and `buck-bash-check.nu --prefix` reports
@@ -733,7 +733,7 @@ The goal is a prefix that boots, runs bash and can run nix. The endpoint was bui
 full parity prefix for that, and most of it is dead weight: `darwin/frameworks` is 8,142
 actions, private-frameworks 2,250, the scripting languages 1,197 -- 42% of 27,591.
 
-`nix build .#darling-buck2-prefix-min` builds a prefix with those dropped, generated (not
+`nix build .#cider-buck2-prefix-min` builds a prefix with those dropped, generated (not
 hand-edited) by `scripts/gen-prefix-min.py` from the generated full prefix, and it
 **PASSES `buck-bash-check.nu`: BUCK2_BASH_OK 3.2.57(1)-release**.
 
@@ -747,11 +747,11 @@ hand-edited) by `scripts/gen-prefix-min.py` from the generated full prefix, and 
 
 The build is bounded by the survivors closure, not by the entry list: dropping 44% of install
 entries removed 36.5% of actions, because buck2 still builds what the remaining targets
-depend on. **zsh IS excluded from the minimal prefix now**, and it is safe: darling does NOT
+depend on. **zsh IS excluded from the minimal prefix now**, and it is safe: cider does NOT
 inherit the macOS zsh default. `src/shellspawn/shellspawn.c` hardcodes `/bin/bash` in
-both exec paths (line 141 and the `execv` fallback), so `darling shell` with no argument
+both exec paths (line 141 and the `execv` fallback), so `cider shell` with no argument
 gets bash. The only zsh consumer in the suite, `scripts/buck-scripting-check.nu`, builds
-`//buck/prefix:darling_prefix`, the FULL prefix, which still ships zsh and its 35 modules.
+`//buck/prefix:cider_prefix`, the FULL prefix, which still ships zsh and its 35 modules.
 This entry previously read that zsh was NOT excluded, the exclusion list having omitted
 `//buck-src/zsh` while the prose claimed it. That gap is closed.
 
@@ -771,14 +771,14 @@ new:
 | after #65 (external ld64 dropped) | 5 | 97 s | no |
 | after #54 (sourceGroups on) | **2** | **92.3 s** | no |
 
-After #54 the TARGET no longer rebuilds at all: the two that run are `darling-buck2-skeleton`
-and `darling-buck2-sources`, the graph-side content passes. Wall clock is flat because those
+After #54 the TARGET no longer rebuilds at all: the two that run are `cider-buck2-skeleton`
+and `cider-buck2-sources`, the graph-side content passes. Wall clock is flat because those
 two now ARE the loop, so they are the next lever, not the cascade. **Timed per pass:**
 
 | pass | time | share |
 |---|---|---|
-| `darling-buck2-skeleton` | 10 s | 12% |
-| **`darling-buck2-sources`** | **64 s** | **79%** |
+| `cider-buck2-skeleton` | 10 s | 12% |
+| **`cider-buck2-sources`** | **64 s** | **79%** |
 
 `sources` is `scripts/buck2-graph-sources.py`. Profiled and then optimised: `target_sources`
 went **27.9 s to 17.4 s** by computing a farm's closure once per FARM instead of once per
@@ -788,8 +788,8 @@ went **27.9 s to 17.4 s** by computing a farm's closure once per FARM instead of
 is `unpackPhase` copying the filtered project into the sandbox plus `assembleProject` on top,
 about 1.1 GB of copying. Three shortcuts were considered and all are CLOSED:
 
-* `cd ${darlingSrc}` instead of unpacking: WRONG TREE. `assembleProject` puts pins at
-  `buck-src/<pin>`, where `darlingSrc` has them at `src/external/<pin>`, and it normalises
+* `cd ${ciderSrc}` instead of unpacking: WRONG TREE. `assembleProject` puts pins at
+  `buck-src/<pin>`, where `ciderSrc` has them at `src/external/<pin>`, and it normalises
   symlinks the upstream trees get wrong (the libnotify `notify.defs` case).
 * symlink the top-level directories, the way `stageProject` does: **`os.walk` with
   `followlinks=False` STOPS at a symlinked directory**, which is the false-pass documented in
@@ -801,10 +801,10 @@ So the copy is structural: the script needs a real assembled tree, and giving it
 it costs.
 
 The last row is the whole point of the exercise: **32 minutes to 97 seconds**, measured on
-`darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `darling-src`,
+`darwin/frameworks/AVFoundation/constants.m`. What runs now is skeleton, `cider-src`,
 `buck2-stage-project`, the target and its `-out`. Nothing else.
 
-**And the prefix is unchanged by all of it.** `.#darling-buck2-prefix-min` rebuilt green
+**And the prefix is unchanged by all of it.** `.#cider-buck2-prefix-min` rebuilt green
 (1,652 builders, 0 errors, 72 min) and hashes to
 `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`, the SAME content hash as before ld64
 was touched. Content, not path: the drvPath moves on every graph rebuild by construction
@@ -817,10 +817,10 @@ Two causes, and neither was the one this section assumed for months:
    prefix installs, and `materialize.bxl` ensures it. So the graph **DUMP was building the
    entire prefix**. On the real tree those compiles just succeeded, which is why nobody saw it.
    Fixed by attaching them as hidden arguments: graph **18m34s to about 10 minutes**.
-2. **The graph copied pins from `${darlingSrc}`**, the whole assembled project, so any source
+2. **The graph copied pins from `${ciderSrc}`**, the whole assembled project, so any source
    edit moved it. Now per-pin stores. Proven before building: old `materialize-pins.drv` had 5
-   references including `darling-src.drv`, new has 151 of which 147 are pin stores and none is
-   `darling-src`. Graph output byte-identical either way.
+   references including `cider-src.drv`, new has 151 of which 147 are pin stores and none is
+   `cider-src`. Graph output byte-identical either way.
 
 The SKELETON (`scripts/buck-skeleton.py`, `skeleton = true` on the minimal endpoint) is correct
 and produces a graph **byte-identical** to the project-fed one, but it was never *sufficient*:
@@ -828,7 +828,7 @@ it closes only the `src` input. `scripts/buck-codegen-closure.py` computes the 1
 must keep real contents; `scripts/buck-codegen-keep.txt` is the 119-file delta.
 
 **The buck2 built ld64 aborted on 73 targets, and the cause was a GENERATOR bug.** Dropping
-the external ld64 exposed it: `nix build .#darling-buck2-prefix-min` failed on 73 links with
+the external ld64 exposed it: `nix build .#cider-buck2-prefix-min` failed on 73 links with
 
     stl_vector.h:1263: std::vector<ld::Fixup>::operator[]: Assertion __n < this->size() failed
     clang: error: unable to execute command: Aborted (core dumped)
@@ -844,7 +844,7 @@ of which 8 are `-Wno-*` and inert.
 Verified BOTH ways on a real negative control: `keymgr_firstpass` aborted with that assertion
 in the failing run, and after the fix it builds (7 builders, 32 s, 0 assertions), as do
 `platform_firstpass`, `system_kernel_firstpass`, `compiler_rt_firstpass` and
-`system_asl_firstpass`. The only semantic change reaching `darling-src` between the two runs
+`system_asl_firstpass`. The only semantic change reaching `cider-src` between the two runs
 is that define.
 
 Residual, not a blocker: 12 of 13 host cmake targets lose `-DDARLING` this way, but only ld64
@@ -959,7 +959,7 @@ patch.
 
 Narrowed twice more: the daemon logs of a failing and a working run are identical through
 `execve expand /bin/bash`, so bash execs fine; and with the same socket stdin
-`darling shell /bin/echo X` returns 127 **with a message from the outer bash**, so bash
+`cider shell /bin/echo X` returns 127 **with a message from the outer bash**, so bash
 also runs and writes. Only the NESTED `bash -c` aborts, which puts the fault in passing
 the socket fd to a SECOND guest process. Tracked as #46.
 
@@ -967,13 +967,13 @@ This retires the fd-2 lead for good: the fd-2-on-the-log line belongs to the per
 shellspawn init, by design, and the surviving init in a failed run holds no pipe of the
 caller's at all.
 
-- **Test side:** every darling invocation in a VM test needs `< /dev/null`.
+- **Test side:** every cider invocation in a VM test needs `< /dev/null`.
 - **Darling side (open):** the launcher should not block forever on a stdin that never
   EOFs after the guest command has exited.
 
 With stdin closed **the whole check passes at HEAD**: `nix build
-.#checks.x86_64-linux.darling-buck2-smoke` exits 0, all three subtests green, against a
-darling-buck2 built through the Nix endpoint rather than one already in the store. The
+.#checks.x86_64-linux.cider-buck2-smoke` exits 0, all three subtests green, against a
+cider-buck2 built through the Nix endpoint rather than one already in the store. The
 container boots in under half a second and the guest bash reports 3.2.57 and darwin.
 That is #10. What still fails is the exit-code subtest, and it is
 the only one that sets neither DPREFIX nor DARLING_NO_LAUNCHD. Arms with an explicit
@@ -1011,7 +1011,7 @@ the shell before the probe can report.
   aarch64-darwin outputs carry ad-hoc code signatures (nixpkgs signs via sigtool) — the
   oracle must handle signature bytes correctly, not diff them naively.
 - **F.4** document the QEMU aarch64 dev recipe (share `/nix/store` via virtiofs; never run
-  darlingserver under qemu-user — signal/TLS fidelity).
+  ciderd under qemu-user — signal/TLS fidelity).
 
 ### Rust + tooling
 - **#63 exec across architectures** [narrow] — daemon cross-arch exec; the guest 32-bit
@@ -1040,12 +1040,12 @@ the shell before the probe can report.
 - **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
   no nixpkgs substitute). A Rust rewrite is unstarted; only its nix-ninja edge handling is
   patched (see Build system).
-- **#68 finish the repo reorg** — move the C++ darlingserver + duct-tape from `src/external`
-  into `linux/darlingserver/`, completing the `darwin/` (guest) + `linux/` (host) seam.
-- **Linker (#57 tail)**: `packages.darling-ld64` (`nix/cctools-port.nix`) done. **The darwin
+- **#68 finish the repo reorg** — move the C++ ciderd + duct-tape from `src/external`
+  into `linux/ciderd/`, completing the `darwin/` (guest) + `linux/` (host) seam.
+- **Linker (#57 tail)**: `packages.cider-ld64` (`nix/cctools-port.nix`) done. **The darwin
   dylib link is validated (2026-08-07), and ld64 now builds under buck2 (#65)**: 30 `.cpp` plus
   10 `.c` objects and the link all succeed, `-v` prints `PROJECT:ld64`, and pointing `ld` and
-  `ld64_dir` at it links `//src/libsimple:libsimple_darling_dylib` to a real 64-bit Mach-O
+  `ld64_dir` at it links `//src/libsimple:libsimple_cider_dylib` to a real 64-bit Mach-O
   (magic `cffaedfe`). Two generator bugs had to be fixed first, both of which would silently
   hit any C++ target generated next: `gen-buck-from-ninja.py` never globbed `.hpp` (ld64's
   `abstraction/` is all `.hpp`, so that header root staged EMPTY) and never set `link_cxx`
@@ -1062,7 +1062,7 @@ the shell before the probe can report.
   (`-B @LD64@/bin -fuse-ld=@LD64@/bin/x86_64-apple-darwin20-ld`), which exists only because
   ld64 is an external prebuilt.
   **And that is the whole payoff, measured rather than assumed.** Today those 863 links depend
-  on a nix derivation whose `src` is the entire `darlingSrc`, so it rebuilds on every
+  on a nix derivation whose `src` is the entire `ciderSrc`, so it rebuilds on every
   first-party edit, about 15 of the 17.5 minutes such an edit still costs. As a buck2 target
   ld64's sources are under `buck-src/cctools-port/`, a PIN, which does not move when a
   first-party file changes. The 15 minutes leaves the per-edit path entirely.
@@ -1077,16 +1077,16 @@ the shell before the probe can report.
 ### Build system — make nix-ninja the primary incremental build (#26/#39)
 Lower every edge of Darling's ~26k-edge ninja graph to its own content-addressed nix
 derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-nix). Infra:
-`nix/lib/darlingNinja.nix` (`buildTarget`), vendored `nix/lib/nix-ninja/`.
+`nix/lib/ciderNinja.nix` (`buildTarget`), vendored `nix/lib/nix-ninja/`.
 - **State:** the libSystem umbrella builds per-edge (~5036 edges, valid Mach-O);
-  darlingserver-ninja green per-edge; the graph-json IFD is feasible (~100s). Interim fast
-  loops exist (`packages.darlingserver` coarse ~5-6 min vs 40; launcher fast-path).
+  ciderd-ninja green per-edge; the graph-json IFD is feasible (~100s). Interim fast
+  loops exist (`packages.ciderd` coarse ~5-6 min vs 40; launcher fast-path).
 - **Open blocker:** full-graph `buildTarget {}` (the `all` phony) stops at
   `migHeaderIncsFor` scope-sensitivity — `asl.c`'s `<asl_ipc.h>` `-I` resolves at subgraph
   scope but returns `[]` at full-graph scope.
 - **To make primary:** (1) close the asl.c blocker → full-graph green; (2) build the
-  install/fixup wrapper reproducing `package.nix`'s exact `libexec/darling` layout from
-  per-edge outputs, diff'd identical; (3) wire `packages.darling-ninja`, kept OUT of
+  install/fixup wrapper reproducing `package.nix`'s exact `libexec/cider` layout from
+  per-edge outputs, diff'd identical; (3) wire `packages.cider-ninja`, kept OUT of
   `nix flake check` (thousands of derivations hang it); (4) vendor rust-ninja, drop the
   `overby` input.
 
@@ -1135,10 +1135,10 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
       once; the socket inode is stable across a run and `lsof` shows it alive and
       `type=DGRAM (UNCONNECTED)` at failure time.
     * "Two daemons fighting over the path." The WORKING (DARLING_NO_LAUNCHD=1) run has
-      three darlingserver processes and the failing one has two, so the count is not it.
+      three ciderd processes and the failing one has two, so the count is not it.
 
     * The socket being replaced mid-run. Sampled at 100 Hz for 6s: the inode at
-      <prefix>/.darlingserver.sock never changes.
+      <prefix>/.ciderd.sock never changes.
     * The container's mount namespace resolving the path differently. The host, the daemon's
       /proc/PID/root and the guest's /proc/PID/root all stat the SAME inode.
 
@@ -1185,7 +1185,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
         t=22s  daemons=2  mldr=4  rpclog=0
         t=24s  daemons=1  mldr=2  rpclog=3
 
-  Two mldr processes and one darlingserver disappear together at ~23 seconds, and all three
+  Two mldr processes and one ciderd disappear together at ~23 seconds, and all three
   -111 lines (mach_reply_port, mach_msg_overwrite, interrupt_enter) appear in that same
   instant, with 66 seconds of timeout still to run. In the earlier timestamped run the
   refusal coincided with the harness's own SIGTERM, which is what led to calling the whole
@@ -1286,8 +1286,8 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
     * `pkill -9 -x a b c` is a USAGE ERROR ("only one pattern can be provided") and kills
       NOTHING, silently, exiting 2. Every cleanup written that way is a no-op. 22 stale mldr
       processes from earlier runs had accumulated and were competing with live measurements.
-      Use `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'` -- one ERE pattern.
-    * Do NOT pre-create DPREFIX. darling treats an existing prefix directory as one it has
+      Use `pkill -9 -x 'mldr|cider|ciderd|shellspawn'` -- one ERE pattern.
+    * Do NOT pre-create DPREFIX. cider treats an existing prefix directory as one it has
       already set up, so `mkdir -p` before booting skips first-time setup and launchd boots
       into an unpopulated filesystem and stalls deterministically at ~509 lines of daemon
       log. This masqueraded as a port bug for a while: the check failed 3/3 while the same
@@ -1302,8 +1302,8 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   resume path, and it is the last unexplained step.
 
   Not a lead: shellspawn is PRESENT in the prefix, at usr/libexec/shellspawn (NOT
-  usr/libexec/darling/shellspawn, where I looked first and wrongly concluded it was missing),
-  together with System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist. `launchctl
+  usr/libexec/cider/shellspawn, where I looked first and wrongly concluded it was missing),
+  together with System/Library/LaunchDaemons/org.ciderhq.shellspawn.plist. `launchctl
   bootstrap -S System` is what should load that plist, which is why nothing runs the command:
   the launcher waits for a shellspawn that never starts because bootstrap never finishes.
 
@@ -1324,7 +1324,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   /proc/*/fd), and /proc/<daemon pid>/net/unix reads that namespace's table directly.
 
   Reproduce by dropping `DARLING_NO_LAUNCHD=1`. The daemon's own log is
-  `<prefix>/darlingserver.log`, NOT the launcher's stderr. Still bypassed by
+  `<prefix>/ciderd.log`, NOT the launcher's stderr. Still bypassed by
   `DARLING_NO_LAUNCHD=1`; not on the nix-builds critical path.
 - Multi-user nix-daemon, `_nixbldN` setuid-in-userns, concurrent-build fcntl locking — open,
   production-hardening, not on the critical path (single-user M1 sidesteps it).
@@ -1334,8 +1334,8 @@ Machinery exists but was **never validated end-to-end on a live prefix** and pre
 Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
 - CI: `.tangled/workflows/ci.yml` (tangled.org), `tests/*.nix`,
   `tests/nix/compatibility-matrix.sh`, dirserv-stubs check.
-- Remote builder: `nix/darlingBuilderModule.nix` (`services.darling-builder`, sshd in prefix,
-  `nix.buildMachines`), `scripts/darling-build-hook`, VM tests. Design (host
+- Remote builder: `nix/ciderBuilderModule.nix` (`services.cider-builder`, sshd in prefix,
+  `nix.buildMachines`), `scripts/cider-build-hook`, VM tests. Design (host
   `nix.buildMachines` → sshd in Darling → guest nix-daemon, shared store avoids SSH copy) is
   the north star but unexercised — and conflicts with one-command-per-container.
 
@@ -1382,11 +1382,11 @@ to "still crash on trivial cases as recently as Nix 2.34.x", which is the versio
 ### Upstream adoption
 Fork point `f39a29489` (2026-03); upstream idle on core as of 2026-07-19. Adopt only when a
 concrete failure justifies it:
-- Newer-toolchain build fixes (we build under clang 21): darling
+- Newer-toolchain build fixes (we build under clang 21): cider
   `e3fe4288 3f277ba5 9f485c91 ddd118d9 fc5c0666`, xnu `644decacee`. Cherry-pick onto our
   patched xnu; **don't bump the gitlink** (ours diverges).
 - libkqueue `b0795a2e` (EVFILT_TIMER type-punning) if a kqueue-timer stall appears.
-- Upstream darlingserver C++ tracking is obsolete (we're full-Rust). Fixing the launchd-boot
+- Upstream ciderd C++ tracking is obsolete (we're full-Rust). Fixing the launchd-boot
   hang would be an upstream-caliber rootless contribution.
 
 ---
@@ -1394,14 +1394,14 @@ concrete failure justifies it:
 ## Operational notes / gotchas
 
 - **Run recipe** (from a built `$out = nix build .#default`):
-  `DSERVER_LIBEXEC_PATH=$out/libexec/darling
-  DSERVER_MLDR_PATH=$out/libexec/darling/usr/libexec/darling/mldr DARLING_NO_LAUNCHD=1
-  DPREFIX=<fresh dir> $out/bin/darling shell sh -c 'uname -sm'` → `Darwin x86_64`.
+  `DSERVER_LIBEXEC_PATH=$out/libexec/cider
+  DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1
+  DPREFIX=<fresh dir> $out/bin/cider shell sh -c 'uname -sm'` → `Darwin x86_64`.
 - **Phantom-path trap:** after any commit that touches a Rust crate, `.#default`'s hash
   changes and `nix eval .outPath` returns a NEW, UNBUILT path. Booting against it fails
   SILENTLY (daemon binary absent → launcher spins in its container-acquisition loop,
-  wchan=hrtimer_nanosleep, empty log, `pgrep darlingserver` finds nothing). Always
-  `nix build .#default` first (or assert `test -x $out/bin/darlingserver`). The same drift
+  wchan=hrtimer_nanosleep, empty log, `pgrep ciderd` finds nothing). Always
+  `nix build .#default` first (or assert `test -x $out/bin/ciderd`). The same drift
   happens dirty→committed (a dirty-tree build and its commit hash differ).
 - **mldr debug is gated** behind `MLDR_DEBUG=1` (default off). Do NOT grep for `[mldr]` to
   confirm a boot with the gate off — grep guest stdout (`Darwin`/`uname` output). The ungated
@@ -1418,7 +1418,7 @@ concrete failure justifies it:
   low-fd dup2/close can't clobber them); the child does a socket-refresh.
 - **One command per fresh container** (kill the stale daemon first). Keep the prefix path
   short — the daemon/shellspawn AF_UNIX socket lives under `<prefix>/var/run/` and overflows
-  `sockaddr_un.sun_path` (~108 chars) on long paths; use `~/.darling`. Export
+  `sockaddr_un.sun_path` (~108 chars) on long paths; use `~/.cider`. Export
   `TMPDIR=$HOME/tmp` (the default Darwin temp dir EACCESes). Two-boot warm flow; harness
   output must be file-based, never piped through a reader (a leaked container holds the pipe
   write-end open and blocks EOF).
@@ -1426,7 +1426,7 @@ concrete failure justifies it:
   symbol; link the consumer against real ncurses/libtinfo, don't touch ld64. `-fcommon`
   doesn't fix it.
 - **xnu pin gotcha:** the super-repo gitlink was a Campaign-1 rev never published upstream;
-  darling-src fetches the pinned rev from `submodules.json` + applies `patches/xnu/*`.
+  cider-src fetches the pinned rev from `submodules.json` + applies `patches/xnu/*`.
   Cherry-pick upstream fixes onto our patched xnu; don't bump the pin blindly.
 - **nix-ninja / mig gotchas:** merged `$out` conflates a checked-in `osfmk/**/X.h` with the
   same-named mig-generated header (10 collisions; `notify.h` is
@@ -1444,7 +1444,7 @@ frameworks, same features. What changes is only HOW it is built: buck2 instead o
 Rust instead of the C daemon/launcher/loader, Nix instead of a system install. The port is
 not a subset and is not finished when something merely boots.
 
-Darling's own COMPONENTS hierarchy (cmake/darling_parse_components.cmake) is the measure,
+Darling's own COMPONENTS hierarchy (cmake/cider_parse_components.cmake) is the measure,
 because it is upstream's own decomposition:
 
     core -> system -> cli
@@ -1461,7 +1461,7 @@ languages; `all` adds WebKit and JavaScriptCore on top.
 Order of attack, each stage gated on the one before:
 
 1. **cli to 100%** -- close the last install entries and link edges, keep every check green.
-2. **stock**. The flake already builds a `stock` graph (`packages.darling-graph`), so
+2. **stock**. The flake already builds a `stock` graph (`packages.cider-graph`), so
    coverage can be measured against it the day cli is done. Expect the GUI frameworks to be
    the bulk of the work and dev-stubs to be cheap.
 3. **all** -- jsc and webkit last; they are the largest single consumers and depend on
@@ -1507,7 +1507,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
-3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
+3. **hdiutil** (buck-src/cider-dmg; wants fuse, a HOST library, so check how the reference
    supplies it before assuming this is portable).
 4. **Make the generators re-runnable** before the reference graph goes away.
    gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
@@ -1540,16 +1540,16 @@ has been true six times running, each time a check freshly written.
   templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. `scripts/`, `nix/`,
   `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
   are their own inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`,
-  and `nix/lib/darlingBuck2{Graph,Lower}.nix`, which ARE the derivations.
+  and `nix/lib/ciderBuck2{Graph,Lower}.nix`, which ARE the derivations.
   `scripts/buck-endpoint-stale.nu` answers this in a second, and it now takes the rule from
   the two filters rather than from a listing of the result: both drop `tests/**/*.nix`, so
   editing the VM test is NEUTRAL (measured: the prefix derivation did not move, and
-  `nix build .#darling-buck2` afterwards consumed the very store path the earlier build had
+  `nix build .#cider-buck2` afterwards consumed the very store path the earlier build had
   produced), while `tests/buck2/**` holds real targets and is not.
 - **Evaluating the endpoint: 155s to 58s, measured with the eval profiler.**
-  `nix eval --raw .#darling-buck2-prefix.drvPath --eval-profiler flamegraph
+  `nix eval --raw .#cider-buck2-prefix.drvPath --eval-profiler flamegraph
   --eval-profile-file <f>` works in nix 2.34 and puts 57 percent of the self time in
-  darlingBuck2Lower.nix. Three output-preserving fixes: the staged-tree script escaped the
+  ciderBuck2Lower.nix. Three output-preserving fixes: the staged-tree script escaped the
   same destination TWICE per link (155 to 68), argv escaping now runs once per DISTINCT
   argument since 97.5 percent of 208,515 entries repeat (68 to 60), and staged link targets
   the same way at 45 percent repeats (60 to 58). Each one is safe because the prefix
@@ -1571,8 +1571,8 @@ has been true six times running, each time a check freshly written.
   arithmetic (`^    "` is an entry, `^      "` is a link).
 - **THE NIX ENDPOINT BUILDS A WORKING DARLING, END TO END, FOR THE FIRST TIME.** 8,472
   derivations, zero builder failures. The prefix is 622 MB and 34,126 files with
-  `bin/darling`, `bin/darlingserver` and `bin/darling-coredump`, and
-  `scripts/buck-bash-check.nu --prefix result/darling_prefix__prefix` PASSES: the container
+  `bin/cider`, `bin/ciderd` and `bin/cider-coredump`, and
+  `scripts/buck-bash-check.nu --prefix result/cider_prefix__prefix` PASSES: the container
   boots and prints `BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19`, which is the
   Darwin bash and not the host's 5.x. Wall time: 29m41s for the graph, then about four
   hours for the lowering, most of it two avoidable problems (#48, #52).
@@ -1590,7 +1590,7 @@ has been true six times running, each time a check freshly written.
      through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
      and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
 - **THE ROOT INVALIDATION CAUSE IS THE GRAPH DERIVATION ITSELF (#56), and #50, #53, #54 and
-  #55 are all downstream of it.** `darlingBuck2Graph.nix` takes the project as ONE
+  #55 are all downstream of it.** `ciderBuck2Graph.nix` takes the project as ONE
   `builtins.path` that excludes only plan, docs, nix, scripts and a few dotfiles, so
   `darwin/`, `src/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
   rebuilds (30-47 min of buck2 analysis), its drv moves, and every lowered derivation moves
@@ -1636,13 +1636,13 @@ has been true six times running, each time a check freshly written.
   installed.** It walks the derivation tree and names the first real difference, which for a
   content-addressed dependency is the thing that is otherwise hard to see: a consumer binds
   to the producing DERIVATION, not to its output path, so it prints
-  `The input derivation named darling-buck2-graph.drv differs` and then `Sources: - old
+  `The input derivation named cider-buck2-graph.drv differs` and then `Sources: - old
   buck2-graph-dump.py + new`. That is the whole #55 cascade in one command. It beats
   decoding the `text` env var out of a `.drv` by hand, which is how this was first found.
   Pair the SAME artifact across the two revisions, not two different variants: comparing the
   default prefix against the coarse one just reports pin merging and tells you nothing.
 - **VERIFY ON ONE DERIVATION, NOT ON A FULL PREFIX REBUILD.** #50 was proven on
-  `.#darling-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
+  `.#cider-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
   diffing a sorted file list plus per-file sha256 against a known-good output. Queueing #53
   behind a 3 hour rebuild of all ~8,400 derivations tested nothing that
   `nix build /nix/store/<hash>.drv^out` would not have caught, and blocked every other
@@ -1654,7 +1654,7 @@ has been true six times running, each time a check freshly written.
   drvPath moved.
 - **#55 DONE. #54 IS NOT, AND EVERY SHORTCUT TO IT IS NOW CLOSED BY MEASUREMENT.** The goal is
   reachable: with `sourceGroups` on, editing `ACAccount.m` and rebuilding
-  `libsimple_darlingserver` ran **0 builders**, against 323 with neither flag. What fails is
+  `libsimple_ciderd` ran **0 builders**, against 323 with neither flag. What fails is
   every available way of getting there.
   **Splitting the source into per-subtree stores cannot work for this tree.** A group is staged
   as one symlink to its own store path, and **2,306 of the 2,970 symlinks under `darwin`, `src`
@@ -1664,7 +1664,7 @@ has been true six times running, each time a check freshly written.
   `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
   1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
      parent once it crosses the farm symlink, so
-     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` gives `/nix/store/xnu`
+     `readlink -f <farm>/src/external/IOKitUser/cider/submodules/xnu` gives `/nix/store/xnu`
      while `<farm>/src/external/xnu` exists and is never consulted.
   2. REWRITING ESCAPES TO ABSOLUTE PATHS RELOCATES THE PROBLEM, since the destination store has
      escapes of its own: for the pins it took 143 dangling links to **413**. The SDK
@@ -1745,13 +1745,13 @@ has been true six times running, each time a check freshly written.
 
   | | |
   |---|---|
-  | `.#darling-buck2-prefix-min-grouped` | 1,617 builders, 0 root failures, 70 min |
+  | `.#cider-buck2-prefix-min-grouped` | 1,617 builders, 0 root failures, 70 min |
   | content hash | `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`, the recorded one |
   | probe: unrelated `.m` edit, `SecItemShimOSX_obj` | **2 builders**, target NOT rebuilt, output path IDENTICAL |
 
   The probe target is the one that reads through a nested submodule and exposed the per-pin
   store regression, so it is a check that can fail. The two builders that do run are
-  `darling-buck2-skeleton` and `darling-buck2-sources`, the graph-side content passes.
+  `cider-buck2-skeleton` and `cider-buck2-sources`, the graph-side content passes.
   What made it work, after `sourceGroups` had the right granularity and the wrong mechanism for
   months: MIRRORING instead of directory links (groups AND pins), and `pinsTree`, one CA tree of
   all 147 pins whose escape destinations come from their own store paths rather than from the
@@ -1762,13 +1762,13 @@ has been true six times running, each time a check freshly written.
 
   **AND POINTING pinPath AT THE PER-PIN STORES BROKE THE DEFAULT ENDPOINT. Reverted (#74).**
   Seven pins carry nested submodules, and the per-pin store does not have their content, so the
-  pin's own link `darling/include/IOKit/IOReturn.h ->
-  ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
+  pin's own link `cider/include/IOKit/IOReturn.h ->
+  ../../../cider/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
   `stageProject` uses `pinPath` too, so this was not confined to grouped staging:
   `SecItemShimOSX_obj` failed on `prefix-min`, an endpoint that had built green with a matching
   prefix hash. The revert rebuilt **0 builders**, i.e. it resolved to the cached pre-regression
   output.
-  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/darling/submodules/
+  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/cider/submodules/
   xnu` IS ITSELF A SYMLINK, to `../../../xnu/`, which resolves to a SIBLING PIN. The "1 entry"
   was that link. In the assembled tree it resolves (23 entries); planted as
   `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,
@@ -1784,8 +1784,8 @@ has been true six times running, each time a check freshly written.
   for this exact class of bug, and the pin check still uses the method it warns against.
 
   **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
-  `"${darlingSrc}/${p}"` and `darlingSrc` is the whole project, so every staging script that
-  named a pin moved on any edit. Taking pins from `darlingSrc.pinPaths` instead, which the
+  `"${ciderSrc}/${p}"` and `ciderSrc` is the whole project, so every staging script that
+  named a pin moved on any edit. Taking pins from `ciderSrc.pinPaths` instead, which the
   GRAPH has done since the per-pin split, is what finally cut it: on one target, an unrelated
   `.m` edit went from 6 builders to **2**, neither of them the target, and the target's output
   is the SAME store path either side of the edit.
@@ -1858,8 +1858,8 @@ has been true six times running, each time a check freshly written.
   (3,114 to 62) is certain; the time saving is not cleanly attributed, because the whole-project
   cmake CONFIGURE that both pay is now the dominant term. A fair number needs an idle re-measure.
 - **DONE (#68): one command, one evaluation, and a counter that self-tests.**
-  `.#darling-buck2-one` is the endpoint's OWN derivation for `libsimple_darlingserver`,
-  reached through `darling-buck2-prefix-min` rather than lowered again, so it is the same drv
+  `.#cider-buck2-one` is the endpoint's OWN derivation for `libsimple_ciderd`,
+  reached through `cider-buck2-prefix-min` rather than lowered again, so it is the same drv
   the endpoint builds (both evaluate to `jahgjqzjq…`). `scripts/buck-quick-check.nu` builds it
   and counts builders that RAN, with a probe mode that edits, rebuilds, counts and reverts by
   stripping its own marker, so an interrupted run leaves something the next one can clean up.
@@ -1923,7 +1923,7 @@ has been true six times running, each time a check freshly written.
   dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
   are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
   by the lowered BUILDERS and move to `data`. Recorded paths are relative, so the split is a
-  move. Verified BOTH ways on `.#darling-buck2-lowered`: adding a key to graph.json rebuilt
+  move. Verified BOTH ways on `.#cider-buck2-lowered`: adding a key to graph.json rebuilt
   only the graph and left the target at the same output with no builder run, while writing
   one file into `treelinks/` moved the data path and did rebuild it; removing the probe
   returned to the identical baseline output.
@@ -1957,7 +1957,7 @@ has been true six times running, each time a check freshly written.
   consumes, so nothing in Nix is proportional to the 3,581,461 links. Together with the
   three escaping fixes earlier the same evaluation has gone 161s to 22.4s. The prefix
   derivation MOVED, by design, so the guard did not apply: verified instead by building
-  `.#darling-buck2-lowered` and a real codegen target (dserver_rpc) out of the new graph,
+  `.#cider-buck2-lowered` and a real codegen target (dserver_rpc) out of the new graph,
   and by reading an emitted staging script. The diagnosis that led there is kept below.
 - **How it was found, since the method transfers and the conclusions above do not.** The
   evaluation split into a PARSE (11.0s, 3.73 GB, `fromJSON` alone) and the LOWERING on top
@@ -2017,10 +2017,10 @@ has been true six times running, each time a check freshly written.
   Sourcing buck-env.nu alone is not enough: the direnv cache goes stale (rustc and bindgen
   went missing that way), and buck2's daemon inherits the client PATH at daemon START, so
   `buck2 killall` after fixing PATH.
-- **Never pre-create DPREFIX.** darling treats an existing prefix as already set up, and
+- **Never pre-create DPREFIX.** cider treats an existing prefix as already set up, and
   launchd then boots into an unpopulated filesystem and stalls deterministically.
 - **`pkill -f <pattern>` matches the command you are about to run** (exit 144). For
-  containers use one ERE pattern: `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'`.
+  containers use one ERE pattern: `pkill -9 -x 'mldr|cider|ciderd|shellspawn'`.
 - **A `jj git push` "Could not read from remote repository" is the remote**, not you
   (`ssh -o BatchMode=yes git@tangled.org` shows an IPv6 connect timeout). Retry.
 - **Rebuild costs**: touching buck/generated/sdk_headers.bzl or the ksmig mig_flags rebuilds
@@ -2031,23 +2031,23 @@ has been true six times running, each time a check freshly written.
 - **All three runtime checks failing together is usually the MACHINE, not the tree**, and it
   has had three separate causes so far, so work through them in order before believing a
   regression. (1) Leftover containers, especially after a guest-nix milestone, which leaves
-  its own prefix and daemon behind: `pkill -9 -x 'mldr|darling|darlingserver|shellspawn'`.
+  its own prefix and daemon behind: `pkill -9 -x 'mldr|cider|ciderd|shellspawn'`.
   (2) A wrong ARTIFACT at a right path, which looks identical from outside: read the
   `buck/prefix/BUCK` diff, which is how a dylib landing at usr/bin/login was found. (3) Load.
   Running the checks immediately after a large rebuild fails them; the same scripts pass on
   an idle machine minutes later. Boot the container by hand as the tiebreaker -- it takes
   seconds and tells you at once whether the tree or the harness is at fault:
-  `DPREFIX=<fresh> DSERVER_LIBEXEC_PATH=$rt/libexec/darling
-  DSERVER_MLDR_PATH=$rt/libexec/darling/usr/libexec/darling/mldr DARLING_NO_LAUNCHD=1
-  $rt/bin/darling shell /bin/bash -c 'echo HELLO'`.
+  `DPREFIX=<fresh> DSERVER_LIBEXEC_PATH=$rt/libexec/cider
+  DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1
+  $rt/bin/cider shell /bin/bash -c 'echo HELLO'`.
 - **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
   gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
   backtracking regex I first blamed.
 
 Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then
-`DSERVER_LIBEXEC_PATH=$rt/libexec/darling
-DSERVER_MLDR_PATH=$rt/libexec/darling/usr/libexec/darling/mldr bash
-scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/darling-hello-m1-buck2`. Expect
+`DSERVER_LIBEXEC_PATH=$rt/libexec/cider
+DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr bash
+scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck2`. Expect
 `build_rc=0` and "Hello, world!".
 
 ---
@@ -2092,8 +2092,8 @@ string DURING EVAL, so whole-Darling eval was ~15-40 min, paid on every build (t
 IFD busts Nix's eval cache). Fixed by **build-time lowering** (`nix/lib/nix-ninja/build/lower_group.py`,
 flag `buildTimeLowering`): Nix eval now computes only each group's `{edge list, external-group
 drvs}`; the tool reads the shared `graph.json` in the sandbox and does the rewrite/stage/run.
-Measured: `darling-full-group-bt` eval **~58 s** (was ~35 min); migcom + libSystem green through
-it. `darling-{group-test3,libsystem-group,full-group}-bt` exercise it; the legacy eval-time
+Measured: `cider-full-group-bt` eval **~58 s** (was ~35 min); migcom + libSystem green through
+it. `cider-{group-test3,libsystem-group,full-group}-bt` exercise it; the legacy eval-time
 `mkGroup` path is untouched behind the flag.
 
 **Incremental rebuild is a separate, still-open problem, and it is NOT just source staging.**
@@ -2129,7 +2129,7 @@ that loop proves too slow for how Darling actually gets developed.
 
 ### Full-green grind (#2): where it stands (branch `wip-mega-group-unwind`)
 
-The build-time path (`darling-full-group-bt`) grinds green through migcom -> libSystem -> duct-tape
+The build-time path (`cider-full-group-bt`) grinds green through migcom -> libSystem -> duct-tape
 -> libc -> and reaches the `security/*` / openssh tier. Mechanical gaps fixed along the way (all
 committed): skip CMake housekeeping targets, shebang rewrites on staged sources AND generated script
 outputs, rspfiles, ext-dir de-symlink before cp, command-referenced source staging, srcHeaders
@@ -2152,7 +2152,7 @@ duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f2
   before the `notify_firstpass` it links). Replaced with iterative Tarjan condensation (producers
   first; only genuine cycles emit as a block). Fixed libc.
 
-Remaining `darling-full-group-bt` failures (18, taxonomised), in priority order:
+Remaining `cider-full-group-bt` failures (18, taxonomised), in priority order:
 
 1. **Source header shadows a SYSTEM header for a C compile (WALL #1, ~14 failures, dominant).**
    Confirmed via the compiler's `In file included from` chain (NOT a plain libcxx-on-`-I` issue):
@@ -2180,7 +2180,7 @@ Remaining `darling-full-group-bt` failures (18, taxonomised), in priority order:
    `derived_src/funcnames.gen` -- generated non-header data a compile reads, not reaching the sandbox.
 
 Status: the eval floor is fixed+committed; the notify.h wall + mega-SCC are fixed+committed; libc
-green. `main` stays green on the default (eval-time) path and `darling-{group-test3,libsystem-group}
+green. `main` stays green on the default (eval-time) path and `cider-{group-test3,libsystem-group}
 -bt`; `libSystem-group-bt` is green on the build-time path too (re-verified). `full-group-bt` green
 through libc; the dominant remaining blocker is WALL #1 (root-separation). The generic `nix-ninja`
 lib is upstreamable to overby.me (sibling to its buck2/cargo libs; rust-ninja extractor already

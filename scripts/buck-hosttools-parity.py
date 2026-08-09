@@ -54,7 +54,7 @@ def main(argv: list[str]) -> int:
     notmacho = pathlib.Path("/tmp/buck-hosttools-parity-notmacho.bin")
     notmacho.write_bytes(b"not a mach-o at all\n")
 
-    dylib = b / "src/libsimple/__libsimple_darling_dylib__/libsimple_darling.dylib"
+    dylib = b / "src/libsimple/__libsimple_cider_dylib__/libsimple_cider.dylib"
     elfobj = b / "src/startup/__rtsig__/__objs/rtsig.c.o"
 
     pairs = [

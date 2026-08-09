@@ -44,7 +44,7 @@ const DEFAULT_GLOBS = [
     "darwin/**/*.rs"
     "scripts/*"
 ]
-# NOT nix/** yet: nix/lib/darlingBuck2Graph.nix carries one reference that is
+# NOT nix/** yet: nix/lib/ciderBuck2Graph.nix carries one reference that is
 # package-relative on purpose, and editing that file rebuilds the graph derivation
 # even for a comment, so it waits for a moment when nothing is building.
 
@@ -71,8 +71,8 @@ def main [--scan: string = ""] {
             | parse --regex '(?m)(?P<pre>^|[^A-Za-z0-9_/.-])(?P<ref>scripts/[A-Za-z0-9_-]+\.(?:sh|nu|py|bxl))'
             | get ref
             | uniq
-            # A BUCK file names its script RELATIVE TO ITS PACKAGE: darlingserver's
-            # BUCK points at src/external/darlingserver/scripts/generate-rpc-wrappers.py
+            # A BUCK file names its script RELATIVE TO ITS PACKAGE: ciderd's
+            # BUCK points at src/external/ciderd/scripts/generate-rpc-wrappers.py
             # by its package-relative name, which is correct and resolves to a real
             # file. Resolve both ways before calling it missing. (Spelled here as a
             # full path on purpose: a bare one would make this comment its own hit.)

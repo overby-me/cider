@@ -2,7 +2,7 @@
 //
 // M0/M1 (this file): the crate scaffold, argv-shape detection, special-env handling, and
 // the Mach-O parse via goblin. The address-space setup (M2), dyld + start stack + commpage
-// (M3), darlingserver checkin (M4), and register setup + jump-to-entry (M5) are the next
+// (M3), ciderd checkin (M4), and register setup + jump-to-entry (M5) are the next
 // milestones (PLAN.md). All the unsafe mapping/jump work is deferred so
 // this compiles first and the parse path can be validated on real guest binaries.
 #![allow(dead_code)]

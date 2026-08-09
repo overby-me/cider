@@ -1,9 +1,9 @@
 #!/usr/bin/env nu
 # prefetch-submodule-hashes.nu - fill the `hash` field in nix/submodules.json.
 #
-# The second half of the off-git-submodules move (with nix/lib/darling-src.nix): compute the
+# The second half of the off-git-submodules move (with nix/lib/cider-src.nix): compute the
 # fetchFromGitHub SRI hash for each pinned (owner, repo, rev) by prefetching the GitHub archive,
-# and write it back into the manifest so darling-src.nix can fetch it purely.
+# and write it back into the manifest so cider-src.nix can fetch it purely.
 #
 # The manifest itself was first written by a gen-submodule-manifest.sh that no longer exists,
 # which is why the file shape below is described here rather than pointed at.

@@ -3,7 +3,7 @@
 # cannot run at all now. The 16 glue .c it also lists were replaced by Rust under
 # linux/server/src/xnu (#71) and deleted. Its outputs, xnu-sys/BUCK and
 # buck/generated/duct_tape_flags.bzl, are committed; this is kept for provenance.
-"""Generate src/external/darlingserver/xnu-sys/BUCK from its CMakeLists.txt.
+"""Generate src/external/ciderd/xnu-sys/BUCK from its CMakeLists.txt.
 
 duct-tape is ~135 source paths, 45 MIG definitions and ~120 preprocessor
 defines. Hand-transcribing that is error-prone and would drift on every upstream
@@ -13,7 +13,7 @@ where it drifts, hand-authored where we iterate.
 
 What is NOT in the CMakeLists, and is therefore spelled out below, is the flags
 duct-tape inherits from parent scopes. Those were read off the configured
-reference build.ninja (darling-graph's build.ninja, the exact DEFINES/FLAGS
+reference build.ninja (cider-graph's build.ninja, the exact DEFINES/FLAGS
 ninja passes clang), not guessed -- reading only xnu-sys/CMakeLists.txt would
 miss -DDARLING, the four DSERVER_* defines and the -Wno-nullability group.
 
@@ -28,7 +28,7 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DT = "src/external/darlingserver/xnu-sys"
+DT = "src/external/ciderd/xnu-sys"
 CMAKELISTS = os.path.join(REPO, DT, "CMakeLists.txt")
 OUT = os.path.join(REPO, DT, "BUCK")
 # The defines and warning flags also go to a loadable file, because a BUCK file cannot be
@@ -39,7 +39,7 @@ OUT = os.path.join(REPO, DT, "BUCK")
 FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 
 # duct-tape glue that has been ported to Rust (#71) and is no longer compiled into
-# libdarlingserver_duct_tape.a. The Rust replacement lives in linux/server/src/ and exports
+# libciderd_duct_tape.a. The Rust replacement lives in linux/server/src/ and exports
 # the same C ABI, so the glue still written in C links against it unchanged.
 #
 # Ordering for the rest is not a matter of taste: scripts/xnu-sys-portability.py ranks the
@@ -77,7 +77,7 @@ PORTED_TO_RUST = [
     "src/thread.c",
 ]
 
-# Inherited from the top-level CMakeLists and src/external/darlingserver's, in
+# Inherited from the top-level CMakeLists and src/external/ciderd's, in
 # the order the reference build passes them.
 PARENT_DEFINES = [
     "-DDARLING",
@@ -88,7 +88,7 @@ PARENT_DEFINES = [
 ]
 
 # Warning flags every Darling compile gets from the top-level CMakeLists, plus
-# the -Wno-error=implicit-function-declaration that nix/lib/darling-graph.nix
+# the -Wno-error=implicit-function-declaration that nix/lib/cider-graph.nix
 # and nix/package.nix pass as CMAKE_C_FLAGS.
 PARENT_FLAGS = [
     "-Wno-error=implicit-function-declaration",
@@ -196,9 +196,9 @@ def parse_migs(text: str) -> list[dict]:
 
 
 def parse_library_sources(text: str) -> list[str]:
-    m = re.search(r"add_library\(darlingserver_duct_tape STATIC\s*\n(.*?)\n\)", text, re.S)
+    m = re.search(r"add_library\(ciderd_duct_tape STATIC\s*\n(.*?)\n\)", text, re.S)
     if not m:
-        sys.exit("could not find add_library(darlingserver_duct_tape STATIC ...)")
+        sys.exit("could not find add_library(ciderd_duct_tape STATIC ...)")
     srcs = []
     for raw in m.group(1).split("\n"):
         line = raw.strip()
@@ -280,7 +280,7 @@ def main(argv: list[str]) -> int:
     w("# Regenerate after an upstream bump; do not hand-edit.")
     w("#")
     w("# duct-tape is the kernel-emulation glue that compiles the vendored XNU")
-    w("# (osfmk/bsd) into libdarlingserver_duct_tape.a, which the Rust daemon links")
+    w("# (osfmk/bsd) into libciderd_duct_tape.a, which the Rust daemon links")
     w("# via DUCT_TAPE_LIB. Host tier: native ELF, no cross toolchain, no Mach-O.")
     w("")
     # The two lists live in flags.bzl, not inline, so that linux/server can load the
@@ -312,8 +312,8 @@ def main(argv: list[str]) -> int:
     for name, _ in HEADER_ROOTS:
         w(f'        ":{name}",')
     w('        "//src/libsimple:libsimple_headers",')
-    w('        "//src/external/darlingserver:dserver_headers",')
-    w('        "//src/external/darlingserver:dserver_rpc",')
+    w('        "//src/external/ciderd:dserver_headers",')
+    w('        "//src/external/ciderd:dserver_rpc",')
     w('        "//src/startup:rtsig_header",')
     w("    ],")
     w('    visibility = ["PUBLIC"],')
@@ -395,8 +395,8 @@ def main(argv: list[str]) -> int:
     w(")")
     w("")
     w("cc_static_lib(")
-    w('    name = "darlingserver_duct_tape",')
-    w('    lib_name = "darlingserver_duct_tape",')
+    w('    name = "ciderd_duct_tape",')
+    w('    lib_name = "ciderd_duct_tape",')
     w("    objs = [")
     w('        ":dt_objects",')
     w('        ":dt_mig_objects",')
@@ -405,7 +405,7 @@ def main(argv: list[str]) -> int:
     w('    exported_headers = glob(["include/**/*.h"]),')
     w('    include_root = "include",')
     w("    deps = [")
-    w('        "//src/libsimple:libsimple_darlingserver",')
+    w('        "//src/libsimple:libsimple_ciderd",')
     w("    ],")
     w('    linker_flags = [')
     w('        "-lpthread",')

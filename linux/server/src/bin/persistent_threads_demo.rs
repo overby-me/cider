@@ -10,8 +10,8 @@
 //! combines a STACK-LOCAL stamped before the block with the delivered payload -- so the
 //! stack survived. See PLAN.md.
 
-use darling::registry::Registry;
-use darling::sched;
+use cider::registry::Registry;
+use cider::sched;
 use std::cell::RefCell;
 use std::rc::Rc;
 

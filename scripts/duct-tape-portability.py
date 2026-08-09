@@ -41,7 +41,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OPAQUE = []
-DT = os.path.join(ROOT, "src/external/darlingserver/xnu-sys")
+DT = os.path.join(ROOT, "src/external/ciderd/xnu-sys")
 
 # duct-tape's include roots, in the BUCK file's order (dt_env).
 INCLUDE_ROOTS = [
@@ -81,7 +81,7 @@ def generated_include_roots():
     """The GENERATED header trees, discovered under buck-out.
 
     WITHOUT THESE THE PREPROCESSOR FAILS AND THE TOOL REPORTS THE PARTIAL RESULT AS IF IT WERE
-    THE ANSWER. Measured: debug.c and traps.c both died on darlingserver/rpc.internal.h and
+    THE ANSWER. Measured: debug.c and traps.c both died on ciderd/rpc.internal.h and
     host.c on mach/mach_host.h, and every one of them still produced thousands of macros for
     the columns to be computed from. That is how traps.c came to rank FIRST with zero blockers
     in every run: its one blocker, DSERVER_DTAPE_DEFS, is defined in rpc.internal.h, the very
@@ -92,9 +92,9 @@ def generated_include_roots():
     """
     roots = []
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/xnu-sys/__mig_*__/mig_*__gen")))
+        ROOT, "buck-out/v2/art/root/*/src/external/ciderd/xnu-sys/__mig_*__/mig_*__gen")))
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/__dserver_rpc__/*gen_include")))
+        ROOT, "buck-out/v2/art/root/*/src/external/ciderd/__dserver_rpc__/*gen_include")))
     # thread.c reaches src/startup for rtsig.h, which linux/server/BUCK also lists.
     roots += sorted(glob.glob(os.path.join(
         ROOT, "buck-out/v2/art/root/*/src/startup/__rtsig_header__/*")))
@@ -105,7 +105,7 @@ def clang_args():
     incs = [f"-I{r}" for r in generated_include_roots()]
     incs += [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
     incs.append(f"-I{os.path.join(ROOT, 'src/libsimple/include')}")
-    incs.append(f"-I{os.path.join(ROOT, 'src/external/darlingserver/include')}")
+    incs.append(f"-I{os.path.join(ROOT, 'src/external/ciderd/include')}")
     return buck_list("DUCT_TAPE_DEFINES") + buck_list("DUCT_TAPE_FLAGS") + incs
 
 
@@ -156,7 +156,7 @@ def macros_visible_to(path, args):
 # Where buck2 leaves the compiled glue objects. Present only after a buck2 build; the FFI
 # columns are skipped when they are not there rather than making the whole tool need one.
 OBJDIR = os.path.join(
-    ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/src/external/darlingserver"
+    ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/src/external/ciderd"
           "/xnu-sys/__dt_objects__/__objs/src")
 
 
@@ -255,7 +255,7 @@ def archive_defined_symbols():
     kept init.c looking blocked when it is not.
     """
     a = os.path.join(ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/linux/server"
-                           "/__duct_tape_lib__/duct_tape_lib/libdarlingserver_duct_tape.a")
+                           "/__duct_tape_lib__/duct_tape_lib/libciderd_duct_tape.a")
     if not os.path.exists(a):
         return set()
     try:
@@ -577,7 +577,7 @@ def main():
               f"{len(r['variadic']):>9}{len(r['fn_macros']):>7}{ex:>9}{co:>10}"
               f"{len(r['opaque']):>8}  {note}")
     if not any(r["ffi"] for _, r in rows):
-        print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
+        print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/ciderd"
               "/xnu-sys:dt_objects)")
     bad = [f for f, r in rows if r["dirty"]]
     if bad:

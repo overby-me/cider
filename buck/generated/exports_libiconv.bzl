@@ -5,8 +5,8 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
-    "darling_include_iconv.h": "darling/include/iconv.h",
-    "darling_include_libcharset.h": "darling/include/libcharset.h",
-    "darling_include_localcharset.h": "darling/include/localcharset.h",
+    "cider_include_iconv.h": "cider/include/iconv.h",
+    "cider_include_libcharset.h": "cider/include/libcharset.h",
+    "cider_include_localcharset.h": "cider/include/localcharset.h",
     "libiconv_lib_charset.alias": "libiconv/lib/charset.alias",
 }

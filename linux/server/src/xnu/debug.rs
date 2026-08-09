@@ -1,6 +1,6 @@
 //! The Mach debug queries: the Rust replacement for `xnu-sys/src/debug.c` (#71, seventh file).
 //!
-//! Four read-only walks over a task's Mach state, used by darlingserver's debugging tools to
+//! Four read-only walks over a task's Mach state, used by ciderd's debugging tools to
 //! answer what ports a task holds, what is in a port set, and what messages are queued. They
 //! never mutate anything, and every one of them takes an ITERATOR the caller supplies, which
 //! keeps the allocation on the caller's side.
@@ -43,7 +43,7 @@ use crate::bindings::{
 /// COMPUTED, NOT CALLED, and the first version of this file got that wrong. The C is
 /// `__attribute__((always_inline)) static`, so there is NO SYMBOL to link against. Declaring it
 /// extern compiled and even linked the demos, because nothing in them reaches this path and the
-/// linker garbage collected it; only building darlingserverd, where handler.rs does call it,
+/// linker garbage collected it; only building ciderd, where handler.rs does call it,
 /// produced the undefined reference. Same shape as `dtape_thread_for_xnu_thread`, which
 /// condvar.rs computes for the same reason.
 #[inline]

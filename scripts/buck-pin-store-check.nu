@@ -1,16 +1,16 @@
 #!/usr/bin/env nu
 # Is a per-pin store byte for byte what the assembled tree holds at that path?
 #
-# The lowering used to plant every pin from darling-src, which is ONE store path holding the
+# The lowering used to plant every pin from cider-src, which is ONE store path holding the
 # whole project, so editing any tracked file moved it and with it all 295 pin symlinks in
-# every target's staging script. Measured on libsimple_darlingserver: 588 of the 601 lines
-# changed after editing one unrelated ObjC file, and every changed line was a darling-src
+# every target's staging script. Measured on libsimple_ciderd: 588 of the 601 lines
+# changed after editing one unrelated ObjC file, and every changed line was a cider-src
 # path, while the two source groups it actually reads did not move. That is why source groups
 # bought nothing on their own.
 #
 # Per-pin stores fix it, but only if they hold the SAME BYTES the assembled tree does. The
 # assembled tree does three things to a pin: fetch, apply patches/<name>/*.patch, then repoint
-# stale SDK symlinks. nix/lib/darling-src.nix repeats those three, deliberately as a copy
+# stale SDK symlinks. nix/lib/cider-src.nix repeats those three, deliberately as a copy
 # rather than a shared fragment (factoring them changed the assembled builder text by
 # whitespace and cost an hour of rebuild). This is what keeps the copies honest.
 #
@@ -22,7 +22,7 @@
 # to it. It passed the change that staged pins from their own store paths, and that change
 # broke 1,194 targets: 21 links reach out of their pin, and one of them is a directory link, so
 # the effect was 143 dangling links. For that question use scripts/buck-escape-check.py:
-#   buck-escape-check.py pins --root <assembled darling-src>   # are they self contained
+#   buck-escape-check.py pins --root <assembled cider-src>   # are they self contained
 #   buck-escape-check.py resolve <staged tree>                 # does it work AS STAGED
 # THAT "DISPROVEN" IS NO LONGER TRUE, and the correction matters: a subtree of this project
 # indeed has no self contained existence, but ALL THE PINS TOGETHER do. pinsTree (#74) mirrors
@@ -35,7 +35,7 @@
 #
 # Usage:
 #   scripts/buck-pin-store-check.nu                          # build both sides, compare all
-#   scripts/buck-pin-store-check.nu --src <darling-src path> # compare against a given tree
+#   scripts/buck-pin-store-check.nu --src <cider-src path> # compare against a given tree
 #   scripts/buck-pin-store-check.nu --pins <farm path>
 #   scripts/buck-pin-store-check.nu --only libdispatch       # one pin, for a quick loop
 
@@ -43,9 +43,9 @@ def say [msg: string] { print -e $msg }
 
 def main [--src: string = "", --pins: string = "", --only: string = ""] {
     let farm = if ($pins | is-not-empty) { $pins } else {
-        let r = (^nix build ".#darling-pin-stores" --no-link --print-out-paths | complete)
+        let r = (^nix build ".#cider-pin-stores" --no-link --print-out-paths | complete)
         if $r.exit_code != 0 {
-            say "could not build .#darling-pin-stores"
+            say "could not build .#cider-pin-stores"
             say $r.stderr
             exit 2
         }
@@ -60,7 +60,7 @@ def main [--src: string = "", --pins: string = "", --only: string = ""] {
     # script, which names it once per pin. Any target's script will do.
     let tree = if ($src | is-not-empty) { $src } else {
         let found = (ls /nix/store
-            | where name =~ 'darling-src$'
+            | where name =~ 'cider-src$'
             | where type == dir
             | sort-by modified
             | last

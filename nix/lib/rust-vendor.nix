@@ -7,11 +7,11 @@
 # Cargo.lock each of them ships.
 #
 # Shared by nix/devShell.nix (which exports it as DARLING_RUST_VENDOR for
-# scripts/buck-rust-vendor.nu) and nix/lib/darlingBuck2Graph.nix (which materializes it into
+# scripts/buck-rust-vendor.nu) and nix/lib/ciderBuck2Graph.nix (which materializes it into
 # buck-rust/ inside the derivation). One definition, because a graph dumped against a
 # different set of crate sources than the daemon uses is a graph of a different build.
 {pkgs}:
-pkgs.runCommand "darling-rust-vendor" {} ''
+pkgs.runCommand "cider-rust-vendor" {} ''
   mkdir -p $out
   for d in ${pkgs.rustPlatform.importCargoLock {lockFile = ../../linux/server/Cargo.lock;}} \
            ${pkgs.rustPlatform.importCargoLock {lockFile = ../../linux/launcher/Cargo.lock;}} \

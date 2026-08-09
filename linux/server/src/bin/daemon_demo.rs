@@ -1,4 +1,4 @@
-//! Capstone: a runnable darlingserver that ties every piece together -- the epoll
+//! Capstone: a runnable ciderd that ties every piece together -- the epoll
 //! accept loop (server) + per-guest task routing (registry) + the microthread
 //! scheduler (sched) + the CODE-GENERATED dispatch (rpc_wire) + a real handler that
 //! calls into the duct-tape. Serves real RPC calls off a real unix socket.
@@ -7,14 +7,14 @@
 //! task, runs each handler on a microthread through the generated dispatch, and the
 //! second reply reports the uid the first call set -- real state through the whole
 //! pipeline.
-use darling::registry::Registry;
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{
+use cider::registry::Registry;
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{
     self, callnum, CallUidgid, DserverRpcCallhdr, ReplyStartedSuspended, ReplyUidgid, RpcCallUidgid,
     RpcReplyUidgid,
 };
-use darling::sched;
-use darling::server::{connect, Listener};
+use cider::sched;
+use cider::server::{connect, Listener};
 use std::cell::Cell;
 use std::mem::size_of;
 use std::os::fd::RawFd;

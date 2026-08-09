@@ -22,13 +22,13 @@
     "//buck-src:fw_Foundation"
   ],
   "kqueue": [
-    "//src/external/darlingserver:dserver_headers",
-    "//src/external/darlingserver:dserver_rpc"
+    "//src/external/ciderd:dserver_headers",
+    "//src/external/ciderd:dserver_rpc"
   ],
   "libsyscall": [
     "//buck-src:fw_CoreFoundation",
-    "//src/external/darlingserver:dserver_headers",
-    "//src/external/darlingserver:dserver_rpc",
+    "//src/external/ciderd:dserver_headers",
+    "//src/external/ciderd:dserver_rpc",
     ":ksmig_mach_clock",
     ":ksmig_mach_clock_priv",
     ":ksmig_mach_clock_reply",
@@ -71,12 +71,12 @@
   ],
   "emulation": [
     "//buck-src/xnu:emulation_included_sources",
-    "//src/include:darling_config",
+    "//src/include:cider_config",
     "//src/startup:rtsig_header",
     "gen://buck-src:emmig_signal_mach_exc"
   ],
   "libsyscall_dynamic": [
-    "//src/external/darlingserver:dserver_rpc",
+    "//src/external/ciderd:dserver_rpc",
     "//src/startup:rtsig_header"
   ],
   "xpc_obj": [
@@ -129,7 +129,7 @@
     "gen::launchmig_job"
   ],
   "system_kernel": [
-    "dep://src/libsimple:libsimple_darling",
+    "dep://src/libsimple:libsimple_cider",
     "objs://buck-src/xnu:exc_server_obj",
     "objs://buck-src:emulation_rpc_obj"
   ],
@@ -151,8 +151,8 @@
     "//darwin/frameworks:fw_SearchKit"
   ],
   "emulation_dyld": [
-    "//src/external/darlingserver:dserver_headers",
-    "//src/include:darling_config",
+    "//src/external/ciderd:dserver_headers",
+    "//src/include:cider_config",
     "//src/startup:rtsig_header",
     ":emulation_included_sources",
     "gen::emmig_signal_mach_exc"
@@ -1459,7 +1459,7 @@
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_PCSC",
     "//buck-src:fwp_SecurityTokend",
-    "//buck-src:security_tokend_client_inc_security_darling_include_macOS",
+    "//buck-src:security_tokend_client_inc_security_cider_include_macOS",
     "//darwin/frameworks:fw_CarbonCore",
     "gen://buck-src:securitytokendmig_tokend"
   ],

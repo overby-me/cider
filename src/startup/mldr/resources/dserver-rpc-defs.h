@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <signal.h>
 
-#include <darlingserver/rpc-supplement.h>
+#include <ciderd/rpc-supplement.h>
 
 #include <rtsig.h>
 
@@ -66,7 +66,7 @@ static long int dserver_rpc_hooks_receive_message(int socket, dserver_rpc_hooks_
 		if (callhdr->call_number == 0x52cca11) {
 			// this is an S2C call
 			// mldr shouldn't need to be doing S2C calls
-			fprintf(stderr, "mldr darlingserver RPC hooks received S2C call\n");
+			fprintf(stderr, "mldr ciderd RPC hooks received S2C call\n");
 			abort();
 		}
 	}

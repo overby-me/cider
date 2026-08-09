@@ -2,7 +2,7 @@
 //
 // 1. bindgen the dtape hooks contract from SOURCE headers (no build needed) ->
 //    proves the 36-field dtape_hooks_t + all dtape types bind correctly in Rust.
-// 2. When DUCT_TAPE_LIB is set (a dir with the darling build's static libs), link
+// 2. When DUCT_TAPE_LIB is set (a dir with the cider build's static libs), link
 //    the real duct-tape + libsimple so dtape_init resolves -> the Stage 0 link proof.
 // 3. Compile fast_context.c (the landed P1 signal-mask-free ucontext) into the
 //    crate for the Stage 3 spike (Arm A).
@@ -15,13 +15,13 @@ use std::path::PathBuf;
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     // crate lives at <repo>/linux/server; the C++ duct-tape it links is still at
-    // <repo>/src/external/darlingserver. nix/server.nix stages a synthetic tree
+    // <repo>/src/external/ciderd. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
-    let dtape = manifest.join("../../src/external/darlingserver/xnu-sys");
+    let dtape = manifest.join("../../src/external/ciderd/xnu-sys");
     let dtape_inc = dtape.join("include");
     let libsimple_inc = manifest.join("../../src/libsimple/include");
-    let fast_context = manifest.join("../../src/external/darlingserver/src/fast_context.c");
+    let fast_context = manifest.join("../../src/external/ciderd/src/fast_context.c");
 
     // ---- (1) bindgen: the hooks contract + types (source headers only) ----
     let mut builder = bindgen::Builder::default()
@@ -30,7 +30,7 @@ fn main() {
         .clang_arg(format!("-I{}", libsimple_inc.display()));
 
     // The internal structs the ported glue needs (#71). wrapper.h reaches internal-include,
-    // the XNU roots, and two GENERATED trees: darlingserver/rpc.h (the RPC wrapper
+    // the XNU roots, and two GENERATED trees: ciderd/rpc.h (the RPC wrapper
     // generator, via duct-tape.h) and the MIG output for mach/task.h, which is the only
     // place semaphore_create and semaphore_destroy are declared.
     //
@@ -46,11 +46,11 @@ fn main() {
         panic!(
             "DTAPE_GEN_INCLUDE is not set.\n\
              wrapper.h binds duct-tape's internal structs, which reach two GENERATED header \
-             trees (darlingserver/rpc.h and the MIG mach/task.h). Point this at their \
+             trees (ciderd/rpc.h and the MIG mach/task.h). Point this at their \
              directories, colon separated. buck2 wires them as target deps, so the usual \
-             fix is to build through buck2 (//linux/server:darlingserverd), or to run \
-             buck2 build //src/external/darlingserver:dserver_rpc \
-             //src/external/darlingserver/xnu-sys:mig_mach_task and pass their output \
+             fix is to build through buck2 (//linux/server:ciderd), or to run \
+             buck2 build //src/external/ciderd:dserver_rpc \
+             //src/external/ciderd/xnu-sys:mig_mach_task and pass their output \
              directories here."
         );
     }
@@ -68,11 +68,11 @@ fn main() {
     builder = builder
         .clang_arg(format!(
             "-I{}",
-            manifest.join("../../src/external/darlingserver/include").display()
+            manifest.join("../../src/external/ciderd/include").display()
         ))
         // The XNU headers do not parse without duct-tape's own flags; -fblocks above all,
         // since osfmk/kern/priority_queue.h uses blocks. The buck2 path loads the full set
-        // from src/external/darlingserver/xnu-sys/flags.bzl, which the generator writes
+        // from src/external/ciderd/xnu-sys/flags.bzl, which the generator writes
         // from the same CMakeLists these come from.
         .clang_arg("-fblocks")
         .clang_arg("-Wno-nullability-completeness")
@@ -125,13 +125,13 @@ fn main() {
     }
 
     // ---- (2) link the real duct-tape when provided ----
-    // DUCT_TAPE_LIB = dir holding libdarlingserver_duct_tape.a + liblibsimple_darlingserver.a
-    // (exported by the darling build; see nix wiring). Without it, `cargo check`
+    // DUCT_TAPE_LIB = dir holding libciderd_duct_tape.a + liblibsimple_ciderd.a
+    // (exported by the cider build; see nix wiring). Without it, `cargo check`
     // still validates the Rust/FFI side; only the final bin link needs it.
     if let Ok(libdir) = env::var("DUCT_TAPE_LIB") {
         println!("cargo:rustc-link-search=native={libdir}");
-        println!("cargo:rustc-link-lib=static=darlingserver_duct_tape");
-        println!("cargo:rustc-link-lib=static=libsimple_darlingserver");
+        println!("cargo:rustc-link-lib=static=ciderd_duct_tape");
+        println!("cargo:rustc-link-lib=static=libsimple_ciderd");
         // XNU/xnu-sys C pulls these Linux libs:
         for l in ["pthread", "dl", "m", "rt"] {
             println!("cargo:rustc-link-lib=dylib={l}");

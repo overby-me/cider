@@ -29,20 +29,20 @@ def main [attr?: string, bin?: string] {
 
     # SHORT, because the daemon's control socket lives in the prefix and a Unix socket path is
     # capped at 108 bytes.
-    let rt = ($env.BUCK2_RT? | default $"/tmp/darling-buck2-(^id -u | str trim)/rt")
-    let prefix = ($env.DPREFIX? | default $"/tmp/darling-nixpkg-(^id -u | str trim)")
+    let rt = ($env.BUCK2_RT? | default $"/tmp/cider-buck2-(^id -u | str trim)/rt")
+    let prefix = ($env.DPREFIX? | default $"/tmp/cider-nixpkg-(^id -u | str trim)")
 
-    if not ($"($rt)/bin/darling" | path exists) {
+    if not ($"($rt)/bin/cider" | path exists) {
         say $"no materialized prefix at ($rt)"
-        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:darling_prefix and"
+        say "run scripts/buck-bash-check.nu first -- it builds //buck/prefix:cider_prefix and"
         say "copies it there, which is what this check then drives."
         exit 2
     }
 
     # The two paths the daemon reads from the environment. The cmake build bakes them in; a
     # relocatable prefix cannot, so they are passed here (same as scripts/buck-bash-check.nu).
-    $env.DSERVER_LIBEXEC_PATH = $"($rt)/libexec/darling"
-    $env.DSERVER_MLDR_PATH = $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+    $env.DSERVER_LIBEXEC_PATH = $"($rt)/libexec/cider"
+    $env.DSERVER_MLDR_PATH = $"($rt)/libexec/cider/usr/libexec/cider/mldr"
 
     say $"== guest nix builds ($attr) under the buck2-built Darling =="
     # out+err> into one file, NOT `complete`: complete hands back stdout and stderr separately,

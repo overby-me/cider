@@ -4,15 +4,15 @@
 # (scripts/buck-test.nu): the set already known to build, spanning host tier, guest
 # tier, MIG codegen and the firstpass/final link pair.
 [
-  "//src/libsimple:libsimple_darlingserver"
-  "//src/libsimple:libsimple_darling"
+  "//src/libsimple:libsimple_ciderd"
+  "//src/libsimple:libsimple_cider"
   "//buck-src:migcom"
   "//src/startup:rtsig_header"
-  "//src/external/darlingserver:dserver_rpc"
-  "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape"
-  "//src/external/darlingserver/tools:dserverdbg"
+  "//src/external/ciderd:dserver_rpc"
+  "//src/external/ciderd/xnu-sys:ciderd_duct_tape"
+  "//src/external/ciderd/tools:dserverdbg"
   "//linux/server:duct_tape_lib"
-  "//src/libsimple:libsimple_darling_dylib"
+  "//src/libsimple:libsimple_cider_dylib"
   "//tests/buck2/firstpass:a"
   "//tests/buck2/firstpass:b"
   "//tests/buck2/firstpass:umbrella"
@@ -37,5 +37,5 @@
   # private frameworks and the scripting languages, which together are 42 percent of the
   # graph and none of which the goal needs: a prefix that boots, runs bash, and can run
   # nix to build things. Parity keeps the full prefix in buck2-targets.nix.
-  "//buck/prefix-min:darling_prefix_min"
+  "//buck/prefix-min:cider_prefix_min"
 ]

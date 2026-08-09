@@ -28,8 +28,8 @@
 def say [msg: string] { print $msg }
 
 def main [
-    --prefix: string = ""    # a built prefix tree; default: buck2 build //buck/prefix:darling_prefix
-    --scratch: string = ""   # scratch root; default /tmp/darling-socket-stdin-<uid>
+    --prefix: string = ""    # a built prefix tree; default: buck2 build //buck/prefix:cider_prefix
+    --scratch: string = ""   # scratch root; default /tmp/cider-socket-stdin-<uid>
 ] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
@@ -46,7 +46,7 @@ def main [
     # EMPTY, so the cleanup loop below matched every process whose exe starts with a slash and
     # killed an unrelated build of mine. The sibling checks take scratch as an optional
     # POSITIONAL, which really is null when omitted, which is why they never showed this.
-    let root = (if ($scratch | is-empty) { $"/tmp/darling-sockstdin-(^id -u | str trim)" } else { $scratch })
+    let root = (if ($scratch | is-empty) { $"/tmp/cider-sockstdin-(^id -u | str trim)" } else { $scratch })
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
@@ -56,7 +56,7 @@ def main [
             exit 2
         }
         say "== building the prefix =="
-        let b = (^buck2 build //buck/prefix:darling_prefix --show-output | complete)
+        let b = (^buck2 build //buck/prefix:cider_prefix --show-output | complete)
         $art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
         if ($art | path type) != "dir" {
             say "the prefix did not build"
@@ -104,14 +104,14 @@ import os, socket, subprocess, sys
 rt, dprefix, tag = sys.argv[1], sys.argv[2], sys.argv[3]
 env = dict(os.environ)
 env.update({'DPREFIX': dprefix, 'DARLING_NO_LAUNCHD': '1',
-            'DSERVER_LIBEXEC_PATH': rt + '/libexec/darling',
-            'DSERVER_MLDR_PATH': rt + '/libexec/darling/usr/libexec/darling/mldr'})
+            'DSERVER_LIBEXEC_PATH': rt + '/libexec/cider',
+            'DSERVER_MLDR_PATH': rt + '/libexec/cider/usr/libexec/cider/mldr'})
 if tag == 'sock':
     a, _b = socket.socketpair()          # AF_UNIX: the branch that used to smash the stack
     fd = a.fileno()
 else:
     fd = os.open('/dev/null', os.O_RDONLY)
-p = subprocess.run([rt + '/bin/darling', 'shell', '/bin/bash', '-c',
+p = subprocess.run([rt + '/bin/cider', 'shell', '/bin/bash', '-c',
                     'echo SOCKSTDIN_' + tag.upper() + '_OK $BASH_VERSION'],
                    stdin=fd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                    env=env, timeout=180)

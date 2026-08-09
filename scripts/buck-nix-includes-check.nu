@@ -10,7 +10,7 @@
 #   giflib, which ships no .pc file. That sweep is generous: 51 directories, including ones
 #   nobody named, and linux-headers rode in on it unnoticed for the whole campaign.
 #
-#   NIX gets them from nix/lib/darlingBuck2Graph.nix, which names its packages EXPLICITLY,
+#   NIX gets them from nix/lib/ciderBuck2Graph.nix, which names its packages EXPLICITLY,
 #   because a reproducible derivation cannot sweep a shell it does not have. 27 directories.
 #
 # So the host compiles against a superset and cannot fail the way Nix does. A package
@@ -67,7 +67,7 @@ def main [] {
     say "== reading the include dirs the Nix graph derivation declares =="
     # From the derivation rather than from a copy of the list: a copy is one more thing that
     # drifts, and drift is the entire bug this checks for.
-    let shown = (^nix derivation show ".#darling-buck2-graph" | complete)
+    let shown = (^nix derivation show ".#cider-buck2-graph" | complete)
     let hit = (
         $shown.stdout
         | parse --regex 'host_include_dirs = (?<dirs>[^\\\\]*)'
@@ -96,9 +96,9 @@ def main [] {
     say $"== building ($TARGETS | length) host-header targets under those conditions =="
     let built = (
         ^buck2 build
-            --config $"darling.darwin_cc=($cu)/bin/clang"
-            --config $"darling.darwin_cxx=($cu)/bin/clang++"
-            --config $"darling.host_include_dirs=($nix_dirs)"
+            --config $"cider.darwin_cc=($cu)/bin/clang"
+            --config $"cider.darwin_cxx=($cu)/bin/clang++"
+            --config $"cider.host_include_dirs=($nix_dirs)"
             ...$TARGETS
         | complete
     )
@@ -112,7 +112,7 @@ def main [] {
     say ""
     say "FAIL: a target needs a header the Nix graph derivation does not declare."
     say "The missing include dir has to be added to hostIncludeLibs (or the versioned-subdir"
-    say "list beside it) in nix/lib/darlingBuck2Graph.nix. The error names the header:"
+    say "list beside it) in nix/lib/ciderBuck2Graph.nix. The error names the header:"
     say ""
     $"($built.stdout)($built.stderr)"
     | lines

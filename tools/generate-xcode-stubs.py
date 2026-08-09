@@ -27,8 +27,8 @@ DYLDINFO = 'x86_64-apple-darwin11-dyldinfo'
 OTOOL = 'x86_64-apple-darwin11-otool'
 NM = 'x86_64-apple-darwin11-nm'
 
-XCODE_PATH = '/data/darling/Applications/Xcode.app'
-SYSTEM_ROOT = '/usr/local/libexec/darling'
+XCODE_PATH = '/data/cider/Applications/Xcode.app'
+SYSTEM_ROOT = '/usr/local/libexec/cider'
 OUT_DIR = os.path.join(SCRIPT_DIR, '..', 'src', 'frameworks', 'dev-stubs')
 
 ###

@@ -2,10 +2,10 @@
 # verify-nix.nu: standalone health-check for a Nix installation inside Darling
 #
 # This script runs a comprehensive set of checks to verify that Nix is correctly installed and
-# functional inside a Darling prefix. It can be used after running install-nix-in-darling.nu, or
+# functional inside a Darling prefix. It can be used after running install-nix-in-cider.nu, or
 # at any later time to diagnose regressions.
 #
-# Converted from bash (task #40) and verified against it with `darling` stubbed on PATH, no
+# Converted from bash (task #40) and verified against it with `cider` stubbed on PATH, no
 # container and no network: a healthy prefix (everything passing), a prefix with no nix binary,
 # a guest that reports an unimplemented syscall, a guest whose currentSystem is wrong, a guest
 # killed by a signal, --online, --json, --verbose, an unknown option and --help. Output, the
@@ -24,7 +24,7 @@
 #   ./scripts/verify-nix.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix path (default: ~/.darling or $DPREFIX)
+#   --prefix <path>       Darling prefix path (default: ~/.cider or $DPREFIX)
 #   --online              Include checks that require network access (curl, cache)
 #   --verbose             Show command output even on success
 #   --json                Output results as JSON (for CI consumption)
@@ -49,7 +49,7 @@ def colours [json: bool] {
 # rest arguments against its signature too, so `dsh sw_vers -productVersion` was rejected as an
 # unknown flag on dsh itself.
 def dsh [argv: list<string>] {
-    ^darling shell ...$argv | complete
+    ^cider shell ...$argv | complete
 }
 
 # Run a command inside Darling with Nix on PATH via a login shell. The sourcing preamble is the
@@ -61,12 +61,12 @@ def dsh_nix [cmd: string] {
             . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
         elif [ -e \"$HOME/.nix-profile/etc/profile.d/nix.sh\" ]; then
             . \"$HOME/.nix-profile/etc/profile.d/nix.sh\"
-        elif [ -e '/etc/profile.d/nix-darling.sh' ]; then
-            . '/etc/profile.d/nix-darling.sh'
+        elif [ -e '/etc/profile.d/nix-cider.sh' ]; then
+            . '/etc/profile.d/nix-cider.sh'
         fi
         " + $cmd + "
     ")
-    let r = (^darling shell bash -lc $script | complete)
+    let r = (^cider shell bash -lc $script | complete)
     {out: $"($r.stdout)($r.stderr)", exit_code: $r.exit_code}
 }
 
@@ -117,18 +117,18 @@ def json_detail [detail: string] {
 }
 
 def main [
-    --prefix: string = ""   # Darling prefix (default: ~/.darling or $DPREFIX)
+    --prefix: string = ""   # Darling prefix (default: ~/.cider or $DPREFIX)
     --online                # include network-dependent checks
     --verbose (-v)          # show command output even on success
     --json                  # output results as JSON
 ] {
     let c = (colours $json)
-    let darling_prefix = if ($prefix | is-not-empty) {
+    let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".darling"))
+        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
     }
-    let conf = $"($darling_prefix)/etc/nix/nix.conf"
+    let conf = $"($cider_prefix)/etc/nix/nix.conf"
     # A literal, like the bash version: an escaped quote cannot appear inside a nushell
     # interpolation, and this nushell has no str repeat.
     let bar = "═══════════════════════════════════════════════════════════"
@@ -144,18 +144,18 @@ def main [
     # -- Infrastructure ------------------------------------------------------
     section $c $json "Infrastructure"
 
-    let dpath = (which darling | get path.0? | default "")
-    $r = ($r | append (record $c $json $verbose "darling binary in PATH" (if ($dpath | is-empty) { "fail" } else { "pass" }) $dpath))
+    let dpath = (which cider | get path.0? | default "")
+    $r = ($r | append (record $c $json $verbose "cider binary in PATH" (if ($dpath | is-empty) { "fail" } else { "pass" }) $dpath))
 
-    $r = ($r | append (record $c $json $verbose "Darling prefix exists" (if ($darling_prefix | path type) == "dir" { "pass" } else { "fail" }) ""))
+    $r = ($r | append (record $c $json $verbose "Darling prefix exists" (if ($cider_prefix | path type) == "dir" { "pass" } else { "fail" }) ""))
 
     let ok = (dsh ["echo" "ok"])
-    $r = ($r | append (record $c $json $verbose "darling shell functional" (if $ok.exit_code == 0 { "pass" } else { "fail" }) $"($ok.stdout)($ok.stderr)"))
+    $r = ($r | append (record $c $json $verbose "cider shell functional" (if $ok.exit_code == 0 { "pass" } else { "fail" }) $"($ok.stdout)($ok.stderr)"))
 
     for probe in [
-        ["/nix exists in prefix", $"($darling_prefix)/nix"]
-        ["/nix/store exists", $"($darling_prefix)/nix/store"]
-        ["/nix/var/nix/db exists", $"($darling_prefix)/nix/var/nix/db"]
+        ["/nix exists in prefix", $"($cider_prefix)/nix"]
+        ["/nix/store exists", $"($cider_prefix)/nix/store"]
+        ["/nix/var/nix/db exists", $"($cider_prefix)/nix/var/nix/db"]
     ] {
         $r = ($r | append (record $c $json $verbose ($probe | first) (if (($probe | last) | path type) == "dir" { "pass" } else { "fail" }) ""))
     }
@@ -168,11 +168,11 @@ def main [
         $r = ($r | append (record $c $json $verbose "nix.conf: build-users-group is empty" "skip" "nix.conf not found"))
     }
 
-    let sb = ((($"($darling_prefix)/usr/bin/sandbox-exec" | path type) == "file")
-        or (($"($darling_prefix)/libexec/darling/usr/bin/sandbox-exec" | path type) == "file"))
+    let sb = ((($"($cider_prefix)/usr/bin/sandbox-exec" | path type) == "file")
+        or (($"($cider_prefix)/libexec/cider/usr/bin/sandbox-exec" | path type) == "file"))
     $r = ($r | append (record $c $json $verbose "sandbox-exec stub installed" (if $sb { "pass" } else { "fail" }) ""))
 
-    let nixbin = (glob $"($darling_prefix)/nix/store/*/bin/nix" --no-dir)
+    let nixbin = (glob $"($cider_prefix)/nix/store/*/bin/nix" --no-dir)
     $r = ($r | append (record $c $json $verbose "Nix binary found in /nix/store" (if ($nixbin | is-empty) { "fail" } else { "pass" }) (if ($nixbin | is-empty) { "No /nix/store/*/bin/nix found" } else { "" })))
 
     # -- Core ----------------------------------------------------------------
@@ -201,7 +201,7 @@ def main [
 
     $r = ($r | append (check_nix $c $json $verbose "nix eval: list operations" "nix eval --expr 'builtins.length [1 2 3]'"))
     $r = ($r | append (check_nix $c $json $verbose "nix eval: let binding" "nix eval --expr 'let x = 21; in x * 2'"))
-    $r = ($r | append (check_nix $c $json $verbose "nix eval: string interpolation" "nix eval --expr 'let name = \"darling\"; in \"hello ${name}\"'"))
+    $r = ($r | append (check_nix $c $json $verbose "nix eval: string interpolation" "nix eval --expr 'let name = \"cider\"; in \"hello ${name}\"'"))
     $r = ($r | append (check_nix $c $json $verbose "nix eval: import <nixpkgs> (if channel set up)" "nix-instantiate --eval -E 'builtins.typeOf (import <nixpkgs> {})' 2>/dev/null || echo skip"))
 
     # -- Store ---------------------------------------------------------------
@@ -304,7 +304,7 @@ def main [
         let stamp = (date now | date to-timezone UTC | format date "%Y-%m-%dT%H:%M:%SZ")
         print "{"
         print $"  \"timestamp\": \"($stamp)\","
-        print $"  \"prefix\": \"($darling_prefix)\","
+        print $"  \"prefix\": \"($cider_prefix)\","
         print $"  \"online\": (if $online { 1 } else { 0 }),"
         print $"  \"total\": ($total),"
         print $"  \"passed\": ($passed),"
@@ -336,18 +336,18 @@ def main [
         err_ $c "Some checks failed."
         print -e ""
         print -e "Troubleshooting:"
-        print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-darling.nu"
+        print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-cider.nu"
         print -e "  \u{2022} If syscall warnings appear, check: PLAN.md"
-        print -e "  \u{2022} If evaluator fails, try: darling shell bash -lc 'nix eval --expr 1+1' 2>&1"
-        print -e "  \u{2022} For detailed tracing: DARLING_XTRACE=1 darling shell bash -lc 'nix --version'"
-        print -e "  \u{2022} For host-side tracing: strace -f -p $(pidof darlingserver) 2>&1 | head -500"
+        print -e "  \u{2022} If evaluator fails, try: cider shell bash -lc 'nix eval --expr 1+1' 2>&1"
+        print -e "  \u{2022} For detailed tracing: DARLING_XTRACE=1 cider shell bash -lc 'nix --version'"
+        print -e "  \u{2022} For host-side tracing: strace -f -p $(pidof ciderd) 2>&1 | head -500"
         print -e "  \u{2022} Re-run with --verbose for more detail"
         print -e "  \u{2022} Re-run with --online for network checks"
         print -e ""
         exit 1
     } else if $passed == 0 {
         warn $c "No checks passed \u{2014} Nix may not be installed."
-        print -e "  Run: ./scripts/install-nix-in-darling.nu"
+        print -e "  Run: ./scripts/install-nix-in-cider.nu"
         exit 2
     } else {
         say $c $"($c.green)All checks passed!($c.reset) Nix is healthy inside Darling."

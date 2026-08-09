@@ -90,11 +90,11 @@ in {
   };
 
   shellHook = ''
-    echo "🍎 darling-nix devShell loaded"
+    echo "🍎 cider-nix devShell loaded"
     echo "   clang: $(clang --version | head -1)"
     echo ""
     echo "Quick start:"
-    echo "  nix build .#darling-buck2-prefix-min --max-jobs 6 --cores 2"
+    echo "  nix build .#cider-buck2-prefix-min --max-jobs 6 --cores 2"
     echo "  buck2 build //..."
   '';
 }

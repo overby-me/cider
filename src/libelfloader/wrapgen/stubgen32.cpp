@@ -252,7 +252,7 @@ void print_init()
 	std::cout << ".code64\n";
 	std::cout << "_initializer:\n"
 				"\tpushq   %rdi\n"
-        		"\tmovq    L__darling_elfcalls$non_lazy_ptr(%rip), %rax\n"
+        		"\tmovq    L__cider_elfcalls$non_lazy_ptr(%rip), %rax\n"
 		        "\tmovq    (%rax), %rax\n"
         		"\tmovq    _library_name(%rip), %rdi\n"
        			"\tcallq   *(%rax)\n"
@@ -262,7 +262,7 @@ void print_init()
 
 	std::cout << "_destructor:\n"
 				"\tpushq   %rdi\n"
-				"\tmovq    L__darling_elfcalls$non_lazy_ptr(%rip), %rcx\n"
+				"\tmovq    L__cider_elfcalls$non_lazy_ptr(%rip), %rcx\n"
 				"\tmovq    (%rcx), %rcx\n"
 				"\tmovq    _lib_handle(%rip), %rdi\n"
 				"\tcallq   *8(%rcx)\n"
@@ -319,7 +319,7 @@ int main()
 			"\tpushq %rsi\n"
 			"\tmovq _lib_handle(%rip), %rdi\n"
 			"\tmovq $0(%rip), %rsi\n"
-			"\tmovq L__darling_elfcalls$$non_lazy_ptr(%rip), %rax\n"
+			"\tmovq L__cider_elfcalls$$non_lazy_ptr(%rip), %rax\n"
 			"\tmovq (%rax), %rax\n"
 			"\tcallq *16(%rax)\n"
 			"\tmovq %rax, $1\n"
@@ -340,8 +340,8 @@ int main()
 	std::cout << std::endl;
 
 	std::cout << ".section __IMPORT,__pointers,non_lazy_symbol_pointers\n"
-				"L__darling_elfcalls$non_lazy_ptr:\n"
-		        ".indirect_symbol __darling_elfcalls\n"
+				"L__cider_elfcalls$non_lazy_ptr:\n"
+		        ".indirect_symbol __cider_elfcalls\n"
 				".long   0\n\n";
 
 	std::cout << ".subsections_via_symbols\n\n";

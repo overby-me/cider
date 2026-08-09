@@ -17,7 +17,7 @@
 #
 # 3. Rules compose as objects -> archive, so a single archive can contain object
 #    groups compiled with different flags (duct-tape's pthread/kern_synch.c needs
-#    its own -I but must land in libdarlingserver_duct_tape.a).
+#    its own -I but must land in libciderd_duct_tape.a).
 
 load("@toolchains//:cc.bzl", "CcToolchainInfo")
 
@@ -313,7 +313,7 @@ cc_static_lib = rule(
         "include_root": attrs.string(default = ""),
         # Archive basename without the lib prefix / .a suffix; defaults to the
         # target name. Darling has targets whose artifact name differs from the
-        # cmake target name (liblibsimple_darlingserver.a).
+        # cmake target name (liblibsimple_ciderd.a).
         "lib_name": attrs.string(default = ""),
         "linker_flags": attrs.list(attrs.string(), default = []),
         "objs": attrs.list(attrs.dep(), default = []),
@@ -450,8 +450,8 @@ cc_binary = rule(
 # cc_lib_dir: collect the static libs of a dep graph into one directory.
 #
 # The Rust daemon consumes duct-tape through DUCT_TAPE_LIB, an env var naming a
-# directory that holds libdarlingserver_duct_tape.a and
-# liblibsimple_darlingserver.a. Each archive is its own buck2 artifact in its own
+# directory that holds libciderd_duct_tape.a and
+# liblibsimple_ciderd.a. Each archive is its own buck2 artifact in its own
 # output dir, so this stages them together into the shape the consumer expects.
 # ---------------------------------------------------------------------------
 

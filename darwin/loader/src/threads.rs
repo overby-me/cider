@@ -1,4 +1,4 @@
-// mldr thread bridge: darling_thread_create (elfcalls) -- create a Darwin thread on a native
+// mldr thread bridge: cider_thread_create (elfcalls) -- create a Darwin thread on a native
 // pthread, per src/startup/mldr/elfcalls/threads.c:145-325. The native pthread's entry sets up
 // the thread's per-thread RPC socket, checks in, sets the Darwin TSD base (via the guest's
 // callbacks), fetches the mach thread-self port, then switches to the Darwin stack and jumps to
@@ -12,7 +12,7 @@ const DTHREAD_START_TSD_BASE_SET: usize = 0x1000_0000;
 const DWQ_FLAG_THREAD_TSD_BASE_SET: usize = 0x0020_0000;
 const GUARD_SIZE: usize = 0x4000;
 
-/// The guest-provided thread-create callbacks (elfcalls.h darling_thread_create_callbacks).
+/// The guest-provided thread-create callbacks (elfcalls.h cider_thread_create_callbacks).
 #[repr(C)]
 struct Callbacks {
     thread_self_trap: extern "C" fn() -> c_uint,
@@ -63,8 +63,8 @@ unsafe fn dthread_structure_allocate(stack_size: usize) -> (*mut c_void, usize) 
     (dthread, stack_top)
 }
 
-/// elfcalls darling_thread_create (threads.c:145-203).
-pub extern "C" fn darling_thread_create(
+/// elfcalls cider_thread_create (threads.c:145-203).
+pub extern "C" fn cider_thread_create(
     stack_size: c_ulong,
     _pth_obj_size: c_ulong,
     entry_point: *mut c_void,
@@ -114,7 +114,7 @@ pub extern "C" fn darling_thread_create(
         libc::pthread_create(
             &mut tid,
             &attr,
-            darling_thread_entry,
+            cider_thread_entry,
             &mut args as *mut ArgStruct as *mut c_void,
         );
         libc::pthread_attr_destroy(&mut attr);
@@ -128,7 +128,7 @@ pub extern "C" fn darling_thread_create(
 }
 
 /// The native-pthread entry (threads.c:205-325). Never returns -- switches to the Darwin stack.
-extern "C" fn darling_thread_entry(p: *mut c_void) -> *mut c_void {
+extern "C" fn cider_thread_entry(p: *mut c_void) -> *mut c_void {
     let in_args = p as *mut ArgStruct;
     // Copy args locally, then signal the parent by clearing in_args->pth.
     let mut args = unsafe { std::ptr::read(in_args) };
@@ -151,7 +151,7 @@ extern "C" fn darling_thread_entry(p: *mut c_void) -> *mut c_void {
         args.arg3 |= DTHREAD_START_TSD_BASE_SET;
     }
 
-    // Check in with darlingserver on this thread's socket.
+    // Check in with ciderd on this thread's socket.
     let dummy = 0i32;
     if unsafe { crate::rpc::checkin_thread(new_fd, &dummy as *const _ as u64) } < 0 {
         unsafe { libc::abort() };

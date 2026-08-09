@@ -5,8 +5,8 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
-    "darling_include_dns.h": "darling/include/dns.h",
-    "darling_include_dns_util.h": "darling/include/dns_util.h",
-    "darling_include_nameser.h": "darling/include/nameser.h",
-    "darling_include_resolv.h": "darling/include/resolv.h",
+    "cider_include_dns.h": "cider/include/dns.h",
+    "cider_include_dns_util.h": "cider/include/dns_util.h",
+    "cider_include_nameser.h": "cider/include/nameser.h",
+    "cider_include_resolv.h": "cider/include/resolv.h",
 }

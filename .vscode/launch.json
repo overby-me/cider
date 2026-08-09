@@ -7,8 +7,8 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug darling-coredump",
-            "program": "${workspaceFolder}/build/src/hosttools/darling-coredump",
+            "name": "Debug cider-coredump",
+            "program": "${workspaceFolder}/build/src/hosttools/cider-coredump",
             "args": ["${input:linuxCoreDumpFileName}"],
             "cwd": "${workspaceFolder}"
         },

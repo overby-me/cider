@@ -4,7 +4,7 @@ load("//buck/rules:files.bzl", "export_file")
 # install(FILES ... PERMISSIONS ...). This package exists so the file can be named;
 # scripts/buck-exports.py fills in the export_file rule.
 #
-# tests/darling-smoke.nix stage 6 drives it.
+# tests/cider-smoke.nix stage 6 drives it.
 
 # BEGIN generated: prefix exports
 # GENERATED from the reference build's install entries by

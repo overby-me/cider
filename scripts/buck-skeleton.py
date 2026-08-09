@@ -59,7 +59,7 @@ _BUILD_TREES = ("buck/",)
 # file". Emptying the whole tree looked right -- analysis reads no source -- but the graph
 # derivation also MATERIALISES the in-process artifacts, and a staged farm of GENERATED
 # headers can only be materialised by running the generator. Measured: with everything
-# emptied, buck2 fails on root//src/external/darlingserver:dserver_rpc, root//buck-src:
+# emptied, buck2 fails on root//src/external/ciderd:dserver_rpc, root//buck-src:
 # mig_parser and root//buck-src:shell_cmds_find_getdate, which are the rpc wrapper script,
 # a mig .defs and a yacc grammar.
 #
@@ -76,7 +76,7 @@ _EMPTIABLE = (
 
 
 # NEVER emptied, whatever the suffix. In the graph derivation these do not come from here
-# at all: the pins are materialised from darlingSrc, the crates from the vendor derivation,
+# at all: the pins are materialised from ciderSrc, the crates from the vendor derivation,
 # and src/external is where the pins are planted. Emptying them in a hand run makes the run
 # unrepresentative of the build, which is exactly how a test came back failing on
 # buck-src:mig_parser for a reason that cannot happen in Nix.

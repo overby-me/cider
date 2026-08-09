@@ -19,7 +19,7 @@
 
 #include <coredump/x86_64.h>
 
-#include <darling-config.h>
+#include <cider-config.h>
 
 #ifndef DUMP_FLOAT_STATE
 	#define DUMP_FLOAT_STATE 1
@@ -276,13 +276,13 @@ void macho_coredump(struct coredump_params* cprm);
 
 int main(int argc, char** argv) {
 	if (argc < 2) {
-		fprintf(stderr, "Usage: %s <input-coredump> [output-coredump]\n", (argc > 0 ? argv[0] : "darling-coredump"));
+		fprintf(stderr, "Usage: %s <input-coredump> [output-coredump]\n", (argc > 0 ? argv[0] : "cider-coredump"));
 		return 1;
 	}
 
 	char *tmp_output_dirname = strdup(argv[1]);
 	char *tmp_output_basename = strdup(argv[1]);
-	if (snprintf(default_output_name, sizeof(default_output_name), "%s/darlingcore-%s", dirname(tmp_output_dirname), basename(tmp_output_basename)) < 0) {
+	if (snprintf(default_output_name, sizeof(default_output_name), "%s/cidercore-%s", dirname(tmp_output_dirname), basename(tmp_output_basename)) < 0) {
 		perror("snprintf");
 		return 1;
 	}
@@ -298,7 +298,7 @@ int main(int argc, char** argv) {
 		homedir = pwd->pw_dir;
 	}
 
-	if (snprintf(default_prefix, sizeof(default_prefix), "%s/.darling", homedir) < 0) {
+	if (snprintf(default_prefix, sizeof(default_prefix), "%s/.cider", homedir) < 0) {
 		perror("snprintf");
 		return 1;
 	}

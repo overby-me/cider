@@ -18,7 +18,7 @@ do
 	THISPID=$(echo $PID | head -n1)
 	RUNNING_USER=$(ps -o uname= -p $THISPID | head -n1)
 	echo "Darling currently running for $RUNNING_USER, shutting it down..."
-	su --login "$RUNNING_USER" -c "darling shutdown"
+	su --login "$RUNNING_USER" -c "cider shutdown"
 	sleep 2
 	PID=$(pgrep -f launchd)
 done

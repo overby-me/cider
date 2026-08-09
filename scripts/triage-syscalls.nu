@@ -10,9 +10,9 @@
 #   ./scripts/triage-syscalls.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix (default: ~/.darling or $DPREFIX)
+#   --prefix <path>       Darling prefix (default: ~/.cider or $DPREFIX)
 #   --output <file>       Write results to file (default: stdout)
-#   --strace              Also run strace on darlingserver (requires root)
+#   --strace              Also run strace on ciderd (requires root)
 #   --xtrace              Enable DARLING_XTRACE for detailed Darwin tracing
 #   --operations <list>   Comma-separated list of operations to test
 #                         (default: all). Available: version,eval,store,
@@ -24,17 +24,17 @@
 #     Syscall # | Caller | Operation | Message | Count
 #
 # Prerequisites:
-#   - Darling must be installed and darling shell echo ok must work
+#   - Darling must be installed and cider shell echo ok must work
 #   - For Nix-related tests, Nix must be installed in the prefix
-#     (run scripts/install-nix-in-darling.nu first)
+#     (run scripts/install-nix-in-cider.nu first)
 #
-# Converted from bash (task #40) and verified against it with darling, timeout,
+# Converted from bash (task #40) and verified against it with cider, timeout,
 # pidof and strace stubbed on PATH, no container: clean logs, logs carrying
 # unimplemented syscalls (known and unknown numbers, both message shapes), each
 # of the nine non-syscall categories, a message over the 80 character truncation
 # limit, a message containing a pipe, empty logs, --output, --xtrace, --strace,
 # --operations subsets, an unknown operation, --timeout, and a prefix without
-# Nix. The report body, the exit code and the argv of every darling invocation
+# Nix. The report body, the exit code and the argv of every cider invocation
 # all match.
 #
 # find, sort, uniq and grep stay external. The report is ordered by GNU sort
@@ -127,28 +127,28 @@ def debug_ [c: record, msg: string] { print -e $"($c.dim)[triage] ($msg)($c.rese
 
 # Run a command inside the Darling prefix, capturing all output.
 def dsh [ctx: record, logfile: string, argv: list<string>] {
-    try { ^timeout $ctx.timeout darling shell ...$argv out+err> $logfile }
+    try { ^timeout $ctx.timeout cider shell ...$argv out+err> $logfile }
 }
 
 # Run a command inside the Darling prefix with bash -lc.
 def dsh_bash [ctx: record, logfile: string, cmd: string] {
-    try { ^timeout $ctx.timeout darling shell bash -lc $cmd out+err> $logfile }
+    try { ^timeout $ctx.timeout cider shell bash -lc $cmd out+err> $logfile }
 }
 
 # Run with DARLING_XTRACE if requested.
 def dsh_traced [ctx: record, logfile: string, argv: list<string>] {
     if $ctx.xtrace {
-        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 darling shell ...$argv out+err> $logfile }
+        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 cider shell ...$argv out+err> $logfile }
     } else {
-        try { ^timeout $ctx.timeout darling shell ...$argv out+err> $logfile }
+        try { ^timeout $ctx.timeout cider shell ...$argv out+err> $logfile }
     }
 }
 
 def dsh_bash_traced [ctx: record, logfile: string, cmd: string] {
     if $ctx.xtrace {
-        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 darling shell bash -lc $cmd out+err> $logfile }
+        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 cider shell bash -lc $cmd out+err> $logfile }
     } else {
-        try { ^timeout $ctx.timeout darling shell bash -lc $cmd out+err> $logfile }
+        try { ^timeout $ctx.timeout cider shell bash -lc $cmd out+err> $logfile }
     }
 }
 
@@ -158,8 +158,8 @@ def dsh_bash_traced [ctx: record, logfile: string, cmd: string] {
 
 def op_version [ctx: record, logdir: string] {
     let c = $ctx.c
-    log_ $c $"  Testing: ($c.blue)darling shell echo ok($c.reset)"
-    dsh_traced $ctx $"($logdir)/echo.log" ["echo" "hello from darling"]
+    log_ $c $"  Testing: ($c.blue)cider shell echo ok($c.reset)"
+    dsh_traced $ctx $"($logdir)/echo.log" ["echo" "hello from cider"]
 
     log_ $c $"  Testing: ($c.blue)sw_vers($c.reset)"
     dsh_traced $ctx $"($logdir)/sw_vers.log" ["sw_vers"]
@@ -345,25 +345,25 @@ def categorize [msg: string] {
 }
 
 def main [
-    --prefix: string = ""       # Darling prefix (default: ~/.darling or $DPREFIX)
+    --prefix: string = ""       # Darling prefix (default: ~/.cider or $DPREFIX)
     --output: string = ""       # write results to file (default: stdout)
-    --strace                    # also run strace on darlingserver (requires root)
+    --strace                    # also run strace on ciderd (requires root)
     --xtrace                    # enable DARLING_XTRACE for detailed Darwin tracing
     --operations: string = "version,eval,store,touch,mv,curl,build"  # comma-separated
     --timeout: int = 60         # timeout per operation, seconds
 ] {
     let c = (colours)
-    let darling_prefix = if ($prefix | is-not-empty) {
+    let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".darling"))
+        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
     }
 
     # ── Setup ───────────────────────────────────────────────────────────────
-    let triage_tmp = (mktemp -d --tmpdir-path ($env | get -o TMPDIR | default "/tmp") "darling-triage.XXXXXX")
+    let triage_tmp = (mktemp -d --tmpdir-path ($env | get -o TMPDIR | default "/tmp") "cider-triage.XXXXXX")
 
     log_ $c $"($c.bold)Darling Syscall Triage($c.reset)"
-    log_ $c $"Prefix:     ($darling_prefix)"
+    log_ $c $"Prefix:     ($cider_prefix)"
     log_ $c $"Operations: ($operations)"
     log_ $c $"Timeout:    ($timeout)s per operation"
     log_ $c $"XTrace:     (if $xtrace { 'enabled' } else { 'disabled' })"
@@ -372,28 +372,28 @@ def main [
     print -e ""
 
     # ── Preflight ───────────────────────────────────────────────────────────
-    if (which darling | is-empty) {
-        err_ $c "darling not found in PATH. Build it first with: nix build .#darling"
+    if (which cider | is-empty) {
+        err_ $c "cider not found in PATH. Build it first with: nix build .#cider"
         rm -rf $triage_tmp
         exit 1
     }
 
-    log_ $c "Checking darling shell..."
-    let shell_ok = (try { ^timeout 30 darling shell echo "ok" out+err> /dev/null; true } catch { false })
+    log_ $c "Checking cider shell..."
+    let shell_ok = (try { ^timeout 30 cider shell echo "ok" out+err> /dev/null; true } catch { false })
     if not $shell_ok {
-        err_ $c "darling shell is not functional. Try: darling shell echo ok"
+        err_ $c "cider shell is not functional. Try: cider shell echo ok"
         rm -rf $triage_tmp
         exit 1
     }
-    log_ $c $"  darling shell: ($c.green)OK($c.reset)"
+    log_ $c $"  cider shell: ($c.green)OK($c.reset)"
 
     # Check if Nix is available
-    let has_nix = (try { ^timeout 15 darling shell bash -lc 'command -v nix' out+err> "/dev/null"; true } catch { false })
+    let has_nix = (try { ^timeout 15 cider shell bash -lc 'command -v nix' out+err> "/dev/null"; true } catch { false })
     if $has_nix {
         log_ $c $"  Nix in prefix: ($c.green)found($c.reset)"
     } else {
         warn $c "Nix not found in prefix. Nix-specific operations will be skipped."
-        warn $c "Run scripts/install-nix-in-darling.nu first for full triage."
+        warn $c "Run scripts/install-nix-in-cider.nu first for full triage."
     }
     print -e ""
 
@@ -406,15 +406,15 @@ def main [
     mut strace_pid = ""
     mut strace_log = ""
     if $strace {
-        let server_pid = (try { (^pidof darlingserver | str trim) } catch { "" })
+        let server_pid = (try { (^pidof ciderd | str trim) } catch { "" })
         if ($server_pid | is-empty) {
-            warn $c "darlingserver not running; cannot attach strace"
+            warn $c "ciderd not running; cannot attach strace"
         } else {
             $strace_log = $"($triage_tmp)/strace.log"
             let job = (job spawn { ^strace -f -p $server_pid -e trace=all -o $"($triage_tmp)/strace.log" })
             $strace_pid = ($job | into string)
             sleep 1sec
-            debug_ $c $"strace attached to darlingserver \(pid=($server_pid)\)"
+            debug_ $c $"strace attached to ciderd \(pid=($server_pid)\)"
         }
     }
 
@@ -487,7 +487,7 @@ def main [
         let hits = (try { (^grep -iE 'ENOSYS|ENOTSUP' $strace_log | ^head -100 | into string) } catch { "" })
         if ($hits | is-not-empty) {
             for line in ($hits | str replace -r '\n$' '' | split row "\n") {
-                $findings = ($findings | append $"strace|darlingserver|($line)")
+                $findings = ($findings | append $"strace|ciderd|($line)")
             }
         }
     }
@@ -523,7 +523,7 @@ def main [
         "# Syscall Triage Report"
         ""
         $"Generated: ($timestamp)"
-        $"Darling prefix: ($darling_prefix)"
+        $"Darling prefix: ($cider_prefix)"
         $"Operations tested: ($operations)"
         $"XTrace: (if $xtrace { 'enabled' } else { 'disabled' })"
         $"Strace: (if $strace { 'enabled' } else { 'disabled' })"

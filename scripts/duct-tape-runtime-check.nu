@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Does the duct-tape glue that is Rust now actually WORK at runtime? (#71)
 #
-# The only runtime gate for a duct-tape change used to be checks.darling-buck2-min-smoke,
+# The only runtime gate for a duct-tape change used to be checks.cider-buck2-min-smoke,
 # which builds a whole minimal prefix and takes about an hour. That is far too slow to be the
 # first thing that tells you a port is wrong. This drives the ported code directly, in about a
 # minute, and it is the check to run before reaching for the prefix gate.
@@ -145,16 +145,16 @@ def run_one [target: string, verdict: string, covers: string, seconds: int] {
 # Every port before locks.c was proven with the demos plus a symbol table check, and both
 # PASSED on a debug.rs that could not link. dtape_task_for_xnu_task is always_inline static in
 # task.h, so there is no symbol; the port declared it extern, and the DEMOS still linked because
-# nothing in them reaches that path and the linker garbage collected it. Only darlingserverd,
+# nothing in them reaches that path and the linker garbage collected it. Only ciderd,
 # where handler.rs really calls it, produced the undefined reference.
 #
 # So a demo binary is NOT an artifact that contains everything a port touches. The daemon is.
 # It is built, not run: linking is the whole question here.
 def link_check [] {
-    say "darlingserverd -- does everything a port declares actually resolve"
-    let built = (do -i { ^buck2 build //linux/server:darlingserverd } | complete)
+    say "ciderd -- does everything a port declares actually resolve"
+    let built = (do -i { ^buck2 build //linux/server:ciderd } | complete)
     if $built.exit_code != 0 {
-        say "  FAIL: darlingserverd did not link"
+        say "  FAIL: ciderd did not link"
         let undef = ($built.stderr | lines | where {|l| $l =~ 'undefined reference' })
         if not ($undef | is-empty) {
             say $"  ($undef | first)"
@@ -163,7 +163,7 @@ def link_check [] {
         }
         return false
     }
-    say "  ok: darlingserverd links"
+    say "  ok: ciderd links"
     true
 }
 

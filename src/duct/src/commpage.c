@@ -4,7 +4,7 @@
 
 //uint8_t __commpage[_COMM_PAGE_AREA_LENGTH];
 
-void _darling_initialize_commpage(void)
+void _cider_initialize_commpage(void)
 {
 	mmap((void*)_COMM_PAGE_START_ADDRESS, _COMM_PAGE_AREA_LENGTH, PROT_READ|PROT_WRITE,
 		MAP_ANON | MAP_PRIVATE, -1, 0);

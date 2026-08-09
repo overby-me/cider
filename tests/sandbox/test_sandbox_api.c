@@ -1,7 +1,7 @@
 /*
  * test_sandbox_api.c — Regression tests for Darling's sandbox API stubs
  *
- * Build (inside darling shell):
+ * Build (inside cider shell):
  *   cc -o test_sandbox_api test_sandbox_api.c -lsystem_sandbox
  *
  * Or with the system sandbox library:

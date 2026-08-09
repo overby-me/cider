@@ -1,4 +1,4 @@
-//! darlingserver: the Rust host-side rewrite of darlingserver.
+//! ciderd: the Rust host-side rewrite of ciderd.
 //!
 //! Boundary (frozen): the C duct-tape (XNU emulation) is consumed via the dtape_*
 //! API + the dtape_hooks vtable; everything above it is safe-ish Rust. See
@@ -61,5 +61,5 @@ pub mod s2c;
 pub mod handler;
 
 /// Container bring-up: the Linux mount/PID-namespace + overlay + guest-init plumbing
-/// darlingserver's main() does before the RPC loop (needs root; not sandbox-runnable).
+/// ciderd's main() does before the RPC loop (needs root; not sandbox-runnable).
 pub mod container;

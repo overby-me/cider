@@ -22,7 +22,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 PADispatchMainLoop::PADispatchMainLoop()
 {
 	// Create GCD queue
-	m_queue = dispatch_queue_create("org.darlinghq.coreaudio.pulseaudio", nullptr);
+	m_queue = dispatch_queue_create("org.ciderhq.coreaudio.pulseaudio", nullptr);
 
 	// PulseAudio expects the event loop to be suspended while we're creating the context.
 	// I couldn't find any mention of this in the documentation, but figured it out the hard way.

@@ -1,4 +1,4 @@
-// mldr M4: darlingserver checkin RPC. AF_UNIX SOCK_DGRAM to the server at __mldr_sockpath.
+// mldr M4: ciderd checkin RPC. AF_UNIX SOCK_DGRAM to the server at __mldr_sockpath.
 // The wire structs are byte-identical to the daemon's generated rpc_wire.rs (x86_64 layout);
 // see linux/server/src/rpc_wire.rs. mldr is a client of ~6 calls; this
 // starts with checkin (the essential one). The lifetime pipe is -1 on kernels >= 5.3 (the
@@ -15,7 +15,7 @@ pub fn main_socket() -> c_int {
     MAIN_SOCKET.load(Ordering::SeqCst)
 }
 
-/// The darlingserver socket address, exposed to the guest RPC via elfcalls.
+/// The ciderd socket address, exposed to the guest RPC via elfcalls.
 static mut SERVER_ADDR: std::mem::MaybeUninit<libc::sockaddr_un> = std::mem::MaybeUninit::uninit();
 static SERVER_ADDR_SET: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 pub fn server_addr_ptr() -> *const c_void {
@@ -174,7 +174,7 @@ fn gettid() -> i32 {
 }
 
 /// True on the process's main thread (pid == tid). Used by the socket-refresh elfcall to also
-/// update the main-thread socket, matching C __darling_thread_rpc_socket_refresh.
+/// update the main-thread socket, matching C __cider_thread_rpc_socket_refresh.
 pub fn is_main_thread() -> bool {
     unsafe { libc::getpid() == gettid() }
 }

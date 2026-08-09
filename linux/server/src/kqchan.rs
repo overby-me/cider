@@ -4,7 +4,7 @@
 //! Over it, the guest sends proc_modify (set the filter flags) and proc_read (fetch the
 //! latest event), and the daemon pushes a `notification` message when a watched event
 //! (e.g. the target's death -> NOTE_EXIT) occurs. Raw SEQPACKET framing (one struct per
-//! message, no length prefix), matching darlingserver's MessageQueue. Mirrors
+//! message, no length prefix), matching ciderd's MessageQueue. Mirrors
 //! DarlingServer::Kqchan::Process (kqchan.cpp). See PLAN.md (bucket B.8).
 
 use crate::bindings::dtape_task_t;

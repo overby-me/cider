@@ -11,9 +11,9 @@
 #
 # Converted from bash (task #40). This script is ORCHESTRATION -- argument handling, four
 # external stages, a transcript filter and one exit code -- so it was verified the way
-# orchestration can be: with nix, nix-store and the darling binary itself stubbed on PATH, no
+# orchestration can be: with nix, nix-store and the cider binary itself stubbed on PATH, no
 # container involved. Both versions were driven over a successful build, a build whose
-# transcript carries no build_rc=0, a darling that is not executable, an eval that fails, a
+# transcript carries no build_rc=0, a cider that is not executable, an eval that fails, a
 # missing skeleton after the warm-up boot, and an unknown argument, and they agree on output
 # and exit code every time. What is NOT covered that way is the container itself, which is
 # scripts/buck-nix-bash-check.nu's job and which drives this.
@@ -23,11 +23,11 @@
 # and exit 1. Same behaviour, different diagnostic, and not worth faking a parser to match.
 #
 # Usage:
-#   scripts/build-pkg-bypass.nu <attr> [binname] [--mono <darling-store-path>] [--prefix <dir>]
+#   scripts/build-pkg-bypass.nu <attr> [binname] [--mono <cider-store-path>] [--prefix <dir>]
 # e.g.  scripts/build-pkg-bypass.nu hello hello
 #       scripts/build-pkg-bypass.nu pv pv
 # <binname> (optional) is a binary in the output's bin/ to run with --version.
-# If --mono is omitted, `nix build '.?submodules=1#default'` provides darling.
+# If --mono is omitted, `nix build '.?submodules=1#default'` provides cider.
 
 # nixpkgs 26.05 pin (flake.lock)
 const REV = "fd1462031fdee08f65fd0b4c6b64e22239a77870"
@@ -37,13 +37,13 @@ def say [msg: string] { print -e $msg }
 # One name per pkill call: a multi-pattern pkill matches nothing and exits 2. -x, never -f,
 # so the pattern cannot match the command line of the shell running it.
 def kill_all [] {
-    for n in [darling darlingserver mldr shellspawn] { do -i { ^pkill -9 -x $n } }
+    for n in [cider ciderd mldr shellspawn] { do -i { ^pkill -9 -x $n } }
 }
 
 def main [
     attr: string             # the nixpkgs attribute to build in the guest
     binname?: string         # a binary in the output bin/ to run with --version
-    --mono: string = ""      # a darling store path to use instead of building one
+    --mono: string = ""      # a cider store path to use instead of building one
     --prefix: string = ""    # the guest prefix directory
 ] {
     let repo = ($env.FILE_PWD | path join ".." | path expand)
@@ -51,28 +51,28 @@ def main [
     let prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        $env.DPREFIX? | default "/tmp/darling-pkg"
+        $env.DPREFIX? | default "/tmp/cider-pkg"
     }
 
-    # 1. darling
+    # 1. cider
     mut monopath = $mono
     if ($monopath | is-empty) {
-        print "== building darling =="
+        print "== building cider =="
         let r = (do -i { cd $repo; ^nix build '.?submodules=1#default' --no-link
             --print-out-paths } | complete)
         $monopath = ($r.stdout | lines | last | default "")
         if $r.exit_code != 0 or ($monopath | is-empty) {
-            say "darling build failed"
+            say "cider build failed"
             exit 1
         }
     }
-    if not ($"($monopath)/bin/darling" | path exists) {
-        say $"no darling at ($monopath)"
+    if not ($"($monopath)/bin/cider" | path exists) {
+        say $"no cider at ($monopath)"
         exit 1
     }
     # Immutable from here on: nushell refuses to capture a mut inside a closure, and every
     # container invocation below is one.
-    let darling = $"($monopath)/bin/darling"
+    let cider = $"($monopath)/bin/cider"
 
     # 2. eval the target drv from the pin
     print $"== eval ($attr).drvPath =="
@@ -121,7 +121,7 @@ def main [
         # The redirection stays on the command line: on a continuation line nushell reports
         # "redirecting nothing".
         with-env $genv {
-            do -i { ^timeout --signal=KILL 300 $darling shell true out+err> /tmp/pkg-warmup.out }
+            do -i { ^timeout --signal=KILL 300 $cider shell true out+err> /tmp/pkg-warmup.out }
         }
         if ($"($prefix)/var/run" | path type) != "dir" {
             say "skeleton not created"
@@ -136,7 +136,7 @@ def main [
     let out = (mktemp --tmpdir-path /tmp pkg-build.XXXXXX.out)
     let guest_driver = $"/Volumes/SystemRoot($repo)/scripts/gnix-build.sh"
     with-env $genv {
-        do -i { ^timeout --signal=KILL 1800 $darling shell sh $guest_driver out+err> $out }
+        do -i { ^timeout --signal=KILL 1800 $cider shell sh $guest_driver out+err> $out }
     }
     kill_all
     # Through the external grep, and -a, because the transcript can carry bytes that are not

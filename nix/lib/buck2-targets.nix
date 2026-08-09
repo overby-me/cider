@@ -3,15 +3,15 @@
 # (scripts/buck-test.nu): the set already known to build, spanning host tier, guest
 # tier, MIG codegen and the firstpass/final link pair.
 [
-  "//src/libsimple:libsimple_darlingserver"
-  "//src/libsimple:libsimple_darling"
+  "//src/libsimple:libsimple_ciderd"
+  "//src/libsimple:libsimple_cider"
   "//buck-src:migcom"
   "//src/startup:rtsig_header"
-  "//src/external/darlingserver:dserver_rpc"
-  "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape"
-  "//src/external/darlingserver/tools:dserverdbg"
+  "//src/external/ciderd:dserver_rpc"
+  "//src/external/ciderd/xnu-sys:ciderd_duct_tape"
+  "//src/external/ciderd/tools:dserverdbg"
   "//linux/server:duct_tape_lib"
-  "//src/libsimple:libsimple_darling_dylib"
+  "//src/libsimple:libsimple_cider_dylib"
   "//tests/buck2/firstpass:a"
   "//tests/buck2/firstpass:b"
   "//tests/buck2/firstpass:umbrella"
@@ -35,5 +35,5 @@
   # The PREFIX: what a Darling install actually is, and the target the bash milestone
   # runs from. It pulls in every dylib, executable and data file the layout installs, so
   # it is also by far the widest thing this endpoint is asked to lower.
-  "//buck/prefix:darling_prefix"
+  "//buck/prefix:cider_prefix"
 ]

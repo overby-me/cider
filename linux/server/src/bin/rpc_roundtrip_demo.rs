@@ -4,11 +4,11 @@
 //! encodes the RpcReplyUidgid, and sends it back; the client verifies the reply.
 //! This exercises: rpc_io recv/send + rpc_wire decode/encode + sched dispatch +
 //! a real duct-tape call from a microthread.
-use darling::rpc_io::{recv_message, send_message};
-use darling::rpc_wire::{
+use cider::rpc_io::{recv_message, send_message};
+use cider::rpc_wire::{
     callnum, CallUidgid, DserverRpcCallhdr, DserverRpcReplyhdr, ReplyUidgid, RpcCallUidgid, RpcReplyUidgid,
 };
-use darling::sched;
+use cider::sched;
 use std::cell::Cell;
 use std::mem::size_of;
 use std::os::fd::RawFd;
@@ -24,7 +24,7 @@ fn as_bytes<T>(v: &T) -> &[u8] {
 }
 
 /// Handle one message on `fd`: decode -> dispatch on a microthread -> reply.
-unsafe fn serve_one(fd: RawFd, kt: *mut darling::bindings::dtape_task_t) {
+unsafe fn serve_one(fd: RawFd, kt: *mut cider::bindings::dtape_task_t) {
     let msg = recv_message(fd).unwrap().expect("no message");
     let hdr = msg.header().expect("header");
     match hdr.number {

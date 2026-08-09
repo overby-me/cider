@@ -33,7 +33,7 @@ points it at Darling.
 - The genuinely hard parts to express in ANY system are: (1) MIG codegen, (2) the
   firstpass two-pass link that breaks the libSystem umbrella cycle, (3)
   reexport / `install_name` machinery, (4) the darwin SDK sysroot + cross-arch
-  (`x86_64-apple-darwin20`) toolchain, (5) the darling header shims. Spike these
+  (`x86_64-apple-darwin20`) toolchain, (5) the cider header shims. Spike these
   before mass porting (Phase 1) -- they decide feasibility.
 - Hand-written BUCK for upstream code **drifts** on every Darling bump. Mitigate
   with a CMake/ninja -> BUCK *generator* (reuse `rust-ninja -t graph-json`) to
@@ -66,7 +66,7 @@ kept here because they are neither current status nor finished history.
 ## Profiling the evaluation: 152s of CPU down to 9s
 
 Nix 2.34 has a sampling eval profiler (`--eval-profiler flamegraph`), and pointing it at
-`nix eval .#darling-buck2-prefix.drvPath` answered in one run what had been guesswork.
+`nix eval .#cider-buck2-prefix.drvPath` answered in one run what had been guesswork.
 
 Before: 2m08s wall, 152s CPU, 200M thunks, 376M function calls, 28.8 GB allocated -- to
 compute ONE derivation path. After: 14s wall, 9.3s CPU, 19M function calls, 6.3 GB.
@@ -94,14 +94,14 @@ Midway I concluded the memoisation had changed behaviour, because the derivation
 between a memo-off and a memo-on evaluation. It had not. The lowering interpolates
 `${src}/...`, so every lowered derivation depends on the whole project source, and I had
 edited that very file between the two runs. Appending a bare comment to
-darlingBuck2Lower.nix changes the hash too; two evaluations with no edit between them are
+ciderBuck2Lower.nix changes the hash too; two evaluations with no edit between them are
 identical. The memo was reverted on that bad reading and then restored.
 
 The misreading exposed something real: **editing any byte of the project invalidated every
 lowered target derivation**, a comment included. For an endpoint whose whole purpose is that
 other people do not rebuild what they did not touch, that was its most expensive bug.
 
-Half fixed since. `nix/lib/darlingBuck2Lower.nix` filters the lowering source, so plan/,
+Half fixed since. `nix/lib/ciderBuck2Lower.nix` filters the lowering source, so plan/,
 docs/, nix/, scripts/, the VM tests, PLAN.md and the other documentation no longer relower
 anything -- which matters because editing generators and PLAN.md is most of what this port
 consists of. The precise fix is still open and is task #11: depend on the SOURCES THE
@@ -111,16 +111,16 @@ whole-project path.
 ## The VM harness: Darling does not run in a NixOS test VM at all
 
 Task #10 was meant to be the easy one: run the bash milestone in the same harness
-tests/darling-smoke.nix uses. tests/darling-buck2-smoke.nix boots the VM, finds the
-launcher, and then `darling-buck2 shell /bin/bash -c ...` times out with no output, where
+tests/cider-smoke.nix uses. tests/cider-buck2-smoke.nix boots the VM, finds the
+launcher, and then `cider-buck2 shell /bin/bash -c ...` times out with no output, where
 the identical command takes seconds on the host through both endpoints.
 
 The test dumps the daemon log, the process list and the uid/userns state on failure, and the
 log says the container BOOTS: full dtape init, `execve expand /usr/libexec/shellspawn`,
-`darling_sigexc_self()`. Then it hangs.
+`cider_sigexc_self()`. Then it hangs.
 
 The lead recorded here used to be a one-line difference in the daemon log -- `dtype for fd 2`
-resolving to a pipe on the host and to `/darlingserver.log` in the VM. **That was a
+resolving to a pipe on the host and to `/ciderd.log` in the VM. **That was a
 correlation written up as a cause, and it is now disproved.** Two host tests, seconds each:
 
   * binding the container's stderr to a regular FILE instead of a pipe runs fine (rc=0);
@@ -128,10 +128,10 @@ correlation written up as a cause, and it is now disproved.** Two host tests, se
     (base64 --wrap 0; echo)` with stdin closed.
 
 What the fd tables show instead, from a working host run: the persistent shellspawn INIT has
-fd 1/2 on `darlingserver.log` -- by design, `linux/launcher/src/main.rs:490` redirects the
+fd 1/2 on `ciderd.log` -- by design, `linux/launcher/src/main.rs:490` redirects the
 daemon's stdio there so a one-shot command does not pin the caller's stdout open forever --
 while the guest running the actual command gets the CALLER's fds passed to it. So
-`/darlingserver.log` is what the init legitimately reports, and the VM log line is most
+`/ciderd.log` is what the init legitimately reports, and the VM log line is most
 likely the init's rather than the command guest's, i.e. evidence that the command guest is
 never spawned at all. STILL UNVERIFIED: the interactive VM that was going to settle it could
 not be built, because the Nix endpoint turned out to be broken in four separate ways (see
@@ -141,7 +141,7 @@ Cheaper explanations already eliminated: running without a TTY reproduces fine o
 and giving the VM 4 cores and 4 GB instead of 2 and 2 changes nothing.
 
 **It is not the port.** The REFERENCE Nix-built Darling fails the same way in the same
-harness: `nix build .#checks.x86_64-linux.darling-smoke` gets to `darling shell true` and
+harness: `nix build .#checks.x86_64-linux.cider-smoke` gets to `cider shell true` and
 times out with exit code 124, at the same place. (That check also had to be repaired first
 to run at all -- it fails its own linter on an f-string with no placeholders, which says it
 has not been run in a while.)
@@ -150,7 +150,7 @@ So two things are now known that were not:
 
   * the buck2 port's Darling is fine -- it boots and runs bash on the host, from the daemon
     path and from the Nix endpoint, repeatedly;
-  * `tests/darling-smoke.nix` does not pass on this machine with the reference build, so
+  * `tests/cider-smoke.nix` does not pass on this machine with the reference build, so
     task #5 was never "port more components until it goes green". Whatever is wrong with
     Darling inside a NixOS test VM has to be fixed first, and it belongs to Darling's
     container plumbing rather than to this port.
@@ -159,7 +159,7 @@ So two things are now known that were not:
 
 The line above -- "it boots and runs bash from the Nix endpoint" -- was true when written and
 then quietly stopped being true. Getting an interactive VM to diagnose #12 meant building
-`pkgs.darling-buck2`, and that turned up four independent faults at once. The count is not the
+`pkgs.cider-buck2`, and that turned up four independent faults at once. The count is not the
 point and is deliberately not kept here, because it went on growing: an argv-splitting bug in
 `configure_file` after these four, and then the staging regression below. What they have in
 common is that the host build passes throughout.

@@ -5,7 +5,7 @@ set -e
 #shift
 #ar_prog="$1"
 #shift
-redefines="$(dirname $0)/Exports/darlingIntel.alias"
+redefines="$(dirname $0)/Exports/ciderIntel.alias"
 ar_prog="ar"
 ar_op="$1"
 shift

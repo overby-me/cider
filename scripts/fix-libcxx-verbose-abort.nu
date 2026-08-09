@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
 # Work around the guest libc++ symbol gap that blocks M1 (guest nix building hello):
 # clang's libLLVM (LLVM 21, built for macOS 14) references std::__1::__libcpp_verbose_abort
-# (__ZNSt3__122__libcpp_verbose_abortEPKcz), which darling's bundled /usr/lib/libc++.1.dylib does
+# (__ZNSt3__122__libcpp_verbose_abortEPKcz), which cider's bundled /usr/lib/libc++.1.dylib does
 # not export -> dyld abort_with_payload -> the build's clang aborts. (Task #10 territory; the
 # daemon itself hosts the build fine.)
 #
-# Rather than rebuild all of darling's libc++, this links a small WRAPPER libc++.1.dylib that
+# Rather than rebuild all of cider's libc++, this links a small WRAPPER libc++.1.dylib that
 # (a) defines __libcpp_verbose_abort as a thin abort() and (b) -reexport_library's the original
 # (renamed to libc++.2.dylib via a same-length install-name byte patch, so no install_name_tool
 # is needed). libc++ already reexports libc++abi the same way. Staged into the runtime SDK;
@@ -15,13 +15,13 @@
 # of a materialized runtime root and comparing the staged libc++.1.dylib and libc++.2.dylib byte
 # for byte, plus the already-wrapped no-op and the three missing-input errors.
 #
-# Usage: fix-libcxx-verbose-abort.nu [<darling-runtime-root>]   (default: ~/darling-rt)
+# Usage: fix-libcxx-verbose-abort.nu [<cider-runtime-root>]   (default: ~/cider-rt)
 
 def say [msg: string] { print $msg }
 
 def main [rt?: string] {
-    let rt = ($rt | default ($env.HOME | path join "darling-rt"))
-    let sdk = $"($rt)/libexec/darling"
+    let rt = ($rt | default ($env.HOME | path join "cider-rt"))
+    let sdk = $"($rt)/libexec/cider"
     let libdir = $"($sdk)/usr/lib"
 
     # cling-unwrapped, not clang-unwrapped: that is what the bash version globbed for, and it
@@ -30,7 +30,7 @@ def main [rt?: string] {
     # store, because the conversion is not the place to change what tool gets picked.
     # No `first?` in nushell, so the empty case is handled before taking one.
     let clang_hits = (glob "/nix/store/*cling-unwrapped*/bin/clang" | sort)
-    let ld_hits = (glob "/nix/store/*darling-ld64*/bin/x86_64-apple-darwin*-ld" | sort)
+    let ld_hits = (glob "/nix/store/*cider-ld64*/bin/x86_64-apple-darwin*-ld" | sort)
     let clang = (if ($clang_hits | is-empty) { "" } else { $clang_hits | first })
     let ld = (if ($ld_hits | is-empty) { "" } else { $ld_hits | first })
     if ($clang | is-empty) or (not ($clang | path exists)) {
@@ -38,7 +38,7 @@ def main [rt?: string] {
         exit 1
     }
     if ($ld | is-empty) or (not ($ld | path exists)) {
-        say "no darling-ld64 found (nix build .#darling-ld64)"
+        say "no cider-ld64 found (nix build .#cider-ld64)"
         exit 1
     }
     if not ($"($libdir)/libc++.1.dylib" | path exists) {

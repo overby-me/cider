@@ -10,7 +10,7 @@ and neither the build nor the checks caught it until an hour of compiling had go
   levels above the CoreServices store path and dangled. 1,194 targets failed.
 
   Then per-PIN stores staged each submodule as its own store path. src/external/IOKitUser/
-  darling/submodules/xnu is a link to ../../../xnu/. Same shape, same failure, and the pin
+  cider/submodules/xnu is a link to ../../../xnu/. Same shape, same failure, and the pin
   check passed anyway: it compared by NAR hash, and a NAR hash records a symlink TARGET as a
   STRING. Two identical strings that resolve to different places because the root moved look
   identical to it. A check that cannot fail is worth nothing.
@@ -21,25 +21,25 @@ every relative symlink inside it must land inside it, or it cannot be staged on 
 PINS NEED THE ASSEMBLED TREE, NOT THE REPO, and this script reported a clean 0 for them until
 that was noticed -- which would have been the very failure it exists to prevent. The 147
 `src/external/<pin>` directories are EMPTY MOUNT POINTS here; content is fetched by
-nix/lib/darling-src.nix and only exists in the assembled store path. Walking the repo for them
+nix/lib/cider-src.nix and only exists in the assembled store path. Walking the repo for them
 walks nothing and finds nothing wrong. So pins mode requires --root and refuses to pass on a
 boundary that held no symlinks at all.
 
 COUNT THE EFFECT, NOT JUST THE CAUSE. `pins` finds 21 escaping links across 12 pins, which
 sounds negligible. `resolve` on the same pin stores finds **143 dangling links of 3,861 across
 15 pins**, because one escaping DIRECTORY link carries every file link under it: IOKitUser has
-3 escapes and 117 dangling links, since darling/include/IOKit/*.h all point through
-darling/submodules/xnu. Seven times the blast radius of the escape count. Quote the resolve
+3 escapes and 117 dangling links, since cider/include/IOKit/*.h all point through
+cider/submodules/xnu. Seven times the blast radius of the escape count. Quote the resolve
 number when describing the damage.
 
 Usage:
-  buck-escape-check.py pins --root /nix/store/...-darling-src   # per-pin store boundary
+  buck-escape-check.py pins --root /nix/store/...-cider-src   # per-pin store boundary
   buck-escape-check.py groups                                   # the #54 source-group boundary
   buck-escape-check.py resolve <dir> ...                        # does a tree AS STAGED work
   buck-escape-check.py path <dir> ...                           # arbitrary boundaries
 
 Find the assembled tree with:
-  ls -d /nix/store/*-darling-src | tail -1
+  ls -d /nix/store/*-cider-src | tail -1
 
 Exit 0 when every boundary is self contained, 1 when any is not, 2 on trouble.
 
@@ -111,7 +111,7 @@ def report(title, found, walked, total_hint=""):
     if walked == 0:
         print("  REFUSING: no symlink was walked at all, so this proved nothing.")
         print("  The src/external pin directories are empty mount points in the repo;")
-        print("  point --root at an assembled darling-src instead.")
+        print("  point --root at an assembled cider-src instead.")
         return 2
     if not found:
         print("  self contained, safe to stage standalone")

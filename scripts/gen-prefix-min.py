@@ -53,11 +53,11 @@ EXCLUDE_PKGS = (
 #
 # //buck-src:jsc is the JavaScriptCore command-line shell, and it is the ONLY thing in this
 # prefix that pulls JavaScriptCore. Measured with buck2 cquery:
-#   somepath(//buck/prefix-min:darling_prefix_min, //buck-src:JavaScriptCore_obj)
-#     -> darling_prefix_min -> jsc -> JavaScriptCore_dylib -> JavaScriptCore_obj
-#   rdeps(deps(darling_prefix_min), //buck-src:JavaScriptCore_dylib, 1)
+#   somepath(//buck/prefix-min:cider_prefix_min, //buck-src:JavaScriptCore_obj)
+#     -> cider_prefix_min -> jsc -> JavaScriptCore_dylib -> JavaScriptCore_obj
+#   rdeps(deps(cider_prefix_min), //buck-src:JavaScriptCore_dylib, 1)
 #     -> jsc, and nothing else
-# One install entry, libexec/darling/usr/bin/jsc, therefore drags in 1,082 compiles. That is
+# One install entry, libexec/cider/usr/bin/jsc, therefore drags in 1,082 compiles. That is
 # the single biggest item in this prefix and it is dead weight for the stated goal: boot, run
 # bash, run nix. The FULL prefix keeps it, so parity is unaffected.
 EXCLUDE_LABELS = (
@@ -142,7 +142,7 @@ EXCLUDE_LABELS = (
     # securitytool it pulls SecurityFoundation 161.
     #
     # The question is not what nix NEEDS, it is what nix needs TO START; once installed it
-    # pulls anything else from nixpkgs. Read tests/nix-in-darling.nix for what the guest
+    # pulls anything else from nixpkgs. Read tests/nix-in-cider.nix for what the guest
     # actually does: the HOST downloads and extracts the installer tarball and copies it in,
     # then the guest runs `bash -x install --no-daemon` followed by nix --version,
     # nix-instantiate --eval, nix eval, nix-store --verify and a trivial derivation. NONE of
@@ -150,7 +150,7 @@ EXCLUDE_LABELS = (
     # bootstrap path.
     #
     # This cannot regress anything currently verified, and that is checkable rather than
-    # hopeful: nix-in-darling runs against the cmake-built FULL `darling`, not this prefix, so
+    # hopeful: nix-in-cider runs against the cmake-built FULL `cider`, not this prefix, so
     # no existing test exercises nix here. And Security.framework itself is ALREADY absent from
     # this prefix (0 entries reach Security_dylib; it lives under System/Library/Frameworks,
     # which EXCLUDE_DEST drops), so if nix needed it the minimal prefix was already unable to
@@ -213,7 +213,7 @@ EXCLUDE_LABELS = (
 
     # libarchive's tools (archive_obj 115) and the Apache Portable Runtime (apr_obj 82).
     # I flagged these as a residual risk on the grounds that the nix installer might shell out
-    # to tar. It does not, and the evidence was already in tests/nix-in-darling.nix when I
+    # to tar. It does not, and the evidence was already in tests/nix-in-cider.nix when I
     # wrote that: EVERY extraction step is on the HOST. The host curls the tarball, the host
     # runs `tar -xf`, the host `cp -a`s the extracted directory into the prefix, and the guest
     # then runs `install --no-daemon` over plain files. That installer copies $self/store into
@@ -272,29 +272,29 @@ EXCLUDE_SRC = (
 # Destination prefixes to drop outright, for files that arrive from a package that is kept
 # but land somewhere only the excluded world reads.
 EXCLUDE_DEST = (
-    "libexec/darling/System/Library/Frameworks/",
-    "libexec/darling/System/Library/PrivateFrameworks/",
-    "libexec/darling/usr/lib/python",
-    "libexec/darling/System/Library/Perl/",
+    "libexec/cider/System/Library/Frameworks/",
+    "libexec/cider/System/Library/PrivateFrameworks/",
+    "libexec/cider/usr/lib/python",
+    "libexec/cider/System/Library/Perl/",
 
     # Documentation. 810 entries, 44 percent of everything the prefix still installs, and
     # ZERO build actions: they are file copies. They cost prefix SIZE and assembly time, not
     # compile time, and a prefix whose job is to get nix started has no reader for them.
-    "libexec/darling/usr/share/man/",
+    "libexec/cider/usr/share/man/",
 
     # DATA ORPHANED BY THE BINARY REMOVALS. Each of these is config or runtime support for a
     # program that is no longer installed, so it is unreachable rather than merely unused.
     # Same class as the dangling symlinks and the launchd plists, just without a reference to
     # make it detectable.
-    "libexec/darling/usr/share/cups/",       # cupsd is gone
-    "libexec/darling/usr/libexec/cups/",     # 85 actions, the only one of these that compiles
-    "libexec/darling/private/etc/cups/",
-    "libexec/darling/usr/share/vim/",        # vim is gone
-    "libexec/darling/private/etc/ssh/",      # the ssh suite is gone
-    "libexec/darling/private/etc/ssl/",      # openssl is gone
-    "libexec/darling/usr/share/file/",       # file(1) is gone
-    "libexec/darling/usr/lib/sasl2/",        # SASL plugins, for the mail and ssh world
-    "libexec/darling/System/Library/Components/",  # the CoreAudio component
+    "libexec/cider/usr/share/cups/",       # cupsd is gone
+    "libexec/cider/usr/libexec/cups/",     # 85 actions, the only one of these that compiles
+    "libexec/cider/private/etc/cups/",
+    "libexec/cider/usr/share/vim/",        # vim is gone
+    "libexec/cider/private/etc/ssh/",      # the ssh suite is gone
+    "libexec/cider/private/etc/ssl/",      # openssl is gone
+    "libexec/cider/usr/share/file/",       # file(1) is gone
+    "libexec/cider/usr/lib/sasl2/",        # SASL plugins, for the mail and ssh world
+    "libexec/cider/System/Library/Components/",  # the CoreAudio component
 
     # THE SWIFT RUNTIME, 44 dylibs. Zero build actions, since they are file copies, so this is
     # not a speed removal, it is a correctness one, and it is the safest removal in this file.
@@ -304,7 +304,7 @@ EXCLUDE_DEST = (
     # broken. There is no state in which it currently works, so removal cannot regress anything.
     # On the standing criterion it would go anyway: nix does not need Swift to start, and once
     # nix runs it can pull a real Swift from nixpkgs rather than a pointer file.
-    "libexec/darling/usr/lib/swift/",
+    "libexec/cider/usr/lib/swift/",
 )
 
 _LABEL = re.compile(r'"\s*:\s*"(//[^"]+)"')
@@ -377,13 +377,13 @@ def main(argv: list[str]) -> int:
                 re.match(r'^\s*"([^"]+)"', o).group(1).rsplit("/", 1)[-1] for o in orphans)
             print(f"prefix-min: dropped {len(orphans)} symlink(s) orphaned by an "
                   f"excluded target: {names}", file=sys.stderr)
-    body = body.replace('name = "darling_prefix"', 'name = "darling_prefix_min"', 1)
+    body = body.replace('name = "cider_prefix"', 'name = "cider_prefix_min"', 1)
     header = (
         "# GENERATED by scripts/gen-prefix-min.py from buck/prefix/BUCK -- do not edit.\n"
         "#\n"
         "# The full prefix minus the GUI frameworks, the private frameworks and the\n"
         "# scripting languages. It exists for one purpose: a prefix that boots, runs bash\n"
-        "# and can run nix. Parity lives in //buck/prefix:darling_prefix, which is unchanged.\n"
+        "# and can run nix. Parity lives in //buck/prefix:cider_prefix, which is unchanged.\n"
         f"# Entries dropped from the full prefix: {dropped}.\n"
     )
     body = body.replace(

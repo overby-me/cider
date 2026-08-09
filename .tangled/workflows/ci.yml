@@ -6,7 +6,7 @@ engine: nixery
 
 environment:
   USER: root
-  CACHIX_NAME: darling-nix
+  CACHIX_NAME: cider-nix
 
 steps:
   - name: "Setup Cachix"
@@ -24,8 +24,8 @@ steps:
 
   - name: "Build Darling"
     command: |
-      cachix watch-exec $CACHIX_NAME -- nix build .#darling -L --no-link --print-out-paths
+      cachix watch-exec $CACHIX_NAME -- nix build .#cider -L --no-link --print-out-paths
 
   - name: "Build Darling SDK"
     command: |
-      cachix watch-exec $CACHIX_NAME -- nix build .#darling-sdk -L --no-link --print-out-paths
+      cachix watch-exec $CACHIX_NAME -- nix build .#cider-sdk -L --no-link --print-out-paths

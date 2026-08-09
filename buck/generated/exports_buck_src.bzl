@@ -610,7 +610,7 @@ EXPORTS = {
     "grep_fgrep.1": "grep/fgrep.1",
     "grep_grep.1": "grep/grep.1",
     "installer_installer.8": "installer/installer.8",
-    "iokitd_org.darlinghq.iokitd.plist": "iokitd/org.darlinghq.iokitd.plist",
+    "iokitd_org.ciderhq.iokitd.plist": "iokitd/org.ciderhq.iokitd.plist",
     "less_less.1": "less/less.1",
     "less_lessecho.1": "less/lessecho.1",
     "libarchive_libarchive_doc_man_archive_entry.3": "libarchive/libarchive/doc/man/archive_entry.3",

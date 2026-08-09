@@ -2,5 +2,5 @@
 //! C probe when the structs landed, proving the Rust wire structs are
 //! byte-identical to the C the clients use. The probe script is retired.
 fn main() {
-    darling::rpc_wire::print_sizes();
+    cider::rpc_wire::print_sizes();
 }

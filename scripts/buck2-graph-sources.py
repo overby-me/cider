@@ -9,8 +9,8 @@ That is why it lives here instead of in buck2-graph-dump.py.
 
 THIS PARAGRAPH USED TO SAY THE DUMP RUNS AGAINST A SKELETON, so that editing a .c could not
 rerun it and 30 to 47 minutes were saved on every edit. THAT IS NOT TRUE AND WAS NEVER LEFT
-IN PLACE. The skeleton was tried and REVERTED; nix/lib/darlingBuck2Graph.nix passes
-`src = projectSrc` to BOTH darling-buck2-graph and darling-buck2-sources, and the comment
+IN PLACE. The skeleton was tried and REVERTED; nix/lib/ciderBuck2Graph.nix passes
+`src = projectSrc` to BOTH cider-buck2-graph and cider-buck2-sources, and the comment
 above it says why: this derivation does not only analyse, it also runs first-party generators
 it builds itself, and an emptied rtsig.c compiles, links, runs and writes an EMPTY header, so
 the graph comes out quietly wrong. A mechanism whose failure mode is silence is worse than

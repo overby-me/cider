@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 # package has to do is exist -- scripts/buck-exports.py fills in the export_file
 # rules that name them, and the prefix picks them up from there.
 #
-# tests/darling-smoke.nix stage 7 drives all three.
+# tests/cider-smoke.nix stage 7 drives all three.
 
 # BEGIN generated: prefix exports
 # GENERATED from the reference build's install entries by

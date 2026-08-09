@@ -26,7 +26,7 @@ def say [msg: string] { print -e $msg }
 def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let root = ($scratch | default $"/tmp/darling-dispatch-(^id -u | str trim)")
+    let root = ($scratch | default $"/tmp/cider-dispatch-(^id -u | str trim)")
     let rt = ($root | path join "rt")
     let prefix = ($root | path join "prefix")
 
@@ -36,10 +36,10 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix and the probe =="
-    let built = (^buck2 build //buck/prefix:darling_prefix //tests/buck2/guest:dispatch_probe
+    let built = (^buck2 build //buck/prefix:cider_prefix //tests/buck2/guest:dispatch_probe
         --show-output | complete)
     let lines = ($built.stdout | lines)
-    let art = ($lines | where {|l| $l =~ "darling_prefix" } | first | split row " " | last)
+    let art = ($lines | where {|l| $l =~ "cider_prefix" } | first | split row " " | last)
     let bin = ($lines | where {|l| $l =~ "dispatch_probe" } | first | split row " " | last)
     for f in [$art $bin] {
         if not ($f | path exists) {
@@ -70,18 +70,18 @@ def main [scratch?: string] {
     # cp -a, never cp -aL: the prefix installs Volumes/DarlingEmulatedDrive -> /.
     ^cp -a $"($art)/." $"($rt)/"
     ^chmod -R u+w $rt
-    ^cp $bin $"($rt)/libexec/darling/usr/bin/dispatch_probe"
-    ^chmod +x $"($rt)/libexec/darling/usr/bin/dispatch_probe"
+    ^cp $bin $"($rt)/libexec/cider/usr/bin/dispatch_probe"
+    ^chmod +x $"($rt)/libexec/cider/usr/bin/dispatch_probe"
 
     say "== running the probe inside the container =="
     let out = (
         with-env {
             DPREFIX: $prefix
             DARLING_NO_LAUNCHD: "1"
-            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/darling"
-            DSERVER_MLDR_PATH: $"($rt)/libexec/darling/usr/libexec/darling/mldr"
+            DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
+            DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
         } {
-            ^timeout 200 $"($rt)/bin/darling" shell /usr/bin/dispatch_probe | complete
+            ^timeout 200 $"($rt)/bin/cider" shell /usr/bin/dispatch_probe | complete
         }
     )
     let text = $"($out.stdout)($out.stderr)"

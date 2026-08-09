@@ -5,24 +5,24 @@
 # output is its object file. Its comment says so and that part of its code is right. Yet the
 # dump demonstrably runs compiles: with a skeleton source tree buck2 reports
 #
-#   Waiting on //src/hosttools:darling-coredump -- action (cxx_compile src/coredump/main.cpp)
+#   Waiting on //src/hosttools:cider-coredump -- action (cxx_compile src/coredump/main.cpp)
 #   Action failed: //buck-src:libtrustd_obj (c_compile .../TrustURLSessionCache.m)
 #
 # This computes the SAME wanted set and prints who owns it, instead of ensuring it. Nothing is
 # built, so it is safe to run on any tree and answers the question in one pass.
 #
-#   buck2 bxl //buck/bxl/probe-ensured.bxl:main -- --targets //buck/prefix-min:darling_prefix_min
+#   buck2 bxl //buck/bxl/probe-ensured.bxl:main -- --targets //buck/prefix-min:cider_prefix_min
 #
 # THE ANSWER, measured on the minimal prefix 2026-08-07:
 #
 #   ensured artifacts: 65206 from include_dirs, 28 from InProcInfo
 #   owners that look like a compile or link: exactly ONE, and it is not one:
 #     include_dirs 1 root//src/hosttools:coredump_headers
-#   the 28 InProcInfo artifacts belong to the rust crates, darlingserverd, darling, mldr and
+#   the 28 InProcInfo artifacts belong to the rust crates, ciderd, cider, mldr and
 #   the prefix itself, which is staging rather than object code.
 #
 # SO OWNERSHIP IS NOT THE MECHANISM, and the obvious hypothesis is DISPROVEN: nothing ensured
-# is owned by libtrustd_obj or darling-coredump, the two the skeleton run showed compiling.
+# is owned by libtrustd_obj or cider-coredump, the two the skeleton run showed compiling.
 # materialize.bxl is not asking for an object.
 #
 # WHAT REMAINS is that ensuring an artifact builds its ACTION, and that action's INPUTS may

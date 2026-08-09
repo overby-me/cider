@@ -1,17 +1,17 @@
 load(":cc.bzl", "cc_toolchain")
 # The HOST (Linux/ELF) toolchain: duct-tape, the XNU emulation glue, libsimple,
 # migcom. `cc`/`ar` are command names resolved from PATH (the devShell's clang 21
-# + binutils); override with absolute paths via .buckconfig.local's [darling]
+# + binutils); override with absolute paths via .buckconfig.local's [cider]
 # section if PATH is ever scrubbed. The Nix endpoint maps these command strings
 # to packages instead.
 cc_toolchain(
     name = "native_cc",
-    ar = read_root_config("darling", "ar", "ar"),
-    cc = read_root_config("darling", "cc", "clang"),
-    cxx = read_root_config("darling", "cxx", "clang++"),
+    ar = read_root_config("cider", "ar", "ar"),
+    cc = read_root_config("cider", "cc", "clang"),
+    cxx = read_root_config("cider", "cxx", "clang++"),
     # -g and -O are deliberately absent: they belong to the build mode, and the
     # cmake build compiles duct-tape with neither (cmakeBuildType is blank in
-    # nix/darlingBuildInputs.nix).
+    # nix/ciderBuildInputs.nix).
     cflags = [],
     cxxflags = [],
     visibility = ["PUBLIC"],
@@ -19,7 +19,7 @@ cc_toolchain(
 
 # The GUEST (Darwin/Mach-O) cross toolchain. Same clang, driven to emit Mach-O
 # for x86_64-apple-darwin20, which is exactly how the cmake build cross-compiles
-# (nix/darlingBuildInputs.nix even wraps clang so a `-target *darwin*` invocation
+# (nix/ciderBuildInputs.nix even wraps clang so a `-target *darwin*` invocation
 # bypasses nixpkgs' cc-wrapper and its Linux-specific flags).
 #
 # Flags are the reference build's, read off the configured build.ninja:
@@ -33,16 +33,16 @@ cc_toolchain(
 # same format and is the default here, overridable once nix/cctools-port.nix
 # exports the cctools one.
 # The Mach-O linker and the cctools whose binaries a Darwin link invokes come
-# from nix (`nix build .#darling-ld64 -o result-ld64`); they are prebuilt tools
-# like clang, referenced by path. Override with [darling] ld64_dir in
+# from nix (`nix build .#cider-ld64 -o result-ld64`); they are prebuilt tools
+# like clang, referenced by path. Override with [cider] ld64_dir in
 # .buckconfig.local if they live elsewhere.
-_LD64_DIR = read_root_config("darling", "ld64_dir", "result-ld64/bin")
+_LD64_DIR = read_root_config("cider", "ld64_dir", "result-ld64/bin")
 
 # Guest compiles pass -nostdinc (as the reference build does), which drops
 # clang's OWN builtin headers together with the host's, so the resource dir goes
 # back on as -isystem exactly as the reference does. Written by
 # scripts/buck-setup.nu, since it is a nix store path.
-_CLANG_RESOURCE_DIR = read_root_config("darling", "clang_resource_dir", "")
+_CLANG_RESOURCE_DIR = read_root_config("cider", "clang_resource_dir", "")
 
 _DARWIN_FLAGS = [
     "-target",
@@ -54,10 +54,10 @@ _DARWIN_FLAGS = [
 
 cc_toolchain(
     name = "darwin_cc",
-    ar = read_root_config("darling", "darwin_ar", "llvm-ar"),
+    ar = read_root_config("cider", "darwin_ar", "llvm-ar"),
     # Empty by default: -B below is what selects the linker (see darwin.bzl).
     # -fuse-ld needs an absolute path, so it is opt-in per machine.
-    ld = read_root_config("darling", "ld", ""),
+    ld = read_root_config("cider", "ld", ""),
     ld_search_dirs = [_LD64_DIR],
     # THE LINKER BUILT BY THIS GRAPH (#65). darwin.bzl writes a two line driver wrapper that
     # resolves $PWD at RUN time and execs clang with an absolute -fuse-ld, which is the only
@@ -104,8 +104,8 @@ cc_toolchain(
     # wraps clang so that a link picks up this platform's crt files and
     # -dynamic-linker=<glibc>, which Darling's ld64 rejects outright. A host tool still
     # wants that wrapper, so the two are separate keys rather than one.
-    cc = read_root_config("darling", "darwin_cc", read_root_config("darling", "cc", "clang")),
-    cxx = read_root_config("darling", "darwin_cxx", read_root_config("darling", "cxx", "clang++")),
+    cc = read_root_config("cider", "darwin_cc", read_root_config("cider", "cc", "clang")),
+    cxx = read_root_config("cider", "darwin_cxx", read_root_config("cider", "cxx", "clang++")),
     cflags = _DARWIN_FLAGS,
     cxxflags = _DARWIN_FLAGS,
     visibility = ["PUBLIC"],

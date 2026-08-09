@@ -9,7 +9,7 @@
 #
 # THEY CANNOT BE CHAINED NAIVELY, which is the knowledge this script exists to hold. Each
 # check kills stale processes under its OWN scratch root at START and not at exit, so
-# running three back to back leaves three darlingserver daemons alive at once and the
+# running three back to back leaves three ciderd daemons alive at once and the
 # earlier ones fail spuriously. Killing every stray daemon BETWEEN checks is what makes
 # them agree with their own results run individually.
 #
@@ -57,7 +57,7 @@ const SLOW = [buck-nix-bash-check]
 def kill_daemons [] {
     # By PID from a list already read, and pgrep -x so the pattern cannot match this
     # process. -f would match the command line of the shell running the loop.
-    for pid in (do -i { ^pgrep -x darlingserver | lines } | default []) {
+    for pid in (do -i { ^pgrep -x ciderd | lines } | default []) {
         do -i { ^kill -9 $pid }
     }
     # The daemon takes a moment to release the prefix it had mounted, and a check that

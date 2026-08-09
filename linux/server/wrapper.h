@@ -1,4 +1,4 @@
-/* bindgen entry point for darlingserver.
+/* bindgen entry point for ciderd.
  *
  * TWO SURFACES, one generated file, because rust_library takes a single out_dir.
  *
@@ -15,7 +15,7 @@
  * field.
  *
  * This half is NOT self-contained, and that is why it was left out until now. It reaches
- * internal-include, the XNU header roots, and two GENERATED trees: darlingserver/rpc.h
+ * internal-include, the XNU header roots, and two GENERATED trees: ciderd/rpc.h
  * (the RPC wrapper generator, via duct-tape.h's DSERVER_DTAPE_DECLS) and the MIG output for
  * mach/task.h, where semaphore_create and semaphore_destroy are actually declared -- XNU's
  * kern/sync_sema.h declares only semaphore_destroy_all. linux/server/BUCK wires all of them
@@ -26,7 +26,7 @@
  * pre-existing 62 items come out byte for byte identical apart from dtape_semaphore itself,
  * which is the point -- it was an empty placeholder before and is now the real struct.
  */
-#include <darlingserver/xnu-sys/hooks.h>
+#include <ciderd/xnu-sys/hooks.h>
 
 /* (2) internal structs + the XNU entry points the ported glue calls.
  *
@@ -34,12 +34,12 @@
  * FORWARD-DECLARES it: without this line dtape_task binds as an opaque [u8; 0] and the
  * xnu_task offset -- the one thing this half exists to provide -- is not there at all.
  */
-#include <darlingserver/xnu-sys/semaphore.h>
-#include <darlingserver/xnu-sys/task.h>
+#include <ciderd/xnu-sys/semaphore.h>
+#include <ciderd/xnu-sys/task.h>
 /* condvar.c walks back from a queue link to the containing dtape_thread, so the port needs
  * the offsets of mutex_link and of the embedded XNU thread. */
-#include <darlingserver/xnu-sys/thread.h>
-#include <darlingserver/xnu-sys/condvar.h>
+#include <ciderd/xnu-sys/thread.h>
+#include <ciderd/xnu-sys/condvar.h>
 #include <mach/task.h>
 #include <mach/semaphore.h>
 /* what timer.c itself includes: the timer queue it owns, and the XNU entry points it calls */
@@ -49,7 +49,7 @@
 /* traps.c: the Mach trap entry points and their argument structs. */
 #include <mach/mach_traps.h>
 /* psynch.c: the pthread kext callback table and the BSD sleep path. */
-#include <darlingserver/xnu-sys/psynch.h>
+#include <ciderd/xnu-sys/psynch.h>
 #include <kern/sched_prim.h>
 #include <kern/clock.h>
 #include <sys/proc.h>
@@ -96,7 +96,7 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <kern/processor.h>
 #include <kern/machine.h>
 /* kqchan.c: the kqueue channel, its knote and the mqueue peeks it does. */
-#include <darlingserver/xnu-sys/kqchan.h>
+#include <ciderd/xnu-sys/kqchan.h>
 #include <sys/event.h>
 #include <ipc/ipc_mqueue.h>
 #include <os/refcnt.h>
@@ -112,13 +112,13 @@ extern void _pth_proc_hashdelete(proc_t p);
 /* misc.c: the machine-state count table, the kmsg trace and the log entry points. */
 #include <mach/i386/thread_status.h>
 #include <ipc/ipc_kmsg.h>
-#include <darlingserver/xnu-sys/log.h>
+#include <ciderd/xnu-sys/log.h>
 /* task.c: the info flavors it fills and the IPC entry points it drives. */
 #include <kern/ipc_tt.h>
 #include <kern/restartable.h>
 #include <mach/mach_port.h>
 #include <ipc/ipc_hash.h>
-#include <darlingserver/xnu-sys/memory.h>
+#include <ciderd/xnu-sys/memory.h>
 /* memory.c: the region info structs it fills, the VM flag families and the zone info types. */
 #include <mach/vm_region.h>
 #include <mach/vm_prot.h>
@@ -133,7 +133,7 @@ extern void _pth_proc_hashdelete(proc_t p);
 #include <rtsig.h>
 #include <mach/i386/thread_status.h>
 /* stubs.c: the globals XNU writes into and the parameter types of the stubs. */
-#include <darlingserver/xnu-sys/stubs.h>
+#include <ciderd/xnu-sys/stubs.h>
 #include <kern/policy_internal.h>
 #include <sys/file_internal.h>
 #include <pthread/workqueue_internal.h>
@@ -145,7 +145,7 @@ extern void _pth_proc_hashdelete(proc_t p);
 	#define DTAPE_FATAL_STUBS 0
 #endif
 /* the macro-only operations exported as symbols for the port */
-#include <darlingserver/xnu-sys/rs_shims.h>
+#include <ciderd/xnu-sys/rs_shims.h>
 
 /* struct task_id_token is defined in XNU osfmk/kern/task_ident.c, NOT in a header, and init.c
  * redefines it locally purely to get its SIZE for zone_create. The port needs the same size, so

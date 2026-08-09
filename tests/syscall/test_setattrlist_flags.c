@@ -7,7 +7,7 @@
  * ATTR_CMN_FLAGS. Previously this returned EINVAL because the flag
  * was not in COMMON_SUPPORTED.
  *
- * Build inside darling shell:
+ * Build inside cider shell:
  *   cc -o test_setattrlist_flags test_setattrlist_flags.c
  *
  * Run:

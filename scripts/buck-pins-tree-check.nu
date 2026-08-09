@@ -4,7 +4,7 @@
 # pinsTree is what made source groups work (#54, #74). It holds all 147 pins MIRRORED -- real
 # directories, one symlink per file, each source symlink re-created with its own target string
 # -- so that a pin's link to a SIBLING pin resolves inside the tree. A per-pin store cannot do
-# that: src/external/IOKitUser/darling/submodules/xnu is a link to ../../../xnu/, and planted as
+# that: src/external/IOKitUser/cider/submodules/xnu is a link to ../../../xnu/, and planted as
 # a directory symlink the kernel resolves that against the STORE. Staging pins that way broke
 # the DEFAULT endpoint, and scripts/buck-pin-store-check.nu passed anyway, because it compares
 # by NAR HASH and a NAR hash records a symlink TARGET as a STRING.
@@ -23,7 +23,7 @@
 #   src/external into the SDK or into a non-pin external.
 #
 # Usage:
-#   scripts/buck-pins-tree-check.nu                    # build pinsTree, compare against darling-src
+#   scripts/buck-pins-tree-check.nu                    # build pinsTree, compare against cider-src
 #   scripts/buck-pins-tree-check.nu --tree <path>      # check a tree already built
 
 def say [msg: string] { print -e $msg }
@@ -48,15 +48,15 @@ def dangling [dir: string] {
 
 def main [--tree: string = ""] {
     let tree = if ($tree | is-empty) {
-        say "building .#darling-buck2-prefix-min.pinsTree ..."
-        (^nix build '.#darling-buck2-prefix-min.pinsTree' --no-link --print-out-paths
+        say "building .#cider-buck2-prefix-min.pinsTree ..."
+        (^nix build '.#cider-buck2-prefix-min.pinsTree' --no-link --print-out-paths
             | complete | get stdout | lines | first)
     } else { $tree }
     say $"pinsTree: ($tree)"
 
-    let src = (^nix build '.#darling-src' --no-link --print-out-paths
+    let src = (^nix build '.#cider-src' --no-link --print-out-paths
         | complete | get stdout | lines | first)
-    say $"darling-src: ($src)"
+    say $"cider-src: ($src)"
 
     let mine = (dangling $tree)
     let theirs = (dangling $"($src)/src/external")

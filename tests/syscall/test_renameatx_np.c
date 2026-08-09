@@ -1,7 +1,7 @@
 /*
  * test_renameatx_np.c — Regression tests for renameatx_np (macOS syscall 488)
  *
- * Build inside darling shell:
+ * Build inside cider shell:
  *   cc -o test_renameatx_np test_renameatx_np.c
  *
  * Run:

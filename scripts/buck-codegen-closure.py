@@ -5,7 +5,7 @@ THE BLOCKER THIS REMOVES. The graph derivation takes the whole project, so editi
 rebuilds it, currently about 18m34s, before anything else can start. The obvious fix is to feed
 it a SKELETON (scripts/buck-skeleton.py: build files verbatim, every other file present but
 empty), and that was tried and REVERTED, for a good reason recorded in
-nix/lib/darlingBuck2Graph.nix: the dump does not only analyse. It materialises in-process
+nix/lib/ciderBuck2Graph.nix: the dump does not only analyse. It materialises in-process
 artifacts, and a staged farm of GENERATED headers is produced by RUNNING a generator that this
 derivation builds from first-party C. An emptied rtsig.c compiles, links, runs, and writes an
 EMPTY header. The graph comes out quietly wrong and the failure lands far away.

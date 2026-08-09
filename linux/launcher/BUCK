@@ -1,11 +1,11 @@
 load("//buck/rules:rust.bzl", "rust_binary")
 
-# The `darling` launcher (task #64): userns re-exec, prefix bootstrap, spawning
-# darlingserver as container init, and the shellspawn client that proxies a shell into the
+# The `cider` launcher (task #64): userns re-exec, prefix bootstrap, spawning
+# ciderd as container init, and the shellspawn client that proxies a shell into the
 # guest. libc only, so it is the smallest of the three Rust crates and the one that proves
 # the rules.
 rust_binary(
-    name = "darling",
+    name = "cider",
     crate_root = "src/main.rs",
     srcs = glob(["src/**/*.rs"]),
     # What build.rs bakes in through cargo:rustc-env. The git values are the build script's
@@ -14,7 +14,7 @@ rust_binary(
     env = {
         "DARLING_GIT_BRANCH": "unknown",
         "DARLING_GIT_COMMIT": "unknown",
-        "DARLING_INSTALL_PREFIX": read_root_config("darling", "install_prefix", "/usr/local"),
+        "DARLING_INSTALL_PREFIX": read_root_config("cider", "install_prefix", "/usr/local"),
     },
     deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],

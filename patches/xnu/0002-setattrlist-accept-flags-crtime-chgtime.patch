@@ -1,7 +1,7 @@
-diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
+diff --git a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
 index 543b8cf..ebc597b 100644
---- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
-+++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
+--- a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
++++ b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/xattr/setattrlist_generic.c
 @@ -17,8 +17,9 @@ extern int do_linux_fchmodat(int fd, const char* path, int mode, int flag);
  #define ATTR_CMN_CHGTIME 0x800
  #define ATTR_CMN_ACCTIME 0x1000

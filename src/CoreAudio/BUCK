@@ -28,7 +28,7 @@ _AUDIO = [
 # buck-registry: libavutil.dylib = avutil_dylib
 # buck-registry: libpulse.dylib = pulse_dylib
 
-_ELF_LIB_DIRS = read_root_config("darling", "elf_lib_dirs", "")
+_ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
 
 [
     elf_wrapper(

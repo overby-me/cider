@@ -1,5 +1,5 @@
 //! A realistic full guest SESSION over the socket, served on ONE persistent doWork
-//! thread -- the real darlingserver architecture end to end. A client PROCESS checks in,
+//! thread -- the real ciderd architecture end to end. A client PROCESS checks in,
 //! runs a sequence of Mach calls (task_self_trap -> mach_port_allocate -> a mach_msg
 //! loopback), and checks out; the daemon feeds every call to a single long-lived
 //! microthread bound to the client's task (created once, parked between calls and woken
@@ -7,16 +7,16 @@
 //! reply. This composes checkin/checkout + the doWork loop + real-socket serving +
 //! cross-process memory + the mach engine into one session. See PLAN.md.
 
-use darling::handler::Handler;
-use darling::mach;
-use darling::registry::Registry;
-use darling::rpc_io::{recv_message, send_message, Message};
-use darling::rpc_wire::{
+use cider::handler::Handler;
+use cider::mach;
+use cider::registry::Registry;
+use cider::rpc_io::{recv_message, send_message, Message};
+use cider::rpc_wire::{
     self, callnum, CallCheckin, CallCheckout, CallMachMsgOverwrite, CallMachPortAllocate,
     DserverRpcCallhdr, RpcCallCheckin, RpcCallCheckout, RpcCallMachMsgOverwrite,
     RpcCallMachPortAllocate,
 };
-use darling::sched;
+use cider::sched;
 use std::cell::RefCell;
 use std::mem::size_of;
 use std::os::fd::RawFd;

@@ -1253,7 +1253,7 @@ unsafe fn mach_vm_remap_external_shared(
 
             crate::xnu::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
 
-            memfd = memfd_create(b"darling-remapped\0".as_ptr() as *const c_char, MFD_CLOEXEC);
+            memfd = memfd_create(b"cider-remapped\0".as_ptr() as *const c_char, MFD_CLOEXEC);
             if memfd < 0 {
                 kr = bindings::KERN_RESOURCE_SHORTAGE as kern_return_t;
                 break 'out;
@@ -1550,7 +1550,7 @@ pub unsafe extern "C" fn mach_vm_remap_new_external(
 
     let mut map_addr: mach_vm_offset_t = *address;
 
-    // I wasn't able to find an reimplementation of vm_map_remap in darlingserver,
+    // I wasn't able to find an reimplementation of vm_map_remap in ciderd,
     // so we will use mach_vm_remap_external for the time being.
     let kr = mach_vm_remap_external(
         target_map,

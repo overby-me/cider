@@ -9,7 +9,7 @@
 #   ./scripts/build-trivial.nu [OPTIONS]
 #
 # Options:
-#   --prefix <path>       Darling prefix path (default: ~/.darling or $DPREFIX)
+#   --prefix <path>       Darling prefix path (default: ~/.cider or $DPREFIX)
 #   --level <N>           Run only derivation level N (1-5, default: all)
 #   --keep                Do not garbage-collect built derivations
 #   --verbose             Show full nix-build output
@@ -27,12 +27,12 @@
 #   1  one or more levels failed
 #   2  infrastructure error
 #
-# Converted from bash (task #40) and verified against it with darling stubbed on
+# Converted from bash (task #40) and verified against it with cider stubbed on
 # PATH, no container: every level passing, level 1 failing (which skips the rest),
 # level 3 returning the wrong count, a build with no store path in its output, an
-# unreachable cache (level 5 skips), a prefix that does not exist, a dead darling
+# unreachable cache (level 5 skips), a prefix that does not exist, a dead cider
 # shell, and no Nix in the prefix; each of those with no flags, --level N, --keep,
-# --verbose and --debug. Output, exit code AND the exact argv handed to darling
+# --verbose and --debug. Output, exit code AND the exact argv handed to cider
 # (the guest script text, which is what actually gets executed) all match.
 #
 # Two deviations, both in argument handling: --help prints nushell's own signature
@@ -70,7 +70,7 @@ def err_ [c: record, msg: string] { print -e $"($c.red)[build-trivial] ERROR:($c
 def run_merged [argv: list<string>] {
     let f = (mktemp --tmpdir --suffix .build-trivial)
     let rc = (try {
-        ^darling shell ...$argv out+err> $f
+        ^cider shell ...$argv out+err> $f
         0
     } catch {
         $env.LAST_EXIT_CODE
@@ -82,7 +82,7 @@ def run_merged [argv: list<string>] {
 
 # The guest-side profile prelude, verbatim from the bash version: the leading
 # newline, the eight-space indent and the escaped $HOME are all part of the script
-# that darling actually runs, so they are reproduced rather than tidied.
+# that cider actually runs, so they are reproduced rather than tidied.
 def nix_prelude [] {
     "
         # Source Nix profile
@@ -90,8 +90,8 @@ def nix_prelude [] {
             . '/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh'
         elif [ -e \"\\$HOME/.nix-profile/etc/profile.d/nix.sh\" ]; then
             . \"\\$HOME/.nix-profile/etc/profile.d/nix.sh\"
-        elif [ -e '/etc/profile.d/nix-darling.sh' ]; then
-            . '/etc/profile.d/nix-darling.sh'
+        elif [ -e '/etc/profile.d/nix-cider.sh' ]; then
+            . '/etc/profile.d/nix-cider.sh'
         fi
         "
 }
@@ -129,7 +129,7 @@ def level1_echo_to_out [ctx: record] {
              store path.'#
 
     let expr = r#'derivation {
-        name = "darling-test-1-echo";
+        name = "cider-test-1-echo";
         builder = "/bin/bash";
         args = [ "-c" "echo Hello from Darling > $out" ];
         system = "x86_64-darwin";
@@ -151,8 +151,8 @@ def level1_echo_to_out [ctx: record] {
         print "    \u{2022} 'Unimplemented syscall': check PLAN.md"
         print ""
         print "  Manual reproduction:"
-        print $"    darling shell bash -lc 'nix-build -vvvv --no-out-link --expr \"($expr)\"'"
-        print "    darling shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
+        print $"    cider shell bash -lc 'nix-build -vvvv --no-out-link --expr \"($expr)\"'"
+        print "    cider shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
         return 1
     }
 
@@ -182,7 +182,7 @@ def level2_multiline_builder [ctx: record] {
              output (vs single file), multiple files in $out.'#
 
     let expr = r##'derivation {
-        name = "darling-test-2-multiline";
+        name = "cider-test-2-multiline";
         builder = "/bin/bash";
         args = [ "-c" "
             set -e
@@ -248,7 +248,7 @@ def level3_input_transform [ctx: record] {
     let expr = r#'let
         input = builtins.toFile "input.txt" "apple\nbanana\ncherry\ndate\nelderberry\n";
     in derivation {
-        name = "darling-test-3-transform";
+        name = "cider-test-3-transform";
         builder = "/bin/bash";
         args = [ "-c" "
             set -e
@@ -300,13 +300,13 @@ def level4_derivation_dependency [ctx: record] {
 
     let expr = r#'let
         dep = derivation {
-            name = "darling-test-4-dep";
+            name = "cider-test-4-dep";
             builder = "/bin/bash";
             args = [ "-c" "echo DEPENDENCY_OUTPUT > $out" ];
             system = "x86_64-darwin";
         };
     in derivation {
-        name = "darling-test-4-consumer";
+        name = "cider-test-4-consumer";
         builder = "/bin/bash";
         args = [ "-c" "
             set -e
@@ -426,17 +426,17 @@ def run_level [n: int, ctx: record] {
 }
 
 def main [
-    --prefix: string = ""   # Darling prefix (default: ~/.darling or $DPREFIX)
+    --prefix: string = ""   # Darling prefix (default: ~/.cider or $DPREFIX)
     --level: string = ""    # run only level N (1-5; default: all)
     --keep                  # do not garbage-collect built derivations
     --verbose (-v)          # show full nix-build output
     --debug                 # pass -vvvv --debug to nix-build
 ] {
     let c = (colours)
-    let darling_prefix = if ($prefix | is-not-empty) {
+    let cider_prefix = if ($prefix | is-not-empty) {
         $prefix
     } else {
-        ($env | get -o DPREFIX | default ($env.HOME | path join ".darling"))
+        ($env | get -o DPREFIX | default ($env.HOME | path join ".cider"))
     }
     if ($level | is-not-empty) and not ($level =~ '^[1-5]$') {
         err_ $c $"--level must be 1-5, got: ($level)"
@@ -448,26 +448,26 @@ def main [
     # ── Preflight ───────────────────────────────────────────────────────────
     log_ $c $"($c.bold)Preflight checks...($c.reset)"
 
-    if (which darling | is-empty) {
-        err_ $c "darling is not in PATH"
+    if (which cider | is-empty) {
+        err_ $c "cider is not in PATH"
         exit 2
     }
-    if ($darling_prefix | path type) != "dir" {
-        err_ $c $"Darling prefix not found at ($darling_prefix)"
+    if ($cider_prefix | path type) != "dir" {
+        err_ $c $"Darling prefix not found at ($cider_prefix)"
         exit 2
     }
     if (run_merged ["echo" "ok"]).rc != 0 {
-        err_ $c "darling shell is not functional"
+        err_ $c "cider shell is not functional"
         exit 2
     }
 
     let nix_version = (dsh_nix "nix --version").out
     if ($nix_version | is-empty) or not ($nix_version | str downcase | str contains "nix") {
-        err_ $c "Nix does not appear to be installed in the Darling prefix.\n   Run: ./scripts/install-nix-in-darling.nu"
+        err_ $c "Nix does not appear to be installed in the Darling prefix.\n   Run: ./scripts/install-nix-in-cider.nu"
         exit 2
     }
 
-    log_ $c $"  Prefix: ($darling_prefix)"
+    log_ $c $"  Prefix: ($cider_prefix)"
     log_ $c $"  Nix:    ($nix_version)"
 
     # ── Execute ─────────────────────────────────────────────────────────────
@@ -577,11 +577,11 @@ def main [
         print -e ""
         print -e "Next steps:"
         print -e $"  \u{2022} Run a single level:  (self_name) --level N --debug"
-        print -e "  \u{2022} Manual build:        darling shell bash -lc 'nix-build -vvvv --expr \"...\"'"
-        print -e "  \u{2022} Manual sandbox test: darling shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
+        print -e "  \u{2022} Manual build:        cider shell bash -lc 'nix-build -vvvv --expr \"...\"'"
+        print -e "  \u{2022} Manual sandbox test: cider shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
         print -e "  \u{2022} Check syscalls:      ./scripts/triage-syscalls.nu"
-        print -e "  \u{2022} Host-side trace:     strace -f -p $(pidof darlingserver) 2>&1 | head -500"
-        print -e "  \u{2022} Darling xtrace:      DARLING_XTRACE=1 darling shell bash -lc 'nix-build --expr ...'"
+        print -e "  \u{2022} Host-side trace:     strace -f -p $(pidof ciderd) 2>&1 | head -500"
+        print -e "  \u{2022} Darling xtrace:      DARLING_XTRACE=1 cider shell bash -lc 'nix-build --expr ...'"
         print -e ""
         exit 1
     } else if $passed == 0 {

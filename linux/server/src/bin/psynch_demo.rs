@@ -34,8 +34,8 @@
 
 use std::ptr::addr_of;
 
-use darling::bindings;
-use darling::sched;
+use cider::bindings;
+use cider::sched;
 
 /// Check one callback entry and name it in the failure. Reads through a raw pointer because the
 /// table is a `static mut` the kext also sees.
@@ -78,7 +78,7 @@ fn main() {
         eprintln!("[psynch] psynch_thcall allocated");
 
         // ---- the callback vtable ----
-        let table = *addr_of!(darling::xnu::psynch::pthread_kern);
+        let table = *addr_of!(cider::xnu::psynch::pthread_kern);
         assert!(
             !table.is_null(),
             "pthread_kern is NULL. It is initialised at compile time to point at the table, so \

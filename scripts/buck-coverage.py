@@ -31,8 +31,8 @@ def load_gen():
 # an honest number rather than a permanent three.
 OUT_OF_SCOPE = {
     "x86_64-apple-darwin20-ld":
-        "Darling's ld64 and cctools come from Nix (nix/lib/darling-ld64.nix, the ld64 "
-        "input to darlingBuck2Graph); the port CONSUMES them through [darling] ld and "
+        "Darling's ld64 and cctools come from Nix (nix/lib/cider-ld64.nix, the ld64 "
+        "input to ciderBuck2Graph); the port CONSUMES them through [cider] ld and "
         "ld64_dir rather than building them",
     "x86_64-apple-darwin20-ar":
         "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools",

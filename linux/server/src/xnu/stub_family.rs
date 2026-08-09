@@ -1,7 +1,7 @@
 //! The `dtape_stub` family, for glue ported to Rust (#71).
 //!
 //! duct-tape marks unimplemented XNU entry points with three macros from
-//! `internal-include/darlingserver/xnu-sys/stubs.h`, all of which call the real symbol
+//! `internal-include/ciderd/xnu-sys/stubs.h`, all of which call the real symbol
 //! `dtape_stub_log(function_name, safety, subsection)`:
 //!
 //!   `dtape_stub`         safety 0, unknown whether stubbing is safe
@@ -14,7 +14,7 @@
 //!
 //! `__FUNCTION__` has no stable Rust equivalent, so the macros capture the enclosing function
 //! the usual way, by naming a local item and asking for its type name. That yields the full
-//! path (`darling::xnu::timer::timer_queue_cpu::f`), which is trimmed to the last segment so the
+//! path (`cider::xnu::timer::timer_queue_cpu::f`), which is trimmed to the last segment so the
 //! log line reads the same as the C one.
 
 use std::ffi::CString;

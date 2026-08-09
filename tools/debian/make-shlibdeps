@@ -3,7 +3,7 @@
 set -e
 
 DEB_SUFFIX="$1"
-DEB_PACKAGE="darling-${DEB_SUFFIX}"
+DEB_PACKAGE="cider-${DEB_SUFFIX}"
 
 ARGS_FILE="$(mktemp)"
 

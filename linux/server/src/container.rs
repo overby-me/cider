@@ -1,16 +1,16 @@
-//! Container bring-up: the Linux-side plumbing darlingserver's `main()` does before the
-//! RPC loop (darlingserver.cpp:513). Faithful port of the core sequence -- privilege
+//! Container bring-up: the Linux-side plumbing ciderd's `main()` does before the
+//! RPC loop (ciderd.cpp:513). Faithful port of the core sequence -- privilege
 //! dance, a private mount namespace, the prefix overlay, a new PID namespace for the
 //! guest init, and the mldr/vchroot exec of that init. This is the piece that turns the
 //! proven RPC engine into a daemon that actually HOSTS a guest.
 //!
-//! IMPORTANT (validation): this code needs root (darling.c launches darlingserver as
+//! IMPORTANT (validation): this code needs root (cider.c launches ciderd as
 //! mapped-root inside a user namespace) plus CAP_SYS_ADMIN for unshare/mount/clone. It
 //! CANNOT run in the nix build sandbox and is not exercised by a flake-check demo; it is
-//! validated by splicing the daemon into a real darling runtime (the run recipe in
-//! PLAN.md) and launching it through the darling launcher. Deferred vs the C++
+//! validated by splicing the daemon into a real cider runtime (the run recipe in
+//! PLAN.md) and launching it through the cider launcher. Deferred vs the C++
 //! for now (all best-effort prefix work, orthogonal to the namespace/mount/clone core):
-//! setupUserHome, darlingPreInit, fixPermissions, and rlimit bumps. The writable-/nix
+//! setupUserHome, ciderPreInit, fixPermissions, and rlimit bumps. The writable-/nix
 //! overlay (for guest Nix / M1) IS ported (`mount_nix_overlay`). See
 //! PLAN.md (bucket B, the container main).
 
@@ -18,7 +18,7 @@ use std::ffi::CString;
 use std::io;
 use std::os::raw::c_int;
 
-/// Where darling.c passed us: the prefix, the launching user's uid/gid, the readiness
+/// Where cider.c passed us: the prefix, the launching user's uid/gid, the readiness
 /// pipe, and (env-configured so the daemon is relocatable) the libexec root, the mldr
 /// binary, and the guest init to exec. Mirrors the argv[1..5] + compile-time paths the
 /// C++ daemon uses.
@@ -34,10 +34,10 @@ pub struct Config {
 
 impl Config {
     /// Parse argv (prefix, uid, gid, pipefd, fix_permissions) + env (paths + init).
-    /// Mirrors darlingserver.cpp:531-550 and spawnLaunchd's DSERVER_INIT/DARLING_NO_LAUNCHD.
+    /// Mirrors ciderd.cpp:531-550 and spawnLaunchd's DSERVER_INIT/DARLING_NO_LAUNCHD.
     pub fn from_args_and_env(args: &[String]) -> Result<Config, String> {
         if args.len() < 5 {
-            return Err("darlingserver is not meant to be started manually".into());
+            return Err("ciderd is not meant to be started manually".into());
         }
         let uid = args[2].parse::<libc::uid_t>().map_err(|e| e.to_string())?;
         let gid = args[3].parse::<libc::gid_t>().map_err(|e| e.to_string())?;
@@ -74,7 +74,7 @@ fn errno() -> io::Error {
 }
 
 // ---- privilege dance (setres*id): drop to the user for prefix work, regain root for
-// privileged mounts, permanently drop before running guest code. darlingserver.cpp:464. ----
+// privileged mounts, permanently drop before running guest code. ciderd.cpp:464. ----
 
 /// Temporarily drop to (uid,gid) keeping root as the saved id (so we can regain it).
 pub unsafe fn temp_drop_privileges(uid: libc::uid_t, gid: libc::gid_t) -> io::Result<()> {
@@ -109,7 +109,7 @@ pub unsafe fn perma_drop_privileges(uid: libc::uid_t, gid: libc::gid_t) -> io::R
     Ok(())
 }
 
-// ---- mount namespace + prefix overlay (darlingserver.cpp:611-660) ----
+// ---- mount namespace + prefix overlay (ciderd.cpp:611-660) ----
 
 /// Enter a private mount namespace and set up the base mounts: a fresh tmpfs /dev/shm
 /// and remount / as MS_SLAVE (so the overlay is not propagated back and is torn down
@@ -139,8 +139,8 @@ pub unsafe fn enter_mount_namespace() -> io::Result<()> {
     Ok(())
 }
 
-/// Mount the prefix overlay: lowerdir = the read-only darling root (libexec), upperdir =
-/// the prefix (guest-writable), workdir = "<prefix>.workdir". darlingserver.cpp:642-660.
+/// Mount the prefix overlay: lowerdir = the read-only cider root (libexec), upperdir =
+/// the prefix (guest-writable), workdir = "<prefix>.workdir". ciderd.cpp:642-660.
 pub unsafe fn mount_prefix_overlay(prefix: &str, libexec_path: &str) -> io::Result<()> {
     let overlay = CString::new("overlay").unwrap();
     let target = CString::new(prefix).unwrap();
@@ -163,7 +163,7 @@ pub unsafe fn mount_prefix_overlay(prefix: &str, libexec_path: &str) -> io::Resu
     Err(e)
 }
 
-/// Optional writable native /nix for guest Nix (darlingserver.cpp:670). Opt-in via a
+/// Optional writable native /nix for guest Nix (ciderd.cpp:670). Opt-in via a
 /// `<prefix>/.enable-writable-nix` marker plus a host `/nix/store`. nix refuses to build in
 /// a diverted (non-`/nix/store`) store, and the host /nix the container sees is read-only to
 /// the mapped root; so overlay the host `/nix/store` and `/nix/var` (read-only lowers -- the
@@ -205,7 +205,7 @@ pub unsafe fn mount_nix_overlay(prefix: &str) {
     }
 }
 
-// ---- PID namespace + guest init (darlingserver.cpp:751-789) ----
+// ---- PID namespace + guest init (ciderd.cpp:751-789) ----
 
 /// Fork into a NEW PID namespace via clone(CLONE_NEWPID|SIGCHLD): the child becomes the
 /// parent of the guest init (which will be PID 1 in that namespace). Returns the child
@@ -245,15 +245,15 @@ pub unsafe fn spawn_init_in_pid_namespace(cfg: &Config, child_wait_read: c_int) 
 
 /// Exec the guest init through mldr + vchroot: this replaces the child with mldr, which
 /// vchroots into the prefix and runs the init (launchd or the shellspawn bypass) as
-/// guest PID 1. Sets the __mldr_* env the loader needs. darlingserver.cpp:255 (spawnLaunchd).
+/// guest PID 1. Sets the __mldr_* env the loader needs. ciderd.cpp:255 (spawnLaunchd).
 pub unsafe fn spawn_launchd(cfg: &Config) -> ! {
-    let sock = format!("{}/.darlingserver.sock", cfg.prefix);
+    let sock = format!("{}/.ciderd.sock", cfg.prefix);
     std::env::set_var("__mldr_DYLD_ROOT_PATH", &cfg.libexec_path);
     std::env::set_var("__mldr_sockpath", &sock);
 
-    // execl(mldr, "mldr!<libexec>/usr/libexec/darling/vchroot", "vchroot", prefix, init, NULL)
+    // execl(mldr, "mldr!<libexec>/usr/libexec/cider/vchroot", "vchroot", prefix, init, NULL)
     let mldr = CString::new(cfg.mldr_path.clone()).unwrap();
-    let arg0 = CString::new(format!("mldr!{}/usr/libexec/darling/vchroot", cfg.libexec_path)).unwrap();
+    let arg0 = CString::new(format!("mldr!{}/usr/libexec/cider/vchroot", cfg.libexec_path)).unwrap();
     let a_vchroot = CString::new("vchroot").unwrap();
     let a_prefix = CString::new(cfg.prefix.clone()).unwrap();
     let a_init = CString::new(cfg.init_path.clone()).unwrap();
@@ -269,8 +269,8 @@ pub unsafe fn spawn_launchd(cfg: &Config) -> ! {
     libc::abort();
 }
 
-/// Signal the launching darling.c that the container is set up (write to the ready pipe),
-/// mirroring darlingserver.cpp:743.
+/// Signal the launching cider.c that the container is set up (write to the ready pipe),
+/// mirroring ciderd.cpp:743.
 pub unsafe fn signal_launcher_ready(cfg: &Config) {
     let dot = b".";
     libc::write(cfg.ready_pipe, dot.as_ptr() as *const libc::c_void, 1);

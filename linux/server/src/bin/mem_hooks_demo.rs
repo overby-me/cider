@@ -10,7 +10,7 @@
 //! write -- that it observes the change in its OWN address space. MEM_HOOKS_OK only if
 //! the whole round trip holds.
 
-use darling::sched::{self, TaskCtx};
+use cider::sched::{self, TaskCtx};
 use std::os::raw::c_void;
 
 const N: usize = 64;

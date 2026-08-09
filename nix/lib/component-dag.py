@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # component-dag.py (#26): read Darling's ninja graph JSON and emit components.json,
-# the driver for the per-component nix codegen (nix/lib/darling-components.nix).
+# the driver for the per-component nix codegen (nix/lib/cider-components.nix).
 #
 # Steps:
 #  1. Group edges into per-subproject components by CMakeFiles/<target>.dir/.
 #  2. Build the component dependency graph (X deps Y if X consumes Y's output).
-#  3. Drop deps satisfied by darling-base = everything reachable from the
+#  3. Drop deps satisfied by cider-base = everything reachable from the
 #     libSystem umbrella (what base builds) plus the toolchain (ld/ar/migcom).
 #     Those are provided by base, so components need not depend on them.
 #  4. Condense strongly-connected components (Darling's add_circular two-pass
@@ -70,7 +70,7 @@ for e in edges:
 
 all_comps = set(out2comp.values())
 
-# base_set = what darling-base builds = transitive closure of the libSystem link
+# base_set = what cider-base builds = transitive closure of the libSystem link
 # edge's inputs (its reexported sublibs). The umbrella itself has no sources / no
 # CMakeFiles component, so seed from the LINK EDGE inputs, not the output.
 base_set = set()

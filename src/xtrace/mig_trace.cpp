@@ -8,7 +8,7 @@
 
 #include <mach/mach.h>
 
-#include <darling/emulation/common/simple.h>
+#include <cider/emulation/common/simple.h>
 #include "xtracelib.h"
 #include "mach_trace.h"
 #include "bsd_trace.h"
@@ -16,7 +16,7 @@
 #include "tls.h"
 #include "string.h"
 
-#define XTRACE_MIG_DIR_PATH "/usr/lib/darling/xtrace-mig"
+#define XTRACE_MIG_DIR_PATH "/usr/lib/cider/xtrace-mig"
 
 static size_t subsystems_cnt = 0;
 static struct xtrace_mig_subsystem** subsystems = NULL;

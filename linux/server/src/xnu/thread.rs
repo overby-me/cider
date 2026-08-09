@@ -990,8 +990,8 @@ pub unsafe extern "C" fn thread_hold(xthread: thread_t) {
     let previous = (*xthread).suspend_count;
     (*xthread).suspend_count += 1;
     if previous == 0 {
-        // This signal leads to sigexc.c which will end up calling darlingserver;
-        // darlingserver will hold the caller so long as the suspend_count > 0.
+        // This signal leads to sigexc.c which will end up calling ciderd;
+        // ciderd will hold the caller so long as the suspend_count > 0.
         (*dtape_hooks).thread_send_signal.expect("hook")(
             (*thread).context,
             bindings::dtape_rs_host_consts_DTAPE_RS_LINUX_SIGRTMIN as c_int,

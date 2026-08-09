@@ -17,8 +17,8 @@
 #   ./tests/nix/compatibility-matrix.sh --help
 #
 # Environment variables:
-#   DARLING_NIX          Path to the darling-nix wrapper (default: auto-detect)
-#   DARLING              Path to the darling binary (default: darling)
+#   DARLING_NIX          Path to the cider-nix wrapper (default: auto-detect)
+#   DARLING              Path to the cider binary (default: cider)
 #   DPREFIX              Darling prefix path (default: auto)
 #   NIX_SYSTEM           Target system (default: x86_64-darwin)
 #   COMPAT_NIXPKGS       Nixpkgs expression (default: <nixpkgs>)
@@ -87,7 +87,7 @@ TIER4_PACKAGES=(
 # ── Configuration defaults ───────────────────────────────────────────
 
 DARLING_NIX="${DARLING_NIX:-}"
-DARLING="${DARLING:-darling}"
+DARLING="${DARLING:-cider}"
 NIX_SYSTEM="${NIX_SYSTEM:-x86_64-darwin}"
 COMPAT_NIXPKGS="${COMPAT_NIXPKGS:-<nixpkgs>}"
 COMPAT_TIMEOUT="${COMPAT_TIMEOUT:-300}"
@@ -121,8 +121,8 @@ die() {
     exit 1
 }
 
-# Auto-detect the darling-nix wrapper script
-find_darling_nix() {
+# Auto-detect the cider-nix wrapper script
+find_cider_nix() {
     if [[ -n "$DARLING_NIX" ]]; then
         echo "$DARLING_NIX"
         return
@@ -134,22 +134,22 @@ find_darling_nix() {
     local repo_root
     repo_root="$(cd "$script_dir/../.." && pwd)"
 
-    if [[ -x "$repo_root/scripts/darling-nix" ]]; then
-        echo "$repo_root/scripts/darling-nix"
+    if [[ -x "$repo_root/scripts/cider-nix" ]]; then
+        echo "$repo_root/scripts/cider-nix"
         return
     fi
 
-    # Fallback: use darling directly
+    # Fallback: use cider directly
     echo ""
 }
 
 # Run a Nix command inside Darling
-nix_in_darling() {
-    local darling_nix
-    darling_nix="$(find_darling_nix)"
+nix_in_cider() {
+    local cider_nix
+    cider_nix="$(find_cider_nix)"
 
-    if [[ -n "$darling_nix" ]]; then
-        "$darling_nix" "$@"
+    if [[ -n "$cider_nix" ]]; then
+        "$cider_nix" "$@"
     else
         local prefix_args=()
         if [[ -n "${DPREFIX:-}" ]]; then
@@ -230,7 +230,7 @@ test_package() {
 
         # Attempt the build with a timeout
         if timeout "$COMPAT_TIMEOUT" \
-            nix_in_darling nix-build "$COMPAT_NIXPKGS" \
+            nix_in_cider nix-build "$COMPAT_NIXPKGS" \
                 -A "$pkg" \
                 --system "$NIX_SYSTEM" \
                 --no-out-link \
@@ -375,8 +375,8 @@ Options:
   --help, -h           Show this help
 
 Environment:
-  DARLING_NIX          Path to darling-nix wrapper (auto-detected)
-  DARLING              Path to darling binary (default: darling)
+  DARLING_NIX          Path to cider-nix wrapper (auto-detected)
+  DARLING              Path to cider binary (default: cider)
   DPREFIX              Darling prefix path (default: auto)
   NIX_SYSTEM           Target system (default: x86_64-darwin)
   COMPAT_NIXPKGS       Nixpkgs expression (default: <nixpkgs>)
@@ -489,7 +489,7 @@ main() {
     if [[ "$DRY_RUN" -eq 0 ]]; then
         debug "Verifying Darling is functional ..."
         if ! "$DARLING" shell true &>/dev/null; then
-            die "Cannot run 'darling shell true' — is Darling installed and the prefix initialised?"
+            die "Cannot run 'cider shell true' — is Darling installed and the prefix initialised?"
         fi
     fi
 
@@ -546,7 +546,7 @@ ${result}"
     "system": "$(json_escape "$NIX_SYSTEM")",
     "nixpkgs": "$(json_escape "$COMPAT_NIXPKGS")",
     "timeout_per_package": $COMPAT_TIMEOUT,
-    "darling": "$(json_escape "$DARLING")"
+    "cider": "$(json_escape "$DARLING")"
   },
   "summary": {
     "total": $total,

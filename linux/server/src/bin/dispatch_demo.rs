@@ -2,8 +2,8 @@
 //! methods (the other ~159 default to ENOSYS), then feed the generated dispatch()
 //! real wire messages and verify it decodes -> calls the handler -> encodes the
 //! matching reply, including the ENOSYS default for unimplemented calls.
-use darling::rpc_io::Message;
-use darling::rpc_wire::{
+use cider::rpc_io::Message;
+use cider::rpc_wire::{
     self, callnum, CallCheckin, DserverRpcCallhdr, ReplyGetTracer, ReplyStartedSuspended,
     RpcReplyCheckin, RpcReplyGetTracer, RpcReplyStartedSuspended,
 };

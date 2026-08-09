@@ -4,7 +4,7 @@
 The minimal prefix is defined by SUBTRACTION: gen-prefix-min.py takes the full prefix and
 removes what is on an exclusion list, so anything expensive is included BY DEFAULT and has to
 be noticed one entry at a time. That is how `//buck-src:jsc` survived -- one line,
-`libexec/darling/usr/bin/jsc`, that pulled 1,082 compiles of JavaScriptCore into a prefix
+`libexec/cider/usr/bin/jsc`, that pulled 1,082 compiles of JavaScriptCore into a prefix
 whose stated job is to boot, run bash and run nix. #70 was the same shape earlier: two bare
 target names pulling in the guest cone. Noticing those by hand does not scale across 2,357
 entries over an 8,000-target cone.
@@ -64,7 +64,7 @@ def candidate_graphs():
     """Every built graph dump with its SIZE, largest first.
 
     ALL FOUR graph attributes -- the single-target demo, -all, -min and -min-skeleton --
-    build a derivation NAMED darling-buck2-graph, so nothing in the store path says which
+    build a derivation NAMED cider-buck2-graph, so nothing in the store path says which
     is which and a glob matches all of them.
 
     SIZE, not action count, and that is a deliberate downgrade. The first version of this
@@ -80,7 +80,7 @@ def candidate_graphs():
     is the coverage assertion below, which runs on whichever graph gets picked.
     """
     out = []
-    for p in glob.glob("/nix/store/*-darling-buck2-graph/graph.json"):
+    for p in glob.glob("/nix/store/*-cider-buck2-graph/graph.json"):
         try:
             out.append((os.path.getsize(p), p))
         except OSError:
@@ -106,8 +106,8 @@ def refuse_to_guess():
     for n, p in candidate_graphs()[:12]:
         print(f"  {n / 1e6:>7.0f} MB  {p}")
     sys.exit("\npass --graph <path>, or build the one you want:\n"
-             "  nix build .#darling-buck2-graph-min --print-out-paths --no-link   (minimal)\n"
-             "  nix build .#darling-buck2-graph-all --print-out-paths --no-link   (full)")
+             "  nix build .#cider-buck2-graph-min --print-out-paths --no-link   (minimal)\n"
+             "  nix build .#cider-buck2-graph-all --print-out-paths --no-link   (full)")
 
 
 def load_graph(path):
@@ -180,12 +180,12 @@ def reachability(roots, deps, index):
 
 
 # Entries allowed to be expensive, because they ARE the goal. dyld is the dynamic loader,
-# bash is what the prefix exists to run, darlingserverd is the daemon under test. Removing any
+# bash is what the prefix exists to run, ciderd is the daemon under test. Removing any
 # of them does not produce a smaller prefix, it produces no prefix.
 EXEMPT = {
     "root//buck-src/dyld:dyld",
     "root//buck-src:bash",
-    "root//linux/server:darlingserverd",
+    "root//linux/server:ciderd",
 }
 
 # --check fails when a non-exempt entry exclusively pulls in more than this many actions.
@@ -195,7 +195,7 @@ EXEMPT = {
 #
 # Each drop follows the measured distribution rather than taste, and the distribution has
 # stopped moving: the three costliest entries are exactly the three EXEMPT ones (dyld 644,
-# bash 182, darlingserverd 136), which are the goal rather than dead weight, and the worst
+# bash 182, ciderd 136), which are the goal rather than dead weight, and the worst
 # non-exempt is iokitd at 32, then grep 30 and nghttp2 24. 60 keeps about 2x headroom over
 # iokitd while catching anything jsc-shaped (1,298) or secd-shaped (738) the moment it appears.
 #

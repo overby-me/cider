@@ -45,10 +45,10 @@
 //!
 //! The verdict is the printed line, not the exit code, as with the other demos.
 
-use darling::bindings::dtape_task_t;
-use darling::kqchan::MachPortKqchan;
-use darling::mach::mach_reply_port;
-use darling::sched;
+use cider::bindings::dtape_task_t;
+use cider::kqchan::MachPortKqchan;
+use cider::mach::mach_reply_port;
+use cider::sched;
 
 fn main() {
     unsafe {
