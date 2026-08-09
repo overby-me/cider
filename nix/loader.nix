@@ -21,7 +21,7 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = with lib; {
-    description = "Rust rewrite of the Darling guest Mach-O loader (src/startup/mldr)";
+    description = "Rust rewrite of the Cider guest Mach-O loader (src/startup/mldr)";
     license = licenses.gpl3Plus;
     platforms = [ "x86_64-linux" ];
     mainProgram = "mldr";

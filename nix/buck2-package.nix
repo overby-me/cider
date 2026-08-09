@@ -18,7 +18,7 @@
 }:
 pkgs.runCommand "cider-buck2" {
   meta = {
-    description = "Darling, built by the buck2 port (system component scope)";
+    description = "Cider, built by the buck2 port (system component scope)";
     mainProgram = "cider-buck2";
   };
 } ''

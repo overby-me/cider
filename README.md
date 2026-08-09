@@ -9,16 +9,25 @@ Please note that most GUI applications will not run at the moment.
 
 ## Download
 
-Packages for some distributions are available for download
-under [releases](https://github.com/darlinghq/darling/releases).
+Cider is developed at [tangled.org/overby.me/cider](https://tangled.org/overby.me/cider).
+
+Prebuilt packages are not published yet. Build it from source, see below.
 
 ## Build Instructions
 
-For build instructions, visit [Darling Docs](https://docs.darlinghq.org/build-instructions.html).
+Cider builds with Nix and buck2:
+
+````
+nix build .#cider-buck2-prefix-min
+````
+
+The upstream Darling build instructions at
+[docs.darlinghq.org](https://docs.darlinghq.org/build-instructions.html) describe the
+cmake build, which Cider no longer has.
 
 ### Prefixes
 
-Darling has support for DPREFIXes, which are very similar to WINEPREFIXes. They are virtual “chroot” environments with an macOS-like filesystem structure, where you can install software safely. The default DPREFIX location is `~/.cider`, but this can be changed by exporting an identically named environment variable. A prefix is automatically created and initialized on first use.
+Cider has support for DPREFIXes, which are very similar to WINEPREFIXes. They are virtual “chroot” environments with an macOS-like filesystem structure, where you can install software safely. The default DPREFIX location is `~/.cider`, but this can be changed by exporting an identically named environment variable. A prefix is automatically created and initialized on first use.
 
 Please note that we use `overlayfs` for creating prefixes, and so we cannot support putting prefix on a filesystem like NFS or eCryptfs. In particular, the default prefix location won't work if you have an encrypted home directory.
 
@@ -31,7 +40,7 @@ $ cider shell echo Hello world
 Hello world
 ````
 
-Congratulations, you have printed Hello world through Darling's OS X system call emulation and runtime libraries.
+Congratulations, you have printed Hello world through Cider's OS X system call emulation and runtime libraries.
 
 ### Installing software
 
@@ -39,10 +48,10 @@ You can install `.pkg` packages with the installer tool available inside shell. 
 
 ````
 $ cider shell
-Darling [~]$ installer -pkg mc-4.8.7-0.pkg -target /
+Cider [~]$ installer -pkg mc-4.8.7-0.pkg -target /
 ````
 
-The Midnight Commander package from the above example is [available for download](https://cider-misc.s3.eu-central-1.amazonaws.com/mc-4.8.7-0.pkg).
+The Midnight Commander package from the above example is [available for download](https://darling-misc.s3.eu-central-1.amazonaws.com/mc-4.8.7-0.pkg).
 
 You can uninstall and list packages with the `uninstaller` command.
 
@@ -51,13 +60,13 @@ You can uninstall and list packages with the `uninstaller` command.
 DMG images can be attached and detached from inside `cider shell` with `hdiutil`. This is how you can install Xcode along with its toolchain and SDKs (note that Xcode itself doesn't run yet):
 
 ````
-Darling [~]$ hdiutil attach Xcode_7.2.dmg
+Cider [~]$ hdiutil attach Xcode_7.2.dmg
 /Volumes/Xcode_7.2
-Darling [~]$ cp -r /Volumes/Xcode_7.2/Xcode.app /Applications
-Darling [~]$ export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
-Darling [~]$ echo 'void main() { puts("Hello world"); }' > helloworld.c
-Darling [~]$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang helloworld.c -o helloworld
-Darling [~]$ ./helloworld
+Cider [~]$ cp -r /Volumes/Xcode_7.2/Xcode.app /Applications
+Cider [~]$ export SDKROOT=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk
+Cider [~]$ echo 'void main() { puts("Hello world"); }' > helloworld.c
+Cider [~]$ /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang helloworld.c -o helloworld
+Cider [~]$ ./helloworld
 Hello world
 ````
 

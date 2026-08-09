@@ -74,7 +74,7 @@ in
 
     # Optional persistent prefix service.
     systemd.services.cider-prefix = lib.mkIf cfg.prefix.enable {
-      description = "Initialise persistent Darling prefix";
+      description = "Initialise persistent Cider prefix";
       wantedBy = [ "multi-user.target" ];
       after = [ "local-fs.target" ];
 
