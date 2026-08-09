@@ -1092,6 +1092,29 @@
       hardeningDisable = ["all"];
       # Content addressing is per derivation, so it is one attribute here rather than a
       # different lowering.
+      #
+      # MEASURED END TO END, 2026-08-09, and this is the verification the CA conversion owed.
+      # Build ONE target through the endpoint, edit ONE first-party source in a DIFFERENT
+      # component, rebuild the same target, and count builders that RAN:
+      #
+      #   baseline                     3 buck2 derivations ran
+      #                                stage-project-grouped, libsimple_darlingserver, and -out
+      #   after editing src/startup/rtsig.c
+      #                                ZERO buck2 derivations ran
+      #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
+      #
+      # The graph DID rebuild, as it must: projectSrc contains that file. Everything downstream
+      # of it stayed put anyway, which is the whole point of the conversion.
+      #
+      # READ THE BUILDERS, NOT THE PLAN. nix printed "these 3 derivations will be built" and
+      # named all three targets, because their drv paths moved; a CA placeholder always does.
+      # Not one of them produced a `building` line. Judging by drvPath would have reported a
+      # total cascade where nothing at all was rebuilt.
+      #
+      # SCOPE, so nobody quotes this as more than it is: one target through
+      # darling-buck2-prefix-min, which is what the task asked for (build ONE compile target,
+      # not the prefix). It says the mechanism works; it does not say every one of the 3,225
+      # targets behaves the same way.
       __contentAddressed = contentAddressed;
       outputHashMode =
         if contentAddressed
