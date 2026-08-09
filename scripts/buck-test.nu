@@ -204,6 +204,26 @@ def main [flag?: string] {
         }
     }
 
+    # .buckconfig.local is MACHINE-LOCAL and gitignored, so no commit can fix a stale one
+    # and every checkout carries its own. The Cider rename moved the section from [darling]
+    # to [cider], and read_root_config returns the DEFAULT for a section that does not
+    # match, silently: a stale file leaves clang with no resource dir and the build dies
+    # thirty targets later on
+    #     libcxx/.../stdbool.h: #include_next <stdbool.h> file not found
+    # which names nothing that would lead anyone here. Checked FIRST so it names itself.
+    if (test_f ".buckconfig.local") {
+        let conf = (open --raw .buckconfig.local)
+        if not ($conf | str contains "[cider]") {
+            say "STOP: .buckconfig.local has no [cider] section, so every toolchain value"
+            say "      falls back to its default and the compiles fail far from here."
+            say "      Regenerate it: scripts/buck-setup.nu"
+            exit 2
+        }
+    } else {
+        say "STOP: no .buckconfig.local -- run scripts/buck-setup.nu"
+        exit 2
+    }
+
     # The pinned upstream trees the port compiles (migcom, the SDK header roots).
     if (not (test_d "buck-src/bootstrap_cmds")) or (not (test_d "buck-src/xnu")) {
         say "materializing pinned sources (scripts/buck-src.nu) ..."
