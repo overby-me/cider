@@ -60,8 +60,17 @@ become Cider, and `buck-src/BUCK` is first-party even though it sits among pins.
 the fetch manifest (`owner`, `repo` AND `path`); upstream URLs; `patches/` headers, which must
 match paths like `a/darling/src/...`; 1,700 paths plus 433 labels into pins; a plist renamed on
 disk but not in its BUCK; `buck-src/BUCK` keeping 185 references to renamed first-party targets;
-a `load()` whose reference moved but whose FILE did not; and `read_root_config("darling", ...)`,
-which returns the DEFAULT silently and gave wrapgen an empty `elf_lib_dirs`.
+a `load()` whose reference moved but whose FILE did not; `read_root_config("darling", ...)`,
+which returns the DEFAULT silently and gave wrapgen an empty `elf_lib_dirs`; and 2,078 SYMLINK
+TARGETS.
+
+**The symlink one is the one no sweep can ever catch, and it is worth remembering past this
+rename: a link TARGET is not file content, so grep does not read it.** The security pin ships
+2,078 links naming `src/external/darlingserver/duct-tape/xnu`, upstream's own layout, and they
+surfaced only as a package load failure naming a path that appears NOWHERE in the tree.
+`buck-src-normalise.py` now translates them through `FIRST_PARTY_RENAMES`: 2,092 dangling links
+under `buck-src` before, 13 after, and those 13 predate this work. **After any rename run
+`find . -type l -printf '%l\n' | grep <old name>`.**
 
 Two limits worth stating. The label check does NOT verify target existence generally: 105
 distinct targets are synthesised by `elf_wrapper` as `<n>_wrap` and `<n>_dylib` from lists local

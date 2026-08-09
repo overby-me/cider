@@ -970,6 +970,47 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
     do { ^chmod -R u+w $norm_t } | ignore
     ^rm -rf $norm_t
 
+    # The other half of that script, and the half that cost a gate run. Upstream pins link
+    # into UPSTREAM's layout: the security pin ships 2,078 links naming
+    # src/external/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and
+    # has not existed here since the Cider rename. A symlink TARGET is not file content, so no
+    # grep and no rename sweep can see it; it showed up only as a buck2 package load failure
+    # naming a path that is nowhere in the tree. Assert the translation BOTH ways: a renamed
+    # path moves and resolves, an unrelated one is left exactly alone.
+    let ren = (cap [python3 -c '
+import importlib.util, os
+s = importlib.util.spec_from_file_location("n", "scripts/buck-src-normalise.py")
+m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
+print(m.rename_first_party("src/external/darlingserver/duct-tape/xnu/APPLE_LICENSE"))
+print(m.rename_first_party("src/external/libdispatch/src/queue.c"))
+'])
+    let rl = (lines_of $ren)
+    let moved = ($rl | get 0)
+    let same = ($rl | get 1)
+    if $moved == "src/external/ciderd/xnu-sys/xnu/APPLE_LICENSE" {
+        if (($moved | path exists)) {
+            ok "rename_first_party retargets the upstream xnu path and it resolves"
+        } else {
+            bad $"rename_first_party produced ($moved), which does not exist"
+        }
+    } else {
+        bad $"rename_first_party gave ($moved)"
+    }
+    if $same == "src/external/libdispatch/src/queue.c" {
+        ok "rename_first_party leaves an unrelated pin path alone"
+    } else {
+        bad $"rename_first_party rewrote an unrelated path to ($same)"
+    }
+
+    # And nothing in the materialized tree may still NAME a renamed first-party path. This is
+    # the check the grep-based sweeps could never do.
+    let stale = (^bash -c "find buck-src -type l -printf '%l\\n' 2>/dev/null | grep -cE 'darlingserver|duct-tape' || true" | str trim)
+    if $stale == "0" {
+        ok "no symlink target under buck-src names a pre-rename first-party path"
+    } else {
+        bad $"($stale) symlink targets under buck-src still name darlingserver or duct-tape"
+    }
+
     say "== host headers (the ones that live outside the build graph) =="
     # The port compiles against X11, freetype, fontconfig, cairo, ffmpeg and pulseaudio, and for
     # the whole campaign it never asked for their headers: darwin_cc defaults to the bare name
