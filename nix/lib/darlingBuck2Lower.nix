@@ -288,7 +288,17 @@
   # The pins are frozen; only the escape destinations dragged the project back in, and they are
   # few. darwin/Developer/Platforms is the SDK, and the rest are the non-pin src/external
   # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
-  escapeRoots = ["darwin/Developer/Platforms"] ++ nonPinExternal;
+  # THE NARROWING APPLIES HERE AND ONLY HERE (#79). nonPinExternal has two consumers and they
+  # want different things. This one is the set of escape DESTINATIONS copied into pinsTree, so
+  # narrowing it is what stops pinsTree moving on a duct-tape edit. The other consumer, the
+  # per-target `groups` further down, is the set of directories STAGED for every target, and
+  # narrowing that one deleted src/external/darlingserver/scripts from the staged tree and broke
+  # dserver_rpc with the very error the comment there warns about. Measured before re-narrowing:
+  # of the 2,080 symlinks that resolve into src/external/darlingserver, 2,078 land inside
+  # duct-tape/xnu; the other 2 are internal to duct-tape/pthread, which is in neither tree, so
+  # nothing dangles.
+  escapeRoots =
+    ["darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
 
   escapeSrc = pkgs.runCommand "darling-pin-escape-roots" {} (''
     mkdir -p "$out"
@@ -870,6 +880,16 @@
   # is embedded in every target that stages a pin; when it moved, they all moved, which is why
   # gate10 rebuilt 1,464 guest objects for a change confined to duct-tape. Now it does not
   # move, so the cascade cannot start rather than merely happening not to.
+  #
+  # WHAT THE DRVPATH MEASUREMENT ABOVE DOES NOT SHOW, AND IT SHIPPED A REGRESSION. Those two
+  # hashes prove the cascade was CUT. They say nothing about whether the result still BUILDS,
+  # and the first version of this table was applied to nonPinExternal itself, which fed the
+  # staged per-target groups as well as the escape roots. The endpoint then failed on
+  # root//src/external/darlingserver:dserver_rpc with
+  #   python3: can't open file .../src/external/darlingserver/scripts/generate-rpc-wrappers.py
+  # which is verbatim the failure the groups comment further down already warns about, so this
+  # reintroduced a fixed bug. A hash that moves the way you predicted is only half the check;
+  # the other half is that the tree it names still works.
   escapeNarrow = {
     "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
   };
@@ -880,7 +900,7 @@
     if !builtins.pathExists dir
     then []
     else
-      map (n: let r = "src/external/" + n; in escapeNarrow.${r} or r)
+      map (n: "src/external/" + n)
         (builtins.filter (n: !(builtins.elem n pinNames))
           (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
 
