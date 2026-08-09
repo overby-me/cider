@@ -47,6 +47,28 @@ place rather than deleted. Four read a reference `build.ninja` that nothing can 
 stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-buck.py` reads
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
+**RUN THESE TWO BEFORE ANY LONG BUILD. One second together, and each already saved an hour.**
+`scripts/buck-pin-paths-check.py` resolves all 8,332 paths we record INTO a pin;
+`scripts/buck-labels-check.py` resolves all 24,944 labels, `load()` files and symbols, and
+config sections. Both verified BOTH ways against real damage.
+
+They exist because the Cider rename broke eight things no compiler could see, five of which
+each cost a failed hour-long launch. Every `buck-src/<pin>` is an upstream darlinghq repo and
+43 of them carry their OWN `darling/` subdirectory, so the boundary is not the directory:
+**upstream keeps the old name in its paths, patch headers, repo and org; only first-party names
+become Cider, and `buck-src/BUCK` is first-party even though it sits among pins.** The classes:
+the fetch manifest (`owner`, `repo` AND `path`); upstream URLs; `patches/` headers, which must
+match paths like `a/darling/src/...`; 1,700 paths plus 433 labels into pins; a plist renamed on
+disk but not in its BUCK; `buck-src/BUCK` keeping 185 references to renamed first-party targets;
+a `load()` whose reference moved but whose FILE did not; and `read_root_config("darling", ...)`,
+which returns the DEFAULT silently and gave wrapgen an empty `elf_lib_dirs`.
+
+Two limits worth stating. The label check does NOT verify target existence generally: 105
+distinct targets are synthesised by `elf_wrapper` as `<n>_wrap` and `<n>_dylib` from lists local
+to a BUCK file, so reporting them would be noise. And the pin check tests `lexists`, because
+`darwin/Developer` is written for the STAGED layout and 2,002 of its 2,636 links dangle in a
+checkout by design.
+
 **THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/xnu-sys-runtime-check.nu` covers the
 six ported xnu-sys files plus the 17 proofs that `checks.server` used to run: Mach ports,
 `mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
@@ -125,11 +147,13 @@ recorded sources the whole server crate contributed one file and it died with
 wholesale. The endpoint then went green, exit 0, 1,466 builders, and its prefix is BYTE
 IDENTICAL to the unnarrowed one.
 
-The flag still did not flip, and that is measured: `narrowSources` is INERT for the shipping
-endpoint, which gives the SAME drvPath either way, because `stageProjectFor` under #54 stages
-ONLY groups plus pins and never reads `projectSrc`. Both flags narrow the same thing and #54
-won. **The open question is deletion, not the flip**, and it removes flake outputs so it wants a
-decision.
+The flag never flipped, and that was measured: `narrowSources` was INERT for the shipping
+endpoint, which gave the SAME drvPath either way, because `stageProjectFor` under #54 stages
+ONLY groups plus pins and never reads `projectSrc`. Both flags narrowed the same thing and #54
+won. **DELETED 2026-08-09 on the user decision**: the flag, the `srcUnion` builder and the two
+`-narrow` flake outputs are gone. `projectSrc` STAYS and is now simply `src`; it is the shared
+staged tree every non-grouped target uses, and an earlier note claiming it could go with the
+flag was wrong.
 
 1. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
@@ -1616,9 +1640,11 @@ has been true six times running, each time a check freshly written.
   STILL OFF BY DEFAULT. Flipping `coarsePins` is a separate decision and wants the full
   coarse prefix built and diffed first; the expected win is ~1,196 fewer derivations and 31
   percent fewer staging passes, NOT less compile work.
-- **#44: the narrowing gap is 25 quoted includes, and depfiles are not needed to close it.**
-  The comment at `projectSrc` says this case only depfiles can answer, and that narrowing
-  waits on a 90 minute build. Both are wrong; it measures on the host in ten seconds.
+- **#44: the narrowing gap was 25 quoted includes, and depfiles were not needed to close it.**
+  HISTORICAL as of 2026-08-09: `narrowSources` is deleted, so this gap no longer gates
+  anything. The comment it argued with said only depfiles could answer this case, and that
+  narrowing waited on a 90 minute build. Both were wrong; it measured on the host in ten
+  seconds, which is the transferable part.
   I FIRST REPORTED FIVE, and that was too narrow: I scanned only includes spelled `../`
   and missed the subdirectory form, which is the same problem (`libcxxabi` reaching for
   `include/atomic_support.h` and `demangle/ItaniumDemangle.h`, `fseventsd.m` for

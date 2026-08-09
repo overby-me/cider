@@ -37,6 +37,32 @@ def set_repo(root: str) -> None:
     BUCK_SRC = os.path.join(REPO, "buck-src")
 
 
+# WE RENAMED FIRST-PARTY DIRECTORIES; UPSTREAM DID NOT, and a pin links into the
+# layout upstream has. 2,078 links under buck-src/security/darling/submodules/xnu
+# name src/external/darlingserver/duct-tape/xnu, which is where that tree lives in
+# Darling and has not existed here since the Cider rename and the duct-tape to
+# xnu-sys move.
+#
+# THIS CLASS IS INVISIBLE TO EVERY CONTENT SWEEP, and that is the whole lesson: a
+# symlink TARGET is not file content, so grep does not read it and no rename script
+# that rewrites files can reach it. It surfaced only as a buck2 package load failure
+# four minutes into the endpoint, naming a path that appears nowhere in the tree:
+#     File not found: root//buck-src/darlingserver/duct-tape/xnu
+# Longest prefix first, so the duct-tape entry wins over the plain one.
+FIRST_PARTY_RENAMES = [
+    ("src/external/darlingserver/duct-tape", "src/external/ciderd/xnu-sys"),
+    ("src/external/darlingserver", "src/external/ciderd"),
+]
+
+
+def rename_first_party(rel: str) -> str:
+    """Translate an upstream-era first-party path to where it lives now."""
+    for old, new in FIRST_PARTY_RENAMES:
+        if rel == old or rel.startswith(old + os.sep):
+            return new + rel[len(old):]
+    return rel
+
+
 def in_tree_target(link: str, target: str) -> str | None:
     """Where a link should point instead, or None to leave it alone."""
     parts = [c for c in target.split("/") if c != "."]
@@ -87,6 +113,14 @@ def in_tree_target(link: str, target: str) -> str | None:
         seen.add(cur)
         cur = os.path.normpath(os.path.join(os.path.dirname(cur), os.readlink(cur)))
     rel = os.path.relpath(cur, REPO)
+    # A renamed first-party tree is in the REPO, not in buck-src, so it resolves here
+    # rather than through the pin copy below.
+    renamed = rename_first_party(rel)
+    if renamed != rel:
+        cand = os.path.join(REPO, renamed)
+        if os.path.lexists(cand):
+            return os.path.relpath(cand, os.path.dirname(link))
+        return None
     if not rel.startswith("src/external/"):
         return None
     inside = os.path.join(BUCK_SRC, rel[len("src/external/"):])
