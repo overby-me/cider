@@ -37,8 +37,25 @@ about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,
 stall are not reproducible: the one real failure was a staging regression, now fixed. Do not
 plan around the endpoint being unrunnable.
 
-1. **#79 NEEDS A DECISION, and it is the live blocker.** The cascade is NOT cut. Measured on
-   `.#darling-buck2-one` by builders that RAN: no-op **0** (a control that can fail), one
+1. **#79 NEEDS A DECISION, and it is the live blocker.** The cascade is NOT cut.
+
+   **MEASURED AT ENDPOINT SCALE on the finished baseline, builders that RAN, each with its own
+   restore control that came back 0 onto the identical baseline output:**
+
+   | edit | builders | time | share of the 1,551 |
+   | --- | --- | --- | --- |
+   | none (control) | **0** | 16 s | 0% |
+   | `duct-tape/src/dtape_rs_shims.c` | **1,558** | 61 min | **100%** |
+   | `src/startup/rtsig.c` | **570** | 19 min | **37%** |
+
+   So a `src/external` edit rebuilds the WHOLE endpoint and costs 2.7 times an ordinary source
+   edit. Two separate problems live in those numbers: the 100% is #79 below, and the 37% is a
+   second cascade that #54 and #55 did not close either. The old "one line rebuilt all 6,490"
+   figure is superseded, and the honest comparison is the fraction: 100% then, 37% now for an
+   ordinary edit.
+
+   Same thing isolated on one target, `.#darling-buck2-one`: no-op **0** (a control that can
+   fail), one
    `duct-tape/src` edit **6**, with `root//src/libsimple:libsimple_darlingserver` recompiling
    `src/lock.c`. `nix-diff` named the only cause, and it was neither the graph nor the sources
    (both byte identical), it was the darlingserver GROUP STORE interpolated as `_g`.
