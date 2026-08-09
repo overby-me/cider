@@ -42,11 +42,16 @@ plan around the endpoint being unrunnable.
    **MEASURED AT ENDPOINT SCALE on the finished baseline, builders that RAN, each with its own
    restore control that came back 0 onto the identical baseline output:**
 
-   | edit | builders | time | share of the 1,551 |
-   | --- | --- | --- | --- |
-   | none (control) | **0** | 16 s | 0% |
-   | `duct-tape/src/dtape_rs_shims.c` | **1,558** | 61 min | **100%** |
-   | `src/startup/rtsig.c` | **570** | 19 min | **37%** |
+   | edit | builders | time | share of the 1,551 | verdict |
+   | --- | --- | --- | --- | --- |
+   | none (control) | **0** | 16 s | 0% | control |
+   | `src/libaccessibility/src/Accessibility.m` | **7** | 165 s | 0.5% | correct, a leaf |
+   | `src/startup/rtsig.c` | **570** | 19 min | 37% | correct, a header generator |
+   | `duct-tape/src/dtape_rs_shims.c` | **1,558** | 61 min | **100%** | **THE LEAK, #79** |
+
+   **An ordinary edit costs 7 builders and under 3 minutes.** So #54 and #55 did their job. The
+   leak is `src/external` alone, and it costs **222 times** an ordinary edit, 61 minutes against
+   165 seconds.
 
    **ONLY THE FIRST ROW IS A LEAK, and calling the second one a second cascade was wrong.**
    `nix-diff` on the two rows says opposite things. For the duct-tape edit the cause is the
@@ -59,9 +64,10 @@ plan around the endpoint being unrunnable.
    relinks everything that links libsystem: 126 dylibs, 98 shims, 30 finals. Only 14 of the 570
    are compiles, which is #54 and #55 working, not failing.
 
-   So rtsig.c was the wrong probe for "an ordinary edit": it is a header generator, about the
-   most connected file in the tree. THE ORDINARY-EDIT COST IS STILL UNMEASURED. Measure it on a
-   leaf that nothing includes.
+   rtsig.c was the wrong probe for "an ordinary edit": it is a header generator, about the most
+   connected file in the tree. Redone on a real leaf, `Accessibility.m`, whose only consumers
+   are its own object, its dylib and the prefix install entry: **7 builders, 165 s**. That is
+   the honest ordinary-edit cost.
 
    Same thing isolated on one target, `.#darling-buck2-one`: no-op **0** (a control that can
    fail), one
