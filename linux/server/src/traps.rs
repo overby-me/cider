@@ -9,47 +9,32 @@
 
 use crate::bindings::dtape_task_t;
 
-extern "C" {
-    // --- mach port ops (the rest, beyond allocate/deallocate/mod_refs/type in mach.rs) ---
-    fn dtape_mach_port_move_member(target: u32, member: u32, after: u32) -> i32;
-    fn dtape_mach_port_insert_right(target: u32, name: u32, poly: u32, poly_poly: i32) -> i32;
-    fn dtape_mach_port_insert_member(target: u32, name: u32, pset: u32) -> i32;
-    fn dtape_mach_port_extract_member(target: u32, name: u32, pset: u32) -> i32;
-    fn dtape_mach_port_construct(target: u32, options: u64, context: u64, name: u64) -> i32;
-    fn dtape_mach_port_destruct(target: u32, name: u32, srdelta: i32, guard: u64) -> i32;
-    fn dtape_mach_port_guard(target: u32, name: u32, guard: u64, strict: bool) -> i32;
-    fn dtape_mach_port_unguard(target: u32, name: u32, guard: u64) -> i32;
-    fn dtape_mach_port_request_notification(target: u32, name: u32, msgid: i32, sync: u32, notify: u32, notify_poly: u32, previous: u64) -> i32;
-    fn dtape_mach_port_get_attributes(target: u32, name: u32, flavor: i32, info: u64, count: u64) -> i32;
-
-    // --- task <-> pid lookups (copy the result port/pid out via the pointer arg) ---
-    fn dtape_task_for_pid(target_tport: u32, pid: i32, t: u64) -> i32;
-    fn dtape_task_name_for_pid(target_tport: u32, pid: i32, t: u64) -> i32;
-    fn dtape_pid_for_task(t: u32, pid: u64) -> i32;
-
-    // --- Mach VM traps ---
-    fn dtape_mach_vm_allocate(target: u32, addr: u64, size: u64, flags: i32) -> i32;
-    fn dtape_mach_vm_deallocate(target: u32, address: u64, size: u64) -> i32;
-
-    // --- Mach semaphore traps (the wait variants may block via thread_suspend) ---
-    fn dtape_semaphore_signal(signal_name: u32) -> i32;
-    fn dtape_semaphore_signal_all(signal_name: u32) -> i32;
-    fn dtape_semaphore_wait(wait_name: u32) -> i32;
-    fn dtape_semaphore_wait_signal(wait_name: u32, signal_name: u32) -> i32;
-    fn dtape_semaphore_timedwait(wait_name: u32, sec: u32, nsec: u32) -> i32;
-    fn dtape_semaphore_timedwait_signal(wait_name: u32, signal_name: u32, sec: u32, nsec: u32) -> i32;
-
-    // --- mk_timer traps ---
-    fn dtape_mk_timer_create() -> u32;
-    fn dtape_mk_timer_destroy(name: u32) -> i32;
-    fn dtape_mk_timer_arm(name: u32, expire_time: u64) -> i32;
-    fn dtape_mk_timer_cancel(name: u32, result_time: u64) -> i32;
-
-    // --- misc ---
-    fn dtape_thread_get_special_reply_port() -> u32;
-    // Swap the task's stored uid/gid, returning the previous pair via the out pointers.
-    fn dtape_task_uidgid(task: *mut dtape_task_t, new_uid: i32, new_gid: i32, old_uid: *mut i32, old_gid: *mut i32);
-}
+// Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
+// now (#75). rustc lints a declaration against another declaration but never against the
+// DEFINITION it resolves to, because the linker matches on name alone, so each of these 27 was
+// free to disagree with the thing it actually called. Four such disagreements were found
+// elsewhere in this task, none of them by reading.
+//
+// The groups, kept from the block that was here:
+//   mach port ops           the rest, beyond allocate, deallocate, mod_refs and type in mach.rs
+//   task and pid lookups    copy the result port or pid out through the pointer argument
+//   Mach VM traps
+//   Mach semaphore traps    the wait variants may block via thread_suspend
+//   mk_timer traps
+//   dtape_task_uidgid       swaps the task stored uid and gid, returning the previous pair
+//                           through the out pointers
+use crate::dtape_task::dtape_task_uidgid;
+use crate::dtape_traps::{dtape_mk_timer_create, dtape_thread_get_special_reply_port};
+use crate::traps_generated::{
+    dtape_mach_port_construct, dtape_mach_port_destruct, dtape_mach_port_extract_member,
+    dtape_mach_port_get_attributes, dtape_mach_port_guard, dtape_mach_port_insert_member,
+    dtape_mach_port_insert_right, dtape_mach_port_move_member,
+    dtape_mach_port_request_notification, dtape_mach_port_unguard, dtape_mach_vm_allocate,
+    dtape_mach_vm_deallocate, dtape_mk_timer_arm, dtape_mk_timer_cancel, dtape_mk_timer_destroy,
+    dtape_pid_for_task, dtape_semaphore_signal, dtape_semaphore_signal_all,
+    dtape_semaphore_timedwait, dtape_semaphore_timedwait_signal, dtape_semaphore_wait,
+    dtape_semaphore_wait_signal, dtape_task_for_pid, dtape_task_name_for_pid,
+};
 
 // The XNU traps all return an int status (0 == success); the pointer args are guest
 // addresses the trap copies results out to. Thin pass-throughs so the handler layer

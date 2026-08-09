@@ -1074,9 +1074,10 @@ impl rpc_wire::RpcHandler for Handler {
     /// diagnostic utility -- inspect the live daemon's process/port state when debugging Darling
     /// itself (hangs, leaks). Mirrors Call::DebugListProcesses (call.cpp:1092).
     fn debug_list_processes(&mut self, _fds: &[RawFd]) -> Result<ReplyDebugListProcesses, i32> {
-        extern "C" {
-            fn dtape_debug_task_port_count(task: *mut crate::bindings::dtape_task_t) -> u64;
-        }
+        // Was a nested `extern "C"` block resolving back into this crate through the linker;
+        // imported since duct-tape became Rust (#71, #75). Nested rather than at file scope,
+        // which is why it survived the earlier sweep of this file.
+        use crate::debug::dtape_debug_task_port_count;
         // Matches dserver_debug_process_t (dserverdbg.c:336 reads pid:%u, port_count:%lu): u32 then
         // 4 bytes pad then u64 = 16 bytes under repr(C), exactly what the reader expects.
         #[repr(C)]
