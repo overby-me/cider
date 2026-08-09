@@ -1075,6 +1075,21 @@ the shell before the probe can report.
   Two traps already paid for once: `init.c` is TWO PHASE (multithreaded guests need
   `dtape_init_in_thread` on a kernel microthread), and `psynch.c` produced a silent SIGSEGV
   from a null `pthread_list_mlock`. Both fail under threads, not at boot.
+
+  **AND THE VENDORED `xnu-sys/xnu` CAN BECOME A PIN WITH PATCHES. Costed 2026-08-10, not
+  done.** The pin already exists: `nix/submodules.json` has `darlinghq/darling-xnu` at
+  `5f26a4c2` for `src/external/xnu`, and the vendored tree is a STRICT SUBSET of it, all 2,077
+  files present upstream, none unique, **2,026 of them byte identical**. That is the same
+  revision, so the whole delta is **51 files, 483 lines added and 47 removed**, against the 841
+  lines the existing `patches/xnu/` set already carries. 194 of the added lines mention
+  `DARLING`, so most of the delta is the `__DARLING__` guards, which is what a patch set is
+  for. It REMOVES 1,974 tracked files and 32M, and the pin tree is already on disk as
+  `buck-src/xnu`, so it deduplicates rather than costing more.
+  TWO THINGS TO SETTLE FIRST: the guest side and the kernel side would be the same repo and rev
+  with DIFFERENT patch sets, which `cider-src.nix` supports because it keys patches by pin
+  PATH, but 45 of the 51 modified files are under `osfmk/` and the guest side does reference
+  `osfmk`, so the sets need checking for conflict rather than assuming disjoint. And it moves
+  source paths, so it batches with other invalidating work.
 - **#73 port build-time codegen to Rust** — `generate-rpc-wrappers.py` (already extended to
   emit the Rust codec, but still Python) and `tools/generate-xcode-stubs.py`.
 - **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
