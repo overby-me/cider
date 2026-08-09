@@ -106,6 +106,23 @@ def out_of [t: string] {
     if ($ls | is-empty) { "" } else { ($ls | last | str trim | split row --regex '\s+' | get 1? | default "") }
 }
 
+# MANY targets in ONE buck2 invocation, returning a table of {t, p}. out_of spawns a fresh
+# buck2 client per target at 15 to 30 s each, which is what made the dylib section take about
+# three hours and read as a hang. --show-output prints "<target> <path>" per line;
+# --keep-going so one broken target still leaves the rest checkable.
+def out_map [targets: list<string>] {
+    let r = (do -i { ^buck2 build ...$targets --show-output --keep-going } | complete)
+    lines_of $r.stdout | each {|l|
+        let cols = ($l | str trim | split row --regex '\s+')
+        if ($cols | length) >= 2 { {t: ($cols | get 0), p: ($cols | get 1)} }
+    }
+}
+
+def out_map_get [rows: list<any>, t: string] {
+    let hit = ($rows | where t == $t)
+    if ($hit | is-empty) { "" } else { $hit | first | get p }
+}
+
 def macho_id [f: string] {
     let out = (cap [llvm-objdump --macho --dylib-id $f])
     let ls = (lines_of $out)
@@ -544,19 +561,14 @@ def main [flag?: string] {
     # per-target calls did.
     let n_total = ($all_dylibs | length)
     say $"  building ($n_total) dylibs in one buck2 invocation"
-    let built = (do -i { ^buck2 build ...$all_dylibs --show-output --keep-going } | complete)
-    let outrows = (lines_of $built.stdout | each {|l|
-        let cols = ($l | str trim | split row --regex '\s+')
-        if ($cols | length) >= 2 { {t: ($cols | get 0), p: ($cols | get 1)} }
-    })
+    let outrows = (out_map $all_dylibs)
     say $"  built, ($outrows | length) of ($n_total) reported an output"
     mut n_seen = 0
     for t in $all_dylibs {
         $n_seen = $n_seen + 1
         if ($n_seen mod 100) == 0 { say $"  ... ($n_seen) of ($n_total) dylibs checked" }
         let name = ($t | split row ":" | last)
-        let hit = ($outrows | where t == $t)
-        let f = (if ($hit | is-empty) { "" } else { $hit | first | get p })
+        let f = (out_map_get $outrows $t)
         # Both substitutions have to tolerate failure: with `set -euo pipefail`, an
         # objdump on an empty path takes the whole suite down mid-section, which looks
         # like the run stopping for no reason.
@@ -616,11 +628,13 @@ def main [flag?: string] {
     # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
     let exe_skip = ["dyld"]
     let all_exes = (cap [buck2 uquery $"kind\('darwin_binary', ($exe_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
+    say $"  building ($all_exes | length) guest executables in one buck2 invocation"
+    let exerows = (out_map $all_exes)
     mut n_exe = 0
     for t in $all_exes {
         let name = ($t | split row ":" | last)
         if $name in $exe_skip { continue }
-        let hdr = (macho_hdr (out_of $t))
+        let hdr = (macho_hdr (out_map_get $exerows $t))
         if ($hdr | str contains "EXECUTE") and ($hdr | str contains "NOUNDEFS") {
             $n_exe = $n_exe + 1
         } else if ($hdr | str contains "EXECUTE") {
