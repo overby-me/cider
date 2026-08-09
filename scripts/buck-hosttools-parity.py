@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Do the Rust host tools behave EXACTLY like the C ones they replace? (#76)
 
-getuuid and elfdep were ported to Rust. Their output is consumed by other things in the tree,
-so parity has to mean byte parity, not "looks the same": stdout compared as HEX, stderr
-compared verbatim, exit code compared. A trailing newline that appears or disappears is a real
-regression here, and getuuid deliberately emits none.
+getuuid and elfdep were ported to Rust. Parity here means BYTE parity, not "looks the same":
+stdout compared as HEX, stderr verbatim, exit code compared. A trailing newline appearing or
+disappearing would be a real regression, and getuuid deliberately emits none.
+
+NOTHING IN THE BUCK2 BUILD CONSUMES EITHER TOOL TODAY. The one consumer is cmake/dsym.cmake,
+which belongs to the reference CMake build this port replaces, and it calls getuuid and reads
+its stdout. So the strictness is for that caller and for anyone who wires these up later, not
+for a dependency that exists right now. Said plainly because the opposite claim, that the
+output is consumed in-tree, is easy to assume and was written here first.
 
 WHY BYTES AND NOT EYES. Writing the ports from a reading of the C produced one defect that
 survived review and died here: std::io::Error renders ENOENT as
@@ -53,10 +58,10 @@ def main(argv: list[str]) -> int:
     elfobj = b / "src/startup/__rtsig__/__objs/rtsig.c.o"
 
     pairs = [
-        ("getuuid", b / "src/buildtools/__getuuid__/getuuid",
-         b / "src/buildtools/__getuuid_rs__/getuuid_rs"),
-        ("elfdep", b / "src/buildtools/__elfdep__/elfdep",
-         b / "src/buildtools/__elfdep_rs__/elfdep_rs"),
+        ("getuuid", b / "src/buildtools/__getuuid_c__/getuuid_c",
+         b / "src/buildtools/__getuuid__/getuuid"),
+        ("elfdep", b / "src/buildtools/__elfdep_c__/elfdep_c",
+         b / "src/buildtools/__elfdep__/elfdep"),
     ]
     cases = [
         ("no args", []),
@@ -68,7 +73,7 @@ def main(argv: list[str]) -> int:
 
     missing = [str(p) for _, c, r in pairs for p in (c, r) if not p.exists()]
     if missing:
-        print("MISSING, build //src/buildtools:{getuuid,elfdep,getuuid_rs,elfdep_rs} first:")
+        print("MISSING, build //src/buildtools:{getuuid,elfdep,getuuid_c,elfdep_c} first:")
         for m in missing:
             print("  ", m)
         return 2

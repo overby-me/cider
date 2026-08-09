@@ -22,7 +22,7 @@ load("//buck/rules:rust.bzl", "rust_binary")
 #   src/include
 
 cc_objects(
-    name = "getuuid_obj",
+    name = "getuuid_c_obj",
     srcs = [
         "getuuid.c",
     ],
@@ -42,10 +42,10 @@ cc_objects(
 # buck-registry: src/buildtools/getuuid = getuuid
 
 cc_binary(
-    name = "getuuid",
+    name = "getuuid_c",
     objs = [
         # getuuid
-        ":getuuid_obj",
+        ":getuuid_c_obj",
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
@@ -63,7 +63,7 @@ cc_binary(
 #   src/include
 
 cc_objects(
-    name = "elfdep_obj",
+    name = "elfdep_c_obj",
     srcs = [
         "elfdep.c",
     ],
@@ -83,10 +83,10 @@ cc_objects(
 # buck-registry: src/buildtools/elfdep = elfdep
 
 cc_binary(
-    name = "elfdep",
+    name = "elfdep_c",
     objs = [
         # elfdep
-        ":elfdep_obj",
+        ":elfdep_c_obj",
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
@@ -95,8 +95,14 @@ cc_binary(
 )
 # END generated: elfdep binary
 
-# ---- Rust ports (#76). Added ALONGSIDE the C targets rather than replacing them, so the two
-# ---- can be diffed on the same inputs before anything switches over.
+# ---- Rust ports (#76). These now carry the CANONICAL names, so getuuid and elfdep are the
+# ---- Rust binaries; the C is still built as getuuid_c and elfdep_c.
+#
+# THE C IS KEPT ON PURPOSE, and it is not dead weight: scripts/buck-hosttools-parity.py diffs
+# the two on the same inputs, and that comparison is only re-runnable while both exist. Nothing
+# in the buck2 build consumes either tool (the one consumer, cmake/dsym.cmake, belongs to the
+# reference CMake build this port replaces), so carrying the reference costs a compile and
+# nothing else. Drop the _c targets when the comparison stops being worth re-running.
 #
 # Both are Darling-origin and GPL (getuuid.c is Copyright 2018 Lubos Dolezel, elfdep.c
 # 2018-2020), so the headers stay on the Rust files and a Cider line is added beside them.
@@ -109,14 +115,14 @@ cc_binary(
 # comparison is against measured behaviour rather than a reading of the source.
 
 rust_binary(
-    name = "getuuid_rs",
+    name = "getuuid",
     crate_root = "getuuid.rs",
     deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],
 )
 
 rust_binary(
-    name = "elfdep_rs",
+    name = "elfdep",
     crate_root = "elfdep.rs",
     deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],
