@@ -39,11 +39,11 @@ build `darling-buck2-min`. VERIFIED: the minimal endpoint builds with zero cmake
 exit 0, 4,574 builders, 0 errors. Nothing in the buck2 path ever invoked ninja, so ninja went
 with it; the `overby` input STAYS, because `darlingBuck2.nix` uses its `buildBuck2Project.nix`.
 
-**THE ONE-WAY DOOR, stated plainly:** four generators
-(`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`)
-read a reference `build.ninja` that nothing can regenerate now. They are marked FROZEN in place
-rather than deleted, and they stop working entirely once a store GC collects `result-graph-ref`.
-The BUCK files they produced are committed.
+**THE ONE-WAY DOOR, stated plainly:** FIVE generators are now unrunnable and marked FROZEN in
+place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
+(`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`) and
+stop working entirely once a store GC collects `result-graph-ref`; `gen-duct-tape-buck.py` reads
+`duct-tape/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
 **THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#darling-buck2-prefix-min`
 at `--max-jobs 6 --cores 2 --keep-going` ran **1,551 buck2 builders to exit 0 with 0 errors in

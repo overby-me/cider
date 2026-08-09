@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# FROZEN GENERATOR (#82). It reads duct-tape/CMakeLists.txt, and cmake is gone, so it
+# cannot run at all now. The 16 glue .c it also lists were replaced by Rust under
+# linux/server/src/xnu (#71) and deleted. Its outputs, duct-tape/BUCK and
+# buck/generated/duct_tape_flags.bzl, are committed; this is kept for provenance.
 """Generate src/external/darlingserver/duct-tape/BUCK from its CMakeLists.txt.
 
 duct-tape is ~135 source paths, 45 MIG definitions and ~120 preprocessor
