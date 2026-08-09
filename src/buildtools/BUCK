@@ -1,11 +1,17 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
+load("//buck/rules:rust.bzl", "rust_binary")
 
-# No targets. getuuid and elfdep are HOST tools that read Mach-O out of the build tree.
-# Both blocks are correct as far as they go -- native_cc toolchain, cctools include root --
-# but the compile dies in cctools' own mach/machine.h on <mach/machine/vm_types.h>, which
-# exists in the pins ONLY under cctools-port/cctools/include/foreign/ and which nothing in
-# the reference build adds to the include path. See PLAN.md. The package is kept so the
-# directory keeps its own package boundary rather than folding into the parent's globs.
+# getuuid and elfdep are HOST tools that read Mach-O out of the build tree: getuuid prints the
+# LC_UUID payloads, elfdep prints the SONAME recorded in the __TEXT __elfname section.
+#
+# THE HEADER HERE USED TO SAY "No targets", on the grounds that the compile died in cctools own
+# mach/machine.h looking for mach/machine/vm_types.h. That is STALE: both cc targets build
+# today, verified by building them. The same staleness was recorded once already for
+# src/bsdln/BUCK, so it is worth checking a claim like this rather than inheriting it.
+#
+# The Rust ports below (#76) are the reason it stops mattering. Parsing Mach-O at checked byte
+# offsets needs no cctools headers at all, so the include path that caused the original trouble
+# is not in the picture.
 
 # BEGIN generated: getuuid
 # GENERATED from the reference build.ninja by
@@ -88,3 +94,30 @@ cc_binary(
     visibility = ["PUBLIC"],
 )
 # END generated: elfdep binary
+
+# ---- Rust ports (#76). Added ALONGSIDE the C targets rather than replacing them, so the two
+# ---- can be diffed on the same inputs before anything switches over.
+#
+# Both are Darling-origin and GPL (getuuid.c is Copyright 2018 Lubos Dolezel, elfdep.c
+# 2018-2020), so the headers stay on the Rust files and a Cider line is added beside them.
+#
+# The C mmaps the file and casts structures straight out of the mapping, so a lying cmdsize
+# walks off the end. These read the file and parse at CHECKED offsets, which is the one
+# deliberate behaviour difference; every output-visible behaviour is preserved exactly,
+# including the ones that look like oversights (getuuid emits no trailing newline, elfdep exits
+# 0 whether or not it found anything). Those were captured from the C binaries FIRST, so the
+# comparison is against measured behaviour rather than a reading of the source.
+
+rust_binary(
+    name = "getuuid_rs",
+    crate_root = "getuuid.rs",
+    deps = ["//buck-rust:libc"],
+    visibility = ["PUBLIC"],
+)
+
+rust_binary(
+    name = "elfdep_rs",
+    crate_root = "elfdep.rs",
+    deps = ["//buck-rust:libc"],
+    visibility = ["PUBLIC"],
+)
