@@ -2304,7 +2304,7 @@ prefix_tree(
         "libexec/cider/System/Library/LaunchDaemons/org.cups.cups-lpd.plist": "//buck-src:cups_cups_scheduler_org.cups.cups-lpd.plist",
         "libexec/cider/System/Library/LaunchDaemons/org.cups.cupsd.plist": "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist",
         "libexec/cider/System/Library/LaunchDaemons/org.darlinghq.iokitd.plist": "//buck-src:iokitd_org.darlinghq.iokitd.plist",
-        "libexec/cider/System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist": "//src/shellspawn:org.darlinghq.shellspawn.plist",
+        "libexec/cider/System/Library/LaunchDaemons/org.ciderhq.shellspawn.plist": "//src/shellspawn:org.ciderhq.shellspawn.plist",
         "libexec/cider/System/Library/LaunchDaemons/ssh.plist": "//buck-src:openssh_com.openssh.sshd.plist",
         "libexec/cider/System/Library/LaunchDaemons/tftp.plist": "//buck-src:remote_cmds_tftpd.tproj_tftp.plist",
         "libexec/cider/System/Library/OpenSSL/certs/ACCVRAIZ1.crt": "//buck-src:openssl_certificates_certs_ACCVRAIZ1.crt",

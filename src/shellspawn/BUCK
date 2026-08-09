@@ -56,8 +56,8 @@ darwin_binary(
 # scripts/gen-install-from-manifests.py -- review before committing.
 
 export_file(
-    name = "org.darlinghq.shellspawn.plist",
-    src = "org.darlinghq.shellspawn.plist",
+    name = "org.ciderhq.shellspawn.plist",
+    src = "org.ciderhq.shellspawn.plist",
     visibility = ["PUBLIC"],
 )
 
