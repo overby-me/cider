@@ -890,6 +890,23 @@
   # which is verbatim the failure the groups comment further down already warns about, so this
   # reintroduced a fixed bug. A hash that moves the way you predicted is only half the check;
   # the other half is that the tree it names still works.
+  #
+  # AND THE PAYOFF ABOVE IS MEASURED ON THE WRONG ARTIFACT, so treat it as unproven. pinsTree is
+  # not the only route from a duct-tape edit to a target. nonPinExternal is ALSO added to the
+  # per-target `groups` for every target, groupStore is a builtins.path over the whole directory,
+  # and its store path is interpolated into that target's stage script as _g. builtins.path is
+  # content addressed, so editing src/external/darlingserver/duct-tape moves
+  # groupStore "src/external/darlingserver", which moves every stage script that names it, which
+  # moves every target. Narrowing escapeRoots closed the pinsTree route and left this one open,
+  # and it was open before #79 too, so #79 fixed one of two.
+  #
+  # THIS IS REASONING FROM THE CODE, NOT A MEASUREMENT. What settles it is the standing rule:
+  # edit one duct-tape file and count the builders that RAN. Do that before believing either
+  # this paragraph or the drvPath numbers above. If it is confirmed, the fix is to narrow the
+  # GROUPS entry as well, to the subdirectories targets actually read (scripts, include,
+  # internal-include, src, tools) and NOT duct-tape, which is the part that churns. That has to
+  # be verified by building, since excluding duct-tape may starve the darlingserver compiles
+  # unless the per-target unions from #54 already carry those files.
   escapeNarrow = {
     "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
   };
