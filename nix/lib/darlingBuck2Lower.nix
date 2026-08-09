@@ -947,10 +947,21 @@
   #   no-op control                  0                     <- so the probe can fail
   #   one duct-tape/src edit       657 in 22 min            <- was 1,558 in 61 min
   #   restore                        0, back to the settled output
-  # A 2.4 times cut, correctness intact. It is not the ~7 an ordinary leaf edit costs, and the
-  # residual has a named cause: ownerPrefix also matches root//src/external/darlingserver:
-  # dserver_rpc, which does not compile duct-tape/src but does regenerate rpc.h, so its whole
-  # consumer cone follows. Narrowing ownerPrefix to the duct-tape package is the next step.
+  # then, with ownerPrefix narrowed to the duct-tape package:
+  #   settle                       650, exit 0, 0 errors
+  #   no-op control                  0
+  #   one duct-tape/src edit        44 in 154 s
+  #   restore                        0, back to the settled output
+  #
+  # SO: 1,558 builders and 61 minutes, to 44 and 2.5 minutes. 35 times fewer builders, 24 times
+  # faster. An ordinary leaf edit costs 7, and the 44 left ARE the duct-tape cone and should
+  # rebuild: dt_objects, dt_mig_objects, dt_pthread_objects, darlingserver_duct_tape, the mig_*
+  # set, dtape_bindings, darlingserverd, darling and the prefix.
+  #
+  # Counted with `^building`, never with the "these N will be built" list. dserver_rpc is the
+  # reason that matters: narrowing ownerPrefix moved its drv, so nix LISTED it, and it produced
+  # no builder line either in the settle or the probe. That is CA early cutoff visible in the
+  # one place it was easy to misread.
   groupSplit = {
     "src/external/darlingserver" = {
       shared = [
@@ -965,7 +976,12 @@
         "src/external/darlingserver/duct-tape/pthread"
         "src/external/darlingserver/duct-tape/xnu"
       ];
-      ownerPrefix = "root//src/external/darlingserver";
+      # THE DUCT-TAPE PACKAGE, not all of darlingserver. The wider prefix also matched
+      # root//src/external/darlingserver:dserver_rpc, which compiles none of duct-tape/src (it
+      # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a duct-tape edit
+      # dragged its whole consumer cone along. That is the 657 above rather than the ~7 an
+      # ordinary leaf edit costs.
+      ownerPrefix = "root//src/external/darlingserver/duct-tape";
       owned = ["src/external/darlingserver/duct-tape/src"];
     };
   };
