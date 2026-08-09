@@ -254,22 +254,6 @@ add_custom_target(kernel_mig_generate
 )
 
 add_library(darlingserver_duct_tape STATIC
-	src/init.c
-	src/misc.c
-	src/stubs.c
-	src/locks.c
-	src/memory.c
-	src/task.c
-	src/thread.c
-	src/timer.c
-	src/traps.c
-	src/host.c
-	src/processor.c
-	src/kqchan.c
-	src/semaphore.c
-	src/psynch.c
-	src/condvar.c
-	src/debug.c
 
 	xnu/libkern/os/refcnt.c
 	xnu/libkern/gen/OSAtomicOperations.c
