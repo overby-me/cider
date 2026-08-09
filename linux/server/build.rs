@@ -110,8 +110,8 @@ fn main() {
         .expect("bindgen failed on the dtape hooks contract");
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
-        .write_to_file(out.join("dtape_bindings.rs"))
-        .expect("write dtape_bindings.rs");
+        .write_to_file(out.join("xnu_sys.rs"))
+        .expect("write xnu_sys.rs");
 
     // ---- (3) compile fast_context.c (P1) -- always; it is self-contained ----
     if fast_context.exists() {

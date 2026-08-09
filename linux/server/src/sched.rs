@@ -41,13 +41,13 @@ use std::sync::atomic::{AtomicU64, Ordering};
 //   dtape_timer_fired      invoked when a timer armed via the timer_arm hook expires; wakes any
 //                          XNU threads whose deadline has passed. May itself briefly wait, so it
 //                          runs on a kernel microthread.
-use crate::dtape_task::{dtape_task_create, dtape_task_retain};
-use crate::dtape_thread::{
+use crate::xnu::task::{dtape_task_create, dtape_task_retain};
+use crate::xnu::thread::{
     dtape_thread_context, dtape_thread_create, dtape_thread_entering, dtape_thread_exiting,
     dtape_thread_for_port, dtape_thread_retain,
 };
-use crate::init::{dtape_init, dtape_init_in_thread};
-use crate::timer::dtape_timer_fired;
+use crate::xnu::init::{dtape_init, dtape_init_in_thread};
+use crate::xnu::timer::dtape_timer_fired;
 
 // ---- FFI. What is left here is genuinely foreign: the fast context switch helpers and
 // ---- libsimple, both C, neither part of duct-tape.

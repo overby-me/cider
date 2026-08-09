@@ -78,7 +78,7 @@ fn main() {
         eprintln!("[psynch] psynch_thcall allocated");
 
         // ---- the callback vtable ----
-        let table = *addr_of!(darling::dtape_psynch::pthread_kern);
+        let table = *addr_of!(darling::xnu::psynch::pthread_kern);
         assert!(
             !table.is_null(),
             "pthread_kern is NULL. It is initialised at compile time to point at the table, so \

@@ -63,7 +63,7 @@ use crate::bindings::{
 const MAX_CPUS: usize = MAX_SCHED_CPUS as usize;
 
 use crate::bindings::realhost;
-use crate::init::dtape_hooks;
+use crate::xnu::init::dtape_hooks;
 
 extern "C" {
     /// glibc, declared here for the same reason processor.c declares them itself: they are

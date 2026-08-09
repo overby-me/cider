@@ -28,7 +28,7 @@ use darling::bindings::{
     BASEPRI_DEFAULT, HOST_BASIC_INFO, HOST_PRIORITY_INFO, KERN_FAILURE, KERN_INVALID_ARGUMENT,
     KERN_SUCCESS, MINPRI_KERNEL,
 };
-use darling::host::{host_info, host_statistics};
+use darling::xnu::host::{host_info, host_statistics};
 
 /// MemTotal from /proc/meminfo, in bytes. Nothing to do with sysinfo(2).
 fn meminfo_total_bytes() -> u64 {
@@ -217,8 +217,8 @@ fn main() {
     let mut pscount: mach_msg_type_number_t = 8;
     let mut host_out: host_t = std::ptr::null_mut();
     let rc = unsafe {
-        darling::processor::processor_set_info(
-            darling::processor::pset0_for_test(),
+        darling::xnu::processor::processor_set_info(
+            darling::xnu::processor::pset0_for_test(),
             darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
             &mut host_out,
             psbuf.as_mut_ptr(),
@@ -241,8 +241,8 @@ fn main() {
     // A short buffer is refused rather than overrun, same guard as the host side.
     let mut tiny: mach_msg_type_number_t = 0;
     let rc = unsafe {
-        darling::processor::processor_set_info(
-            darling::processor::pset0_for_test(),
+        darling::xnu::processor::processor_set_info(
+            darling::xnu::processor::pset0_for_test(),
             darling::bindings::PROCESSOR_SET_BASIC_INFO as i32,
             &mut host_out,
             psbuf.as_mut_ptr(),

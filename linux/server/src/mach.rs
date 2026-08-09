@@ -20,10 +20,10 @@
 //                               message is copied IN from msg (copyinmsg, read_memory) and on
 //                               receive OUT to rcv_msg (copyoutmsg, write_memory). Blocks via
 //                               thread_suspend when a receive has to wait.
-use crate::dtape_traps::{
+use crate::xnu::traps::{
     dtape_host_self_trap, dtape_mach_reply_port, dtape_task_self_trap, dtape_thread_self_trap,
 };
-use crate::traps_generated::{
+use crate::xnu::traps_generated::{
     dtape_mach_msg_overwrite, dtape_mach_port_allocate, dtape_mach_port_deallocate,
     dtape_mach_port_mod_refs, dtape_mach_port_type,
 };

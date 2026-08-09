@@ -6,7 +6,7 @@
 //!
 //! **`panic` stays in C.** It is the fourth and last variadic DEFINITION, and it has moved to
 //! `duct-tape/src/dtape_rs_shims.c` with the three from misc.c. Stable Rust cannot define a
-//! variadic function; [`crate::misc`] explains the split.
+//! variadic function; [`crate::xnu::misc`] explains the split.
 //!
 //! **The globals are `static mut` and their sizes are real.** `machine_info` and
 //! `dead_task_statistics` are not decoration: XNU writes into them, so they are bound rather
@@ -79,7 +79,7 @@ fn log_safe_stubs() -> bool {
 
 /// The stub logger every other glue file calls, through the three macros in
 /// `internal-include/darlingserver/duct-tape/stubs.h` and their Rust equivalents in
-/// [`crate::dtape_stub`].
+/// [`crate::xnu::stub_family`].
 #[no_mangle]
 pub unsafe extern "C" fn dtape_stub_log(
     function_name: *const c_char,
@@ -109,10 +109,10 @@ pub unsafe extern "C" fn dtape_stub_log(
         )
     };
 
-    let function_name = crate::misc::cstr(function_name);
-    let subsection = crate::misc::cstr(subsection);
+    let function_name = crate::xnu::misc::cstr(function_name);
+    let subsection = crate::xnu::misc::cstr(subsection);
     let separator = if subsection.is_empty() { "" } else { ":" };
-    crate::misc::log(
+    crate::xnu::misc::log(
         log_level,
         &format!("stub{kind_info}: {function_name}{separator}{subsection}"),
     );

@@ -20,7 +20,7 @@
 // Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
 // now (#75). All nine are the thin forwarding wrappers in dtape_psynch, which supply
 // current_proc() and pass the rest through to the pthread kext.
-use crate::dtape_psynch::{
+use crate::xnu::psynch::{
     dtape_psynch_cvbroad, dtape_psynch_cvclrprepost, dtape_psynch_cvsignal, dtape_psynch_cvwait,
     dtape_psynch_mutexdrop, dtape_psynch_mutexwait, dtape_psynch_rw_rdlock,
     dtape_psynch_rw_unlock, dtape_psynch_rw_wrlock,

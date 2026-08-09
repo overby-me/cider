@@ -211,7 +211,7 @@ struct DserverDebugMessage {
 
 // Rust since #71, so imported rather than declared through the linker (#75). Each walks a task
 // port table and calls the iterator back per entry, returning the count.
-use crate::debug::{
+use crate::xnu::debug::{
     dtape_debug_port_list_messages, dtape_debug_portset_list_members, dtape_debug_task_list_ports,
 };
 
@@ -1077,7 +1077,7 @@ impl rpc_wire::RpcHandler for Handler {
         // Was a nested `extern "C"` block resolving back into this crate through the linker;
         // imported since duct-tape became Rust (#71, #75). Nested rather than at file scope,
         // which is why it survived the earlier sweep of this file.
-        use crate::debug::dtape_debug_task_port_count;
+        use crate::xnu::debug::dtape_debug_task_port_count;
         // Matches dserver_debug_process_t (dserverdbg.c:336 reads pid:%u, port_count:%lu): u32 then
         // 4 bytes pad then u64 = 16 bytes under repr(C), exactly what the reader expects.
         #[repr(C)]

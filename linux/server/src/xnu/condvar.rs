@@ -46,8 +46,8 @@ extern "C" {
 }
 
 // Rust since #71, so imported rather than declared (#75). libsimple above stays foreign.
-use crate::dtape_thread::current_thread;
-use crate::locks::{dtape_mutex_lock, dtape_mutex_unlock};
+use crate::xnu::thread::current_thread;
+use crate::xnu::locks::{dtape_mutex_lock, dtape_mutex_unlock};
 
 /// `libsimple_lock_init`, which is a `static` function in libsimple/lock.h and so has no
 /// symbol to call.

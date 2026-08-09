@@ -28,7 +28,7 @@ use crate::bindings::dtape_thread_t;
 //                               signal processing: load the guest register and float state from
 //                               guest addresses, run the signal through XNU, optionally wait
 //                               while user-suspended for a debugger, save the modified state.
-use crate::dtape_thread::{
+use crate::xnu::thread::{
     dtape_thread_dying, dtape_thread_load_state_from_user, dtape_thread_process_signal,
     dtape_thread_save_state_to_user, dtape_thread_sigexc_enter, dtape_thread_sigexc_enter2,
     dtape_thread_sigexc_exit, dtape_thread_wait_while_user_suspended,

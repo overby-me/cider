@@ -26,7 +26,7 @@
 use std::os::raw::{c_char, c_int};
 use std::ptr;
 
-use crate::locks::{lck_mtx_init, lck_spin_init};
+use crate::xnu::locks::{lck_mtx_init, lck_spin_init};
 
 use crate::bindings::{
     dtape_hooks_t, ipc_kmsg_zone, ipc_object_zones, ipc_space_zone, lck_attr_t, lck_grp_t,
@@ -49,10 +49,10 @@ pub static mut dtape_hooks: *const dtape_hooks_t = ptr::null();
 
 // duct-tape is Rust since #71, so its four initialisers are imported rather than declared
 // through the linker (#75).
-use crate::dtape_psynch::dtape_psynch_init;
-use crate::dtape_task::dtape_task_init;
-use crate::memory::dtape_memory_init;
-use crate::timer::dtape_timer_init;
+use crate::xnu::psynch::dtape_psynch_init;
+use crate::xnu::task::dtape_task_init;
+use crate::xnu::memory::dtape_memory_init;
+use crate::xnu::timer::dtape_timer_init;
 
 extern "C" {
     // The zones and the lock this file fills in. The C declares these extern itself, at the top
@@ -121,7 +121,7 @@ pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
     dtape_hooks = hooks;
 
     log_debug("dtape_processor_init");
-    crate::processor::dtape_processor_init();
+    crate::xnu::processor::dtape_processor_init();
 
     log_debug("dtape_memory_init");
     dtape_memory_init();
@@ -209,9 +209,9 @@ pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
 
     // Every processor EXCEPT the master gets an IPC port; the master already has one from
     // ipc_init. Skipping the wrong one here would leave a processor unreachable over Mach.
-    for i in 0..crate::processor::processor_count as usize {
-        let p = crate::processor::processor_array[i];
-        if p == crate::processor::master_processor {
+    for i in 0..crate::xnu::processor::processor_count as usize {
+        let p = crate::xnu::processor::processor_array[i];
+        if p == crate::xnu::processor::master_processor {
             continue;
         }
         ipc_processor_init(p);

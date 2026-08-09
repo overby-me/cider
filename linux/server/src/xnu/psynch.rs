@@ -20,8 +20,8 @@
 //!
 //!   * `dtape_task_for_xnu_task` and `dtape_thread_for_xnu_thread` are `always_inline`, so
 //!     there is no symbol to call. Both are pointer arithmetic back from an embedded field, so
-//!     they are computed here with `offset_of!` (the same as [`crate::debug`] and
-//!     [`crate::condvar`] already do).
+//!     they are computed here with `offset_of!` (the same as [`crate::xnu::debug`] and
+//!     [`crate::xnu::condvar`] already do).
 //!   * `current_task`, `kheap_alloc` and `kheap_free` are macros or statement expressions;
 //!     they go through the `dtape_rs_` shims.
 //!   * `thread->map` is a field of the OPAQUE `struct thread`, so `shim_current_map` reads it
@@ -58,7 +58,7 @@ use crate::bindings::{
     LCK_SLEEP_UNLOCK, NSEC_PER_SEC, NSEC_PER_USEC, PCATCH, PDROP, PSPIN,
     TIMEOUT_URGENCY_USER_NORMAL,
 };
-use crate::init::dtape_hooks;
+use crate::xnu::init::dtape_hooks;
 
 /// `THREAD_CONTINUE_NULL`.
 const THREAD_CONTINUE_NULL: bindings::thread_continue_t = None;
@@ -671,7 +671,7 @@ pub unsafe extern "C" fn hashinit(
     }
 
     // misc.c exports fls, and misc.c is Rust now, so this is the same one the C called.
-    let hashsize: usize = 1usize << (crate::misc::fls(elements as ::std::os::raw::c_uint) - 1);
+    let hashsize: usize = 1usize << (crate::xnu::misc::fls(elements as ::std::os::raw::c_uint) - 1);
     let hashtbl = bindings::dtape_rs_kheap_alloc(
         hashsize * size_of::<generic_hash_head>(),
         (dtape_rs_host_consts_DTAPE_RS_Z_WAITOK | dtape_rs_host_consts_DTAPE_RS_Z_ZERO) as c_int,

@@ -240,7 +240,7 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_fill(
     default_buffer_size: u64,
 ) -> bool {
     let xthread = crate::bindings::current_thread();
-    let thread = crate::condvar::thread_for_xnu_thread(xthread);
+    let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
 
     (*thread).kevent_ctx.kec_data_out = default_buffer;
     (*thread).kevent_ctx.kec_data_avail = default_buffer;
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_fill(
         != 0;
 
     if !(*kqchan).waiter_read_semaphore.is_null() {
-        crate::semaphore::dtape_semaphore_up((*kqchan).waiter_read_semaphore);
+        crate::xnu::semaphore::dtape_semaphore_up((*kqchan).waiter_read_semaphore);
     }
 
     result
@@ -289,7 +289,7 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_has_events(
 /// The per-thread kevent context, which lives in the duct-tape thread rather than XNU's.
 #[no_mangle]
 pub unsafe extern "C" fn kevent_get_context(xthread: thread_t) -> *mut crate::bindings::kevent_ctx_s {
-    let thread = crate::condvar::thread_for_xnu_thread(xthread);
+    let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
     ptr::addr_of_mut!((*thread).kevent_ctx)
 }
 
@@ -352,7 +352,7 @@ unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_resul
             0,
         );
         if wait_result == THREAD_WAITING {
-            wait_result = crate::dtape_thread::thread_block(None);
+            wait_result = crate::xnu::thread::thread_block(None);
         }
 
         if wait_result == THREAD_INTERRUPTED as wait_result_t {
@@ -367,13 +367,13 @@ unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_resul
         }
 
         // Wait until the reader has taken it, or give up if interrupted.
-        if !crate::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_read_semaphore) {
+        if !crate::xnu::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_read_semaphore) {
             break;
         }
     }
 
     // The death semaphore is what stops the kqchan being freed while this is still running.
-    crate::semaphore::dtape_semaphore_up((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::dtape_semaphore_up((*kqchan).waiter_death_semaphore);
 
     thread_terminate_self();
     unreachable!("thread_terminate_self returned")
@@ -393,9 +393,9 @@ pub unsafe extern "C" fn knote_link_waitq(
     }
 
     (*kqchan).waitq = wq;
-    let ktask = crate::debug::dtape_task_for_xnu_task(kernel_task);
-    (*kqchan).waiter_death_semaphore = crate::semaphore::dtape_semaphore_create(ktask, 0);
-    (*kqchan).waiter_read_semaphore = crate::semaphore::dtape_semaphore_create(ktask, 0);
+    let ktask = crate::xnu::debug::dtape_task_for_xnu_task(kernel_task);
+    (*kqchan).waiter_death_semaphore = crate::xnu::semaphore::dtape_semaphore_create(ktask, 0);
+    (*kqchan).waiter_read_semaphore = crate::xnu::semaphore::dtape_semaphore_create(ktask, 0);
 
     if kernel_thread_start(
         Some(std::mem::transmute::<
@@ -431,12 +431,12 @@ pub unsafe extern "C" fn knote_unlink_waitq(kn: *mut knote, wq: *mut waitq) -> c
     (*kqchan).waiter_thread = ptr::null_mut();
 
     // Block until it has actually died, so nothing below frees a structure it is still in.
-    crate::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_death_semaphore);
 
-    crate::semaphore::dtape_semaphore_destroy((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::dtape_semaphore_destroy((*kqchan).waiter_death_semaphore);
     (*kqchan).waiter_death_semaphore = ptr::null_mut();
 
-    crate::semaphore::dtape_semaphore_destroy((*kqchan).waiter_read_semaphore);
+    crate::xnu::semaphore::dtape_semaphore_destroy((*kqchan).waiter_read_semaphore);
     (*kqchan).waiter_read_semaphore = ptr::null_mut();
 
     0

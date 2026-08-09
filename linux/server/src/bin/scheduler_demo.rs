@@ -3,7 +3,7 @@
 //! the Stage 3 spike). Proves the library scheduler works end to end.
 use darling::bindings::dtape_semaphore_t;
 use darling::sched;
-use darling::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
+use darling::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
 
 // The three declarations that used to sit here reached duct-tape through the linker, from when
 // it was C. It is Rust now (#71), so they are imported (#75). A BIN CRATE, so darling:: and not

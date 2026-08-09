@@ -6,8 +6,8 @@
 //! DUCT_TAPE_LIB=<dir> cargo run --bin stage3-spike
 
 use darling::bindings::dtape_semaphore_t;
-use darling::dtape_thread::thread_block;
-use darling::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
+use darling::xnu::thread::thread_block;
+use darling::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
 
 // The semaphore trio and thread_block were declared through the linker, from when duct-tape was
 // C. Rust now (#71), so imported (#75). A BIN CRATE, so darling:: and not crate:: .

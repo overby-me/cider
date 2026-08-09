@@ -2,7 +2,7 @@
 //!
 //! Six trivial wrappers the C writes out by hand, each calling an XNU trap with a NULL args
 //! pointer because the trap takes none. The OTHER twenty-nine wrappers in that file come from
-//! `DSERVER_DTAPE_DEFS`, a generated macro, and are in [`crate::traps_generated`], emitted from
+//! `DSERVER_DTAPE_DEFS`, a generated macro, and are in [`crate::xnu::traps_generated`], emitted from
 //! the same table by `scripts/gen-dtape-traps.py`.
 //!
 //! NOT `traps.rs`: `linux/server/src/traps.rs` already exists and is the DAEMON side, which

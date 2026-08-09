@@ -33,8 +33,8 @@ cc_lib_dir(
 # The output is a DIRECTORY because the crate reaches it as OUT_DIR, which is what cargo
 # hands a build script: src/lib.rs does include!(concat!(env!("OUT_DIR"), "/...")).
 bindgen_gen(
-    name = "dtape_bindings",
-    out = "dtape_bindings.rs",
+    name = "xnu_sys",
+    out = "xnu_sys.rs",
     header = "wrapper.h",
     # The same allowlist build.rs uses: the dtape surface, without the XNU and libsimple
     # internals those headers drag in.
@@ -851,8 +851,8 @@ cc_lib_dir(
 rust_library(
     name = "darling",
     crate_root = "src/lib.rs",
-    srcs = glob(["src/*.rs"]),
-    out_dir = ":dtape_bindings",
+    srcs = glob(["src/**/*.rs"]),
+    out_dir = ":xnu_sys",
     deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],
 )
@@ -872,7 +872,7 @@ rust_library(
 rust_binary(
     name = "scheduler_demo",
     crate_root = "src/bin/scheduler_demo.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -898,7 +898,7 @@ rust_binary(
 rust_binary(
     name = "stage3_spike",
     crate_root = "src/bin/stage3_spike.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -923,7 +923,7 @@ rust_binary(
 rust_binary(
     name = "condvar_demo",
     crate_root = "src/bin/condvar_demo.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -952,7 +952,7 @@ rust_binary(
 rust_binary(
     name = "host_demo",
     crate_root = "src/bin/host_demo.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -980,7 +980,7 @@ rust_binary(
 rust_binary(
     name = "psynch_demo",
     crate_root = "src/bin/psynch_demo.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -1008,7 +1008,7 @@ rust_binary(
 rust_binary(
     name = "kqchan_demo",
     crate_root = "src/bin/kqchan_demo.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",
@@ -1033,7 +1033,7 @@ rust_binary(
 rust_binary(
     name = "darlingserverd",
     crate_root = "src/bin/darlingserverd.rs",
-    out_dir = ":dtape_bindings",
+    out_dir = ":xnu_sys",
     deps = [
         ":darling",
         "//buck-rust:libc",

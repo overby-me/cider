@@ -13,7 +13,7 @@
 //! **`struct task` IS REOPENED FOR THIS FILE**, reversing a recorded decision. It was refused at
 //! +21 structs and 91 KB when reopening would have saved one accessor shim; this file reaches
 //! **12 distinct fields** through it, so the alternative was a dozen shims that would never
-//! become Rust. What made it safe to reverse is [`crate::layout`], which asserts at build time
+//! become Rust. What made it safe to reverse is [`crate::xnu::layout`], which asserts at build time
 //! that bindgen lays the struct out exactly as C does. It also pays for itself twice over:
 //! `task_lock`, `queue_init`, `MACH_PORT_VALID` and `task_has_64Bit_addr` are macros over fields
 //! that are now reachable, so they are written here in Rust rather than shimmed.
@@ -32,7 +32,7 @@ use crate::bindings::{
     mach_vm_size_t, natural_t, proc_ident, task_flavor_t, task_info_t, task_t, thread_state_t,
     vm_address_t,
 };
-use crate::init::dtape_hooks;
+use crate::xnu::init::dtape_hooks;
 
 /// `kernel_task`, assigned by the first `dtape_task_create` with no parent and nsid 0.
 #[no_mangle]
@@ -129,8 +129,8 @@ pub unsafe extern "C" fn dtape_task_create(
     (*task).dyld_info_addr = 0;
     (*task).dyld_info_length = 0;
     (*task).p_ident.eid = (*dtape_hooks).task_eternal_id.expect("task_eternal_id hook")(context);
-    crate::locks::dtape_mutex_init(&mut (*task).dyld_info_lock);
-    crate::condvar::dtape_condvar_init(&mut (*task).dyld_info_condvar);
+    crate::xnu::locks::dtape_mutex_init(&mut (*task).dyld_info_lock);
+    crate::xnu::condvar::dtape_condvar_init(&mut (*task).dyld_info_condvar);
     ptr::write_bytes(&mut (*task).xnu_task as *mut _ as *mut u8, 0, std::mem::size_of::<bindings::task>());
 
     // this next section uses code adapted from XNU's task_create_internal() in osfmk/kern/task.c
@@ -149,7 +149,7 @@ pub unsafe extern "C" fn dtape_task_create(
     // Task #47: a task created with NO parent takes ipc_task_init's parent==TASK_NULL branch,
     // which sets itk_bootstrap = IP_NULL. It can then never inherit launchd's bootstrap port,
     // and its first service lookup goes to MACH_PORT_NULL.
-    crate::misc::log(
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!(
             "dtape_task_create: nsid={} parent={:p} parent_bootstrap={:p}",
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn dtape_task_create(
 
     bindings::ipc_task_enable(&mut (*task).xnu_task);
 
-    crate::dtape_psynch::dtape_psynch_task_init(task);
+    crate::xnu::psynch::dtape_psynch_task_init(task);
 
     if parent_task.is_null() && nsid == 0 {
         if !kernel_task.is_null() {
@@ -224,12 +224,12 @@ pub unsafe extern "C" fn dtape_task_create(
 
 #[no_mangle]
 pub unsafe extern "C" fn dtape_task_destroy(task: *mut dtape_task) {
-    crate::misc::log(
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!("{}: task being destroyed", (*task).saved_pid),
     );
 
-    crate::dtape_psynch::dtape_psynch_task_destroy(task);
+    crate::xnu::psynch::dtape_psynch_task_destroy(task);
 
     // this next section uses code adapted from XNU's task_deallocate() in osfmk/kern/task.c
 
@@ -300,15 +300,15 @@ pub unsafe extern "C" fn dtape_task_set_dyld_info(
     address: u64,
     length: u64,
 ) {
-    crate::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
-    crate::misc::log(
+    crate::xnu::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!("setting dyld info to {length} bytes at {address:x}"),
     );
     (*task).dyld_info_addr = address;
     (*task).dyld_info_length = length;
-    crate::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
-    crate::condvar::dtape_condvar_signal(&mut (*task).dyld_info_condvar, usize::MAX);
+    crate::xnu::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
+    crate::xnu::condvar::dtape_condvar_signal(&mut (*task).dyld_info_condvar, usize::MAX);
 }
 
 #[no_mangle]
@@ -320,7 +320,7 @@ pub unsafe extern "C" fn dtape_task_set_sigexc_enabled(task: *mut dtape_task, en
 #[no_mangle]
 pub unsafe extern "C" fn dtape_task_try_resume(task: *mut dtape_task) -> bool {
     if (*task).xnu_task.user_stop_count != 0 {
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             &format!(
                 "sigexc target task is stopped ({}), resuming",
@@ -506,7 +506,7 @@ pub unsafe extern "C" fn task_info(
             &mut mem_info,
         );
 
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             "task_info: TODO: fetch utimeus and stimeus somehow",
         );
@@ -568,7 +568,7 @@ pub unsafe extern "C" fn task_info(
         }
         *task_info_count = TASK_THREAD_TIMES_INFO_COUNT as mach_msg_type_number_t;
 
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             "task_info: TODO: fetch utimeus and stimeus somehow",
         );
@@ -598,23 +598,23 @@ pub unsafe extern "C" fn task_info(
         // DARLING:
         // This call may block, waiting for Darling to provide this information
         // shortly after startup.
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             &format!("going to read dyld info for task {:p} ({})", task, (*task).saved_pid),
         );
 
-        crate::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
+        crate::xnu::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
 
         while (*task).dyld_info_addr == 0 && (*task).dyld_info_length == 0 {
-            crate::misc::log(
+            crate::xnu::misc::log(
                 bindings::dtape_log_level_t::dtape_log_level_debug,
                 &format!("going to wait for dyld info for task {:p} ({})", task, (*task).saved_pid),
             );
-            crate::condvar::dtape_condvar_wait(
+            crate::xnu::condvar::dtape_condvar_wait(
                 &mut (*task).dyld_info_condvar,
                 &mut (*task).dyld_info_lock,
             );
-            crate::misc::log(
+            crate::xnu::misc::log(
                 bindings::dtape_log_level_t::dtape_log_level_debug,
                 &format!("awoken from dyld info wait for task {:p} ({})", task, (*task).saved_pid),
             );
@@ -623,14 +623,14 @@ pub unsafe extern "C" fn task_info(
         (*info).all_image_info_addr = (*task).dyld_info_addr as mach_vm_address_t;
         (*info).all_image_info_size = (*task).dyld_info_length as mach_vm_size_t;
 
-        crate::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
+        crate::xnu::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
 
         // struct task_dyld_info is PACKED, so a reference to a field of it is unaligned and
         // Rust refuses to form one. Reading the two values into locals is what the C log does
         // anyway, and it is the read that matters, not the reference.
         let logged_addr = ptr::addr_of!((*info).all_image_info_addr).read_unaligned();
         let logged_size = ptr::addr_of!((*info).all_image_info_size).read_unaligned();
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             &format!(
                 "got dyld info for task {:p} ({}): {} bytes at {:x}",

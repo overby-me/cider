@@ -32,7 +32,7 @@ use crate::bindings::{
     vm_map_copy_t, vm_map_offset_t, vm_map_size_t, vm_map_t, vm_offset_t, vm_prot_t, vm_size_t,
     vm_tag_t,
 };
-use crate::init::dtape_hooks;
+use crate::xnu::init::dtape_hooks;
 
 // The Linux constants memory.c spells out for itself rather than pulling in a libc header.
 const MAP_ANONYMOUS: c_int = 0x20;
@@ -87,7 +87,7 @@ pub static mut kalloc_max_prerounded: vm_size_t = 0;
 /// that struct task is not opaque.
 #[inline]
 unsafe fn kernel_map() -> vm_map_t {
-    (*crate::dtape_task::kernel_task).map
+    (*crate::xnu::task::kernel_task).map
 }
 
 /// `current_map()`, also a macro: `current_map_fast()` is `current_thread()->map`. struct thread
@@ -159,7 +159,7 @@ pub unsafe extern "C" fn dtape_vm_map_create(task: *mut bindings::dtape_task) ->
     (*map).dtape_task = task;
 
     bindings::dtape_rs_shared_entries_init(&mut (*map).shared_entries as *mut _ as *mut _);
-    crate::locks::dtape_mutex_init(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::dtape_mutex_init(&mut (*map).shared_entry_lock);
 
     map
 }
@@ -230,9 +230,9 @@ unsafe fn map_insert_shared_entry_locked(
 }
 
 unsafe fn map_insert_shared_entry(map: vm_map_t, shared_entry: *mut dtape_map_shared_entry_t) {
-    crate::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
     map_insert_shared_entry_locked(map, shared_entry);
-    crate::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
 }
 
 /// Returns entries in-order.
@@ -283,7 +283,7 @@ pub unsafe extern "C" fn dtape_vm_map_destroy(map: vm_map_t) {
         panic!("VM map still in-use at destruction");
     }
 
-    crate::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
     // RB_FOREACH_SAFE plus RB_REMOVE: take the first repeatedly, which is the same drain.
     loop {
         let entry =
@@ -298,7 +298,7 @@ pub unsafe extern "C" fn dtape_vm_map_destroy(map: vm_map_t) {
         );
         shared_entry_destroy(entry);
     }
-    crate::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
 
     free(map as *mut c_void);
 }
@@ -1228,7 +1228,7 @@ unsafe fn mach_vm_remap_external_shared(
         // `goto src_setup_done` skips the memfd creation when the source region is already
         // shared, so the body between here and there is its own labeled block.
         'src_setup_done: {
-            crate::locks::dtape_mutex_lock(&mut (*src_map).shared_entry_lock);
+            crate::xnu::locks::dtape_mutex_lock(&mut (*src_map).shared_entry_lock);
 
             let src_existing_entry_count = map_find_shared_entries_locked(
                 src_map,
@@ -1244,14 +1244,14 @@ unsafe fn mach_vm_remap_external_shared(
                 // special case for what LLDB does with dyld info
                 shared_descriptor_retain((*src_existing_entries[0]).descriptor);
                 descriptor = (*src_existing_entries[0]).descriptor;
-                crate::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
+                crate::xnu::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
                 break 'src_setup_done;
             } else if src_existing_entry_count != 0 {
                 // TODO: handle this case gracefully
                 crate::dtape_stub_unsafe!("Cannot complexly remap existing shared regions yet");
             }
 
-            crate::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
+            crate::xnu::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
 
             memfd = memfd_create(b"darling-remapped\0".as_ptr() as *const c_char, MFD_CLOEXEC);
             if memfd < 0 {
@@ -1360,7 +1360,7 @@ unsafe fn mach_vm_remap_external_shared(
 
     // out:
     if !mapped_addr.is_null() && munmap(mapped_addr, map_size as usize) < 0 {
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_error,
             "failed to unmap memfd",
         );

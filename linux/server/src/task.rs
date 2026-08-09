@@ -15,7 +15,7 @@ use crate::bindings::{dtape_semaphore_t, dtape_task_t};
 //   dtape_task_set_sigexc_enabled  ptrace sigexc: a debugger uses PT_SIGEXC so signals arrive
 //                                  as Mach exceptions it can intercept.
 //   dtape_task_try_resume          resume the task if it was stopped waiting for the debugger.
-use crate::dtape_task::{dtape_task_set_dyld_info, dtape_task_set_sigexc_enabled, dtape_task_try_resume};
+use crate::xnu::task::{dtape_task_set_dyld_info, dtape_task_set_sigexc_enabled, dtape_task_try_resume};
 
 /// Enable or disable sigexc (Mach-exception signal delivery) on `task` -- PT_SIGEXC.
 pub unsafe fn set_sigexc_enabled(task: *mut dtape_task_t, enabled: bool) {
@@ -38,20 +38,20 @@ pub unsafe fn set_dyld_info(task: *mut dtape_task_t, address: u64, length: u64) 
 
 /// Create a semaphore owned by `task` with `initial` value.
 pub unsafe fn semaphore_create(task: *mut dtape_task_t, initial: i32) -> *mut dtape_semaphore_t {
-    crate::semaphore::dtape_semaphore_create(task, initial)
+    crate::xnu::semaphore::dtape_semaphore_create(task, initial)
 }
 /// Increment (signal) `sem`.
 pub unsafe fn semaphore_up(sem: *mut dtape_semaphore_t) {
-    crate::semaphore::dtape_semaphore_up(sem);
+    crate::xnu::semaphore::dtape_semaphore_up(sem);
 }
 /// Decrement (wait on) `sem`, blocking the current microthread until it is signaled.
 /// Returns false if interrupted.
 pub unsafe fn semaphore_down_simple(sem: *mut dtape_semaphore_t) -> bool {
-    crate::semaphore::dtape_semaphore_down_simple(sem)
+    crate::xnu::semaphore::dtape_semaphore_down_simple(sem)
 }
 /// Destroy `sem`.
 pub unsafe fn semaphore_destroy(sem: *mut dtape_semaphore_t) {
-    crate::semaphore::dtape_semaphore_destroy(sem);
+    crate::xnu::semaphore::dtape_semaphore_destroy(sem);
 }
 
 /// The host-side parent pid (PPid) of `pid`, from /proc/<pid>/status. Used to link a

@@ -32,8 +32,8 @@ use darling::sched;
 //
 // All six matched their definitions already, so no call site changes: the declarations spelled
 // dtape_mutex_t and dtape_condvar_t exactly as locks.rs and condvar.rs do.
-use darling::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
-use darling::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
+use darling::xnu::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
+use darling::xnu::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
 
 fn main() {
     unsafe {

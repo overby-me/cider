@@ -26,7 +26,7 @@
 use std::os::raw::{c_int, c_uint, c_void};
 use std::ptr;
 
-use crate::condvar::{tailq_first, tailq_init, tailq_insert_tail, tailq_remove};
+use crate::xnu::condvar::{tailq_first, tailq_init, tailq_insert_tail, tailq_remove};
 
 use crate::bindings::{
     assert_wait, assert_wait_deadline, assert_wait_timeout, boolean_t, current_thread,
@@ -75,7 +75,7 @@ unsafe fn fail(message: &[u8]) -> ! {
 #[no_mangle]
 pub unsafe extern "C" fn dtape_mutex_init(mutex: *mut dtape_mutex_t) {
     (*mutex).dtape_owner = 0;
-    crate::condvar::lock_init(ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t);
+    crate::xnu::condvar::lock_init(ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t);
     tailq_init(ptr::addr_of_mut!((*mutex).dtape_queue_head));
 }
 
@@ -93,7 +93,7 @@ pub unsafe extern "C" fn dtape_mutex_assert(mutex: *mut dtape_mutex_t, should_be
 #[no_mangle]
 pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
     let xthread = current_thread();
-    let thread = crate::condvar::thread_for_xnu_thread(xthread);
+    let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
     let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
 
     if thread.is_null() {
@@ -129,7 +129,7 @@ pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
 
         // Called with the queue lock HELD: the hook drops it once the microthread is fully
         // suspended, which is what stops a waker slipping in between the insert and the sleep.
-        let hooks = crate::init::dtape_hooks;
+        let hooks = crate::xnu::init::dtape_hooks;
         if let Some(suspend) = (*hooks).thread_suspend {
             suspend(
                 (*thread).context,
@@ -144,7 +144,7 @@ pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
 #[no_mangle]
 pub unsafe extern "C" fn dtape_mutex_try_lock(mutex: *mut dtape_mutex_t) -> bool {
     let xthread = current_thread();
-    let thread = crate::condvar::thread_for_xnu_thread(xthread);
+    let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
     let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
 
     if thread.is_null() {
@@ -173,7 +173,7 @@ pub unsafe extern "C" fn dtape_mutex_try_lock(mutex: *mut dtape_mutex_t) -> bool
 #[no_mangle]
 pub unsafe extern "C" fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t) {
     let xcurr = current_thread();
-    let curr = crate::condvar::thread_for_xnu_thread(xcurr);
+    let curr = crate::xnu::condvar::thread_for_xnu_thread(xcurr);
     let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
 
     if curr.is_null() {
@@ -193,8 +193,8 @@ pub unsafe extern "C" fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t) {
     if !link.is_null() {
         // Contended: wake the OLDEST waiter, which is the head of the queue.
         tailq_remove(head, link);
-        let thread = crate::condvar::thread_for_mutex_link(link);
-        let hooks = crate::init::dtape_hooks;
+        let thread = crate::xnu::condvar::thread_for_mutex_link(link);
+        let hooks = crate::xnu::init::dtape_hooks;
         if let Some(resume) = (*hooks).thread_resume {
             resume((*thread).context);
         }

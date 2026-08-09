@@ -265,7 +265,7 @@ struct CallMachPortRead {
 // two types the FFI boundary needed moved to the generated ones.
 use crate::bindings;
 use crate::bindings::{dserver_kqchan_reply_mach_port_read_t, dtape_kqchan_mach_port_t};
-use crate::dtape_kqchan::{
+use crate::xnu::kqchan::{
     dtape_kqchan_mach_port_create, dtape_kqchan_mach_port_destroy,
     dtape_kqchan_mach_port_disable_notifications, dtape_kqchan_mach_port_fill,
     dtape_kqchan_mach_port_has_events, dtape_kqchan_mach_port_modify,

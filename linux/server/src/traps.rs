@@ -23,9 +23,9 @@ use crate::bindings::dtape_task_t;
 //   mk_timer traps
 //   dtape_task_uidgid       swaps the task stored uid and gid, returning the previous pair
 //                           through the out pointers
-use crate::dtape_task::dtape_task_uidgid;
-use crate::dtape_traps::{dtape_mk_timer_create, dtape_thread_get_special_reply_port};
-use crate::traps_generated::{
+use crate::xnu::task::dtape_task_uidgid;
+use crate::xnu::traps::{dtape_mk_timer_create, dtape_thread_get_special_reply_port};
+use crate::xnu::traps_generated::{
     dtape_mach_port_construct, dtape_mach_port_destruct, dtape_mach_port_extract_member,
     dtape_mach_port_get_attributes, dtape_mach_port_guard, dtape_mach_port_insert_member,
     dtape_mach_port_insert_right, dtape_mach_port_move_member,

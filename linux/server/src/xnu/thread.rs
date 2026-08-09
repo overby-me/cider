@@ -11,7 +11,7 @@
 //!
 //! **`struct thread` and `dtape_thread_user_state` are both reopened**, at a measured +13
 //! structs and 58,000 bytes, because this file reaches 18 distinct fields of the first and
-//! writes straight through the second. [`crate::layout`] is what makes that safe: it asserts at
+//! writes straight through the second. [`crate::xnu::layout`] is what makes that safe: it asserts at
 //! build time that Rust and C agree on the layout, and it holds in this configuration.
 //!
 //! **The four thread lock macros are shims.** `thread_lock` is
@@ -29,7 +29,7 @@ use crate::bindings::{
     self, boolean_t, dtape_task, dtape_thread, dtape_thread_user_state, integer_t, kern_return_t,
     mach_msg_header_t, mach_msg_type_number_t, task_t, thread_state_t, thread_t, wait_result_t,
 };
-use crate::init::dtape_hooks;
+use crate::xnu::init::dtape_hooks;
 
 // The Linux constants thread.c spells out for itself.
 const LINUX_ENOSYS: c_int = 38;
@@ -76,7 +76,7 @@ pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_t
 /// `dtape_task_for_thread`: the thread's XNU task, walked back to the duct-tape one.
 #[inline]
 unsafe fn task_for_thread(thread: *mut dtape_thread) -> *mut dtape_task {
-    crate::dtape_task::task_for_xnu_task((*thread).xnu_thread.task)
+    crate::xnu::task::task_for_xnu_task((*thread).xnu_thread.task)
 }
 
 // The four lock macros, through their shims.
@@ -132,8 +132,8 @@ pub unsafe extern "C" fn dtape_thread_create(
     (*thread).name = ptr::null();
     (*thread).waiting_suspended = false;
     (*thread).user_states.lh_first = ptr::null_mut();
-    crate::locks::dtape_mutex_init(&mut (*thread).suspension_mutex);
-    crate::condvar::dtape_condvar_init(&mut (*thread).suspension_condvar);
+    crate::xnu::locks::dtape_mutex_init(&mut (*thread).suspension_mutex);
+    crate::xnu::condvar::dtape_condvar_init(&mut (*thread).suspension_condvar);
     ptr::write_bytes(
         &mut (*thread).xnu_thread as *mut _ as *mut u8,
         0,
@@ -179,7 +179,7 @@ pub unsafe extern "C" fn dtape_thread_create(
         bindings::ipc_thread_init_options_t::IPC_THREAD_INIT_NONE,
     );
 
-    crate::dtape_task::task_lock(&mut (*task).xnu_task);
+    crate::xnu::task::task_lock(&mut (*task).xnu_task);
 
     bindings::dtape_rs_task_reference_internal(&mut (*task).xnu_task);
 
@@ -195,7 +195,7 @@ pub unsafe extern "C" fn dtape_thread_create(
 
     (*thread).xnu_thread.turnstile = bindings::turnstile_alloc();
 
-    crate::dtape_task::task_unlock(&mut (*task).xnu_task);
+    crate::xnu::task::task_unlock(&mut (*task).xnu_task);
 
     (*thread).xnu_thread.thread_id = nsid;
 
@@ -207,7 +207,7 @@ pub unsafe extern "C" fn dtape_thread_create(
         &mut (*thread).xnu_thread as *mut _ as *mut c_void,
     );
 
-    crate::dtape_psynch::dtape_psynch_thread_init(thread);
+    crate::xnu::psynch::dtape_psynch_thread_init(thread);
 
     thread
 }
@@ -236,12 +236,12 @@ unsafe fn queue_remove_threads(task: task_t, thread: thread_t) {
 
 #[no_mangle]
 pub unsafe extern "C" fn dtape_thread_destroy(thread: *mut dtape_thread) {
-    crate::misc::log(
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!("{}: thread being destroyed", (*thread).xnu_thread.thread_id),
     );
 
-    crate::dtape_psynch::dtape_psynch_thread_destroy(thread);
+    crate::xnu::psynch::dtape_psynch_thread_destroy(thread);
 
     // this next section uses code adapted from XNU's thread_deallocate_complete() in
     // osfmk/kern/thread.c
@@ -284,12 +284,12 @@ pub unsafe extern "C" fn dtape_thread_destroy(thread: *mut dtape_thread) {
 
     // remove this thread from the task's thread list
     let xtask = (*thread).xnu_thread.task;
-    crate::dtape_task::task_lock(xtask);
+    crate::xnu::task::task_lock(xtask);
     queue_remove_threads(xtask, &mut (*thread).xnu_thread);
     (*xtask).thread_count -= 1;
-    crate::dtape_task::task_unlock(xtask);
+    crate::xnu::task::task_unlock(xtask);
 
-    crate::dtape_task::task_deallocate(xtask);
+    crate::xnu::task::task_deallocate(xtask);
 
     (*dtape_hooks).thread_context_dispose.expect("thread_context_dispose hook")(
         (*thread).context,
@@ -356,12 +356,12 @@ pub unsafe extern "C" fn dtape_thread_load_state_from_user(
         let mut tstate: bindings::x86_thread_state64_t = std::mem::zeroed();
         let mut fstate: bindings::x86_float_state64_t = std::mem::zeroed();
 
-        if crate::memory::copyin(
+        if crate::xnu::memory::copyin(
             thread_state_address as bindings::user_addr_t,
             &mut tstate as *mut _ as *mut c_void,
             std::mem::size_of_val(&tstate) as bindings::vm_size_t,
         ) != 0
-            || crate::memory::copyin(
+            || crate::xnu::memory::copyin(
                 float_state_address as bindings::user_addr_t,
                 &mut fstate as *mut _ as *mut c_void,
                 std::mem::size_of_val(&fstate) as bindings::vm_size_t,
@@ -388,12 +388,12 @@ pub unsafe extern "C" fn dtape_thread_load_state_from_user(
         let mut tstate: bindings::x86_thread_state32_t = std::mem::zeroed();
         let mut fstate: bindings::x86_float_state32_t = std::mem::zeroed();
 
-        if crate::memory::copyin(
+        if crate::xnu::memory::copyin(
             thread_state_address as bindings::user_addr_t,
             &mut tstate as *mut _ as *mut c_void,
             std::mem::size_of_val(&tstate) as bindings::vm_size_t,
         ) != 0
-            || crate::memory::copyin(
+            || crate::xnu::memory::copyin(
                 float_state_address as bindings::user_addr_t,
                 &mut fstate as *mut _ as *mut c_void,
                 std::mem::size_of_val(&fstate) as bindings::vm_size_t,
@@ -417,7 +417,7 @@ pub unsafe extern "C" fn dtape_thread_load_state_from_user(
                 as mach_msg_type_number_t,
         );
     } else {
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_error,
             &format!(
                 "dtape_thread_load_state_from_user() unimplemented for architecture: {:?}",
@@ -461,12 +461,12 @@ pub unsafe extern "C" fn dtape_thread_save_state_to_user(
             &mut count,
         );
 
-        if crate::memory::copyout(
+        if crate::xnu::memory::copyout(
             &tstate as *const _ as *const c_void,
             thread_state_address as bindings::user_addr_t,
             std::mem::size_of_val(&tstate) as bindings::vm_size_t,
         ) != 0
-            || crate::memory::copyout(
+            || crate::xnu::memory::copyout(
                 &fstate as *const _ as *const c_void,
                 float_state_address as bindings::user_addr_t,
                 std::mem::size_of_val(&fstate) as bindings::vm_size_t,
@@ -496,12 +496,12 @@ pub unsafe extern "C" fn dtape_thread_save_state_to_user(
             &mut count,
         );
 
-        if crate::memory::copyout(
+        if crate::xnu::memory::copyout(
             &tstate as *const _ as *const c_void,
             thread_state_address as bindings::user_addr_t,
             std::mem::size_of_val(&tstate) as bindings::vm_size_t,
         ) != 0
-            || crate::memory::copyout(
+            || crate::xnu::memory::copyout(
                 &fstate as *const _ as *const c_void,
                 float_state_address as bindings::user_addr_t,
                 std::mem::size_of_val(&fstate) as bindings::vm_size_t,
@@ -510,7 +510,7 @@ pub unsafe extern "C" fn dtape_thread_save_state_to_user(
             return -LINUX_EFAULT;
         }
     } else {
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_error,
             &format!(
                 "dtape_thread_save_state_to_user() unimplemented for architecture: {:?}",
@@ -596,7 +596,7 @@ pub unsafe extern "C" fn dtape_thread_process_signal(
             break 'out;
         }
 
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             &format!(
                 "calling exception_triage_thread({}, [{}, {}])",
@@ -611,7 +611,7 @@ pub unsafe extern "C" fn dtape_thread_process_signal(
             &mut (*thread).xnu_thread,
         );
 
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             "exception_triage_thread returned",
         );
@@ -652,15 +652,15 @@ pub unsafe extern "C" fn dtape_thread_wait_while_user_suspended(thread: *mut dta
     // four approaches considered; none is implemented yet.
 
     while (*thread).xnu_thread.suspend_count > 0 {
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             "sigexc: going to sleep",
         );
 
-        crate::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
+        crate::xnu::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
         (*thread).waiting_suspended = true;
-        crate::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
-        crate::condvar::dtape_condvar_signal(&mut (*thread).suspension_condvar, usize::MAX);
+        crate::xnu::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
+        crate::xnu::condvar::dtape_condvar_signal(&mut (*thread).suspension_condvar, usize::MAX);
 
         // FIXME: possible race condition here between notifying of waiting and actually sleeping
 
@@ -674,15 +674,15 @@ pub unsafe extern "C" fn dtape_thread_wait_while_user_suspended(thread: *mut dta
             ptr::null_mut(),
         );
 
-        crate::misc::log(
+        crate::xnu::misc::log(
             bindings::dtape_log_level_t::dtape_log_level_debug,
             "sigexc: woken up",
         );
 
-        crate::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
+        crate::xnu::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
         (*thread).waiting_suspended = false;
-        crate::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
-        crate::condvar::dtape_condvar_signal(&mut (*thread).suspension_condvar, usize::MAX);
+        crate::xnu::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
+        crate::xnu::condvar::dtape_condvar_signal(&mut (*thread).suspension_condvar, usize::MAX);
 
         if (*thread).xnu_thread.wait_result
             == bindings::dtape_rs_host_consts_DTAPE_RS_THREAD_INTERRUPTED as wait_result_t
@@ -981,7 +981,7 @@ pub unsafe extern "C" fn thread_handoff_internal(
 #[no_mangle]
 pub unsafe extern "C" fn thread_hold(xthread: thread_t) {
     let thread = thread_for_xnu_thread(xthread);
-    crate::misc::log(
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!("sigexc: thread_hold({:p})\n", xthread),
     );
@@ -1002,7 +1002,7 @@ pub unsafe extern "C" fn thread_hold(xthread: thread_t) {
 #[no_mangle]
 pub unsafe extern "C" fn thread_release(xthread: thread_t) {
     let thread = thread_for_xnu_thread(xthread);
-    crate::misc::log(
+    crate::xnu::misc::log(
         bindings::dtape_log_level_t::dtape_log_level_debug,
         &format!("sigexc: thread_release({:p})\n", xthread),
     );
@@ -1013,14 +1013,14 @@ pub unsafe extern "C" fn thread_release(xthread: thread_t) {
 #[no_mangle]
 pub unsafe extern "C" fn thread_wait(xthread: thread_t, _until_not_runnable: boolean_t) {
     let thread = thread_for_xnu_thread(xthread);
-    crate::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
+    crate::xnu::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
     while !(*thread).waiting_suspended {
-        crate::condvar::dtape_condvar_wait(
+        crate::xnu::condvar::dtape_condvar_wait(
             &mut (*thread).suspension_condvar,
             &mut (*thread).suspension_mutex,
         );
     }
-    crate::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
+    crate::xnu::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
 }
 
 #[no_mangle]
@@ -1083,11 +1083,11 @@ pub unsafe extern "C" fn thread_info(
         // check if the thread is currently waiting suspended; in that case, the
         // `thread_get_state` hook will report that it is waiting interruptibly (because that is
         // what Linux sees), but we know that it is actually "stopped" waiting for us to resume it.
-        crate::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
+        crate::xnu::locks::dtape_mutex_lock(&mut (*thread).suspension_mutex);
         if (*thread).waiting_suspended {
             thread_state = St::dtape_thread_state_stopped as c_int;
         }
-        crate::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
+        crate::xnu::locks::dtape_mutex_unlock(&mut (*thread).suspension_mutex);
 
         if thread_state == -1 {
             thread_state =

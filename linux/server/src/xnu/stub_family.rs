@@ -14,7 +14,7 @@
 //!
 //! `__FUNCTION__` has no stable Rust equivalent, so the macros capture the enclosing function
 //! the usual way, by naming a local item and asking for its type name. That yields the full
-//! path (`darling::timer::timer_queue_cpu::f`), which is trimmed to the last segment so the
+//! path (`darling::xnu::timer::timer_queue_cpu::f`), which is trimmed to the last segment so the
 //! log line reads the same as the C one.
 
 use std::ffi::CString;
@@ -22,7 +22,7 @@ use std::os::raw::{c_char, c_int};
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since duct-tape became Rust (#71, #75).
-use crate::stubs::dtape_stub_log;
+use crate::xnu::stubs::dtape_stub_log;
 
 /// Call through to duct-tape's own stub logger. Cold path by construction, so the two small
 /// allocations for NUL termination are not worth avoiding.
@@ -53,15 +53,15 @@ macro_rules! dtape_function_name {
 /// `dtape_stub()`: unknown whether this can be safely stubbed.
 #[macro_export]
 macro_rules! dtape_stub {
-    () => { $crate::dtape_stub::stub_log($crate::dtape_function_name!(), 0, "") };
-    ($sub:expr) => { $crate::dtape_stub::stub_log($crate::dtape_function_name!(), 0, $sub) };
+    () => { $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), 0, "") };
+    ($sub:expr) => { $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), 0, $sub) };
 }
 
 /// `dtape_stub_safe()`: confirmed fine to stub.
 #[macro_export]
 macro_rules! dtape_stub_safe {
-    () => { $crate::dtape_stub::stub_log($crate::dtape_function_name!(), 1, "") };
-    ($sub:expr) => { $crate::dtape_stub::stub_log($crate::dtape_function_name!(), 1, $sub) };
+    () => { $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), 1, "") };
+    ($sub:expr) => { $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), 1, $sub) };
 }
 
 /// `dtape_stub_unsafe()`: confirmed to need a real implementation. The C follows the log with
@@ -69,11 +69,11 @@ macro_rules! dtape_stub_safe {
 #[macro_export]
 macro_rules! dtape_stub_unsafe {
     () => {{
-        $crate::dtape_stub::stub_log($crate::dtape_function_name!(), -1, "");
+        $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), -1, "");
         ::std::process::abort()
     }};
     ($sub:expr) => {{
-        $crate::dtape_stub::stub_log($crate::dtape_function_name!(), -1, $sub);
+        $crate::xnu::stub_family::stub_log($crate::dtape_function_name!(), -1, $sub);
         ::std::process::abort()
     }};
 }

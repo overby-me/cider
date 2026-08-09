@@ -11,7 +11,7 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since duct-tape became Rust (#71, #75).
-use crate::dtape_task::dtape_task_create;
+use crate::xnu::task::dtape_task_create;
 
 /// The architecture arrives from the RPC wire as a plain u32; dtape_task_create takes the
 /// bindgen ENUM.
