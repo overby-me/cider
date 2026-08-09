@@ -49078,7 +49078,7 @@ elf_wrapper(
     soname = "libfuse.so",
     name_base = "fuse",
     wrapgen = "//src/libelfloader:wrapgen",
-    lib_dirs = read_root_config("darling", "elf_lib_dirs", ""),
+    lib_dirs = read_root_config("cider", "elf_lib_dirs", ""),
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
 )

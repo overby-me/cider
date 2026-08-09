@@ -58,6 +58,17 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 LABEL = re.compile(r'"//([A-Za-z0-9_./+-]*):([A-Za-z0-9_.+-]+)"')
 
+# read_root_config(SECTION, key, default) reads .buckconfig.local, which both
+# nix/lib/ciderBuck2Graph.nix and scripts/buck-setup.nu write under [cider].
+# A section that does not match returns the DEFAULT, silently: the one
+# read_root_config("darling", "elf_lib_dirs", "") left in buck-src/BUCK gave
+# wrapgen an empty search path and it failed with
+#   Cannot load libfuse.so: cannot open shared object file
+# four minutes into the endpoint. No label and no path is involved, so nothing
+# else here would have seen it.
+CONFIG = re.compile(r'read_root_config\(\s*"([a-z_]+)"')
+CONFIG_SECTION = "cider"
+
 # Upstream Bazel files vendored inside a pin, using Bazel labels that are not
 # ours to resolve. Matched as a path prefix, not by label text.
 IGNORE_PREFIXES = ("buck-src/libcxx/utils/google-benchmark/",)
@@ -93,10 +104,17 @@ def main():
             counts[key] += 1
             where[key].add(rel)
 
-    print(f"labels checked: {checked}")
+        for section in CONFIG.findall(text):
+            checked += 1
+            if section != CONFIG_SECTION:
+                key = f"config section is not [{CONFIG_SECTION}]  read_root_config(\"{section}\")"
+                counts[key] += 1
+                where[key].add(rel)
+
+    print(f"labels and config reads checked: {checked}")
     if not counts:
-        print("PASS: every label names a package that exists, "
-              "and no first-party target is still named darling")
+        print("PASS: every label names a package that exists, no first-party target is "
+              "still named darling, and every config read is [cider]")
         return 0
 
     print(f"\n{sum(counts.values())} labels do not resolve:")
