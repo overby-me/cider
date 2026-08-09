@@ -30,6 +30,21 @@ directories), #55 (lowered derivations content-addressed), #71 (duct-tape ported
 16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
 was nothing behind it). Their detail is further down and in the commit history.
 
+**CMAKE IS GONE (#82), buck2 is the only build.** Removed 2026-08-09 on the user's word that
+they do not ship it: 13 cmake package outputs, 8 nix-ninja group outputs, 8 nix libs
+(`package.nix`, `duct-tape.nix`, `cctools-port.nix`, `darling-{graph,base,component,components}
+.nix`, `darlingNinja.nix`), 258 CMakeLists and `cmake/`, plus cmake and ninja from the dev shell
+and the toolchain. About 21,700 lines. `packages.default` is now `darling-buck2` and the checks
+build `darling-buck2-min`. VERIFIED: the minimal endpoint builds with zero cmake files present,
+exit 0, 4,574 builders, 0 errors. Nothing in the buck2 path ever invoked ninja, so ninja went
+with it; the `overby` input STAYS, because `darlingBuck2.nix` uses its `buildBuck2Project.nix`.
+
+**THE ONE-WAY DOOR, stated plainly:** four generators
+(`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`)
+read a reference `build.ninja` that nothing can regenerate now. They are marked FROZEN in place
+rather than deleted, and they stop working entirely once a store GC collects `result-graph-ref`.
+The BUCK files they produced are committed.
+
 **THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#darling-buck2-prefix-min`
 at `--max-jobs 6 --cores 2 --keep-going` ran **1,551 buck2 builders to exit 0 with 0 errors in
 about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,

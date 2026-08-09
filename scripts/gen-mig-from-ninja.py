@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# FROZEN GENERATOR (#82). cmake is gone, so nothing can regenerate the reference
+# build.ninja this reads. It still runs against the stale result-graph-ref symlink
+# until a store GC collects it, and then it cannot run at all. The BUCK files it
+# produced are committed; this is kept for provenance, not for re-running.
 """Emit mig_gen targets from the reference build.ninja's build-mig edges.
 
 MIG configurations vary more than they look. libsyscall runs mig over the SAME

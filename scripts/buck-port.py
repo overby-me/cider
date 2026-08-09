@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# FROZEN GENERATOR (#82). cmake is gone, so nothing can regenerate the reference
+# build.ninja this reads. It still runs against the stale result-graph-ref symlink
+# until a store GC collects it, and then it cannot run at all. The BUCK files it
+# produced are committed; this is kept for provenance, not for re-running.
 """Port cmake targets to buck2 and resolve their framework headers automatically.
 
 scripts/gen-buck-from-ninja.py emits a block from the reference graph, but the block
