@@ -78,6 +78,20 @@ to a BUCK file, so reporting them would be noise. And the pin check tests `lexis
 `darwin/Developer` is written for the STAGED layout and 2,002 of its 2,636 links dangle in a
 checkout by design.
 
+**NORMALISATION HAPPENS IN THE GRAPH DERIVATION AND NOWHERE ELSE, AND THAT IS A REAL GAP.**
+Found 2026-08-10 when `security_codesigning_obj` failed on `security/mac.h file not found`,
+which is NOT rename fallout. In the pin store, `security/darling/submodules/xnu` is a SYMLINK
+to `../../../darlingserver/duct-tape/xnu/`, upstream's own path for that tree. Locally that
+link gets retargeted and expanded into per-file links by `buck-src-normalise.py`. But a compile
+derivation stages its own tree from the pin STORE, and the normaliser only ever runs inside
+`ciderBuck2Graph.nix`, so what a compile sees is the dangling upstream link.
+`recursive` is NOT the differentiator: `security` has it false and `IOKitUser` true, and BOTH
+stores hold exactly one entry there, the symlink itself.
+**The fix belongs in `cider-src.nix` `pinStore`, so the tree is normalised ONCE at fetch and
+every consumer inherits it**, rather than in a staging path that only one consumer runs. This
+was latent for as long as a warm store satisfied those targets; the rename forced a rebuild and
+exposed it.
+
 **THE DAEMON RUNTIME GATE IS 23 CHECKS, 140 to 152 s** (four consecutive runs on the renamed
 tree; the older 115 s figure predates the Rust demos being restored). **It is INDEPENDENT of
 the nix endpoint**, because it builds through buck2 in the dev shell, and it stayed green
