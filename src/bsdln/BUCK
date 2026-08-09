@@ -1,8 +1,18 @@
 load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
 
-# No targets. bsdln is a HOST tool (it makes the symlink farm the reference installs) and
-# its block does not link; see PLAN.md. The package is kept so the directory keeps its own
-# package boundary rather than folding into the parent's globs.
+# bsdln is a HOST tool: it makes the symlink farm the reference build installs.
+#
+# THE HEADER HERE USED TO SAY "No targets", and that its block does not link. STALE, and
+# checked rather than inherited: //src/bsdln:bsdln builds, and the binary works. Driven on a
+# scratch directory it created a symlink, read the file back through it, overwrote with -sf,
+# made a hard link (link count 2), and printed the BSD usage on no arguments. The same stale
+# claim sat on src/buildtools/BUCK for getuuid and elfdep, where it was also wrong.
+#
+# NOT REWRITTEN IN RUST, unlike getuuid and elfdep (#76), and the reason is provenance rather
+# than difficulty. This is FreeBSD ln.c with a small local delta, not Darling-origin code, so
+# the intended treatment is to de-vendor it: pin the upstream source and compile it with
+# -include bsd/string.h. Rewriting someone elses BSD utility would throw away the upstream
+# history for nothing.
 
 # BEGIN generated: bsdln
 # GENERATED from the reference build.ninja by
