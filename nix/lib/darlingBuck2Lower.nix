@@ -43,8 +43,10 @@
   # Naming files is only safe because every include root is a staged tree whose contents that
   # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
   # are two directories holding 26 files between them, which have to be taken wholesale.
-  # Opt in to the per-target source union below. OFF because it is not correct yet; the two
-  # kinds of input it drops are named where projectSrc is defined.
+  # The per-target source union below. STILL OFF, and the reason is measured, not cautious:
+  # the narrowed endpoint now builds green with a byte identical prefix, but that endpoint is
+  # the ONE configuration it was tested in. Flipping this default would newly narrow 8 of the
+  # 11 lowering call sites. See projectSrc for the evidence and the gap.
   narrowSources ? false,
   # Merge each buck-src pin's targets into ONE derivation (#53). OFF so the default path
   # stays byte-comparable against the prefix that is already built and verified; the
@@ -733,8 +735,30 @@
   # against the real tree before being written: the candidate keeps UserBreak.h, keeps all
   # eight symlinked ancestors, and costs six percent more files. What is still NOT covered is
   # an include that reaches OUT of its directory with ../, which only depfiles can answer.
-  # So this stays OFF by default until a full endpoint build has run green with it, which
-  # costs 90 minutes and has not been spent yet. Pass narrowSources = true to opt in.
+  # NOT ON BY DEFAULT, AND HERE IS EXACTLY HOW FAR THE EVIDENCE GOES. The narrowed endpoint
+  # went green, exit 0, 1,466 builders, 0 errors, and its prefix is BYTE IDENTICAL to the
+  # unnarrowed one:
+  #   wide    sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=
+  #   narrow  sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=
+  #
+  # It took one fix to get there, and it was NOT an include gap. scripts/buck2-graph-sources.py
+  # recorded only the CRATE ROOT for a rust_library, because rustc argv names lib.rs and finds
+  # the rest through `mod`, which an #include scanner cannot see. Of 77,709 recorded project
+  # sources the whole server crate contributed exactly one file, and the endpoint died with
+  # `error[E0583]: file not found for module` after 1,462 green builders. The generator now
+  # takes a rustc crate directory wholesale, the way it already takes an include root.
+  #
+  # WHY THE DEFAULT DID NOT FLIP, measured after trying it. narrowSources is INERT for
+  # .#darling-buck2-prefix-min: that endpoint sets sourceGroups = true, so staging goes through
+  # stageProjectFor and projectSrc is never read. Flipping the default and evaluating either way
+  # gave the SAME drvPath, rpaj703hp0297dscd3ac9vdb4cw5lw10, which is what proves it is inert
+  # rather than merely cheap. So the green run above verifies ONE configuration, the one
+  # prefix-min-narrow uses (coarsePins on, sourceGroups off), and flipping the default would
+  # newly narrow 8 of the 11 lowering call sites that were never tested with it.
+  #
+  # To finish this: give the grouped endpoints a narrowed variant, or verify the remaining call
+  # sites, and only then flip. Also still NOT covered is an include that reaches OUT of its
+  # directory with ../, which only depfiles can answer.
   projectSrc =
     if narrowSources && srcClosure.projectSources != []
     then srcUnion

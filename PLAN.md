@@ -125,9 +125,20 @@ plan around the endpoint being unrunnable.
    would have failed the same way. The move only changed which module errors first. Nobody had
    ever run this endpoint to the Rust crate, which is exactly why it went unnoticed.
 
-   THE FIX is to give rustc actions their declared `srcs` wholesale, the way include roots are
-   already added wholesale, rather than teaching the scanner Rust. Until then `narrowSources`
-   cannot be flipped. Everything else in the narrowed endpoint is green.
+   **FIXED.** `buck2-graph-sources.py` now takes a rustc crate directory wholesale, the way it
+   already takes an include root. The narrowed endpoint then went **green: exit 0, 1,466
+   builders, 0 errors**, and its prefix is BYTE IDENTICAL to the unnarrowed one,
+   `sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=` both ways.
+
+   **THE DEFAULT STILL DID NOT FLIP, and that is a measurement rather than caution.** Flipping
+   it looked like a clean pass, 0 builders and a matching hash, but that was an illusion:
+   `narrowSources` is INERT for `.#darling-buck2-prefix-min`, which sets `sourceGroups = true`,
+   so staging goes through `stageProjectFor` and `projectSrc` is never read. Evaluating the
+   endpoint with the flag both ways gives the SAME drvPath, which is what proves inertness
+   rather than cheapness. So the green run covers ONE configuration, the one
+   `prefix-min-narrow` uses, and flipping the default would newly narrow 8 of the 11 lowering
+   call sites that nothing has tested. Next: a narrowed variant of the grouped endpoints, or
+   verify the remaining call sites, and only then flip.
 3. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
