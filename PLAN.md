@@ -1085,6 +1085,14 @@ the shell before the probe can report.
   `DARLING`, so most of the delta is the `__DARLING__` guards, which is what a patch set is
   for. It REMOVES 1,974 tracked files and 32M, and the pin tree is already on disk as
   `buck-src/xnu`, so it deduplicates rather than costing more.
+  **THE PATCH SET WAS GENERATED AND PROVED, not just costed**: 51 files, 50,591 bytes, applied
+  to a pristine copy of the pin with `patch -p1` at **0 failed hunks**, and all 51 results are
+  **byte identical to the vendored tree**. So the only work left is wiring, not archaeology.
+  (Generating it needs care: `diff` on this box has no `--label`, and passing it makes diff
+  print nothing at all, which produced a 0-byte patch that then applied cleanly. An empty patch
+  that applies is a check that cannot fail; the byte count is what caught it. Rewrite the two
+  header lines in the generator instead.)
+
   **DO IT AS A PATCH ON TOP OF THE EXISTING PIN, NOT AS A SECOND PIN ENTRY**, and that is a
   correction to the first way I wrote this up. Two entries could not CONFLICT, because
   `fetchOne` names each fetch `cider-sub-<path>` deliberately, so two submodules sharing a repo
