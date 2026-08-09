@@ -105,12 +105,29 @@ plan around the endpoint being unrunnable.
    Narrowing that group cuts it (same edit then rebuilds only skeleton, graph, sources) but
    STARVES the compiles: `clang: error: no such file or directory: .../dtape_rs_shims.c`.
    That is what `groupSplit` solves, conditionally, without touching the union mechanism.
-2. **#69, close the declaration gaps for real and delete the closure pass.** #54's correctness
-   rests on the per-target file lists being RIGHT, and today they are inferred: a regex over
-   quoted includes, blind to `#if`, so an include assembled by macro is missed silently. Three
-   gaps were each found by a build failing, not by a check. First evidence in: two targets
-   through the narrowed lowering, a compile and a generator, exit 0 in 340 s. The endpoint hash
-   and the `narrowSources` default flip are still unverified.
+2. **#69, and the blocker is now ONE NAMED DEFECT rather than an unspent 90 minutes.** The
+   narrowed endpoint was finally run to completion, 2026-08-09: **1,462 builders, exit 1, 8
+   errors, and every one of them traces to a single root cause** in a single target,
+   `root//linux/server:darling`:
+
+   ```
+   error[E0583]: file not found for module `xnu`  --> linux/server/src/lib.rs:42
+   ```
+
+   MEASURED against the generator output rather than guessed. `sources.json` holds 77,709
+   project sources, and for the whole Rust crate it names exactly ONE:
+   `linux/server/src/lib.rs`. Zero `src/xnu/*`, and one flat `src/*.rs`.
+
+   **So `scripts/buck2-graph-sources.py` records only the CRATE ROOT for a rust_library, and no
+   module file at all.** rustc's argv names `lib.rs` and discovers the rest through `mod`
+   declarations, which the include scanner cannot see: it parses `#include "..."`, a C
+   construct. This PREDATES the xnu module move; before it, `pub mod rpc_wire;` at lib.rs:21
+   would have failed the same way. The move only changed which module errors first. Nobody had
+   ever run this endpoint to the Rust crate, which is exactly why it went unnoticed.
+
+   THE FIX is to give rustc actions their declared `srcs` wholesale, the way include roots are
+   already added wholesale, rather than teaching the scanner Rust. Until then `narrowSources`
+   cannot be flipped. Everything else in the narrowed endpoint is green.
 3. **#66 / dynamic derivations: TRIGGER CHECKED AFTER #54, AND IT HAS NOT FIRED.** Measured
    with the cascade cut and `sourceGroups` on: **6.5 s** to evaluate one target, **18.8 s** for
    the whole endpoint, against a ~70 s edit loop, so eval is about **9%** of it. The threshold
