@@ -880,21 +880,6 @@
           baseSrc = ./.;
         };
 
-      # ── The darling host-side daemon (Rust) ──────────────────────────
-      #
-      # The Rust `server` (PLAN.md), built reproducibly. It consumes
-      # the duct-tape + libsimple static libs exported by the standalone `duct-tape`
-      # package (built from committed source), bindgens the dtape hooks, and compiles
-      # fast_context.c (the P1 switch). Produces the daemon `darlingserverd` + the
-      # proof/demo binaries. Its lib crate is named `darling`. See nix/server.nix.
-      #   nix build .#server
-      packages.server =
-        pkgs:
-        pkgs.callPackage ./nix/server.nix {
-          ductTape = pkgs.duct-tape;
-          src = ./.;
-        };
-
       # The Rust launcher (src/startup/darling.c rewrite), task #64.
       #   nix build .#launcher
       packages.launcher =
@@ -998,81 +983,6 @@
                 ${pkgs.llvmPackages.bintools}/bin/nm "$lib" | grep -q libsimple_lock_lock \
                   || { echo "archive has no libsimple symbols" >&2; exit 1; }
                 echo ok > $out
-              '';
-
-          # ── Rust darling daemon: build + run its demos ─────────────────
-          # Builds `server` (the Rust host-side daemon) and runs its proof/demo
-          # binaries, asserting each prints its OK marker -- the whole daemon
-          # pipeline (link + dtape_init, the microthread scheduler, the byte-parity
-          # wire codec, the code-generated dispatch, per-guest routing, the epoll
-          # loop) exercised end to end. See PLAN.md.
-          #   nix build '.?submodules=1#checks.x86_64-linux.server' -L
-          server =
-            pkgs.runCommand "server-check"
-              { nativeBuildInputs = [ pkgs.server ]; }
-              ''
-                export TMPDIR="$(mktemp -d)"
-                # Merge stderr into the grep input (2>&1, not 2>/dev/null): some
-                # demos print their PROVEN marker on stderr (stage3-spike's "both
-                # suspend paths" is an eprintln!). grep -q stays silent, so nothing
-                # leaks to the build log on success.
-                run() {
-                  echo "== $1 =="
-                  if "$1" 2>&1 | grep -q "$2"; then echo "  OK"; else echo "  FAIL: $1 did not print '$2'"; exit 1; fi
-                }
-                # Pure + socketpair-based demos (no filesystem sockets, sandbox-safe).
-                run rpc_wire_check     RPC_WIRE_OK
-                run dispatch_demo      DISPATCH_OK
-                run rpc_loop_demo      RPC_LOOP_OK
-                run rpc_roundtrip_demo RPC_ROUNDTRIP_OK
-                run registry_demo      REGISTRY_OK
-                run stage3-spike       "both suspend paths"
-                # Forks a child and reads/writes its memory via process_vm_readv/writev
-                # (the task_read_memory/task_write_memory hooks). Parent-child, same uid,
-                # so it works under the sandbox's user+pid namespace.
-                run mem_hooks_demo     MEM_HOOKS_OK
-                # Serves the special-port Mach traps (task_self/host_self/thread_self/
-                # mach_reply_port) through real XNU on a guest task. Fully in-process.
-                run mach_traps_demo    MACH_TRAPS_OK
-                # A guest thread blocks mid-call, persists addressable by tid, and is
-                # resumed by the daemon on the same stack (the mach_msg receive shape).
-                run persistent_threads_demo PERSISTENT_THREADS_OK
-                # Real Mach port-right ops on a guest task: mach_port_allocate copies the
-                # name out to guest memory (the write_memory hook) + mach_port_deallocate.
-                run mach_port_demo     MACH_PORT_OK
-                # A full port-name lifecycle: allocate a receive right, query its type
-                # (mach_port_type copyout), destroy via mach_port_mod_refs, verify invalid.
-                run mach_port_lifecycle_demo MACH_PORT_LIFECYCLE_OK
-                # The mach IPC core: a mach_msg send+receive loopback on a self-port
-                # (copyin via read_memory, ipc_mqueue routing, copyout via write_memory).
-                run mach_msg_demo      MACH_MSG_OK
-                # The async IPC pattern: a thread BLOCKS on mach_msg(RCV), a second
-                # thread's send wakes it, and its continuation completes via the
-                # current_thread_syscall_return hook.
-                run blocking_msg_demo  BLOCKING_MSG_OK
-                # The persistent-thread doWork loop: one long-lived guest thread serves
-                # multiple RPC calls via dispatch, parking between them (state preserved).
-                run thread_call_loop_demo THREAD_LOOP_OK
-                # The minimal working daemon: a real client PROCESS makes Mach calls over
-                # a SEQPACKET socketpair; the daemon routes each to the client's task and
-                # serves it via the shared Handler + dispatch, replying over the socket.
-                run daemon_mach_demo   DAEMON_MACH_OK
-                # Cross-process copyout over the socket: a client process calls
-                # mach_port_allocate; the daemon writes the allocated name into the
-                # CLIENT's memory (process_vm_writev to the client's pid).
-                run daemon_alloc_demo  DAEMON_ALLOC_OK
-                # The culmination: a client process runs a mach_msg send/receive loopback
-                # OVER THE SOCKET; the daemon copies the message in from and out to the
-                # CLIENT's memory (cross-process) and routes it through XNU.
-                run daemon_msg_demo    DAEMON_MSG_OK
-                # A full guest SESSION over the socket on ONE persistent doWork thread:
-                # checkin -> task_self_trap -> mach_port_allocate -> mach_msg -> checkout.
-                run daemon_session_demo DAEMON_SESSION_OK
-                # daemon_demo / epoll_demo bind a filesystem unix socket; validated
-                # locally + by the reproducible build, but skipped here since the nix
-                # build sandbox restricts socket paths.
-                echo "server: demos OK (link, scheduler both paths, wire codec, dispatch, routing, guest memory, mach traps, persistent threads, mach port ops, mach_msg send/recv, blocking recv, doWork loop, real-socket serving, cross-process copyout, mach_msg over socket, full session)"
-                touch "$out"
               '';
 
           # ── Darling smoke test (Phase 6.6) ──────────────────────────────
