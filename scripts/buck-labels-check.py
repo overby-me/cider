@@ -21,15 +21,31 @@ error four minutes into the endpoint:
 One failure per run, and the next one only after another four minutes. This
 reports all of them at once.
 
-Package existence is the check, not target existence: targets are frequently
-produced by macros and list comprehensions (the fw_* frameworks, the per-pin
-export_file loops), so a name = "..." scan cannot see them and would report
-hundreds of targets that are real. A missing DIRECTORY is unambiguous.
+TWO RULES, because a general target-existence check is not available cheaply:
+
+  1  the PACKAGE directory must exist. Unambiguous, and it caught the 205.
+  2  a label into a FIRST-PARTY package must not name a target containing
+     darling. First-party code is Cider now; only pins keep the old name. This
+     is narrow on purpose and has no false positives.
+
+Rule 2 exists because rule 1 does not catch a package that still exists under a
+target that was renamed inside it, which is how this failed twice:
+
+    Unknown target `darling_config` from package `root//src/include`
+    Unknown target `libsimple_darling` from package `root//src/libsimple`
+
+Full target existence was measured and rejected: after expanding the two macro
+shapes that can be resolved statically (the fw_* header roots from
+FRAMEWORKS.items() and the per-pin export_file loops from EXPORTS.items()), 105
+distinct targets remain unresolvable, all real. They come from elf_wrapper,
+which synthesises <name>_wrap and <name>_dylib from a list local to the BUCK
+file. Reporting those 105 as failures would make the check useless, so it does
+not claim to check what it cannot see.
 
 Verified both ways. Against the tree as the rename left it: 205 occurrences of
-//src/external/darlingserver across buck-src/BUCK and buck-src/xnu/BUCK, plus
-its symlink under buck-src/IOKitUser. Clean now, except two labels ignored by
-name below.
+//src/external/darlingserver, 10 of //src/include:darling_config and 5 of
+//src/libsimple:libsimple_darling. Clean now, except two labels ignored by name
+below.
 
 Exit 0 if every label resolves, 1 otherwise.
 """
@@ -69,21 +85,28 @@ def main():
         for pkg, name in LABEL.findall(text):
             checked += 1
             if not os.path.isdir(pkg):
-                counts[f"//{pkg}"] += 1
-                where[f"//{pkg}"].add(rel)
+                key = f"no such package  //{pkg}:{name}"
+            elif not pkg.startswith("buck-src") and "darling" in name:
+                key = f"first-party target still named darling  //{pkg}:{name}"
+            else:
+                continue
+            counts[key] += 1
+            where[key].add(rel)
 
     print(f"labels checked: {checked}")
     if not counts:
-        print(f"PASS: every label names a package that exists")
+        print("PASS: every label names a package that exists, "
+              "and no first-party target is still named darling")
         return 0
 
-    print(f"\n{sum(counts.values())} labels name a package DIRECTORY that does not exist:")
-    for pkg, n in counts.most_common():
-        files = sorted(where[pkg])
-        print(f"  {n:5d}  {pkg}   in {len(files)} file(s): {', '.join(files[:3])}")
-    print("\nFAIL: a label names a package that is not there.")
-    print("If a first-party package was renamed, buck-src/BUCK and buck-src/<pin>/BUCK")
-    print("reference it too; they are generated files of ours, not upstream code.")
+    print(f"\n{sum(counts.values())} labels do not resolve:")
+    for key, n in counts.most_common():
+        files = sorted(where[key])
+        print(f"  {n:5d}  {key}   in {len(files)} file(s): {', '.join(files[:3])}")
+    print("\nFAIL: a label names something that is not there.")
+    print("If a first-party package or target was renamed, buck-src/BUCK and")
+    print("buck-src/<pin>/BUCK reference it too; those are generated files of ours,")
+    print("not upstream code, and the Cider sweep skipped the whole buck-src tree.")
     return 1
 
 

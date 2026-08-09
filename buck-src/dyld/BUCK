@@ -333,7 +333,7 @@ darwin_binary(
         "//buck-src:compiler_rt_static64",
         "//buck-src:platform_static64",
         "//buck-src:system_kernel_static64",
-        "//src/libsimple:libsimple_darling",
+        "//src/libsimple:libsimple_cider",
     ],
     visibility = ["PUBLIC"],
 )

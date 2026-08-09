@@ -4218,7 +4218,7 @@ darwin_dylib(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/libsimple:libsimple_darling",
+        "//src/libsimple:libsimple_cider",
     ],
     visibility = ["PUBLIC"],
 )
@@ -4252,7 +4252,7 @@ darwin_dylib(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/libsimple:libsimple_darling",
+        "//src/libsimple:libsimple_cider",
     ],
     visibility = ["PUBLIC"],
 )
