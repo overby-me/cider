@@ -4,7 +4,7 @@ This directory is **vendored source**, not a git submodule. It was previously th
 submodule `src/external/ciderd`; it is now checked in directly so its
 sources can be edited in-tree without the patch-file indirection.
 
-- Upstream: https://github.com/ciderhq/ciderd.git
+- Upstream: https://github.com/darlinghq/darlingd.git
 - Base commit: `89751e64bc6c2082f7725061824ee0e33395b0de`
 
 ## Local changes on top of the base commit

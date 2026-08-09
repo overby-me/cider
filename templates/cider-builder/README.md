@@ -147,5 +147,5 @@ and consider filing an issue upstream.
 
 - [Full setup guide](https://github.com/nixie-dev/cider-nix/blob/main/docs/darwin-builder.md)
 - [Project plan](https://github.com/nixie-dev/cider-nix/blob/main/PLAN.md)
-- [Darling documentation](https://docs.ciderhq.org/)
+- [Darling documentation](https://docs.darlinghq.org/)
 - [Nix distributed builds](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html)

@@ -108,7 +108,7 @@ let
     # fetchFromGitHub: a GitHub archive tarball omits submodule content, so an
     # add_subdirectory into the nested path fails at configure. fetchgit with
     # fetchSubmodules recurses and resolves the nested repos' relative URLs
-    # against the parent (../cider-X.git -> github.com/ciderhq/cider-X).
+    # against the parent (../cider-X.git -> github.com/darlinghq/darling-X).
     # A pin whose content is in git LFS cannot come from an archive tarball either: GitHub
     # serves the 132-byte POINTER files, not the objects. src/external/swift is the one, and
     # its 44 runtime dylibs were installed into the prefix as those pointers -- text where a

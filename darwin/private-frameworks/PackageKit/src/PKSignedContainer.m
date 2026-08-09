@@ -223,7 +223,7 @@ static int copy_data(struct archive *ar, struct archive *aw)
 
     archive_read_support_format_cpio(_archive);
 
-    dispatch_queue_t q = dispatch_queue_create("org.ciderhq.PackageKit", NULL);
+    dispatch_queue_t q = dispatch_queue_create("org.darlinghq.PackageKit", NULL);
 
     _abort = NO;
     dispatch_async(q, ^{

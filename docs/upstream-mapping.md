@@ -1,6 +1,6 @@
 # Upstream Darling: what this fork is based on, and where everything went
 
-This project is a **fork of [ciderhq/cider](https://github.com/ciderhq/cider)**, not a
+This project is a **fork of [darlinghq/darling](https://github.com/darlinghq/darling)**, not a
 reimplementation. Its purpose is to record exactly which upstream commit it diverged from and
 how the directory layout was rearranged, so upstream changes can be located, judged and
 applied rather than guessed at.
@@ -12,11 +12,11 @@ each number are given so they can be re-run when they go stale.
 
 | | |
 |---|---|
-| upstream remote | `up` -> `https://github.com/ciderhq/cider` |
+| upstream remote | `up` -> `https://github.com/darlinghq/darling` |
 | **fork point (merge base)** | **`f39a29489fc630cb9b46af7ae2df1a3b603725d3`** |
 | fork point date | 2026-03-08 |
 | fork point subject | *Merge pull request #1702 from sirnacnud/skanalysis-symbols* |
-| upstream tip last fetched | `e947f0d5a3c6`, 2026-06-08, *Merge pull request #1758 from ciderhq/fedora_44_fix* |
+| upstream tip last fetched | `e947f0d5a3c6`, 2026-06-08, *Merge pull request #1758 from darlinghq/fedora_44_fix* |
 
 As of 2026-08-05:
 
@@ -36,13 +36,13 @@ jj log -r '::@ ~ ::master@up'                 # our commits
 
 This is the thing to internalise before trying to pull anything across.
 
-1. **The superproject** (`ciderhq/cider`) -- build glue, `src/**` first-party code, the
+1. **The superproject** (`darlinghq/darling`) -- build glue, `src/**` first-party code, the
    SDK tree, headers. That is what the 36 commits above are.
-2. **147 separate submodule repositories** (`ciderhq/cider-libdispatch`,
+2. **147 separate submodule repositories** (`darlinghq/darling-libdispatch`,
    `cider-libc`, ...), each pinned by revision in **`nix/submodules.json`**:
 
    ```json
-   { "path": "src/external/libdispatch", "owner": "ciderhq",
+   { "path": "src/external/libdispatch", "owner": "darlinghq",
      "repo": "cider-libdispatch", "rev": "380f03c1...", "hash": "sha256-..." }
    ```
 

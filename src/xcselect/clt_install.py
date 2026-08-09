@@ -33,7 +33,7 @@ while True:
 	elif resp == "n":
 		exit(1)
 
-packagesResp = urllib2.urlopen("https://swdistcache.ciderhq.org/api/v1/products/by-tag?tag=DTCommandLineTools")
+packagesResp = urllib2.urlopen("https://swdistcache.darlinghq.org/api/v1/products/by-tag?tag=DTCommandLineTools")
 packages = json.loads(packagesResp.read())
 
 tempdir = tempfile.mkdtemp()

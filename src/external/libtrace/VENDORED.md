@@ -4,7 +4,7 @@ This directory is **vendored source**, not a git submodule. It was previously th
 submodule `src/external/libtrace`; it is now checked in directly so its sources
 can be edited in-tree without the patch-file indirection.
 
-- Upstream: https://github.com/ciderhq/cider-libtrace.git
+- Upstream: https://github.com/darlinghq/darling-libtrace.git
 - Base commit: `8cf07f02b15f7dca6436882a03678fff0392eaf6`
 
 ## Local changes on top of the base commit

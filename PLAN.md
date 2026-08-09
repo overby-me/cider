@@ -1,6 +1,8 @@
 # cider-nix
 
-cider-nix is a Nix-packaged fork of [Darling](https://github.com/ciderhq/cider)
+> **Cider Isn't Darwin Emulation, Really.**
+
+cider-nix is a Nix-packaged fork of [Darling](https://github.com/darlinghq/darling)
 (a userspace macOS/Darwin compatibility layer for Linux, "Wine for macOS"). Its host and
 guest runtime have been rewritten in Rust.
 
@@ -1303,7 +1305,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
 
   Not a lead: shellspawn is PRESENT in the prefix, at usr/libexec/shellspawn (NOT
   usr/libexec/cider/shellspawn, where I looked first and wrongly concluded it was missing),
-  together with System/Library/LaunchDaemons/org.ciderhq.shellspawn.plist. `launchctl
+  together with System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist. `launchctl
   bootstrap -S System` is what should load that plist, which is why nothing runs the command:
   the launcher waits for a shellspawn that never starts because bootstrap never finishes.
 

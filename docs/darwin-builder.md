@@ -2,7 +2,7 @@
 
 > Build `x86_64-darwin` Nix packages on Linux — no Apple hardware required.
 
-This guide walks you through setting up [Darling](https://www.ciderhq.org/)
+This guide walks you through setting up [Darling](https://www.darlinghq.org/)
 as a Nix remote builder so your Linux machine can build macOS (`x86_64-darwin`)
 derivations. This is analogous to how Wine enables running Windows binaries on
 Linux, but for macOS build toolchains.
@@ -576,7 +576,7 @@ cat PLAN.md
 ```
 
 If you discover a new unimplemented syscall, please
-[file an issue](https://github.com/ciderhq/cider/issues) with:
+[file an issue](https://github.com/darlinghq/darling/issues) with:
 
 1. The exact syscall name and number
 2. The derivation that triggered it
@@ -706,6 +706,6 @@ For more technical details, see [PLAN.md](../PLAN.md).
 ## Further Reading
 
 - [Project plan](../PLAN.md) — development plan, known blockers and the syscall triage table
-- [Darling documentation](https://docs.ciderhq.org/) — upstream Darling docs
+- [Darling documentation](https://docs.darlinghq.org/) — upstream Darling docs
 - [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html) — Nix manual on distributed builds
 - [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down) — early exploration of Nix-in-Darling

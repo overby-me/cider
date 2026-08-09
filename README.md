@@ -1,19 +1,20 @@
-# Darling
+# Cider
 
-![Darling logo](https://ciderhq.org/img/cider250.png)
+**Cider Isn't Darwin Emulation, Really.**
 
-Darling is a runtime environment for macOS applications.
+Cider is a runtime environment for macOS applications. It is a fork of
+[Darling](https://github.com/darlinghq/darling), whose copyright and history it keeps.
 
 Please note that most GUI applications will not run at the moment.
 
 ## Download
 
 Packages for some distributions are available for download
-under [releases](https://github.com/ciderhq/cider/releases).
+under [releases](https://github.com/darlinghq/darling/releases).
 
 ## Build Instructions
 
-For build instructions, visit [Darling Docs](https://docs.ciderhq.org/build-instructions.html).
+For build instructions, visit [Darling Docs](https://docs.darlinghq.org/build-instructions.html).
 
 ### Prefixes
 
