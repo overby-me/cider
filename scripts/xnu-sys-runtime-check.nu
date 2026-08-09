@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
-# Does the duct-tape glue that is Rust now actually WORK at runtime? (#71)
+# Does the xnu-sys glue that is Rust now actually WORK at runtime? (#71)
 #
-# The only runtime gate for a duct-tape change used to be checks.cider-buck2-min-smoke,
+# The only runtime gate for a xnu-sys change used to be checks.cider-buck2-min-smoke,
 # which builds a whole minimal prefix and takes about an hour. That is far too slow to be the
 # first thing that tells you a port is wrong. This drives the ported code directly, in about a
 # minute, and it is the check to run before reaching for the prefix gate.
@@ -61,7 +61,7 @@ const DEMOS = [
     ["psynch_demo", "PSYNCH_DEMO_OK", "psynch.c init invariants and the 18 vtable entries"]
     ["kqchan_demo", "KQCHAN_DEMO_OK", "kqchan.c create, has_events and destroy on a real port"]
 
-    # RESTORED from the deleted checks.server (#82). That check was fed by the cmake duct-tape
+    # RESTORED from the deleted checks.server (#82). That check was fed by the cmake xnu-sys
     # package, so removing cmake silently took 17 runtime proofs of the daemon with it. They
     # had no buck2 target because cargo built them; they have one now.
     ["rpc_wire_check", "RPC_WIRE_OK", "the generated RPC wire structs, their sizes and alignment"]

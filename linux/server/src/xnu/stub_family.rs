@@ -1,6 +1,6 @@
 //! The `dtape_stub` family, for glue ported to Rust (#71).
 //!
-//! duct-tape marks unimplemented XNU entry points with three macros from
+//! xnu-sys marks unimplemented XNU entry points with three macros from
 //! `internal-include/ciderd/xnu-sys/stubs.h`, all of which call the real symbol
 //! `dtape_stub_log(function_name, safety, subsection)`:
 //!
@@ -21,10 +21,10 @@ use std::ffi::CString;
 use std::os::raw::{c_char, c_int};
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
-// directly since duct-tape became Rust (#71, #75).
+// directly since xnu-sys became Rust (#71, #75).
 use crate::xnu::stubs::dtape_stub_log;
 
-/// Call through to duct-tape's own stub logger. Cold path by construction, so the two small
+/// Call through to xnu-sys's own stub logger. Cold path by construction, so the two small
 /// allocations for NUL termination are not worth avoiding.
 pub fn stub_log(function: &str, safety: c_int, subsection: &str) {
     let f = CString::new(function).unwrap_or_default();

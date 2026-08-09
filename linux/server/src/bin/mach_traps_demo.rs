@@ -1,6 +1,6 @@
 //! First real Mach calls served by the Rust daemon: the special-port traps
 //! (task_self_trap / host_self_trap / thread_self_trap / mach_reply_port). Each runs
-//! through the real XNU duct-tape on a microthread bound to a guest task and returns a
+//! through the real XNU xnu-sys on a microthread bound to a guest task and returns a
 //! valid Mach port name -- proving the daemon can serve Mach operations, the first
 //! step toward mach_msg. task_self_trap is ALSO driven through the generated
 //! dispatch() so the full RPC path (decode -> handler -> encode) is exercised end to
@@ -62,7 +62,7 @@ unsafe fn run() {
         tid,
         arch,
         Box::new(move || {
-            // (a) direct: the four traps run on THIS guest task/thread via the duct-tape.
+            // (a) direct: the four traps run on THIS guest task/thread via the xnu-sys.
             let task_self = mach::task_self_trap();
             let host_self = mach::host_self_trap();
             let thread_self = mach::thread_self_trap();

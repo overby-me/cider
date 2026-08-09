@@ -2,8 +2,8 @@
 # The lib crate is named "cider", so bins import it as cider::server, cider::registry, etc.
 # See PLAN.md (plan) + PLAN.md (the make-or-break
 # spike). Stage 0: bindgen the real dtape hooks contract + link the prebuilt
-# duct-tape static lib and call the real dtape_init(&hooks). The prior end-to-end
-# link-model proof (stub duct-tape) was validated in a throwaway prototype, since removed.
+# xnu-sys static lib and call the real dtape_init(&hooks). The prior end-to-end
+# link-model proof (stub xnu-sys) was validated in a throwaway prototype, since removed.
 [package]
 name = "server"
 version = "0.0.0"
@@ -13,7 +13,7 @@ publish = false
 [lib]
 name = "cider"
 
-# Stage 0 deliverable: prove the real duct-tape links and dtape_init is callable.
+# Stage 0 deliverable: prove the real xnu-sys links and dtape_init is callable.
 [[bin]]
 name = "dtape-link-proof"
 path = "src/main.rs"

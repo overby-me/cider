@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_H_
-#define _DARLINGSERVER_DUCT_TAPE_H_
+#ifndef _DARLINGSERVER_XNU_SYS_H_
+#define _DARLINGSERVER_XNU_SYS_H_
 
 #include <stdint.h>
 #include <stddef.h>
@@ -40,14 +40,14 @@ typedef void (*dtape_kqchan_mach_port_notification_callback_f)(void* context);
  * This should NOT be used to differentiate kernelspace threads from userspace ones.
  * This is simply used as a convenient cutoff beyond which we do not expect Linux to actually assign
  * thread IDs within our namespace. In practice, there should be no difference between the way userspace
- * and kernelspace threads are handled in the duct-tape code.
+ * and kernelspace threads are handled in the xnu-sys code.
  *
  * This is used as the starting offset for thread IDs for kernelspace threads (which do not have a "real" managed Darling thread backing them).
  */
 #define DTAPE_KERNEL_THREAD_ID_THRESHOLD (1ULL << 22)
 
 /**
- * Creates a new duct-tape task. The caller receives a reference on the new task.
+ * Creates a new xnu-sys task. The caller receives a reference on the new task.
  *
  * An @p nsid value of `0` indicates the task being created is the kernel task.
  */
@@ -114,4 +114,4 @@ uint64_t dtape_debug_port_list_messages(dtape_task_t* task, uint32_t port, dtape
 };
 #endif
 
-#endif // _DARLINGSERVER_DUCT_TAPE_H_
+#endif // _DARLINGSERVER_XNU_SYS_H_

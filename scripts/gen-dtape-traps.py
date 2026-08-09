@@ -25,7 +25,7 @@ DSERVER_DTAPE_DEFS out of the built header, so the Rust and the C are two render
 table. If the RPC generator adds a call, re-running this adds the wrapper.
 
 The output is checked in rather than built by a genrule, matching buck/generated/
-duct_tape_flags.bzl, and --check re-derives it and fails if the committed file has drifted.
+xnu_sys_flags.bzl, and --check re-derives it and fails if the committed file has drifted.
 
 Usage:
   scripts/gen-dtape-traps.py             # write linux/server/src/xnu/traps_generated.rs

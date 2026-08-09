@@ -43,11 +43,6 @@
   # Naming files is only safe because every include root is a staged tree whose contents that
   # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
   # are two directories holding 26 files between them, which have to be taken wholesale.
-  # The per-target source union below. STILL OFF, and the reason is measured, not cautious:
-  # the narrowed endpoint now builds green with a byte identical prefix, but that endpoint is
-  # the ONE configuration it was tested in. Flipping this default would newly narrow 8 of the
-  # 11 lowering call sites. See projectSrc for the evidence and the gap.
-  narrowSources ? false,
   # Merge each buck-src pin's targets into ONE derivation (#53). OFF so the default path
   # stays byte-comparable against the prefix that is already built and verified; the
   # reasoning and the measurements are at groupOf below.
@@ -292,7 +287,7 @@
   # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
   # THE NARROWING APPLIES HERE AND ONLY HERE (#79). nonPinExternal has two consumers and they
   # want different things. This one is the set of escape DESTINATIONS copied into pinsTree, so
-  # narrowing it is what stops pinsTree moving on a duct-tape edit. The other consumer, the
+  # narrowing it is what stops pinsTree moving on a xnu-sys edit. The other consumer, the
   # per-target `groups` further down, is the set of directories STAGED for every target, and
   # narrowing that one deleted src/external/ciderd/scripts from the staged tree and broke
   # dserver_rpc with the very error the comment there warns about. Measured before re-narrowing:
@@ -634,142 +629,21 @@
   # As SYMLINKS, and as a SHARED script: an action only reads project files, and copying
   # the repo (let alone 4 GB of pins) into every derivation would cost more than the build
   # being replaced. The script assumes the builder has already entered the working tree.
-  # NARROWED to what the port actually reads, when the graph carries the per-target lists
-  # scripts/buck2-graph-dump.py precomputes. The filtered project is 306,019 files; the union
-  # of every target's sources is 16,106, so nineteen twentieths of what every lowered
-  # derivation depended on was never opened by any action. Pin contents dominate the rest.
-  #
-  # A UNION rather than one source per target, and that is measured, not a shortcut. The 671
-  # targets name 1,754,387 files between them, so each of those 16,106 appears in about 109
-  # of them; a per-target lib.fileset.toSource, which is what task #11 originally proposed,
-  # would copy the same small set into the store a hundred times over. Getting per-target
-  # invalidation without that duplication needs one store path per distinct FILE, shared, with
-  # a per-target manifest the builder reads -- a different design, still open.
-  #
-  # Falls back to the whole filtered source when targetSources is absent, so a graph dumped
-  # before this field existed still lowers.
-  srcUnion = let
-    # NOT lib.unique, which is `foldl' (acc: e: if elem e acc then acc else acc ++ [e]) []`
-    # and therefore quadratic twice over, once in the elem scan and once because `acc ++ [e]`
-    # copies the accumulator every step. Measured: 292ms at 5k elements, 1125ms at 10k,
-    # 4197ms at 20k, four times the work per doubling, and an eval profile of this very
-    # expression puts 83 percent of its samples on that one line of lib/lists.nix. At the
-    # 123,343 declared files here it ran for over 25 minutes without finishing.
-    #
-    # Nothing needs the list deduplicated: all three consumers below build an attrset out of
-    # it with listToAttrs, and attribute names are unique by construction. (lib.uniqueStrings
-    # is the O(n log n) one if a deduplicated LIST is ever actually needed.)
-    # The UNION, which the dump now writes directly. It used to be flattened out of the
-    # per-target map, and that map held the same paths 85 times over -- 10,512,996 entries
-    # for 123,343 distinct files -- because it expanded each shared header farm once per
-    # consumer. Since this was the only thing that ever read it, the per-target breakdown
-    # moved to target-sources.json beside the graph, where narrowing can pick it up without
-    # every evaluation parsing 651 MB it never looks at.
-    files = srcClosure.projectSources;
-    wanted = builtins.listToAttrs (map (p: {
-      name = p;
-      value = true;
-    })
-    files);
-    # Every ancestor directory of a wanted file, as a SET. builtins.path filters top down and
-    # never descends into what it rejected, so a directory has to be kept when anything under
-    # it is wanted -- and answering that by scanning the file set per directory is 16,106
-    # comparisons for each of 306,019 paths. Precomputing the ancestors makes it a lookup:
-    # about 80,000 entries, built once.
-    ancestors = builtins.listToAttrs (map (d: {
-      name = d;
-      value = true;
-    })
-    (lib.concatMap (p: let
-        segs = lib.splitString "/" p;
-      in
-        map (n: lib.concatStringsSep "/" (lib.take n segs))
-        (lib.range 1 (lib.length segs - 1)))
-      files));
-    # The DIRECTORY of every wanted file, as a set. A quoted include resolves against the
-    # including file's own directory and buck2 never declares it, so keeping the file without
-    # its neighbours is what stopped CarbonCore at "UserBreak.h file not found". Measured over
-    # the all graph: 123,343 declared files live in 8,596 directories holding 131,048 files
-    # between them, so this widens the union by six percent and still leaves 306,019 far
-    # behind. It also picks up 383 headers named exactly like the source beside them, which is
-    # a lower bound on how often the declared set was short.
-    wantedDirs = builtins.listToAttrs (map (d: {
-      name = d;
-      value = true;
-    })
-    (map (p: builtins.dirOf p) files));
-  in
-    builtins.path {
-      name = "cider-buck2-lower-sources";
-      path = srcRaw;
-      filter = path: type: let
-        rel = lib.removePrefix (toString srcRaw + "/") (toString path);
-      in
-        if type == "directory"
-        then ancestors ? ${rel}
-        # A SYMLINK is neither, and asking only the two questions above dropped it: the filter
-        # took the else branch, the symlink is not itself a declared file, and every path
-        # THROUGH it vanished. Eight of them are ancestors of declared paths here, including
-        # src/CoreAudio/AFAVFormatComponent/PublicUtility, whose whole tree the CoreAudio
-        # targets compile.
-        else if type == "symlink"
-        then (ancestors ? ${rel}) || (wanted ? ${rel})
-        else (wanted ? ${rel}) || (wantedDirs ? ${builtins.dirOf rel});
-    };
-
-  # OFF by default, because the narrowing is not correct yet and a wrong one fails the build
-  # 90 minutes in. targetSources records what buck2 DECLARES, and that is not what a compile
-  # READS. Two kinds of input are missing from it, both found by building the whole endpoint:
-  #
-  #   a quoted include next to its source. darwin/frameworks/CoreServices/src/CarbonCore/
-  #   UserBreak.cpp does #include "UserBreak.h", which resolves against the including file's
-  #   own directory; the .cpp is declared and the .h is not, so the union had one and not the
-  #   other and clang stopped at "UserBreak.h file not found".
-  #
-  #   a symlinked ancestor. src/CoreAudio/AFAVFormatComponent/PublicUtility is a symlink to
-  #   ../CoreAudioUtilityClasses/CoreAudio/PublicUtility, and the filter classified it as
-  #   neither a wanted file nor a directory, so it was dropped and every path THROUGH it
-  #   vanished, while the resolved tree sat in the union all along.
-  #
-  # BOTH of those are addressed by the filter above now, and the fix was measured offline
-  # against the real tree before being written: the candidate keeps UserBreak.h, keeps all
-  # eight symlinked ancestors, and costs six percent more files. What is still NOT covered is
-  # an include that reaches OUT of its directory with ../, which only depfiles can answer.
-  # NOT ON BY DEFAULT, AND HERE IS EXACTLY HOW FAR THE EVIDENCE GOES. The narrowed endpoint
-  # went green, exit 0, 1,466 builders, 0 errors, and its prefix is BYTE IDENTICAL to the
-  # unnarrowed one:
-  #   wide    sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=
-  #   narrow  sha256-BqaeD5ykeLVY3z/3jLjKdaXsxIexr54iQTrTKEE5Tf0=
-  #
-  # It took one fix to get there, and it was NOT an include gap. scripts/buck2-graph-sources.py
-  # recorded only the CRATE ROOT for a rust_library, because rustc argv names lib.rs and finds
-  # the rest through `mod`, which an #include scanner cannot see. Of 77,709 recorded project
-  # sources the whole server crate contributed exactly one file, and the endpoint died with
-  # `error[E0583]: file not found for module` after 1,462 green builders. The generator now
-  # takes a rustc crate directory wholesale, the way it already takes an include root.
-  #
-  # WHY THE DEFAULT DID NOT FLIP, measured after trying it. narrowSources is INERT for
-  # .#cider-buck2-prefix-min: that endpoint sets sourceGroups = true, so staging goes through
-  # stageProjectFor and projectSrc is never read. Flipping the default and evaluating either way
-  # gave the SAME drvPath, rpaj703hp0297dscd3ac9vdb4cw5lw10, which is what proves it is inert
-  # rather than merely cheap. So the green run above verifies ONE configuration, the one
-  # prefix-min-narrow uses (coarsePins on, sourceGroups off), and flipping the default would
-  # newly narrow 8 of the 11 lowering call sites that were never tested with it.
-  #
-  # To finish this: give the grouped endpoints a narrowed variant, or verify the remaining call
-  # sites, and only then flip. Also still NOT covered is an include that reaches OUT of its
-  # directory with ../, which only depfiles can answer.
-  projectSrc =
-    if narrowSources && srcClosure.projectSources != []
-    then srcUnion
-    else src;
+  # The one shared staged tree. Every target that does NOT go through sourceGroups (#54)
+  # stages this, so a byte changing anywhere in it moves the path and all 3,225 targets
+  # rebuild. That is what #54 fixes, and it is why narrowSources was deleted: it shrank this
+  # path from 306,019 files to about 131,048 and left it SHARED, so it cut no cascade. It was
+  # measured inert for the shipping endpoint, identical drvPath with the flag either way,
+  # because prefix-min sets sourceGroups and never reads this. The evidence it did produce is
+  # kept in PLAN.md rather than here.
+  projectSrc = src;
 
   # ---- per-component source groups (#54) ----------------------------------
   #
   # projectSrc is ONE store path that every target stages, so a byte changing anywhere in it
-  # moves the path and all 3,225 targets rebuild. narrowSources does not fix that; it shrinks
-  # the path from 306,019 files to about 131,048 and it is STILL shared. This splits the part
-  # that people actually edit so a target only depends on the groups it reads.
+  # moves the path and all 3,225 targets rebuild. The deleted narrowSources did not fix that:
+  # it shrank the path from 306,019 files to about 131,048 and left it STILL shared. This
+  # splits the part that people actually edit so a target only depends on the groups it reads.
   #
   # MEASURED, which is what makes the split worth it: of 27,591 actions, 16,255 are pinned
   # upstream code, and NOT ONE of them reads darwin/frameworks. The 1,326 pin targets that
@@ -873,10 +747,10 @@
   #
   # An escape root is only ever READ THROUGH: it exists so a pin's relative `../` link resolves
   # to something. Taking a whole directory is therefore free ONLY while that directory is
-  # frozen, and one of these is not: src/external/ciderd is where duct-tape lives, which
+  # frozen, and one of these is not: src/external/ciderd is where xnu-sys lives, which
   # is edited every increment. gate10 measured the cost of that: a change confined to
-  # linux/server and duct-tape rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
-  # ApplicationServices ...), none of which use duct-tape. nix-diff named the chain exactly:
+  # linux/server and xnu-sys rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
+  # ApplicationServices ...), none of which use xnu-sys. nix-diff named the chain exactly:
   # buck2-AddressBook_obj -> buck2-stage-project -> cider-pins-tree -> cider-pin-escape-roots,
   # whose buildCommand copies cider-escape-src-external-ciderd.
   #
@@ -902,7 +776,7 @@
   #
   # That is the whole cascade in one number. pinPath below is "${pinsTree}/${p}", so pinsTree
   # is embedded in every target that stages a pin; when it moved, they all moved, which is why
-  # gate10 rebuilt 1,464 guest objects for a change confined to duct-tape. Now it does not
+  # gate10 rebuilt 1,464 guest objects for a change confined to xnu-sys. Now it does not
   # move, so the cascade cannot start rather than merely happening not to.
   #
   # WHAT THE DRVPATH MEASUREMENT ABOVE DOES NOT SHOW, AND IT SHIPPED A REGRESSION. Those two
@@ -916,7 +790,7 @@
   # the other half is that the tree it names still works.
   #
   # AND THE PAYOFF ABOVE IS MEASURED ON THE WRONG ARTIFACT, so treat it as unproven. pinsTree is
-  # not the only route from a duct-tape edit to a target. nonPinExternal is ALSO added to the
+  # not the only route from a xnu-sys edit to a target. nonPinExternal is ALSO added to the
   # per-target `groups` for every target, groupStore is a builtins.path over the whole directory,
   # and its store path is interpolated into that target's stage script as _g. builtins.path is
   # content addressed, so editing src/external/ciderd/xnu-sys moves
@@ -928,7 +802,7 @@
   #   baseline                    3 buck2 builders
   #   no-op                       0            <- the control can fail, so the test means something
   #   one xnu-sys/src edit      6, and root//src/libsimple:libsimple_ciderd RECOMPILED
-  #                               src/lock.c, which has no business rebuilding for a duct-tape edit
+  #                               src/lock.c, which has no business rebuilding for a xnu-sys edit
   # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
   # nor the sources output, both of which were byte identical:
   #   - _g=/nix/store/4ab45bn9...-cider-src-src-external-ciderd
@@ -937,7 +811,7 @@
   #
   # AND THE OBVIOUS FIX DOES NOT WORK. Expanding this root into siblings with xnu-sys/src left
   # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
-  # libsimple stays put) but it STARVES the duct-tape compiles:
+  # libsimple stays put) but it STARVES the xnu-sys compiles:
   #   clang: error: no such file or directory:
   #     src/external/ciderd/xnu-sys/src/dtape_rs_shims.c
   # because src/external is deliberately outside the per-target union mechanism. The grouping
@@ -959,7 +833,7 @@
   # xnu-sys/src. Checked before splitting: xnu-sys/src is 20 .c files and NO headers, and
   # nothing outside ciderd references the path except two comments in linux/server. So
   # every other target was staging 20 C files it cannot use and paying the whole endpoint for a
-  # duct-tape edit.
+  # xnu-sys edit.
   #
   # `shared` goes to everyone, which keeps scripts/generate-rpc-wrappers.py in reach of
   # dserver_rpc. `owned` is added only when the label sits under ownerPrefix, which is what
@@ -971,15 +845,15 @@
   #   no-op control                  0                     <- so the probe can fail
   #   one xnu-sys/src edit       657 in 22 min            <- was 1,558 in 61 min
   #   restore                        0, back to the settled output
-  # then, with ownerPrefix narrowed to the duct-tape package:
+  # then, with ownerPrefix narrowed to the xnu-sys package:
   #   settle                       650, exit 0, 0 errors
   #   no-op control                  0
   #   one xnu-sys/src edit        44 in 154 s
   #   restore                        0, back to the settled output
   #
   # SO: 1,558 builders and 61 minutes, to 44 and 2.5 minutes. 35 times fewer builders, 24 times
-  # faster. An ordinary leaf edit costs 7, and the 44 left ARE the duct-tape cone and should
-  # rebuild: dt_objects, dt_mig_objects, dt_pthread_objects, ciderd_duct_tape, the mig_*
+  # faster. An ordinary leaf edit costs 7, and the 44 left ARE the xnu-sys cone and should
+  # rebuild: dt_objects, dt_mig_objects, dt_pthread_objects, ciderd_xnu_sys, the mig_*
   # set, dtape_bindings, ciderd, cider and the prefix.
   #
   # Counted with `^building`, never with the "these N will be built" list. dserver_rpc is the
@@ -1002,7 +876,7 @@
       ];
       # THE DUCT-TAPE PACKAGE, not all of ciderd. The wider prefix also matched
       # root//src/external/ciderd:dserver_rpc, which compiles none of xnu-sys/src (it
-      # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a duct-tape edit
+      # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a xnu-sys edit
       # dragged its whole consumer cone along. That is the 657 above rather than the ~7 an
       # ordinary leaf edit costs.
       ownerPrefix = "root//src/external/ciderd/xnu-sys";
@@ -1125,8 +999,8 @@
 
   # CA for the same reason the stage-tree scripts are, though MEASURED it buys nothing while
   # #54 is off, and why is worth keeping. This script embeds ${projectSrc}, NOT ${graph.data}
-  # as this comment used to claim. With narrowSources and sourceGroups off, projectSrc is the
-  # whole project, so a source edit genuinely changes this script's TEXT; its content address
+  # as this comment used to claim. With sourceGroups off, projectSrc is the whole filtered
+  # project, so a source edit genuinely changes this script's TEXT; its content address
   # moves with it, and every target that stages the project rebuilds. Content addressing
   # collapses a text that came out the same, and this one did not.
   #

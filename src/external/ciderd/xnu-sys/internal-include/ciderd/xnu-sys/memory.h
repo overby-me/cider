@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_MEMORY_H_
-#define _DARLINGSERVER_DUCT_TAPE_MEMORY_H_
+#ifndef _DARLINGSERVER_XNU_SYS_MEMORY_H_
+#define _DARLINGSERVER_XNU_SYS_MEMORY_H_
 
 #include <stdint.h>
 #include <mach/vm_types.h>
@@ -68,4 +68,4 @@ void dtape_memory_init(void);
 vm_map_t dtape_vm_map_create(struct dtape_task* task);
 void dtape_vm_map_destroy(vm_map_t map);
 
-#endif // _DARLINGSERVER_DUCT_TAPE_MEMORY_H_
+#endif // _DARLINGSERVER_XNU_SYS_MEMORY_H_

@@ -1,5 +1,5 @@
 # The Rust rewrite of the cider launcher (src/startup/cider.c), task #64. A plain
-# libc-only binary crate -- no duct-tape, no bindgen -- so it builds straight from the
+# libc-only binary crate -- no xnu-sys, no bindgen -- so it builds straight from the
 # committed source via cargoLock vendoring. Installed as bin/cider by package.nix; it
 # resolves the daemon (bin/ciderd) next to itself, so no prefix needs baking.
 #

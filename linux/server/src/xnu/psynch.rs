@@ -2,7 +2,7 @@
 //!
 //! NAMED `dtape_psynch` because `linux/server/src/psynch.rs` already exists and is the DAEMON
 //! side, the RPC handlers the guest calls. This is the layer under it: the glue that lets the
-//! imported XNU pthread kext run against duct-tape's task and thread structures.
+//! imported XNU pthread kext run against xnu-sys's task and thread structures.
 //!
 //! 678 lines of C, of which only about 218 are glue. The rest is lifted XNU, and the file marks
 //! it: `bsd/kern/kern_synch.c` for the sleep path (`_sleep`, `_sleep_continue`, `msleep`,
@@ -12,7 +12,7 @@
 //! a later diff against upstream still reads.
 //!
 //! THE KEY OBSERVATION IS THE C FILE'S OWN, at line 76: the psynch code never dereferences
-//! `proc_t` or `uthread_t`. It reaches everything through the callback table, so duct-tape can
+//! `proc_t` or `uthread_t`. It reaches everything through the callback table, so xnu-sys can
 //! hand it a `dtape_task_t*` and a `dtape_thread_t*` under those names and the kext is none the
 //! wiser. Every cast in here that looks alarming is that substitution.
 //!
@@ -85,7 +85,7 @@ extern "C" {
     fn dtape_psynch_thread_dying(thread: thread_t, kwe: *mut c_void);
 }
 
-/// `dtape_thread_for_xnu_thread`: the XNU thread is embedded in the duct-tape one.
+/// `dtape_thread_for_xnu_thread`: the XNU thread is embedded in the xnu-sys one.
 /// `always_inline` in C, so there is no symbol.
 #[inline]
 unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn get_bsdthread_info(th: thread_t) -> *mut uthread {
     thread_for_xnu_thread(th) as *mut uthread
 }
 
-/// duct-tape `#undef`s the XNU macro and substitutes this. Always false, so the signal paths
+/// xnu-sys `#undef`s the XNU macro and substitutes this. Always false, so the signal paths
 /// below are dead for now; they are kept because upstream keeps them.
 unsafe fn should_issignal(_task: *mut dtape_task, _thread: *mut dtape_thread) -> bool {
     crate::dtape_stub!();

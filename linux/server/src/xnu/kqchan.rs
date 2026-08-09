@@ -286,7 +286,7 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_has_events(
     }
 }
 
-/// The per-thread kevent context, which lives in the duct-tape thread rather than XNU's.
+/// The per-thread kevent context, which lives in the xnu-sys thread rather than XNU's.
 #[no_mangle]
 pub unsafe extern "C" fn kevent_get_context(xthread: thread_t) -> *mut crate::bindings::kevent_ctx_s {
     let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);

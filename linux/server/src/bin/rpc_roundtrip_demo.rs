@@ -1,9 +1,9 @@
 //! Stage 4 slice: the full daemon request->reply cycle on one call. The client
 //! sends an RpcCallUidgid over a unix socket; the server decodes it, runs the
-//! handler ON A sched MICROTHREAD (which calls dtape_task_uidgid in the duct-tape),
+//! handler ON A sched MICROTHREAD (which calls dtape_task_uidgid in the xnu-sys),
 //! encodes the RpcReplyUidgid, and sends it back; the client verifies the reply.
 //! This exercises: rpc_io recv/send + rpc_wire decode/encode + sched dispatch +
-//! a real duct-tape call from a microthread.
+//! a real xnu-sys call from a microthread.
 use cider::rpc_io::{recv_message, send_message};
 use cider::rpc_wire::{
     callnum, CallUidgid, DserverRpcCallhdr, DserverRpcReplyhdr, ReplyUidgid, RpcCallUidgid, RpcReplyUidgid,
@@ -30,7 +30,7 @@ unsafe fn serve_one(fd: RawFd, kt: *mut cider::bindings::dtape_task_t) {
     match hdr.number {
         callnum::UIDGID => {
             let call = std::ptr::read_unaligned(msg.body().as_ptr() as *const CallUidgid);
-            // Run the handler on a sched microthread (it may call into the duct-tape).
+            // Run the handler on a sched microthread (it may call into the xnu-sys).
             let slot: Rc<Cell<Option<ReplyUidgid>>> = Rc::new(Cell::new(None));
             let out = slot.clone();
             let kt_addr = kt as usize;
@@ -67,7 +67,7 @@ fn main() {
         };
         send_message(client, as_bytes(&call), &[]).unwrap();
 
-        // Server handles it (decode -> microthread -> duct-tape -> reply).
+        // Server handles it (decode -> microthread -> xnu-sys -> reply).
         serve_one(server, kt);
 
         // Client <- server: the reply.

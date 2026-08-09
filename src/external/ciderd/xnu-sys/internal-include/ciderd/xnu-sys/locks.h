@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_LOCKS_H_
-#define _DARLINGSERVER_DUCT_TAPE_LOCKS_H_
+#ifndef _DARLINGSERVER_XNU_SYS_LOCKS_H_
+#define _DARLINGSERVER_XNU_SYS_LOCKS_H_
 
 #include <stdint.h>
 #include <sys/queue.h>
@@ -32,4 +32,4 @@ void dtape_mutex_unlock(dtape_mutex_t* mutex);
 bool dtape_mutex_try_lock(dtape_mutex_t* mutex);
 void dtape_mutex_assert(dtape_mutex_t* mutex, bool should_be_owned);
 
-#endif // _DARLINGSERVER_DUCT_TAPE_LOCKS_H_
+#endif // _DARLINGSERVER_XNU_SYS_LOCKS_H_

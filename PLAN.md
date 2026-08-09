@@ -28,13 +28,13 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 ## Buck2 port: the order to work in
 
 **DONE and no longer in this list:** #54 (cascade cut, per-file staging into mirrored real
-directories), #55 (lowered derivations content-addressed), #71 (duct-tape ported to Rust, 16 of
+directories), #55 (lowered derivations content-addressed), #71 (xnu-sys ported to Rust, 16 of
 16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
 was nothing behind it). Their detail is further down and in the commit history.
 
 **CMAKE IS GONE (#82), buck2 is the only build.** Removed 2026-08-09 on the user's word that
 they do not ship it: 13 cmake package outputs, 8 nix-ninja group outputs, 8 nix libs
-(`package.nix`, `duct-tape.nix`, `cctools-port.nix`, `cider-{graph,base,component,components}
+(`package.nix`, `xnu-sys.nix`, `cctools-port.nix`, `cider-{graph,base,component,components}
 .nix`, `ciderNinja.nix`), 258 CMakeLists and `cmake/`, plus cmake and ninja from the dev shell
 and the toolchain. About 21,700 lines. `packages.default` is now `cider-buck2` and the checks
 build `cider-buck2-min`. VERIFIED: the minimal endpoint builds with zero cmake files present,
@@ -44,15 +44,15 @@ with it; the `overby` input STAYS, because `ciderBuck2.nix` uses its `buildBuck2
 **THE ONE-WAY DOOR, stated plainly:** FIVE generators are now unrunnable and marked FROZEN in
 place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
 (`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`) and
-stop working entirely once a store GC collects `result-graph-ref`; `gen-duct-tape-buck.py` reads
+stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-buck.py` reads
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
 **THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/xnu-sys-runtime-check.nu` covers the
-six ported duct-tape files plus the 17 proofs that `checks.server` used to run: Mach ports,
+six ported xnu-sys files plus the 17 proofs that `checks.server` used to run: Mach ports,
 `mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
 routing, persistent threads and four daemon capstones. Those 17 were orphaned by the cmake
 removal, because cargo built them through `nix/server.nix` and they had no buck2 target; they
-have one now. Run this after ANY duct-tape or linux/server change.
+have one now. Run this after ANY xnu-sys or linux/server change.
 
 **THE BUCK2 REGRESSION SUITE RUNS AGAIN: `scripts/buck-test.nu`, 149 passed, 0 failed, 905 s.**
 It was previously unfinishable, because two sections spawned one buck2 client PER TARGET (568
@@ -233,9 +233,9 @@ decision.
    debug, locks, kqchan, traps, psynch, misc, stubs, task, memory, thread.
 
    **Verified by the archive, not by assertion:** every one of the sixteen `.c.o` is gone from
-   `libciderd_duct_tape.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
+   `libciderd_xnu_sys.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
    remain, which is the boundary the task set. (`host.c.o` in that archive is XNU
-   `osfmk/kern/host.c`, not duct-tape's; `host_info` is undefined there.) ciderd links
+   `osfmk/kern/host.c`, not xnu-sys's; `host_info` is undefined there.) ciderd links
    and `scripts/xnu-sys-runtime-check.nu` passes.
 
    **THE THREE BIG FILES WERE SPLIT along the XNU boundary they already marked**, rather than
@@ -322,7 +322,7 @@ decision.
    | `src/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
    | `src/xcselect` | 679 | Darling | |
    | `src/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
-   | `src/libsimple` | 562 | Darling | the lock and log layer duct-tape sits on; the Rust daemon ALREADY links it as a C archive |
+   | `src/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
 
    **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
    `src/external/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
@@ -338,9 +338,9 @@ decision.
    **THE HOST TOOLS ARE THE BEST FIRST TARGET, and the argument is risk profile rather than
    size.** `coredump` (1,153 lines), `elfdep` (182) and `getuuid` (174) run on the BUILD
    MACHINE: no guest ABI, no Mach semantics, no microthreads, and a mistake fails loudly at
-   build time. That is the exact inverse of duct-tape, where the recurring hazard has been the
+   build time. That is the exact inverse of xnu-sys, where the recurring hazard has been the
    silent wrong answer: a mis-filled `host_info` field, or an `always_inline` that linked
-   everywhere except the daemon. A first port outside duct-tape should buy experience without
+   everywhere except the daemon. A first port outside xnu-sys should buy experience without
    buying that failure mode.
 
    `src/libsimple` is the other one worth naming, for a different reason: the Rust daemon
@@ -352,20 +352,20 @@ decision.
    remaining files that use them do not each re-derive it.
 
    Two mechanisms were proven by experiment before any port code, both with negative controls:
-   bindgen PARSES the XNU internal headers given duct-tape's own flags (`-fblocks` is load
+   bindgen PARSES the XNU internal headers given xnu-sys's own flags (`-fblocks` is load
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
    since `kqchan.c` stays C and calls `dtape_semaphore_up`.
 
    **The runtime check for a port is `scripts/xnu-sys-runtime-check.nu`, about a minute**,
    not the hour-long minimal-prefix gate. It builds `//linux/server:scheduler_demo` and blocks
-   a microthread on a duct-tape semaphore, so `dtape_semaphore_create`, `down_simple` and `up`
+   a microthread on a xnu-sys semaphore, so `dtape_semaphore_create`, `down_simple` and `up`
    all run for real, down through XNU and back out through the suspend/resume hooks. It asserts
    on the OUTPUT (`SCHED_DEMO_OK`), never the exit code: breaking `down_simple` to report every
    successful wait as interrupted prints `SCHED_DEMO_DOWN_FAILED` and STILL EXITS 0, because the
    demo's own asserts (did it suspend, did it finish) both still hold.
 
    **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
-   is not vacuous: in `libciderd_duct_tape.a` the four `dtape_semaphore_*` are `U` and
+   is not vacuous: in `libciderd_xnu_sys.a` the four `dtape_semaphore_*` are `U` and
    `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come
    from bindgen, not transcription: `linux/server/wrapper.h` binds the internal structs, and
    `flags.bzl` (generated) keeps the buck2 and cargo include sets identical.
@@ -389,7 +389,7 @@ decision.
    jobs did not help. Two attempts is the limit; not relaunching a third time.
 
    **So #71 must gate on the MINIMAL endpoint**, which completes (1,617 builders, verified this
-   session, prefix hash matching). A duct-tape change lands in `ciderd`, so the gate it
+   session, prefix hash matching). A xnu-sys change lands in `ciderd`, so the gate it
    needs is a boot against the minimal prefix, not a full-prefix VM.
    NOT `kern_synch.c` first: it is the psynch path, where this daemon already had a silent
    SIGSEGV from a null `pthread_list_mlock`.
@@ -625,16 +625,16 @@ tracks below.
   prefix bootstrap, spawns the daemon as container init, shellspawn client, teardown. Owns
   NO mounts/vchroot (the daemon does).
 - **daemon** (`linux/server`): single-threaded epoll loop + a **stackful microthread
-  scheduler** (`sched.rs`) — not async, because duct-tape suspends microthreads
-  synchronously from inside C stacks; single-worker is correct (duct-tape locks are
+  scheduler** (`sched.rs`) — not async, because xnu-sys suspends microthreads
+  synchronously from inside C stacks; single-worker is correct (xnu-sys locks are
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
   byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
   for `process_vm_readv` because the guest is in its own PID namespace).
-- **duct-tape** (`src/external/ciderd/xnu-sys/`, still C): kernel-emulation glue
+- **xnu-sys** (`src/external/ciderd/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
   `linux/server/build.rs`: bindgen generates the 36-field `dtape_hooks_t` from source
-  headers; static libs (`libciderd_duct_tape.a`, `liblibsimple_ciderd.a`)
-  come via the `DUCT_TAPE_LIB` env var. The Rust/C seam is the frozen `dtape_*` API +
+  headers; static libs (`libciderd_xnu_sys.a`, `liblibsimple_ciderd.a`)
+  come via the `XNU_SYS_LIB` env var. The Rust/C seam is the frozen `dtape_*` API +
   `dtape_hooks` vtable — Rust above, C+XNU below.
 - **mldr loader** (`darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
   commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
@@ -650,7 +650,7 @@ tracks below.
 - **sandbox-exec** is a parse-and-ignore stub (the Linux container already isolates).
 - **Nix packaging:** `nix/lib/cider-src.nix` assembles the tree from the 147 pins +
   `patches/<name>/`; `nix/package.nix` builds the Darwin userland and installs the Rust
-  crates; `nix/{launcher,server,duct-tape,loader,cctools-port}.nix`.
+  crates; `nix/{launcher,server,xnu-sys,loader,cctools-port}.nix`.
 
 ---
 
@@ -1019,14 +1019,14 @@ the shell before the probe can report.
 - **#63 exec across architectures** [narrow] — daemon cross-arch exec; the guest 32-bit
   loader (`mldr32`, cmake `BUILD_TARGET_32BIT`) is port-or-drop-undecided. Fat/universal
   Mach-O selection already done.
-- **#72 duct-tape to Rust, with XNU staying C behind a `-sys` crate**: decouple XNU from the
-  cmake tree (today linked via `DUCT_TAPE_LIB` at the cmake build's `.a`; bindgen already runs
+- **#72 xnu-sys to Rust, with XNU staying C behind a `-sys` crate**: decouple XNU from the
+  cmake tree (today linked via `XNU_SYS_LIB` at the cmake build's `.a`; bindgen already runs
   on in-tree headers, so the FFI boundary exists and is exercised). Not started, but no longer
   aspirational in size, because the split is now measured:
 
   | | files |
   |---|---|
-  | duct-tape's own glue | **17 `.c`** + 66 `.h` |
+  | xnu-sys's own glue | **17 `.c`** + 66 `.h` |
   | vendored `xnu-sys/xnu` | 49 `.c` + 1,526 `.h` |
   | build cost | 163 ninja edges, 109 compiles, 18 directories |
 
@@ -1042,7 +1042,7 @@ the shell before the probe can report.
 - **#69 mig (Mach Interface Generator)** — still the C `bootstrap_cmds` fork (Apple-tracking,
   no nixpkgs substitute). A Rust rewrite is unstarted; only its nix-ninja edge handling is
   patched (see Build system).
-- **#68 finish the repo reorg** — move the C++ ciderd + duct-tape from `src/external`
+- **#68 finish the repo reorg** — move the C++ ciderd + xnu-sys from `src/external`
   into `linux/ciderd/`, completing the `darwin/` (guest) + `linux/` (host) seam.
 - **Linker (#57 tail)**: `packages.cider-ld64` (`nix/cctools-port.nix`) done. **The darwin
   dylib link is validated (2026-08-07), and ld64 now builds under buck2 (#65)**: 30 `.cpp` plus
@@ -1233,7 +1233,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
   boolean flag (DARWIN_BG, PASSIVE_IO) or as a small non-negative tier/QoS class (IO, QOS,
   THROUGH_QOS), so every thread read as "background" and every throttle tier came back
   nonsense. The real implementation exists in xnu/osfmk/kern/thread_policy.c but is NOT in
-  the duct-tape build, so the stub wins. Returning 0 (not background, no throttling, QoS
+  the xnu-sys build, so the stub wins. Returning 0 (not background, no throttling, QoS
   unspecified) is the neutral answer for all of them. Measured across three runs each:
   mldr processes surviving at t=32s went from 2 to 3, consistently. The stub line was the
   LAST line of every boot log, in five runs out of five.
@@ -1305,7 +1305,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
 
   Not a lead: shellspawn is PRESENT in the prefix, at usr/libexec/shellspawn (NOT
   usr/libexec/cider/shellspawn, where I looked first and wrongly concluded it was missing),
-  together with System/Library/LaunchDaemons/org.ciderhq.shellspawn.plist. `launchctl
+  together with System/Library/LaunchDaemons/me.overby.cider.shellspawn.plist. `launchctl
   bootstrap -S System` is what should load that plist, which is why nothing runs the command:
   the launcher waits for a shellspawn that never starts because bootstrap never finishes.
 
@@ -1413,7 +1413,7 @@ concrete failure justifies it:
   stack, so elfcall-reachable loader code must be movaps-free — no `mem::zeroed`/`Default` of
   a >8-byte struct on the stack (emits an aligned SSE store that #GPs); use `MaybeUninit` +
   scalar fills.
-- **duct-tape two-phase init:** `dtape_init` then `dtape_init_in_thread` on a kernel
+- **xnu-sys two-phase init:** `dtape_init` then `dtape_init_in_thread` on a kernel
   microthread (psynch etc.); no hook in the 36-field vtable may ever be NULL (NULL → indirect
   call to 0x0).
 - **RPC socket fork-safety:** sockets live at high fds + FD_CLOEXEC (so a forked subshell's
@@ -1432,7 +1432,7 @@ concrete failure justifies it:
   Cherry-pick upstream fixes onto our patched xnu; don't bump the pin blindly.
 - **nix-ninja / mig gotchas:** merged `$out` conflates a checked-in `osfmk/**/X.h` with the
   same-named mig-generated header (10 collisions; `notify.h` is
-  `_MIG_KERNEL_SPECIFIC_CODE_`-sensitive — force it to 1 via a duct-tape patch); mig edges
+  `_MIG_KERNEL_SPECIFIC_CODE_`-sensitive — force it to 1 via a xnu-sys patch); mig edges
   need `-DKERNEL_USER -DMACH_KERNEL -DKERNEL`; `lower.nix` must `rm -f` a staged read-only
   source symlink at a declared output path (else mig `fopen`→EACCES). Full-graph nix-ninja is
   ~26k derivations — keep it OUT of `nix flake check`.
@@ -2131,7 +2131,7 @@ that loop proves too slow for how Darling actually gets developed.
 
 ### Full-green grind (#2): where it stands (branch `wip-mega-group-unwind`)
 
-The build-time path (`cider-full-group-bt`) grinds green through migcom -> libSystem -> duct-tape
+The build-time path (`cider-full-group-bt`) grinds green through migcom -> libSystem -> xnu-sys
 -> libc -> and reaches the `security/*` / openssh tier. Mechanical gaps fixed along the way (all
 committed): skip CMake housekeeping targets, shebang rewrites on staged sources AND generated script
 outputs, rspfiles, ext-dir de-symlink before cp, command-referenced source staging, srcHeaders
@@ -2139,7 +2139,7 @@ non-header include-chain data (`.exp`/`.exp-in`/`.list`/`.ipp`), cctools ar+ranl
 OUTPUT tool dir.
 
 Wall #2 from the earlier note (the `build-mig` dense-staging mega-SCC) is now UNWOUND, and the
-duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f265`):
+xnu-sys `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f265`):
 - **notify.h source-restore** (`lower_group.py`): `mach/notify.h` exists as BOTH a hand-written
   source header (defines `MACH_NOTIFY_*` + the notify structs) and a mig re-emission (routine stubs
   only). The merged `$out` cannot hold both; mig's copy shadowed the source and broke every

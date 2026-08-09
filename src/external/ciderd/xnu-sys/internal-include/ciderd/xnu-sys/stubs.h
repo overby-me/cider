@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_STUBS_H_
-#define _DARLINGSERVER_DUCT_TAPE_STUBS_H_
+#ifndef _DARLINGSERVER_XNU_SYS_STUBS_H_
+#define _DARLINGSERVER_XNU_SYS_STUBS_H_
 
 #include <stdbool.h>
 
@@ -17,4 +17,4 @@ void dtape_stub_log(const char* function_name, int safety, const char* subsectio
 		__builtin_unreachable(); \
 	}) \
 
-#endif // _DARLINGSERVER_DUCT_TAPE_STUBS_H_
+#endif // _DARLINGSERVER_XNU_SYS_STUBS_H_

@@ -1,4 +1,4 @@
-//! Runtime exercise of the ported duct-tape psynch (#71, #77).
+//! Runtime exercise of the ported xnu-sys psynch (#71, #77).
 //!
 //! psynch was the one ported glue file that NOTHING drove. scheduler_demo, condvar_demo,
 //! stage3_spike and host_demo cover semaphore.c, condvar.c, host.c and processor.c; psynch had

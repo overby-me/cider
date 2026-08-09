@@ -39,7 +39,7 @@ def main [
     # SHORT by default, and that is not cosmetic: the daemon's control socket lives at
     # <prefix>/.ciderd.sock and a Unix socket path is capped at 108 bytes, so a scratch
     # directory a few levels deep makes the daemon panic with "socket path too long" after it
-    # has already brought all of duct-tape up.
+    # has already brought all of xnu-sys up.
     let root = ($scratch | default $"/tmp/cider-buck2-(^id -u | str trim)")
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"

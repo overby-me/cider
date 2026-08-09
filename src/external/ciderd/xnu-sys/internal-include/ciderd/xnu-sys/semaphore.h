@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_SEMAPHORE_H_
-#define _DARLINGSERVER_DUCT_TAPE_SEMAPHORE_H_
+#ifndef _DARLINGSERVER_XNU_SYS_SEMAPHORE_H_
+#define _DARLINGSERVER_XNU_SYS_SEMAPHORE_H_
 
 #include <ciderd/xnu-sys.h>
 
@@ -10,4 +10,4 @@ struct dtape_semaphore {
 	semaphore_t xnu_semaphore;
 };
 
-#endif // _DARLINGSERVER_DUCT_TAPE_SEMAPHORE_H_
+#endif // _DARLINGSERVER_XNU_SYS_SEMAPHORE_H_

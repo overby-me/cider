@@ -2,7 +2,7 @@
 # There are two instances (see BUCK in this directory):
 #
 #   native_cc  the HOST (Linux/ELF) toolchain: plain nixpkgs clang + binutils ar.
-#              Builds duct-tape, the XNU emulation glue, libsimple, migcom.
+#              Builds xnu-sys, the XNU emulation glue, libsimple, migcom.
 #   darwin_cc  the GUEST (Darwin/Mach-O) cross toolchain: the same clang driving
 #              `-target x86_64-apple-darwin20`, with the cctools Mach-O archiver
 #              and (for links) Darling's own ld64.

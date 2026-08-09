@@ -4,7 +4,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # The host-side daemon itself is the Rust crate linux/server; what remains here
 # for the Buck2 port is the shared header surface and the generated RPC wrappers
-# that duct-tape (and the Rust daemon, via bindgen) compile against.
+# that xnu-sys (and the Rust daemon, via bindgen) compile against.
 
 cc_header_root(
     name = "dserver_headers",

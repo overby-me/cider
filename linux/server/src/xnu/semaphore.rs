@@ -1,4 +1,4 @@
-//! Object-level duct-tape semaphores: the Rust replacement for
+//! Object-level xnu-sys semaphores: the Rust replacement for
 //! `xnu-sys/src/semaphore.c` (#71, the first glue file ported).
 //!
 //! These are semaphores OWNED BY A TASK, distinct from the name-based semaphore traps in
@@ -11,7 +11,7 @@
 //! cannot express, and this one is 60 lines with a single macro (`panic`) and no C variadic
 //! definitions. It still exercises every part of the seam that the remaining files need:
 //! it exports the C ABI, it is called FROM C (kqchan.c), it calls INTO XNU, it dereferences
-//! both a duct-tape struct and an XNU one, and it maps a `kern_return_t` onto a C enum.
+//! both a xnu-sys struct and an XNU one, and it maps a `kern_return_t` onto a C enum.
 //!
 //! TWO THINGS WERE PROVEN BEFORE ANY OF IT WAS WRITTEN, because both are load-bearing and
 //! neither is obvious:
@@ -22,7 +22,7 @@
 //!   a real failure mode. Built the smallest case with the archive listed AFTER the rlib:
 //!   links, runs, returns the right answer. With the definition removed it fails to link.
 //! * `panic` IS A LINKABLE SYMBOL, not just a macro (`nm` shows it undefined in the
-//!   duct-tape archive, so something else in the link defines it). Rust may CALL a C
+//!   xnu-sys archive, so something else in the link defines it). Rust may CALL a C
 //!   variadic even though it cannot DEFINE one, so the fatal paths below stay exactly what
 //!   they were rather than becoming a Rust `panic!`, which would unwind across `extern "C"`.
 //!
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn dtape_semaphore_create(
 
     (*semaphore).owning_task = owning_task;
 
-    // &owning_task->xnu_task: the XNU task is EMBEDDED in the duct-tape task, so this is an
+    // &owning_task->xnu_task: the XNU task is EMBEDDED in the xnu-sys task, so this is an
     // interior pointer, and its offset is bindgen's, not one written down here.
     let xnu_task = ptr::addr_of_mut!((*(*semaphore).owning_task).xnu_task) as *mut _;
 

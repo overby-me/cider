@@ -5,7 +5,7 @@
 # of it. It deserves its own check rather than being taken on trust, because it is the one
 # system library whose whole job is making threads and handing work between them, and that is
 # the machinery this port has had the most trouble with: the guest runs on the daemon's
-# microthreads, multithreading needed duct-tape's two-phase init before it worked at all, and
+# microthreads, multithreading needed xnu-sys's two-phase init before it worked at all, and
 # a null pthread_list_mlock once surfaced as a silent SIGSEGV that read like a scheduler bug.
 #
 # tests/buck2/guest/dispatch_probe.c walks from the step that needs no thread to the one that

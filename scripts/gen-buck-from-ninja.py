@@ -1990,9 +1990,9 @@ def archive_target_name(artifact: str) -> str:
 ARCHIVE_ALIASES = {
     "liblibsimple_cider.a": "//src/libsimple:libsimple_cider",
     # The host tier, ported before cc_static_lib existed (both are cc_library targets
-    # whose archive the Rust daemon consumes through DUCT_TAPE_LIB).
-    "libciderd_duct_tape.a":
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+    # whose archive the Rust daemon consumes through XNU_SYS_LIB).
+    "libciderd_xnu_sys.a":
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
     "liblibsimple_ciderd.a": "//src/libsimple:libsimple_ciderd",
 }
 

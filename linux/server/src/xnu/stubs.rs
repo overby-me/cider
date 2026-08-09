@@ -1,6 +1,6 @@
 //! `xnu-sys/src/stubs.c`, in Rust (#71, thirteenth file).
 //!
-//! 232 lines, all of it glue: the XNU entry points duct-tape does not implement, plus
+//! 232 lines, all of it glue: the XNU entry points xnu-sys does not implement, plus
 //! `dtape_stub_log`, which every other glue file calls to record that it reached one. Nearly all
 //! of it is mechanical, so the interesting parts are the four that are not.
 //!

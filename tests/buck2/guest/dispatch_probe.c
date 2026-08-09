@@ -4,7 +4,7 @@
 // executed a line of it. It is worth its own probe rather than being taken on trust because
 // it is the one system library whose whole job is to create threads and hand work between
 // them, which is exactly the machinery this port has had the most trouble with: the guest
-// runs on the daemon's microthreads, and getting multithreading up at all needed duct-tape's
+// runs on the daemon's microthreads, and getting multithreading up at all needed xnu-sys's
 // two-phase init, while a null pthread_list_mlock once showed up as a silent SIGSEGV that
 // looked like a scheduler bug.
 //

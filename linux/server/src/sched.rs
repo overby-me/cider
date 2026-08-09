@@ -18,7 +18,7 @@ use std::mem::MaybeUninit;
 use std::os::raw::{c_int, c_void};
 use std::sync::atomic::{AtomicU64, Ordering};
 
-// ---- duct-tape, which is Rust now (#71), so these are plain imports rather than the
+// ---- xnu-sys, which is Rust now (#71), so these are plain imports rather than the
 // ---- `extern "C"` declarations they used to be (#75). The linker matched those by name and
 // ---- rustc never compared them against the definitions, so each was free to disagree.
 //
@@ -33,11 +33,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 //                          the first contended pthread wait crashed. psynch_demo asserts on that
 //                          now (#77).
 //   dtape_task_retain      bump a task refcount so a task_lookup(retain=true) result stays alive
-//                          for its caller, paired with a dtape_task_release. duct-tape.h:85.
+//                          for its caller, paired with a dtape_task_release. xnu-sys.h:85.
 //   dtape_thread_for_port  resolve a guest Mach thread port to its dtape_thread, and recover the
 //                          void* context handed to dtape_thread_create (our *mut Microthread).
-//                          Backs thread_for_port. duct-tape.h:71.
-//   dtape_thread_retain    same as the task one, duct-tape.h:77.
+//                          Backs thread_for_port. xnu-sys.h:71.
+//   dtape_thread_retain    same as the task one, xnu-sys.h:77.
 //   dtape_timer_fired      invoked when a timer armed via the timer_arm hook expires; wakes any
 //                          XNU threads whose deadline has passed. May itself briefly wait, so it
 //                          runs on a kernel microthread.
@@ -50,7 +50,7 @@ use crate::xnu::init::{dtape_init, dtape_init_in_thread};
 use crate::xnu::timer::dtape_timer_fired;
 
 // ---- FFI. What is left here is genuinely foreign: the fast context switch helpers and
-// ---- libsimple, both C, neither part of duct-tape.
+// ---- libsimple, both C, neither part of xnu-sys.
 extern "C" {
     fn dserver_fast_getcontext(ucp: *mut libc::ucontext_t) -> c_int;
     fn dserver_fast_setcontext(ucp: *const libc::ucontext_t);
@@ -101,7 +101,7 @@ pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
     drain();
 }
 
-/// Run a one-shot operation on a fresh microthread bound to `task`, so the duct-tape sees a
+/// Run a one-shot operation on a fresh microthread bound to `task`, so the xnu-sys sees a
 /// current-thread + the task's guest-memory context, then drain anything it wakes. This is the
 /// cooperative-yield stand-in for C++'s `impersonate` + `kernelAsync` -- used by the mach-port
 /// kqchan modify/read (task #54), which call dtape_kqchan_mach_port_* that need that context.
@@ -119,7 +119,7 @@ pub unsafe fn run_on_task(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) {
 }
 
 /// A Rust-owned stackful microthread. Address-stable: always heap-boxed and handed
-/// to the C duct-tape as `*mut c_void` context; never moved while C holds it.
+/// to the C xnu-sys as `*mut c_void` context; never moved while C holds it.
 pub struct Microthread {
     resume_ctx: MaybeUninit<libc::ucontext_t>,
     stack: Vec<u8>,
@@ -167,7 +167,7 @@ pub struct Microthread {
     // suspended DEEP inside a handler (a blocked call). The serve loop reads this to tell
     // "ready for a new call" from "blocked mid-call": a signal-interrupt RPC arriving for a
     // mid-call thread must NOT resume the blocked call (that reads a bogus wait_result and
-    // panics the duct-tape) -- it runs nested instead. See task #58.
+    // panics the xnu-sys) -- it runs nested instead. See task #58.
     at_dowork_top: bool,
     // The guest's host-namespace pid (tgkill tgid), -1 until set by spawn_on. For pthread_kill.
     host_pid: libc::pid_t,
@@ -363,7 +363,7 @@ pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dt
     mt
 }
 
-/// Resolve a guest Mach thread port to its Microthread, via the duct-tape port registry
+/// Resolve a guest Mach thread port to its Microthread, via the xnu-sys port registry
 /// (dtape_thread_for_port) and the context stored at dtape_thread_create. Returns None for an
 /// invalid or dead port. Mirrors C++ Thread::threadForPort (thread.cpp:916).
 pub unsafe fn thread_for_port(thread_port: u32) -> Option<*mut Microthread> {
@@ -627,7 +627,7 @@ extern "C" fn continuation_trampoline() {
 
 // ---- guest memory access (the foundation mach_msg copyin/copyout depends on) ----
 
-/// Per-guest-task context handed to the duct-tape as the task's `void*` context (the
+/// Per-guest-task context handed to the xnu-sys as the task's `void*` context (the
 /// 3rd arg of dtape_task_create) and handed back to the memory hooks. Carries the
 /// guest's host-visible Linux pid -- what process_vm_readv/writev key on. The Registry
 /// heap-boxes it so the pointer stays address-stable while C holds it.
@@ -703,7 +703,7 @@ pub unsafe extern "C" fn task_write_memory(task_context: *mut c_void, remote_add
     write_process_memory(pid, remote_address, local)
 }
 
-// ---- dtape hooks (the 36-field vtable the duct-tape calls back through) ----
+// ---- dtape hooks (the 36-field vtable the xnu-sys calls back through) ----
 mod hooks {
     use super::*;
     use std::os::raw::c_char;
@@ -1041,7 +1041,7 @@ fn make_hooks() -> dtape_hooks_t {
     h
 }
 
-/// Initialize the duct-tape with the Rust hook vtable and return the kernel task.
+/// Initialize the xnu-sys with the Rust hook vtable and return the kernel task.
 /// (Leaks the hooks vtable intentionally: dtape_init stores the pointer for the
 /// process lifetime.)
 pub unsafe fn init() -> *mut dtape_task_t {

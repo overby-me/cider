@@ -3,7 +3,7 @@ load("//buck/rules:codegen.bzl", "host_gen")
 
 # rtsig is a build-HOST probe: it compiles and runs on the Linux build machine
 # and prints LINUX_SIGRTMIN/LINUX_SIGRTMAX, which the xnu emulation layer and
-# duct-tape include as <rtsig.h>. Reading the values from Linux headers at build
+# xnu-sys include as <rtsig.h>. Reading the values from Linux headers at build
 # time is the point (the guest code must not include Linux headers itself).
 cc_binary(
     name = "rtsig",

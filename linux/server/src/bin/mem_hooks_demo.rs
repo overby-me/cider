@@ -73,7 +73,7 @@ unsafe fn run() {
     let remote = usize::from_ne_bytes(addr_bytes);
     eprintln!("[mem] child pid={pid}, buffer @ 0x{remote:x}");
 
-    // The task context the duct-tape would hand our hooks: it carries the guest pid.
+    // The task context the xnu-sys would hand our hooks: it carries the guest pid.
     let ctx = TaskCtx { pid };
     let ctx_ptr = &ctx as *const TaskCtx as *mut c_void;
 

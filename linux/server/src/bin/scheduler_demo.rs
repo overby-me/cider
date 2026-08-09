@@ -5,7 +5,7 @@ use cider::bindings::dtape_semaphore_t;
 use cider::sched;
 use cider::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
 
-// The three declarations that used to sit here reached duct-tape through the linker, from when
+// The three declarations that used to sit here reached xnu-sys through the linker, from when
 // it was C. It is Rust now (#71), so they are imported (#75). A BIN CRATE, so cider:: and not
 // crate:: .
 //

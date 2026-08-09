@@ -1,4 +1,4 @@
-//! Task-level duct-tape operations: thin wrappers over the dtape_task_* functions that
+//! Task-level xnu-sys operations: thin wrappers over the dtape_task_* functions that
 //! take an explicit `dtape_task_t*` (unlike the mach traps, which act on the current
 //! task). A handler gets the task pointer from `sched::current_task()` -- the task its
 //! microthread is bound to -- and passes it here. Mirrors the `process->_dtapeTask`
@@ -7,7 +7,7 @@
 use crate::bindings::{dtape_semaphore_t, dtape_task_t};
 
 // These were `extern "C"` declarations resolving back into this crate through the linker;
-// imported directly since duct-tape became Rust (#71, #75).
+// imported directly since xnu-sys became Rust (#71, #75).
 //
 //   dtape_task_set_dyld_info       records the guest dyld all-image-info (address and length)
 //                                  on the task, so later introspection (a debugger, or

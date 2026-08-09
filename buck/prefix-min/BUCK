@@ -636,7 +636,7 @@ prefix_tree(
         "libexec/cider/System/Library/LaunchDaemons/memberd.plist": "//buck-src/OpenDirectory:memberd-21.1_memberd.plist",
         "libexec/cider/System/Library/LaunchDaemons/ntalk.plist": "//buck-src:remote_cmds_talkd.tproj_ntalk.plist",
         "libexec/cider/System/Library/LaunchDaemons/org.darlinghq.iokitd.plist": "//buck-src:iokitd_org.darlinghq.iokitd.plist",
-        "libexec/cider/System/Library/LaunchDaemons/org.ciderhq.shellspawn.plist": "//src/shellspawn:org.ciderhq.shellspawn.plist",
+        "libexec/cider/System/Library/LaunchDaemons/me.overby.cider.shellspawn.plist": "//src/shellspawn:me.overby.cider.shellspawn.plist",
         "libexec/cider/System/Library/LaunchDaemons/tftp.plist": "//buck-src:remote_cmds_tftpd.tproj_tftp.plist",
         "libexec/cider/System/Library/OpenSSL/certs/ACCVRAIZ1.crt": "//buck-src:openssl_certificates_certs_ACCVRAIZ1.crt",
         "libexec/cider/System/Library/OpenSSL/certs/ACRAIZFNMT-RCM.crt": "//buck-src:openssl_certificates_certs_ACRAIZFNMT-RCM.crt",

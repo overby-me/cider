@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_THREAD_H_
-#define _DARLINGSERVER_DUCT_TAPE_THREAD_H_
+#ifndef _DARLINGSERVER_XNU_SYS_THREAD_H_
+#define _DARLINGSERVER_XNU_SYS_THREAD_H_
 
 #include <kern/thread.h>
 #include <ciderd/xnu-sys/locks.h>
@@ -70,4 +70,4 @@ static dtape_task_t* dtape_task_for_thread(dtape_thread_t* thread) {
 	return dtape_task_for_xnu_task(thread->xnu_thread.task);
 };
 
-#endif // _DARLINGSERVER_DUCT_TAPE_THREAD_H_
+#endif // _DARLINGSERVER_XNU_SYS_THREAD_H_

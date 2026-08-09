@@ -68,8 +68,8 @@ calls = [
 	#     this indicates the XNU trap is for a BSD syscall. BSD syscalls have 2 return codes: one for failure and one for success.
 	#     this flag informs the RPC wrapper generator about this so it can handle it appropriately.
 	#   XNU_TRAP_NO_DTAPE_DEF
-	#     by default, the RPC wrapper generator code will generate duct-tape wrappers for XNU traps that automatically call the
-	#     XNU handler function for the trap. this flag tells it not to do that; this means you must define the duct-tape handler yourself.
+	#     by default, the RPC wrapper generator code will generate xnu-sys wrappers for XNU traps that automatically call the
+	#     XNU handler function for the trap. this flag tells it not to do that; this means you must define the xnu-sys handler yourself.
 	#   UNMANAGED_CALL
 	#     this indicates that the given call may be called from an unmanaged process; that is, a process that the server does not manage or
 	#     have direct access to (e.g. it cannot access its memory). this is mainly useful for calls that inspect the state of the container.

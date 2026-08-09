@@ -1,6 +1,6 @@
 //! The XNU kernel emulation, in Rust.
 //!
-//! These are the Rust replacements for the sixteen duct-tape glue .c files (#71),
+//! These are the Rust replacements for the sixteen xnu-sys glue .c files (#71),
 //! which is why the module names mirror XNU subsystems. The raw FFI underneath is
 //! the xnu_sys bindings (crate::bindings).
 //!
@@ -9,16 +9,16 @@
 //! under xnu:: removes the need for that, so xnu::task is the emulation and crate::task
 //! is the daemon side.
 
-/// duct-tape's timer queue: the Rust replacement for xnu-sys/src/timer.c, the third glue
+/// xnu-sys's timer queue: the Rust replacement for xnu-sys/src/timer.c, the third glue
 /// file ported off C (#71).
 pub mod timer;
 
-/// duct-tape condition variables: the Rust replacement for xnu-sys/src/condvar.c, the
+/// xnu-sys condition variables: the Rust replacement for xnu-sys/src/condvar.c, the
 /// second glue file ported off C (#71). Exports the dtape_condvar_* C ABI, so the still-C
 /// locks.c and thread.c link against this.
 pub mod condvar;
 
-/// Object-level duct-tape semaphores: the Rust replacement for xnu-sys/src/semaphore.c,
+/// Object-level xnu-sys semaphores: the Rust replacement for xnu-sys/src/semaphore.c,
 /// the first glue file ported off C (#71). Exports the dtape_semaphore_* C ABI, so the
 /// still-C kqchan.c links against this.
 pub mod semaphore;
@@ -29,7 +29,7 @@ pub mod host;
 // processor.c: processors and processor sets (#71, fifth file ported).
 pub mod processor;
 
-// init.c: duct-tape start-up, and the dtape_hooks global (#71, sixth file ported).
+// init.c: xnu-sys start-up, and the dtape_hooks global (#71, sixth file ported).
 pub mod init;
 
 // debug.c: the Mach debug queries (#71, seventh file ported).
@@ -44,7 +44,7 @@ pub mod locks;
 // tree function file-local, and this file never looked anything up by key.
 pub mod memory;
 
-// xnu-sys/src/stubs.c: the XNU entry points duct-tape does not implement, plus the stub
+// xnu-sys/src/stubs.c: the XNU entry points xnu-sys does not implement, plus the stub
 // logger every other glue file calls (#71, thirteenth file). panic, the fourth and last
 // variadic definition, stays in C in dtape_rs_shims.c.
 pub mod stubs;

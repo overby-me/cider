@@ -1,4 +1,4 @@
-//! Runtime exercise of the ported duct-tape condvar (#71).
+//! Runtime exercise of the ported xnu-sys condvar (#71).
 //!
 //! The semaphore port got a runtime check for free, because `scheduler_demo` already drove
 //! it. condvar had none: its only coverage was unit tests over the TAILQ helpers in
@@ -24,7 +24,7 @@ use cider::bindings::{dtape_condvar_t, dtape_mutex_t};
 use cider::sched;
 
 // These were `extern "C"` declarations resolving through the linker back into the cider
-// crate, from when duct-tape was C. It is Rust now (#71), so they are imported (#75).
+// crate, from when xnu-sys was C. It is Rust now (#71), so they are imported (#75).
 //
 // A BIN CRATE, so the path is cider:: and not crate:: . The seven files under src/bin are
 // separate rust_binary targets that depend on :cider; crate:: would not compile here, and

@@ -1,6 +1,6 @@
-//! The layout invariant the whole duct-tape port rests on (#71), asserted at compile time.
+//! The layout invariant the whole xnu-sys port rests on (#71), asserted at compile time.
 //!
-//! Six of the ported files walk back from an embedded XNU struct to the duct-tape struct that
+//! Six of the ported files walk back from an embedded XNU struct to the xnu-sys struct that
 //! contains it:
 //!
 //! ```text

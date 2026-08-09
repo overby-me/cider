@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_CONDVAR_H_
-#define _DARLINGSERVER_DUCT_TAPE_CONDVAR_H_
+#ifndef _DARLINGSERVER_XNU_SYS_CONDVAR_H_
+#define _DARLINGSERVER_XNU_SYS_CONDVAR_H_
 
 #include "locks.h"
 
@@ -12,4 +12,4 @@ void dtape_condvar_init(dtape_condvar_t* condvar);
 void dtape_condvar_signal(dtape_condvar_t* condvar, size_t count);
 void dtape_condvar_wait(dtape_condvar_t* condvar, dtape_mutex_t* mutex);
 
-#endif // _DARLINGSERVER_DUCT_TAPE_CONDVAR_H_
+#endif // _DARLINGSERVER_XNU_SYS_CONDVAR_H_

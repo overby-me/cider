@@ -58,7 +58,7 @@ This is the thing to internalise before trying to pull anything across.
 
    | path | files | note |
    |---|---|---|
-   | `src/external/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_duct_tape`) |
+   | `src/external/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_xnu_sys`) |
    | `src/external/libpthread_workqueue-0.8.2/` | 40 | vendored |
    | `src/external/libtrace/` | 28 | vendored, see its `VENDORED.md` |
 

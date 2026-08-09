@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rank duct-tape's glue files by what Rust genuinely CANNOT express (#71).
+"""Rank xnu-sys's glue files by what Rust genuinely CANNOT express (#71).
 
 The port keeps the ~300 XNU sources in C and moves the glue (16 files, 8,525 lines) to
 Rust. Which file to take next is not a judgement call, it is measurable, because only two
@@ -11,7 +11,7 @@ things are hard blockers:
              reimplementation in Rust or a C shim exporting it as a real symbol.
 
 Everything else (struct access, plain calls, globals, enums) bindgen handles: measured, with
-duct-tape's own flags, bindgen parses the XNU internal headers and emits layout assertions.
+xnu-sys's own flags, bindgen parses the XNU internal headers and emits layout assertions.
 
 WHY THIS SCRIPT EXISTS RATHER THAN A ONE-OFF GREP. The first version of this measurement was
 wrong in two ways that both flattered the answer, and it picked the wrong file:
@@ -43,7 +43,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OPAQUE = []
 DT = os.path.join(ROOT, "src/external/ciderd/xnu-sys")
 
-# duct-tape's include roots, in the BUCK file's order (dt_env).
+# xnu-sys's include roots, in the BUCK file's order (dt_env).
 INCLUDE_ROOTS = [
     "defines", "xnu/osfmk", "xnu/bsd", "xnu/libkern", "xnu/osfmk/libsa",
     "xnu/pexpert", "xnu/iokit", "xnu/EXTERNAL_HEADERS", "xnu",
@@ -58,18 +58,18 @@ DEF_FN = re.compile(r"^#define ([A-Za-z_][A-Za-z0-9_]*)\(")
 DEF_OB = re.compile(r"^#define ([A-Za-z_][A-Za-z0-9_]*)[ \t]")
 
 
-FLAGS_BZL = os.path.join(ROOT, "buck/generated/duct_tape_flags.bzl")
+FLAGS_BZL = os.path.join(ROOT, "buck/generated/xnu_sys_flags.bzl")
 
 
 def buck_list(name):
     """Pull a flag list from the generated flags file rather than duplicating it here.
 
-    These lived inline in the duct-tape BUCK file until the Rust port needed the identical
-    set for bindgen; a BUCK file cannot be load()ed, so gen-duct-tape-buck.py now writes
-    them to buck/generated/duct_tape_flags.bzl and both BUCK files load that.
+    These lived inline in the xnu-sys BUCK file until the Rust port needed the identical
+    set for bindgen; a BUCK file cannot be load()ed, so gen-xnu-sys-buck.py now writes
+    them to buck/generated/xnu_sys_flags.bzl and both BUCK files load that.
     """
     if not os.path.exists(FLAGS_BZL):
-        sys.exit(f"{FLAGS_BZL} is missing; run scripts/gen-duct-tape-buck.py")
+        sys.exit(f"{FLAGS_BZL} is missing; run scripts/gen-xnu-sys-buck.py")
     text = open(FLAGS_BZL).read()
     m = re.search(rf"^{name} = \[(.*?)^\]", text, re.M | re.S)
     if not m:
@@ -106,7 +106,7 @@ def clang_args():
     incs += [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
     incs.append(f"-I{os.path.join(ROOT, 'src/libsimple/include')}")
     incs.append(f"-I{os.path.join(ROOT, 'src/external/ciderd/include')}")
-    return buck_list("DUCT_TAPE_DEFINES") + buck_list("DUCT_TAPE_FLAGS") + incs
+    return buck_list("XNU_SYS_DEFINES") + buck_list("XNU_SYS_FLAGS") + incs
 
 
 def preprocesses_cleanly(path, args):
@@ -243,7 +243,7 @@ def own_code_after_expansion(path, args):
 
 
 def archive_defined_symbols():
-    """Symbols the duct-tape archive DEFINES, for deciding whether a macro is really a blocker.
+    """Symbols the xnu-sys archive DEFINES, for deciding whether a macro is really a blocker.
 
     A macro that merely forwards to a real function is not a blocker: Rust cannot DEFINE a C
     variadic but it can CALL one, which is how semaphore.rs calls panic. dtape_log_debug is the
@@ -255,7 +255,7 @@ def archive_defined_symbols():
     kept init.c looking blocked when it is not.
     """
     a = os.path.join(ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/linux/server"
-                           "/__duct_tape_lib__/duct_tape_lib/libciderd_duct_tape.a")
+                           "/__xnu_sys_lib__/xnu_sys_lib/libciderd_xnu_sys.a")
     if not os.path.exists(a):
         return set()
     try:
@@ -351,14 +351,14 @@ def opaque_types_touched(expanded, pats):
     return sorted(hits)
 
 
-# Lines inside a <copied from="xnu://..."> or <adapted from=...> block. duct-tape marks every
+# Lines inside a <copied from="xnu://..."> or <adapted from=...> block. xnu-sys marks every
 # region it lifted from XNU this way.
 _XNU_OPEN = re.compile(r"<(?:copied|adapted) from=")
 _XNU_CLOSE = re.compile(r"</(?:copied|adapted)>")
 
 
 def adapted_xnu_lines(src):
-    """How much of this file is TRANSCRIBED XNU rather than duct-tape glue.
+    """How much of this file is TRANSCRIBED XNU rather than xnu-sys glue.
 
     A different axis from every other column, and the one that would have stopped psynch.c
     being picked as the next port. Its blocker and opaque counts read cheap, and it is 678
@@ -468,7 +468,7 @@ def main():
     # they do not belong in the ranking or in the "N of 16" count. Read from the generator,
     # same rule as PORTED_TO_RUST.
     shim_names = set()
-    _gen = os.path.join(ROOT, "scripts/gen-duct-tape-buck.py")
+    _gen = os.path.join(ROOT, "scripts/gen-xnu-sys-buck.py")
     if os.path.exists(_gen):
         _m = re.search(r"^RUST_SHIM_SOURCES = \[(.*?)^\]", open(_gen).read(), re.M | re.S)
         if _m:
@@ -505,12 +505,12 @@ def main():
             print("    keeps struct task from dragging most of osfmk into the bindings")
         return
 
-    # Already ported files still EXIST on disk -- duct-tape is a submodule, so a port removes
-    # the file from the BUILD (PORTED_TO_RUST in gen-duct-tape-buck.py) rather than deleting
+    # Already ported files still EXIST on disk -- xnu-sys is a submodule, so a port removes
+    # the file from the BUILD (PORTED_TO_RUST in gen-xnu-sys-buck.py) rather than deleting
     # upstream's copy. Read that list rather than keeping a second one here, or this tool
     # goes on recommending a file that is already Rust.
     ported = set()
-    gen = os.path.join(ROOT, "scripts/gen-duct-tape-buck.py")
+    gen = os.path.join(ROOT, "scripts/gen-xnu-sys-buck.py")
     if os.path.exists(gen):
         m = re.search(r"^PORTED_TO_RUST = \[(.*?)^\]", open(gen).read(), re.M | re.S)
         if m:

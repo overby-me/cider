@@ -4,7 +4,7 @@
 <plist version="1.0">
 <dict>
         <key>Label</key>
-        <string>org.ciderhq.shellspawn</string>
+        <string>me.overby.cider.shellspawn</string>
         <key>ProgramArguments</key>
         <array>
             <string>/usr/libexec/shellspawn</string>

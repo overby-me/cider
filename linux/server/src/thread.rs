@@ -1,4 +1,4 @@
-//! Thread-level duct-tape operations. Currently the sigexc (signal-via-Mach-exception)
+//! Thread-level xnu-sys operations. Currently the sigexc (signal-via-Mach-exception)
 //! enter/exit bracket used by the interrupt mechanism: when a signal is delivered to a
 //! guest thread, it brackets the interrupt with interrupt_enter/interrupt_exit, and the
 //! daemon tells XNU the thread has entered/left its sigexc state. Mirrors the
@@ -8,7 +8,7 @@
 use crate::bindings::dtape_thread_t;
 
 // These were declared here in an `extern "C"` block and resolved through the linker back into
-// this same crate, because duct-tape was C when this file was written. It is Rust now (#71), so
+// this same crate, because xnu-sys was C when this file was written. It is Rust now (#71), so
 // the declarations are gone and the definitions are imported directly (#75).
 //
 // That is not tidying. rustc lints declaration against declaration, but it does NOT check a
@@ -47,7 +47,7 @@ pub unsafe fn dying(thread: *mut dtape_thread_t) {
 /// thread. Returns a negative errno on failure.
 pub unsafe fn load_state_from_user(thread: *mut dtape_thread_t, thread_state: u64, float_state: u64) -> i32 {
     // u64 here, usize there. These parameters are GUEST ADDRESSES: the RPC wire carries them
-    // as a fixed 64 bit field, and the duct-tape entry point takes them at host pointer width.
+    // as a fixed 64 bit field, and the xnu-sys entry point takes them at host pointer width.
     // The old extern declaration said u64 on both sides and the linker did not care, so the
     // conversion happened silently and only worked because this target is 64 bit. Now it is
     // written down.
@@ -61,7 +61,7 @@ pub unsafe fn save_state_to_user(thread: *mut dtape_thread_t, thread_state: u64,
 /// records the pending signal via the thread_set_pending_signal hook.
 pub unsafe fn process_signal(thread: *mut dtape_thread_t, bsd_signal: i32, linux_signal: i32, code: i32, signal_address: u64) {
     // signal_address is the third of the three that had been disagreeing: u64 on the wire,
-    // usize at the duct-tape entry point.
+    // usize at the xnu-sys entry point.
     dtape_thread_process_signal(thread, bsd_signal, linux_signal, code, signal_address as usize);
 }
 /// Block while the thread is user-suspended (a debugger stopped it); returns immediately

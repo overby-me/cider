@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_TYPES_H_
-#define _DARLINGSERVER_DUCT_TAPE_TYPES_H_
+#ifndef _DARLINGSERVER_XNU_SYS_TYPES_H_
+#define _DARLINGSERVER_XNU_SYS_TYPES_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -96,4 +96,4 @@ typedef bool (*dtape_debug_port_list_messages_iterator_f)(void* context, const d
 };
 #endif
 
-#endif // _DARLINGSERVER_DUCT_TAPE_TYPES_H_
+#endif // _DARLINGSERVER_XNU_SYS_TYPES_H_

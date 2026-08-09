@@ -11,7 +11,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
-buck2 build //src/external/ciderd/xnu-sys:ciderd_duct_tape
+buck2 build //src/external/ciderd/xnu-sys:ciderd_xnu_sys
 scripts/buck-test.nu         # regression test for everything ported so far
 ```
 
@@ -47,7 +47,7 @@ ninja.)
 
 - A compile can only see headers someone declared for it, so a source-tree
   `endian.h` cannot shadow the SDK's system header (nix-ninja's "wall #1").
-- Overlapping roots stay separate. duct-tape puts both `xnu` and `xnu/osfmk` on
+- Overlapping roots stay separate. xnu-sys puts both `xnu` and `xnu/osfmk` on
   the path, and MIG re-emits a `mach/notify.h` that also exists as a hand-written
   source header; separate ordered roots resolve both exactly the way cmake's
   include order does, with no merge and no fixup.
@@ -61,14 +61,14 @@ ninja.)
   header's path; `header_map` gives `{include path: header}` explicitly, for
   roots that are not a prefix strip (the Darwin SDK namespaces, whose maps come
   from `scripts/gen-sdk-header-roots.py`). With no headers it is a pure
-  flags-and-deps bundle: `dt_env` carries duct-tape's 108 defines plus all its
-  include roots, so everything that compiles duct-tape depends on one target.
+  flags-and-deps bundle: `dt_env` carries xnu-sys's 108 defines plus all its
+  include roots, so everything that compiles xnu-sys depends on one target.
 
 `cc_objects(name, srcs, gen_srcs, headers, compiler_flags, deps)`
 : A group of objects sharing one set of flags. `gen_srcs` names codegen targets
   whose generated sources this target compiles (and whose generated headers it
   sees). Exists so one archive can hold object groups compiled differently:
-  duct-tape's `pthread/kern_synch.c` needs its own `-I`.
+  xnu-sys's `pthread/kern_synch.c` needs its own `-I`.
 
 `cc_static_lib(name, objs, lib_name, exported_headers, deps)`
 : Archive object groups into one `.a`. `lib_name` covers targets whose artifact
@@ -79,7 +79,7 @@ ninja.)
 
 `cc_lib_dir(name, deps)`
 : Collect a dep graph's archives into one directory, which is the shape
-  `DUCT_TAPE_LIB` wants (see `//linux/server:duct_tape_lib`).
+  `XNU_SYS_LIB` wants (see `//linux/server:xnu_sys_lib`).
 
 `mig_gen(name, defs, out_base, *_suffix, compile_srcs, mig_sh, migcom, deps)`
 : Run one MIG definition. Invokes Darling's own `mig.sh` (through `bash`: its
@@ -112,7 +112,7 @@ ninja.)
   (`nix build .#cider-graph-stock`), not from reading `CMakeLists.txt`. The
   CMakeLists does not contain what a target inherits from parent scopes.
 - Where a target's lists are large and upstream-owned, the BUCK file is
-  GENERATED (`scripts/gen-duct-tape-buck.py`) and the generator is committed.
+  GENERATED (`scripts/gen-xnu-sys-buck.py`) and the generator is committed.
   Hand-authored BUCK is for the code we iterate on.
 - New pinned upstream tree to compile? Add it to `scripts/buck-src.nu` and give
   it targets in `buck-src/BUCK`.

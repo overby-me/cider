@@ -64,22 +64,22 @@
         }).buildTarget
           { target = "//src/libsimple:libsimple_ciderd"; };
 
-      # The host tier through the same Nix-lowered path: ciderd's duct-tape
+      # The host tier through the same Nix-lowered path: ciderd's xnu-sys
       # archive (real XNU osfmk/bsd sources plus mig codegen, and the artifact the
-      # Rust daemon consumes via DUCT_TAPE_LIB). Bigger than the libsimple smoke
+      # Rust daemon consumes via XNU_SYS_LIB). Bigger than the libsimple smoke
       # target by two orders of magnitude, and it exercises a generator TOOL built
       # by the same graph (migcom):
-      #   nix build .#cider-buck2-duct-tape
-      packages.cider-buck2-duct-tape =
+      #   nix build .#cider-buck2-xnu-sys
+      packages.cider-buck2-xnu-sys =
         pkgs:
         (import ./nix/lib/ciderBuck2.nix {
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//src/external/ciderd/xnu-sys:ciderd_duct_tape"; };
+          { target = "//src/external/ciderd/xnu-sys:ciderd_xnu_sys"; };
 
       # A mid-size probe for the Nix-lowered path: src/duct's static archive is 8
-      # sources in a 165-line BUCK file, between libsimple (80 lines) and duct-tape
+      # sources in a 165-line BUCK file, between libsimple (80 lines) and xnu-sys
       # (1044). Which of size or feature-set the interpreter runs out of road on is
       # what this answers:
       #   nix build .#cider-buck2-duct-static
@@ -375,78 +375,6 @@
         # derivations instead of lowering the graph a second time with different arguments.
         lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject named drvs pinsTree; };
 
-      # Task #44, the experiment and nothing more: the same lowering with narrowSources on.
-      #
-      # A DUPLICATE rather than a shared function on purpose. The question the experiment
-      # asks is whether the narrowed source union builds, and the only way to be sure the
-      # comparison is honest is for the default expression above to stay byte for byte what
-      # it was, which a refactor cannot promise without a second evaluation to check it.
-      # This block goes away when #44 concludes, either by flipping the default in
-      # nix/lib/ciderBuck2Lower.nix or by dropping the narrowing.
-      #
-      # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
-      # flake source gives a different cider-src, which moves the graph and with it every
-      # lowered derivation, so it rebuilds the world and then compares against a baseline
-      # that is not this one. (It used to move ld64 as well, 26k objects; #65 removed that.)
-      # THE MINIMAL ENDPOINT WITH narrowSources ON (#54). packages.cider-buck2-prefix-narrow
-      # exists already but lowers the FULL target list and the full prefix, so testing the flag
-      # there costs a graph this store may not hold plus a two hour build. This pairs the flag
-      # with buck2-targets-min.nix, which reuses the graph the minimal endpoint already built,
-      # so one target can be tried in seconds and the whole endpoint in about an hour.
-      #
-      # WHY narrowSources RATHER THAN sourceGroups, measured: splitting the source into
-      # per-subtree stores cannot work here. A link farm cannot repair a relative escape, since
-      # the kernel resolves .. against the REAL parent once it crosses the farm symlink, and
-      # rewriting escapes to absolute paths relocates the problem rather than solving it, 143
-      # dangling links becoming 413, because the destination store has escapes of its own. The
-      # SDK usr/include extracted alone is 1,987 dangling of 1,987 symlinks against 0 of 2,928
-      # inside the assembled tree. A builtins.path union keeps the PROJECT ROOT, so the
-      # relative web resolves, and is keyed on FILTERED CONTENT, so a target whose own files
-      # did not change keeps its path when the project moves.
-      #
-      # FIRST REAL EVIDENCE FOR #69, and it cost 340 seconds rather than the 90 minutes the
-      # endpoint wants. Two targets through THIS lowering, picked as one of each kind the
-      # narrowing has broken before, a compile and a generator:
-      #   root//src/libsimple:libsimple_ciderd   c_compile src/lock.c, then archive
-      #   root//src/external/ciderd:dserver_rpc  script_gen, runs a python3 out of scripts/
-      # exit 0, 5 builders, 0 errors. So narrowSources is not obviously wrong, which is all one
-      # target can say. The endpoint hash and the default flip are still unverified.
-      #
-      #   nix build .#cider-buck2-prefix-min-narrow --max-jobs 2 --cores 4
-      packages.cider-buck2-prefix-min-narrow =
-        pkgs:
-        let
-          ciderSrc = import ./nix/lib/cider-src.nix {
-            inherit pkgs;
-            baseSrc = ./.;
-          };
-          lowered = import ./nix/lib/ciderBuck2Lower.nix {
-            inherit pkgs ciderSrc;
-            allPins = true;
-            narrowSources = true;
-            # THE SAME SETTINGS THE UNNARROWED ENDPOINT USES, and leaving them off is what made
-            # the first cascade measurement worthless. narrowSources cannot cut anything while
-            # the GRAPH still moves on a source edit, because every lowered derivation is
-            # downstream of it. Measured without these: a one line edit to one .m needed 6,502
-            # derivations, the whole endpoint, which is the number the unnarrowed endpoint
-            # posts too. So the narrowing was measured on an endpoint where it could not
-            # possibly show, and the result said nothing about narrowSources at all.
-            coarsePins = true;
-            extraTools =
-              let
-                di = pkgs.callPackage ./nix/ciderBuildInputs.nix { };
-              in
-              di.wrappedLibs ++ di.hostHeaderLibs;
-            graph = import ./nix/lib/ciderBuck2Graph.nix {
-              inherit pkgs ciderSrc;
-              allPins = true;
-              skeleton = true;
-              targets = import ./nix/lib/buck2-targets-min.nix;
-            };
-          };
-        in
-        lowered.named."root//buck/prefix-min:cider_prefix_min"
-        // { inherit (lowered) stageProject named drvs pinsTree; };
 
       # THE MINIMAL ENDPOINT WITH sourceGroups ON (#54), which is the flag with the RIGHT
       # granularity: with it on, editing ACAccount.m and rebuilding libsimple_ciderd ran
@@ -677,65 +605,6 @@
       packages.cider-buck2-one =
         pkgs: pkgs.cider-buck2-prefix-min.named."root//src/libsimple:libsimple_ciderd";
 
-      # Task #44, the experiment and nothing more: the same lowering with narrowSources on.
-      #
-      # A DUPLICATE rather than a shared function on purpose. The question the experiment
-      # asks is whether the narrowed source union builds, and the only way to be sure the
-      # comparison is honest is for the default expression above to stay byte for byte what
-      # it was, which a refactor cannot promise without a second evaluation to check it.
-      # This block goes away when #44 concludes, either by flipping the default in
-      # nix/lib/ciderBuck2Lower.nix or by dropping the narrowing.
-      #
-      # Do not lower this out of the repo instead: passing baseSrc as a path rather than the
-      # flake source gives a different cider-src, which moves the graph and with it every
-      # lowered derivation, so it rebuilds the world and then compares against a baseline
-      # that is not this one. (It used to move ld64 as well, 26k objects; #65 removed that.)
-
-      packages.cider-buck2-prefix-narrow =
-        pkgs:
-        let
-          ciderSrc = import ./nix/lib/cider-src.nix {
-            inherit pkgs;
-            baseSrc = ./.;
-          };
-          lowered = import ./nix/lib/ciderBuck2Lower.nix {
-            inherit pkgs ciderSrc;
-            allPins = true;
-            narrowSources = true;
-            # The host ELF libraries wrapgen dlopen's, declared for exactly the reason
-            # extraTools exists: a wrap_elf action's fifth argument is the elf_lib_dirs
-            # string, so the recorded argv carries those store paths as PLAIN TEXT, the
-            # dump discards string context, and Nix cannot see the dependency. Undeclared,
-            # the sandbox does not have them and the action dies with "Cannot load
-            # libX11.so" -- the same failure the graph derivation hit one stage earlier.
-            #
-            # hostHeaderLibs as well as wrappedLibs, and for the same reason one step over:
-            # a compile's argv carries -I into xorgproto, zlib, linux-headers and the rest
-            # as plain text, so those store paths are equally invisible to Nix. Declaring
-            # only the ELF set is what left fseventsd_obj failing on linux/types.h in the
-            # lowering after the graph stage had been fixed.
-            #
-            # Only here: the libsimple, migcom and blocks endpoints below lower graphs with
-            # no wrap_elf in them.
-            extraTools =
-              let
-                di = pkgs.callPackage ./nix/ciderBuildInputs.nix { };
-              in
-              di.wrappedLibs ++ di.hostHeaderLibs;
-            graph = import ./nix/lib/ciderBuck2Graph.nix {
-              inherit pkgs ciderSrc;
-              allPins = true;
-              targets = import ./nix/lib/buck2-targets.nix;
-            };
-          };
-        in
-        # `//` rather than overrideAttrs or passthru: this must not touch the derivation. The
-        # extra attribute only gives `nix build .#cider-buck2-prefix.stageProject` something
-        # to resolve, so scripts/buck-lowering-stage-check.nu can read the staging script in
-        # seconds instead of discovering a staging bug 90 minutes into a build.
-        # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
-        # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject named drvs pinsTree; };
 
       # The same endpoint with each buck-src PIN lowered as one derivation instead of one
       # per target (#53). buck-src is 58.9 percent of the actions and only moves when a
@@ -794,7 +663,7 @@
             inherit pkgs ciderSrc;
             allPins = true;
             coarsePins = true;
-            # Same reason as the narrow variant above: a wrap_elf argv carries these store
+            # extraTools exists because a wrap_elf argv carries these store
             # paths as PLAIN TEXT, so Nix cannot see the dependency and the sandbox would
             # not have them.
             extraTools =

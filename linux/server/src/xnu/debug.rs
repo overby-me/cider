@@ -37,7 +37,7 @@ use crate::bindings::{
     IE_BITS_GEN_MASK, IE_BITS_TYPE_MASK, IE_BITS_UREFS_MASK, KERN_SUCCESS,
 };
 
-/// `dtape_task_for_xnu_task`: XNU's task is EMBEDDED in the duct-tape one, so this walks back
+/// `dtape_task_for_xnu_task`: XNU's task is EMBEDDED in the xnu-sys one, so this walks back
 /// by the field offset.
 ///
 /// COMPUTED, NOT CALLED, and the first version of this file got that wrong. The C is

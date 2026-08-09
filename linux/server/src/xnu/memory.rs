@@ -10,7 +10,7 @@
 //! reads are an in-order walk and a drain. So it lives in `dtape_rs_shims.c` and is driven here
 //! through five operations. See that file for the reasoning.
 //!
-//! **`struct zone` is duct-tape's own, not XNU's.** memory.c defines a two-field one at its top,
+//! **`struct zone` is xnu-sys's own, not XNU's.** memory.c defines a two-field one at its top,
 //! shadowing the XNU struct of the same name, so it is declared here the same way rather than
 //! bound. That was worth checking: `--opaque-type=zone.*` in the flags made it look like XNU's.
 //!
@@ -59,7 +59,7 @@ extern "C" {
     fn sysconf(name: c_int) -> i64;
 }
 
-/// duct-tape's own `struct zone`, two fields, defined at the top of memory.c and shadowing the
+/// xnu-sys's own `struct zone`, two fields, defined at the top of memory.c and shadowing the
 /// XNU struct of the same name. Nothing outside this file can see it.
 #[repr(C)]
 pub struct zone {

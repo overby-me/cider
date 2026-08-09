@@ -371,7 +371,7 @@ unsafe fn run(cfg: Config) -> ! {
                         kqchans.push(kq);
                     }
                     // Mach-port kqchans (task #54): only a daemon_fd to watch -- events arrive via
-                    // the duct-tape notification callback (fired inline on a sender's RPC), not epoll.
+                    // the xnu-sys notification callback (fired inline on a sender's RPC), not epoll.
                     for kq in (*handler_ptr).take_pending_kqchans_mach() {
                         epoll_add(epfd, kq.daemon_fd);
                         mach_kqchans.push(kq);
@@ -482,7 +482,7 @@ unsafe fn handle_call(
     }
     // (b) interrupt_enter arriving for a thread blocked DEEP in a handler (not idle at the
     //     doWork top): run its sigexc sequence NESTED so it never resumes the blocked call
-    //     (which reads a bogus wait_result and panics the duct-tape). A thread idle at the top
+    //     (which reads a bogus wait_result and panics the xnu-sys). A thread idle at the top
     //     just takes the normal path below.
     if base_number == 14 {
         if let Some(mt) = reg.parked_mt(nsid, tid) {

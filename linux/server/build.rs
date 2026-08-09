@@ -2,19 +2,19 @@
 //
 // 1. bindgen the dtape hooks contract from SOURCE headers (no build needed) ->
 //    proves the 36-field dtape_hooks_t + all dtape types bind correctly in Rust.
-// 2. When DUCT_TAPE_LIB is set (a dir with the cider build's static libs), link
-//    the real duct-tape + libsimple so dtape_init resolves -> the Stage 0 link proof.
+// 2. When XNU_SYS_LIB is set (a dir with the cider build's static libs), link
+//    the real xnu-sys + libsimple so dtape_init resolves -> the Stage 0 link proof.
 // 3. Compile fast_context.c (the landed P1 signal-mask-free ucontext) into the
 //    crate for the Stage 3 spike (Arm A).
 //
-// The prior link-model proof (stub duct-tape, DUCT_TAPE_LIB wiring) was validated in
+// The prior link-model proof (stub xnu-sys, XNU_SYS_LIB wiring) was validated in
 // a throwaway prototype (since removed); this consumes the REAL project the same way.
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    // crate lives at <repo>/linux/server; the C++ duct-tape it links is still at
+    // crate lives at <repo>/linux/server; the C++ xnu-sys it links is still at
     // <repo>/src/external/ciderd. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
@@ -31,7 +31,7 @@ fn main() {
 
     // The internal structs the ported glue needs (#71). wrapper.h reaches internal-include,
     // the XNU roots, and two GENERATED trees: ciderd/rpc.h (the RPC wrapper
-    // generator, via duct-tape.h) and the MIG output for mach/task.h, which is the only
+    // generator, via xnu-sys.h) and the MIG output for mach/task.h, which is the only
     // place semaphore_create and semaphore_destroy are declared.
     //
     // The generated trees do not exist in a bare checkout, so cargo is TOLD where they are
@@ -45,7 +45,7 @@ fn main() {
     if gen_roots.is_empty() {
         panic!(
             "DTAPE_GEN_INCLUDE is not set.\n\
-             wrapper.h binds duct-tape's internal structs, which reach two GENERATED header \
+             wrapper.h binds xnu-sys's internal structs, which reach two GENERATED header \
              trees (ciderd/rpc.h and the MIG mach/task.h). Point this at their \
              directories, colon separated. buck2 wires them as target deps, so the usual \
              fix is to build through buck2 (//linux/server:ciderd), or to run \
@@ -70,7 +70,7 @@ fn main() {
             "-I{}",
             manifest.join("../../src/external/ciderd/include").display()
         ))
-        // The XNU headers do not parse without duct-tape's own flags; -fblocks above all,
+        // The XNU headers do not parse without xnu-sys's own flags; -fblocks above all,
         // since osfmk/kern/priority_queue.h uses blocks. The buck2 path loads the full set
         // from src/external/ciderd/xnu-sys/flags.bzl, which the generator writes
         // from the same CMakeLists these come from.
@@ -124,19 +124,19 @@ fn main() {
         println!("cargo:warning=fast_context.c not found at {}", fast_context.display());
     }
 
-    // ---- (2) link the real duct-tape when provided ----
-    // DUCT_TAPE_LIB = dir holding libciderd_duct_tape.a + liblibsimple_ciderd.a
+    // ---- (2) link the real xnu-sys when provided ----
+    // XNU_SYS_LIB = dir holding libciderd_xnu_sys.a + liblibsimple_ciderd.a
     // (exported by the cider build; see nix wiring). Without it, `cargo check`
     // still validates the Rust/FFI side; only the final bin link needs it.
-    if let Ok(libdir) = env::var("DUCT_TAPE_LIB") {
+    if let Ok(libdir) = env::var("XNU_SYS_LIB") {
         println!("cargo:rustc-link-search=native={libdir}");
-        println!("cargo:rustc-link-lib=static=ciderd_duct_tape");
+        println!("cargo:rustc-link-lib=static=ciderd_xnu_sys");
         println!("cargo:rustc-link-lib=static=libsimple_ciderd");
         // XNU/xnu-sys C pulls these Linux libs:
         for l in ["pthread", "dl", "m", "rt"] {
             println!("cargo:rustc-link-lib=dylib={l}");
         }
     }
-    println!("cargo:rerun-if-env-changed=DUCT_TAPE_LIB");
+    println!("cargo:rerun-if-env-changed=XNU_SYS_LIB");
     println!("cargo:rerun-if-changed=wrapper.h");
 }

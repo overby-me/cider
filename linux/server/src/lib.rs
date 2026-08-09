@@ -1,6 +1,6 @@
 //! ciderd: the Rust host-side rewrite of ciderd.
 //!
-//! Boundary (frozen): the C duct-tape (XNU emulation) is consumed via the dtape_*
+//! Boundary (frozen): the C xnu-sys (XNU emulation) is consumed via the dtape_*
 //! API + the dtape_hooks vtable; everything above it is safe-ish Rust. See
 //! PLAN.md. Proven so far (spikes): the link + dtape_init
 //! (Stage 0), both microthread suspend/resume paths across the FFI (Stage 3), and
@@ -35,17 +35,17 @@ pub mod server;
 /// Mach special-port traps (task_self/host_self/thread_self/mach_reply_port).
 pub mod mach;
 
-/// Task-level duct-tape operations (dtape_task_* on an explicit task pointer).
+/// Task-level xnu-sys operations (dtape_task_* on an explicit task pointer).
 pub mod task;
-/// The XNU kernel emulation: the Rust replacements for the 16 duct-tape
+/// The XNU kernel emulation: the Rust replacements for the 16 xnu-sys
 /// glue files (#71). Paired with the xnu_sys bindings underneath.
 pub mod xnu;
 
 
-/// Thread-level duct-tape operations (sigexc enter/exit for the interrupt mechanism).
+/// Thread-level xnu-sys operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 
-/// XNU-trap duct-tape wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
+/// XNU-trap xnu-sys wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
 pub mod traps;
 
 /// Process kqueue channels (EVFILT_PROC): the daemon side of the guest's process waiters.

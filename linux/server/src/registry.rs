@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
-// directly since duct-tape became Rust (#71, #75).
+// directly since xnu-sys became Rust (#71, #75).
 use crate::xnu::task::dtape_task_create;
 
 /// The architecture arrives from the RPC wire as a plain u32; dtape_task_create takes the
@@ -70,7 +70,7 @@ impl Registry {
             return t;
         }
         // Address-stable per-task context carrying the guest's host pid, handed to the
-        // duct-tape as the task's void* context and back to the memory hooks. Boxed so
+        // xnu-sys as the task's void* context and back to the memory hooks. Boxed so
         // it never moves while C holds the pointer. (nsid doubles as the host pid here;
         // a real checkin passes the connecting process's actual host pid.)
         let host_pid = self.host_pids.get(&pid).copied().unwrap_or(pid as libc::pid_t);

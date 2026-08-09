@@ -7,8 +7,8 @@
  * (stdint/stdbool) and libsimple/lock.h -- so this half needs no build, just two source
  * include dirs.
  *
- * (2) THE INTERNAL STRUCTS THE PORTED GLUE NEEDS (#71). duct-tape glue files are moving to
- * Rust one at a time, and they manipulate duct-tape's own structs: semaphore.c walks
+ * (2) THE INTERNAL STRUCTS THE PORTED GLUE NEEDS (#71). xnu-sys glue files are moving to
+ * Rust one at a time, and they manipulate xnu-sys's own structs: semaphore.c walks
  * owning_task->xnu_task, so Rust needs the offset of xnu_task inside struct dtape_task,
  * which embeds the whole XNU struct task. Generating that is the entire point -- an offset
  * transcribed by hand is an offset that drifts silently the next time the struct gains a
@@ -16,7 +16,7 @@
  *
  * This half is NOT self-contained, and that is why it was left out until now. It reaches
  * internal-include, the XNU header roots, and two GENERATED trees: ciderd/rpc.h
- * (the RPC wrapper generator, via duct-tape.h's DSERVER_DTAPE_DECLS) and the MIG output for
+ * (the RPC wrapper generator, via xnu-sys.h's DSERVER_DTAPE_DECLS) and the MIG output for
  * mach/task.h, where semaphore_create and semaphore_destroy are actually declared -- XNU's
  * kern/sync_sema.h declares only semaphore_destroy_all. linux/server/BUCK wires all of them
  * as include_dirs; build.rs mirrors it for the cargo path.
@@ -270,7 +270,7 @@ enum dtape_rs_host_consts {
 	DTAPE_RS_DTAPE_FATAL_STUBS = DTAPE_FATAL_STUBS,
 	/* THE LAYOUT INVARIANT THE WHOLE PORT RESTS ON.
 	 *
-	 * Five ported files walk back from an embedded XNU struct to the duct-tape one that
+	 * Five ported files walk back from an embedded XNU struct to the xnu-sys one that
 	 * contains it, using offset_of. That is only correct while Rust and C agree on the layout
 	 * of both, and nothing checks it: bindgen runs with --no-layout-tests, and marking a type
 	 * opaque or reopening it is exactly the kind of change that could move a field silently.

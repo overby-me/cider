@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_KQCHAN_H_
-#define _DARLINGSERVER_DUCT_TAPE_KQCHAN_H_
+#ifndef _DARLINGSERVER_XNU_SYS_KQCHAN_H_
+#define _DARLINGSERVER_XNU_SYS_KQCHAN_H_
 
 #include <stdint.h>
 
@@ -25,4 +25,4 @@ struct dtape_kqchan_mach_port {
 	dtape_semaphore_t* waiter_read_semaphore;
 };
 
-#endif // _DARLINGSERVER_DUCT_TAPE_KQCHAN_H_
+#endif // _DARLINGSERVER_XNU_SYS_KQCHAN_H_

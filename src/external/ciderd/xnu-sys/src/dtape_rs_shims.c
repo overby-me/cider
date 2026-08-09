@@ -1,10 +1,10 @@
-/* Macro-only duct-tape operations, exported as REAL SYMBOLS for the Rust port (#71).
+/* Macro-only xnu-sys operations, exported as REAL SYMBOLS for the Rust port (#71).
  *
- * FIRST-PARTY, despite sitting in the vendored duct-tape tree. It lives here because it has to
- * compile with duct-tape's exact defines, warning flags and eleven include roots, which is
+ * FIRST-PARTY, despite sitting in the vendored xnu-sys tree. It lives here because it has to
+ * compile with xnu-sys's exact defines, warning flags and eleven include roots, which is
  * precisely what the generated dt_objects target already provides; reproducing that set in
  * linux/server just to hold one file would be a second copy of the thing most likely to drift.
- * scripts/gen-duct-tape-buck.py adds it to dt_objects by name (RUST_SHIM_SOURCES).
+ * scripts/gen-xnu-sys-buck.py adds it to dt_objects by name (RUST_SHIM_SOURCES).
  *
  * WHY THIS EXISTS. bindgen binds no macros at all, so every macro a glue file calls is a hard
  * blocker for porting that file: it needs either a reimplementation in Rust or a C shim that
@@ -62,7 +62,7 @@ void dtape_rs_kfree(void* address, size_t size) {
 	kfree(address, size);
 };
 
-/* simple_lock_init, as a symbol. duct-tape passes a tag of 0 at every call site, so the tag is
+/* simple_lock_init, as a symbol. xnu-sys passes a tag of 0 at every call site, so the tag is
  * fixed here rather than crossing the FFI as an argument nobody varies. */
 void dtape_rs_simple_lock_init(simple_lock_data_t* lock) {
 	simple_lock_init(lock, 0);
@@ -256,7 +256,7 @@ void dtape_rs_task_set_64bit_data(struct task* task) {
 
 /* THE VARIADIC FRONT ENDS, from misc.c (#71).
  *
- * Stable Rust can CALL a C variadic function but cannot DEFINE one, and duct-tape exports four
+ * Stable Rust can CALL a C variadic function but cannot DEFINE one, and xnu-sys exports four
  * variadic definitions. These three are misc.c's; the fourth, panic, stays in stubs.c until that
  * file is ported. Each does the one thing Rust cannot, which is start a va_list; everything
  * else about misc.c is Rust now. dtape_logv is here for the same reason at one remove, since
@@ -285,7 +285,7 @@ int vprintf(const char* format, va_list args);
 void panic(const char* message, ...) {
 	va_list args;
 	va_start(args, message);
-	printf("ciderd duct-tape panic: ");
+	printf("ciderd xnu-sys panic: ");
 	vprintf(message, args);
 	va_end(args);
 	printf("\n");

@@ -177,7 +177,7 @@ def _rust_binary_impl(ctx):
     out = ctx.actions.declare_output(ctx.attrs.binary_name or ctx.label.name)
     cmd, inproc = _rustc(ctx, "bin", out, deps)
 
-    # Static libraries from the C side of the port (duct-tape, libsimple, the fast-context
+    # Static libraries from the C side of the port (xnu-sys, libsimple, the fast-context
     # shim), which the daemon links. -L native= says where to look and -l static= names
     # what to take, exactly as the crate's build.rs prints them; the search paths come from
     # the artifacts themselves, so nothing depends on a path outside the build.
@@ -224,7 +224,7 @@ rust_binary = rule(
 # ---------------------------------------------------------------------------
 # bindgen: the C contract a crate binds to, generated.
 #
-# The daemon binds the duct-tape hooks vtable -- 36 function pointers -- from the real
+# The daemon binds the xnu-sys hooks vtable -- 36 function pointers -- from the real
 # headers rather than transcribing it, which is what keeps the Rust side honest when the C
 # side changes. Its build.rs calls the bindgen LIBRARY; this calls the same generator as a
 # tool, so the port does not have to build bindgen and its thirty dependencies to produce

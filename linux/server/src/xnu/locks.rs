@@ -3,7 +3,7 @@
 //!
 //! This is the file every guest thread runs on. The mutex here is NOT a native lock, and the
 //! comment block in the C explains why at length; the short version is that a native lock would
-//! put the whole Linux thread to sleep, when what duct-tape wants is to suspend one MICROTHREAD
+//! put the whole Linux thread to sleep, when what xnu-sys wants is to suspend one MICROTHREAD
 //! and leave the thread free to run others. So the queue of waiters is protected by a real
 //! futex-based `libsimple_lock` held for a very short critical section, and the waiters
 //! themselves are microthreads parked through the `thread_suspend` hook.
@@ -235,7 +235,7 @@ pub unsafe extern "C" fn lck_mtx_try_lock(lock: *mut lck_mtx_t) -> boolean_t {
     dtape_mutex_try_lock(ptr::addr_of_mut!((*lock).dtape_mutex)) as boolean_t
 }
 
-/// Spinning is not a thing here: duct-tape cannot disable preemption, so a spin variant is the
+/// Spinning is not a thing here: xnu-sys cannot disable preemption, so a spin variant is the
 /// same mutex. Kept as separate symbols because XNU callers reference all three.
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_lock_spin_always(lock: *mut lck_mtx_t) {
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn lck_ticket_assert_owned(tlock: *mut lck_ticket_t) {
 }
 
 // ---------------------------------------------------------------------------------------
-// read-write locks, which duct-tape does not implement
+// read-write locks, which xnu-sys does not implement
 // ---------------------------------------------------------------------------------------
 
 #[no_mangle]

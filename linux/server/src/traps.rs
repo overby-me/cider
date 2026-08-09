@@ -1,4 +1,4 @@
-//! XNU-trap duct-tape wrappers: the bulk of the Mach traps the guest issues, each a
+//! XNU-trap xnu-sys wrappers: the bulk of the Mach traps the guest issues, each a
 //! thin `dtape_<name>(args) -> int` call whose return is the reply code. The generated
 //! C++ does `Thread::syscallReturn(dtape_<name>(_body.<args>))`; here the handler calls
 //! the same dtape function and returns Ok(()) on 0 / Err(code) otherwise. Pointer args
@@ -9,7 +9,7 @@
 
 use crate::bindings::dtape_task_t;
 
-// Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
+// Declared here in an `extern "C"` block until xnu-sys became Rust (#71); imported directly
 // now (#75). rustc lints a declaration against another declaration but never against the
 // DEFINITION it resolves to, because the linker matches on name alone, so each of these 27 was
 // free to disagree with the thing it actually called. Four such disagreements were found

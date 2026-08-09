@@ -1,4 +1,4 @@
-//! duct-tape start-up: the Rust replacement for `xnu-sys/src/init.c` (#71, sixth file).
+//! xnu-sys start-up: the Rust replacement for `xnu-sys/src/init.c` (#71, sixth file).
 //!
 //! `dtape_init` is the single entry point the daemon calls to bring the XNU emulation up. It
 //! creates the zones the kernel allocates out of, initialises two locks, and then runs about
@@ -47,7 +47,7 @@ use crate::bindings::{
 #[no_mangle]
 pub static mut dtape_hooks: *const dtape_hooks_t = ptr::null();
 
-// duct-tape is Rust since #71, so its four initialisers are imported rather than declared
+// xnu-sys is Rust since #71, so its four initialisers are imported rather than declared
 // through the linker (#75).
 use crate::xnu::psynch::dtape_psynch_init;
 use crate::xnu::task::dtape_task_init;
@@ -115,7 +115,7 @@ unsafe fn zone(name: &[u8], size: usize, flags: zone_create_flags_t) -> zone_t {
     zone_create(name.as_ptr() as *const c_char, size as crate::bindings::vm_size_t, flags)
 }
 
-/// Bring duct-tape up. Called once by the daemon, before any guest exists.
+/// Bring xnu-sys up. Called once by the daemon, before any guest exists.
 #[no_mangle]
 pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
     dtape_hooks = hooks;

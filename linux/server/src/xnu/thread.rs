@@ -73,7 +73,7 @@ pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_t
     (xnu_thread as *mut u8).sub(offset_of!(dtape_thread, xnu_thread)) as *mut dtape_thread
 }
 
-/// `dtape_task_for_thread`: the thread's XNU task, walked back to the duct-tape one.
+/// `dtape_task_for_thread`: the thread's XNU task, walked back to the xnu-sys one.
 #[inline]
 unsafe fn task_for_thread(thread: *mut dtape_thread) -> *mut dtape_task {
     crate::xnu::task::task_for_xnu_task((*thread).xnu_thread.task)

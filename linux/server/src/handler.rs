@@ -194,7 +194,7 @@ impl ProcState {
 }
 
 // ---- dserverdbg port/message enumeration (task #60) ----
-// Daemon-facing debug records; same layout as the duct-tape's dtape_debug_port_t / _message_t and
+// Daemon-facing debug records; same layout as the xnu-sys's dtape_debug_port_t / _message_t and
 // dserver_debug_port_t / _message_t that dserverdbg reads (generate-rpc-wrappers.py:819,826).
 #[repr(C)]
 struct DserverDebugPort {
@@ -252,7 +252,7 @@ pub struct Handler {
     /// register with the event loop (it owns the daemon-side sockets + death routing).
     pending_kqchans: Vec<crate::kqchan::ProcKqchan>,
     /// New mach-port kqueue channels opened this dispatch (task #54), handed to the serve loop
-    /// (boxed: their address is the duct-tape notification callback's context, so it must be stable).
+    /// (boxed: their address is the xnu-sys notification callback's context, so it must be stable).
     pending_kqchans_mach: Vec<Box<crate::kqchan::MachPortKqchan>>,
     /// New guest-console daemon-side fds opened this dispatch (console_open, task #60): the daemon
     /// monitors each and logs the guest's console/os_log output. Handed to the serve loop.
@@ -1075,7 +1075,7 @@ impl rpc_wire::RpcHandler for Handler {
     /// itself (hangs, leaks). Mirrors Call::DebugListProcesses (call.cpp:1092).
     fn debug_list_processes(&mut self, _fds: &[RawFd]) -> Result<ReplyDebugListProcesses, i32> {
         // Was a nested `extern "C"` block resolving back into this crate through the linker;
-        // imported since duct-tape became Rust (#71, #75). Nested rather than at file scope,
+        // imported since xnu-sys became Rust (#71, #75). Nested rather than at file scope,
         // which is why it survived the earlier sweep of this file.
         use crate::xnu::debug::dtape_debug_task_port_count;
         // Matches dserver_debug_process_t (dserverdbg.c:336 reads pid:%u, port_count:%lu): u32 then

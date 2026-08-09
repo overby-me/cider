@@ -1,23 +1,23 @@
 load("//buck/rules:cc.bzl", "cc_lib_dir", "cc_library")
 load("//buck/rules:rust.bzl", "bindgen_gen", "rust_binary", "rust_library")
-# duct-tape's own defines and warning flags, generated alongside its BUCK file. bindgen has
+# xnu-sys's own defines and warning flags, generated alongside its BUCK file. bindgen has
 # to parse the XNU headers with the IDENTICAL set for the ported glue (#71); they do not
 # parse without it, since osfmk/kern/priority_queue.h uses blocks and needs -fblocks.
-load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLAGS")
+load("//buck/generated:xnu_sys_flags.bzl", "XNU_SYS_DEFINES", "XNU_SYS_FLAGS")
 
 # The C libraries the Rust daemon links, staged into the single directory its
-# build.rs expects in DUCT_TAPE_LIB:
+# build.rs expects in XNU_SYS_LIB:
 #
-#   DUCT_TAPE_LIB=$(buck2 build --show-output //linux/server:duct_tape_lib | ...) \
+#   XNU_SYS_LIB=$(buck2 build --show-output //linux/server:xnu_sys_lib | ...) \
 #     cargo build -p cider
 #
 # The daemon crate itself is still built by cargo (a Rust port of these rules is
 # separate work -- overby.me's nix/lib/cargo is the model); this target is the
 # seam between the Buck2-built C and that cargo build.
 cc_lib_dir(
-    name = "duct_tape_lib",
+    name = "xnu_sys_lib",
     deps = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
     ],
     visibility = ["PUBLIC"],
@@ -25,7 +25,7 @@ cc_lib_dir(
 
 # The dtape hooks contract, generated from the real headers.
 #
-# The daemon implements a 36-function-pointer vtable that duct-tape calls back into, and
+# The daemon implements a 36-function-pointer vtable that xnu-sys calls back into, and
 # binding it from hooks.h rather than transcribing it is what keeps the Rust side honest
 # when the C side moves. build.rs calls the bindgen library; this calls the same generator
 # as a tool (nix/devShell.nix provides it), so the port never has to build bindgen itself.
@@ -794,9 +794,9 @@ bindgen_gen(
         "--default-enum-style=rust_non_exhaustive",
         "--no-layout-tests",
     ],
-    # duct-tape's own defines and warning flags. The XNU headers do not parse without them:
+    # xnu-sys's own defines and warning flags. The XNU headers do not parse without them:
     # priority_queue.h uses blocks, so -fblocks in particular is load bearing.
-    clang_flags = DUCT_TAPE_DEFINES + DUCT_TAPE_FLAGS,
+    clang_flags = XNU_SYS_DEFINES + XNU_SYS_FLAGS,
     include_dirs = [
         # mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header,
         # and semaphore_create/semaphore_destroy are declared only in the generated one.
@@ -822,7 +822,7 @@ bindgen_gen(
         "//src/external/ciderd/xnu-sys:xnu_root",
         "//src/libsimple:libsimple_headers",
         "//src/external/ciderd:dserver_headers",
-        # duct-tape.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
+        # xnu-sys.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
         "//src/external/ciderd:dserver_rpc",
         "//src/startup:rtsig_header",
     ],
@@ -857,7 +857,7 @@ rust_library(
     visibility = ["PUBLIC"],
 )
 
-# scheduler_demo: a microthread blocks on a duct-tape semaphore, suspends, and is woken.
+# scheduler_demo: a microthread blocks on a xnu-sys semaphore, suspends, and is woken.
 #
 # This exists as a TARGET now because it is the fastest runtime check of the ported glue
 # (#71). It drives dtape_semaphore_create, dtape_semaphore_down_simple and
@@ -867,7 +867,7 @@ rust_library(
 # against roughly an hour for checks.cider-buck2-min-smoke, so a broken port is visible
 # immediately rather than at the end of a prefix build.
 #
-# Same link shape as the daemon: everything above duct-tape is Rust, the C below it comes in
+# Same link shape as the daemon: everything above xnu-sys is Rust, the C below it comes in
 # as static archives.
 rust_binary(
     name = "scheduler_demo",
@@ -878,7 +878,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -904,7 +904,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -918,7 +918,7 @@ rust_binary(
 )
 
 # condvar_demo: the same shape as scheduler_demo, for the condvar port. A microthread waits
-# on a duct-tape condvar (which drops its mutex and suspends it) and a signal from the main
+# on a xnu-sys condvar (which drops its mutex and suspends it) and a signal from the main
 # thread wakes it. condvar had no runtime coverage otherwise.
 rust_binary(
     name = "condvar_demo",
@@ -929,7 +929,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -958,7 +958,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -986,7 +986,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1014,7 +1014,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1027,7 +1027,7 @@ rust_binary(
     visibility = ["PUBLIC"],
 )
 
-# ciderd: the daemon itself. Everything above the duct-tape boundary is Rust; the
+# ciderd: the daemon itself. Everything above the xnu-sys boundary is Rust; the
 # static libraries below it are the ones cc_lib_dir already stages, plus the Linux libraries
 # XNU's C pulls in, exactly as build.rs prints them.
 rust_binary(
@@ -1039,7 +1039,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1054,7 +1054,7 @@ rust_binary(
 
 # THE DAEMON PROOFS, restored to buck2 (#82 fallout). These 17 were built and RUN by
 # checks.server, which went out with the cmake removal because it was fed by the cmake
-# duct-tape package. That silently dropped 17 runtime proofs of the Rust daemon: Mach ports,
+# xnu-sys package. That silently dropped 17 runtime proofs of the Rust daemon: Mach ports,
 # mach_msg, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
 # routing, persistent threads and the four daemon capstones. They were never dead code; they
 # just had no buck2 target because cargo built them. Same shape as scheduler_demo above.
@@ -1068,7 +1068,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1090,7 +1090,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1112,7 +1112,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1134,7 +1134,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1156,7 +1156,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1178,7 +1178,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1200,7 +1200,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1222,7 +1222,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1244,7 +1244,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1266,7 +1266,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1288,7 +1288,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1310,7 +1310,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1332,7 +1332,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1354,7 +1354,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1376,7 +1376,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1398,7 +1398,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],
@@ -1420,7 +1420,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/ciderd/xnu-sys:ciderd_duct_tape",
+        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
         "//src/libsimple:libsimple_ciderd",
         ":dserver_fast_context",
     ],

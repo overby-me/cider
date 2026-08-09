@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_DUCT_TAPE_TASK_H_
-#define _DARLINGSERVER_DUCT_TAPE_TASK_H_
+#ifndef _DARLINGSERVER_XNU_SYS_TASK_H_
+#define _DARLINGSERVER_XNU_SYS_TASK_H_
 
 #include <kern/task.h>
 
@@ -37,4 +37,4 @@ static dtape_task_t* dtape_task_for_xnu_task(task_t xnu_task) {
 
 void dtape_task_init(void);
 
-#endif // _DARLINGSERVER_DUCT_TAPE_TASK_H_
+#endif // _DARLINGSERVER_XNU_SYS_TASK_H_

@@ -1,4 +1,4 @@
-//! duct-tape condition variables: the Rust replacement for `xnu-sys/src/condvar.c`
+//! xnu-sys condition variables: the Rust replacement for `xnu-sys/src/condvar.c`
 //! (#71, the second glue file ported).
 //!
 //! These are the condvars duct-taped XNU code blocks on, built on the microthread scheduler
@@ -18,7 +18,7 @@
 //! the C inlines them.
 //!   * `libsimple_lock_init` is a `static` one-liner (`lock->state = 0`).
 //!   * `dtape_thread_for_xnu_thread` is `always_inline`: pointer arithmetic back from the
-//!     embedded XNU thread to the duct-tape one.
+//!     embedded XNU thread to the xnu-sys one.
 //! The `TAILQ_*` macros are the same story one level up: bindgen binds no macros, so the
 //! four used here are written out below. They are BSD intrusive-list pointer arithmetic, and
 //! the subtle one is `tqe_prev`, which is a pointer TO THE PREVIOUS ELEMENT'S NEXT POINTER,
@@ -56,7 +56,7 @@ pub(crate) unsafe fn lock_init(lock: *mut libsimple_lock_t) {
     (*lock).state = 0;
 }
 
-/// `dtape_thread_for_xnu_thread`: XNU's thread is EMBEDDED in the duct-tape one, so this
+/// `dtape_thread_for_xnu_thread`: XNU's thread is EMBEDDED in the xnu-sys one, so this
 /// walks back by the field offset. `always_inline` in C, so there is no symbol for it.
 #[inline]
 pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {

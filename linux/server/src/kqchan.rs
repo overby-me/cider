@@ -217,8 +217,8 @@ impl Drop for ProcKqchan {
 // ============================================================================
 // Mach-port kqueue channel (EVFILT_MACHPORT) -- task #54, approach (b): event-driven.
 // ============================================================================
-// A guest kevent()s on a Mach port; the daemon watches it via the duct-tape's XNU knote. When a
-// message lands on the port, the duct-tape fires our notification_callback (from inside the
+// A guest kevent()s on a Mach port; the daemon watches it via the xnu-sys's XNU knote. When a
+// message lands on the port, the xnu-sys fires our notification_callback (from inside the
 // sender's mach_msg RPC, on the serve loop) -- no thread ever blocks waiting, so this fits the
 // single-worker model. `modify` (register/change the filter) and `read` (drain pending messages
 // via dtape_kqchan_mach_port_fill) call dtape functions that need a current-thread + the guest
@@ -280,13 +280,13 @@ extern "C" fn mach_port_notify_cb(context: *mut c_void) {
     unsafe { (*kq).send_notification() };
 }
 
-/// One Mach-port-watching kqueue channel. Heap-boxed: its address is the duct-tape callback's
+/// One Mach-port-watching kqueue channel. Heap-boxed: its address is the xnu-sys callback's
 /// context, so it must never move while the dtape kqchan is alive (Drop disables notifications
 /// first, so the callback can never fire into a freed box).
 pub struct MachPortKqchan {
     /// Our end of the socketpair (nonblocking SEQPACKET); the guest sends modify/read here.
     pub daemon_fd: RawFd,
-    /// The duct-tape kqchan (XNU knote on the port); null only transiently during open().
+    /// The xnu-sys kqchan (XNU knote on the port); null only transiently during open().
     dtape: *mut dtape_kqchan_mach_port_t,
     /// The owning guest task -- modify/read run on a microthread bound to it.
     owning_task: *mut dtape_task_t,
@@ -357,7 +357,7 @@ impl MachPortKqchan {
     }
 
     /// Enqueue a notification datagram to the guest (throttled to one outstanding). Called from the
-    /// duct-tape callback (message arrived) and after open/modify/read when events are pending.
+    /// xnu-sys callback (message arrived) and after open/modify/read when events are pending.
     fn send_notification(&mut self) {
         if !self.can_send_notification {
             return;
@@ -420,7 +420,7 @@ impl MachPortKqchan {
     }
 
     /// Fetch pending messages: the guest acked our notification (implicitly by reading), so
-    /// re-enable notifications, then fill the reply via the duct-tape on the owning task's
+    /// re-enable notifications, then fill the reply via the xnu-sys on the owning task's
     /// microthread (which also copies the message body into the guest's buffer). Mirrors _read.
     fn read(&mut self, default_buffer: u64, default_buffer_size: u64) {
         self.can_send_notification = true; // ack: may notify again

@@ -2,7 +2,7 @@
 //! variable / rwlock) that libpthread drives through the `__psynch_*` BSD syscalls. Any
 //! multithreaded Darwin program with a contended lock ends up here.
 //!
-//! Each op is a thin call into duct-tape's hand-written `dtape_psynch_*` (psynch.c), which
+//! Each op is a thin call into xnu-sys's hand-written `dtape_psynch_*` (psynch.c), which
 //! forwards to the imported XNU pthread kext (`_psynch_*` / `ksyn_wait`). The wait ops
 //! (mutexwait / cvwait / rw_rdlock / rw_wrlock) block by `thread_block_parameter` with a
 //! continuation (kern_synch.c asserts the continuation is never NULL), so on a contended
@@ -17,7 +17,7 @@
 //! `Call::<name>::processCall` passes; see the handler wiring in `handler.rs`. See
 //! PLAN.md (the psynch bucket).
 
-// Declared here in an `extern "C"` block until duct-tape became Rust (#71); imported directly
+// Declared here in an `extern "C"` block until xnu-sys became Rust (#71); imported directly
 // now (#75). All nine are the thin forwarding wrappers in dtape_psynch, which supply
 // current_proc() and pass the rest through to the pthread kext.
 use crate::xnu::psynch::{

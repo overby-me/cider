@@ -1,4 +1,4 @@
-//! Runtime exercise of the ported duct-tape host info (#71).
+//! Runtime exercise of the ported xnu-sys host info (#71).
 //!
 //! WHY THIS EXISTS, and why it does not simply assert that the code ran. The first three
 //! ported files fail LOUDLY when they are wrong: a bad offset or a lost queue link hangs or

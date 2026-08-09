@@ -1,4 +1,4 @@
-//! Runtime exercise of the ported duct-tape kqchan mach-port channel (#80).
+//! Runtime exercise of the ported xnu-sys kqchan mach-port channel (#80).
 //!
 //! kqchan was the LAST ported file nothing drove, which is the position psynch was in before
 //! #77. The five existing demos cover semaphore.c, condvar.c, host.c, processor.c and psynch.c;

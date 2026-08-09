@@ -1,7 +1,7 @@
-//! duct-tape's timer queue: the Rust replacement for `xnu-sys/src/timer.c`
+//! xnu-sys's timer queue: the Rust replacement for `xnu-sys/src/timer.c`
 //! (#71, the third glue file ported).
 //!
-//! duct-tape does not emulate XNU's per-CPU timer hardware. It keeps ONE queue, and asks the
+//! xnu-sys does not emulate XNU's per-CPU timer hardware. It keeps ONE queue, and asks the
 //! daemon to arm a real timer through the `timer_arm` hook; when that fires, the daemon calls
 //! [`dtape_timer_fired`], which expires the queue and re-arms for whatever is next.
 //!
@@ -14,7 +14,7 @@
 //!
 //! `mpqueue_init` is a macro nesting two more macros, so it is written out below. Its pieces:
 //! `queue_init` makes the list head point at ITSELF (circular, empty), `lck_mtx_init_ext` is
-//! a real linkable function in duct-tape's own locks.c, and `priority_queue_init` is
+//! a real linkable function in xnu-sys's own locks.c, and `priority_queue_init` is
 //! `__builtin_bzero` for the non-comparator variant this queue uses.
 //!
 //! Three of the thirteen symbols here are DATA, not code: `master_cpu`, `serverperfmode` and

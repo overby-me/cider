@@ -1,7 +1,7 @@
 //! Capstone: a runnable ciderd that ties every piece together -- the epoll
 //! accept loop (server) + per-guest task routing (registry) + the microthread
 //! scheduler (sched) + the CODE-GENERATED dispatch (rpc_wire) + a real handler that
-//! calls into the duct-tape. Serves real RPC calls off a real unix socket.
+//! calls into the xnu-sys. Serves real RPC calls off a real unix socket.
 //!
 //! A guest thread sends two `uidgid` calls; the daemon routes them to the guest's
 //! task, runs each handler on a microthread through the generated dispatch, and the

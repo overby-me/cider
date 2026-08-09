@@ -16,8 +16,8 @@
 #    the cmake build resolves them, instead of being merged into one flat dir.
 #
 # 3. Rules compose as objects -> archive, so a single archive can contain object
-#    groups compiled with different flags (duct-tape's pthread/kern_synch.c needs
-#    its own -I but must land in libciderd_duct_tape.a).
+#    groups compiled with different flags (xnu-sys's pthread/kern_synch.c needs
+#    its own -I but must land in libciderd_xnu_sys.a).
 
 load("@toolchains//:cc.bzl", "CcToolchainInfo")
 
@@ -449,8 +449,8 @@ cc_binary = rule(
 # ---------------------------------------------------------------------------
 # cc_lib_dir: collect the static libs of a dep graph into one directory.
 #
-# The Rust daemon consumes duct-tape through DUCT_TAPE_LIB, an env var naming a
-# directory that holds libciderd_duct_tape.a and
+# The Rust daemon consumes xnu-sys through XNU_SYS_LIB, an env var naming a
+# directory that holds libciderd_xnu_sys.a and
 # liblibsimple_ciderd.a. Each archive is its own buck2 artifact in its own
 # output dir, so this stages them together into the shape the consumer expects.
 # ---------------------------------------------------------------------------

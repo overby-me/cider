@@ -1,7 +1,7 @@
 //! `xnu-sys/src/misc.c`, in Rust (#71, twelfth file).
 //!
 //! 150 lines, and the smallest remaining file, but it is the one that had to solve the problem
-//! blocking the last two: duct-tape exports four VARIADIC DEFINITIONS, and stable Rust cannot
+//! blocking the last two: xnu-sys exports four VARIADIC DEFINITIONS, and stable Rust cannot
 //! define a variadic function. Three of the four are here (`dtape_log`, `kprintf`, `scnprintf`),
 //! the fourth is `panic` in stubs.c.
 //!
@@ -183,7 +183,7 @@ pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
 // </copied>
 //
 
-/// Log through duct-tape's own variadic entry point, with the message already formatted.
+/// Log through xnu-sys's own variadic entry point, with the message already formatted.
 ///
 /// The C reaches `dtape_log` through variadic MACROS (`dtape_log_debug` and friends). Rust
 /// formats first and passes `%s`, which cannot disagree with its arguments.

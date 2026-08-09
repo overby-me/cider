@@ -3,16 +3,16 @@
 //!   Phase 1 STACKFUL     -- semaphore down/up -> SPIKE_RESUMED_OK
 //!   Phase 2 CONTINUATION -- assert_wait + thread_block(cont) -> SPIKE_CONT_RESUMED_OK
 //!   Phase 3 microbench   -- N suspend/resume round-trips
-//! DUCT_TAPE_LIB=<dir> cargo run --bin stage3-spike
+//! XNU_SYS_LIB=<dir> cargo run --bin stage3-spike
 
 use cider::bindings::dtape_semaphore_t;
 use cider::xnu::thread::thread_block;
 use cider::xnu::semaphore::{dtape_semaphore_create, dtape_semaphore_down_simple, dtape_semaphore_up};
 
-// The semaphore trio and thread_block were declared through the linker, from when duct-tape was
+// The semaphore trio and thread_block were declared through the linker, from when xnu-sys was
 // C. Rust now (#71), so imported (#75). A BIN CRATE, so cider:: and not crate:: .
 //
-// assert_wait and thread_wakeup_prim STAY declared: they are XNU, living in the duct-tape
+// assert_wait and thread_wakeup_prim STAY declared: they are XNU, living in the xnu-sys
 // archive, and there is no Rust definition to import.
 //
 // The thread_block declaration removed here was CORRECT, unlike the one gate10 found in
@@ -22,7 +22,7 @@ use cider::sched;
 use std::os::raw::{c_int, c_void};
 
 extern "C" {
-    // Raw XNU scheduler primitives (in the duct-tape .a) for the continuation vehicle.
+    // Raw XNU scheduler primitives (in the xnu-sys .a) for the continuation vehicle.
     fn assert_wait(event: *const c_void, interruptible: c_int) -> c_int;
     fn thread_wakeup_prim(event: *const c_void, one_thread: c_int, result: c_int) -> c_int;
 }

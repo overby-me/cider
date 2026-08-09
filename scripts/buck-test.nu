@@ -217,9 +217,9 @@ def main [flag?: string] {
         //buck-src:migcom
         //src/startup:rtsig_header
         //src/external/ciderd:dserver_rpc
-        //src/external/ciderd/xnu-sys:ciderd_duct_tape
+        //src/external/ciderd/xnu-sys:ciderd_xnu_sys
         //src/external/ciderd/tools:dserverdbg
-        //linux/server:duct_tape_lib
+        //linux/server:xnu_sys_lib
         //src/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
         //tests/buck2/firstpass:b
@@ -302,8 +302,8 @@ def main [flag?: string] {
         if (grep_q $rpc_h "dserver_rpc") { ok "rpc.h declares the RPC surface" } else { bad "rpc.h has no dserver_rpc declarations" }
     }
 
-    say "== duct-tape =="
-    let dt = (out_of //src/external/ciderd/xnu-sys:ciderd_duct_tape)
+    say "== xnu-sys =="
+    let dt = (out_of //src/external/ciderd/xnu-sys:ciderd_xnu_sys)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
@@ -815,10 +815,10 @@ def main [flag?: string] {
         bad $"install UNMAPPED rose to (num_or_s $unmapped 'unknown'), ceiling is 0"
     }
 
-    say "== DUCT_TAPE_LIB staging =="
-    let dir = (out_of //linux/server:duct_tape_lib)
-    for a in [libciderd_duct_tape.a liblibsimple_ciderd.a] {
-        if (test_f $"($dir)/($a)") { ok $"staged ($a)" } else { bad $"missing ($a) in DUCT_TAPE_LIB dir" }
+    say "== XNU_SYS_LIB staging =="
+    let dir = (out_of //linux/server:xnu_sys_lib)
+    for a in [libciderd_xnu_sys.a liblibsimple_ciderd.a] {
+        if (test_f $"($dir)/($a)") { ok $"staged ($a)" } else { bad $"missing ($a) in XNU_SYS_LIB dir" }
     }
 
     say "== the dtrace cone =="
@@ -920,7 +920,7 @@ def main [flag?: string] {
     say "== the Rust components (no cargo in the graph) =="
     # All three of Darling's Rust crates, built by rustc under buck2: the launcher, the guest
     # loader and the daemon. The daemon is the one that proves the seam -- it links the
-    # buck2-built duct-tape and libsimple archives and the bindgen-generated hooks vtable.
+    # buck2-built xnu-sys and libsimple archives and the bindgen-generated hooks vtable.
     for t in [//linux/launcher:cider //darwin/loader:mldr //linux/server:ciderd] {
         let b = (out_of $t)
         if (is_exec $b) { ok $"built ($t | split row ':' | last)" } else { bad $"($t) did not build" }
