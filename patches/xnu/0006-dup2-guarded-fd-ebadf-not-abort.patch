@@ -1,6 +1,6 @@
 dup2 to a guarded FD returns EBADF instead of aborting the process.
 
-Darling parks internal descriptors (ciderd RPC) at high fd numbers.
+Darling parks internal descriptors (darlingserver RPC) at high fd numbers.
 autoconf's dup2 check does dup2(1, RLIMIT_NOFILE) expecting EBADF, and the
 RPC fd sits right there, so sys_dup2 aborted and killed the process (it broke
 GNU hello's ./configure at the "whether dup2 works" test). macOS returns
@@ -8,17 +8,17 @@ EBADF for an out-of-range target, so do the same: the dup2 fails, the guarded
 fd is preserved, and the process survives (close.c already declines to abort
 on the same guard).
 
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
 index 62c0a2a..6a20ace 100644
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/dup2.c
 @@ -15,8 +15,16 @@ long sys_dup2(int fd_from, int fd_to)
  	int ret;
  
  	if (guard_table_check(fd_to, guard_flag_prevent_close)) {
 -		__simple_kprintf("*** Someone tried to close a guarded FD (%d) via dup2! ***", fd_to);
 -		__simple_abort();
-+		// Darling parks internal descriptors (e.g. ciderd RPC) at high
++		// Darling parks internal descriptors (e.g. darlingserver RPC) at high
 +		// fd numbers. Programs that probe a "max/bad" fd can legitimately target
 +		// one: autoconf's dup2 check does `dup2(1, RLIMIT_NOFILE)` expecting
 +		// EBADF, and our RPC fd sits right there. Aborting kills such programs

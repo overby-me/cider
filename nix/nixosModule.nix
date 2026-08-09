@@ -67,7 +67,7 @@ in
       "kernel.unprivileged_userns_clone" = 1;
     };
 
-    # Ensure FUSE is available (cider-dmg uses it).
+    # Ensure FUSE is available (darling-dmg uses it).
     environment.etc."fuse.conf".text = lib.mkDefault ''
       user_allow_other
     '';

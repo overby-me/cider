@@ -239,7 +239,7 @@ pkgs.runCommand "cider-src"
     ${lib.concatMapStringsSep "\n" overlayOne pinned}
 
     # task #68: the guest SDK tree moved to darwin/Developer, but several pinned
-    # submodules (e.g. bootstrap_cmds/cider/include/{mach,machine,i386,...}) carry
+    # submodules (e.g. bootstrap_cmds/darling/include/{mach,machine,i386,...}) carry
     # relative symlinks into the OLD superproject Developer/ SDK path, which the
     # working-tree move can't reach (pins are fetched here, not committed). Re-point
     # any such symlink into `Developer/Platforms/MacOSX.platform` -> `darwin/Developer/...`.

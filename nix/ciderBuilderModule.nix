@@ -13,7 +13,7 @@
 # Usage (in a NixOS configuration):
 #
 #   {
-#     imports = [ ./path/to/cider-nix/nix/ciderBuilderModule.nix ];
+#     imports = [ ./path/to/cider/nix/ciderBuilderModule.nix ];
 #
 #     services.cider-builder = {
 #       enable = true;

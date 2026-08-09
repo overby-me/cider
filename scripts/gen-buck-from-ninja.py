@@ -153,9 +153,9 @@ CROSS_PACKAGE_ROOTS = {
     # the buck-src mega-package.
     "foundation/src": "//buck-src:Foundation_inc_foundation_src",
     # Same story as corefoundation, for vim's xxd: it compiles -DDYNAMIC_RUBY and gets
-    # -Isrc/external/ruby/cider/include/ruby. ruby became a split pin when its 92
+    # -Isrc/external/ruby/darling/include/ruby. ruby became a split pin when its 92
     # targets landed, so the root has to be declared inside that package.
-    "ruby/cider/include/ruby": "//buck-src/ruby:ruby_inc_cider_include_ruby",
+    "ruby/darling/include/ruby": "//buck-src/ruby:ruby_inc_darling_include_ruby",
     # python's dbm module gets -I<sdk>/usr/include/BerkeleyDB, whose db.h and db_cxx.h are
     # DANGLING links in the committed SDK farm: they still point at src/external/BerkeleyDB
     # from before the darwin/ + linux/ reorg, like dnsinfo.h does (see the note in that
@@ -362,7 +362,7 @@ def deref(rel: str) -> str:
     entry, so a header root pointing at one stages EMPTY (while explicit sources
     through the same symlink still resolve, which is what made this confusing).
     The materialized pins contain 3861 symlinks, including
-    xnu/cider/src/libsystem_kernel/libsyscall -> xnu/libsyscall, so roots have to
+    xnu/darling/src/libsystem_kernel/libsyscall -> xnu/libsyscall, so roots have to
     name the real directory.
     """
     real = os.path.realpath(os.path.join(REPO, rel))

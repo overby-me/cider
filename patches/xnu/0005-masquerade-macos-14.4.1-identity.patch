@@ -7,10 +7,10 @@ with SystemVersion.plist 14.4.1. The banner keeps the upstream semicolon-free
 form ("Darwin Kernel Version <rel>") because add_definitions treats ; as a
 CMake list separator, which breaks the mig codegen argument.
 
-diff --git a/cider/src/libsystem_kernel/emulation/CMakeLists.txt b/cider/src/libsystem_kernel/emulation/CMakeLists.txt
+diff --git a/darling/src/libsystem_kernel/emulation/CMakeLists.txt b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
 index 5b2e765..cd01cd0 100644
---- a/cider/src/libsystem_kernel/emulation/CMakeLists.txt
-+++ b/cider/src/libsystem_kernel/emulation/CMakeLists.txt
+--- a/darling/src/libsystem_kernel/emulation/CMakeLists.txt
++++ b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
 @@ -8,10 +8,10 @@ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -nostdlib")
  
  add_definitions(-DBSDTHREAD_WRAP_LINUX_PTHREAD

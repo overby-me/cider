@@ -49,7 +49,7 @@ def main [--all] {
     # be on it: dlopen("libfuse.so") fails without this even though the dev shell contains
     # fuse.
     #
-    # One entry per wrap_elf() in the tree: fuse for hdiutil (cider-dmg), the sixteen
+    # One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), the sixteen
     # src/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
     # plus pulseaudio) that AudioToolbox decodes and plays through. Looked up by SONAME
     # against the dev shell's own -L directories (NIX_LDFLAGS), because that is the

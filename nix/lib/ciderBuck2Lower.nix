@@ -218,7 +218,7 @@
 
   # NOT YET. Staging a pin from its own store path breaks 21 relative symlinks that reach OUT
   # of the pin, and it broke the endpoint: AppKit_obj died on IOKit/IOTypes.h, reached through
-  # a staged farm whose link ran into src/external/IOKitUser/cider/submodules/xnu, which is a
+  # a staged farm whose link ran into src/external/IOKitUser/darling/submodules/xnu, which is a
   # link to ../../../xnu/ and resolves only when the pins share a root.
   #
   # SCRIPTS/BUCK-PIN-STORE-CHECK.NU PASSED ANYWAY, and that is the lesson. It compares a pin
@@ -251,10 +251,10 @@
   # from there since the per-pin split; only the lowering was left behind. Same throw as the
   # graph, so a missing pin is loud rather than silently falling back to the assembled tree.
   # BACK TO THE ASSEMBLED TREE, because the per-pin stores are INCOMPLETE. Seven pins carry
-  # NESTED submodules under buck-src/<pin>/cider/submodules, and a per-pin store does not
-  # populate them: buck-src/IOKitUser/cider/submodules/xnu has 24 entries in the repo and 1
+  # NESTED submodules under buck-src/<pin>/darling/submodules, and a per-pin store does not
+  # populate them: buck-src/IOKitUser/darling/submodules/xnu has 24 entries in the repo and 1
   # in the store. The pin's own link
-  #   cider/include/IOKit/IOReturn.h -> ../../../cider/submodules/xnu/iokit/IOKit/IOReturn.h
+  #   darling/include/IOKit/IOReturn.h -> ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h
   # therefore dangles INSIDE the store, and SecItemShimOSX_obj fails on IOKit/IOReturn.h.
   #
   # I had switched this to ciderSrc.pinPaths and called the cascade cut, verified on
@@ -268,7 +268,7 @@
   # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
   #
   # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
-  # can point at a SIBLING pin: src/external/IOKitUser/cider/submodules/xnu is a link to
+  # can point at a SIBLING pin: src/external/IOKitUser/darling/submodules/xnu is a link to
   # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
   # the STORE, where there is no sibling. scripts/buck-escape-check.py documents exactly this
   # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
@@ -341,8 +341,8 @@
     # AND THE DESTINATIONS THE PINS ESCAPE TO, or the tree is not self contained and a single
     # directory link to it dangles. Measured before this pass: 17 dangling against 6 in the
     # assembled tree, and all 11 extra were one class, links leaving src/external altogether.
-    # Eight are bootstrap_cmds/cider/include/{mach,machine,libkern,i386,sys/...} reaching into
-    # darwin/Developer/Platforms, and one is security/cider/submodules/xnu pointing at
+    # Eight are bootstrap_cmds/darling/include/{mach,machine,libkern,i386,sys/...} reaching into
+    # darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
     # src/external/ciderd, which is a NON-PIN external and so is in no pin store.
     #
     # Resolved rather than listed, so a new escape is carried instead of failing a build weeks

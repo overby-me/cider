@@ -511,7 +511,7 @@
         # src/external/<pin> puts that sibling exactly where the ../../../ says. It still
         # dangles, because the kernel resolves .. against the REAL parent directory once it has
         # crossed the farm symlink, not against the path you typed. Measured:
-        #   readlink -f <farm>/src/external/IOKitUser/cider/submodules/xnu
+        #   readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu
         #   -> /nix/store/xnu
         # three levels up from the PIN STORE, which is /nix/store, while
         # <farm>/src/external/xnu exists and is never consulted.
@@ -904,7 +904,7 @@
       # derivations, which `nix flake check` would force. Build it directly with:
       #   nix build '.?submodules=1' \
       #     --expr '(import ./nix/lib/ciderNinja.nix { pkgs = <nixpkgs>; overby = <overby>; }).buildTarget
-      #             { target = "src/external/xnu/cider/src/libsystem_kernel/libsystem_kernel.dylib"; }'
+      #             { target = "src/external/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
 
       # ── Flake Templates ──────────────────────────────────────────────
       #

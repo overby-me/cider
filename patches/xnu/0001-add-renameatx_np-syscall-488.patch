@@ -1,7 +1,7 @@
-diff --git a/cider/src/libsystem_kernel/emulation/CMakeLists.txt b/cider/src/libsystem_kernel/emulation/CMakeLists.txt
+diff --git a/darling/src/libsystem_kernel/emulation/CMakeLists.txt b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
 index 5b2e765..13a8b79 100644
---- a/cider/src/libsystem_kernel/emulation/CMakeLists.txt
-+++ b/cider/src/libsystem_kernel/emulation/CMakeLists.txt
+--- a/darling/src/libsystem_kernel/emulation/CMakeLists.txt
++++ b/darling/src/libsystem_kernel/emulation/CMakeLists.txt
 @@ -285,6 +285,7 @@ set(xnu_syscall_bsd_sources
  	src/xnu_syscall/bsd/impl/unistd/readv.c
  	src/xnu_syscall/bsd/impl/unistd/rename.c
@@ -10,11 +10,11 @@ index 5b2e765..13a8b79 100644
  	src/xnu_syscall/bsd/impl/unistd/setegid.c
  	src/xnu_syscall/bsd/impl/unistd/seteuid.c
  	src/xnu_syscall/bsd/impl/unistd/setgid.c
-diff --git a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
 new file mode 100644
 index 0000000..d4d5d7c
 --- /dev/null
-+++ b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/impl/unistd/renameatx_np.h
 @@ -0,0 +1,6 @@
 +#ifndef LINUX_RENAMEATX_NP_H
 +#define LINUX_RENAMEATX_NP_H
@@ -22,18 +22,18 @@ index 0000000..d4d5d7c
 +long sys_renameatx_np(int oldfd, const char* oldpath, int newfd, const char* newpath, unsigned int flags);
 +
 +#endif // LINUX_RENAMEATX_NP_H
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
 index 7d5ef80..c442f98 100644
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/bsd_syscall_table.c
 @@ -176,6 +176,7 @@
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/readv.h>
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/rename.h>
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/renameat.h>
-+#include <cider/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/setegid.h>
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/seteuid.h>
- #include <cider/emulation/xnu_syscall/bsd/impl/unistd/setgid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/readv.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/rename.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameat.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/setegid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/seteuid.h>
+ #include <darling/emulation/xnu_syscall/bsd/impl/unistd/setgid.h>
 @@ -480,6 +481,7 @@ void* __bsd_syscall_table[600] = {
  	[476] = sys_getattrlistat,
  	[478] = sys_bsdthread_ctl,
@@ -42,22 +42,22 @@ index 7d5ef80..c442f98 100644
  	[500] = sys_getentropy,
  	[515] = sys_ulock_wait,
  	[516] = sys_ulock_wake,
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
 new file mode 100644
 index 0000000..5c9406b
 --- /dev/null
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/unistd/renameatx_np.c
 @@ -0,0 +1,66 @@
-+#include <cider/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
++#include <darling/emulation/xnu_syscall/bsd/impl/unistd/renameatx_np.h>
 +
 +#include <sys/errno.h>
 +
-+#include <cider/emulation/other/mach/lkm.h>
-+#include <cider/emulation/common/base.h>
-+#include <cider/emulation/conversion/errno.h>
-+#include <cider/emulation/linux_premigration/linux-syscalls/linux.h>
-+#include <cider/emulation/conversion/common_at.h>
-+#include <cider/emulation/linux_premigration/vchroot_expand.h>
++#include <darling/emulation/other/mach/lkm.h>
++#include <darling/emulation/common/base.h>
++#include <darling/emulation/conversion/errno.h>
++#include <darling/emulation/linux_premigration/linux-syscalls/linux.h>
++#include <darling/emulation/conversion/common_at.h>
++#include <darling/emulation/linux_premigration/vchroot_expand.h>
 +
 +// XNU flag values (bsd/sys/stdio.h)
 +#define XNU_RENAME_SWAP 0x00000002

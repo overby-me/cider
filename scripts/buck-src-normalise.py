@@ -54,7 +54,7 @@ def in_tree_target(link: str, target: str) -> str | None:
             return None  # already inside the tree and resolving
         # Inside buck-src but DANGLING: the link names a sibling pin that is not
         # materialized here because it lives in the repo proper. security's
-        # cider/submodules/xnu points at ciderd/xnu-sys/xnu that way, and
+        # darling/submodules/xnu points at ciderd/xnu-sys/xnu that way, and
         # ciderd is at src/external/ciderd, not a pin. A dangling link is
         # not merely unused -- a glob that picks it up fails the whole package load.
         rel = resolved[len(BUCK_SRC) + 1:]

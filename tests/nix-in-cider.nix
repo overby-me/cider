@@ -87,7 +87,7 @@ nixos-lib.runTest {
         "kernel.unprivileged_userns_clone" = 1;
       };
 
-      # FUSE support for cider-dmg
+      # FUSE support for darling-dmg
       environment.etc."fuse.conf".text = ''
         user_allow_other
       '';

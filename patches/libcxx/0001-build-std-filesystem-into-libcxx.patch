@@ -53,7 +53,7 @@ index 55144f764..f94ecf9fc 100644
 +	PROPERTIES COMPILE_FLAGS "-std=c++17")
 +list(APPEND cxx_sources ${cxx_cxx17_sources})
 +
- add_cider_object_library(cxx_obj ${cxx_sources})
+ add_darling_object_library(cxx_obj ${cxx_sources})
  make_fat(cxx_obj)
  
 diff --git a/src/memory_resource_std.cpp b/src/memory_resource_std.cpp

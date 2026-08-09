@@ -4,7 +4,7 @@
 # pinsTree is what made source groups work (#54, #74). It holds all 147 pins MIRRORED -- real
 # directories, one symlink per file, each source symlink re-created with its own target string
 # -- so that a pin's link to a SIBLING pin resolves inside the tree. A per-pin store cannot do
-# that: src/external/IOKitUser/cider/submodules/xnu is a link to ../../../xnu/, and planted as
+# that: src/external/IOKitUser/darling/submodules/xnu is a link to ../../../xnu/, and planted as
 # a directory symlink the kernel resolves that against the STORE. Staging pins that way broke
 # the DEFAULT endpoint, and scripts/buck-pin-store-check.nu passed anyway, because it compares
 # by NAR HASH and a NAR hash records a symlink TARGET as a STRING.

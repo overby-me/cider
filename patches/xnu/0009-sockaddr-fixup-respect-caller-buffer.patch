@@ -30,9 +30,9 @@ regardless of how much the kernel wrote, so an unnamed socket was read as an
 uninitialised string; and an unnamed socket now returns without a pointless
 vchroot round trip.
 
-diff --git a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
---- a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
-+++ b/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
+diff --git a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
+--- a/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
++++ b/darling/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper/network/duct.h
 @@ -20,6 +20,9 @@
  
  unsigned long sockaddr_fixup_size_from_bsd(const void* bsd_sockaddr, int bsd_sockaddr_len);
@@ -44,9 +44,9 @@ diff --git a/cider/src/libsystem_kernel/emulation/include/xnu_syscall/bsd/helper
 +int sockaddr_fixup_from_linux(struct sockaddr_fixup* out, const void* linux_sockaddr, int linux_sockaddr_len, int capacity);
  
  #endif // NETWORK_DUCT_H
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/misc/sysctl_net.c
 @@ -169,19 +169,19 @@
  			ifam->ifam_version = RTM_VERSION;
  			ifam->ifam_addrs = RTA_NETMASK | RTA_IFA | RTA_BRD;
@@ -70,9 +70,9 @@ diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/mis
  
  			old_ptr += ifam_length;
  		}
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/network/duct.c
 @@ -37,29 +37,70 @@
  	return ret;
  }
@@ -152,9 +152,9 @@ diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/helper/net
  
  	return ret;
  }
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getpeername.c
 @@ -15,6 +15,8 @@
  long sys_getpeername(int fd, void* asa, int* socklen)
  {
@@ -173,9 +173,9 @@ diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/netwo
  		if (ret > 0)
  			ret = 0;
  	}
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/getsockname.c
 @@ -15,6 +15,8 @@
  long sys_getsockname(int fd, void* asa, int* socklen)
  {
@@ -194,9 +194,9 @@ diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/netwo
  		if (ret > 0)
  			ret = 0;
  	}
-diff --git a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
---- a/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
-+++ b/cider/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
+diff --git a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
+--- a/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
++++ b/darling/src/libsystem_kernel/emulation/src/xnu_syscall/bsd/impl/network/recvfrom.c
 @@ -23,6 +23,8 @@
  		int flags, void* from, int* socklen)
  {

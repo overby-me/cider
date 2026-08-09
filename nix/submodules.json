@@ -136,7 +136,7 @@
     "hash": "sha256-Le+W0OACVtfafTsIBZbYGdaJ8tRIcXplYn3QR5iKPWc="
   },
   {
-    "path": "src/external/cider-dmg",
+    "path": "src/external/darling-dmg",
     "owner": "darlinghq",
     "repo": "darling-dmg",
     "rev": "1a6de10c5886c40a414090701b2520bd0417ce29",

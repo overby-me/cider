@@ -1509,7 +1509,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 
 2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
    launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
-3. **hdiutil** (buck-src/cider-dmg; wants fuse, a HOST library, so check how the reference
+3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
    supplies it before assuming this is portable).
 4. **Make the generators re-runnable** before the reference graph goes away.
    gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
@@ -1666,7 +1666,7 @@ has been true six times running, each time a check freshly written.
   `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
   1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
      parent once it crosses the farm symlink, so
-     `readlink -f <farm>/src/external/IOKitUser/cider/submodules/xnu` gives `/nix/store/xnu`
+     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` gives `/nix/store/xnu`
      while `<farm>/src/external/xnu` exists and is never consulted.
   2. REWRITING ESCAPES TO ABSOLUTE PATHS RELOCATES THE PROBLEM, since the destination store has
      escapes of its own: for the pins it took 143 dangling links to **413**. The SDK
@@ -1764,13 +1764,13 @@ has been true six times running, each time a check freshly written.
 
   **AND POINTING pinPath AT THE PER-PIN STORES BROKE THE DEFAULT ENDPOINT. Reverted (#74).**
   Seven pins carry nested submodules, and the per-pin store does not have their content, so the
-  pin's own link `cider/include/IOKit/IOReturn.h ->
-  ../../../cider/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
+  pin's own link `darling/include/IOKit/IOReturn.h ->
+  ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
   `stageProject` uses `pinPath` too, so this was not confined to grouped staging:
   `SecItemShimOSX_obj` failed on `prefix-min`, an endpoint that had built green with a matching
   prefix hash. The revert rebuilt **0 builders**, i.e. it resolved to the cached pre-regression
   output.
-  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/cider/submodules/
+  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/darling/submodules/
   xnu` IS ITSELF A SYMLINK, to `../../../xnu/`, which resolves to a SIBLING PIN. The "1 entry"
   was that link. In the assembled tree it resolves (23 entries); planted as
   `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,

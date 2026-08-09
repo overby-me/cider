@@ -5,8 +5,8 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
-    "cider_include___libunwind_config.h": "cider/include/__libunwind_config.h",
-    "cider_include_libunwind.h": "cider/include/libunwind.h",
-    "cider_include_mach-o_compact_unwind_encoding.h": "cider/include/mach-o/compact_unwind_encoding.h",
-    "cider_include_unwind.h": "cider/include/unwind.h",
+    "darling_include___libunwind_config.h": "darling/include/__libunwind_config.h",
+    "darling_include_libunwind.h": "darling/include/libunwind.h",
+    "darling_include_mach-o_compact_unwind_encoding.h": "darling/include/mach-o/compact_unwind_encoding.h",
+    "darling_include_unwind.h": "darling/include/unwind.h",
 }

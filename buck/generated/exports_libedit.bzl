@@ -5,9 +5,9 @@
 # into an export_file, because a file attribute has to be a source of the
 # package that declares it.
 EXPORTS = {
-    "cider_include_editline_readline.h": "cider/include/editline/readline.h",
-    "cider_include_histedit.h": "cider/include/histedit.h",
-    "cider_include_readline_history.h": "cider/include/readline/history.h",
-    "cider_include_readline_readline.h": "cider/include/readline/readline.h",
+    "darling_include_editline_readline.h": "darling/include/editline/readline.h",
+    "darling_include_histedit.h": "darling/include/histedit.h",
+    "darling_include_readline_history.h": "darling/include/readline/history.h",
+    "darling_include_readline_readline.h": "darling/include/readline/readline.h",
     "inputrc": "inputrc",
 }

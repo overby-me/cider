@@ -18,8 +18,8 @@ other calls), but it turns that failure into a dead process with a diagnostic
 on stderr rather than an unkillable spin -- which is both debuggable and
 honest about what happened.
 
---- a/cider/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
-+++ b/cider/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
+--- a/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
++++ b/darling/src/libsystem_kernel/emulation/src/linux_premigration/signal/sigexc.c
 @@ -152,7 +152,16 @@
  
  	if (status != 0) {

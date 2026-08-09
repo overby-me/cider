@@ -10,7 +10,7 @@ and neither the build nor the checks caught it until an hour of compiling had go
   levels above the CoreServices store path and dangled. 1,194 targets failed.
 
   Then per-PIN stores staged each submodule as its own store path. src/external/IOKitUser/
-  cider/submodules/xnu is a link to ../../../xnu/. Same shape, same failure, and the pin
+  darling/submodules/xnu is a link to ../../../xnu/. Same shape, same failure, and the pin
   check passed anyway: it compared by NAR hash, and a NAR hash records a symlink TARGET as a
   STRING. Two identical strings that resolve to different places because the root moved look
   identical to it. A check that cannot fail is worth nothing.
@@ -28,8 +28,8 @@ boundary that held no symlinks at all.
 COUNT THE EFFECT, NOT JUST THE CAUSE. `pins` finds 21 escaping links across 12 pins, which
 sounds negligible. `resolve` on the same pin stores finds **143 dangling links of 3,861 across
 15 pins**, because one escaping DIRECTORY link carries every file link under it: IOKitUser has
-3 escapes and 117 dangling links, since cider/include/IOKit/*.h all point through
-cider/submodules/xnu. Seven times the blast radius of the escape count. Quote the resolve
+3 escapes and 117 dangling links, since darling/include/IOKit/*.h all point through
+darling/submodules/xnu. Seven times the blast radius of the escape count. Quote the resolve
 number when describing the damage.
 
 Usage:
