@@ -93,11 +93,15 @@ Measured on a copy: put the security pin store next to a tree containing
 real directory of per-file links with `security/mac.h` resolving. It reported
 `expanded 17 symlinked directories, re-pointed 7 symlinks`. So the fix NEEDS the xnu tree
 beside the pin, and a pin store is self-contained: normalising at fetch cannot see it.
-It therefore belongs wherever pin and project are assembled together, which is
-`ciderBuck2Graph.nix` (already does it) and the LOWERING's per-target staging (does not).
-Note the lowering already went BACK TO THE ASSEMBLED TREE for exactly this reason, so the
-remaining question is which staging path a compile actually takes; answer that before writing
-the fix. Latent for as long as a warm store satisfied those targets; the rename forced a
+**AND THE LOWERING ALREADY NAMES THIS EXACT LINK.** A compile stages pins through
+`pinPath p = "${pinsTree}/${p}"`, and `pinsTree` is built from the ASSEMBLED tree precisely
+because per-pin stores are incomplete. But the assembled tree carries the dangling link too,
+since normalisation runs only in `ciderBuck2Graph.nix`. The comment listing the 21 links that
+escape a pin store already spells ours out: seven leave `src/external` entirely, six into
+`darwin/Developer`, and **`security -> ciderd/xnu-sys/xnu`, which is first-party vendored and
+not a pin at all**, needing rewriting to an absolute store path, the same treatment #54 needs
+for group escapes. So the fix is to normalise when `pinsTree` is built, not at fetch, and it is
+the already-identified work rather than something new. Latent for as long as a warm store satisfied those targets; the rename forced a
 rebuild and exposed it.
 
 **THE DAEMON RUNTIME GATE IS 23 CHECKS, 140 to 152 s** (four consecutive runs on the renamed
