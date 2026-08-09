@@ -88,9 +88,19 @@ because each costs a full rebuild. Measured 2026-08-09 with a control either sid
 
 The 3 are the graph pipeline itself, skeleton then graph then sources. Nothing downstream moves,
 because a BUCK file is read by buck2 to PRODUCE the graph and is never staged into a target, so
-when the graph output comes out byte identical CA cuts the whole endpoint off. CAVEAT, and it is
-why this is not a blanket licence: the probe appended a COMMENT. A BUCK edit that really changes
-a target definition changes graph.json, and that case is still unmeasured.
+when the graph output comes out byte identical CA cuts the whole endpoint off.
+
+**AND THE REAL TARGET CHANGE IS ALSO NOT A FULL REBUILD.** The caveat above said a comment is
+not the interesting case. Adding one compiler flag to a leaf `cc_objects` costs **7 builders**,
+and they are exactly the right ones:
+
+    skeleton, graph, sources          the graph pipeline
+    Accessibility_obj                 recompiled, the flag changed it
+    Accessibility_dylib               relinked
+    darling_prefix_min, -out          the prefix
+
+Control 0 either side, and the restore lands back on `6fx01v8p...`. So a BUCK edit costs the
+same as an ordinary leaf source edit, 7 builders. **Batching BUCK edits is no longer required.**
 
 **COUNT `^building`, NEVER the "these N derivations will be built" list.** `dserver_rpc` appears
 in that list in both runs and produced ZERO builder lines. Counting the listing would have
