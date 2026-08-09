@@ -278,7 +278,15 @@ extern "C" {
         receive_buffer: u64,
         receive_buffer_size: u64,
         saved_filter_flags: u64,
-        notification_callback: extern "C" fn(*mut c_void),
+        // Option<unsafe fn>, NOT a bare safe fn. The definition takes
+        // dtape_kqchan_mach_port_notification_callback_f, which is
+        // Option<unsafe extern "C" fn(context: *mut c_void)>. This declaration said
+        // `extern "C" fn(*mut c_void)`, which is non-nullable and SAFE, so it could neither
+        // express the null the callee accepts nor carry the unsafety across. Same ABI for a
+        // non-null value, and the same class of mismatch gate10 found on thread_block, which
+        // did misbehave. rustc never compares a declaration against the definition it resolves
+        // to, so nothing said a word (#75).
+        notification_callback: Option<unsafe extern "C" fn(*mut c_void)>,
         context: *mut c_void,
     ) -> *mut DtapeKqchanMachPort;
     fn dtape_kqchan_mach_port_destroy(kqchan: *mut DtapeKqchanMachPort);
@@ -358,7 +366,7 @@ impl MachPortKqchan {
                 receive_buffer,
                 receive_buffer_size,
                 saved_filter_flags,
-                mach_port_notify_cb,
+                Some(mach_port_notify_cb),
                 ctx,
             )
         };
