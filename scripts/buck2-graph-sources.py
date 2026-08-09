@@ -263,7 +263,7 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
 
     out = {}
     import time as _tm
-    _acc = {"argv": 0.0, "roots": 0.0, "manifest": 0.0, "trees": 0.0, "fixpoint": 0.0}
+    _acc = {"argv": 0.0, "roots": 0.0, "rustc": 0.0, "manifest": 0.0, "trees": 0.0, "fixpoint": 0.0}
     for label, acts in by_target.items():
         srcs = set()
         _t = _tm.time()
@@ -280,6 +280,29 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
                 if not d.startswith(("/", "@", "buck-out/")) and _isdir(d):
                     srcs |= under(d)
         _acc["roots"] += _tm.time() - _t
+        # A RUST CRATE NAMES ONLY ITS ROOT, so narrowing used to hand rustc one file.
+        # rustc gets lib.rs (or main.rs) in argv and finds everything else through `mod`
+        # declarations. The scanner above cannot see those: it parses #include "...", which
+        # is a C construct. Measured before this went in: of 77,709 recorded project sources
+        # the whole server crate contributed exactly ONE, linux/server/src/lib.rs, and the
+        # narrowed endpoint died with
+        #   error[E0583]: file not found for module `xnu`  --> linux/server/src/lib.rs:42
+        # after 1,462 green builders. That was the ONLY failure in the narrowed endpoint.
+        #
+        # Take the crate directory WHOLESALE, exactly as an include root is taken. Cheaper
+        # than teaching the scanner Rust, and it cannot miss a module: mod paths are
+        # relative to the crate root directory, so everything reachable is under it. A
+        # rust_library glob is src/**/*.rs anyway, so this is the set buck2 already declares.
+        _t = _tm.time()
+        for a in acts:
+            if "(rustc " not in a["identity"]:
+                continue
+            for tok in a["argv"]:
+                if tok.endswith(".rs") and not tok.startswith(("/", "@", "buck-out/")):
+                    d = os.path.dirname(tok)
+                    if d and _isdir(d):
+                        srcs |= under(d)
+        _acc["rustc"] += _tm.time() - _t
         _t = _tm.time()
         for a in acts:
             # An action that reads its inputs from a FILE, see _manifest_sources.
