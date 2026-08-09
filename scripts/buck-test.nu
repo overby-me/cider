@@ -535,17 +535,28 @@ def main [flag?: string] {
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
     mut n_first = 0
     mut n_linked = 0
-    # PROGRESS, because this loop is otherwise silent for HOURS. It spawns one buck2 per
-    # target, about 15 to 30 seconds each over 568 targets, and prints only on failure, so
-    # without this it looks wedged. It is not: watch the child pid turn over. Measured
-    # 2026-08-09 after mistaking the silence for a hang twice.
-    mut n_seen = 0
+    # ONE buck2 build for all of them, not one per target. This used to call out_of in the
+    # loop, which spawns a fresh buck2 client per dylib: measured 2026-08-09 at 15 to 30
+    # seconds each over 568 targets, so about THREE HOURS, and silent throughout because the
+    # loop only prints on failure. That is why it kept reading as a hang. --show-output emits
+    # "<target> <path>" per line, so a single invocation gives the whole mapping up front.
+    # --keep-going so one broken target still leaves the rest checkable, exactly as the
+    # per-target calls did.
     let n_total = ($all_dylibs | length)
+    say $"  building ($n_total) dylibs in one buck2 invocation"
+    let built = (do -i { ^buck2 build ...$all_dylibs --show-output --keep-going } | complete)
+    let outrows = (lines_of $built.stdout | each {|l|
+        let cols = ($l | str trim | split row --regex '\s+')
+        if ($cols | length) >= 2 { {t: ($cols | get 0), p: ($cols | get 1)} }
+    })
+    say $"  built, ($outrows | length) of ($n_total) reported an output"
+    mut n_seen = 0
     for t in $all_dylibs {
         $n_seen = $n_seen + 1
-        if ($n_seen mod 25) == 0 { say $"  ... ($n_seen) of ($n_total) dylibs checked" }
+        if ($n_seen mod 100) == 0 { say $"  ... ($n_seen) of ($n_total) dylibs checked" }
         let name = ($t | split row ":" | last)
-        let f = (out_of $t)
+        let hit = ($outrows | where t == $t)
+        let f = (if ($hit | is-empty) { "" } else { $hit | first | get p })
         # Both substitutions have to tolerate failure: with `set -euo pipefail`, an
         # objdump on an empty path takes the whole suite down mid-section, which looks
         # like the run stopping for no reason.
