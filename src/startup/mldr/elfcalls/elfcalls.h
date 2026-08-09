@@ -5,14 +5,14 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-struct cider_thread_create_callbacks {
+struct darling_thread_create_callbacks {
 	unsigned int (*thread_self_trap)(void);
 	void (*thread_set_tsd_base)(void*, int);
 	void (*rpc_guard)(int);
 	void (*rpc_unguard)(int);
 };
 
-typedef const struct cider_thread_create_callbacks* cider_thread_create_callbacks_t;
+typedef const struct darling_thread_create_callbacks* darling_thread_create_callbacks_t;
 
 struct elf_calls
 {
@@ -23,15 +23,15 @@ struct elf_calls
 	char* (*dlerror)(void);
 
 	// pthread wrapping
-	void* (*cider_thread_create)(unsigned long stack_size, unsigned long pthobj_size,
+	void* (*darling_thread_create)(unsigned long stack_size, unsigned long pthobj_size,
                 void* entry_point, uintptr_t arg3,
                 uintptr_t arg4, uintptr_t arg5, uintptr_t arg6,
-                cider_thread_create_callbacks_t callbacks, void* dthread);
-	int (*cider_thread_terminate)(void* stackaddr,
+                darling_thread_create_callbacks_t callbacks, void* dthread);
+	int (*darling_thread_terminate)(void* stackaddr,
 				unsigned long freesize, unsigned long pthobj_size);
 
 	// this returns the address of the main thread's stack
-	void* (*cider_thread_get_stack)(void);
+	void* (*darling_thread_get_stack)(void);
 
 	// The same as above, except they abort() in case of failure
 	void* (*dlopen_fatal)(const char* name);

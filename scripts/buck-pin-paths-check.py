@@ -27,6 +27,7 @@ Exit 0 if every path resolves, 1 otherwise, listing what does not.
 import json
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -104,6 +105,47 @@ def sdk_key_namespace():
                     yield f"buck/generated/{name}", f"KEY {key} but VALUE {value}"
 
 
+SDK_NAMESPACES = ("cider/", "darling/")
+
+
+def first_party_includes():
+    """And the THIRD side: what our own code asks for must be what gets staged.
+
+    sdk_headers.bzl stages a header AT a key, and code includes it BY that key. The
+    Cider sweep rewrote both, so restoring only the keys left our own sources asking
+    for the other name and run 9 died at 2,829 builders on
+
+        FSEventsImpl.m:26 fatal error:
+          'cider/emulation/linux_premigration/ext/sys/inotify.h' file not found
+
+    darling/ is the right namespace and that is measured, not preferred: the pins
+    include it 1,839 times and we include it 16.
+
+    Only the two namespaces staged through this map are checked, so an include that
+    resolves through some other -I root is not dragged in. Negative control: with the
+    sweep as it stood, all 16 were missing; a correct tree has none.
+    """
+    files = subprocess.run(["jj", "file", "list"], capture_output=True, text=True).stdout
+    keys = set()
+    with open(os.path.join(GEN, "sdk_headers.bzl"), encoding="utf-8") as fh:
+        keys = set(re.findall(r'^\s*"([^"]+)":', fh.read(), re.M))
+    inc = re.compile(r'#\s*include\s*<((?:' + "|".join(
+        n.rstrip("/") for n in SDK_NAMESPACES) + r')/[^>]+)>')
+    for rel in files.splitlines():
+        if not rel.endswith((".c", ".h", ".m", ".mm", ".cpp")):
+            continue
+        if rel.startswith(("buck-src/", "patches/")):
+            continue
+        try:
+            with open(rel, encoding="utf-8", errors="replace") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        for path in inc.findall(text):
+            if path not in keys:
+                yield rel, f"includes <{path}>, which sdk_headers.bzl does not stage"
+
+
 def submodule_paths():
     """The manifest keys a pin by its src/external path; the last component is
     the buck-src directory the pin is checked out as."""
@@ -136,6 +178,9 @@ def main():
     ns = list(sdk_key_namespace())
     print(f"{'sdk_key_namespace':18s} {len(ns):5d} disagreements")
     missing += ns
+    fp = list(first_party_includes())
+    print(f"{'first_party_incl':18s} {len(fp):5d} unstaged includes")
+    missing += fp
 
     for source in (exports_srcs, sdk_paths, submodule_paths):
         n = 0

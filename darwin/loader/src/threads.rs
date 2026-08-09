@@ -1,4 +1,4 @@
-// mldr thread bridge: cider_thread_create (elfcalls) -- create a Darwin thread on a native
+// mldr thread bridge: darling_thread_create (elfcalls) -- create a Darwin thread on a native
 // pthread, per src/startup/mldr/elfcalls/threads.c:145-325. The native pthread's entry sets up
 // the thread's per-thread RPC socket, checks in, sets the Darwin TSD base (via the guest's
 // callbacks), fetches the mach thread-self port, then switches to the Darwin stack and jumps to
@@ -12,7 +12,7 @@ const DTHREAD_START_TSD_BASE_SET: usize = 0x1000_0000;
 const DWQ_FLAG_THREAD_TSD_BASE_SET: usize = 0x0020_0000;
 const GUARD_SIZE: usize = 0x4000;
 
-/// The guest-provided thread-create callbacks (elfcalls.h cider_thread_create_callbacks).
+/// The guest-provided thread-create callbacks (elfcalls.h darling_thread_create_callbacks).
 #[repr(C)]
 struct Callbacks {
     thread_self_trap: extern "C" fn() -> c_uint,
@@ -63,8 +63,8 @@ unsafe fn dthread_structure_allocate(stack_size: usize) -> (*mut c_void, usize) 
     (dthread, stack_top)
 }
 
-/// elfcalls cider_thread_create (threads.c:145-203).
-pub extern "C" fn cider_thread_create(
+/// elfcalls darling_thread_create (threads.c:145-203).
+pub extern "C" fn darling_thread_create(
     stack_size: c_ulong,
     _pth_obj_size: c_ulong,
     entry_point: *mut c_void,
