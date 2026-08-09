@@ -77,6 +77,21 @@ STORE interpolated as `_g` into every target stage script, with no dependency ed
 is its only supplier, so every target gets the headers and `scripts/` while only labels under
 `root//src/external/darlingserver/duct-tape` also get `duct-tape/src`.
 
+**A BUCK EDIT IS NOT A FULL REBUILD ANY MORE.** The standing advice was to batch BUCK edits
+because each costs a full rebuild. Measured 2026-08-09 with a control either side:
+
+| run | builders | time | prefix output |
+| --- | --- | --- | --- |
+| none (control) | **0** | 18 s | `6fx01v8p...` |
+| one leaf BUCK edit (`src/libaccessibility/BUCK`) | **3** | 7.5 min | `6fx01v8p...` UNCHANGED |
+| restore | **0** | 1 s | `6fx01v8p...` |
+
+The 3 are the graph pipeline itself, skeleton then graph then sources. Nothing downstream moves,
+because a BUCK file is read by buck2 to PRODUCE the graph and is never staged into a target, so
+when the graph output comes out byte identical CA cuts the whole endpoint off. CAVEAT, and it is
+why this is not a blanket licence: the probe appended a COMMENT. A BUCK edit that really changes
+a target definition changes graph.json, and that case is still unmeasured.
+
 **COUNT `^building`, NEVER the "these N derivations will be built" list.** `dserver_rpc` appears
 in that list in both runs and produced ZERO builder lines. Counting the listing would have
 reported a rebuild that never happened. That is CA early cutoff, visible where it is easiest to
