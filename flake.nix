@@ -495,6 +495,14 @@
       # relative web resolves, and is keyed on FILTERED CONTENT, so a target whose own files
       # did not change keeps its path when the project moves.
       #
+      # FIRST REAL EVIDENCE FOR #69, and it cost 340 seconds rather than the 90 minutes the
+      # endpoint wants. Two targets through THIS lowering, picked as one of each kind the
+      # narrowing has broken before, a compile and a generator:
+      #   root//src/libsimple:libsimple_darlingserver   c_compile src/lock.c, then archive
+      #   root//src/external/darlingserver:dserver_rpc  script_gen, runs a python3 out of scripts/
+      # exit 0, 5 builders, 0 errors. So narrowSources is not obviously wrong, which is all one
+      # target can say. The endpoint hash and the default flip are still unverified.
+      #
       #   nix build .#darling-buck2-prefix-min-narrow --max-jobs 2 --cores 4
       packages.darling-buck2-prefix-min-narrow =
         pkgs:
