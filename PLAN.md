@@ -1712,9 +1712,10 @@ has been true six times running, each time a check freshly written.
      escapes of its own: for the pins it took 143 dangling links to **413**. The SDK
      `usr/include` extracted alone is **1,987 dangling of 1,987 symlinks**, against 0 of 2,928
      inside the assembled tree. It is nothing but relative links into the rest of the project.
-  **Neither existing flag cuts it either.** `sourceGroups` has the right granularity and the
-  wrong mechanism; `narrowSources` the reverse, since `projectSrc` is ONE `srcUnion` for every
-  target (probed: the compile RAN). And their combination is closed at evaluation time: one
+  **Neither flag cut it either.** `sourceGroups` has the right granularity and the wrong
+  mechanism; `narrowSources`, deleted since, was the reverse, because `projectSrc` was ONE
+  union shared by every target (probed: the compile RAN). And their combination was closed at
+  evaluation time: one
   `builtins.path` union costs **~4 seconds**, so 3,225 of them is **3.6 hours of eval**.
   **What is left untried** is the same idea at BUILD time: one CONTENT-ADDRESSED SUBSET
   DERIVATION PER TARGET, cut from the shared `projectSrc` and reproducing the project layout.
