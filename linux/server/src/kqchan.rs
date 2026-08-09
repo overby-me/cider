@@ -246,87 +246,30 @@ struct CallMachPortRead {
     default_buffer: u64,
     default_buffer_size: u64,
 }
-#[repr(C)]
-#[derive(Clone, Copy)]
-struct Kev {
-    ident: u64,
-    filter: i16,
-    flags: u16,
-    qos: i32,
-    udata: u64,
-    fflags: u32,
-    xflags: u32,
-    data: i64,
-    ext: [u64; 4],
-}
-/// COMPARED AGAINST THE GENERATED BINDING, 2026-08-09, and it has NOT drifted (#75).
-///
-/// This is a hand-written mirror of a wire struct that dtape_kqchan_mach_port_fill WRITES
-/// THROUGH, and the definition takes dserver_kqchan_reply_mach_port_read_t, so a drifted copy
-/// here would be memory corruption rather than a type complaint. Field by field:
-///
-///   Kev against dserver_kqchan_reply_mach_port_read__bindgen_ty_1
-///     ident u64, filter i16, flags u16, qos i32, udata u64, fflags u32, xflags u32,
-///     data i64, ext [u64; 4]                                      identical
-///   Replyhdr against dserver_kqchan_replyhdr
-///     number u32 against dserver_kqchan_msgnum_t, which is a re-export of a #[repr(u32)]
-///     enum, so four bytes either way; code i32 against c_int      identical
-///
-/// The repr is easy to miss: bindgen puts #[repr(u32)] about 1,400 characters ahead of the
-/// enum, behind #[non_exhaustive] and a long doc comment, so a short grep window reports no
-/// repr at all and invites the wrong conclusion.
-///
-/// NOT REPLACED BY THE BINDING TYPE, deliberately. Replyhdr, Kev, ReplyProcModify,
-/// ReplyMachPortModify and CallMachPortRead are one family covering the whole kqchan wire
-/// protocol, so swapping only this one would leave the file half in bindings types and half in
-/// local ones. Moving the family to the generated mirrors is a reasonable cleanup, but it is a
-/// refactor rather than a fix: there is no bug here to justify it.
-#[repr(C)]
-struct ReplyMachPortRead {
-    header: Replyhdr,
-    kev: Kev,
-}
-
-/// Opaque duct-tape mach-port kqchan handle.
-#[repr(C)]
-pub struct DtapeKqchanMachPort {
-    _private: [u8; 0],
-}
-
-extern "C" {
-    fn dtape_kqchan_mach_port_create(
-        owning_task: *mut dtape_task_t,
-        port: u32,
-        receive_buffer: u64,
-        receive_buffer_size: u64,
-        saved_filter_flags: u64,
-        // Option<unsafe fn>, NOT a bare safe fn. The definition takes
-        // dtape_kqchan_mach_port_notification_callback_f, which is
-        // Option<unsafe extern "C" fn(context: *mut c_void)>. This declaration said
-        // `extern "C" fn(*mut c_void)`, which is non-nullable and SAFE, so it could neither
-        // express the null the callee accepts nor carry the unsafety across. Same ABI for a
-        // non-null value, and the same class of mismatch gate10 found on thread_block, which
-        // did misbehave. rustc never compares a declaration against the definition it resolves
-        // to, so nothing said a word (#75).
-        notification_callback: Option<unsafe extern "C" fn(*mut c_void)>,
-        context: *mut c_void,
-    ) -> *mut DtapeKqchanMachPort;
-    fn dtape_kqchan_mach_port_destroy(kqchan: *mut DtapeKqchanMachPort);
-    fn dtape_kqchan_mach_port_modify(
-        kqchan: *mut DtapeKqchanMachPort,
-        receive_buffer: u64,
-        receive_buffer_size: u64,
-        saved_filter_flags: u64,
-    );
-    fn dtape_kqchan_mach_port_disable_notifications(kqchan: *mut DtapeKqchanMachPort);
-    fn dtape_kqchan_mach_port_fill(
-        kqchan: *mut DtapeKqchanMachPort,
-        reply: *mut ReplyMachPortRead,
-        default_buffer: u64,
-        default_buffer_size: u64,
-    ) -> bool;
-    fn dtape_kqchan_mach_port_has_events(kqchan: *mut DtapeKqchanMachPort) -> bool;
-}
+// Imported rather than declared through the linker, now that kqchan is EXECUTED (#80) and the
+// swap can be verified instead of assumed. This was the last of #75.
+//
+// THE TWO LOCAL TYPES THAT USED TO SIT HERE ARE GONE. kqchan.rs declared its own opaque
+// DtapeKqchanMachPort and its own ReplyMachPortRead, a hand-written mirror of a wire struct that
+// dtape_kqchan_mach_port_fill WRITES THROUGH, while the definitions take
+// dtape_kqchan_mach_port_t and dserver_kqchan_reply_mach_port_read_t. The mirror was compared
+// field by field first (177732f6) and did not differ, so this is a swap and not a fix:
+//
+//   Kev against dserver_kqchan_reply_mach_port_read__bindgen_ty_1
+//     ident u64, filter i16, flags u16, qos i32, udata u64, fflags u32, xflags u32, data i64,
+//     ext [u64; 4]                                                            identical
+//   Replyhdr against dserver_kqchan_replyhdr
+//     number u32 against a re-exported #[repr(u32)] enum, code i32 against c_int   identical
+//
+// Replyhdr STAYS local, because ReplyProcModify and ReplyMachPortModify still use it. Only the
+// two types the FFI boundary needed moved to the generated ones.
+use crate::bindings;
+use crate::bindings::{dserver_kqchan_reply_mach_port_read_t, dtape_kqchan_mach_port_t};
+use crate::dtape_kqchan::{
+    dtape_kqchan_mach_port_create, dtape_kqchan_mach_port_destroy,
+    dtape_kqchan_mach_port_disable_notifications, dtape_kqchan_mach_port_fill,
+    dtape_kqchan_mach_port_has_events, dtape_kqchan_mach_port_modify,
+};
 
 /// Duct-tape notification callback: a message landed on the watched port. `context` is the
 /// heap-stable MachPortKqchan address passed to create(). Fires on the serve loop (inside the
@@ -344,7 +287,7 @@ pub struct MachPortKqchan {
     /// Our end of the socketpair (nonblocking SEQPACKET); the guest sends modify/read here.
     pub daemon_fd: RawFd,
     /// The duct-tape kqchan (XNU knote on the port); null only transiently during open().
-    dtape: *mut DtapeKqchanMachPort,
+    dtape: *mut dtape_kqchan_mach_port_t,
     /// The owning guest task -- modify/read run on a microthread bound to it.
     owning_task: *mut dtape_task_t,
     /// Throttle: at most one unacknowledged notification outstanding (the guest acks by reading).
@@ -489,8 +432,11 @@ impl MachPortKqchan {
             sched::run_on_task(
                 task,
                 Box::new(move || {
-                    let mut reply: ReplyMachPortRead = std::mem::zeroed();
-                    reply.header.number = MSGNUM_MACH_PORT_READ;
+                    let mut reply: dserver_kqchan_reply_mach_port_read_t = std::mem::zeroed();
+                    // The GENERATED header types this field as the enum, where the local
+                    // mirror typed it u32 and accepted any number. Same value (3), now checked.
+                    reply.header.number =
+                        bindings::dserver_kqchan_msgnum::dserver_kqchan_msgnum_mach_port_read;
                     reply.header.code = 0;
                     if !dtape_kqchan_mach_port_fill(dtape, &mut reply, default_buffer, default_buffer_size) {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
@@ -499,7 +445,7 @@ impl MachPortKqchan {
                     libc::send(
                         daemon_fd,
                         &reply as *const _ as *const c_void,
-                        size_of::<ReplyMachPortRead>(),
+                        size_of::<dserver_kqchan_reply_mach_port_read_t>(),
                         libc::MSG_DONTWAIT,
                     );
                 }),
