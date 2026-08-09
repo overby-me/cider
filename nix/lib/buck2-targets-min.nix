@@ -9,7 +9,7 @@
   "//buck-src:migcom"
   "//src/startup:rtsig_header"
   "//src/external/darlingserver:dserver_rpc"
-  "//src/external/darlingserver/duct-tape:darlingserver_duct_tape"
+  "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape"
   "//src/external/darlingserver/tools:dserverdbg"
   "//linux/server:duct_tape_lib"
   "//src/libsimple:libsimple_darling_dylib"

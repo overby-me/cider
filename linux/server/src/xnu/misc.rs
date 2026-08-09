@@ -1,4 +1,4 @@
-//! `duct-tape/src/misc.c`, in Rust (#71, twelfth file).
+//! `xnu-sys/src/misc.c`, in Rust (#71, twelfth file).
 //!
 //! 150 lines, and the smallest remaining file, but it is the one that had to solve the problem
 //! blocking the last two: duct-tape exports four VARIADIC DEFINITIONS, and stable Rust cannot
@@ -6,7 +6,7 @@
 //! the fourth is `panic` in stubs.c.
 //!
 //! THE SOLUTION IS NOT TO PORT THEM. Each is a pure forwarder to a `v`-variant, so all four stay
-//! in C, in `duct-tape/src/dtape_rs_shims.c` alongside the eighteen macro shims, for exactly the
+//! in C, in `xnu-sys/src/dtape_rs_shims.c` alongside the eighteen macro shims, for exactly the
 //! same reason those are there: they do the one thing Rust cannot express. `dtape_logv` goes with
 //! them, since its parameter is a `va_list`.
 //!

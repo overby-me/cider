@@ -161,5 +161,5 @@ host_include_dirs = ($host_include_dirs | str join ':')
     open .buckconfig.local | lines | each {|l| print $"  ($l)" }
 
     print ""
-    print "ready: buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape"
+    print "ready: buck2 build //src/external/darlingserver/xnu-sys:darlingserver_duct_tape"
 }

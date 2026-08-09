@@ -1,4 +1,4 @@
-//! The Mach debug queries: the Rust replacement for `duct-tape/src/debug.c` (#71, seventh file).
+//! The Mach debug queries: the Rust replacement for `xnu-sys/src/debug.c` (#71, seventh file).
 //!
 //! Four read-only walks over a task's Mach state, used by darlingserver's debugging tools to
 //! answer what ports a task holds, what is in a port set, and what messages are queued. They

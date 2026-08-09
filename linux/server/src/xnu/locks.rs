@@ -1,5 +1,5 @@
 //! Mutexes, spin locks, ticket locks and the sleep routines: the Rust replacement for
-//! `duct-tape/src/locks.c` (#71, eighth file).
+//! `xnu-sys/src/locks.c` (#71, eighth file).
 //!
 //! This is the file every guest thread runs on. The mutex here is NOT a native lock, and the
 //! comment block in the C explains why at length; the short version is that a native lock would

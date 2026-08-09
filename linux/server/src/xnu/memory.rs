@@ -1,6 +1,6 @@
-//! `duct-tape/src/memory.c`, in Rust (#71, fifteenth file).
+//! `xnu-sys/src/memory.c`, in Rust (#71, fifteenth file).
 //!
-//! 1,170 lines of glue after the copied-XNU half moved to `duct-tape/src/memory_xnu.c`: the
+//! 1,170 lines of glue after the copied-XNU half moved to `xnu-sys/src/memory_xnu.c`: the
 //! zone and kalloc allocators, the `copyin`/`copyout` family, the `vm_map_copy` path, the
 //! region queries, and the shared remap that backs `mach_vm_remap` with a memfd.
 //!

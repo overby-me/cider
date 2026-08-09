@@ -217,7 +217,7 @@ def main [flag?: string] {
         //buck-src:migcom
         //src/startup:rtsig_header
         //src/external/darlingserver:dserver_rpc
-        //src/external/darlingserver/duct-tape:darlingserver_duct_tape
+        //src/external/darlingserver/xnu-sys:darlingserver_duct_tape
         //src/external/darlingserver/tools:dserverdbg
         //linux/server:duct_tape_lib
         //src/libsimple:libsimple_darling_dylib
@@ -303,7 +303,7 @@ def main [flag?: string] {
     }
 
     say "== duct-tape =="
-    let dt = (out_of //src/external/darlingserver/duct-tape:darlingserver_duct_tape)
+    let dt = (out_of //src/external/darlingserver/xnu-sys:darlingserver_duct_tape)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
@@ -319,7 +319,7 @@ def main [flag?: string] {
     # dtape_init and dtape_init_in_thread are NOT here any more: #71 made them Rust, they live
     # at linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
     # false. What covers them now is the darlingserverd LINK plus the demos, both in
-    # scripts/duct-tape-runtime-check.nu, which is a 40 second gate.
+    # scripts/xnu-sys-runtime-check.nu, which is a 40 second gate.
     for sym in [ipc_kmsg_send mig_init thread_call_initialize] {
         if (has $dt_syms $sym) { ok $"defines ($sym)" } else { bad $"missing ($sym)" }
     }

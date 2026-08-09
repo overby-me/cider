@@ -32,7 +32,7 @@ pub unsafe fn set_dyld_info(task: *mut dtape_task_t, address: u64, length: u64) 
 }
 
 // The object-level semaphores used to be four more extern declarations here, against
-// duct-tape/src/semaphore.c. That file is Rust now (#71), so these forward into the crate
+// xnu-sys/src/semaphore.c. That file is Rust now (#71), so these forward into the crate
 // rather than out through the FFI. The signatures are unchanged, and the symbols are still
 // exported with the C ABI, because kqchan.c is still C and calls them.
 

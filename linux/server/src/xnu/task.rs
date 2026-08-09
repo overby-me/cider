@@ -1,11 +1,11 @@
-//! `duct-tape/src/task.c`, in Rust (#71, fourteenth file).
+//! `xnu-sys/src/task.c`, in Rust (#71, fourteenth file).
 //!
 //! NAMED `dtape_task` because `linux/server/src/task.rs` already exists and is the DAEMON side.
 //! Third time that has come up, after kqchan and psynch.
 //!
 //! task.c was 1,766 lines, of which about 1,000 were verbatim XNU that the file itself marked
 //! `<copied from="xnu://7195.141.2/osfmk/kern/task_policy.c">` and two more like it. Those moved
-//! to `duct-tape/src/task_xnu.c` in the commit before this one, unedited, because #71 is a port
+//! to `xnu-sys/src/task_xnu.c` in the commit before this one, unedited, because #71 is a port
 //! of the GLUE with XNU staying C. What is left, and what is here, is the 763 lines of Darling
 //! glue: task creation and teardown, `task_info`, the `task_for_pid` family, and the four
 //! `proc_*` entry points `task_ident.c` needs.

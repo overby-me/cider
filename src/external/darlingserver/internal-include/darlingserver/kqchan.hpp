@@ -7,7 +7,7 @@
 
 #include <darlingserver/monitor.hpp>
 #include <darlingserver/message.hpp>
-#include <darlingserver/duct-tape.h>
+#include <darlingserver/xnu-sys.h>
 #include <darlingserver/logging.hpp>
 
 #define NOTE_EXIT        0x80000000U

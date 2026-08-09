@@ -1,4 +1,4 @@
-//! `duct-tape/src/psynch.c`, in Rust (#71, eleventh file).
+//! `xnu-sys/src/psynch.c`, in Rust (#71, eleventh file).
 //!
 //! NAMED `dtape_psynch` because `linux/server/src/psynch.rs` already exists and is the DAEMON
 //! side, the RPC handlers the guest calls. This is the layer under it: the glue that lets the

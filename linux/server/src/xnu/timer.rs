@@ -1,4 +1,4 @@
-//! duct-tape's timer queue: the Rust replacement for `duct-tape/src/timer.c`
+//! duct-tape's timer queue: the Rust replacement for `xnu-sys/src/timer.c`
 //! (#71, the third glue file ported).
 //!
 //! duct-tape does not emulate XNU's per-CPU timer hardware. It keeps ONE queue, and asks the

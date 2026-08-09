@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include <darlingserver/duct-tape.h>
+#include <darlingserver/xnu-sys.h>
 #include <darlingserver/utility.hpp>
 #include <darlingserver/kqchan.hpp>
 #include <darlingserver/rpc.h>

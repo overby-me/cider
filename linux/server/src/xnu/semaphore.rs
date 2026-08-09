@@ -1,5 +1,5 @@
 //! Object-level duct-tape semaphores: the Rust replacement for
-//! `duct-tape/src/semaphore.c` (#71, the first glue file ported).
+//! `xnu-sys/src/semaphore.c` (#71, the first glue file ported).
 //!
 //! These are semaphores OWNED BY A TASK, distinct from the name-based semaphore traps in
 //! [`crate::traps`]. The daemon uses them for the fork-wait handshake (the parent blocks on
@@ -7,7 +7,7 @@
 //! C -- uses them for its reader/death waiters.
 //!
 //! WHY THIS FILE WENT FIRST. It was picked by measurement, not by feel:
-//! `scripts/duct-tape-portability.py` ranks the sixteen glue files by what Rust genuinely
+//! `scripts/xnu-sys-portability.py` ranks the sixteen glue files by what Rust genuinely
 //! cannot express, and this one is 60 lines with a single macro (`panic`) and no C variadic
 //! definitions. It still exercises every part of the seam that the remaining files need:
 //! it exports the C ABI, it is called FROM C (kqchan.c), it calls INTO XNU, it dereferences
@@ -42,7 +42,7 @@ extern "C" {
     fn panic(format: *const c_char, ...);
 }
 
-/// Mirrors `dtape_semaphore_wait_result_t` in duct-tape/include/.../types.h.
+/// Mirrors `dtape_semaphore_wait_result_t` in xnu-sys/include/.../types.h.
 ///
 /// Spelled out rather than reusing the bindgen enum because this is a RETURN type across
 /// the C ABI: the C header pins the discriminants at -1/0/1, so they are pinned here too.

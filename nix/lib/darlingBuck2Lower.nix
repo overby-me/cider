@@ -233,7 +233,7 @@
   #      farm out as <farm>/<pin> rather than by sanitised name fixes every one of these,
   #      because the number of ../ from the link up to src/external is preserved.
   #    7 leave src/external entirely: 6 from bootstrap_cmds and libnotify into
-  #      darwin/Developer/Platforms/.../usr/include, and security -> darlingserver/duct-tape/
+  #      darwin/Developer/Platforms/.../usr/include, and security -> darlingserver/xnu-sys/
   #      xnu, which is first-party vendored and not a pin at all. Those need rewriting to an
   #      absolute store path, the same treatment #54 needs for group escapes.
   #
@@ -297,7 +297,7 @@
   # narrowing that one deleted src/external/darlingserver/scripts from the staged tree and broke
   # dserver_rpc with the very error the comment there warns about. Measured before re-narrowing:
   # of the 2,080 symlinks that resolve into src/external/darlingserver, 2,078 land inside
-  # duct-tape/xnu; the other 2 are internal to duct-tape/pthread, which is in neither tree, so
+  # xnu-sys/xnu; the other 2 are internal to xnu-sys/pthread, which is in neither tree, so
   # nothing dangles.
   escapeRoots =
     ["darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
@@ -882,7 +882,7 @@
   #
   # So each root is narrowed to the subtree that is actually escaped INTO. Measured on the
   # working tree, counting relative links from OUTSIDE each directory: every one of the 2,077
-  # escapes into darlingserver lands in `duct-tape/xnu` and nowhere else, and XNU is frozen by
+  # escapes into darlingserver lands in `xnu-sys/xnu` and nowhere else, and XNU is frozen by
   # policy. libtrace (4) and libpthread_workqueue (2) are escaped into at their root and are
   # vendored, so they stay whole.
   #
@@ -890,7 +890,7 @@
   # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
   # NOT catch it, because a symlink target is recorded as a string.
   #
-  # MEASURED, both ways, by appending one comment line to duct-tape/src/dtape_rs_shims.c and
+  # MEASURED, both ways, by appending one comment line to xnu-sys/src/dtape_rs_shims.c and
   # evaluating darling-buck2-prefix-min.pinsTree.drvPath either side of it:
   #
   #   wide root, src/external/darlingserver     knklrz6g... -> bdbznvsi...   MOVED
@@ -919,7 +919,7 @@
   # not the only route from a duct-tape edit to a target. nonPinExternal is ALSO added to the
   # per-target `groups` for every target, groupStore is a builtins.path over the whole directory,
   # and its store path is interpolated into that target's stage script as _g. builtins.path is
-  # content addressed, so editing src/external/darlingserver/duct-tape moves
+  # content addressed, so editing src/external/darlingserver/xnu-sys moves
   # groupStore "src/external/darlingserver", which moves every stage script that names it, which
   # moves every target. Narrowing escapeRoots closed the pinsTree route and left this one open,
   # and it was open before #79 too, so #79 fixed one of two.
@@ -927,7 +927,7 @@
   # NOW MEASURED, on .#darling-buck2-one, counting builders that RAN:
   #   baseline                    3 buck2 builders
   #   no-op                       0            <- the control can fail, so the test means something
-  #   one duct-tape/src edit      6, and root//src/libsimple:libsimple_darlingserver RECOMPILED
+  #   one xnu-sys/src edit      6, and root//src/libsimple:libsimple_darlingserver RECOMPILED
   #                               src/lock.c, which has no business rebuilding for a duct-tape edit
   # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
   # nor the sources output, both of which were byte identical:
@@ -935,28 +935,28 @@
   #   + _g=/nix/store/nmj2s0wk...-darling-src-src-external-darlingserver
   # So the groups route is confirmed, and #79 cut one of two.
   #
-  # AND THE OBVIOUS FIX DOES NOT WORK. Expanding this root into siblings with duct-tape/src left
+  # AND THE OBVIOUS FIX DOES NOT WORK. Expanding this root into siblings with xnu-sys/src left
   # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
   # libsimple stays put) but it STARVES the duct-tape compiles:
   #   clang: error: no such file or directory:
-  #     src/external/darlingserver/duct-tape/src/dtape_rs_shims.c
+  #     src/external/darlingserver/xnu-sys/src/dtape_rs_shims.c
   # because src/external is deliberately outside the per-target union mechanism. The grouping
   # rule in scripts/buck2-graph-sources.py excludes buck-src and src/external as pins staged
   # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
   # SUPPLIER. A blanket cut therefore cannot work; the answer is groupSplit further down, which
-  # gives every target the headers and the scripts but hands duct-tape/src only to the targets
+  # gives every target the headers and the scripts but hands xnu-sys/src only to the targets
   # that compile it.
   escapeNarrow = {
-    "src/external/darlingserver" = "src/external/darlingserver/duct-tape/xnu";
+    "src/external/darlingserver" = "src/external/darlingserver/xnu-sys/xnu";
   };
 
   # THE FIX FOR THE 100 PERCENT ROW (#79), and it is CONDITIONAL rather than a blanket cut.
   #
-  # Dropping duct-tape/src from the groups outright does cut the cascade but starves the
+  # Dropping xnu-sys/src from the groups outright does cut the cascade but starves the
   # compiles, because src/external is outside the per-target union mechanism and the group is
   # the only supplier. The way through is that the two consumers want different sets: EVERY
   # target needs the headers and the generator scripts, but only darlingserver OWN targets need
-  # duct-tape/src. Checked before splitting: duct-tape/src is 20 .c files and NO headers, and
+  # xnu-sys/src. Checked before splitting: xnu-sys/src is 20 .c files and NO headers, and
   # nothing outside darlingserver references the path except two comments in linux/server. So
   # every other target was staging 20 C files it cannot use and paying the whole endpoint for a
   # duct-tape edit.
@@ -969,12 +969,12 @@
   #   settle after this change   1,551, exit 0, 0 errors   <- correctness, dt_objects and
   #                                                           dserver_rpc both build
   #   no-op control                  0                     <- so the probe can fail
-  #   one duct-tape/src edit       657 in 22 min            <- was 1,558 in 61 min
+  #   one xnu-sys/src edit       657 in 22 min            <- was 1,558 in 61 min
   #   restore                        0, back to the settled output
   # then, with ownerPrefix narrowed to the duct-tape package:
   #   settle                       650, exit 0, 0 errors
   #   no-op control                  0
-  #   one duct-tape/src edit        44 in 154 s
+  #   one xnu-sys/src edit        44 in 154 s
   #   restore                        0, back to the settled output
   #
   # SO: 1,558 builders and 61 minutes, to 44 and 2.5 minutes. 35 times fewer builders, 24 times
@@ -994,19 +994,19 @@
         "src/external/darlingserver/scripts"
         "src/external/darlingserver/src"
         "src/external/darlingserver/tools"
-        "src/external/darlingserver/duct-tape/defines"
-        "src/external/darlingserver/duct-tape/include"
-        "src/external/darlingserver/duct-tape/internal-include"
-        "src/external/darlingserver/duct-tape/pthread"
-        "src/external/darlingserver/duct-tape/xnu"
+        "src/external/darlingserver/xnu-sys/defines"
+        "src/external/darlingserver/xnu-sys/include"
+        "src/external/darlingserver/xnu-sys/internal-include"
+        "src/external/darlingserver/xnu-sys/pthread"
+        "src/external/darlingserver/xnu-sys/xnu"
       ];
       # THE DUCT-TAPE PACKAGE, not all of darlingserver. The wider prefix also matched
-      # root//src/external/darlingserver:dserver_rpc, which compiles none of duct-tape/src (it
+      # root//src/external/darlingserver:dserver_rpc, which compiles none of xnu-sys/src (it
       # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a duct-tape edit
       # dragged its whole consumer cone along. That is the 657 above rather than the ~7 an
       # ordinary leaf edit costs.
-      ownerPrefix = "root//src/external/darlingserver/duct-tape";
-      owned = ["src/external/darlingserver/duct-tape/src"];
+      ownerPrefix = "root//src/external/darlingserver/xnu-sys";
+      owned = ["src/external/darlingserver/xnu-sys/src"];
     };
   };
 
@@ -1053,7 +1053,7 @@
       ++ lib.optionals (compiles ? ${label})
         (lib.optional (builtins.pathExists (srcRaw + ("/" + sdkGroup))) sdkGroup)
       # PER LABEL, not the flat list: darlingserver is expanded into siblings and the churny
-      # duct-tape/src is added only for its own targets, which is the cascade route nix-diff
+      # xnu-sys/src is added only for its own targets, which is the cascade route nix-diff
       # named. escapeRoots above still takes the unexpanded list.
       ++ (builtins.filter (r: builtins.pathExists (srcRaw + ("/" + r))) (nonPinExternalFor label))
     );

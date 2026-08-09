@@ -29,7 +29,7 @@
 #include <queue>
 
 #include <darlingserver/message.hpp>
-#include <darlingserver/duct-tape.h>
+#include <darlingserver/xnu-sys.h>
 #include <darlingserver/logging.hpp>
 #include <darlingserver/stack-pool.hpp>
 #include <darlingserver/registry.hpp>

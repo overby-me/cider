@@ -1,4 +1,4 @@
-//! Host information: the Rust replacement for `duct-tape/src/host.c` (#71, fourth file).
+//! Host information: the Rust replacement for `xnu-sys/src/host.c` (#71, fourth file).
 //!
 //! These are the XNU `host_*` entry points the MIG server dispatches into when the guest asks
 //! the "kernel" about the machine: how much memory, how many CPUs, what the scheduler's
@@ -6,7 +6,7 @@
 //! that is what `sysctl`, `sw_vers` and the Nix installer end up going through.
 //!
 //! WHY THIS FILE WAS PICKED, and it was picked by measurement rather than by feel.
-//! `scripts/duct-tape-portability.py` ranks the sixteen glue files, and after it was taught
+//! `scripts/xnu-sys-portability.py` ranks the sixteen glue files, and after it was taught
 //! that `dtape_stub`, `dtape_stub_safe` and `dtape_stub_unsafe` are already Rust, this one has
 //! exactly ONE unresolved blocker left: `panic`, which `semaphore.rs` already calls as an
 //! extern variadic and which gate3 validated. At 245 lines and 12 exports it is also the

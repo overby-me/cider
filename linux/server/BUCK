@@ -17,7 +17,7 @@ load("//buck/generated:duct_tape_flags.bzl", "DUCT_TAPE_DEFINES", "DUCT_TAPE_FLA
 cc_lib_dir(
     name = "duct_tape_lib",
     deps = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
     ],
     visibility = ["PUBLIC"],
@@ -511,7 +511,7 @@ bindgen_gen(
         "--allowlist-var=CPU_STATE_.*",
         "--allowlist-var=KERN_INVALID_PROCESSOR_SET",
         "--allowlist-function=usimple_lock_init",
-        # A PATTERN, not a list: every shim added to duct-tape/src/dtape_rs_shims.c should bind
+        # A PATTERN, not a list: every shim added to xnu-sys/src/dtape_rs_shims.c should bind
         # without anyone remembering to come back here.
         "--allowlist-function=dtape_rs_.*",
         "--allowlist-type=mach_port_t",
@@ -801,25 +801,25 @@ bindgen_gen(
         # mig FIRST: mach/task.h exists as both a MIG output and a hand-written XNU header,
         # and semaphore_create/semaphore_destroy are declared only in the generated one.
         # (XNU's kern/sync_sema.h declares just semaphore_destroy_all.)
-        "//src/external/darlingserver/duct-tape:mig_mach_task",
+        "//src/external/darlingserver/xnu-sys:mig_mach_task",
         # kern/policy_internal.h includes mach/resource_notify.h, which is MIG output, so the
         # stubs.c half of the wrapper does not parse without it.
-        "//src/external/darlingserver/duct-tape:mig_mach_resource_notify",
+        "//src/external/darlingserver/xnu-sys:mig_mach_resource_notify",
         # task.c includes mach/mach_port.h, also MIG output.
-        "//src/external/darlingserver/duct-tape:mig_mach_mach_port",
+        "//src/external/darlingserver/xnu-sys:mig_mach_mach_port",
         # thread.c includes mach/thread_act.h, also MIG output.
-        "//src/external/darlingserver/duct-tape:mig_mach_thread_act",
-        "//src/external/darlingserver/duct-tape:dt_include",
-        "//src/external/darlingserver/duct-tape:dt_internal_include",
-        "//src/external/darlingserver/duct-tape:dt_defines",
-        "//src/external/darlingserver/duct-tape:xnu_osfmk",
-        "//src/external/darlingserver/duct-tape:xnu_bsd",
-        "//src/external/darlingserver/duct-tape:xnu_libkern",
-        "//src/external/darlingserver/duct-tape:xnu_osfmk_libsa",
-        "//src/external/darlingserver/duct-tape:xnu_pexpert",
-        "//src/external/darlingserver/duct-tape:xnu_iokit",
-        "//src/external/darlingserver/duct-tape:xnu_external_headers",
-        "//src/external/darlingserver/duct-tape:xnu_root",
+        "//src/external/darlingserver/xnu-sys:mig_mach_thread_act",
+        "//src/external/darlingserver/xnu-sys:dt_include",
+        "//src/external/darlingserver/xnu-sys:dt_internal_include",
+        "//src/external/darlingserver/xnu-sys:dt_defines",
+        "//src/external/darlingserver/xnu-sys:xnu_osfmk",
+        "//src/external/darlingserver/xnu-sys:xnu_bsd",
+        "//src/external/darlingserver/xnu-sys:xnu_libkern",
+        "//src/external/darlingserver/xnu-sys:xnu_osfmk_libsa",
+        "//src/external/darlingserver/xnu-sys:xnu_pexpert",
+        "//src/external/darlingserver/xnu-sys:xnu_iokit",
+        "//src/external/darlingserver/xnu-sys:xnu_external_headers",
+        "//src/external/darlingserver/xnu-sys:xnu_root",
         "//src/libsimple:libsimple_headers",
         "//src/external/darlingserver:dserver_headers",
         # duct-tape.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
@@ -878,7 +878,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -904,7 +904,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -929,7 +929,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -958,7 +958,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -986,7 +986,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1014,7 +1014,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1039,7 +1039,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1068,7 +1068,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1090,7 +1090,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1112,7 +1112,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1134,7 +1134,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1156,7 +1156,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1178,7 +1178,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1200,7 +1200,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1222,7 +1222,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1244,7 +1244,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1266,7 +1266,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1288,7 +1288,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1310,7 +1310,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1332,7 +1332,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1354,7 +1354,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1376,7 +1376,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1398,7 +1398,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],
@@ -1420,7 +1420,7 @@ rust_binary(
         "//buck-rust:libc",
     ],
     link_archives = [
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
         "//src/libsimple:libsimple_darlingserver",
         ":dserver_fast_context",
     ],

@@ -1,4 +1,4 @@
-//! duct-tape condition variables: the Rust replacement for `duct-tape/src/condvar.c`
+//! duct-tape condition variables: the Rust replacement for `xnu-sys/src/condvar.c`
 //! (#71, the second glue file ported).
 //!
 //! These are the condvars duct-taped XNU code blocks on, built on the microthread scheduler
@@ -7,7 +7,7 @@
 //! links and resumes them. Upstream calls its own implementation half-assed; this is a
 //! faithful port of it, not a redesign.
 //!
-//! WHY THIS FILE WENT SECOND. Measured, not guessed. `scripts/duct-tape-portability.py`
+//! WHY THIS FILE WENT SECOND. Measured, not guessed. `scripts/xnu-sys-portability.py`
 //! reports two axes, and they disagree: by BLOCKERS (what Rust cannot express) `init.c`
 //! looked next, but by FFI SURFACE, read off the compiled object, `init.c` is 4 exports and
 //! FORTY calls out while this file is **3 exports and 7 calls out** -- the closest match to

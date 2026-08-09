@@ -49,8 +49,8 @@
 # not a build -- never bound a long build this way, it just SIGTERMs it at the deadline.)
 #
 # Usage:
-#   scripts/duct-tape-runtime-check.nu
-#   scripts/duct-tape-runtime-check.nu --seconds 120
+#   scripts/xnu-sys-runtime-check.nu
+#   scripts/xnu-sys-runtime-check.nu --seconds 120
 
 const DEMOS = [
     [target, verdict, covers];

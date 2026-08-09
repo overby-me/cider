@@ -27,8 +27,8 @@ ranking below is the corrected one; the earlier note in the task list that named
 easy first file was measured wrong and is the opposite of true.
 
 Usage:
-  scripts/duct-tape-portability.py                 # rank every glue file
-  scripts/duct-tape-portability.py --file misc.c   # explain one file
+  scripts/xnu-sys-portability.py                 # rank every glue file
+  scripts/xnu-sys-portability.py --file misc.c   # explain one file
 """
 
 import argparse
@@ -41,7 +41,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OPAQUE = []
-DT = os.path.join(ROOT, "src/external/darlingserver/duct-tape")
+DT = os.path.join(ROOT, "src/external/darlingserver/xnu-sys")
 
 # duct-tape's include roots, in the BUCK file's order (dt_env).
 INCLUDE_ROOTS = [
@@ -92,7 +92,7 @@ def generated_include_roots():
     """
     roots = []
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/duct-tape/__mig_*__/mig_*__gen")))
+        ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/xnu-sys/__mig_*__/mig_*__gen")))
     roots += sorted(glob.glob(os.path.join(
         ROOT, "buck-out/v2/art/root/*/src/external/darlingserver/__dserver_rpc__/*gen_include")))
     # thread.c reaches src/startup for rtsig.h, which linux/server/BUCK also lists.
@@ -157,7 +157,7 @@ def macros_visible_to(path, args):
 # columns are skipped when they are not there rather than making the whole tool need one.
 OBJDIR = os.path.join(
     ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/src/external/darlingserver"
-          "/duct-tape/__dt_objects__/__objs/src")
+          "/xnu-sys/__dt_objects__/__objs/src")
 
 
 def ffi_surface(name):
@@ -424,7 +424,7 @@ def solved_macro_names_and_allowlist():
     # processor.c and pushed both down the list. Read the crate for macro_rules! rather than
     # keeping a hand written list here, for the same reason PORTED_TO_RUST is read from the
     # generator: a second copy drifts, and this tool is only useful if it is trusted.
-    # Macros solved by a C SHIM count as solved too. duct-tape/src/dtape_rs_shims.c exports
+    # Macros solved by a C SHIM count as solved too. xnu-sys/src/dtape_rs_shims.c exports
     # macro-only operations as real symbols, named dtape_rs_<macro>, for the cases where a Rust
     # reimplementation would cost more than it saves: kalloc expands to a statement expression
     # holding a static vm_allocation_site_t, so writing it in Rust would mean un-opaquing part
@@ -578,7 +578,7 @@ def main():
               f"{len(r['opaque']):>8}  {note}")
     if not any(r["ffi"] for _, r in rows):
         print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/darlingserver"
-              "/duct-tape:dt_objects)")
+              "/xnu-sys:dt_objects)")
     bad = [f for f, r in rows if r["dirty"]]
     if bad:
         print(f"\n{len(bad)} file(s) DID NOT PREPROCESS, so their columns above mean nothing: "

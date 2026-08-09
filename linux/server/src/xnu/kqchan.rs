@@ -1,4 +1,4 @@
-//! Mach-port kqueue channels: the Rust replacement for `duct-tape/src/kqchan.c`
+//! Mach-port kqueue channels: the Rust replacement for `xnu-sys/src/kqchan.c`
 //! (#71, ninth file).
 //!
 //! A kqchan is how the guest watches a Mach port through kqueue. The daemon creates one per

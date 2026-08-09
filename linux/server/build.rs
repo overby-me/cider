@@ -18,7 +18,7 @@ fn main() {
     // <repo>/src/external/darlingserver. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
-    let dtape = manifest.join("../../src/external/darlingserver/duct-tape");
+    let dtape = manifest.join("../../src/external/darlingserver/xnu-sys");
     let dtape_inc = dtape.join("include");
     let libsimple_inc = manifest.join("../../src/libsimple/include");
     let fast_context = manifest.join("../../src/external/darlingserver/src/fast_context.c");
@@ -50,7 +50,7 @@ fn main() {
              directories, colon separated. buck2 wires them as target deps, so the usual \
              fix is to build through buck2 (//linux/server:darlingserverd), or to run \
              buck2 build //src/external/darlingserver:dserver_rpc \
-             //src/external/darlingserver/duct-tape:mig_mach_task and pass their output \
+             //src/external/darlingserver/xnu-sys:mig_mach_task and pass their output \
              directories here."
         );
     }
@@ -72,7 +72,7 @@ fn main() {
         ))
         // The XNU headers do not parse without duct-tape's own flags; -fblocks above all,
         // since osfmk/kern/priority_queue.h uses blocks. The buck2 path loads the full set
-        // from src/external/darlingserver/duct-tape/flags.bzl, which the generator writes
+        // from src/external/darlingserver/xnu-sys/flags.bzl, which the generator writes
         // from the same CMakeLists these come from.
         .clang_arg("-fblocks")
         .clang_arg("-Wno-nullability-completeness")
@@ -132,7 +132,7 @@ fn main() {
         println!("cargo:rustc-link-search=native={libdir}");
         println!("cargo:rustc-link-lib=static=darlingserver_duct_tape");
         println!("cargo:rustc-link-lib=static=libsimple_darlingserver");
-        // XNU/duct-tape C pulls these Linux libs:
+        // XNU/xnu-sys C pulls these Linux libs:
         for l in ["pthread", "dl", "m", "rt"] {
             println!("cargo:rustc-link-lib=dylib={l}");
         }

@@ -1,11 +1,11 @@
-//! `duct-tape/src/stubs.c`, in Rust (#71, thirteenth file).
+//! `xnu-sys/src/stubs.c`, in Rust (#71, thirteenth file).
 //!
 //! 232 lines, all of it glue: the XNU entry points duct-tape does not implement, plus
 //! `dtape_stub_log`, which every other glue file calls to record that it reached one. Nearly all
 //! of it is mechanical, so the interesting parts are the four that are not.
 //!
 //! **`panic` stays in C.** It is the fourth and last variadic DEFINITION, and it has moved to
-//! `duct-tape/src/dtape_rs_shims.c` with the three from misc.c. Stable Rust cannot define a
+//! `xnu-sys/src/dtape_rs_shims.c` with the three from misc.c. Stable Rust cannot define a
 //! variadic function; [`crate::xnu::misc`] explains the split.
 //!
 //! **The globals are `static mut` and their sizes are real.** `machine_info` and
@@ -78,7 +78,7 @@ fn log_safe_stubs() -> bool {
 }
 
 /// The stub logger every other glue file calls, through the three macros in
-/// `internal-include/darlingserver/duct-tape/stubs.h` and their Rust equivalents in
+/// `internal-include/darlingserver/xnu-sys/stubs.h` and their Rust equivalents in
 /// [`crate::xnu::stub_family`].
 #[no_mangle]
 pub unsafe extern "C" fn dtape_stub_log(

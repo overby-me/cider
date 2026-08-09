@@ -1992,7 +1992,7 @@ ARCHIVE_ALIASES = {
     # The host tier, ported before cc_static_lib existed (both are cc_library targets
     # whose archive the Rust daemon consumes through DUCT_TAPE_LIB).
     "libdarlingserver_duct_tape.a":
-        "//src/external/darlingserver/duct-tape:darlingserver_duct_tape",
+        "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape",
     "liblibsimple_darlingserver.a": "//src/libsimple:libsimple_darlingserver",
 }
 

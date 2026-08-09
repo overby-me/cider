@@ -1,4 +1,4 @@
-//! duct-tape start-up: the Rust replacement for `duct-tape/src/init.c` (#71, sixth file).
+//! duct-tape start-up: the Rust replacement for `xnu-sys/src/init.c` (#71, sixth file).
 //!
 //! `dtape_init` is the single entry point the daemon calls to bring the XNU emulation up. It
 //! creates the zones the kernel allocates out of, initialises two locks, and then runs about

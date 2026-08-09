@@ -1,7 +1,7 @@
 //! The `dtape_stub` family, for glue ported to Rust (#71).
 //!
 //! duct-tape marks unimplemented XNU entry points with three macros from
-//! `internal-include/darlingserver/duct-tape/stubs.h`, all of which call the real symbol
+//! `internal-include/darlingserver/xnu-sys/stubs.h`, all of which call the real symbol
 //! `dtape_stub_log(function_name, safety, subsection)`:
 //!
 //!   `dtape_stub`         safety 0, unknown whether stubbing is safe

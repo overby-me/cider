@@ -1,4 +1,4 @@
-//! Processors and processor sets: the Rust replacement for `duct-tape/src/processor.c`
+//! Processors and processor sets: the Rust replacement for `xnu-sys/src/processor.c`
 //! (#71, fifth file).
 //!
 //! What the guest asks through these: how many CPUs there are, what scheduling policies exist,
@@ -12,7 +12,7 @@
 //! shows it expanding to a statement expression holding a function-static
 //! `vm_allocation_site_t`, so writing it in Rust would have meant un-opaquing part of `vm_.*`
 //! for the whole crate. `simple_lock_init` is a macro too. Both are now C SHIMS
-//! (`duct-tape/src/dtape_rs_shims.c`), which is the remedy for a macro blocker that costs one
+//! (`xnu-sys/src/dtape_rs_shims.c`), which is the remedy for a macro blocker that costs one
 //! object file instead of a permanent widening of the bindings, and with them the ranker puts
 //! this file at zero blockers.
 //!

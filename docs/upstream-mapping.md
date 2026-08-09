@@ -58,7 +58,7 @@ This is the thing to internalise before trying to pull anything across.
 
    | path | files | note |
    |---|---|---|
-   | `src/external/darlingserver/duct-tape/` | 2,164 | the XNU shim, still built (`darlingserver_duct_tape`) |
+   | `src/external/darlingserver/xnu-sys/` | 2,164 | the XNU shim, still built (`darlingserver_duct_tape`) |
    | `src/external/libpthread_workqueue-0.8.2/` | 40 | vendored |
    | `src/external/libtrace/` | 28 | vendored, see its `VENDORED.md` |
 
@@ -90,7 +90,7 @@ directly.**
 |---|---|---|
 | `src/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
 | `src/startup/darling.c` | `linux/launcher/` | the `darling` binary, rewritten |
-| `src/external/darlingserver` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `duct-tape/` (2,164 files) stays in `src/external/darlingserver/` and is still built unchanged |
+| `src/external/darlingserver` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `src/external/darlingserver/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the
 upstream change for its *intent* and apply that intent to the Rust.

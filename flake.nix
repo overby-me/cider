@@ -36,7 +36,7 @@
       # NixOS module is autoloaded from ./nix/nixosModule.nix
 
       # THE DEFAULT PACKAGE IS THE BUCK2 BUILD. cmake is gone (#82): the user does not ship
-      # it, and it was the only consumer of nix/package.nix, nix/duct-tape.nix,
+      # it, and it was the only consumer of nix/package.nix, nix/xnu-sys.nix,
       # nix/cctools-port.nix and the darling-graph/base/component/Ninja libs. mkForce is still
       # needed because flakelight autoloads ./nix/package.nix by name if it exists.
       packages.default = inputs.nixpkgs.lib.mkForce (pkgs: pkgs.darling-buck2);
@@ -76,7 +76,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//src/external/darlingserver/duct-tape:darlingserver_duct_tape"; };
+          { target = "//src/external/darlingserver/xnu-sys:darlingserver_duct_tape"; };
 
       # A mid-size probe for the Nix-lowered path: src/duct's static archive is 8
       # sources in a 165-line BUCK file, between libsimple (80 lines) and duct-tape

@@ -1,4 +1,4 @@
-//! The hand-written half of `duct-tape/src/traps.c` (#71, tenth file).
+//! The hand-written half of `xnu-sys/src/traps.c` (#71, tenth file).
 //!
 //! Six trivial wrappers the C writes out by hand, each calling an XNU trap with a NULL args
 //! pointer because the trap takes none. The OTHER twenty-nine wrappers in that file come from

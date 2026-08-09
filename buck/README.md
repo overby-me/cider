@@ -11,7 +11,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
-buck2 build //src/external/darlingserver/duct-tape:darlingserver_duct_tape
+buck2 build //src/external/darlingserver/xnu-sys:darlingserver_duct_tape
 scripts/buck-test.nu         # regression test for everything ported so far
 ```
 

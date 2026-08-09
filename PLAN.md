@@ -43,9 +43,9 @@ with it; the `overby` input STAYS, because `darlingBuck2.nix` uses its `buildBuc
 place rather than deleted. Four read a reference `build.ninja` that nothing can regenerate
 (`gen-buck-from-ninja.py`, `gen-mig-from-ninja.py`, `buck-host-includes.py`, `buck-port.py`) and
 stop working entirely once a store GC collects `result-graph-ref`; `gen-duct-tape-buck.py` reads
-`duct-tape/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
+`xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
-**THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/duct-tape-runtime-check.nu` covers the
+**THE DAEMON RUNTIME GATE IS 23 CHECKS, 115 s.** `scripts/xnu-sys-runtime-check.nu` covers the
 six ported duct-tape files plus the 17 proofs that `checks.server` used to run: Mach ports,
 `mach_msg`, blocking receive, the guest-memory hooks, the generated RPC dispatch, per-guest
 routing, persistent threads and four daemon capstones. Those 17 were orphaned by the cmake
@@ -73,8 +73,8 @@ that RAN, each probe with its own restore control that came back 0 onto the iden
 | none (control) | **0** | 16 s |
 | `libaccessibility/src/Accessibility.m`, a leaf | **7** | 165 s |
 | `src/startup/rtsig.c`, a header generator | **570** | 19 min |
-| `duct-tape/src/*.c` BEFORE | **1,558** | 61 min |
-| `duct-tape/src/*.c` AFTER | **44** | 2.5 min |
+| `xnu-sys/src/*.c` BEFORE | **1,558** | 61 min |
+| `xnu-sys/src/*.c` AFTER | **44** | 2.5 min |
 
 Only the last row was ever a leak. `nix-diff` named its sole cause: the darlingserver GROUP
 STORE interpolated as `_g` into every target stage script, with no dependency edge behind it.
@@ -82,7 +82,7 @@ STORE interpolated as `_g` into every target stage script, with no dependency ed
 `nix/lib/darlingBuck2Lower.nix`: a blanket cut starves the compiles, because
 `buck2-graph-sources.py` keeps `src/external` out of the grouping and the whole-directory group
 is its only supplier, so every target gets the headers and `scripts/` while only labels under
-`root//src/external/darlingserver/duct-tape` also get `duct-tape/src`.
+`root//src/external/darlingserver/xnu-sys` also get `xnu-sys/src`.
 
 **A BUCK EDIT IS NOT A FULL REBUILD ANY MORE.** The standing advice was to batch BUCK edits
 because each costs a full rebuild. Measured 2026-08-09 with a control either side:
@@ -144,11 +144,11 @@ decision.
    written.**
    19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
    not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
-   Re-counted: `duct-tape/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
+   Re-counted: `xnu-sys/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
    in `pthread/kern_synch.c` 2,805 and `kern_support.c` 1,020, which sit outside that dir).
    `thread.c` 2,072, `task.c` 1,766 and `memory.c` 1,554 are 63% of it.
 
-   **THE ORDERING ABOVE WAS WRONG, and `scripts/duct-tape-portability.py` now measures it**
+   **THE ORDERING ABOVE WAS WRONG, and `scripts/xnu-sys-portability.py` now measures it**
    instead of arguing it. Only two things are hard blockers: a C VARIADIC DEFINITION (stable
    Rust cannot write `extern "C" fn(...)`) and a MACRO CALL (bindgen binds no macros).
    * `misc.c` was named a first candidate. It ranked **last of sixteen** because it DEFINES
@@ -234,7 +234,7 @@ decision.
    `libdarlingserver_duct_tape.a`, and `task_xnu.c.o`, `memory_xnu.c.o` and `thread_xnu.c.o`
    remain, which is the boundary the task set. (`host.c.o` in that archive is XNU
    `osfmk/kern/host.c`, not duct-tape's; `host_info` is undefined there.) darlingserverd links
-   and `scripts/duct-tape-runtime-check.nu` passes.
+   and `scripts/xnu-sys-runtime-check.nu` passes.
 
    **THE THREE BIG FILES WERE SPLIT along the XNU boundary they already marked**, rather than
    translating lifted kernel code:
@@ -262,13 +262,13 @@ decision.
 
    **THE VARIADIC BLOCKER IS CLOSED.** `stubs.c` and `misc.c` were called blocked on 1 and 3
    variadic DEFINITIONS. All four are pure forwarders to a `v`-variant, so all four stay in C in
-   `duct-tape/src/dtape_rs_shims.c` beside the macro shims, and everything else in both files is
+   `xnu-sys/src/dtape_rs_shims.c` beside the macro shims, and everything else in both files is
    Rust. Rust can CALL a variadic even though it cannot define one, so the ported code formats
    with `format!` and passes a plain `%s`, which is safer than the C it replaces: a specifier
    that disagrees with its argument is now a compile error. No remaining file is blocked.
 
    **THE SHIM IS THE MAIN TOOL, and it is what made the second half tractable.**
-   `duct-tape/src/dtape_rs_shims.c` exports twelve macro-only or inline-only operations as real
+   `xnu-sys/src/dtape_rs_shims.c` exports twelve macro-only or inline-only operations as real
    symbols, with a header so bindgen generates the signatures. Each exists because Rust cannot
    reach the thing, never for convenience: `kalloc` and `kheap_alloc` expand to statement
    expressions holding a static `vm_allocation_site_t`; `io_release` is `static inline` so
@@ -354,7 +354,7 @@ decision.
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
    since `kqchan.c` stays C and calls `dtape_semaphore_up`.
 
-   **The runtime check for a port is `scripts/duct-tape-runtime-check.nu`, about a minute**,
+   **The runtime check for a port is `scripts/xnu-sys-runtime-check.nu`, about a minute**,
    not the hour-long minimal-prefix gate. It builds `//linux/server:scheduler_demo` and blocks
    a microthread on a duct-tape semaphore, so `dtape_semaphore_create`, `down_simple` and `up`
    all run for real, down through XNU and back out through the suspend/resume hooks. It asserts
@@ -628,7 +628,7 @@ tracks below.
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
   byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
   for `process_vm_readv` because the guest is in its own PID namespace).
-- **duct-tape** (`src/external/darlingserver/duct-tape/`, still C): kernel-emulation glue
+- **duct-tape** (`src/external/darlingserver/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
   `linux/server/build.rs`: bindgen generates the 36-field `dtape_hooks_t` from source
   headers; static libs (`libdarlingserver_duct_tape.a`, `liblibsimple_darlingserver.a`)
@@ -1025,10 +1025,10 @@ the shell before the probe can report.
   | | files |
   |---|---|
   | duct-tape's own glue | **17 `.c`** + 66 `.h` |
-  | vendored `duct-tape/xnu` | 49 `.c` + 1,526 `.h` |
+  | vendored `xnu-sys/xnu` | 49 `.c` + 1,526 `.h` |
   | build cost | 163 ninja edges, 109 compiles, 18 directories |
 
-  **The split IS the task.** The 49 `.c` under `duct-tape/xnu` are Apple's kernel sources
+  **The split IS the task.** The 49 `.c` under `xnu-sys/xnu` are Apple's kernel sources
   compiled as-is; they must keep tracking upstream and stay C. Only the 17 glue files are a
   port target: `condvar debug host init kqchan locks memory misc processor psynch semaphore
   stubs task thread timer traps` plus `pthread/kern_synch.c`.
@@ -2145,7 +2145,7 @@ duct-tape `notify.h` wall is FIXED. Committed on the branch (`639e374e`, `c723f2
   the authoritative source copy over it (the mig `.c` consumers only need the structs, also in source).
 - **mega-SCC unwind** (`lower.nix`): `rawHeaderProducerGroups` is now GROUP-LEVEL pure -- a mixed
   pure-gen + compile-dependent group no longer becomes a universal dep, so `build-mig` no longer
-  absorbs duct-tape/bootstrap_cmds/... Mixed-group header producers retarget per-component via
+  absorbs xnu-sys/bootstrap_cmds/... Mixed-group header producers retarget per-component via
   `migByCompDir` (which skips source-backed headers).
 - **Tarjan SCC topo** (`lower_group.py`): the old Kahn fallback dumped a blocked SCC's edges in
   list order, mis-ordering acyclic producer->consumer pairs riding on the SCC (libc's dylib link ran

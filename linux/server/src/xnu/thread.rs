@@ -1,4 +1,4 @@
-//! `duct-tape/src/thread.c`, in Rust (#71, sixteenth and LAST file).
+//! `xnu-sys/src/thread.c`, in Rust (#71, sixteenth and LAST file).
 //!
 //! NAMED `dtape_thread` because `linux/server/src/thread.rs` is the DAEMON side. Fourth time
 //! after kqchan, psynch and task.

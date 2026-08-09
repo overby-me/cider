@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# FROZEN GENERATOR (#82). It reads duct-tape/CMakeLists.txt, and cmake is gone, so it
+# FROZEN GENERATOR (#82). It reads xnu-sys/CMakeLists.txt, and cmake is gone, so it
 # cannot run at all now. The 16 glue .c it also lists were replaced by Rust under
-# linux/server/src/xnu (#71) and deleted. Its outputs, duct-tape/BUCK and
+# linux/server/src/xnu (#71) and deleted. Its outputs, xnu-sys/BUCK and
 # buck/generated/duct_tape_flags.bzl, are committed; this is kept for provenance.
-"""Generate src/external/darlingserver/duct-tape/BUCK from its CMakeLists.txt.
+"""Generate src/external/darlingserver/xnu-sys/BUCK from its CMakeLists.txt.
 
 duct-tape is ~135 source paths, 45 MIG definitions and ~120 preprocessor
 defines. Hand-transcribing that is error-prone and would drift on every upstream
@@ -14,7 +14,7 @@ where it drifts, hand-authored where we iterate.
 What is NOT in the CMakeLists, and is therefore spelled out below, is the flags
 duct-tape inherits from parent scopes. Those were read off the configured
 reference build.ninja (darling-graph's build.ninja, the exact DEFINES/FLAGS
-ninja passes clang), not guessed -- reading only duct-tape/CMakeLists.txt would
+ninja passes clang), not guessed -- reading only xnu-sys/CMakeLists.txt would
 miss -DDARLING, the four DSERVER_* defines and the -Wno-nullability group.
 
 Usage:
@@ -28,7 +28,7 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DT = "src/external/darlingserver/duct-tape"
+DT = "src/external/darlingserver/xnu-sys"
 CMAKELISTS = os.path.join(REPO, DT, "CMakeLists.txt")
 OUT = os.path.join(REPO, DT, "BUCK")
 # The defines and warning flags also go to a loadable file, because a BUCK file cannot be
@@ -42,7 +42,7 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/duct_tape_flags.bzl")
 # libdarlingserver_duct_tape.a. The Rust replacement lives in linux/server/src/ and exports
 # the same C ABI, so the glue still written in C links against it unchanged.
 #
-# Ordering for the rest is not a matter of taste: scripts/duct-tape-portability.py ranks the
+# Ordering for the rest is not a matter of taste: scripts/xnu-sys-portability.py ranks the
 # files by what Rust cannot express (C variadic definitions, and macro calls, which bindgen
 # never binds). semaphore.c went first because it is 60 lines with one macro while still
 # exercising the whole seam -- exported C ABI, called from C, calling into XNU.
