@@ -30,6 +30,13 @@ directories), #55 (lowered derivations content-addressed), #71 (duct-tape ported
 16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
 was nothing behind it). Their detail is further down and in the commit history.
 
+**THE MINIMAL ENDPOINT COMPLETES, and that is new.** 2026-08-09: `.#darling-buck2-prefix-min`
+at `--max-jobs 6 --cores 2 --keep-going` ran **1,551 buck2 builders to exit 0 with 0 errors in
+about 56 minutes**, then a no-op rebuilt **0** in 18 s onto the same output,
+`b4yvk9hh...-buck2-darling_prefix_min-out`. Earlier runs that looked like an unfixable daemon
+stall are not reproducible: the one real failure was a staging regression, now fixed. Do not
+plan around the endpoint being unrunnable.
+
 1. **#79 NEEDS A DECISION, and it is the live blocker.** The cascade is NOT cut. Measured on
    `.#darling-buck2-one` by builders that RAN: no-op **0** (a control that can fail), one
    `duct-tape/src` edit **6**, with `root//src/libsimple:libsimple_darlingserver` recompiling
