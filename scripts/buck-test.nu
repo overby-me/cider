@@ -100,8 +100,30 @@ def last_line_no_ok [text: string] {
 def indent7 [text: string] { $text | split row "\n" | each {|l| $"       ($l)" } | str join "\n" }
 def indent4 [text: string] { $text | split row "\n" | each {|l| $"    ($l)" } | str join "\n" }
 
+# WHERE THE SUITE OOM COMES FROM, and it is the stderr rather than the build.
+#
+# `| complete` buffers BOTH streams into memory. buck2 writes one line of stdout per target
+# with --show-output, which is nothing, and writes its entire progress stream to STDERR, which
+# for a COLD build is not nothing at all. This function drives the biggest build in the file,
+# //buck/prefix:cider_prefix, so on a cold prefix it held the whole of that progress stream.
+# That is the 17.3 GB nu the suite was killed at.
+#
+# WHY IT WAS NOT FOUND BY MEASURING: both earlier attempts ran with the prefix ALREADY BUILT,
+# where buck2 emits almost nothing, and both dutifully reported 0.04 GB. The condition needs a
+# cold build to appear, so the measurement has to be of the MECHANISM rather than of a rerun.
+# Measured 2026-08-10 on a stand-in that writes 20 MB of buck2-shaped progress lines:
+#     via `| complete`      stderr held in memory 20,377,790 bytes, peak RSS 63.6 MB
+#     via `err>` to a file  same bytes on disk,                    peak RSS 44.9 MB
+# so nu holds it about 1 to 1, and 17.3 GB of nu means about 17 GB of buck2 stderr.
+#
+# THE STDERR IS KEPT, NOT DISCARDED. It goes to a file, which is the whole point: a failure is
+# still readable afterwards, and the rule here is never to throw away the stderr of something
+# you are measuring. Only the buffering is gone.
+def buck_err_file [] { ($env.TMPDIR? | default "/tmp") + "/buck-test-buck2.err" }
+
 def out_of [t: string] {
-    let r = (do { ^buck2 build $t --show-output } | complete)
+    let err = (buck_err_file)
+    let r = (do { ^buck2 build $t --show-output err> $err } | complete)
     let ls = (lines_of ($r.stdout | str replace -r '\n+$' ''))
     if ($ls | is-empty) { "" } else { ($ls | last | str trim | split row --regex '\s+' | get 1? | default "") }
 }
@@ -111,7 +133,10 @@ def out_of [t: string] {
 # three hours and read as a hang. --show-output prints "<target> <path>" per line;
 # --keep-going so one broken target still leaves the rest checkable.
 def out_map [targets: list<string>] {
-    let r = (do -i { ^buck2 build ...$targets --show-output --keep-going } | complete)
+    # Same stderr buffering as out_of, and this one builds 564 dylibs and 414 executables in
+    # one invocation, so it is the other place a cold build can hold gigabytes of progress.
+    let err = (buck_err_file)
+    let r = (do -i { ^buck2 build ...$targets --show-output --keep-going err> $err } | complete)
     lines_of $r.stdout | each {|l|
         let cols = ($l | str trim | split row --regex '\s+')
         if ($cols | length) >= 2 { {t: ($cols | get 0), p: ($cols | get 1)} }
