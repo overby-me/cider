@@ -60,7 +60,16 @@ def main [--all, ...paths: string] {
         print $"buck-src: copying ($all_paths | length) pinned trees ..."
         for sub in $all_paths {
             let name = ($sub | path basename)
-            let dest = ($dest_root | path join $name)
+            # A NESTED PIN GOES TO ITS OWN PATH, never buck-src/<basename>. Basenames are NOT
+            # unique: src/external/ciderd/xnu-sys/xnu ends in xnu just like src/external/xnu,
+            # so both would land in buck-src/xnu and copy over each other. The same collision
+            # broke the Nix endpoint through ciderBuck2Graph.nix materializePins, and the fix
+            # here matches: only a pin directly under src/external takes the buck-src route.
+            let dest = (if (($sub | split row "/" | length) == 3) {
+                $dest_root | path join $name
+            } else {
+                $repo_root | path join $sub
+            })
             let src = ($assembled | path join $sub)
             if ($src | path type) != "dir" {
                 print $"buck-src: WARNING ($sub) missing from the assembled tree"
@@ -94,7 +103,12 @@ def main [--all, ...paths: string] {
 
     for sub in $wanted {
         let name = ($sub | path basename)
-        let dest = ($dest_root | path join $name)
+        # Same nested-pin rule as the --all branch above.
+        let dest = (if (($sub | split row "/" | length) == 3) {
+            $dest_root | path join $name
+        } else {
+            $repo_root | path join $sub
+        })
 
         let hits = ($entries | where path == $sub)
         if ($hits | is-empty) {
@@ -163,7 +177,13 @@ def main [--all, ...paths: string] {
         # Same patch application as nix/lib/cider-src.nix: patches/<name>/*.patch with
         # `patch -p1` inside the tree. xnu in particular carries the macOS identity patches, so
         # an unpatched tree is not the tree we build.
-        let patch_dir = ($repo_root | path join "patches" $name)
+        #
+        # AND THE SAME patches OVERRIDE cider-src.nix takes, for the same reason: the directory
+        # is keyed by basename and basenames are not unique, so a second xnu would otherwise be
+        # handed patches/xnu, which is the GUEST SYSCALL set belonging to the other one. This
+        # has to agree with cider-src.nix or the local tree and the Nix tree get different
+        # patches applied to the same submodule.
+        let patch_dir = ($repo_root | path join "patches" ($e.patches? | default $name))
         if ($patch_dir | path type) == "dir" {
             for p in (glob $"($patch_dir)/*.patch" | sort) {
                 print $"buck-src:   patch ($name): ($p | path basename)"
