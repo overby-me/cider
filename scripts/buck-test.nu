@@ -286,6 +286,25 @@ def main [flag?: string] {
         say (indent7 ($stage.stdout + $stage.stderr | str substring 0..2000))
     }
 
+    # THE ESCAPE ROOTS, CHECKED HERE FOR THE SAME REASON AND EVEN MORE CHEAPLY.
+    #
+    # Same failure shape as the staging script above, one layer down: an escape root that
+    # resolves to nothing is skipped without a word, and the build says so an hour later as a
+    # missing header rather than as a missing tree. That is not hypothetical either. The xnu
+    # de-vendoring moved a root out of the repo, the pathExists guard went false, and
+    # security_codesigning_obj died on security/mac.h an hour into the gate.
+    #
+    # Unlike the stage check this touches NO nix at all, only jj and two file parses, so it
+    # cannot hit the busy eval cache and has no reason to be skipped during a build.
+    say "== the escape roots (no nix, so this one always runs) =="
+    let escroots = (do -i { ^python3 ./scripts/buck-escape-roots-check.py } | complete)
+    if $escroots.exit_code == 0 {
+        ok "every escape root resolves and the pin fallback is intact"
+    } else {
+        bad $"escape roots check FAILED, exit ($escroots.exit_code), see the output below"
+        say (indent7 ($escroots.stdout + $escroots.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //src/libsimple:libsimple_ciderd
