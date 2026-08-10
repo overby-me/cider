@@ -55,10 +55,10 @@ def main [--all, ...paths: string] {
             | str trim | lines | last)
         print $"buck-src: assembled at ($assembled)"
 
-        let all_paths = ($entries | where {|e| ($e.hash? | default "") | is-not-empty }
-            | get path)
-        print $"buck-src: copying ($all_paths | length) pinned trees ..."
-        for sub in $all_paths {
+        let all_entries = ($entries | where {|e| ($e.hash? | default "") | is-not-empty })
+        print $"buck-src: copying ($all_entries | length) pinned trees ..."
+        for e in $all_entries {
+            let sub = $e.path
             let name = ($sub | path basename)
             # A NESTED PIN GOES TO ITS OWN PATH, never buck-src/<basename>. Basenames are NOT
             # unique: src/external/ciderd/xnu-sys/xnu ends in xnu just like src/external/xnu,
@@ -93,6 +93,11 @@ def main [--all, ...paths: string] {
             # With the trailing newline echo wrote, so a tree stamped by either version
             # is byte-identical. The readers strip it, but the file should not differ.
             $"($assembled)\n" | save -f $stamp
+            # AND THE REV, because the per-path branch below has to be able to tell whether
+            # this tree is at the revision the manifest now asks for. Writing only the
+            # assembled-tree path here is what let a bumped pin keep a stale tree: the marker
+            # existed, so the per-path branch skipped, and the tree stayed on the old rev.
+            $"($e.rev)\n" | save -f ($dest | path join ".buck-src-rev")
         }
         let size = (^du -sh $dest_root | split row "\t" | first)
         print $"buck-src: done \(($size))"
@@ -127,12 +132,22 @@ def main [--all, ...paths: string] {
             print $"buck-src: ($name) already at ($e.rev)"
             continue
         }
-        # --all already put this tree here, copied out of the nix-assembled tree at the same
-        # pinned rev with the same patches. Nothing to do.
-        if (not $force) and (($dest | path join ".buck-src-assembled") | path exists) {
-            print $"buck-src: ($name) already materialized from the assembled tree"
-            continue
-        }
+        # THERE USED TO BE A SECOND SKIP HERE AND IT REPORTED SUCCESS ABOUT A STALE TREE.
+        #
+        # It honoured .buck-src-assembled on PRESENCE ALONE, with no comparison, on the
+        # reasoning that --all had put the tree there "at the same pinned rev". That holds
+        # exactly until a rev changes, and then the marker is a permanent skip: the tree stays
+        # on the OLD revision while this prints that it is already materialized.
+        #
+        # It cost a real verification. After bumping configd, the bisect build
+        # //darwin/frameworks:SystemConfiguration_dylib would have compiled the PREVIOUS
+        # revision and passed, which is a green build proving nothing. Caught only by probing
+        # for a file the new rev adds, darling/include/SystemConfiguration/CaptiveNetwork.h.
+        #
+        # The rev stamp above is now the only skip, and --all writes it too, so a tree
+        # materialized either way is checked against the revision the manifest asks for. A tree
+        # left by an older --all has no rev stamp and is simply re-fetched once, which is the
+        # safe direction: correctness over one avoidable fetch.
 
         print $"buck-src: fetching ($e.owner)/($e.repo) @ ($e.rev)"
         # getFlake for the pinned nixpkgs, and --impure because that reads a path outside the
