@@ -331,16 +331,37 @@
   escapeRoots =
     ["darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal;
 
+  # AN ESCAPE ROOT CAN BE A PIN NOW, AND THE pathExists GUARD BELOW HID THAT IN SILENCE.
+  #
+  # This used to read every escape root out of srcRaw, the project source, guarded by
+  # pathExists so a missing one was simply skipped. #83 de-vendored
+  # src/external/ciderd/xnu-sys/xnu: it left the repo and became a pin. The guard therefore
+  # went false, the carry was dropped without a word, and the security pin link
+  # darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu stayed dangling, so
+  # security_codesigning_obj died on "security/mac.h file not found" an hour into the gate.
+  # Nothing evaluated wrong, nothing warned; a source that no longer exists just contributes
+  # nothing. That is the class the rules call out: an eval diff cannot catch it.
+  #
+  # So an escape root is now taken from the REPO when it is there and from its PIN STORE when
+  # it is not. The pin store is the PATCHED one, which is what the consumers expect. If a root
+  # is in neither, it is still skipped, because a few escapes are genuinely dangling in the
+  # reference tree too and the bar is parity with that tree rather than zero.
   escapeSrc = pkgs.runCommand "cider-pin-escape-roots" {} (''
     mkdir -p "$out"
   ''
   + lib.concatMapStrings (r: let
-      store = builtins.path {
-        name = "cider-escape-" + lib.strings.sanitizeDerivationName r;
-        path = srcRaw + ("/" + r);
-      };
+      inRepo = builtins.pathExists (srcRaw + ("/" + r));
+      fromPin = ciderSrc.pinPaths.${r} or null;
+      store =
+        if inRepo
+        then
+          builtins.path {
+            name = "cider-escape-" + lib.strings.sanitizeDerivationName r;
+            path = srcRaw + ("/" + r);
+          }
+        else fromPin;
     in
-      lib.optionalString (builtins.pathExists (srcRaw + ("/" + r))) ''
+      lib.optionalString (store != null) ''
         mkdir -p "$out"/${lib.escapeShellArg (builtins.dirOf r)}
         cp -a --no-preserve=ownership ${store} "$out"/${lib.escapeShellArg r}
       '')
