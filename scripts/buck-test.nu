@@ -912,10 +912,18 @@ def main [flag?: string] {
     # module sets, cctools sits beside its xcselect shims, and the nine dev-stub frameworks
     # build an AppKit called exactly AppKit -- and collapsing a pair onto one entry answered
     # "ported" as soon as either half was.
-    if (num_or $cov 0) >= 1452 {
-        ok $"($cov) of the reference's (num_or_s $tot '1452') in-scope link edges are ported"
+    # THE FLOOR IS 1451, NOT 1452, AND THE DIFFERENCE IS A CHECK THAT COULD NOT PASS. #71 ported
+    # duct-tape to Rust, so libdarlingserver_duct_tape.a stopped existing as a link edge and
+    # moved to OUT_OF_SCOPE. That takes the DENOMINATOR to 1451. The floor stayed at 1452, which
+    # is above the achievable maximum, so this arm reported bad no matter what the port did.
+    #
+    # That is the mirror of a check that cannot fail and it is just as worthless: a real drop is
+    # indistinguishable from the permanent failure, and it is why "coverage 1448 of 1452" sat in
+    # the suite as one of three standing failures instead of being read as a number to fix.
+    if (num_or $cov 0) >= 1451 {
+        ok $"($cov) of the reference's (num_or_s $tot '1451') in-scope link edges are ported"
     } else {
-        bad $"coverage dropped to (num_or_s $cov '0') of (num_or_s $tot '1452'), floor is 1452"
+        bad $"coverage dropped to (num_or_s $cov '0') of (num_or_s $tot '1451'), floor is 1451"
     }
 
     # ZERO edges matched on the artifact name alone. Every reference link edge now resolves to
