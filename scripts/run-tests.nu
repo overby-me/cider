@@ -252,7 +252,7 @@ def main [
         print -e "  \u{2022} Run with --keep to preserve binaries, then inspect inside:"
         print -e $"      cider shell ($DARLING_TEST_DIR)/<test_binary>"
         print -e "  \u{2022} Trace syscalls: strace -f -p $(pidof ciderd) 2>&1 | head"
-        print -e $"  \u{2022} Darling xtrace: DARLING_XTRACE=1 cider shell ($DARLING_TEST_DIR)/<test_binary>"
+        print -e $"  \u{2022} Syscall trace: env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell ($DARLING_TEST_DIR)/<test_binary>"
         print -e ""
         exit 1
     } else if $skipped > 0 and $passed == 0 {

@@ -334,6 +334,20 @@ def main [flag?: string] {
         say (indent7 ($pinrev.stdout + $pinrev.stderr | str substring 0..2000))
     }
 
+    # AN ENVIRONMENT VARIABLE WE ADVERTISE MUST BE READ BY SOMETHING. DARLING_XTRACE was named
+    # in nine places across five scripts, two of which actually set it behind a --xtrace flag,
+    # and nothing anywhere read it. The flag produced no trace and no error, so it pointed a
+    # syscall investigation at the wrong thing. This is the mirror of the upstream-names check:
+    # that one catches a name we orphan, this one a name we never implemented.
+    say "== the environment variables we advertise (no nix either) =="
+    let envnames = (do -i { ^python3 ./scripts/buck-env-names-check.py } | complete)
+    if $envnames.exit_code == 0 {
+        ok "every advertised environment variable is read by something"
+    } else {
+        bad $"env name check FAILED, exit ($envnames.exit_code), see the output below"
+        say (indent7 ($envnames.stdout + $envnames.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //src/libsimple:libsimple_ciderd

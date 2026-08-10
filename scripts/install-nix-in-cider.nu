@@ -284,7 +284,7 @@ def main [
         err_ $c ""
         err_ $c "Debug tips:"
         err_ $c "  strace -f -p $(pidof ciderd) -e trace=openat,stat 2>&1 | head -200"
-        err_ $c "  DARLING_XTRACE=1 cider shell ..."
+        err_ $c "  env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell ..."
         # The temp dir is deliberately NOT removed here, so the log can be inspected.
         err_ $c $"Installation failed. Temp files preserved at: ($host_tmp)"
         exit 1

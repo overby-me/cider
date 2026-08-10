@@ -13,7 +13,7 @@
 #   --prefix <path>       Darling prefix (default: ~/.cider or $DPREFIX)
 #   --output <file>       Write results to file (default: stdout)
 #   --strace              Also run strace on ciderd (requires root)
-#   --xtrace              Enable DARLING_XTRACE for detailed Darwin tracing
+#   --xtrace              Insert libxtrace into the guest for detailed Darwin tracing
 #   --operations <list>   Comma-separated list of operations to test
 #                         (default: all). Available: version,eval,store,
 #                         touch,mv,curl,install,build,channel
@@ -135,10 +135,23 @@ def dsh_bash [ctx: record, logfile: string, cmd: string] {
     try { ^timeout $ctx.timeout cider shell bash -lc $cmd out+err> $logfile }
 }
 
-# Run with DARLING_XTRACE if requested.
+# Run with the syscall tracer inserted, if requested.
+#
+# This used to set a variable named DARLING_XTRACE, which NOTHING has ever read: not the
+# loader, not the server, not xtrace itself, not upstream. The flag was inert, so a triage run
+# made with --xtrace produced no trace and looked like a syscall that was never reached.
+# scripts/buck-env-names-check.py exists to stop that recurring, and it treats the name written
+# as an ASSIGNMENT as the advertisement, which is why this comment names it in prose instead.
+#
+# The tracer is a constructor library. src/xtrace/xtracelib.cpp declares xtrace_setup with
+# __attribute__((constructor)), so it starts tracing as soon as it is LOADED, and the only
+# thing that loads it is dyld insertion. Nothing in the tree wires that up automatically,
+# which is why it has to be done here explicitly.
+const XTRACE_LIB = "/usr/lib/cider/libxtrace.dylib"
+
 def dsh_traced [ctx: record, logfile: string, argv: list<string>] {
     if $ctx.xtrace {
-        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 cider shell ...$argv out+err> $logfile }
+        try { ^timeout $ctx.timeout env $"DYLD_INSERT_LIBRARIES=($XTRACE_LIB)" cider shell ...$argv out+err> $logfile }
     } else {
         try { ^timeout $ctx.timeout cider shell ...$argv out+err> $logfile }
     }
@@ -146,7 +159,7 @@ def dsh_traced [ctx: record, logfile: string, argv: list<string>] {
 
 def dsh_bash_traced [ctx: record, logfile: string, cmd: string] {
     if $ctx.xtrace {
-        try { ^timeout $ctx.timeout env DARLING_XTRACE=1 cider shell bash -lc $cmd out+err> $logfile }
+        try { ^timeout $ctx.timeout env $"DYLD_INSERT_LIBRARIES=($XTRACE_LIB)" cider shell bash -lc $cmd out+err> $logfile }
     } else {
         try { ^timeout $ctx.timeout cider shell bash -lc $cmd out+err> $logfile }
     }
@@ -348,7 +361,7 @@ def main [
     --prefix: string = ""       # Darling prefix (default: ~/.cider or $DPREFIX)
     --output: string = ""       # write results to file (default: stdout)
     --strace                    # also run strace on ciderd (requires root)
-    --xtrace                    # enable DARLING_XTRACE for detailed Darwin tracing
+    --xtrace                    # insert libxtrace into the guest for detailed Darwin tracing
     --operations: string = "version,eval,store,touch,mv,curl,build"  # comma-separated
     --timeout: int = 60         # timeout per operation, seconds
 ] {

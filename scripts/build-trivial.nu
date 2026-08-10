@@ -581,7 +581,7 @@ def main [
         print -e "  \u{2022} Manual sandbox test: cider shell /usr/bin/sandbox-exec -f /dev/null /bin/bash -c 'echo ok'"
         print -e "  \u{2022} Check syscalls:      ./scripts/triage-syscalls.nu"
         print -e "  \u{2022} Host-side trace:     strace -f -p $(pidof ciderd) 2>&1 | head -500"
-        print -e "  \u{2022} Darling xtrace:      DARLING_XTRACE=1 cider shell bash -lc 'nix-build --expr ...'"
+        print -e "  \u{2022} Syscall trace:       env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell bash -lc 'nix-build --expr ...'"
         print -e ""
         exit 1
     } else if $passed == 0 {

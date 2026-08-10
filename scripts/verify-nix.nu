@@ -339,7 +339,7 @@ def main [
         print -e "  \u{2022} If Nix binaries aren't found, run: ./scripts/install-nix-in-cider.nu"
         print -e "  \u{2022} If syscall warnings appear, check: PLAN.md"
         print -e "  \u{2022} If evaluator fails, try: cider shell bash -lc 'nix eval --expr 1+1' 2>&1"
-        print -e "  \u{2022} For detailed tracing: DARLING_XTRACE=1 cider shell bash -lc 'nix --version'"
+        print -e "  \u{2022} For detailed tracing: env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell bash -lc 'nix --version'"
         print -e "  \u{2022} For host-side tracing: strace -f -p $(pidof ciderd) 2>&1 | head -500"
         print -e "  \u{2022} Re-run with --verbose for more detail"
         print -e "  \u{2022} Re-run with --online for network checks"
