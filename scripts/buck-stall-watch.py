@@ -93,11 +93,20 @@ def main():
     ap.add_argument("--poll", type=int, default=60)
     ap.add_argument("--restart", action="store_true",
                     help="terminate the CLIENT when certain; off by default")
+    ap.add_argument("--relaunch-cmd", default=None,
+                    help="shell command to restart the build after a kill; implies --restart")
+    ap.add_argument("--max-restarts", type=int, default=5,
+                    help="give up and report after this many, so a degraded daemon does not "
+                         "become an endless kill and relaunch loop")
     a = ap.parse_args()
+    if a.relaunch_cmd:
+        a.restart = True
 
     last_n, last_change = builders(a.log), time.time()
+    restarts = 0
     print(f"[watch] {a.log}: {last_n} builders, idle threshold {a.idle_secs}s, "
-          f"restart={'on' if a.restart else 'OFF (report only)'}", flush=True)
+          f"restart={'on' if a.restart else 'OFF (report only)'}"
+          + (f", relaunch up to {a.max_restarts}x" if a.relaunch_cmd else ""), flush=True)
 
     while True:
         time.sleep(a.poll)
@@ -140,7 +149,30 @@ def main():
             return 2
         print(f"[watch] terminating CLIENT {cp}, never the daemon", flush=True)
         os.kill(cp, 15)
-        return 3
+        if not a.relaunch_cmd:
+            return 3
+
+        # THE CAP IS THE POINT. Each cycle makes real forward progress, because every
+        # finished derivation is already in the store, so relaunching is not thrash in the
+        # usual sense. But if the daemon itself has gone bad the stall recurs within a few
+        # builders, and then this would kill and relaunch for ever while achieving nothing.
+        # Observed spread on 2026-08-10: one wedge after 3,122 builders and 45 minutes,
+        # another after 14 builders and 4 minutes. So give up after a few and SAY SO: a
+        # nix-daemon restart is a user action and no amount of relaunching substitutes.
+        restarts += 1
+        if restarts > a.max_restarts:
+            print(f"[watch] {restarts - 1} relaunches already and it stalled again at {n} "
+                  f"builders. This is a degraded daemon, not bad luck. A nix-daemon restart "
+                  f"is a USER action. Stopping rather than looping.", flush=True)
+            return 4
+        time.sleep(10)
+        print(f"[watch] relaunch {restarts} of {a.max_restarts}: {a.relaunch_cmd}", flush=True)
+        subprocess.Popen(["setsid", "bash", "-c", a.relaunch_cmd],
+                         stdin=subprocess.DEVNULL,
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # The log keeps growing across relaunches, so the baseline moves with it rather than
+        # being reset; a fresh run appending its first builder line is what clears the idle.
+        last_n, last_change = builders(a.log), time.time()
 
 
 if __name__ == "__main__":
