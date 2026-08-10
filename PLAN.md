@@ -46,11 +46,11 @@ endpoint actually runs.
 **CLIMB THE LADDER FROM THE BOTTOM.** Three hours went on 2026-08-10 chasing a shell-script
 fault with two endpoint runs. In cost order:
 
-| rung | command | cost |
+| rung | command | measured 2026-08-10 |
 | --- | --- | --- |
-| 1 | `scripts/buck-lowering-stage-check.nu` | seconds with the gated graph warm |
-| 2 | `nix build .#cider-buck2-one` | one lowered target |
-| 3 | `nix build .#cider-buck2-prefix-min` | the gate, hours |
+| 1 | `scripts/buck-lowering-stage-check.nu` | **7 s** warm, 329 s on a cold graph |
+| 2 | `nix build .#cider-buck2-one` | **18 s**, 3 builders |
+| 3 | `nix build .#cider-buck2-prefix-min` | **hours** (1,185 builders on the last green run) |
 
 Rung 1 is only cheap against the endpoint that is actually gated: pointed at
 `.#cider-buck2-prefix`, whose graph nothing else builds, the same check measured **917
