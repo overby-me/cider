@@ -50,12 +50,20 @@ holds the SINGLE underscore struct fields. Breaking it there gives
 and restoring gives exit 0. A control that cannot fail looks exactly like a passing check.
 
 COST: about four minutes to read 100k pin files, so the token set is CACHED under
-buck-out. Pins move only on a bump; pass --refresh then. This is an on-demand audit and
-is deliberately NOT wired into the gate, where it would add minutes to every run for a
-rename that happens once.
+buck-out. This is an on-demand audit and is deliberately NOT wired into the gate, where it
+would add minutes to every run for a rename that happens once.
 
-Exit 0 if no upstream name has been orphaned, 1 otherwise.
+THE CACHE IS BOUND TO THE MANIFEST THAT PRODUCED IT, and a mismatch REFUSES rather than
+warns. This used to say "pins move only on a bump, pass --refresh then", which is an
+instruction to a human, and this whole file exists because that is not good enough. After a
+bump the cached tokens describe the PREVIOUS upstream revision, so the audit would compare
+our tree against names it never read and report PASS. Now it exits 2 and says so.
+
+Exit 0 if no upstream name has been orphaned, 1 if one has, 2 if the audit could not be
+trusted at all (stale cache, or a table it could not find). Those are deliberately three
+different exits: "no defect" and "cannot tell" must never look alike.
 """
+import hashlib
 import json
 import os
 import re
@@ -131,14 +139,68 @@ def walk(root):
                 yield os.path.join(dirpath, name)
 
 
+def manifest_fingerprint():
+    """Everything the cached token set depends on, hashed together.
+
+    Content, never mtime: jj operations touch submodules.json without changing it, and a
+    spurious failure trains people to pass --refresh reflexively, which costs four minutes
+    and defeats the point of caching.
+
+    THE PATTERN IS IN HERE, NOT JUST THE MANIFEST, and that axis is not hypothetical: it is
+    the one that already bit. TOKEN used to be [Dd]arling only, so every all-caps DARLING_*
+    name was invisible and the cached set held 54 tokens with not one uppercase among them.
+    The header for TOKEN still carries the instruction that came out of it, "refresh the
+    cache after changing this", and an instruction is exactly what this file exists to stop
+    relying on. Widening the pattern without refreshing would leave the check reporting PASS
+    over the very class the widening was meant to catch.
+
+    IGNORE is in here too, for the same reason one step milder: dropping a name from IGNORE
+    should make it visible, and against a stale cache it would not be."""
+    h = hashlib.sha256()
+    try:
+        with open(os.path.join(ROOT, "nix", "submodules.json"), "rb") as fh:
+            h.update(fh.read())
+    except OSError:
+        h.update(b"no-manifest")
+    h.update(b"\x00" + TOKEN.pattern.encode())
+    h.update(b"\x00" + "\x00".join(sorted(IGNORE)).encode())
+    return h.hexdigest()
+
+
 def scan_pins():
     """Reading 100k pin files takes about four minutes, and pins only move on a bump,
     so the token set is cached. buck-out is gitignored, which is where it belongs:
-    a stale cache after a pin bump is fixed by --refresh, and nothing else reads it."""
+    a stale cache after a pin bump is fixed by --refresh, and nothing else reads it.
+
+    AND THE CACHE IS NOW BOUND TO THE MANIFEST THAT PRODUCED IT, because "pass --refresh
+    after a bump" is an instruction to a human and this check exists precisely because
+    humans miss things. A pin bump changes upstream code, so the token set it is audited
+    against is the PREVIOUS revision, and the check reports PASS about a tree it never read.
+    That is the same shape as every other silent failure here: not a wrong answer, an answer
+    to a question nobody asked.
+
+    Refusing rather than warning, and exiting 2 rather than 1, so "the audit failed" and "the
+    audit could not be trusted" are never confused. The old flat cache format has no
+    fingerprint and cannot be shown to match, so it is treated as untrusted too."""
     cache = os.path.join(ROOT, "buck-out", "upstream-name-tokens.json")
+    want = manifest_fingerprint()
     if "--refresh" not in sys.argv and os.path.exists(cache):
         with open(cache, encoding="utf-8") as fh:
-            return json.load(fh), True
+            blob = json.load(fh)
+        got = blob.get("manifest") if isinstance(blob, dict) else None
+        tokens = blob.get("tokens") if isinstance(blob, dict) else None
+        if tokens is not None and got == want:
+            return tokens, True
+        why = ("was written by an older version that recorded no fingerprint"
+               if tokens is None else
+               f"was built from a DIFFERENT manifest or token pattern "
+               f"({got[:12]}... not {want[:12]}...)")
+        print(f"STALE CACHE: buck-out/upstream-name-tokens.json {why}.")
+        print("Either the pins have moved or the pattern has widened since it was built, so "
+              "auditing against it would compare our tree to the PREVIOUS upstream revision, "
+              "or through the PREVIOUS pattern, and report PASS about names it never read. "
+              "Re-run with --refresh (about four minutes).")
+        sys.exit(2)
     tokens = {}
     for root in [PINS] + PIN_TREES:
         for path in walk(root):
@@ -147,7 +209,7 @@ def scan_pins():
                     tokens[tok] = tokens.get(tok, 0) + 1
     os.makedirs(os.path.dirname(cache), exist_ok=True)
     with open(cache, "w", encoding="utf-8") as fh:
-        json.dump(tokens, fh, sort_keys=True)
+        json.dump({"manifest": want, "tokens": tokens}, fh, sort_keys=True)
     return tokens, False
 
 
@@ -159,7 +221,8 @@ def main():
 
     pin_tokens, cached = scan_pins()
     if cached:
-        print("pin tokens read from cache; pass --refresh after a pin bump")
+        print("pin tokens read from cache, fingerprint verified against the manifest and the "
+              "token pattern")
     print(f"pin trees materialized inside our tree: {len(PIN_TREES)}")
 
     ours = []
