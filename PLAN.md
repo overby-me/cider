@@ -1546,6 +1546,13 @@ concrete failure justifies it:
   WHY IT HID: buck2 actions inherit the DAEMON's environment, and a long-lived daemon kept
   serving from the environment it started in. `buck2 killall` is what exposed it. A green
   endpoint is not evidence about the dev shell.
+  WHERE IT ENDED, measured 2026-08-10 on a suite run that COMPLETED: **ok=150, FAIL=4**,
+  from ok=137 FAIL=311. All 307 cleared FAILs were in the dylib and executable sections;
+  `built, 564 of 564 reported an output` against a 432 of 659 baseline, the denominator
+  falling because the mirror fix removed 95 duplicate targets. The 4 that remain are
+  BYTE IDENTICAL to the pre-existing ones and untouched by any of this: coverage 1448 of
+  1452, install UNMAPPED 4, and the two host-header checks (1275 targets).
+  `//buck/prefix:cider_prefix` builds end to end at 39,172 entries and 309 dylibs.
   WHAT IT COST, AND HOW THAT WAS PAID: it broke `hdiutil`, which compiled before. The cause
   was NOT the missing wrapper: `host_include_dirs` had a HOST LIBC on it. The straggler
   harvest takes every `-isystem` dir out of the dev shell's `NIX_CFLAGS_COMPILE`, and that
@@ -1572,12 +1579,16 @@ concrete failure justifies it:
   and it went unread because only `ERROR` was grepped for.
 - **`scripts/buck-test.nu` OOMs in the prefix section.** 2026-08-10, `nu` killed at 17.3 GB
   anon-rss on a 30 GB box entering `== the prefix ==`, so the suite never reports final
-  totals. MECHANISM NOT ESTABLISHED, and the obvious suspect is REFUTED. `out_of` does
-  `buck2 build ... | complete`, which buffers the whole build's output in memory, so it looked
-  certain. Measured instead: that exact target through `nu ... | complete` peaked at
-  **0.04 GB** of nushell RSS with 23 KB of stderr. Buffering is not it. What keeps this open
-  is that the probe still failed part way, so the cold full build that OOMed has not been
-  reproduced yet.
+  totals. MECHANISM NOT ESTABLISHED. The obvious suspect is `out_of`, which does
+  `buck2 build ... | complete` and buffers the whole build's output in memory. Every
+  measurement so far is against it: that target through `nu ... | complete` peaked at
+  **0.04 GB** of nushell RSS, and a full suite run that COMPLETED peaked at 0.04 GB too
+  (ok=150 FAIL=4). But do NOT read that as refuted, which is how this was first written and
+  it was too strong. NEITHER measurement reproduced the condition that OOMed: both ran with
+  the prefix ALREADY BUILT, whereas the kill happened when the suite drove a COLD FULL
+  prefix build itself. The one correlation on record is exactly that. Settling it needs a
+  deliberate cold rebuild under the sampler, which costs a full rebuild, so it is a
+  cost decision rather than an open question of what to do next.
 - **Run recipe** (from a built `$out = nix build .#default`):
   `DSERVER_LIBEXEC_PATH=$out/libexec/cider
   DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1
