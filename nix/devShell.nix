@@ -62,7 +62,9 @@ in {
     # them there. pkg-config alone is not enough: it knows nothing about xdmcp, which is
     # why the script warns about that one by name.
     expat
-    xorg.libXdmcp
+    # libxdmcp, NOT xorg.libXdmcp: the xorg set is deprecated and evaluating the old path
+    # prints a warning on every nix command in this tree.
+    libxdmcp
     linuxHeaders
     systemdLibs
 

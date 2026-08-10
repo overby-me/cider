@@ -230,6 +230,34 @@ def main [flag?: string] {
         do { ^./scripts/buck-src.nu } | ignore
     }
 
+    # THE LOWERING STAGING SCRIPT, CHECKED BEFORE ANYTHING EXPENSIVE RUNS.
+    #
+    # scripts/buck-lowering-stage-check.nu has existed for a while and NOTHING invoked it,
+    # which is the whole problem it was written to solve. Its own header records a one word
+    # regression that failed all 1,798 lowered targets and was visible only 90 minutes into a
+    # build. On 2026-08-10 the identical thing happened again for a different reason: a change
+    # to the pin staging lines shipped with `rm -f` against a directory and a
+    # buck-src/<basename> collision, and BOTH were plainly readable in the generated script,
+    # yet they were found by two endpoint runs costing about three hours between them.
+    #
+    # A correct check nobody calls is worth nothing, so it is called here.
+    #
+    # NOT FATAL, deliberately. This reads the lowering, which needs the graph derivation, and
+    # when the graph has moved that is a rebuild of several minutes rather than the seconds
+    # the check costs otherwise. Failing the whole suite on a slow or unavailable graph would
+    # make people stop running the suite, so it reports and continues; the endpoint remains
+    # the gate. It also cannot run while an endpoint build holds the eval cache, which fails
+    # with "SQLite database is busy", so a skip here is expected in that case and is not a
+    # defect.
+    say "== the lowering staging script (cheap, before the expensive checks) =="
+    let stage = (do -i { ^./scripts/buck-lowering-stage-check.nu } | complete)
+    if $stage.exit_code == 0 {
+        ok "the lowering still stages a project tree the pins can be planted into"
+    } else {
+        bad $"lowering stage check FAILED, exit ($stage.exit_code), see the output below"
+        say (indent7 ($stage.stdout + $stage.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //src/libsimple:libsimple_ciderd
