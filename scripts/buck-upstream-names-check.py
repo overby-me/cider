@@ -133,9 +133,27 @@ def main():
         # Re-breaking __darling_thread_create in ONE of its two files left the other
         # spelling intact, so the weaker rule reported PASS while the build was broken.
         # If upstream references a name, every definition of ours must use it.
-        has_cider = re.search(r'(?<![A-Za-z0-9_])' + re.escape(cider), ours) is not None
-        if has_cider:
-            orphaned.append((tok, cider, uses))
+        # MACH-O PUTS AN EXTRA UNDERSCORE ON C SYMBOLS, and that hole cost a full endpoint
+        # run. The pin defines the hook slots in ASSEMBLY, where the symbol is written
+        # __darling_mach_syscall_entry, while our C source declares the same object as
+        # _darling_mach_syscall_entry, one underscore fewer. Comparing only the literal
+        # token looked for __cider_... in our tree, never found it, and reported PASS while
+        # xtracelib_dylib could not link. So an assembly token is also checked with one
+        # leading underscore stripped, which is the form C spells it.
+        # THE TRAILING BOUNDARY IS LOAD BEARING once the stripped form is in play, and
+        # leaving it out produced six false alarms in one run. Our OWN trampolines are
+        # _cider_bsd_syscall_entry_trampoline, so a prefix-only search for the stripped
+        # _cider_bsd_syscall_entry matches them and reports an orphan that is not one. The
+        # original single-form search never hit this because it looked for the DOUBLE
+        # underscore, which our C never writes. Match whole identifiers only.
+        forms = [cider]
+        if cider.startswith("__"):
+            forms.append(cider[1:])
+        hit = next((f for f in forms
+                    if re.search(r'(?<![A-Za-z0-9_])' + re.escape(f) + r'(?![A-Za-z0-9_])',
+                                 ours)), None)
+        if hit:
+            orphaned.append((tok, hit, uses))
 
     print(f"pin tokens containing darling: {len(pin_tokens)}")
     if not orphaned:
