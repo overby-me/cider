@@ -26,7 +26,8 @@ static char* g_originalCwd = NULL;
 
 void setSignalHandlers()
 {
-	if (getenv("DARLING_NO_HANDLER") == NULL)
+	/* CIDER_ is canonical; DARLING_ still honoured so existing scripts keep working. */
+	if (getenv("CIDER_NO_HANDLER") == NULL && getenv("DARLING_NO_HANDLER") == NULL)
 	{
 		struct sigaction act;
 

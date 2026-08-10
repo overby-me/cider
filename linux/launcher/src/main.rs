@@ -1009,7 +1009,9 @@ fn single_quote(s: &str) -> String {
 }
 
 fn startup_timeout() -> i32 {
-    std::env::var("DARLING_SHELL_STARTUP_TIMEOUT")
+    // CIDER_ is canonical; DARLING_ is the compat fallback.
+    std::env::var("CIDER_SHELL_STARTUP_TIMEOUT")
+        .or_else(|_| std::env::var("DARLING_SHELL_STARTUP_TIMEOUT"))
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(60)

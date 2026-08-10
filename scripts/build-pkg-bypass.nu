@@ -108,6 +108,9 @@ def main [
     sleep 2sec
     let genv = {
         DARLING_NO_LAUNCHD: "1"
+        # DELIBERATELY still the DARLING_ name: this is what keeps the compat fallback in
+        # linux/launcher/src/main.rs EXERCISED. If every setter moved to CIDER_, a broken
+        # fallback would never be caught. Move this only when the fallbacks are dropped.
         DARLING_SHELL_STARTUP_TIMEOUT: "90"
         GDRV: $drv
         GDB: $dump

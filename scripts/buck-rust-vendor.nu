@@ -18,7 +18,7 @@
 def main [] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
-    let vendor = ($env.DARLING_RUST_VENDOR? | default "")
+    let vendor = ($env.CIDER_RUST_VENDOR? | default ($env.DARLING_RUST_VENDOR? | default ""))
     if ($vendor | is-empty) {
         print -e "DARLING_RUST_VENDOR is unset -- run inside `nix develop`"
         exit 2

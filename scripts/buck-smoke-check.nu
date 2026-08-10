@@ -131,7 +131,7 @@ say "SMOKE DONE"'
     let log = (mktemp --tmpdir buck-smoke-check.XXXXXX)
     with-env {
         DPREFIX: $prefix_dir
-        DARLING_NO_LAUNCHD: "1"
+        CIDER_NO_LAUNCHD: "1"
         DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
         DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
     } {

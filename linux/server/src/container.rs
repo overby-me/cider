@@ -50,11 +50,15 @@ impl Config {
         // The guest init: DSERVER_INIT, else the DARLING_NO_LAUNCHD bypass (shellspawn),
         // else launchd (DARLINGSERVER_INIT_PROCESS). Mirrors spawnLaunchd:263-279.
         let init_path = env("DSERVER_INIT").unwrap_or_else(|| {
-            let no_launchd = env("DARLING_NO_LAUNCHD").unwrap_or_default();
+            let no_launchd = env("CIDER_NO_LAUNCHD")
+                .or_else(|| env("DARLING_NO_LAUNCHD"))
+                .unwrap_or_default();
             if matches!(no_launchd.as_bytes().first(), Some(b'1') | Some(b't') | Some(b'T')) {
                 "/usr/libexec/shellspawn".to_string()
             } else {
-                env("DARLINGSERVER_INIT_PROCESS").unwrap_or_else(|| "/sbin/launchd".to_string())
+                env("CIDERD_INIT_PROCESS")
+                    .or_else(|| env("DARLINGSERVER_INIT_PROCESS"))
+                    .unwrap_or_else(|| "/sbin/launchd".to_string())
             }
         });
         Ok(Config {

@@ -14,7 +14,7 @@
 def say [msg: string] { print -e $msg }
 
 def main [] {
-    let cider = ($env.DARLING? | default "cider")
+    let cider = ($env.CIDER? | default ($env.DARLING? | default "cider"))
     let prefix = ($env.DPREFIX? | default ($env.HOME | path join ".dbash"))
     # Boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old
     # busy-spin retry.

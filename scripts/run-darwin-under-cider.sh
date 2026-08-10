@@ -31,7 +31,7 @@
 # are parsed as a flag with an empty name. Measured, not assumed.
 set -euo pipefail
 
-DARLING="${DARLING:-cider}"
+DARLING="${CIDER:-${DARLING:-cider}}"
 # Keep the prefix path short: the shellspawn Unix socket lives at
 # <prefix>/var/run/… and must fit sockaddr_un.sun_path (~108 chars).
 PREFIX="${DPREFIX:-/tmp/dh}"

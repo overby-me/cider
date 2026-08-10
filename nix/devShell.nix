@@ -113,6 +113,8 @@ in {
     # Make cmake produce compile_commands.json so clangd works.
     CMAKE_EXPORT_COMPILE_COMMANDS = "1";
     # Where scripts/buck-rust-vendor.nu materializes the crate sources from.
+    CIDER_RUST_VENDOR = "${rustVendor}";
+    # Compat: dropped when the DARLING_ fallbacks go.
     DARLING_RUST_VENDOR = "${rustVendor}";
   };
 

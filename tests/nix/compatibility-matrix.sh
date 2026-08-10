@@ -87,7 +87,7 @@ TIER4_PACKAGES=(
 # ── Configuration defaults ───────────────────────────────────────────
 
 DARLING_NIX="${DARLING_NIX:-}"
-DARLING="${DARLING:-cider}"
+DARLING="${CIDER:-${DARLING:-cider}}"
 NIX_SYSTEM="${NIX_SYSTEM:-x86_64-darwin}"
 COMPAT_NIXPKGS="${COMPAT_NIXPKGS:-<nixpkgs>}"
 COMPAT_TIMEOUT="${COMPAT_TIMEOUT:-300}"

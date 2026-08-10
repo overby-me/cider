@@ -27,7 +27,7 @@
 # are parsed as a flag with an empty name. Measured, not assumed.
 set -euo pipefail
 
-DARLING="${DARLING:-cider}"
+DARLING="${CIDER:-${DARLING:-cider}}"
 PREFIX="${DPREFIX:-/tmp/dc}"
 RETRIES="${RETRIES:-1}"  # boot is reliable under the Rust daemon (#44); set RETRIES>1 to re-enable the old busy-spin retry
 BT="${BOOTSTRAP_TOOLS:-/nix/store/v6wk45fap70cgcw88x4ilzkiwzhwq6r0-bootstrap-tools}"

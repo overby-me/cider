@@ -77,7 +77,7 @@ def main [scratch?: string] {
     let out = (
         with-env {
             DPREFIX: $prefix
-            DARLING_NO_LAUNCHD: "1"
+            CIDER_NO_LAUNCHD: "1"
             DSERVER_LIBEXEC_PATH: $"($rt)/libexec/cider"
             DSERVER_MLDR_PATH: $"($rt)/libexec/cider/usr/libexec/cider/mldr"
         } {
