@@ -72,6 +72,17 @@ surfaced only as a package load failure naming a path that appears NOWHERE in th
 under `buck-src` before, 13 after, and those 13 predate this work. **After any rename run
 `find . -type l -printf '%l\n' | grep <old name>`.**
 
+There was a NINTH, and it is the same symlink class in a second place, which is the lesson:
+`buck-src-normalise.py` runs only in `ciderBuck2Graph.nix`, so it never saw the lowering's own
+staging. `pinsTree` walks its assembled tree for dangling relative links and carries the
+destination in from `escapeSrc`, but it resolved `security/darling/submodules/xnu` against the
+pre-rename `src/external/darlingserver/duct-tape/xnu`, failed its `lexists` test, and **skipped
+the carry in silence.** Gate run 11 proved it at builder 3,618 as the ONLY root cause in the
+whole endpoint: `reqinterp.cpp:46: fatal error: security/mac.h file not found`. The carry loop
+now translates through the same table, translating the SOURCE while the destination keeps the
+name the dangling link points at. **A rename table has to reach every place that resolves a
+path, not just the one that stages the pins.**
+
 Two limits worth stating. The label check does NOT verify target existence generally: 105
 distinct targets are synthesised by `elf_wrapper` as `<n>_wrap` and `<n>_dylib` from lists local
 to a BUCK file, so reporting them would be noise. And the pin check tests `lexists`, because
