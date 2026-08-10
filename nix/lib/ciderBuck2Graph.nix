@@ -236,7 +236,32 @@
   materializePins = pkgs.writeShellScript "materialize-pins" (
   lib.concatMapStrings (p: let
         name = builtins.baseNameOf p;
-      in ''
+        # THE buck-src INDIRECTION ONLY WORKS FOR A PIN DIRECTLY UNDER src/external, and it
+        # makes THREE assumptions that all break for a nested one:
+        #   the destination buck-src/<name> is keyed on the BASENAME, which is not unique;
+        #   the back link hardcodes ../../, which is the depth of src/external/<name>;
+        #   and both together silently CLOBBER an existing pin of the same basename.
+        # Measured 2026-08-10 by adding src/external/ciderd/xnu-sys/xnu, whose basename is
+        # also xnu: it landed on top of src/external/xnu in buck-src/xnu and the endpoint
+        # died at BXL materialisation with "File not found:
+        # root//src/external/ciderd/buck-src/xnu, included in buck-src/BUCK".
+        # A nested pin is therefore materialised IN PLACE at its own path instead, which is
+        # what cider-src.nix overlayOne already does for every pin. The 147 that do live
+        # directly under src/external keep the indirection unchanged, byte for byte.
+        parts = lib.splitString "/" p;
+        underSrcExternal =
+          builtins.length parts == 3
+          && builtins.elemAt parts 0 == "src"
+          && builtins.elemAt parts 1 == "external";
+      in
+      if !underSrcExternal then ''
+        echo "materializing ${p} (nested pin, in place)"
+        mkdir -p ${builtins.dirOf p}
+        rm -rf ${p}
+        mkdir -p ${p}
+        cp -a --reflink=auto ${pinSrc p}/. ${p}/
+        chmod -R u+w ${p}
+      '' else ''
         echo "materializing buck-src/${name}"
         # CONTENTS, not the directory: buck-src/<pin>/BUCK is committed since the per-pin
         # split, so the destination already exists and `cp -a src dest` would nest the
