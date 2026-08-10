@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_STUBS_H_
-#define _DARLINGSERVER_XNU_SYS_STUBS_H_
+#ifndef _CIDERD_XNU_SYS_STUBS_H_
+#define _CIDERD_XNU_SYS_STUBS_H_
 
 #include <stdbool.h>
 
@@ -17,4 +17,4 @@ void xnu_sys_stub_log(const char* function_name, int safety, const char* subsect
 		__builtin_unreachable(); \
 	}) \
 
-#endif // _DARLINGSERVER_XNU_SYS_STUBS_H_
+#endif // _CIDERD_XNU_SYS_STUBS_H_

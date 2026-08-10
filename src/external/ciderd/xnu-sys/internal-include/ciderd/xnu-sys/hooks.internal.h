@@ -1,8 +1,8 @@
-#ifndef _DARLINGSERVER_XNU_SYS_HOOKS_INTERNAL_H_
-#define _DARLINGSERVER_XNU_SYS_HOOKS_INTERNAL_H_
+#ifndef _CIDERD_XNU_SYS_HOOKS_INTERNAL_H_
+#define _CIDERD_XNU_SYS_HOOKS_INTERNAL_H_
 
 #include <ciderd/xnu-sys/hooks.h>
 
 extern const xnu_sys_hooks_t* xnu_sys_hooks;
 
-#endif // _DARLINGSERVER_XNU_SYS_HOOKS_INTERNAL_H_
+#endif // _CIDERD_XNU_SYS_HOOKS_INTERNAL_H_

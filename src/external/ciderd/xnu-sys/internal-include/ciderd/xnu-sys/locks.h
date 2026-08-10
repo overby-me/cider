@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_LOCKS_H_
-#define _DARLINGSERVER_XNU_SYS_LOCKS_H_
+#ifndef _CIDERD_XNU_SYS_LOCKS_H_
+#define _CIDERD_XNU_SYS_LOCKS_H_
 
 #include <stdint.h>
 #include <sys/queue.h>
@@ -32,4 +32,4 @@ void xnu_sys_mutex_unlock(xnu_sys_mutex_t* mutex);
 bool xnu_sys_mutex_try_lock(xnu_sys_mutex_t* mutex);
 void xnu_sys_mutex_assert(xnu_sys_mutex_t* mutex, bool should_be_owned);
 
-#endif // _DARLINGSERVER_XNU_SYS_LOCKS_H_
+#endif // _CIDERD_XNU_SYS_LOCKS_H_

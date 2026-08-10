@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_HOOKS_H_
-#define _DARLINGSERVER_XNU_SYS_HOOKS_H_
+#ifndef _CIDERD_XNU_SYS_HOOKS_H_
+#define _CIDERD_XNU_SYS_HOOKS_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -128,4 +128,4 @@ typedef struct xnu_sys_hooks {
 };
 #endif
 
-#endif // _DARLINGSERVER_XNU_SYS_HOOKS_H_
+#endif // _CIDERD_XNU_SYS_HOOKS_H_

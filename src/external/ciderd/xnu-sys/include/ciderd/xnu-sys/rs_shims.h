@@ -6,8 +6,8 @@
  * these grows an argument the generated side follows and a hand-written one does not.
  */
 
-#ifndef _DARLINGSERVER_XNU_SYS_RS_SHIMS_H_
-#define _DARLINGSERVER_XNU_SYS_RS_SHIMS_H_
+#ifndef _CIDERD_XNU_SYS_RS_SHIMS_H_
+#define _CIDERD_XNU_SYS_RS_SHIMS_H_
 
 #include <stddef.h>
 #include <stdint.h>

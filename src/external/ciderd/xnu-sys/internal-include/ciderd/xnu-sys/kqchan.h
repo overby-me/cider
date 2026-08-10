@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_KQCHAN_H_
-#define _DARLINGSERVER_XNU_SYS_KQCHAN_H_
+#ifndef _CIDERD_XNU_SYS_KQCHAN_H_
+#define _CIDERD_XNU_SYS_KQCHAN_H_
 
 #include <stdint.h>
 
@@ -25,4 +25,4 @@ struct xnu_sys_kqchan_mach_port {
 	xnu_sys_semaphore_t* waiter_read_semaphore;
 };
 
-#endif // _DARLINGSERVER_XNU_SYS_KQCHAN_H_
+#endif // _CIDERD_XNU_SYS_KQCHAN_H_

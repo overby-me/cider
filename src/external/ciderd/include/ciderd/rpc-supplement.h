@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_RPC_SUPPLEMENT_H_
-#define _DARLINGSERVER_RPC_SUPPLEMENT_H_
+#ifndef _CIDERD_RPC_SUPPLEMENT_H_
+#define _CIDERD_RPC_SUPPLEMENT_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -232,4 +232,4 @@ typedef union dserver_s2c_call {
 };
 #endif
 
-#endif // _DARLINGSERVER_RPC_SUPPLEMENT_H_
+#endif // _CIDERD_RPC_SUPPLEMENT_H_

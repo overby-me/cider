@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_SIMPLE_LOCK_H_
-#define _DARLINGSERVER_XNU_SYS_SIMPLE_LOCK_H_
+#ifndef _CIDERD_XNU_SYS_SIMPLE_LOCK_H_
+#define _CIDERD_XNU_SYS_SIMPLE_LOCK_H_
 
 #include <stdint.h>
 #include "locks.h"
@@ -11,4 +11,4 @@ struct usimple_lock {
 typedef struct usimple_lock usimple_lock_data_t;
 typedef usimple_lock_data_t* usimple_lock_t;
 
-#endif // _DARLINGSERVER_XNU_SYS_SIMPLE_LOCK_H_
+#endif // _CIDERD_XNU_SYS_SIMPLE_LOCK_H_

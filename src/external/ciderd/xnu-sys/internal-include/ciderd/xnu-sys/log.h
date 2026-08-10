@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_LOG_H_
-#define _DARLINGSERVER_XNU_SYS_LOG_H_
+#ifndef _CIDERD_XNU_SYS_LOG_H_
+#define _CIDERD_XNU_SYS_LOG_H_
 
 #include <ciderd/xnu-sys/types.h>
 
@@ -11,4 +11,4 @@ extern void xnu_sys_log(xnu_sys_log_level_t level, const char* format, ...);
 #define xnu_sys_log_warning(format, ...) xnu_sys_log(xnu_sys_log_level_warning, format, ## __VA_ARGS__)
 #define xnu_sys_log_error(format, ...) xnu_sys_log(xnu_sys_log_level_error, format, ## __VA_ARGS__)
 
-#endif // _DARLINGSERVER_XNU_SYS_LOG_H_
+#endif // _CIDERD_XNU_SYS_LOG_H_

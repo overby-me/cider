@@ -736,8 +736,8 @@ library_source.write(license_header)
 internal_header.write(license_header)
 
 public_header.write("""\
-#ifndef _DARLINGSERVER_API_H_
-#define _DARLINGSERVER_API_H_
+#ifndef _CIDERD_API_H_
+#define _CIDERD_API_H_
 
 #include <sys/types.h>
 #include <stdint.h>
@@ -1617,7 +1617,7 @@ public_header.write("""\
 };
 #endif
 
-#endif // _DARLINGSERVER_API_H_
+#endif // _CIDERD_API_H_
 """)
 
 public_header.close()

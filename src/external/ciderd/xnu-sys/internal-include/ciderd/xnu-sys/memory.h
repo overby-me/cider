@@ -1,5 +1,5 @@
-#ifndef _DARLINGSERVER_XNU_SYS_MEMORY_H_
-#define _DARLINGSERVER_XNU_SYS_MEMORY_H_
+#ifndef _CIDERD_XNU_SYS_MEMORY_H_
+#define _CIDERD_XNU_SYS_MEMORY_H_
 
 #include <stdint.h>
 #include <mach/vm_types.h>
@@ -68,4 +68,4 @@ void xnu_sys_memory_init(void);
 vm_map_t xnu_sys_vm_map_create(struct xnu_sys_task* task);
 void xnu_sys_vm_map_destroy(vm_map_t map);
 
-#endif // _DARLINGSERVER_XNU_SYS_MEMORY_H_
+#endif // _CIDERD_XNU_SYS_MEMORY_H_

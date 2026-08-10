@@ -1,6 +1,6 @@
-#ifndef _DARLINGSERVER_XNU_SYS_PROCESOR_H_
-#define _DARLINGSERVER_XNU_SYS_PROCESOR_H_
+#ifndef _CIDERD_XNU_SYS_PROCESOR_H_
+#define _CIDERD_XNU_SYS_PROCESOR_H_
 
 void xnu_sys_processor_init(void);
 
-#endif // _DARLINGSERVER_XNU_SYS_PROCESOR_H_
+#endif // _CIDERD_XNU_SYS_PROCESOR_H_

@@ -1,5 +1,5 @@
-#ifndef _DARLING_COREDUMP_X86_64_H_
-#define _DARLING_COREDUMP_X86_64_H_
+#ifndef _CIDER_COREDUMP_X86_64_H_
+#define _CIDER_COREDUMP_X86_64_H_
 
 #include <stdint.h>
 
@@ -234,4 +234,4 @@ typedef struct x86_float_state64 {
 #define x86_THREAD_STATE64_COUNT ((uint32_t)(sizeof(x86_thread_state64_t) / sizeof(int)))
 #define x86_FLOAT_STATE64_COUNT ((uint32_t)(sizeof(x86_float_state64_t) / sizeof(unsigned int)))
 
-#endif // _DARLING_COREDUMP_X86_64_H_
+#endif // _CIDER_COREDUMP_X86_64_H_
