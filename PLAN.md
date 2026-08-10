@@ -31,8 +31,30 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 directories), #55 (lowered derivations content-addressed), #71 (xnu-sys ported to Rust, 16 of
 16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
 was nothing behind it), #83 (the vendored XNU subset is a pin, not committed source: 1,974
-files deleted, 51 local deltas became a patch dir, endpoint green at 1,185 builders and 0
-errors). Their detail is further down and in the commit history.
+files deleted, 51 local deltas became a patch dir). Their detail is further down and in the
+commit history.
+
+**#83 SHIPPED WITH A LATENT BREAK, AND THE GREEN RUN THAT CERTIFIED IT NEVER TESTED IT.** This
+used to cite an endpoint green at 1,185 builders and 0 errors as the proof. That run REUSED
+`cider-buck2-graph` from before the de-vendoring, so the tree it staged still held the vendored
+copy: the green covered the old staging. Check any gate with
+
+```
+grep -c "building '/nix/store/[a-z0-9]*-cider-buck2-graph.drv'" <gatelog>
+```
+
+Zero means reused, which is fine for a change that cannot reach the graph and worthless for one
+that moves it. What it hid: `escapeSrc` read every escape root out of `srcRaw` behind a
+`pathExists` guard, de-vendoring turned that root into a pin, the guard went false, and the
+carry was dropped IN SILENCE, leaving the security pin link to `duct-tape/xnu` dangling until
+`security_codesigning_obj` died on a missing `security/mac.h` an hour into a later gate. Fixed
+in `d51dfbc7` by falling back to the pin store, and now proven by that same target building
+green. `scripts/buck-escape-roots-check.py` guards the class, and the suite calls it.
+
+The general rule, since this will recur: **moving a tree from the repo into a pin changes its
+CATEGORY, and every `pathExists` guard that named it silently stops contributing.** Note that
+`os.path.exists` still says the tree is there, because `buck-src.nu` materializes the pin at
+that path; `jj file list` is the honest test.
 
 **THE STAGING FAULTS OF #83 CANNOT BE CAUGHT BY BUILDING ANYTHING.** The generated staging
 script has no `set -e`, and both faults succeed at the shell level: `ln -sfn X dir/` creates
@@ -59,7 +81,7 @@ fault with two endpoint runs. In cost order:
 | --- | --- | --- |
 | 1 | `scripts/buck-lowering-stage-check.nu` | **7 s** warm, 329 s on a cold graph |
 | 2 | `nix build .#cider-buck2-one` | **18 s**, 3 builders |
-| 3 | `nix build .#cider-buck2-prefix-min` | **hours** (1,185 builders on the last green run) |
+| 3 | `nix build .#cider-buck2-prefix-min` | **hours** (1,185 builders, but see the #83 note: that run reused the graph) |
 
 Rung 1 is only cheap against the endpoint that is actually gated: pointed at
 `.#cider-buck2-prefix`, whose graph nothing else builds, the same check measured **917
