@@ -1559,12 +1559,25 @@ concrete failure justifies it:
   A DEAD END, do not retry: handing glibc to `host_headers` as `-idirafter` looks like the
   symmetric fix (it is what the wrapper did) and is WRONG. It resolves `features.h` and then
   fails the same `_ISspace` way, because the problem was never the missing dir.
+- **`.buckconfig.local` says GENERATED but was partly HAND MAINTAINED, and regenerating it
+  silently dropped what only a human had put there.** 2026-08-10: a regenerate lost a whole
+  `[buck2]` section (watchman then refused to start at nice 12, and every buck2 command died)
+  and FOUR include dirs (`expat`, `systemd-minimal-libs`, `linux-headers`, `libxdmcp`), which
+  took `//darwin/frameworks:fseventsd_obj` out with
+  `linux/fanotify.h: 'linux/types.h' file not found`. None of them came from the script.
+  Fixed at the source rather than by hand: the `[buck2]` section is emitted, and the four
+  packages are declared in `nix/devShell.nix` so the `-isystem` harvest finds them.
+  THE HABIT THAT WOULD HAVE CAUGHT IT: after regenerating a generated file, DIFF IT AGAINST
+  THE PREVIOUS ONE. The script also printed `WARNING: pkg-config knows nothing about: xdmcp`
+  and it went unread because only `ERROR` was grepped for.
 - **`scripts/buck-test.nu` OOMs in the prefix section.** 2026-08-10, `nu` killed at 17.3 GB
   anon-rss on a 30 GB box entering `== the prefix ==`, so the suite never reports final
-  totals. MECHANISM NOT ESTABLISHED. The obvious suspect is `out_of`, which does
-  `buck2 build ... | complete` and so buffers the whole build's output in memory, but that is
-  NOT supported yet: re-running the same target emitted 23 KB of stderr. That rerun fails
-  fast at hdiutil rather than doing the cold full build that OOMed, so it does not settle it.
+  totals. MECHANISM NOT ESTABLISHED, and the obvious suspect is REFUTED. `out_of` does
+  `buck2 build ... | complete`, which buffers the whole build's output in memory, so it looked
+  certain. Measured instead: that exact target through `nu ... | complete` peaked at
+  **0.04 GB** of nushell RSS with 23 KB of stderr. Buffering is not it. What keeps this open
+  is that the probe still failed part way, so the cold full build that OOMed has not been
+  reproduced yet.
 - **Run recipe** (from a built `$out = nix build .#default`):
   `DSERVER_LIBEXEC_PATH=$out/libexec/cider
   DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1

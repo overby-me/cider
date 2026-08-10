@@ -53,6 +53,19 @@ in {
     openssl
     xdg-user-dirs
 
+    # DECLARED HERE SO scripts/buck-setup.nu CAN REGENERATE WITHOUT THEM BEING LOST.
+    # All four were hand written into .buckconfig.local, a file whose first line says
+    # GENERATED, so regenerating it on 2026-08-10 silently dropped every one and
+    # //darwin/frameworks:fseventsd_obj stopped compiling with
+    # "linux/fanotify.h: 'linux/types.h' file not found". buck-setup.nu harvests the dev
+    # shell's own -isystem list, so declaring them here is what puts them back and keeps
+    # them there. pkg-config alone is not enough: it knows nothing about xdmcp, which is
+    # why the script warns about that one by name.
+    expat
+    xorg.libXdmcp
+    linuxHeaders
+    systemdLibs
+
     # ── Rust, for the buck2 port of the daemon, launcher and loader ──
     # rustc only: buck2 invokes it directly and the crate sources come from
     # rustVendor above, so there is nothing for cargo to do in the build graph.
