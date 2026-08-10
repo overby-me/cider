@@ -321,6 +321,19 @@ def main [flag?: string] {
         say (indent7 ($pinpatch.stdout + $pinpatch.stderr | str substring 0..2000))
     }
 
+    # THE PIN TREES ON DISK, checked against the manifest rather than against the script that
+    # put them there. buck-src.nu once reported "already materialized" about a tree that was
+    # still the PREVIOUS revision, which would have made a bisect build compile the old code
+    # and pass. The fix lives in that same script, so this checks the RESULT instead.
+    say "== the materialized pin revisions (no nix either) =="
+    let pinrev = (do -i { ^python3 ./scripts/buck-pin-rev-check.py } | complete)
+    if $pinrev.exit_code == 0 {
+        ok "no materialized pin contradicts the manifest"
+    } else {
+        bad $"pin revision check FAILED, exit ($pinrev.exit_code), see the output below"
+        say (indent7 ($pinrev.stdout + $pinrev.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //src/libsimple:libsimple_ciderd
