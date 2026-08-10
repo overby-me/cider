@@ -90,7 +90,7 @@ def sdk_key_namespace():
     the keys wrong.
 
     CHECKED BY CONSISTENCY, not by a hardcoded name, because cider/ IS a legitimate SDK
-    namespace elsewhere: usr/include/cider/mldr/elfcalls/dthreads.h is ours and resolves.
+    namespace elsewhere: usr/include/darling/mldr/elfcalls/dthreads.h is ours and resolves.
     The rule is that the key and the value must agree about whose namespace it is. If the
     key begins cider/ while the value names a darling_ target inside a pin, one of them is
     wrong, and it is the key.

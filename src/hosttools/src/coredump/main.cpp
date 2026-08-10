@@ -19,7 +19,7 @@
 
 #include <coredump/x86_64.h>
 
-#include <cider-config.h>
+#include <darling-config.h>
 
 #ifndef DUMP_FLOAT_STATE
 	#define DUMP_FLOAT_STATE 1

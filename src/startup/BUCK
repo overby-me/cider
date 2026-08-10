@@ -31,7 +31,10 @@ host_gen(
 cc_header_root(
     name = "sdk_src_startup_headers",
     header_map = {
-        "cider/mldr/elfcalls/dthreads.h": "mldr/elfcalls/dthreads.h",
+        # UPSTREAM names this include: the xnu pin's bsdthread code does
+        # #include <darling/mldr/elfcalls/dthreads.h>, so the staged path keeps
+        # the old name even though the project is Cider.
+        "darling/mldr/elfcalls/dthreads.h": "mldr/elfcalls/dthreads.h",
         "elfcalls.h": "mldr/elfcalls/elfcalls.h",
         "elfcalls/elfcalls.h": "mldr/elfcalls/elfcalls.h",
         "elfcalls/threads.h": "mldr/elfcalls/threads.h",

@@ -38,8 +38,8 @@ BUCK_SRC = "buck-src"
 
 
 # .c is included deliberately: Darling's SDK exposes implementation .c files under
-# its cider/emulation namespace, and the emulation layer #includes them by path
-# (<cider/emulation/.../setattrlist_generic.c>). Skipping them leaves those
+# its darling/emulation namespace, and the emulation layer #includes them by path
+# (<darling/emulation/.../setattrlist_generic.c>). Skipping them leaves those
 # includes unresolved.
 HEADER_EXTS = (".h", ".hpp", ".modulemap", ".defs", ".c")
 

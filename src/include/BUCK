@@ -1,6 +1,7 @@
 load("//buck/rules:codegen.bzl", "configure_file")
 
-# cider-config.h, cmake's configure_file output. The syscall emulation layer
+# darling-config.h, cmake's configure_file output. UPSTREAM's name: the syscall
+# emulation layer in the xnu pin includes <darling-config.h>, so the file keeps it. The syscall emulation layer
 # includes it for LIB_PATH / LIBEXEC_PATH / SYSTEM_ROOT.
 #
 # The values mirror nix/package.nix's install layout. GIT_BRANCH and
@@ -9,8 +10,8 @@ load("//buck/rules:codegen.bzl", "configure_file")
 # that includes it.
 configure_file(
     name = "cider_config",
-    out = "cider-config.h",
-    src = "cider-config.h.in",
+    out = "darling-config.h",
+    src = "darling-config.h.in",
     values = {
         "CMAKE_INSTALL_PREFIX": "/usr/libexec/cider",
         "CMAKE_INSTALL_LIBDIR": "lib",

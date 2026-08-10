@@ -121,7 +121,7 @@ extern "C" fn ec_thread_create(
 ) -> *mut c_void {
     ptr::null_mut()
 }
-/// `__cider_thread_terminate` (threads.h): the last thing a guest thread does.
+/// `__darling_thread_terminate` (threads.h): the last thing a guest thread does.
 ///
 /// MUST NOT RETURN. libsystem_pthread calls this at the end of pthread_exit and, because the
 /// declaration is noreturn, the compiler emits a `ud2` immediately after the call -- so a stub
