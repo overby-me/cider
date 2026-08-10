@@ -67,7 +67,7 @@ endpoint actually runs.
 
 **THE UPPERCASE HALF OF THE RENAME IS SETTLED.** Of the 83 all-caps `DARLING` names our tree
 uses, **46 are referenced by the pins and keep their names** (`DARLING_NW_STUB` 1861,
-`__DARLING__` 579 in 141 pin files, the `DARLING_CONVERSION_*` family, the
+`__DARLING__` **772 in 188 pin files** (579 in buck-src plus 193 in the nested xnu pin, which a buck-src-only count misses), the `DARLING_CONVERSION_*` family, the
 `_DARLING_EMULATION_*` guards, `__PTK_DARLING_KEY0..9`). The provably-ours subset is renamed:
 20 include guards and 5 build-time or internal names. Everything still outstanding is an
 interface a person types, so it is a user decision: the six runtime env vars,
