@@ -40,7 +40,7 @@ cc_header_root(
 
 # The GUEST build of the same source: libsimple compiled for Darwin/Mach-O.
 # Mirrors the CMakeLists' other branch, add_cider_static_library(libsimple_cider
-# FAT ...) with -DLIBSIMPLE_DARLING=1.
+# FAT ...) with -DLIBSIMPLE_CIDER=1.
 #
 # Same file, same rules, one different toolchain -- which is the point of keeping
 # the toolchain a selectable attribute. (FAT/lipo is not reproduced yet: the
@@ -48,7 +48,7 @@ cc_header_root(
 cc_library(
     name = "libsimple_cider",
     srcs = ["src/lock.c"],
-    compiler_flags = ["-DLIBSIMPLE_DARLING=1"],
+    compiler_flags = ["-DLIBSIMPLE_CIDER=1"],
     exported_headers = [
         "include/libsimple/base.h",
         "include/libsimple/lock.h",
@@ -66,7 +66,7 @@ cc_library(
 darwin_dylib(
     name = "libsimple_cider_dylib",
     srcs = ["src/lock.c"],
-    compiler_flags = ["-DLIBSIMPLE_DARLING=1"],
+    compiler_flags = ["-DLIBSIMPLE_CIDER=1"],
     dylib_name = "libsimple_cider.dylib",
     install_name = "/usr/lib/system/libsimple_cider.dylib",
     # Nothing to resolve against yet (libSystem is not ported), so allow
