@@ -12,9 +12,9 @@ rust_binary(
     # OWN fallback for when git is unavailable: a build action that shells out to git would
     # make the binary depend on the checkout rather than on its inputs.
     env = {
-        "DARLING_GIT_BRANCH": "unknown",
-        "DARLING_GIT_COMMIT": "unknown",
-        "DARLING_INSTALL_PREFIX": read_root_config("cider", "install_prefix", "/usr/local"),
+        "CIDER_GIT_BRANCH": "unknown",
+        "CIDER_GIT_COMMIT": "unknown",
+        "CIDER_INSTALL_PREFIX": read_root_config("cider", "install_prefix", "/usr/local"),
     },
     deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],

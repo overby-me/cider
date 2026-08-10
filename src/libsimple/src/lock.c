@@ -31,13 +31,13 @@ struct timespec;
 #if LIBSIMPLE_LINUX
 	#include <sys/syscall.h>
 	#include <unistd.h>
-#elif LIBSIMPLE_DARLING
+#elif LIBSIMPLE_CIDER
 	extern int __linux_futex_reterr(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3);
 #endif
 
-#if LIBSIMPLE_DARLING
+#if LIBSIMPLE_CIDER
 	#define linux_futex __linux_futex_reterr
-#else // !LIBSIMPLE_DARLING
+#else // !LIBSIMPLE_CIDER
 static int linux_futex(int* uaddr, int op, int val, const struct timespec* timeout, int* uaddr2, int val3) {
 #if LIBSIMPLE_LINUX
 	return syscall(SYS_futex, uaddr, op, val, timeout, uaddr2, val3);
@@ -45,7 +45,7 @@ static int linux_futex(int* uaddr, int op, int val, const struct timespec* timeo
 	#error linux_futex not implemented for this platform
 #endif
 };
-#endif // !LIBSIMPLE_DARLING
+#endif // !LIBSIMPLE_CIDER
 
 //
 // libsimple_lock

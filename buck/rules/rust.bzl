@@ -57,7 +57,7 @@ def _closure(ctx):
 _RUSTC_RUNNER = """set -euo pipefail
 # The compile-time environment travels in the ARGV, not in the action's env dict. Nothing
 # outside buck2 can see that dict -- aquery does not report it -- so the Nix endpoint, which
-# replays recorded command lines, compiled the launcher without DARLING_GIT_COMMIT and the
+# replays recorded command lines, compiled the launcher without CIDER_GIT_COMMIT and the
 # crate failed on its own env!(). Putting it here keeps the command self-describing.
 while [ "${1:-}" = "--env" ]; do export "$2"; shift 2; done
 if [ -n "${OUT_DIR:-}" ]; then export OUT_DIR="$PWD/$OUT_DIR"; fi

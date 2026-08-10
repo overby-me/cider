@@ -22,9 +22,9 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 // ---- compile-time config (darling-config.h / shellspawn.h) ----
 const SYSTEM_ROOT: &str = "/Volumes/SystemRoot";
 const SHELLSPAWN_SOCKPATH: &str = "/var/run/shellspawn.sock";
-const INSTALL_PREFIX: &str = env!("DARLING_INSTALL_PREFIX");
-const GIT_BRANCH: &str = env!("DARLING_GIT_BRANCH");
-const GIT_COMMIT: &str = env!("DARLING_GIT_COMMIT");
+const INSTALL_PREFIX: &str = env!("CIDER_INSTALL_PREFIX");
+const GIT_BRANCH: &str = env!("CIDER_GIT_BRANCH");
+const GIT_COMMIT: &str = env!("CIDER_GIT_COMMIT");
 
 // ---- shellspawn wire protocol (src/shellspawn/shellspawn.h) ----
 const SHELLSPAWN_ADDARG: u16 = 1;
@@ -63,14 +63,14 @@ fn main() {
 
     // Privilege gate (cider.c:131-142).
     if unsafe { libc::geteuid() } != 0 {
-        if std::env::var_os("DARLING_USERNS_STAGE2").is_none() {
+        if std::env::var_os("CIDER_USERNS_STAGE2").is_none() {
             enter_userns_and_reexec(&argv); // only returns on failure
             missing_setuid_root();
         } else {
             missing_setuid_root();
         }
     }
-    std::env::remove_var("DARLING_USERNS_STAGE2");
+    std::env::remove_var("CIDER_USERNS_STAGE2");
 
     // Capture identity (cider.c:144-148). Rootless: getuid()==0 inside the userns,
     // so orig_uid/gid == 0 and every owner/seteuid check downstream is a no-op.
@@ -208,7 +208,7 @@ fn enter_userns_and_reexec(argv: &[String]) {
     if !write_string_to_file("/proc/self/gid_map", &format!("0 {rgid} 1\n")) {
         return;
     }
-    std::env::set_var("DARLING_USERNS_STAGE2", "1");
+    std::env::set_var("CIDER_USERNS_STAGE2", "1");
     // execv(/proc/self/exe, argv) -- returns only on failure.
     let exe = cstr("/proc/self/exe");
     let cargs: Vec<CString> = argv.iter().map(|a| cstr(a)).collect();
