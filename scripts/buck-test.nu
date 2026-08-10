@@ -244,7 +244,10 @@ def main [flag?: string] {
     #
     # NOT FATAL, deliberately. This reads the lowering, which needs the graph derivation, and
     # when the graph has moved that is a rebuild of several minutes rather than the seconds
-    # the check costs otherwise. Failing the whole suite on a slow or unavailable graph would
+    # the check costs otherwise. It asks the GATED endpoint for that, which is the difference
+    # between a rebuild that is merely possible and one that is certain: the check used to
+    # name .#cider-buck2-prefix, the FULL endpoint, whose graph nothing else here builds, so
+    # every run started a full graph build and the cheap rung was never cheap. Failing the whole suite on a slow or unavailable graph would
     # make people stop running the suite, so it reports and continues; the endpoint remains
     # the gate. It also cannot run while an endpoint build holds the eval cache, which fails
     # with "SQLite database is busy", so a skip here is expected in that case and is not a

@@ -1115,6 +1115,21 @@
     ${lib.concatMapStrings (p: pinStageLines p) wantedPins}
   '';
 
+  # THE SCRIPT A LOWERED TARGET ACTUALLY RUNS, which is not always stageProject. Line 1215
+  # picks between the two on sourceGroups, and every endpoint that gets gated has it ON, so
+  # exposing only stageProject let scripts/buck-lowering-stage-check.nu inspect a script the
+  # gated endpoint never executes. Measured 2026-08-10: the green run built 65
+  # buck2-stage-project-grouped derivations and zero buck2-stage-project ones.
+  #
+  # The label is the first one the graph names rather than a hand-picked target, because a
+  # hardcoded label is a rename away from an evaluation error and this is a CHECK: it has to
+  # keep working when the thing it checks moves. Any label does, since the pin section that
+  # the check asserts on is identical for all of them, being wantedPins verbatim.
+  stageProjectUsed =
+    if sourceGroups
+    then stageProjectFor (lib.head (lib.attrNames targets))
+    else stageProject;
+
   # ---- one derivation per target -----------------------------------------
 
   drvName = label:
@@ -1362,7 +1377,7 @@ in
   # it. scripts/buck-lowering-stage-check.nu reads it: a one-word regression here (src falling
   # out of the top-level exclusion list) failed all 1798 lowered targets and was only visible
   # 90 minutes into a build.
-  inherit stageProject;
+  inherit stageProject stageProjectUsed;
 
   # The single target's output, for the common case of asking for one thing.
   final = let

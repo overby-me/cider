@@ -30,7 +30,32 @@ now), **[X86-ONLY]** (throwaway, minimize investment).
 **DONE and no longer in this list:** #54 (cascade cut, per-file staging into mirrored real
 directories), #55 (lowered derivations content-addressed), #71 (xnu-sys ported to Rust, 16 of
 16), #73 (closed by re-testing it: no host target compiles a `DARLING`-guarded source, so there
-was nothing behind it). Their detail is further down and in the commit history.
+was nothing behind it), #83 (the vendored XNU subset is a pin, not committed source: 1,974
+files deleted, 51 local deltas became a patch dir, endpoint green at 1,185 builders and 0
+errors). Their detail is further down and in the commit history.
+
+**THE STAGING FAULTS OF #83 CANNOT BE CAUGHT BY BUILDING ANYTHING.** The generated staging
+script has no `set -e`, and both faults succeed at the shell level: `ln -sfn X dir/` creates
+`dir/X`, and a failed `rm -f` is never looked at. So the tree is wrong and the script still
+exits 0, and it surfaces later as an unrelated compile error. Even libsimple stages the pin
+(3 of its 8 staging scripts in the store do, and 2 carry the duplicate alias); it just
+compiles nothing that reads the tree that went wrong. `scripts/buck-lowering-stage-check.nu`
+READS the script, which is the only thing that works, and it now reads the one the gated
+endpoint actually runs.
+
+**CLIMB THE LADDER FROM THE BOTTOM.** Three hours went on 2026-08-10 chasing a shell-script
+fault with two endpoint runs. In cost order:
+
+| rung | command | cost |
+| --- | --- | --- |
+| 1 | `scripts/buck-lowering-stage-check.nu` | seconds with the gated graph warm |
+| 2 | `nix build .#cider-buck2-one` | one lowered target |
+| 3 | `nix build .#cider-buck2-prefix-min` | the gate, hours |
+
+Rung 1 is only cheap against the endpoint that is actually gated: pointed at
+`.#cider-buck2-prefix`, whose graph nothing else builds, the same check measured **917
+seconds** because it rebuilt that graph first. Naming the wrong endpoint does not fail, it
+just silently costs a graph build. Never start at rung 3.
 
 **CMAKE IS GONE (#82), buck2 is the only build.** Removed 2026-08-09 on the user's word that
 they do not ship it: 13 cmake package outputs, 8 nix-ninja group outputs, 8 nix libs

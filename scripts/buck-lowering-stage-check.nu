@@ -2,12 +2,9 @@
 # Does the lowering still stage a project tree the pins can be planted into?
 #
 # This exists because of one word. The lowered derivations build in a directory that
-# stageProject fills: most of the project arrives as symlinks into the store, but src/ and
-# src/external/ have to be REAL directories, because the pinned upstream trees are planted at
-# src/external/<pin> and planting anything inside a store path is a permission error. When
-# `name != "src"` fell out of the top-level exclusion list (rewritten to `name != "projectSrc"`,
-# a Nix binding name that matches no directory), src became a symlink into the store and all
-# 1798 lowered targets died with
+# the staging script fills, and when `name != "src"` fell out of the top-level exclusion
+# list (rewritten to `name != "projectSrc"`, a Nix binding name that matches no directory),
+# src became a symlink into the store and all 1798 lowered targets died with
 #
 #   ln: failed to create symbolic link 'src/external/xnu': Permission denied
 #
@@ -15,26 +12,56 @@
 # This reads the staging script instead, in seconds, and it is a fair check precisely because
 # the script is generated: it says what the lowering will actually do, not what it should.
 #
-# Verified BOTH WAYS, which is possible here because the broken script is still in the store:
-# it fails on the one the regression generated and passes on the one from before it.
+# AND A BUILD IS NOT MERELY SLOW AT CATCHING THIS, IT CANNOT CATCH IT. The staging script
+# carries no `set -e`, and both pin faults SUCCEED at the shell level: `ln -sfn X dir/`
+# happily creates dir/X, and a failed `rm -f` is never looked at. So the script exits 0 with
+# the tree wrong, and the damage surfaces much later as somebody else's compile error --
+# "redeclaration of __dso_handle with a different type" in the Security cone, naming SDK
+# headers with nothing to do with xnu. MEASURED 2026-08-10, against the derivations in the
+# store: 3 of libsimple's own 8 staging scripts plant the nested xnu-sys pin and 2 carry the
+# duplicate alias, so even the cheapest target STAGES the fault. It just cannot fail on it,
+# because it compiles nothing that reads the tree that went wrong. Reading the script is
+# therefore not a cheaper substitute for building. It is the only thing that works.
+#
+# THERE ARE TWO STAGING SCRIPTS AND THIS CHECKED THE WRONG ONE. ciderBuck2Lower.nix picks
+# between them on `sourceGroups`, and every endpoint that gets gated has it ON, so the
+# WHOLE-PROJECT script this used to inspect is not the one the gate runs. Measured
+# 2026-08-10: the green .#cider-buck2-prefix-min run built 65 buck2-stage-project-grouped
+# derivations and zero buck2-stage-project ones. Worse, reaching the whole-project script
+# meant naming .#cider-buck2-prefix, the FULL endpoint, whose graph is not the one the gate
+# builds, so the "seconds" check kicked off a full graph rebuild instead: buck2 and the
+# generator were still running at 96 seconds. It now asks the gated endpoint for the script
+# it actually runs, via the stageProjectUsed attribute.
+#
+# The two shapes assert different things, so the checks are split. Both plant the pins the
+# same way, from wantedPins verbatim, which is why the pin assertions are shared.
+#
+# Verified BOTH WAYS, which is possible here because the broken scripts are still in the
+# store: it fails on the ones the regressions generated and passes on the current one.
 #
 # Usage:
 #   scripts/buck-lowering-stage-check.nu                 # build the current one and check it
 #   scripts/buck-lowering-stage-check.nu --script <path> # check a specific staging script
+#   scripts/buck-lowering-stage-check.nu --endpoint .#cider-buck2-prefix.stageProject
 
 def say [msg: string] { print -e $msg }
 
-def main [--script: string = ""] {
+def main [
+    --script: string = ""
+    # THE GATED ENDPOINT, not the full one. Naming the wrong endpoint here does not fail,
+    # it silently costs a graph build, which is the whole thing this check exists to avoid.
+    --endpoint: string = ".#cider-buck2-prefix-min.stageProjectUsed"
+] {
     let path = if ($script | is-not-empty) {
         $script
     } else {
-        # Attached to the prefix package with `//`, so this builds the little staging script
-        # and NOT the prefix. It does need graph.json, which is an IFD: with the graph
-        # derivation already in the store this is seconds, without it, it is the graph build.
-        let r = (^nix build ".#cider-buck2-prefix.stageProject"
-            --no-link --print-out-paths | complete)
+        # Attached to the endpoint with `.`, so this builds the little staging script and
+        # NOT the endpoint. It does need graph.json, which is an IFD: with that endpoint's
+        # graph derivation already in the store this is seconds, without it, it is a graph
+        # build.
+        let r = (^nix build $endpoint --no-link --print-out-paths | complete)
         if $r.exit_code != 0 {
-            say "could not build .#cider-buck2-prefix.stageProject"
+            say $"could not build ($endpoint)"
             say $r.stderr
             exit 2
         }
@@ -48,15 +75,19 @@ def main [--script: string = ""] {
     say $"staging script: ($path)"
     let lines = (open --raw $path | lines)
 
-    # 1. src must NOT be a symlink into the store. This is the regression itself.
-    let src_link = ($lines | where {|l| $l =~ '^ln -s [^ ]+/src src$' })
-    # 2. ... because src/external has to be a real directory to plant pins into.
-    let mk_external = ($lines | where {|l| $l =~ '^mkdir -p src/external$' })
-    # 3. src/ is then populated entry by entry, which is what makes it usable at all.
-    let src_entries = ($lines | where {|l| $l =~ '^ln -s [^ ]+/src/[^ ]+ src/' })
-    # 4. And the pins land under it. Without these the SDK symlink farm does not resolve.
+    # WHICH SHAPE IS THIS. The grouped one mirrors each source group it reads into place and
+    # references no shared project path at all, which is the point of #54; the whole-project
+    # one links the project in entry by entry.
+    let groups = ($lines | where {|l| $l =~ '^_g=' })
+    let grouped = ($groups | is-not-empty)
+    say (if $grouped { $"shape: GROUPED, ($groups | length) source group\(s) mirrored" } else { "shape: WHOLE PROJECT" })
+
+    # ---- shared: the pins, which both shapes stage identically ----------------------
+    #
+    # 1. The pins land under src/external. Without these the SDK symlink farm does not
+    #    resolve.
     let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ src/external/' })
-    # 5. EVERY buck-src ALIAS MUST BE UNIQUE. A pin is aliased as buck-src/<basename> and
+    # 2. EVERY buck-src ALIAS MUST BE UNIQUE. A pin is aliased as buck-src/<basename> and
     #    basenames are NOT unique: src/external/ciderd/xnu-sys/xnu ends in xnu exactly like
     #    src/external/xnu, so both claimed buck-src/xnu and the second silently overwrote the
     #    first. Everything resolving through buck-src/xnu then got the wrong tree, which
@@ -65,28 +96,22 @@ def main [--script: string = ""] {
     let aliases = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ buck-src/' }
         | each {|l| $l | split row " " | last })
     let dupe_aliases = ($aliases | uniq -d)
-    # 6. AND NO rm -f AGAINST A PIN PATH. rm -f cannot remove a DIRECTORY, so where the path
+    # 3. AND NO rm -f AGAINST A PIN PATH. rm -f cannot remove a DIRECTORY, so where the path
     #    is already a real directory the removal failed and the ln that followed created the
-    #    link INSIDE it. It has to be rm -rf. The four checks above all passed while this was
-    #    broken, which is why it is here: they assert the shape of src, not the pin lines.
+    #    link INSIDE it. It has to be rm -rf. Every other check here passed while this was
+    #    broken, which is why it is here: they assert the shape of the tree, not the pin lines.
     let bad_rm = ($lines | where {|l| $l =~ '^rm -f (?!-)' })
+    # 4. src/external has to be a REAL directory, in both shapes, because planting a pin
+    #    inside a store path is a permission error.
+    let mk_external = ($lines | where {|l| $l =~ '^mkdir -p ([^ ]+ )*src/external( |$)' })
 
     mut failed = false
-    if ($src_link | is-not-empty) {
-        say $"FAIL: src is symlinked into the store, so nothing can be planted under it:"
-        $src_link | each {|l| say $"  ($l)" }
+    if ($pins | is-empty) {
+        say "FAIL: no pin is planted at src/external/<pin>"
         $failed = true
     }
     if ($mk_external | is-empty) {
         say "FAIL: no `mkdir -p src/external`, so src/external is not a real directory"
-        $failed = true
-    }
-    if ($src_entries | length) < 10 {
-        say $"FAIL: only ($src_entries | length) src/<entry> links, expected the whole of src/"
-        $failed = true
-    }
-    if ($pins | is-empty) {
-        say "FAIL: no pin is planted at src/external/<pin>"
         $failed = true
     }
     if ($dupe_aliases | is-not-empty) {
@@ -103,6 +128,63 @@ def main [--script: string = ""] {
         $failed = true
     }
 
+    mut src_entries = []
+    if $grouped {
+        # ---- the grouped shape ------------------------------------------------------
+        #
+        # 5. A GROUP IS MIRRORED, NOT LINKED. Handed over as one symlink to a directory, a
+        #    relative parent inside it is resolved against the REAL parent in the store and
+        #    leaves our tree; 2,306 of the 2,970 symlinks under darwin, src and linux are
+        #    relative and cross a group boundary. So every group gets a real directory.
+        let mk_group = ($lines | where {|l| $l == 'mkdir -p "$_d"' })
+        # 6. --no-preserve=all IS LOAD BEARING. With any preserve at all, cp applies the
+        #    source mode to the symlink it just created and chmod FOLLOWS a symlink, so it
+        #    walks back through the link and changes THE SOURCE. It was caught because a
+        #    scratch run left three tracked files at 755; against a group store the same
+        #    call would try to chmod inside /nix/store.
+        let cp_all = ($lines | where {|l| $l =~ '^cp -Rsf ' })
+        let cp_safe = ($lines | where {|l| $l =~ '^cp -Rsf --no-preserve=all ' })
+        # 7. AND THE PER-FILE RELINK LOOP, which is not optional: cp -as points our link AT
+        #    the store's symlink, which then resolves inside the STORE, so a target in
+        #    another group store dangles.
+        let relink = ($lines | where {|l| $l =~ 'readlink "\$_g/\$_l"' })
+
+        if ($mk_group | length) != ($groups | length) {
+            say $"FAIL: ($groups | length) group\(s) but ($mk_group | length) `mkdir -p \"$_d\"`, so a group is"
+            say "      not being given a real directory to be mirrored into"
+            $failed = true
+        }
+        if ($cp_all | length) != ($cp_safe | length) {
+            say $"FAIL: ($cp_all | length) bulk cp but only ($cp_safe | length) with --no-preserve=all. Without it"
+            say "      cp chmods THROUGH the symlink it just made and modifies the source, in the"
+            say "      store or in the working tree:"
+            $cp_all | where {|l| not ($l =~ '--no-preserve=all') } | first 3 | each {|l| say $"  ($l)" }
+            $failed = true
+        }
+        if ($relink | length) != ($groups | length) {
+            say $"FAIL: ($groups | length) group\(s) but ($relink | length) per-file relink loop\(s). cp -as alone points"
+            say "      our link at the store symlink, so a cross-group target dangles"
+            $failed = true
+        }
+    } else {
+        # ---- the whole-project shape ------------------------------------------------
+        #
+        # 8. src must NOT be a symlink into the store. This is the original regression.
+        let src_link = ($lines | where {|l| $l =~ '^ln -s [^ ]+/src src$' })
+        # 9. ... and src/ is populated entry by entry, which is what makes it usable at all.
+        $src_entries = ($lines | where {|l| $l =~ '^ln -s [^ ]+/src/[^ ]+ src/' })
+
+        if ($src_link | is-not-empty) {
+            say $"FAIL: src is symlinked into the store, so nothing can be planted under it:"
+            $src_link | each {|l| say $"  ($l)" }
+            $failed = true
+        }
+        if ($src_entries | length) < 10 {
+            say $"FAIL: only ($src_entries | length) src/<entry> links, expected the whole of src/"
+            $failed = true
+        }
+    }
+
     if $failed {
         say ""
         say "The staging script cannot build. See the top-level exclusion list in"
@@ -110,6 +192,10 @@ def main [--script: string = ""] {
         say "stay out of the symlink-everything loop, because each is rebuilt below it."
         exit 1
     }
-    say $"PASS: src is a real directory, ($src_entries | length) entries linked into it, ($pins | length) pin\(s) planted under src/external"
+    if $grouped {
+        say $"PASS: ($groups | length) group\(s) mirrored into real directories, ($pins | length) pin\(s) planted under src/external"
+    } else {
+        say $"PASS: src is a real directory, ($src_entries | length) entries linked into it, ($pins | length) pin\(s) planted under src/external"
+    }
     exit 0
 }
