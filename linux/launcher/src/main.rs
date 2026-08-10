@@ -19,7 +19,7 @@ use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 
-// ---- compile-time config (cider-config.h / shellspawn.h) ----
+// ---- compile-time config (darling-config.h / shellspawn.h) ----
 const SYSTEM_ROOT: &str = "/Volumes/SystemRoot";
 const SHELLSPAWN_SOCKPATH: &str = "/var/run/shellspawn.sock";
 const INSTALL_PREFIX: &str = env!("DARLING_INSTALL_PREFIX");

@@ -1,4 +1,4 @@
-// Bake the compile-time constants cider.c gets from cider-config.h:
+// Bake the compile-time constants cider.c gets from darling-config.h:
 //   INSTALL_PREFIX  -> the default ciderd location (INSTALL_PREFIX/bin/ciderd),
 //                      overridable at runtime by $DSERVER_PATH (matches cider.c:998-1001).
 //   GIT_BRANCH / GIT_COMMIT_HASH -> shown by `cider --version`.

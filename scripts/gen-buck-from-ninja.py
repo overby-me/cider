@@ -180,7 +180,7 @@ CROSS_PACKAGE_ROOTS = {
     # links that dangle in the current layout.
     "src/startup/mldr/include": "//darwin:sdk_env",
     "src/startup/mldr/elfcalls": "//src/startup:mldr_elfcalls",
-    # cider-config.h, cmake's configure_file output. Every Darwin compile reaches it
+    # darling-config.h, cmake's configure_file output. Every Darwin compile reaches it
     # through //darwin:sdk_env, but a HOST tool has no sdk_env, so it names the
     # generator directly -- src/include holds nothing else.
     "src/include": "//src/include:cider_config",
