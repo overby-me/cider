@@ -106,3 +106,10 @@ buck-out/
 # Python bytecode cache (nix-ninja build helpers)
 __pycache__/
 *.pyc
+
+# The duct-tape XNU subset is a PIN now, not vendored source (batch B). It is materialised
+# into place from its own pin store: by scripts/buck-src.nu for a direct buck2 build, and by
+# materializePins in nix/lib/ciderBuck2Graph.nix inside the Nix graph derivation. The pin
+# carries the whole of XNU rather than the 1,974 file subset that used to be committed here,
+# and patches/xnu-sys-xnu holds the delta that made the vendored copy differ from upstream.
+/src/external/ciderd/xnu-sys/xnu/

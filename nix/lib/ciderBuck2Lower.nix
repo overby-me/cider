@@ -205,6 +205,40 @@
   # half a million path references. The endpoint build then sat for 35 minutes with the
   # nix-daemon worker growing 230 MB a minute, zero builders started and not one .drv written,
   # which is #48 again. A farm is ONE input per script and moves only when a pin does.
+  # ONE DEFINITION FOR BOTH STAGING SITES, because they were copies and the copies broke.
+  # A pin is staged twice: as buck-src/<basename>, which is where buck-src/BUCK expects it,
+  # and at its own path, which is where the SDK symlink farm resolves to. Both assumptions
+  # hold ONLY for a pin sitting directly under src/external, and both fail for a nested one:
+  #
+  #   buck-src/<basename> IS NOT UNIQUE. src/external/ciderd/xnu-sys/xnu ends in xnu just
+  #   like src/external/xnu, so the nested pin OVERWROTE buck-src/xnu and every consumer of
+  #   the guest xnu tree silently got the duct-tape subset instead. That is what surfaced as
+  #   "redeclaration of __dso_handle with a different type" in the Security cone, an error
+  #   naming headers that have nothing to do with xnu.
+  #
+  #   rm -f CANNOT REMOVE A DIRECTORY. The nested path is a real directory by the time this
+  #   runs, so the rm failed with "Is a directory" and the ln that followed created the link
+  #   INSIDE it as xnu/xnu rather than replacing it.
+  #
+  # A nested pin therefore takes NEITHER: no buck-src alias, and a removal that copes with a
+  # directory. Measured 2026-08-10: with the old code the endpoint reached 64 errors and 10
+  # "cannot remove" lines before being stopped.
+  pinStageLines = p: let
+    parts = lib.splitString "/" p;
+    underSrcExternal =
+      builtins.length parts == 3
+      && builtins.elemAt parts 0 == "src"
+      && builtins.elemAt parts 1 == "external";
+  in
+    (lib.optionalString underSrcExternal ''
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
+    '')
+    + ''
+      mkdir -p ${builtins.dirOf p}
+      rm -rf ${lib.escapeShellArg p}
+      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
+    '';
+
   pinsWithStores = lib.filter (p: (ciderSrc.pinPaths or {}) ? ${p}) wantedPins;
   pinsFarm = pkgs.linkFarm "cider-pins" (map (p: {
     name = lib.strings.sanitizeDerivationName p;
@@ -1005,12 +1039,7 @@
       for _c in ${rustVendor}/*/; do
         ln -sfn "$_c" "buck-rust/$(basename "$_c")"
       done
-      ${lib.concatMapStrings (p: ''
-        ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
-        mkdir -p ${builtins.dirOf p}
-        rm -f ${p}
-        ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
-      '')
+      ${lib.concatMapStrings (p: pinStageLines p)
       wantedPins}
     '';
 
@@ -1083,12 +1112,7 @@
           ln -s ${lib.escapeShellArg "${projectSrc}/buck-src/${name}"} ${lib.escapeShellArg "buck-src/${name}"}
         '') (builtins.readDir (projectSrc + "/buck-src")))}
     ''}
-    ${lib.concatMapStrings (p: ''
-      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
-      mkdir -p ${builtins.dirOf p}
-      rm -f ${p}
-      ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg p}
-    '') wantedPins}
+    ${lib.concatMapStrings (p: pinStageLines p) wantedPins}
   '';
 
   # ---- one derivation per target -----------------------------------------
