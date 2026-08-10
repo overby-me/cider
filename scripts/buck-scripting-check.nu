@@ -62,10 +62,15 @@ def main [scratch?: string] {
     }
 
     say "== building the prefix =="
-    let b = (^buck2 build //buck/prefix:cider_prefix --show-output | complete)
+    # STDERR TO A FILE. `| complete` buffers it, this builds the WHOLE prefix, and on a
+    # cold one buck2 emits gigabytes of progress: that is the 17.3 GB the suite was
+    # killed at. Nothing here ever read the stderr, so it was paid for and thrown away,
+    # and a failure printed no reason. Now it is on disk and the message names it.
+    let errf = (($env.TMPDIR? | default "/tmp") + "/cider-prefix-build.err")
+    let b = (^buck2 build //buck/prefix:cider_prefix --show-output err> $errf | complete)
     let art = ($b.stdout | lines | last | default "" | split row " " | get 1? | default "")
     if ($art | path type) != "dir" {
-        say "the prefix did not build"
+        say $"the prefix did not build, see ($errf)"
         exit 1
     }
 
