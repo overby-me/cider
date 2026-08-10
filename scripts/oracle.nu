@@ -84,7 +84,14 @@ def main [
     say $"[oracle] resolving ($full)"
 
     # 1. Ensure the official output is present (substituted from the cache).
-    let sub = (^nix build $full --system $system --no-link --print-out-paths | complete)
+    #
+    # STDERR TO A FILE THROUGHOUT THIS FUNCTION. `| complete` buffers it, and step 2 below
+    # passes -L, which makes nix print the FULL BUILD LOG of whatever derivation it was
+    # handed. This tool is pointed at arbitrary nixpkgs derivations, so that can be a
+    # compiler building itself. Buffering it is the same defect that killed the suite at
+    # 17.3 GB, in the one tool the end goal depends on.
+    let errf = (($env.TMPDIR? | default "/tmp") + "/cider-oracle-nix.err")
+    let sub = (^nix build $full --system $system --no-link --print-out-paths err> $errf | complete)
     let out_path = ($sub.stdout | lines | last | default "")
     if ($out_path | is-empty) {
         emit "substitute-failure" $"could not substitute or evaluate ($full)"
@@ -92,18 +99,26 @@ def main [
     say $"[oracle] official output: ($out_path)"
 
     # 2. Rebuild locally and let nix compare against the substituted output.
-    let rb = (^nix build $full --system $system --rebuild --no-link -L | complete)
+    let rbf = (($env.TMPDIR? | default "/tmp") + "/cider-oracle-rebuild.err")
+    let rb = (^nix build $full --system $system --rebuild --no-link -L err> $rbf | complete)
     if $rb.exit_code == 0 {
         emit "match" $out_path
     }
 
     # --rebuild failed: distinguish a hash mismatch from a plain build failure.
-    let log = $"($rb.stdout)($rb.stderr)"
-    if ($log | find --regex '(?i)hash mismatch|differs from|not deterministic|output.*differ'
-        | is-not-empty) {
+    #
+    # The log is READ FROM THE FILE, and only the two things this actually needs are taken
+    # out of it: whether a mismatch marker appears anywhere, and the last 20 lines to show.
+    # Loading the whole -L log into a variable to ask those two questions is what the
+    # redirect above exists to avoid, so grep and tail do it instead.
+    let marker = (do -i {
+        ^grep -E -i -m 1 "hash mismatch|differs from|not deterministic|output.*differ" $rbf
+    } | complete | get stdout | str trim)
+    let tail20 = (do -i { ^tail -n 20 $rbf } | complete | get stdout | lines)
+    if ($marker | is-not-empty) {
         let detail = $"output differs from ($out_path)"
         say $"[oracle] MISMATCH: ($detail)"
-        $log | lines | last 20 | each {|l| say $l }
+        $tail20 | each {|l| say $l }
         if $diff and (which diffoscope | is-not-empty) {
             let check_path = $"($out_path).check"
             if ($check_path | path exists) {
@@ -114,7 +129,7 @@ def main [
         emit "mismatch" $detail
     } else {
         say "[oracle] BUILD FAILURE"
-        $log | lines | last 20 | each {|l| say $l }
+        $tail20 | each {|l| say $l }
         emit "build-failure" "local rebuild failed (not a hash mismatch)"
     }
 }
