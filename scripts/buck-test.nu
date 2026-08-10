@@ -1041,6 +1041,23 @@ print(m.rename_first_party("src/external/libdispatch/src/queue.c"))
         bad $"($stale) symlink targets under buck-src still name darlingserver or duct-tape"
     }
 
+    # THE SAME TABLE LIVES IN TWO PLACES, and that is what let the ninth rename break through.
+    # buck-src-normalise.py translates pin symlinks, but it runs only in ciderBuck2Graph.nix;
+    # the lowering stages pins a second time in pinsTree and resolves escapes there. pinsTree
+    # had no table at all, so it resolved the security escape against the pre-rename path,
+    # failed its lexists test and skipped the carry IN SILENCE. That cost a full endpoint run
+    # to find. The tables must stay identical or the same class of bug returns quietly.
+    let norm = (^bash -c "grep -oE '\\(\"src/external/[a-z/.-]+\", *\"src/external/[a-z/.-]+\"\\)' scripts/buck-src-normalise.py | tr -d ' \"()' | sort" | str trim)
+    let lower = (^bash -c "grep -oE '\\(\"src/external/[a-z/.-]+\", *\"src/external/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
+    let n_entries = ($norm | lines | length)
+    if $norm == "" {
+        bad "could not read FIRST_PARTY_RENAMES out of buck-src-normalise.py"
+    } else if $norm == $lower {
+        ok $"the rename table is identical in the normaliser and the lowering, ($n_entries) entries"
+    } else {
+        bad "rename tables DIFFER between buck-src-normalise.py and ciderBuck2Lower.nix"
+    }
+
     say "== host headers (the ones that live outside the build graph) =="
     # The port compiles against X11, freetype, fontconfig, cairo, ffmpeg and pulseaudio, and for
     # the whole campaign it never asked for their headers: darwin_cc defaults to the bare name
