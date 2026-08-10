@@ -67,11 +67,20 @@ OURS = ("src", "linux", "darwin")
 SRC_EXT = (".c", ".h", ".cpp", ".m", ".mm", ".S", ".rs")
 
 # . and - are IN the class on purpose; see trap 1 above.
-TOKEN = re.compile(r'[A-Za-z0-9_.-]*[Dd]arling[A-Za-z0-9_.-]*')
+#
+# ALL-CAPS IS A THIRD SPELLING AND THIS PATTERN COULD NOT MATCH IT. [Dd]arling matches
+# darling and Darling and nothing else, so every DARLING_* name upstream references was
+# invisible: the cached token set held 54 names and not one of them was uppercase. The
+# check would therefore have reported PASS through an uppercase rename that orphaned
+# upstream code, which is the one thing it exists to prevent. The pins really do use these
+# names -- DARLING_NW_STUB, DARLING_METAL_ENABLED and about a dozen more -- so this was a
+# hole over a live class, not a theoretical one. Refresh the cache after changing this.
+TOKEN = re.compile(r'[A-Za-z0-9_.-]*(?:DARLING|[Dd]arling)[A-Za-z0-9_.-]*')
 
 # Bare project references and upstream's own org and product names: these are prose or
 # upstream identity, not something we renamed a counterpart of.
-IGNORE = {"darling", "Darling", "darlinghq", "darling.", "Darling.", "darlingC"}
+IGNORE = {"darling", "Darling", "DARLING", "darlinghq", "darling.", "Darling.", "DARLING.",
+          "darlingC"}
 
 
 def read(path):
@@ -125,7 +134,12 @@ def main():
 
     orphaned = []
     for tok, uses in sorted(pin_tokens.items(), key=lambda kv: -kv[1]):
-        cider = tok.replace("darling", "cider").replace("Darling", "Cider")
+        # DARLING last and separately: the two lowercase substitutions cannot touch an
+        # all-caps name, so without this an uppercase token maps to itself, hits the
+        # `cider == tok` skip below, and is dropped before any comparison happens.
+        cider = (tok.replace("darling", "cider")
+                    .replace("Darling", "Cider")
+                    .replace("DARLING", "CIDER"))
         if cider == tok:
             continue
         # THE RULE IS "no Cider form AT ALL", not "no Cider form unless a Darling one
