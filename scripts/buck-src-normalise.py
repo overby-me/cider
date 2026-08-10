@@ -178,6 +178,16 @@ def expand_dir_links(root: str) -> int:
                     dest = os.path.join(link, rel) if rel != "." else link
                     os.makedirs(dest, exist_ok=True)
                     for f in fs:
+                        # NEVER MIRROR A BUCK FILE. buck2 reads one as a PACKAGE
+                        # definition, so a mirror that carries it defines the whole
+                        # target set a SECOND time under the nested path, and both
+                        # copies then get built. Measured 2026-08-10: the two mirrors
+                        # here contributed 91 duplicate ruby dylib targets and 4
+                        # duplicate xnu ones, which is the entire 568 to 659 growth in
+                        # the dylib count since 08-09. .buckconfig sets
+                        # [buildfile] name = BUCK, so that one name is the whole rule.
+                        if f == "BUCK":
+                            continue
                         d = os.path.join(dest, f)
                         if not os.path.lexists(d):
                             os.symlink(os.path.relpath(os.path.join(sub, f), dest), d)

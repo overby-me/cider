@@ -1546,6 +1546,21 @@ concrete failure justifies it:
   WHY IT HID: buck2 actions inherit the DAEMON's environment, and a long-lived daemon kept
   serving from the environment it started in. `buck2 killall` is what exposed it. A green
   endpoint is not evidence about the dev shell.
+  WHAT IT COST: 306 targets fixed, ONE broken. `hdiutil` compiled before and does not now.
+  It takes `//src/native:host_headers`, and host headers reach glibc's own (libiconv's
+  `iconv.h` opens with `#include <features.h>`), which the WRAPPED clang had been supplying
+  invisibly as `-idirafter <glibc-dev>/include` from `nix-support/libc-cflags`. Handing that
+  same dir to `host_headers` is NOT the fix and was tried and reverted: `features.h` then
+  defines `__GLIBC__`, libc++'s `__locale` takes its glibc branch, and the compile dies on
+  `use of undeclared identifier '_ISspace'`. So a guest compile must not see glibc headers at
+  all, and hdiutil needs a different route (most likely building that one target with the
+  wrapped clang, since it is the one target that genuinely wants host libc).
+- **`scripts/buck-test.nu` OOMs in the prefix section.** 2026-08-10, `nu` killed at 17.3 GB
+  anon-rss on a 30 GB box entering `== the prefix ==`, so the suite never reports final
+  totals. MECHANISM NOT ESTABLISHED. The obvious suspect is `out_of`, which does
+  `buck2 build ... | complete` and so buffers the whole build's output in memory, but that is
+  NOT supported yet: re-running the same target emitted 23 KB of stderr. That rerun fails
+  fast at hdiutil rather than doing the cold full build that OOMed, so it does not settle it.
 - **Run recipe** (from a built `$out = nix build .#default`):
   `DSERVER_LIBEXEC_PATH=$out/libexec/cider
   DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1

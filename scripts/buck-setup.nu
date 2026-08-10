@@ -181,6 +181,15 @@ darwin_cc = ($clang_unwrapped)/bin/clang
 darwin_cxx = ($clang_unwrapped)/bin/clang++
 elf_lib_dirs = ($elf_lib_dirs | str join ':')
 host_include_dirs = ($host_include_dirs | str join ':')
+
+[buck2]
+# EMITTED, not hand added. This file says GENERATED at the top, so anything only a human
+# put here is lost the next time the script runs, and that is exactly what happened on
+# 2026-08-10: regenerating dropped a hand-written [buck2] section and the next buck2
+# command died with watchman refusing to start.
+# This session runs at nice 12 and watchman refuses to start below nice 0.
+# notify walks into result-* symlinks and dies EACCES; the crawler honors [project] ignore.
+file_watcher = fs_hash_crawler
 "
     $conf | save -f .buckconfig.local
 
