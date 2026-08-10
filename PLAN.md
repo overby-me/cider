@@ -1517,6 +1517,31 @@ concrete failure justifies it:
 
 ## Operational notes / gotchas
 
+- **The devshell is not the derivation, and buck2 believes whichever one started its
+  daemon.** Measured 2026-08-10, chasing why a clean `scripts/buck-test.nu` reported
+  `built, 432 of 659 reported an output` and 227 FAIL lines while the Nix endpoint was
+  green. Neither was a code regression. nixpkgs' cc wrapper injects two things outside a
+  derivation that it does not inject inside one:
+  1. `-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2` in `hardeningCFlagsAfter`, i.e. AFTER the
+     argv, so the port's own `-D_FORTIFY_SOURCE=0` is overridden. `clang -dM -E` then
+     reports `_FORTIFY_SOURCE 2`, libc's `secure/_stdio.h` turns `snprintf` into a macro
+     over `__builtin___snprintf_chk`, and that macro rewrites libc's own DEFINITION of
+     `snprintf`. `//buck-src/libc:libc-stdio_obj` fails to parse, and every target
+     downstream of libc produces no output. FIXED by `hardeningDisable = ["all"]` in
+     `nix/devShell.nix`, the same line `ciderBuck2Graph.nix` and `ciderBuck2Lower.nix`
+     already carry. Verified both ways: the target failed before and builds after
+     (106 commands, exit 0).
+  2. `-Wl,-dynamic-linker=<glibc ld.so>` on every dynamic link. `bin/clang` re-sources the
+     BINUTILS wrapper's `add-flags.sh` whenever
+     `NIX_BINTOOLS_WRAPPER_FLAGS_SET_x86_64_unknown_linux_gnu` is unset, which is the case
+     in the devshell and NOT the case in a derivation, where the setup hook sets it. ld64
+     then dies with `ld: unknown option: -dynamic-linker=...` and every darwin link fails.
+     STILL OPEN. Setting that sentinel takes the injection from 1 to 0, but it also stops
+     the binutils flags being added at all, so it must not be adopted until a HOST ELF tool
+     has been linked AND RUN with it set.
+  Both were invisible for as long as a long-lived buck2 daemon kept serving actions from
+  the environment it was started in; `buck2 killall` is what exposed them. The endpoint
+  never saw either, so a green endpoint is not evidence about the devshell.
 - **Run recipe** (from a built `$out = nix build .#default`):
   `DSERVER_LIBEXEC_PATH=$out/libexec/cider
   DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1

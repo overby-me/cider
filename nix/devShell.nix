@@ -82,6 +82,18 @@ in {
     clang-tools
   ];
 
+  # THE SAME hardeningDisable THE TWO LOWERING DERIVATIONS ALREADY SET, and it has to be
+  # here too or buck2 compiles differently depending on who launched it. nixpkgs' cc
+  # wrapper appends -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 AFTER the argv, so the
+  # -D_FORTIFY_SOURCE=0 the port passes is overridden, and libc's secure/_stdio.h then
+  # rewrites the DEFINITION of snprintf into __builtin___snprintf_chk and fails to parse.
+  # Measured 2026-08-10: with the wrapper's default NIX_HARDENING_ENABLE, clang -dM -E
+  # reports _FORTIFY_SOURCE 2 even when -D_FORTIFY_SOURCE=0 is on the command line,
+  # //buck-src/libc:libc-stdio_obj does not compile, and 227 of the 659 dylib targets
+  # produce no output at all. The Nix endpoint stayed green throughout because its
+  # derivations disable hardening, which is exactly how the gap hid.
+  hardeningDisable = ["all"];
+
   env = {
     # Make cmake produce compile_commands.json so clangd works.
     CMAKE_EXPORT_COMPILE_COMMANDS = "1";
