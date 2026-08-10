@@ -43,6 +43,15 @@ compiles nothing that reads the tree that went wrong. `scripts/buck-lowering-sta
 READS the script, which is the only thing that works, and it now reads the one the gated
 endpoint actually runs.
 
+**THE UPPERCASE HALF OF THE RENAME IS SETTLED.** Of the 83 all-caps `DARLING` names our tree
+uses, **46 are referenced by the pins and keep their names** (`DARLING_NW_STUB` 1861,
+`__DARLING__` 579 in 141 pin files, the `DARLING_CONVERSION_*` family, the
+`_DARLING_EMULATION_*` guards, `__PTK_DARLING_KEY0..9`). The provably-ours subset is renamed:
+20 include guards and 5 build-time or internal names. Everything still outstanding is an
+interface a person types, so it is a user decision: the six runtime env vars,
+`DARLINGSERVER_INIT_PROCESS`, and the bare `DARLING` shell override. Bare `DARLING` in C is
+NOT renameable either: it is `#ifdef DARLING` in bundled Apple launchd, and patch content.
+
 **CLIMB THE LADDER FROM THE BOTTOM.** Three hours went on 2026-08-10 chasing a shell-script
 fault with two endpoint runs. In cost order:
 
