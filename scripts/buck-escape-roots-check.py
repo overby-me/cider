@@ -31,6 +31,32 @@ src/external/ciderd/xnu-sys/xnu right now with 2,077 files in it. os.path.exists
 means nothing: srcRaw under a flake build is a store copy of TRACKED files, which is why the
 guard went false in the first place. Ask jj, which reports 0 tracked files there.
 
+WHAT THIS COVERS AND WHAT IT DOES NOT, because the scope is the part that gets over-trusted.
+There are eight pathExists guards in the lowering and two in cider-src.nix, and they are not
+equally dangerous:
+
+  ciderBuck2Lower :353  escapeSrc               CHECKED here, both resolvability and fallback
+  ciderBuck2Lower :1000 sdkGroup                covered TRANSITIVELY: sdkGroup is
+                                                darwin/Developer/Platforms, the same literal
+                                                root checked below, so it cannot go false
+                                                while this passes
+  ciderBuck2Lower :1004 per-label group filter  elements come from the same readDir, so they
+                                                exist by construction. The one exception is
+                                                deliberate: groupSplit.shared still names
+                                                src/external/ciderd/xnu-sys/xnu, which is a pin
+                                                now, so this guard drops it and the PIN route
+                                                supplies it instead. That dead table entry is a
+                                                known deferred cleanup, not a defect.
+  ciderBuck2Lower :973  src/external readDir    NOT checked. If that directory vanished the
+                                                root list would quietly shrink to the SDK and
+                                                this would still pass. The counts printed below
+                                                are the tell, and the scenario needs the whole
+                                                pin tree to disappear, which is not quiet.
+  ciderBuck2Lower :1111 :1130  buck-rust, buck-src   not checked, and they do not need it:
+                                                those stage every pin, so losing them fails
+                                                immediately and everywhere rather than silently.
+  cider-src :184 :211   patch application       covered by buck-pin-patches-check.py.
+
 Exit 0 if every escape root resolves, 1 otherwise.
 """
 import argparse
