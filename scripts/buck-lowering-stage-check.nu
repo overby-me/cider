@@ -56,6 +56,20 @@ def main [--script: string = ""] {
     let src_entries = ($lines | where {|l| $l =~ '^ln -s [^ ]+/src/[^ ]+ src/' })
     # 4. And the pins land under it. Without these the SDK symlink farm does not resolve.
     let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ src/external/' })
+    # 5. EVERY buck-src ALIAS MUST BE UNIQUE. A pin is aliased as buck-src/<basename> and
+    #    basenames are NOT unique: src/external/ciderd/xnu-sys/xnu ends in xnu exactly like
+    #    src/external/xnu, so both claimed buck-src/xnu and the second silently overwrote the
+    #    first. Everything resolving through buck-src/xnu then got the wrong tree, which
+    #    surfaced 90 minutes later as "redeclaration of __dso_handle with a different type"
+    #    in the Security cone, naming SDK headers that have nothing to do with xnu.
+    let aliases = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ buck-src/' }
+        | each {|l| $l | split row " " | last })
+    let dupe_aliases = ($aliases | uniq -d)
+    # 6. AND NO rm -f AGAINST A PIN PATH. rm -f cannot remove a DIRECTORY, so where the path
+    #    is already a real directory the removal failed and the ln that followed created the
+    #    link INSIDE it. It has to be rm -rf. The four checks above all passed while this was
+    #    broken, which is why it is here: they assert the shape of src, not the pin lines.
+    let bad_rm = ($lines | where {|l| $l =~ '^rm -f (?!-)' })
 
     mut failed = false
     if ($src_link | is-not-empty) {
@@ -73,6 +87,19 @@ def main [--script: string = ""] {
     }
     if ($pins | is-empty) {
         say "FAIL: no pin is planted at src/external/<pin>"
+        $failed = true
+    }
+    if ($dupe_aliases | is-not-empty) {
+        say $"FAIL: ($dupe_aliases | length) buck-src alias\(es) claimed by more than one pin,"
+        say "      so the later one silently overwrites the earlier and its consumers get the"
+        say "      wrong tree. A nested pin must not take a buck-src alias at all:"
+        $dupe_aliases | each {|a| say $"  ($a)" }
+        $failed = true
+    }
+    if ($bad_rm | is-not-empty) {
+        say $"FAIL: ($bad_rm | length) rm -f line\(s), which cannot remove a directory, so the"
+        say "      ln that follows lands INSIDE the path instead of replacing it. Use rm -rf:"
+        $bad_rm | first 5 | each {|l| say $"  ($l)" }
         $failed = true
     }
 
