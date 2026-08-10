@@ -66,6 +66,38 @@ PINS = os.path.join(ROOT, "buck-src")
 OURS = ("src", "linux", "darwin")
 SRC_EXT = (".c", ".h", ".cpp", ".m", ".mm", ".S", ".rs")
 
+
+def materialized_pins():
+    """A PIN MATERIALIZED INSIDE OURS IS STILL UPSTREAM, and after the xnu de-vendoring one
+    of them is. src/external/ciderd/xnu-sys/xnu used to be committed source; it is now a pin
+    planted at its own path, which lands INSIDE the `src` tree this file treats as ours. It
+    is also a NESTED pin, and a nested pin deliberately takes no buck-src alias, so scanning
+    buck-src does not reach it either. Both halves were therefore wrong at once: its content
+    counted as OURS, and its names were missing from the upstream token set.
+
+    That produced a concrete mistake before this was fixed. DARLING_SDK_RELATIVE_PATH and
+    DARLING_ROOT_RELATIVE_TO_SDK live ONLY in that tree, in two CMakeLists, and a rename plan
+    listed both as ours to rename. They are Apple and Darling upstream.
+
+    The manifest is the authority on what is a pin, so read it rather than hardcoding a path.
+    Every entry whose directory exists on disk is upstream wherever it happens to sit."""
+    manifest = os.path.join(ROOT, "nix", "submodules.json")
+    try:
+        with open(manifest, encoding="utf-8") as fh:
+            entries = json.load(fh)
+    except (OSError, ValueError):
+        return []
+    out = []
+    for e in entries:
+        rel = e.get("path") or ""
+        full = os.path.join(ROOT, rel)
+        if rel and os.path.isdir(full):
+            out.append(os.path.normpath(full))
+    return out
+
+
+PIN_TREES = None  # filled in main(), so the cache key and the OURS filter agree
+
 # . and - are IN the class on purpose; see trap 1 above.
 #
 # ALL-CAPS IS A THIRD SPELLING AND THIS PATTERN COULD NOT MATCH IT. [Dd]arling matches
@@ -108,10 +140,11 @@ def scan_pins():
         with open(cache, encoding="utf-8") as fh:
             return json.load(fh), True
     tokens = {}
-    for path in walk(PINS):
-        for tok in TOKEN.findall(read(path)):
-            if tok not in IGNORE:
-                tokens[tok] = tokens.get(tok, 0) + 1
+    for root in [PINS] + PIN_TREES:
+        for path in walk(root):
+            for tok in TOKEN.findall(read(path)):
+                if tok not in IGNORE:
+                    tokens[tok] = tokens.get(tok, 0) + 1
     os.makedirs(os.path.dirname(cache), exist_ok=True)
     with open(cache, "w", encoding="utf-8") as fh:
         json.dump(tokens, fh, sort_keys=True)
@@ -121,16 +154,29 @@ def scan_pins():
 def main():
     os.chdir(ROOT)
 
+    global PIN_TREES
+    PIN_TREES = materialized_pins()
+
     pin_tokens, cached = scan_pins()
     if cached:
         print("pin tokens read from cache; pass --refresh after a pin bump")
+    print(f"pin trees materialized inside our tree: {len(PIN_TREES)}")
 
     ours = []
+    skipped = 0
     for top in OURS:
         if os.path.isdir(top):
             for path in walk(top):
+                # A materialized pin sits INSIDE `src`, so walking `src` reaches upstream
+                # code. Counting it as ours is how DARLING_SDK_RELATIVE_PATH ended up on a
+                # list of names to rename when it is Apple and Darling upstream.
+                full = os.path.normpath(os.path.join(ROOT, path))
+                if any(full.startswith(t + os.sep) for t in PIN_TREES):
+                    skipped += 1
+                    continue
                 ours.append(read(path))
     ours = "\n".join(ours)
+    print(f"files under {'/'.join(OURS)} skipped as materialized pin content: {skipped}")
 
     orphaned = []
     for tok, uses in sorted(pin_tokens.items(), key=lambda kv: -kv[1]):
