@@ -83,6 +83,13 @@ now translates through the same table, translating the SOURCE while the destinat
 name the dangling link points at. **A rename table has to reach every place that resolves a
 path, not just the one that stages the pins.**
 
+Verified on ONE derivation rather than another endpoint: `nix build
+.#cider-buck2-prefix-min.pinsTree` needs only 2 derivations, and in the result the link
+resolves and `security/mac.h` is present. It still POINTS at the pre-rename name, which is the
+design working: the destination keeps the name the link uses and the carry fills that path from
+the translated source. Both directions rest on real artifacts, the run 11 failure without the
+fix and this tree with it.
+
 Two limits worth stating. The label check does NOT verify target existence generally: 105
 distinct targets are synthesised by `elf_wrapper` as `<n>_wrap` and `<n>_dylib` from lists local
 to a BUCK file, so reporting them would be noise. And the pin check tests `lexists`, because
