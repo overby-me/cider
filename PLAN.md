@@ -767,6 +767,13 @@ tracks below.
 
 ## Architecture
 
+- **Top-level layout (#87 stage 1):** first-party code lives in exactly two directories.
+  `darwin/` is guest side, `linux/` is host side, and `src/` now holds ONLY `src/external`,
+  the 148 vendored pins. Classified by BUCK RULE KIND, not by name: `darwin_dylib` and
+  `darwin_binary` are guest, `cc_binary` and `rust_binary` are host. Stage 2 would move
+  `src/external` to `pins/` and delete `src/`; it is deferred because `buck-src.nu` picks a
+  pin destination from PATH DEPTH. `src/` must keep existing until then, because
+  `stageProject` excludes it so pins can be planted in a real directory.
 - **Call chain (the debugging map):** Darwin binary → Darwin libc → `libsystem_kernel`
   BSD-trap stub → daemon translates to Linux → kernel. Syscalls are implemented only to the
   depth Nix needs, not for general macOS compat.
