@@ -186,7 +186,7 @@ def _rust_binary_impl(ctx):
 
     # Archives handed to the LINKER by path, not to rustc by name. `-l static=x` places the
     # archive before the crate's own objects, and a static archive that comes before the
-    # code referencing it contributes nothing -- every dtape_* symbol came back undefined.
+    # code referencing it contributes nothing -- every xnu_sys_* symbol came back undefined.
     # Passing the file as a link argument puts it after, where the linker can resolve
     # against it. This is also what the crate's build script effectively achieves through
     # cargo, which emits its link flags after the crate objects.

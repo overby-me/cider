@@ -7,7 +7,7 @@
 //! **The red-black tree stays in C.** `RB_GENERATE` expands to a whole tree implementation and
 //! `RB_PROTOTYPE_SC` makes every function of it file-local, so there is nothing to call. It is
 //! also entirely private to this file, and this file never looked anything up by key: the only
-//! reads are an in-order walk and a drain. So it lives in `dtape_rs_shims.c` and is driven here
+//! reads are an in-order walk and a drain. So it lives in `xnu_sys_rs_shims.c` and is driven here
 //! through five operations. See that file for the reasoning.
 //!
 //! **`struct zone` is xnu-sys's own, not XNU's.** memory.c defines a two-field one at its top,
@@ -26,13 +26,13 @@ use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    self, boolean_t, dtape_map_shared_descriptor_t, dtape_map_shared_entry_t, dtape_memory_info_t,
-    dtape_memory_region_info_t, ipc_port_t, kern_return_t, mach_msg_type_number_t, mach_port_t,
+    self, boolean_t, xnu_sys_map_shared_descriptor_t, xnu_sys_map_shared_entry_t, xnu_sys_memory_info_t,
+    xnu_sys_memory_region_info_t, ipc_port_t, kern_return_t, mach_msg_type_number_t, mach_port_t,
     mach_vm_offset_t, mach_vm_size_t, natural_t, task_t, user_addr_t, vm_map_address_t,
     vm_map_copy_t, vm_map_offset_t, vm_map_size_t, vm_map_t, vm_offset_t, vm_prot_t, vm_size_t,
     vm_tag_t,
 };
-use crate::xnu::init::dtape_hooks;
+use crate::xnu::init::xnu_sys_hooks;
 
 // The Linux constants memory.c spells out for itself rather than pulling in a libc header.
 const MAP_ANONYMOUS: c_int = 0x20;
@@ -94,7 +94,7 @@ unsafe fn kernel_map() -> vm_map_t {
 /// IS still opaque, so that field comes through the shim.
 #[inline]
 unsafe fn current_map() -> vm_map_t {
-    bindings::dtape_rs_thread_map(bindings::current_thread()) as vm_map_t
+    bindings::xnu_sys_rs_thread_map(bindings::current_thread()) as vm_map_t
 }
 
 #[inline]
@@ -116,7 +116,7 @@ unsafe fn vm_map_page_mask(map: vm_map_t) -> u64 {
     let shift = if map.is_null() {
         page_size().trailing_zeros()
     } else {
-        (*map).dtape_page_shift
+        (*map).xnu_sys_page_shift
     };
     (1u64 << shift) - 1
 }
@@ -142,36 +142,36 @@ fn mach_vm_trunc_page(addr: u64) -> u64 {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_memory_init() {}
+pub unsafe extern "C" fn xnu_sys_memory_init() {}
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_vm_map_create(task: *mut bindings::dtape_task) -> vm_map_t {
+pub unsafe extern "C" fn xnu_sys_vm_map_create(task: *mut bindings::xnu_sys_task) -> vm_map_t {
     let map = malloc(std::mem::size_of::<bindings::_vm_map>()) as vm_map_t;
     if map.is_null() {
         return map;
     }
 
-    bindings::dtape_rs_os_ref_init(&mut (*map).map_refcnt as *mut _ as *mut _);
+    bindings::xnu_sys_rs_os_ref_init(&mut (*map).map_refcnt as *mut _ as *mut _);
 
-    (*map).max_offset = bindings::dtape_rs_host_consts_DTAPE_RS_MACH_VM_MAX_ADDRESS as u64;
-    (*map).dtape_page_shift = page_size().trailing_zeros();
+    (*map).max_offset = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_MACH_VM_MAX_ADDRESS as u64;
+    (*map).xnu_sys_page_shift = page_size().trailing_zeros();
 
-    (*map).dtape_task = task;
+    (*map).xnu_sys_task = task;
 
-    bindings::dtape_rs_shared_entries_init(&mut (*map).shared_entries as *mut _ as *mut _);
-    crate::xnu::locks::dtape_mutex_init(&mut (*map).shared_entry_lock);
+    bindings::xnu_sys_rs_shared_entries_init(&mut (*map).shared_entries as *mut _ as *mut _);
+    crate::xnu::locks::xnu_sys_mutex_init(&mut (*map).shared_entry_lock);
 
     map
 }
 
-unsafe fn shared_descriptor_create(memfd: c_int, size: u64) -> *mut dtape_map_shared_descriptor_t {
-    let desc = malloc(std::mem::size_of::<dtape_map_shared_descriptor_t>())
-        as *mut dtape_map_shared_descriptor_t;
+unsafe fn shared_descriptor_create(memfd: c_int, size: u64) -> *mut xnu_sys_map_shared_descriptor_t {
+    let desc = malloc(std::mem::size_of::<xnu_sys_map_shared_descriptor_t>())
+        as *mut xnu_sys_map_shared_descriptor_t;
     if desc.is_null() {
         return desc;
     }
 
-    bindings::dtape_rs_os_ref_init(&mut (*desc).refcount as *mut _ as *mut _);
+    bindings::xnu_sys_rs_os_ref_init(&mut (*desc).refcount as *mut _ as *mut _);
 
     (*desc).memfd = memfd;
     (*desc).size = size;
@@ -179,12 +179,12 @@ unsafe fn shared_descriptor_create(memfd: c_int, size: u64) -> *mut dtape_map_sh
     desc
 }
 
-unsafe fn shared_descriptor_retain(desc: *mut dtape_map_shared_descriptor_t) {
-    bindings::dtape_rs_os_ref_retain(&mut (*desc).refcount as *mut _ as *mut _);
+unsafe fn shared_descriptor_retain(desc: *mut xnu_sys_map_shared_descriptor_t) {
+    bindings::xnu_sys_rs_os_ref_retain(&mut (*desc).refcount as *mut _ as *mut _);
 }
 
-unsafe fn shared_descriptor_release(desc: *mut dtape_map_shared_descriptor_t) {
-    if bindings::dtape_rs_os_ref_release(&mut (*desc).refcount as *mut _ as *mut _) != 0 {
+unsafe fn shared_descriptor_release(desc: *mut xnu_sys_map_shared_descriptor_t) {
+    if bindings::xnu_sys_rs_os_ref_release(&mut (*desc).refcount as *mut _ as *mut _) != 0 {
         return;
     }
 
@@ -196,10 +196,10 @@ unsafe fn shared_entry_create(
     address: u64,
     size: u64,
     page_offset: u64,
-    descriptor: *mut dtape_map_shared_descriptor_t,
-) -> *mut dtape_map_shared_entry_t {
+    descriptor: *mut xnu_sys_map_shared_descriptor_t,
+) -> *mut xnu_sys_map_shared_entry_t {
     let shared_entry =
-        malloc(std::mem::size_of::<dtape_map_shared_entry_t>()) as *mut dtape_map_shared_entry_t;
+        malloc(std::mem::size_of::<xnu_sys_map_shared_entry_t>()) as *mut xnu_sys_map_shared_entry_t;
     if shared_entry.is_null() {
         return shared_entry;
     }
@@ -214,25 +214,25 @@ unsafe fn shared_entry_create(
     shared_entry
 }
 
-unsafe fn shared_entry_destroy(shared_entry: *mut dtape_map_shared_entry_t) {
+unsafe fn shared_entry_destroy(shared_entry: *mut xnu_sys_map_shared_entry_t) {
     shared_descriptor_release((*shared_entry).descriptor);
     free(shared_entry as *mut c_void);
 }
 
 unsafe fn map_insert_shared_entry_locked(
     map: vm_map_t,
-    shared_entry: *mut dtape_map_shared_entry_t,
+    shared_entry: *mut xnu_sys_map_shared_entry_t,
 ) {
-    bindings::dtape_rs_shared_entries_insert(
+    bindings::xnu_sys_rs_shared_entries_insert(
         &mut (*map).shared_entries as *mut _ as *mut _,
         shared_entry as *mut _,
     );
 }
 
-unsafe fn map_insert_shared_entry(map: vm_map_t, shared_entry: *mut dtape_map_shared_entry_t) {
-    crate::xnu::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
+unsafe fn map_insert_shared_entry(map: vm_map_t, shared_entry: *mut xnu_sys_map_shared_entry_t) {
+    crate::xnu::locks::xnu_sys_mutex_lock(&mut (*map).shared_entry_lock);
     map_insert_shared_entry_locked(map, shared_entry);
-    crate::xnu::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*map).shared_entry_lock);
 }
 
 /// Returns entries in-order.
@@ -245,7 +245,7 @@ unsafe fn map_find_shared_entries_locked(
     map: vm_map_t,
     address: u64,
     size: u64,
-    out_entries: &mut [*mut dtape_map_shared_entry_t],
+    out_entries: &mut [*mut xnu_sys_map_shared_entry_t],
 ) -> usize {
     let mut count = 0usize;
 
@@ -255,8 +255,8 @@ unsafe fn map_find_shared_entries_locked(
 
     // RB_FOREACH, as the first/next pair it is underneath.
     let mut entry =
-        bindings::dtape_rs_shared_entries_first(&mut (*map).shared_entries as *mut _ as *mut _)
-            as *mut dtape_map_shared_entry_t;
+        bindings::xnu_sys_rs_shared_entries_first(&mut (*map).shared_entries as *mut _ as *mut _)
+            as *mut xnu_sys_map_shared_entry_t;
     while !entry.is_null() {
         if !((*entry).address + (*entry).size < address || (*entry).address > address + size) {
             out_entries[count] = entry;
@@ -266,8 +266,8 @@ unsafe fn map_find_shared_entries_locked(
                 break;
             }
         }
-        entry = bindings::dtape_rs_shared_entries_next(entry as *mut _)
-            as *mut dtape_map_shared_entry_t;
+        entry = bindings::xnu_sys_rs_shared_entries_next(entry as *mut _)
+            as *mut xnu_sys_map_shared_entry_t;
     }
 
     count
@@ -278,39 +278,39 @@ unsafe fn map_find_shared_entries_locked(
 //       in-use needlessly).
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_vm_map_destroy(map: vm_map_t) {
-    if bindings::dtape_rs_os_ref_release(&mut (*map).map_refcnt as *mut _ as *mut _) != 0 {
+pub unsafe extern "C" fn xnu_sys_vm_map_destroy(map: vm_map_t) {
+    if bindings::xnu_sys_rs_os_ref_release(&mut (*map).map_refcnt as *mut _ as *mut _) != 0 {
         panic!("VM map still in-use at destruction");
     }
 
-    crate::xnu::locks::dtape_mutex_lock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::xnu_sys_mutex_lock(&mut (*map).shared_entry_lock);
     // RB_FOREACH_SAFE plus RB_REMOVE: take the first repeatedly, which is the same drain.
     loop {
         let entry =
-            bindings::dtape_rs_shared_entries_first(&mut (*map).shared_entries as *mut _ as *mut _)
-                as *mut dtape_map_shared_entry_t;
+            bindings::xnu_sys_rs_shared_entries_first(&mut (*map).shared_entries as *mut _ as *mut _)
+                as *mut xnu_sys_map_shared_entry_t;
         if entry.is_null() {
             break;
         }
-        bindings::dtape_rs_shared_entries_remove(
+        bindings::xnu_sys_rs_shared_entries_remove(
             &mut (*map).shared_entries as *mut _ as *mut _,
             entry as *mut _,
         );
         shared_entry_destroy(entry);
     }
-    crate::xnu::locks::dtape_mutex_unlock(&mut (*map).shared_entry_lock);
+    crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*map).shared_entry_lock);
 
     free(map as *mut c_void);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn vm_map_reference(map: vm_map_t) {
-    bindings::dtape_rs_os_ref_retain(&mut (*map).map_refcnt as *mut _ as *mut _);
+    bindings::xnu_sys_rs_os_ref_retain(&mut (*map).map_refcnt as *mut _ as *mut _);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn vm_map_deallocate(map: vm_map_t) {
-    bindings::dtape_rs_os_ref_release_live(&mut (*map).map_refcnt as *mut _ as *mut _);
+    bindings::xnu_sys_rs_os_ref_release_live(&mut (*map).map_refcnt as *mut _ as *mut _);
 }
 
 // TODO: zone-based allocations could be optimized to not just use malloc
@@ -350,7 +350,7 @@ pub unsafe extern "C" fn zalloc_flags(
         return p;
     }
 
-    if flags & bindings::dtape_rs_host_consts_DTAPE_RS_Z_ZERO as bindings::zalloc_flags_t != 0 {
+    if flags & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_Z_ZERO as bindings::zalloc_flags_t != 0 {
         ptr::write_bytes(
             p as *mut u8,
             0,
@@ -372,12 +372,12 @@ pub unsafe extern "C" fn zone_id_require(
     _elem_size: vm_size_t,
     _addr: *mut c_void,
 ) {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn zone_require(_z: *mut zone, _addr: *mut c_void) {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 #[no_mangle]
@@ -416,7 +416,7 @@ pub unsafe extern "C" fn kalloc_ext(
     flags: bindings::zalloc_flags_t,
     _site: *mut bindings::vm_allocation_site_t,
 ) -> bindings::kalloc_result {
-    if flags & bindings::dtape_rs_host_consts_DTAPE_RS_Z_ZERO as bindings::zalloc_flags_t != 0 {
+    if flags & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_Z_ZERO as bindings::zalloc_flags_t != 0 {
         bindings::kalloc_result {
             addr: calloc(1, req_size as usize),
             size: req_size,
@@ -431,7 +431,7 @@ pub unsafe extern "C" fn kalloc_ext(
 
 #[no_mangle]
 pub unsafe extern "C" fn zone_heap_name(_z: *mut zone) -> *const c_char {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     b"\0".as_ptr() as *const c_char
 }
 
@@ -456,7 +456,7 @@ pub unsafe extern "C" fn zalloc_permanent(size: vm_size_t, align_mask: vm_offset
 
 #[no_mangle]
 pub unsafe extern "C" fn vm_page_free_reserve(_pages: c_int) {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 #[no_mangle]
@@ -541,8 +541,8 @@ pub unsafe extern "C" fn copyoutmap(
         ptr::copy(fromdata as *const u8, toaddr as *mut u8, length as usize);
         bindings::KERN_SUCCESS as kern_return_t
     } else {
-        let ok = (*dtape_hooks).task_write_memory.expect("task_write_memory hook")(
-            (*(*map).dtape_task).context,
+        let ok = (*xnu_sys_hooks).task_write_memory.expect("task_write_memory hook")(
+            (*(*map).xnu_sys_task).context,
             toaddr as usize,
             fromdata,
             length as usize,
@@ -566,8 +566,8 @@ pub unsafe extern "C" fn copyinmap(
         ptr::copy(fromaddr as *const u8, todata as *mut u8, length as usize);
         bindings::KERN_SUCCESS as kern_return_t
     } else {
-        let ok = (*dtape_hooks).task_read_memory.expect("task_read_memory hook")(
-            (*(*map).dtape_task).context,
+        let ok = (*xnu_sys_hooks).task_read_memory.expect("task_read_memory hook")(
+            (*(*map).xnu_sys_task).context,
             fromaddr as usize,
             todata,
             length as usize,
@@ -645,7 +645,7 @@ pub unsafe extern "C" fn kmem_suballoc(
     new_map: *mut vm_map_t,
 ) -> kern_return_t {
     // this is enough to satisfy ipc_init
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
     *new_map = parent;
     bindings::KERN_SUCCESS as kern_return_t
 }
@@ -686,7 +686,7 @@ pub unsafe extern "C" fn vm_map_copyin_common(
     (*copy).type_ = bindings::VM_MAP_COPY_KERNEL_BUFFER as c_int;
     (*copy).size = len;
     (*copy).offset = 0;
-    (*copy).c_u.kdata = (*copy).dtape_copy_data.as_mut_ptr() as *mut c_void;
+    (*copy).c_u.kdata = (*copy).xnu_sys_copy_data.as_mut_ptr() as *mut c_void;
 
     let kr = copyinmap(src_map, src_addr, (*copy).c_u.kdata, len as vm_size_t);
     if kr != bindings::KERN_SUCCESS as kern_return_t {
@@ -733,8 +733,8 @@ unsafe fn vm_map_copyout_kernel_buffer(
                 return bindings::KERN_RESOURCE_SHORTAGE as kern_return_t;
             }
         } else {
-            *addr = (*dtape_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
-                (*(*map).dtape_task).context,
+            *addr = (*xnu_sys_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
+                (*(*map).xnu_sys_task).context,
                 byte_count_to_page_count_round_up(copy_size) as usize,
                 PROT_READ | PROT_WRITE,
                 0,
@@ -843,8 +843,8 @@ pub unsafe extern "C" fn vm_map_remove(
         }
         bindings::KERN_SUCCESS as kern_return_t
     } else {
-        if (*dtape_hooks).task_free_pages.expect("task_free_pages hook")(
-            (*(*map).dtape_task).context,
+        if (*xnu_sys_hooks).task_free_pages.expect("task_free_pages hook")(
+            (*(*map).xnu_sys_task).context,
             start as usize,
             byte_count_to_page_count_round_down(end - start) as usize,
         ) < 0
@@ -879,8 +879,8 @@ pub unsafe extern "C" fn mach_vm_allocate_kernel(
         kr
     } else {
         // mach_vm_allocate_kernel allocates with default protection
-        let tmp = (*dtape_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
-            (*(*map).dtape_task).context,
+        let tmp = (*xnu_sys_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
+            (*(*map).xnu_sys_task).context,
             byte_count_to_page_count_round_up(size) as usize,
             PROT_READ | PROT_WRITE,
             0,
@@ -905,20 +905,20 @@ pub unsafe extern "C" fn mach_vm_msync(
 
     // TODO: give the Linux bits names/macros
 
-    if sync_flags & bindings::dtape_rs_host_consts_DTAPE_RS_VM_SYNC_ASYNCHRONOUS as bindings::vm_sync_t != 0 {
+    if sync_flags & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_SYNC_ASYNCHRONOUS as bindings::vm_sync_t != 0 {
         linux_flags |= 1 << 0;
     }
 
-    if sync_flags & bindings::dtape_rs_host_consts_DTAPE_RS_VM_SYNC_SYNCHRONOUS as bindings::vm_sync_t != 0 {
+    if sync_flags & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_SYNC_SYNCHRONOUS as bindings::vm_sync_t != 0 {
         linux_flags |= 1 << 2;
     }
 
-    if sync_flags & bindings::dtape_rs_host_consts_DTAPE_RS_VM_SYNC_INVALIDATE as bindings::vm_sync_t != 0 {
+    if sync_flags & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_SYNC_INVALIDATE as bindings::vm_sync_t != 0 {
         linux_flags |= 1 << 1;
     }
 
-    if !(*dtape_hooks).task_sync_memory.expect("task_sync_memory hook")(
-        (*(*map).dtape_task).context,
+    if !(*xnu_sys_hooks).task_sync_memory.expect("task_sync_memory hook")(
+        (*(*map).xnu_sys_task).context,
         address as usize,
         size as usize,
         linux_flags,
@@ -945,18 +945,18 @@ pub unsafe extern "C" fn mach_vm_protect(
     let start_memaddr = mach_vm_trunc_page(start);
     let protect_size = end_memaddr - start_memaddr;
 
-    if new_protection & bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t != 0 {
+    if new_protection & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t != 0 {
         prot |= PROT_READ;
     }
-    if new_protection & bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t != 0 {
+    if new_protection & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t != 0 {
         prot |= PROT_WRITE;
     }
-    if new_protection & bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_EXECUTE as vm_prot_t != 0 {
+    if new_protection & bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_EXECUTE as vm_prot_t != 0 {
         prot |= PROT_EXEC;
     }
 
-    if !(*dtape_hooks).task_change_protection.expect("task_change_protection hook")(
-        (*(*map).dtape_task).context,
+    if !(*xnu_sys_hooks).task_change_protection.expect("task_change_protection hook")(
+        (*(*map).xnu_sys_task).context,
         start_memaddr as usize,
         byte_count_to_page_count_round_up(protect_size) as usize,
         prot,
@@ -972,24 +972,24 @@ pub unsafe extern "C" fn mach_vm_protect(
 /// Carried over including the LLDB hack, comment and all: when a region is executable the C does
 /// not OR the bit in, it ASSIGNS `VM_PROT_EXECUTE | VM_PROT_READ`, discarding write. Both region
 /// calls do it and both are reproduced.
-unsafe fn region_protection(region_info: &dtape_memory_region_info_t) -> vm_prot_t {
+unsafe fn region_protection(region_info: &xnu_sys_memory_region_info_t) -> vm_prot_t {
     let mut protection: vm_prot_t = 0;
 
-    if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_read != 0 {
-        protection |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t;
+    if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_read != 0 {
+        protection |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t;
     }
-    if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_write != 0
+    if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_write != 0
     {
-        protection |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t;
+        protection |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t;
     }
     // This is a special hack for LLDB. For processes started as suspended, with two RX segments.
     // However, in order to avoid failures, they are actually mapped as RWX and are to be changed
     // to RX later by dyld.
-    if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_execute
+    if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_execute
         != 0
     {
-        protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_EXECUTE as vm_prot_t
-            | bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t;
+        protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_EXECUTE as vm_prot_t
+            | bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t;
     }
 
     protection
@@ -1001,17 +1001,17 @@ unsafe fn region_protection(region_info: &dtape_memory_region_info_t) -> vm_prot
 unsafe fn find_region(
     map: vm_map_t,
     address: u64,
-    region_info: *mut dtape_memory_region_info_t,
+    region_info: *mut xnu_sys_memory_region_info_t,
 ) -> Result<u64, kern_return_t> {
-    let ctx = (*(*map).dtape_task).context;
+    let ctx = (*(*map).xnu_sys_task).context;
     let mut addr_to_check = address;
 
-    if !(*dtape_hooks).task_get_memory_region_info.expect("hook")(ctx, addr_to_check as usize, region_info) {
-        addr_to_check = (*dtape_hooks).task_get_next_region.expect("hook")(ctx, addr_to_check as usize) as u64;
+    if !(*xnu_sys_hooks).task_get_memory_region_info.expect("hook")(ctx, addr_to_check as usize, region_info) {
+        addr_to_check = (*xnu_sys_hooks).task_get_next_region.expect("hook")(ctx, addr_to_check as usize) as u64;
         if addr_to_check == 0 {
             return Err(bindings::KERN_NO_SPACE as kern_return_t);
         }
-        if !(*dtape_hooks).task_get_memory_region_info.expect("hook")(ctx, addr_to_check as usize, region_info)
+        if !(*xnu_sys_hooks).task_get_memory_region_info.expect("hook")(ctx, addr_to_check as usize, region_info)
         {
             return Err(bindings::KERN_FAILURE as kern_return_t);
         }
@@ -1032,10 +1032,10 @@ pub unsafe extern "C" fn mach_vm_region(
 ) -> kern_return_t {
     let flavor = flavor as u32;
     if flavor != bindings::VM_REGION_BASIC_INFO && flavor != bindings::VM_REGION_BASIC_INFO_64 {
-        crate::dtape_stub_unsafe!("Unimplemented flavor")
+        crate::xnu_sys_stub_unsafe!("Unimplemented flavor")
     }
 
-    let mut region_info: dtape_memory_region_info_t = std::mem::zeroed();
+    let mut region_info: xnu_sys_memory_region_info_t = std::mem::zeroed();
     let mut kr;
 
     'region_info_out: {
@@ -1053,36 +1053,36 @@ pub unsafe extern "C" fn mach_vm_region(
         if flavor == bindings::VM_REGION_BASIC_INFO_64 {
             let out = info as bindings::vm_region_basic_info_64_t;
 
-            if *count < bindings::dtape_rs_host_consts_DTAPE_RS_VM_REGION_BASIC_INFO_COUNT_64 as mach_msg_type_number_t {
+            if *count < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_REGION_BASIC_INFO_COUNT_64 as mach_msg_type_number_t {
                 kr = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
                 break 'region_info_out;
             }
-            *count = bindings::dtape_rs_host_consts_DTAPE_RS_VM_REGION_BASIC_INFO_COUNT_64 as mach_msg_type_number_t;
+            *count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_REGION_BASIC_INFO_COUNT_64 as mach_msg_type_number_t;
 
             (*out).protection = region_protection(&region_info);
             (*out).offset = region_info.map_offset;
             (*out).shared = region_info.shared as boolean_t;
-            (*out).behavior = bindings::dtape_rs_host_consts_DTAPE_RS_VM_BEHAVIOR_DEFAULT as _;
+            (*out).behavior = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_BEHAVIOR_DEFAULT as _;
             (*out).user_wired_count = 0;
             (*out).inheritance = 0;
-            (*out).max_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
+            (*out).max_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
             (*out).reserved = 0;
         } else {
             let out = info as bindings::vm_region_basic_info_t;
 
-            if *count < bindings::dtape_rs_host_consts_DTAPE_RS_VM_REGION_BASIC_INFO_COUNT as mach_msg_type_number_t {
+            if *count < bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_REGION_BASIC_INFO_COUNT as mach_msg_type_number_t {
                 kr = bindings::KERN_INVALID_ARGUMENT as kern_return_t;
                 break 'region_info_out;
             }
-            *count = bindings::dtape_rs_host_consts_DTAPE_RS_VM_REGION_BASIC_INFO_COUNT as mach_msg_type_number_t;
+            *count = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_REGION_BASIC_INFO_COUNT as mach_msg_type_number_t;
 
             (*out).protection = region_protection(&region_info);
             (*out).offset = region_info.map_offset as u32;
             (*out).shared = region_info.shared as boolean_t;
-            (*out).behavior = bindings::dtape_rs_host_consts_DTAPE_RS_VM_BEHAVIOR_DEFAULT as _;
+            (*out).behavior = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_BEHAVIOR_DEFAULT as _;
             (*out).user_wired_count = 0;
             (*out).inheritance = 0;
-            (*out).max_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
+            (*out).max_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
             (*out).reserved = 0;
         }
 
@@ -1106,7 +1106,7 @@ pub unsafe extern "C" fn mach_vm_region_recurse(
     info: bindings::vm_region_recurse_info_t,
     info_cnt: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    let mut region_info: dtape_memory_region_info_t = std::mem::zeroed();
+    let mut region_info: xnu_sys_memory_region_info_t = std::mem::zeroed();
 
     if !depth.is_null() {
         *depth = 0;
@@ -1120,7 +1120,7 @@ pub unsafe extern "C" fn mach_vm_region_recurse(
     *address = region_info.start_address as u64;
     *size = region_info.page_count as u64 * page_size();
 
-    if *info_cnt == bindings::dtape_rs_host_consts_DTAPE_RS_VM_REGION_SUBMAP_SHORT_INFO_COUNT_64 as mach_msg_type_number_t {
+    if *info_cnt == bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_REGION_SUBMAP_SHORT_INFO_COUNT_64 as mach_msg_type_number_t {
         let out = info as bindings::vm_region_submap_info_64_t;
 
         ptr::write_bytes(
@@ -1129,22 +1129,22 @@ pub unsafe extern "C" fn mach_vm_region_recurse(
             std::mem::size_of::<bindings::vm_region_submap_info_64>(),
         );
 
-        if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_read
+        if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_read
             != 0
         {
-            (*out).protection |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t;
+            (*out).protection |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t;
         }
-        if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_write
+        if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_write
             != 0
         {
-            (*out).protection |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t;
+            (*out).protection |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t;
         }
         if region_info.protection
-            & bindings::dtape_memory_protection_dtape_memory_protection_execute
+            & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_execute
             != 0
         {
             (*out).protection |=
-                bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_EXECUTE as vm_prot_t;
+                bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_EXECUTE as vm_prot_t;
         }
 
         (*out).offset = region_info.map_offset;
@@ -1153,12 +1153,12 @@ pub unsafe extern "C" fn mach_vm_region_recurse(
         } else {
             bindings::SM_PRIVATE as u8
         };
-        (*out).max_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
+        (*out).max_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
     } else {
         // in the LKM, only VM_REGION_SUBMAP_SHORT_INFO_COUNT_64 was implemented and everything
         // was fine, so it's fine to return KERN_INVALID_ARGUMENT here; log a message just in
         // case, though.
-        crate::dtape_stub_safe!("unsupported structure size");
+        crate::xnu_sys_stub_safe!("unsupported structure size");
     }
 
     // Carried over exactly: the C assigns KERN_INVALID_ARGUMENT in the else branch and then
@@ -1182,22 +1182,22 @@ unsafe fn mach_vm_remap_external_shared(
     let mut kr = bindings::KERN_SUCCESS as kern_return_t;
     let mut memfd: c_int = -1;
     let mut mapped_addr: *mut c_void = ptr::null_mut();
-    let mut region_info: dtape_memory_region_info_t = std::mem::zeroed();
+    let mut region_info: xnu_sys_memory_region_info_t = std::mem::zeroed();
     let mut prot: c_int = 0;
     let mut target_addr: vm_map_address_t = 0;
     let mut vm_prot: vm_prot_t = 0;
-    let mut descriptor: *mut dtape_map_shared_descriptor_t = ptr::null_mut();
-    let mut src_shared_entry: *mut dtape_map_shared_entry_t = ptr::null_mut();
-    let mut target_shared_entry: *mut dtape_map_shared_entry_t = ptr::null_mut();
-    let mut src_existing_entries: [*mut dtape_map_shared_entry_t; 8] = [ptr::null_mut(); 8];
+    let mut descriptor: *mut xnu_sys_map_shared_descriptor_t = ptr::null_mut();
+    let mut src_shared_entry: *mut xnu_sys_map_shared_entry_t = ptr::null_mut();
+    let mut target_shared_entry: *mut xnu_sys_map_shared_entry_t = ptr::null_mut();
+    let mut src_existing_entries: [*mut xnu_sys_map_shared_entry_t; 8] = [ptr::null_mut(); 8];
 
     let end_memaddr = mach_vm_round_page(memory_address + size);
     let start_memaddr = mach_vm_trunc_page(memory_address);
     let map_size = end_memaddr - start_memaddr;
 
     'out: {
-        if !(*dtape_hooks).task_get_memory_region_info.expect("hook")(
-            (*(*src_map).dtape_task).context,
+        if !(*xnu_sys_hooks).task_get_memory_region_info.expect("hook")(
+            (*(*src_map).xnu_sys_task).context,
             memory_address as usize,
             &mut region_info,
         ) {
@@ -1205,30 +1205,30 @@ unsafe fn mach_vm_remap_external_shared(
             break 'out;
         }
 
-        if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_read
+        if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_read
             != 0
         {
             prot |= PROT_READ;
-            vm_prot |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t;
+            vm_prot |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t;
         }
-        if region_info.protection & bindings::dtape_memory_protection_dtape_memory_protection_write
+        if region_info.protection & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_write
             != 0
         {
             prot |= PROT_WRITE;
-            vm_prot |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t;
+            vm_prot |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t;
         }
         if region_info.protection
-            & bindings::dtape_memory_protection_dtape_memory_protection_execute
+            & bindings::xnu_sys_memory_protection_xnu_sys_memory_protection_execute
             != 0
         {
             prot |= PROT_EXEC;
-            vm_prot |= bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_EXECUTE as vm_prot_t;
+            vm_prot |= bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_EXECUTE as vm_prot_t;
         }
 
         // `goto src_setup_done` skips the memfd creation when the source region is already
         // shared, so the body between here and there is its own labeled block.
         'src_setup_done: {
-            crate::xnu::locks::dtape_mutex_lock(&mut (*src_map).shared_entry_lock);
+            crate::xnu::locks::xnu_sys_mutex_lock(&mut (*src_map).shared_entry_lock);
 
             let src_existing_entry_count = map_find_shared_entries_locked(
                 src_map,
@@ -1244,14 +1244,14 @@ unsafe fn mach_vm_remap_external_shared(
                 // special case for what LLDB does with dyld info
                 shared_descriptor_retain((*src_existing_entries[0]).descriptor);
                 descriptor = (*src_existing_entries[0]).descriptor;
-                crate::xnu::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
+                crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*src_map).shared_entry_lock);
                 break 'src_setup_done;
             } else if src_existing_entry_count != 0 {
                 // TODO: handle this case gracefully
-                crate::dtape_stub_unsafe!("Cannot complexly remap existing shared regions yet");
+                crate::xnu_sys_stub_unsafe!("Cannot complexly remap existing shared regions yet");
             }
 
-            crate::xnu::locks::dtape_mutex_unlock(&mut (*src_map).shared_entry_lock);
+            crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*src_map).shared_entry_lock);
 
             memfd = memfd_create(b"cider-remapped\0".as_ptr() as *const c_char, MFD_CLOEXEC);
             if memfd < 0 {
@@ -1300,15 +1300,15 @@ unsafe fn mach_vm_remap_external_shared(
                 break 'out;
             }
 
-            if (*dtape_hooks).task_map_file.expect("task_map_file hook")(
-                (*(*src_map).dtape_task).context,
+            if (*xnu_sys_hooks).task_map_file.expect("task_map_file hook")(
+                (*(*src_map).xnu_sys_task).context,
                 (*descriptor).memfd,
                 byte_count_to_page_count_round_up(map_size) as usize,
                 prot,
                 start_memaddr as usize,
                 0,
-                bindings::dtape_memory_flags_dtape_memory_flag_fixed
-                    | bindings::dtape_memory_flags_dtape_memory_flag_overwrite,
+                bindings::xnu_sys_memory_flags_xnu_sys_memory_flag_fixed
+                    | bindings::xnu_sys_memory_flags_xnu_sys_memory_flag_overwrite,
             ) as u64 != start_memaddr
             {
                 kr = bindings::KERN_FAILURE as kern_return_t;
@@ -1326,14 +1326,14 @@ unsafe fn mach_vm_remap_external_shared(
         }
 
         // src_setup_done:
-        target_addr = (*dtape_hooks).task_map_file.expect("task_map_file hook")(
-            (*(*target_map).dtape_task).context,
+        target_addr = (*xnu_sys_hooks).task_map_file.expect("task_map_file hook")(
+            (*(*target_map).xnu_sys_task).context,
             (*descriptor).memfd,
             byte_count_to_page_count_round_up(map_size) as usize,
             prot,
             0,
             0,
-            bindings::dtape_memory_flags_dtape_memory_flag_none,
+            bindings::xnu_sys_memory_flags_xnu_sys_memory_flag_none,
         ) as u64;
         if target_addr == 0 {
             kr = bindings::KERN_FAILURE as kern_return_t;
@@ -1349,7 +1349,7 @@ unsafe fn mach_vm_remap_external_shared(
         map_insert_shared_entry(target_map, target_shared_entry);
         target_shared_entry = ptr::null_mut(); // the map now owns the shared entry
 
-        *max_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
+        *max_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
         *cur_protection = vm_prot;
         *address = target_addr;
 
@@ -1361,7 +1361,7 @@ unsafe fn mach_vm_remap_external_shared(
     // out:
     if !mapped_addr.is_null() && munmap(mapped_addr, map_size as usize) < 0 {
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_error,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_error,
             "failed to unmap memfd",
         );
     }
@@ -1426,12 +1426,12 @@ pub unsafe extern "C" fn mach_vm_remap_external(
             break 'out;
         }
 
-        let mut memflags: bindings::dtape_memory_flags_t = 0;
+        let mut memflags: bindings::xnu_sys_memory_flags_t = 0;
         if flags & bindings::VM_FLAGS_ANYWHERE as c_int == 0 {
-            memflags |= bindings::dtape_memory_flags_dtape_memory_flag_fixed;
+            memflags |= bindings::xnu_sys_memory_flags_xnu_sys_memory_flag_fixed;
         }
         if flags & bindings::VM_FLAGS_OVERWRITE as c_int != 0 {
-            memflags |= bindings::dtape_memory_flags_dtape_memory_flag_overwrite;
+            memflags |= bindings::xnu_sys_memory_flags_xnu_sys_memory_flag_overwrite;
         }
 
         // TODO: properly determine when to make memory executable by looking at the protection
@@ -1439,8 +1439,8 @@ pub unsafe extern "C" fn mach_vm_remap_external(
         //       compatibility with libobjc's trampolines
         let prot = PROT_READ | PROT_WRITE | PROT_EXEC;
 
-        addr = (*dtape_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
-            (*(*target_map).dtape_task).context,
+        addr = (*xnu_sys_hooks).task_allocate_pages.expect("task_allocate_pages hook")(
+            (*(*target_map).xnu_sys_task).context,
             byte_count_to_page_count_round_up(size) as usize,
             prot,
             if flags & bindings::VM_FLAGS_ANYWHERE as c_int != 0 {
@@ -1467,12 +1467,12 @@ pub unsafe extern "C" fn mach_vm_remap_external(
         // a successful copy-out consumes the copy
         mem_copy = ptr::null_mut();
 
-        crate::dtape_stub_safe!("Determine correct protections for copied memory");
-        *max_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
+        crate::xnu_sys_stub_safe!("Determine correct protections for copied memory");
+        *max_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
         // LLDB doesn't like it when we tell it that memory is executable;
         // so don't tell it that it's executable, even if it is
-        *cur_protection = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t
-            | bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t;
+        *cur_protection = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t
+            | bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t;
         *address = addr;
     }
 
@@ -1481,8 +1481,8 @@ pub unsafe extern "C" fn mach_vm_remap_external(
         vm_map_copy_discard(mem_copy);
     }
     if dealloc {
-        (*dtape_hooks).task_free_pages.expect("task_free_pages hook")(
-            (*(*target_map).dtape_task).context,
+        (*xnu_sys_hooks).task_free_pages.expect("task_free_pages hook")(
+            (*(*target_map).xnu_sys_task).context,
             addr as usize,
             byte_count_to_page_count_round_up(size) as usize,
         );
@@ -1505,11 +1505,11 @@ pub unsafe extern "C" fn mach_vm_remap_new_external(
     max_protection: *mut vm_prot_t,
     inheritance: bindings::vm_inherit_t,
 ) -> kern_return_t {
-    let prot_all = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_ALL as vm_prot_t;
-    let prot_read = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_READ as vm_prot_t;
-    let prot_none = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_NONE as vm_prot_t;
-    let prot_write = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_WRITE as vm_prot_t;
-    let prot_exec = bindings::dtape_rs_host_consts_DTAPE_RS_VM_PROT_EXECUTE as vm_prot_t;
+    let prot_all = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_ALL as vm_prot_t;
+    let prot_read = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_READ as vm_prot_t;
+    let prot_none = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_NONE as vm_prot_t;
+    let prot_write = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_WRITE as vm_prot_t;
+    let prot_exec = bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_VM_PROT_EXECUTE as vm_prot_t;
 
     let flags = flags | bindings::VM_FLAGS_RETURN_DATA_ADDR as c_int;
     // VM_GET_FLAGS_ALIAS extracts the tag from the flags, and the C never reads the tag
@@ -1576,7 +1576,7 @@ pub unsafe extern "C" fn mach_vm_remap_new_external(
 }
 
 //
-// The stubs. Every one of these is a signature and a dtape_stub call in the C too.
+// The stubs. Every one of these is a signature and a xnu_sys_stub call in the C too.
 //
 
 #[no_mangle]
@@ -1588,7 +1588,7 @@ pub unsafe extern "C" fn _mach_make_memory_entry(
     _object_handle: *mut ipc_port_t,
     _parent_entry: ipc_port_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1598,7 +1598,7 @@ pub unsafe extern "C" fn mach_memory_entry_access_tracking(
     _access_tracking_reads: *mut u32,
     _access_tracking_writes: *mut u32,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1608,7 +1608,7 @@ pub unsafe extern "C" fn mach_memory_entry_ownership(
     _ledger_tag: c_int,
     _ledger_flags: c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1617,12 +1617,12 @@ pub unsafe extern "C" fn mach_memory_entry_purgable_control(
     _control: bindings::vm_purgable_t,
     _state: *mut c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn pmap_require(_pmap: bindings::pmap_t) {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 #[no_mangle]
@@ -1633,12 +1633,12 @@ pub unsafe extern "C" fn mach_vm_wire_external(
     _size: mach_vm_size_t,
     _access: vm_prot_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn mach_zone_force_gc(_host: bindings::host_t) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1648,7 +1648,7 @@ pub unsafe extern "C" fn vm_map_page_query_internal(
     _disposition: *mut c_int,
     _ref_count: *mut c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1658,7 +1658,7 @@ pub unsafe extern "C" fn vm_map_purgable_control(
     _control: bindings::vm_purgable_t,
     _state: *mut c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1668,7 +1668,7 @@ pub unsafe extern "C" fn vm_map_unwire(
     _end: vm_map_offset_t,
     _user_wire: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_SUCCESS as kern_return_t
 }
 
@@ -1681,19 +1681,19 @@ pub unsafe extern "C" fn vm_map_wire_kernel(
     _tag: vm_tag_t,
     _user_wire: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_SUCCESS as kern_return_t
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn vm32__task_wire(_map: vm_map_t, _must_wire: boolean_t) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_SUCCESS as kern_return_t
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn vm32__map_exec_lockdown(_map: vm_map_t) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1710,7 +1710,7 @@ pub unsafe extern "C" fn mach_vm_map_external(
     _max_protection: vm_prot_t,
     _inheritance: bindings::vm_inherit_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_SUCCESS as kern_return_t
 }
 
@@ -1721,7 +1721,7 @@ pub unsafe extern "C" fn mach_vm_behavior_set(
     _size: mach_vm_size_t,
     _new_behavior: bindings::vm_behavior_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1731,7 +1731,7 @@ pub unsafe extern "C" fn mach_vm_inherit(
     _size: mach_vm_size_t,
     _new_inheritance: bindings::vm_inherit_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1742,7 +1742,7 @@ pub unsafe extern "C" fn mach_vm_page_info(
     _info: bindings::vm_page_info_t,
     _count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1752,7 +1752,7 @@ pub unsafe extern "C" fn mach_vm_page_query(
     _disposition: *mut c_int,
     _ref_count: *mut c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1763,7 +1763,7 @@ pub unsafe extern "C" fn mach_vm_page_range_query(
     _dispositions_addr: bindings::mach_vm_address_t,
     _dispositions_count: *mut mach_vm_size_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1773,7 +1773,7 @@ pub unsafe extern "C" fn mach_vm_purgable_control(
     _control: bindings::vm_purgable_t,
     _state: *mut c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1782,7 +1782,7 @@ pub unsafe extern "C" fn mach_vm_read_list(
     _data_list: bindings::mach_vm_read_entry_t,
     _count: natural_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1795,7 +1795,7 @@ pub unsafe extern "C" fn mach_memory_info(
     _memory_infop: *mut bindings::mach_memory_info_array_t,
     _memory_info_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1807,7 +1807,7 @@ pub unsafe extern "C" fn mach_memory_object_memory_entry(
     _pager: bindings::memory_object_t,
     _entry_handle: *mut ipc_port_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1819,7 +1819,7 @@ pub unsafe extern "C" fn mach_memory_object_memory_entry_64(
     _pager: bindings::memory_object_t,
     _entry_handle: *mut ipc_port_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1830,7 +1830,7 @@ pub unsafe extern "C" fn vm_allocate_cpm(
     _size: vm_size_t,
     _flags: c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1839,7 +1839,7 @@ pub unsafe extern "C" fn vm32_mapped_pages_info(
     _pages: *mut bindings::page_address_array_t,
     _pages_count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1850,7 +1850,7 @@ pub unsafe extern "C" fn vm32_region_info(
     _objectsp: *mut bindings::vm_info_object_array_t,
     _objects_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1861,14 +1861,14 @@ pub unsafe extern "C" fn vm32_region_info_64(
     _objectsp: *mut bindings::vm_info_object_array_t,
     _objects_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn convert_port_to_memory_object(
     _port: mach_port_t,
 ) -> bindings::memory_object_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1879,7 +1879,7 @@ pub unsafe extern "C" fn mach_vm_machine_attribute(
     _attribute: bindings::vm_machine_attribute_t,
     _value: *mut bindings::vm_machine_attribute_val_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1889,7 +1889,7 @@ pub unsafe extern "C" fn mach_zone_get_btlog_records(
     _recsp: *mut bindings::zone_btrecord_array_t,
     _recs_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_FAILURE as kern_return_t
 }
 
@@ -1899,7 +1899,7 @@ pub unsafe extern "C" fn mach_zone_get_zlog_zones(
     _namesp: *mut bindings::mach_zone_name_array_t,
     _names_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_FAILURE as kern_return_t
 }
 
@@ -1911,7 +1911,7 @@ pub unsafe extern "C" fn mach_zone_info(
     _infop: *mut bindings::mach_zone_info_array_t,
     _info_cntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1920,7 +1920,7 @@ pub unsafe extern "C" fn mach_zone_info_for_largest_zone(
     _namep: *mut bindings::mach_zone_name_t,
     _infop: *mut bindings::mach_zone_info_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1929,7 +1929,7 @@ pub unsafe extern "C" fn mach_zone_info_for_zone(
     _name: bindings::mach_zone_name_t,
     _infop: *mut bindings::mach_zone_info_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1942,7 +1942,7 @@ pub unsafe extern "C" fn vm_map_region(
     _count: *mut mach_msg_type_number_t,
     _object_name: *mut mach_port_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -1954,5 +1954,5 @@ pub unsafe extern "C" fn vm_map_region_recurse_64(
     _submap_info: bindings::vm_region_submap_info_64_t,
     _count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }

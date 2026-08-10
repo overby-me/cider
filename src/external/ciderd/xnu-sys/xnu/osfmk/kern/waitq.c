@@ -94,10 +94,10 @@
 
 #ifdef __DARLING__
 #include <ciderd/xnu-sys/log.h>
-#define wqdbg(fmt, ...) dtape_log_debug("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
+#define wqdbg(fmt, ...) xnu_sys_log_debug("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
 #define wqdbg_v(fmt, ...) wqdbg(fmt, ## __VA_ARGS__)
-#define wqinfo(fmt, ...) dtape_log_info("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
-#define wqerr(fmt, ...) dtape_log_error("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
+#define wqinfo(fmt, ...) xnu_sys_log_info("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
+#define wqerr(fmt, ...) xnu_sys_log_error("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
 #else
 #if CONFIG_WAITQ_DEBUG
 #define wqdbg(fmt, ...) \

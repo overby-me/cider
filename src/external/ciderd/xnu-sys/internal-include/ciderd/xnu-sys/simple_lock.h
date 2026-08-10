@@ -5,7 +5,7 @@
 #include "locks.h"
 
 struct usimple_lock {
-	lck_spin_t dtape_interlock;
+	lck_spin_t xnu_sys_interlock;
 };
 
 typedef struct usimple_lock usimple_lock_data_t;

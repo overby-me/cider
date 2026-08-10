@@ -21,9 +21,9 @@
 //! The verdict is the printed line rather than the exit code, matching the other demos.
 
 use cider::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_COUNT as HOST_BASIC_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_OLD_COUNT as HOST_BASIC_INFO_OLD_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_PRIORITY_INFO_COUNT as HOST_PRIORITY_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_BASIC_INFO_COUNT as HOST_BASIC_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_BASIC_INFO_OLD_COUNT as HOST_BASIC_INFO_OLD_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_PRIORITY_INFO_COUNT as HOST_PRIORITY_INFO_COUNT,
     host_basic_info, host_flavor_t, host_priority_info, host_t, mach_msg_type_number_t,
     BASEPRI_DEFAULT, HOST_BASIC_INFO, HOST_PRIORITY_INFO, KERN_FAILURE, KERN_INVALID_ARGUMENT,
     KERN_SUCCESS, MINPRI_KERNEL,
@@ -210,7 +210,7 @@ fn main() {
     );
 
     // ---- processor.c, the same numbers question one level down ----
-    // dtape_processor_init has already run (sched init calls it), so processor_array, pset0
+    // xnu_sys_processor_init has already run (sched init calls it), so processor_array, pset0
     // and master_processor are populated. PROCESSOR_SET_BASIC_INFO reports the CPU count, which
     // is checked against /proc/cpuinfo exactly as the host one was.
     let mut psbuf = [0i32; 32];

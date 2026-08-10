@@ -5,8 +5,8 @@
 
 #include <kern/sync_sema.h>
 
-struct dtape_semaphore {
-	dtape_task_t* owning_task;
+struct xnu_sys_semaphore {
+	xnu_sys_task_t* owning_task;
 	semaphore_t xnu_semaphore;
 };
 

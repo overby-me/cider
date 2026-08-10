@@ -1,6 +1,6 @@
 //! `xnu-sys/src/task.c`, in Rust (#71, fourteenth file).
 //!
-//! NAMED `dtape_task` because `linux/server/src/task.rs` already exists and is the DAEMON side.
+//! NAMED `xnu_sys_task` because `linux/server/src/task.rs` already exists and is the DAEMON side.
 //! Third time that has come up, after kqchan and psynch.
 //!
 //! task.c was 1,766 lines, of which about 1,000 were verbatim XNU that the file itself marked
@@ -27,24 +27,24 @@ use std::os::raw::{c_int, c_uint, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    self, audit_token_t, dserver_rpc_architecture_t, dtape_task, integer_t, ipc_port_t,
+    self, audit_token_t, dserver_rpc_architecture_t, xnu_sys_task, integer_t, ipc_port_t,
     mach_msg_header_t, mach_msg_type_number_t, mach_port_name_t, mach_vm_address_t,
     mach_vm_size_t, natural_t, proc_ident, task_flavor_t, task_info_t, task_t, thread_state_t,
     vm_address_t,
 };
-use crate::xnu::init::dtape_hooks;
+use crate::xnu::init::xnu_sys_hooks;
 
-/// `kernel_task`, assigned by the first `dtape_task_create` with no parent and nsid 0.
+/// `kernel_task`, assigned by the first `xnu_sys_task_create` with no parent and nsid 0.
 #[no_mangle]
 pub static mut kernel_task: task_t = ptr::null_mut();
 
-/// `dtape_task_for_xnu_task`: `always_inline` in C, so there is no symbol to call.
+/// `xnu_sys_task_for_xnu_task`: `always_inline` in C, so there is no symbol to call.
 #[inline]
-pub(crate) unsafe fn task_for_xnu_task(xnu_task: task_t) -> *mut dtape_task {
+pub(crate) unsafe fn task_for_xnu_task(xnu_task: task_t) -> *mut xnu_sys_task {
     if xnu_task.is_null() {
         return ptr::null_mut();
     }
-    (xnu_task as *mut u8).sub(offset_of!(dtape_task, xnu_task)) as *mut dtape_task
+    (xnu_task as *mut u8).sub(offset_of!(xnu_sys_task, xnu_task)) as *mut xnu_sys_task
 }
 
 /// `task_lock` / `task_unlock`, macros over the mutex that is now a reachable field.
@@ -74,7 +74,7 @@ fn mach_port_valid(name: mach_port_name_t) -> bool {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_init() {
+pub unsafe extern "C" fn xnu_sys_task_init() {
     // this will assign to kernel_task
     let arch = if cfg!(target_arch = "x86_64") {
         bindings::dserver_rpc_architecture_t::dserver_rpc_architecture_x86_64
@@ -90,18 +90,18 @@ pub unsafe extern "C" fn dtape_task_init() {
         panic!("Unknown architecture")
     };
 
-    if dtape_task_create(ptr::null_mut(), 0, ptr::null_mut(), arch).is_null() {
+    if xnu_sys_task_create(ptr::null_mut(), 0, ptr::null_mut(), arch).is_null() {
         panic!("Failed to create kernel task");
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_create(
-    parent_task: *mut dtape_task,
+pub unsafe extern "C" fn xnu_sys_task_create(
+    parent_task: *mut xnu_sys_task,
     nsid: u32,
     context: *mut c_void,
     architecture: dserver_rpc_architecture_t,
-) -> *mut dtape_task {
+) -> *mut xnu_sys_task {
     if parent_task.is_null() && nsid == 0 && !kernel_task.is_null() {
         let task = task_for_xnu_task(kernel_task);
 
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn dtape_task_create(
         return task;
     }
 
-    let task = libc_malloc(std::mem::size_of::<dtape_task>()) as *mut dtape_task;
+    let task = libc_malloc(std::mem::size_of::<xnu_sys_task>()) as *mut xnu_sys_task;
     if task.is_null() {
         return ptr::null_mut();
     }
@@ -128,21 +128,21 @@ pub unsafe extern "C" fn dtape_task_create(
     (*task).has_sigexc = false;
     (*task).dyld_info_addr = 0;
     (*task).dyld_info_length = 0;
-    (*task).p_ident.eid = (*dtape_hooks).task_eternal_id.expect("task_eternal_id hook")(context);
-    crate::xnu::locks::dtape_mutex_init(&mut (*task).dyld_info_lock);
-    crate::xnu::condvar::dtape_condvar_init(&mut (*task).dyld_info_condvar);
+    (*task).p_ident.eid = (*xnu_sys_hooks).task_eternal_id.expect("task_eternal_id hook")(context);
+    crate::xnu::locks::xnu_sys_mutex_init(&mut (*task).dyld_info_lock);
+    crate::xnu::condvar::xnu_sys_condvar_init(&mut (*task).dyld_info_condvar);
     ptr::write_bytes(&mut (*task).xnu_task as *mut _ as *mut u8, 0, std::mem::size_of::<bindings::task>());
 
     // this next section uses code adapted from XNU's task_create_internal() in osfmk/kern/task.c
 
-    bindings::dtape_rs_os_ref_init(&mut (*task).xnu_task.ref_count as *mut _ as *mut _);
+    bindings::xnu_sys_rs_os_ref_init(&mut (*task).xnu_task.ref_count as *mut _ as *mut _);
 
     bindings::lck_mtx_init(&mut (*task).xnu_task.lock, ptr::null_mut(), ptr::null_mut());
     queue_init(&mut (*task).xnu_task.threads);
 
     (*task).xnu_task.active = true;
 
-    (*task).xnu_task.map = bindings::dtape_vm_map_create(task);
+    (*task).xnu_task.map = bindings::xnu_sys_vm_map_create(task);
 
     queue_init(&mut (*task).xnu_task.semaphore_list);
 
@@ -150,9 +150,9 @@ pub unsafe extern "C" fn dtape_task_create(
     // which sets itk_bootstrap = IP_NULL. It can then never inherit launchd's bootstrap port,
     // and its first service lookup goes to MACH_PORT_NULL.
     crate::xnu::misc::log(
-        bindings::dtape_log_level_t::dtape_log_level_debug,
+        bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!(
-            "dtape_task_create: nsid={} parent={:p} parent_bootstrap={:p}",
+            "xnu_sys_task_create: nsid={} parent={:p} parent_bootstrap={:p}",
             nsid,
             parent_task,
             if parent_task.is_null() {
@@ -203,13 +203,13 @@ pub unsafe extern "C" fn dtape_task_create(
     if architecture == bindings::dserver_rpc_architecture_t::dserver_rpc_architecture_x86_64
         || architecture == bindings::dserver_rpc_architecture_t::dserver_rpc_architecture_arm64
     {
-        bindings::dtape_rs_task_set_64bit_addr(&mut (*task).xnu_task);
-        bindings::dtape_rs_task_set_64bit_data(&mut (*task).xnu_task);
+        bindings::xnu_sys_rs_task_set_64bit_addr(&mut (*task).xnu_task);
+        bindings::xnu_sys_rs_task_set_64bit_data(&mut (*task).xnu_task);
     }
 
     bindings::ipc_task_enable(&mut (*task).xnu_task);
 
-    crate::xnu::psynch::dtape_psynch_task_init(task);
+    crate::xnu::psynch::xnu_sys_psynch_task_init(task);
 
     if parent_task.is_null() && nsid == 0 {
         if !kernel_task.is_null() {
@@ -223,13 +223,13 @@ pub unsafe extern "C" fn dtape_task_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_destroy(task: *mut dtape_task) {
+pub unsafe extern "C" fn xnu_sys_task_destroy(task: *mut xnu_sys_task) {
     crate::xnu::misc::log(
-        bindings::dtape_log_level_t::dtape_log_level_debug,
+        bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!("{}: task being destroyed", (*task).saved_pid),
     );
 
-    crate::xnu::psynch::dtape_psynch_task_destroy(task);
+    crate::xnu::psynch::xnu_sys_psynch_task_destroy(task);
 
     // this next section uses code adapted from XNU's task_deallocate() in osfmk/kern/task.c
 
@@ -244,20 +244,20 @@ pub unsafe extern "C" fn dtape_task_destroy(task: *mut dtape_task) {
 
     bindings::ipc_task_terminate(&mut (*task).xnu_task);
 
-    bindings::dtape_vm_map_destroy((*task).xnu_task.map);
+    bindings::xnu_sys_vm_map_destroy((*task).xnu_task.map);
 
-    bindings::dtape_rs_is_release((*task).xnu_task.itk_space);
+    bindings::xnu_sys_rs_is_release((*task).xnu_task.itk_space);
 
     bindings::lck_mtx_destroy(&mut (*task).xnu_task.lock, ptr::null_mut());
 
-    (*dtape_hooks).task_context_dispose.expect("task_context_dispose hook")((*task).context);
+    (*xnu_sys_hooks).task_context_dispose.expect("task_context_dispose hook")((*task).context);
 
     libc_free(task as *mut c_void);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_uidgid(
-    task: *mut dtape_task,
+pub unsafe extern "C" fn xnu_sys_task_uidgid(
+    task: *mut xnu_sys_task,
     new_uid: c_int,
     new_gid: c_int,
     old_uid: *mut c_int,
@@ -280,48 +280,48 @@ pub unsafe extern "C" fn dtape_task_uidgid(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_retain(task: *mut dtape_task) {
-    bindings::dtape_rs_task_reference(&mut (*task).xnu_task);
+pub unsafe extern "C" fn xnu_sys_task_retain(task: *mut xnu_sys_task) {
+    bindings::xnu_sys_rs_task_reference(&mut (*task).xnu_task);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_release(task: *mut dtape_task) {
+pub unsafe extern "C" fn xnu_sys_task_release(task: *mut xnu_sys_task) {
     task_deallocate(&mut (*task).xnu_task);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_dying(_task: *mut dtape_task) {
+pub unsafe extern "C" fn xnu_sys_task_dying(_task: *mut xnu_sys_task) {
     // nothing for now
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_set_dyld_info(
-    task: *mut dtape_task,
+pub unsafe extern "C" fn xnu_sys_task_set_dyld_info(
+    task: *mut xnu_sys_task,
     address: u64,
     length: u64,
 ) {
-    crate::xnu::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
+    crate::xnu::locks::xnu_sys_mutex_lock(&mut (*task).dyld_info_lock);
     crate::xnu::misc::log(
-        bindings::dtape_log_level_t::dtape_log_level_debug,
+        bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!("setting dyld info to {length} bytes at {address:x}"),
     );
     (*task).dyld_info_addr = address;
     (*task).dyld_info_length = length;
-    crate::xnu::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
-    crate::xnu::condvar::dtape_condvar_signal(&mut (*task).dyld_info_condvar, usize::MAX);
+    crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*task).dyld_info_lock);
+    crate::xnu::condvar::xnu_sys_condvar_signal(&mut (*task).dyld_info_condvar, usize::MAX);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_set_sigexc_enabled(task: *mut dtape_task, enabled: bool) {
+pub unsafe extern "C" fn xnu_sys_task_set_sigexc_enabled(task: *mut xnu_sys_task, enabled: bool) {
     // FIXME: we should probably have a lock for this
     (*task).has_sigexc = enabled;
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_task_try_resume(task: *mut dtape_task) -> bool {
+pub unsafe extern "C" fn xnu_sys_task_try_resume(task: *mut xnu_sys_task) -> bool {
     if (*task).xnu_task.user_stop_count != 0 {
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_debug,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
             &format!(
                 "sigexc target task is stopped ({}), resuming",
                 (*task).xnu_task.user_stop_count
@@ -336,7 +336,7 @@ pub unsafe extern "C" fn dtape_task_try_resume(task: *mut dtape_task) -> bool {
 #[no_mangle]
 pub unsafe extern "C" fn task_deallocate(xtask: task_t) {
     let task = task_for_xnu_task(xtask);
-    let count = bindings::dtape_rs_os_ref_release(&mut (*xtask).ref_count as *mut _ as *mut _);
+    let count = bindings::xnu_sys_rs_os_ref_release(&mut (*xtask).ref_count as *mut _ as *mut _);
     if count > 0 {
         // IPC importance info might be holding the last reference on the task
         if count == 1 && !(*task).xnu_task.task_imp_base.is_null() {
@@ -344,7 +344,7 @@ pub unsafe extern "C" fn task_deallocate(xtask: task_t) {
         }
         return;
     }
-    dtape_task_destroy(task);
+    xnu_sys_task_destroy(task);
 }
 
 #[no_mangle]
@@ -355,9 +355,9 @@ pub unsafe extern "C" fn pid_from_task(xtask: task_t) -> c_int {
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_get_effective_task_policy(_task: task_t, flavor: c_int) -> c_int {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
     if flavor == bindings::TASK_POLICY_ROLE as c_int {
-        bindings::dtape_rs_host_consts_DTAPE_RS_TASK_UNSPECIFIED as c_int
+        bindings::xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_UNSPECIFIED as c_int
     } else {
         panic!("Unimplemented proc_get_effective_task_policy flavor: {flavor}")
     }
@@ -373,24 +373,24 @@ pub unsafe extern "C" fn task_policy_update_complete_unlocked(
     _task: task_t,
     _pend_token: bindings::task_pend_token_t,
 ) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_port_notify(_msg: *mut mach_msg_header_t) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_port_with_flavor_notify(_msg: *mut mach_msg_header_t) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_suspension_notify(
     _request_header: *mut mach_msg_header_t,
 ) -> bindings::boolean_t {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
     0
 }
 
@@ -400,14 +400,14 @@ pub unsafe extern "C" fn task_update_boost_locked(
     _boost_active: bindings::boolean_t,
     _pend_token: bindings::task_pend_token_t,
 ) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_watchport_elem_deallocate(
     _watchport_elem: *mut bindings::task_watchport_elem,
 ) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
@@ -417,7 +417,7 @@ pub unsafe extern "C" fn task_create_suid_cred(
     _uid: bindings::suid_cred_uid_t,
     _sc_p: *mut bindings::suid_cred_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -425,7 +425,7 @@ pub unsafe extern "C" fn task_dyld_process_info_notify_deregister(
     _task: task_t,
     _rcv_name: mach_port_name_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -433,7 +433,7 @@ pub unsafe extern "C" fn task_dyld_process_info_notify_register(
     _task: task_t,
     _sright: ipc_port_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -441,7 +441,7 @@ pub unsafe extern "C" fn task_generate_corpse(
     _task: task_t,
     _corpse_task_port: *mut ipc_port_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -449,7 +449,7 @@ pub unsafe extern "C" fn task_get_assignment(
     _task: task_t,
     _pset: *mut bindings::processor_set_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -459,7 +459,7 @@ pub unsafe extern "C" fn task_get_state(
     _state: thread_state_t,
     _state_count: *mut mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 /// `TASK_LEGACY_DYLD_INFO_COUNT`, defined inside `task_info` in the C: the count that stops
@@ -476,19 +476,19 @@ pub unsafe extern "C" fn task_info(
     task_info_count: *mut mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
     use bindings::{
-        dtape_rs_host_consts_DTAPE_RS_MACH_TASK_BASIC_INFO_COUNT as MACH_TASK_BASIC_INFO_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_AUDIT_TOKEN_COUNT as TASK_AUDIT_TOKEN_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_BASIC_INFO_32_COUNT as TASK_BASIC_INFO_32_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_BASIC_INFO_64_COUNT as TASK_BASIC_INFO_64_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_DYLD_INFO_COUNT as TASK_DYLD_INFO_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_FLAGS_INFO_COUNT as TASK_FLAGS_INFO_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_THREAD_TIMES_INFO_COUNT as TASK_THREAD_TIMES_INFO_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV0_COUNT as TASK_VM_INFO_REV0_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV1_COUNT as TASK_VM_INFO_REV1_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV2_COUNT as TASK_VM_INFO_REV2_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV3_COUNT as TASK_VM_INFO_REV3_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV4_COUNT as TASK_VM_INFO_REV4_COUNT,
-        dtape_rs_host_consts_DTAPE_RS_TASK_VM_INFO_REV5_COUNT as TASK_VM_INFO_REV5_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_MACH_TASK_BASIC_INFO_COUNT as MACH_TASK_BASIC_INFO_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_AUDIT_TOKEN_COUNT as TASK_AUDIT_TOKEN_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_BASIC_INFO_32_COUNT as TASK_BASIC_INFO_32_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_BASIC_INFO_64_COUNT as TASK_BASIC_INFO_64_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_DYLD_INFO_COUNT as TASK_DYLD_INFO_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_FLAGS_INFO_COUNT as TASK_FLAGS_INFO_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_THREAD_TIMES_INFO_COUNT as TASK_THREAD_TIMES_INFO_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV0_COUNT as TASK_VM_INFO_REV0_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV1_COUNT as TASK_VM_INFO_REV1_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV2_COUNT as TASK_VM_INFO_REV2_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV3_COUNT as TASK_VM_INFO_REV3_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV4_COUNT as TASK_VM_INFO_REV4_COUNT,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_TASK_VM_INFO_REV5_COUNT as TASK_VM_INFO_REV5_COUNT,
     };
 
     let task = task_for_xnu_task(xtask);
@@ -500,14 +500,14 @@ pub unsafe extern "C" fn task_info(
         || flavor == bindings::TASK_BASIC_INFO_64
         || flavor == bindings::MACH_TASK_BASIC_INFO
     {
-        let mut mem_info: bindings::dtape_memory_info_t = std::mem::zeroed();
-        (*dtape_hooks).task_get_memory_info.expect("task_get_memory_info hook")(
+        let mut mem_info: bindings::xnu_sys_memory_info_t = std::mem::zeroed();
+        (*xnu_sys_hooks).task_get_memory_info.expect("task_get_memory_info hook")(
             (*task).context,
             &mut mem_info,
         );
 
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_debug,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
             "task_info: TODO: fetch utimeus and stimeus somehow",
         );
         let utimeus: u64 = 0;
@@ -569,7 +569,7 @@ pub unsafe extern "C" fn task_info(
         *task_info_count = TASK_THREAD_TIMES_INFO_COUNT as mach_msg_type_number_t;
 
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_debug,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
             "task_info: TODO: fetch utimeus and stimeus somehow",
         );
         let utimeus: u64 = 0;
@@ -599,23 +599,23 @@ pub unsafe extern "C" fn task_info(
         // This call may block, waiting for Darling to provide this information
         // shortly after startup.
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_debug,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
             &format!("going to read dyld info for task {:p} ({})", task, (*task).saved_pid),
         );
 
-        crate::xnu::locks::dtape_mutex_lock(&mut (*task).dyld_info_lock);
+        crate::xnu::locks::xnu_sys_mutex_lock(&mut (*task).dyld_info_lock);
 
         while (*task).dyld_info_addr == 0 && (*task).dyld_info_length == 0 {
             crate::xnu::misc::log(
-                bindings::dtape_log_level_t::dtape_log_level_debug,
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
                 &format!("going to wait for dyld info for task {:p} ({})", task, (*task).saved_pid),
             );
-            crate::xnu::condvar::dtape_condvar_wait(
+            crate::xnu::condvar::xnu_sys_condvar_wait(
                 &mut (*task).dyld_info_condvar,
                 &mut (*task).dyld_info_lock,
             );
             crate::xnu::misc::log(
-                bindings::dtape_log_level_t::dtape_log_level_debug,
+                bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
                 &format!("awoken from dyld info wait for task {:p} ({})", task, (*task).saved_pid),
             );
         }
@@ -623,7 +623,7 @@ pub unsafe extern "C" fn task_info(
         (*info).all_image_info_addr = (*task).dyld_info_addr as mach_vm_address_t;
         (*info).all_image_info_size = (*task).dyld_info_length as mach_vm_size_t;
 
-        crate::xnu::locks::dtape_mutex_unlock(&mut (*task).dyld_info_lock);
+        crate::xnu::locks::xnu_sys_mutex_unlock(&mut (*task).dyld_info_lock);
 
         // struct task_dyld_info is PACKED, so a reference to a field of it is unaligned and
         // Rust refuses to form one. Reading the two values into locals is what the C log does
@@ -631,7 +631,7 @@ pub unsafe extern "C" fn task_info(
         let logged_addr = ptr::addr_of!((*info).all_image_info_addr).read_unaligned();
         let logged_size = ptr::addr_of!((*info).all_image_info_size).read_unaligned();
         crate::xnu::misc::log(
-            bindings::dtape_log_level_t::dtape_log_level_debug,
+            bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
             &format!(
                 "got dyld info for task {:p} ({}): {} bytes at {:x}",
                 task,
@@ -682,8 +682,8 @@ pub unsafe extern "C" fn task_info(
             orig_info_count as usize * std::mem::size_of::<natural_t>(),
         );
 
-        let mut meminfo: bindings::dtape_memory_info_t = std::mem::zeroed();
-        (*dtape_hooks).task_get_memory_info.expect("task_get_memory_info hook")(
+        let mut meminfo: bindings::xnu_sys_memory_info_t = std::mem::zeroed();
+        (*xnu_sys_hooks).task_get_memory_info.expect("task_get_memory_info hook")(
             (*task).context,
             &mut meminfo,
         );
@@ -735,7 +735,7 @@ pub unsafe extern "C" fn task_info(
         return success;
     }
 
-    crate::dtape_stub_unsafe!("unimplemented flavor")
+    crate::xnu_sys_stub_unsafe!("unimplemented flavor")
 }
 
 /// `task_has_64Bit_addr(task)`, a macro over `t_flags` that is reachable now that the struct is
@@ -752,13 +752,13 @@ pub unsafe extern "C" fn task_inspect(
     _info_out: bindings::task_inspect_info_t,
     _size_in_out: *mut mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_FAILURE as bindings::kern_return_t
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_is_driver(_task: task_t) -> bool {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     false
 }
 
@@ -769,7 +769,7 @@ pub unsafe extern "C" fn task_map_corpse_info(
     _kcd_addr_begin: *mut vm_address_t,
     _kcd_size: *mut u32,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -779,12 +779,12 @@ pub unsafe extern "C" fn task_map_corpse_info_64(
     _kcd_addr_begin: *mut mach_vm_address_t,
     _kcd_size: *mut mach_vm_size_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_name_deallocate(_task_name: bindings::task_name_t) {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -795,12 +795,12 @@ pub unsafe extern "C" fn task_policy_get(
     _count: *mut mach_msg_type_number_t,
     _get_default: *mut bindings::boolean_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_policy_get_deallocate(_t: bindings::task_policy_get_t) {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -810,7 +810,7 @@ pub unsafe extern "C" fn task_policy_set(
     _policy_info: bindings::task_policy_t,
     _count: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     bindings::KERN_SUCCESS as bindings::kern_return_t
 }
 
@@ -824,7 +824,7 @@ pub unsafe extern "C" fn task_purgable_info(
     _task: task_t,
     _stats: *mut bindings::task_purgable_info_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -833,7 +833,7 @@ pub unsafe extern "C" fn task_register_dyld_image_infos(
     _infos_copy: bindings::dyld_kernel_image_info_array_t,
     _infos_len: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -843,7 +843,7 @@ pub unsafe extern "C" fn task_register_dyld_shared_cache_image_info(
     _no_cache: bindings::boolean_t,
     _private_cache: bindings::boolean_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -852,14 +852,14 @@ pub unsafe extern "C" fn task_restartable_ranges_register(
     _ranges: *mut bindings::task_restartable_range_t,
     _count: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_restartable_ranges_synchronize(
     _task: task_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -867,7 +867,7 @@ pub unsafe extern "C" fn task_set_exc_guard_behavior(
     _task: task_t,
     _behavior: bindings::task_exc_guard_behavior_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -877,7 +877,7 @@ pub unsafe extern "C" fn task_set_info(
     _task_info_in: task_info_t,
     _task_info_count: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -886,7 +886,7 @@ pub unsafe extern "C" fn task_set_phys_footprint_limit(
     _new_limit_mb: c_int,
     _old_limit_mb: *mut c_int,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -896,19 +896,19 @@ pub unsafe extern "C" fn task_set_state(
     _state: thread_state_t,
     _state_count: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_suspension_token_deallocate(
     _token: bindings::task_suspension_token_t,
 ) {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_terminate(_task: task_t) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -917,7 +917,7 @@ pub unsafe extern "C" fn task_unregister_dyld_image_infos(
     _infos_copy: bindings::dyld_kernel_image_info_array_t,
     _infos_len: mach_msg_type_number_t,
 ) -> bindings::kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 /// The shared body of `task_for_pid` and `task_name_for_pid`.
@@ -932,7 +932,7 @@ unsafe fn task_for_pid_internal(
 ) -> bindings::kern_return_t {
     let mut kr = bindings::KERN_FAILURE as bindings::kern_return_t;
     let mut receiving_task: task_t = ptr::null_mut();
-    let mut looked_up_task: *mut dtape_task = ptr::null_mut();
+    let mut looked_up_task: *mut xnu_sys_task = ptr::null_mut();
     let mut right: ipc_port_t = ptr::null_mut();
     let mut out_name: mach_port_name_t = 0;
 
@@ -942,7 +942,7 @@ unsafe fn task_for_pid_internal(
             break 'out;
         }
 
-        looked_up_task = (*dtape_hooks).task_lookup.expect("task_lookup hook")(pid, true, true);
+        looked_up_task = (*xnu_sys_hooks).task_lookup.expect("task_lookup hook")(pid, true, true);
         if looked_up_task.is_null() {
             break 'out;
         }
@@ -951,7 +951,7 @@ unsafe fn task_for_pid_internal(
             bindings::convert_task_name_to_port(&mut (*looked_up_task).xnu_task)
         } else if std::ptr::eq(
             &(*looked_up_task).xnu_task as *const _,
-            bindings::dtape_rs_current_task() as *const _,
+            bindings::xnu_sys_rs_current_task() as *const _,
         ) {
             bindings::convert_task_to_port_pinned(&mut (*looked_up_task).xnu_task)
         } else {
@@ -997,7 +997,7 @@ unsafe fn task_for_pid_internal(
         bindings::ipc_port_release_send(right);
     }
     if !looked_up_task.is_null() {
-        dtape_task_release(looked_up_task);
+        xnu_sys_task_release(looked_up_task);
     }
     if !receiving_task.is_null() {
         task_deallocate(receiving_task);
@@ -1059,14 +1059,14 @@ pub unsafe extern "C" fn pid_for_task(
 
 #[no_mangle]
 pub unsafe extern "C" fn task_is_exec_copy(_task: task_t) -> bindings::boolean_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn task_wait_locked(_task: task_t, _until_not_runnable: bindings::boolean_t) {
     // this was stubbed in the LKM, so it should be safe to stub here
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 //
@@ -1075,24 +1075,24 @@ pub unsafe extern "C" fn task_wait_locked(_task: task_t, _until_not_runnable: bi
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_find_ident(i: *const proc_ident) -> *mut c_void {
-    (*dtape_hooks).task_lookup_eternal.expect("task_lookup_eternal hook")((*i).eid, true)
+    (*xnu_sys_hooks).task_lookup_eternal.expect("task_lookup_eternal hook")((*i).eid, true)
         as *mut c_void
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_rele(p: *mut c_void) -> c_int {
-    dtape_task_release(p as *mut dtape_task);
+    xnu_sys_task_release(p as *mut xnu_sys_task);
     0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_task(p: *mut c_void) -> task_t {
-    &mut (*(p as *mut dtape_task)).xnu_task
+    &mut (*(p as *mut xnu_sys_task)).xnu_task
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_ident(p: *mut c_void) -> proc_ident {
-    (*(p as *mut dtape_task)).p_ident
+    (*(p as *mut xnu_sys_task)).p_ident
 }
 
 //

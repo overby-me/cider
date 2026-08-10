@@ -403,7 +403,7 @@ unsafe fn run(cfg: Config) -> ! {
                 if !mach_kqchans[idx].on_readable() {
                     let kq = mach_kqchans.remove(idx);
                     epoll_del(epfd, kq.daemon_fd);
-                    // dropping kq disables the dtape notifications + closes the fd
+                    // dropping kq disables the xnu_sys notifications + closes the fd
                 }
             } else if let Some(idx) = consoles.iter().position(|&c| c == fd) {
                 // Guest console output (console_open, task #60): drain + log to the daemon stderr.

@@ -2850,7 +2850,7 @@ ipc_kmsg_copyin_header(
 	if (!MACH_PORT_VALID(dest_name)) {
 #ifdef __DARLING__
 		/* Task #47: which name, and which of the three ways it can be rejected. */
-		dtape_log_debug("copyin_header: INVALID_DEST (name not valid) dest=0x%x reply=0x%x dest_type=%d",
+		xnu_sys_log_debug("copyin_header: INVALID_DEST (name not valid) dest=0x%x reply=0x%x dest_type=%d",
 		    dest_name, reply_name, dest_type);
 #endif
 		return MACH_SEND_INVALID_DEST;
@@ -2860,7 +2860,7 @@ ipc_kmsg_copyin_header(
 	if (!is_active(space)) {
 		is_write_unlock(space);
 #ifdef __DARLING__
-		dtape_log_debug("copyin_header: INVALID_DEST (space dead) dest=0x%x reply=0x%x",
+		xnu_sys_log_debug("copyin_header: INVALID_DEST (space dead) dest=0x%x reply=0x%x",
 		    dest_name, reply_name);
 #endif
 		return MACH_SEND_INVALID_DEST;
@@ -3344,7 +3344,7 @@ invalid_dest:
 	 * was live, so the lookup itself failed -- the guest holds a name that no longer
 	 * names a send right. This is the FIRST thing that goes wrong in a launchd boot.
 	 */
-	dtape_log_debug("copyin_header: INVALID_DEST (lookup failed) dest=0x%x reply=0x%x dest_type=%d reply_type=%d",
+	xnu_sys_log_debug("copyin_header: INVALID_DEST (lookup failed) dest=0x%x reply=0x%x dest_type=%d reply_type=%d",
 	    dest_name, reply_name, dest_type, reply_type);
 #endif
 	return MACH_SEND_INVALID_DEST;

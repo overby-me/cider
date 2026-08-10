@@ -3,7 +3,7 @@
 //! traps act on that guest). Starts with the special-port Mach traps; this is where the
 //! remaining ~70 calls get implemented as the daemon grows. See PLAN.md.
 
-use crate::bindings::dtape_semaphore_t;
+use crate::bindings::xnu_sys_semaphore_t;
 use crate::rpc_wire::{self, *};
 use crate::{mach, psynch, sched, task, thread, traps};
 use std::collections::HashMap;
@@ -16,7 +16,7 @@ const ARCH_ARM64: u32 = 4;
 
 /// Map an XNU-trap return (0 == success) to the handler Result the dispatcher expects:
 /// Ok(()) encodes reply code 0, Err(code) passes the trap's status through verbatim --
-/// exactly what the generated `Thread::syscallReturn(dtape_<trap>(...))` does.
+/// exactly what the generated `Thread::syscallReturn(xnu_sys_<trap>(...))` does.
 fn trap(r: i32) -> Result<(), i32> {
     if r == 0 {
         Ok(())
@@ -30,7 +30,7 @@ fn trap(r: i32) -> Result<(), i32> {
 /// contended lock, that its continuation fills before the deferred reply), then pairs the
 /// returned errno with the retval `mk` turns into the per-op reply body. Ok(body) encodes
 /// reply code 0 with the retval; Err(code) passes the errno through -- exactly C++'s
-/// `Thread::syscallReturn(dtape_psynch_<op>(..., bsdReturnValuePointer()))` +
+/// `Thread::syscallReturn(xnu_sys_psynch_<op>(..., bsdReturnValuePointer()))` +
 /// `sendBSDReply(code, _bsdReturnValue)`. For a blocking op this never returns (the
 /// continuation re-enters the doWork loop, which posts the reply); see ciderd.
 fn psynch_op<R>(mk: impl FnOnce(u32) -> R, f: impl FnOnce(*mut u32) -> i32) -> Result<R, i32> {
@@ -125,7 +125,7 @@ unsafe fn send_thread_signal(mt: *mut crate::sched::Microthread, signal: i32) ->
 }
 
 /// Per-guest-process state the daemon tracks in userspace (the parts of C++
-/// DarlingServer::Process that the RPC handlers touch, beyond the dtape task). Keyed by
+/// DarlingServer::Process that the RPC handlers touch, beyond the xnu_sys task). Keyed by
 /// nsid in `Handler::procs`.
 pub struct ProcState {
     /// The guest's pid in its OWN pid namespace (call header pid) -- identity/routing key.
@@ -155,7 +155,7 @@ pub struct ProcState {
     pub parent_nsid: Option<u32>,
     /// This process's fork-wait semaphore (owned by its task): fork_wait_for_child blocks
     /// on it; a forked child ups it on checkin. Mirrors Process::_dtapeForkWaitSemaphore.
-    pub fork_sem: Option<*mut dtape_semaphore_t>,
+    pub fork_sem: Option<*mut xnu_sys_semaphore_t>,
 }
 
 impl Drop for ProcState {
@@ -194,7 +194,7 @@ impl ProcState {
 }
 
 // ---- dserverdbg port/message enumeration (task #60) ----
-// Daemon-facing debug records; same layout as the xnu-sys's dtape_debug_port_t / _message_t and
+// Daemon-facing debug records; same layout as the xnu-sys's xnu_sys_debug_port_t / _message_t and
 // dserver_debug_port_t / _message_t that dserverdbg reads (generate-rpc-wrappers.py:819,826).
 #[repr(C)]
 struct DserverDebugPort {
@@ -212,21 +212,21 @@ struct DserverDebugMessage {
 // Rust since #71, so imported rather than declared through the linker (#75). Each walks a task
 // port table and calls the iterator back per entry, returning the count.
 use crate::xnu::debug::{
-    dtape_debug_port_list_messages, dtape_debug_portset_list_members, dtape_debug_task_list_ports,
+    xnu_sys_debug_port_list_messages, xnu_sys_debug_portset_list_members, xnu_sys_debug_task_list_ports,
 };
 
-/// dtape port iterator: write each port as a dserver_debug_port_t to the pipe fd in `context`
+/// xnu_sys port iterator: write each port as a dserver_debug_port_t to the pipe fd in `context`
 /// (a *RawFd). Mirrors the C++ lambda in DebugListPorts/Members (call.cpp:1122).
-unsafe extern "C" fn debug_port_writer(context: *mut libc::c_void, port: *const crate::bindings::dtape_debug_port_t) -> bool {
+unsafe extern "C" fn debug_port_writer(context: *mut libc::c_void, port: *const crate::bindings::xnu_sys_debug_port_t) -> bool {
     let fd = *(context as *const RawFd);
     let p = &*port;
     let out = DserverDebugPort { port_name: p.name, rights: p.rights, refs: p.refs, messages: p.messages };
     libc::write(fd, &out as *const _ as *const libc::c_void, std::mem::size_of::<DserverDebugPort>());
     true
 }
-/// dtape message iterator: write each message as a dserver_debug_message_t to the pipe fd in
+/// xnu_sys message iterator: write each message as a dserver_debug_message_t to the pipe fd in
 /// `context`. Mirrors the C++ lambda in DebugListMessages (call.cpp:1184).
-unsafe extern "C" fn debug_message_writer(context: *mut libc::c_void, message: *const crate::bindings::dtape_debug_message_t) -> bool {
+unsafe extern "C" fn debug_message_writer(context: *mut libc::c_void, message: *const crate::bindings::xnu_sys_debug_message_t) -> bool {
     let fd = *(context as *const RawFd);
     let m = &*message;
     let out = DserverDebugMessage { sender: m.sender, size: m.size };
@@ -404,7 +404,7 @@ impl rpc_wire::RpcHandler for Handler {
     /// (ports, rights, notifications) is torn down -- otherwise a later send to the dead
     /// thread's ports spins the daemon ("kmsg to pid -1"). The daemon then reaps its
     /// microthread + slot (see ciderd::reap_thread). Mirrors C++ Call::Checkout ->
-    /// dtape_thread_dying. (The exec-listener branch is a later refinement.)
+    /// xnu_sys_thread_dying. (The exec-listener branch is a later refinement.)
     fn checkout(&mut self, _call: &CallCheckout, fds: &[RawFd]) -> Result<(), i32> {
         // Checkout carries the process's `lifetime_listener_pipe` read end via SCM_RIGHTS.
         // The C++ daemon holds it (EOF => ungraceful-death detection); this daemon reaps here
@@ -422,7 +422,7 @@ impl rpc_wire::RpcHandler for Handler {
         }
         let mt = sched::current();
         if !mt.is_null() {
-            unsafe { thread::dying((*mt).dtape_thread()) };
+            unsafe { thread::dying((*mt).xnu_sys_thread()) };
         }
         Ok(())
     }
@@ -453,7 +453,7 @@ impl rpc_wire::RpcHandler for Handler {
             if mt.is_null() {
                 return Err(-libc::ESRCH);
             }
-            (*mt).dtape_thread()
+            (*mt).xnu_sys_thread()
         };
         if dthread.is_null() {
             return Err(-libc::ESRCH);
@@ -470,7 +470,7 @@ impl rpc_wire::RpcHandler for Handler {
             if mt.is_null() {
                 return Err(-libc::ESRCH);
             }
-            (*mt).dtape_thread()
+            (*mt).xnu_sys_thread()
         };
         if dthread.is_null() {
             return Err(-libc::ESRCH);
@@ -490,7 +490,7 @@ impl rpc_wire::RpcHandler for Handler {
         if mt.is_null() {
             return Err(-libc::ESRCH);
         }
-        let dthread = unsafe { (*mt).dtape_thread() };
+        let dthread = unsafe { (*mt).xnu_sys_thread() };
         if dthread.is_null() {
             return Err(-libc::ESRCH);
         }
@@ -539,7 +539,7 @@ impl rpc_wire::RpcHandler for Handler {
         if mt.is_null() {
             return Err(-libc::ESRCH);
         }
-        let dthread = unsafe { (*mt).dtape_thread() };
+        let dthread = unsafe { (*mt).xnu_sys_thread() };
         if dthread.is_null() {
             return Err(-libc::ESRCH);
         }
@@ -716,7 +716,7 @@ impl rpc_wire::RpcHandler for Handler {
         trap(unsafe { traps::mach_vm_deallocate(call.target, call.address, call.size) })
     }
 
-    // ---- Mach semaphore traps. The wait variants may block (dtape thread_suspend);
+    // ---- Mach semaphore traps. The wait variants may block (xnu_sys thread_suspend);
     // the reply is then sent when the microthread is woken -- routed by the persistent
     // doWork serve loop (see ciderd). The signal variants never block. ----
     fn semaphore_signal(&mut self, call: &CallSemaphoreSignal, _fds: &[RawFd]) -> Result<(), i32> {
@@ -1077,7 +1077,7 @@ impl rpc_wire::RpcHandler for Handler {
         // Was a nested `extern "C"` block resolving back into this crate through the linker;
         // imported since xnu-sys became Rust (#71, #75). Nested rather than at file scope,
         // which is why it survived the earlier sweep of this file.
-        use crate::xnu::debug::dtape_debug_task_port_count;
+        use crate::xnu::debug::xnu_sys_debug_task_port_count;
         // Matches dserver_debug_process_t (dserverdbg.c:336 reads pid:%u, port_count:%lu): u32 then
         // 4 bytes pad then u64 = 16 bytes under repr(C), exactly what the reader expects.
         #[repr(C)]
@@ -1097,7 +1097,7 @@ impl rpc_wire::RpcHandler for Handler {
             let port_count = if task.is_null() {
                 0
             } else {
-                unsafe { dtape_debug_task_port_count(task) }
+                unsafe { xnu_sys_debug_task_port_count(task) }
             };
             let entry = DebugProcess { pid: nsid, port_count };
             unsafe {
@@ -1123,7 +1123,7 @@ impl rpc_wire::RpcHandler for Handler {
         }
         let (rd, wr) = (pipes[0], pipes[1]);
         let count = unsafe {
-            dtape_debug_task_list_ports(task, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
+            xnu_sys_debug_task_list_ports(task, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
         };
         unsafe { libc::close(wr) };
         self.reply_fds.push(rd);
@@ -1143,7 +1143,7 @@ impl rpc_wire::RpcHandler for Handler {
         }
         let (rd, wr) = (pipes[0], pipes[1]);
         let count = unsafe {
-            dtape_debug_portset_list_members(task, call.portset, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
+            xnu_sys_debug_portset_list_members(task, call.portset, Some(debug_port_writer), &wr as *const RawFd as *mut libc::c_void)
         };
         unsafe { libc::close(wr) };
         self.reply_fds.push(rd);
@@ -1163,7 +1163,7 @@ impl rpc_wire::RpcHandler for Handler {
         }
         let (rd, wr) = (pipes[0], pipes[1]);
         let count = unsafe {
-            dtape_debug_port_list_messages(task, call.port, Some(debug_message_writer), &wr as *const RawFd as *mut libc::c_void)
+            xnu_sys_debug_port_list_messages(task, call.port, Some(debug_message_writer), &wr as *const RawFd as *mut libc::c_void)
         };
         unsafe { libc::close(wr) };
         self.reply_fds.push(rd);

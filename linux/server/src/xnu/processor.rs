@@ -12,7 +12,7 @@
 //! shows it expanding to a statement expression holding a function-static
 //! `vm_allocation_site_t`, so writing it in Rust would have meant un-opaquing part of `vm_.*`
 //! for the whole crate. `simple_lock_init` is a macro too. Both are now C SHIMS
-//! (`xnu-sys/src/dtape_rs_shims.c`), which is the remedy for a macro blocker that costs one
+//! (`xnu-sys/src/xnu_sys_rs_shims.c`), which is the remedy for a macro blocker that costs one
 //! object file instead of a permanent widening of the bindings, and with them the ranker puts
 //! this file at zero blockers.
 //!
@@ -28,7 +28,7 @@ use std::os::raw::{c_int, c_uint};
 use std::ptr;
 
 use crate::bindings::{
-    boolean_t, dtape_load_info_t, dtape_rs_kalloc, dtape_rs_simple_lock_init, host_t, integer_t,
+    boolean_t, xnu_sys_load_info_t, xnu_sys_rs_kalloc, xnu_sys_rs_simple_lock_init, host_t, integer_t,
     kern_return_t, mach_msg_type_number_t, policy_fifo_base, policy_fifo_limit, policy_rr_base,
     policy_rr_limit, policy_timeshare_base, policy_timeshare_limit, processor, processor_basic_info,
     processor_cpu_load_info, processor_flavor_t, processor_info_t, processor_set,
@@ -43,27 +43,27 @@ use crate::bindings::{
 };
 
 // The sizeof-expression counts, evaluated by the C compiler from the real macros. See the
-// dtape_rs_host_consts enum in wrapper.h for why these cannot come from bindgen directly.
+// xnu_sys_rs_host_consts enum in wrapper.h for why these cannot come from bindgen directly.
 use crate::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_CPU_SUBTYPE_X86_64_ALL as CPU_SUBTYPE_X86_64_ALL,
-    dtape_rs_host_consts_DTAPE_RS_CPU_TYPE_X86 as CPU_TYPE_X86,
-    dtape_rs_host_consts_DTAPE_RS_MAX_SCHED_CPUS as MAX_SCHED_CPUS,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_FIFO_BASE_COUNT as POLICY_FIFO_BASE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_FIFO_LIMIT_COUNT as POLICY_FIFO_LIMIT_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_RR_BASE_COUNT as POLICY_RR_BASE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_RR_LIMIT_COUNT as POLICY_RR_LIMIT_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_TIMESHARE_BASE_COUNT as POLICY_TIMESHARE_BASE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_POLICY_TIMESHARE_LIMIT_COUNT as POLICY_TIMESHARE_LIMIT_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_PROCESSOR_BASIC_INFO_COUNT as PROCESSOR_BASIC_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_PROCESSOR_CPU_LOAD_INFO_COUNT as PROCESSOR_CPU_LOAD_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_PROCESSOR_SET_BASIC_INFO_COUNT as PROCESSOR_SET_BASIC_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_PROCESSOR_SET_LOAD_INFO_COUNT as PROCESSOR_SET_LOAD_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_CPU_SUBTYPE_X86_64_ALL as CPU_SUBTYPE_X86_64_ALL,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_CPU_TYPE_X86 as CPU_TYPE_X86,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_MAX_SCHED_CPUS as MAX_SCHED_CPUS,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_FIFO_BASE_COUNT as POLICY_FIFO_BASE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_FIFO_LIMIT_COUNT as POLICY_FIFO_LIMIT_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_RR_BASE_COUNT as POLICY_RR_BASE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_RR_LIMIT_COUNT as POLICY_RR_LIMIT_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_TIMESHARE_BASE_COUNT as POLICY_TIMESHARE_BASE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_POLICY_TIMESHARE_LIMIT_COUNT as POLICY_TIMESHARE_LIMIT_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_PROCESSOR_BASIC_INFO_COUNT as PROCESSOR_BASIC_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_PROCESSOR_CPU_LOAD_INFO_COUNT as PROCESSOR_CPU_LOAD_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_PROCESSOR_SET_BASIC_INFO_COUNT as PROCESSOR_SET_BASIC_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_PROCESSOR_SET_LOAD_INFO_COUNT as PROCESSOR_SET_LOAD_INFO_COUNT,
 };
 
 const MAX_CPUS: usize = MAX_SCHED_CPUS as usize;
 
 use crate::bindings::realhost;
-use crate::xnu::init::dtape_hooks;
+use crate::xnu::init::xnu_sys_hooks;
 
 extern "C" {
     /// glibc, declared here for the same reason processor.c declares them itself: they are
@@ -129,10 +129,10 @@ pub fn pset0_for_test() -> processor_set_t {
 
 // ---------------------------------------------------------------------------------------
 
-/// Build the processor list. Called once, from `dtape_init`.
+/// Build the processor list. Called once, from `xnu_sys_init`.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_processor_init() {
-    dtape_rs_simple_lock_init(ptr::addr_of_mut!(processor_list_lock) as *mut simple_lock_data_t);
+pub unsafe extern "C" fn xnu_sys_processor_init() {
+    xnu_sys_rs_simple_lock_init(ptr::addr_of_mut!(processor_list_lock) as *mut simple_lock_data_t);
 
     processor_count = get_nprocs_conf() as c_uint;
     if processor_count as usize > MAX_CPUS {
@@ -149,10 +149,10 @@ pub unsafe extern "C" fn dtape_processor_init() {
     primary_processor_avail_count_user = processor_avail_count;
 
     for i in 0..processor_count as usize {
-        // dtape_rs_kalloc, not libc::malloc: kalloc is a macro that reaches XNU's own heap
+        // xnu_sys_rs_kalloc, not libc::malloc: kalloc is a macro that reaches XNU's own heap
         // through kalloc_ext(KHEAP_DEFAULT, ...), and the shim keeps that rather than
         // substituting a different allocator for memory XNU will free.
-        let p = dtape_rs_kalloc(std::mem::size_of::<processor>()) as processor_t;
+        let p = xnu_sys_rs_kalloc(std::mem::size_of::<processor>()) as processor_t;
         processor_array[i] = p;
         if p.is_null() {
             continue;
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn processor_info(
                 return kr(KERN_FAILURE);
             }
 
-            crate::dtape_stub_safe!("PROCESSOR_CPU_LOAD_INFO");
+            crate::xnu_sys_stub_safe!("PROCESSOR_CPU_LOAD_INFO");
 
             let info = raw_info as *mut processor_cpu_load_info;
             (*info).cpu_ticks[CPU_STATE_USER as usize] = 0;
@@ -250,8 +250,8 @@ pub unsafe extern "C" fn processor_set_statistics(
             (*info).mach_factor = 0;
             (*info).load_average = 0;
 
-            let mut load_info: dtape_load_info_t = std::mem::zeroed();
-            if let Some(get_load_info) = (*dtape_hooks).get_load_info {
+            let mut load_info: xnu_sys_load_info_t = std::mem::zeroed();
+            if let Some(get_load_info) = (*xnu_sys_hooks).get_load_info {
                 get_load_info(&mut load_info);
             }
             (*info).task_count = load_info.task_count as c_int;
@@ -406,7 +406,7 @@ pub unsafe extern "C" fn processor_assign(
     _new_pset: processor_set_t,
     _wait: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     kr(KERN_FAILURE)
 }
 
@@ -416,12 +416,12 @@ pub unsafe extern "C" fn processor_control(
     _info: processor_info_t,
     _count: mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn processor_exit_from_user(_processor: processor_t) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -429,12 +429,12 @@ pub unsafe extern "C" fn processor_get_assignment(
     _processor: processor_t,
     _pset: *mut processor_set_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn processor_start_from_user(_processor: processor_t) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -443,12 +443,12 @@ pub unsafe extern "C" fn processor_set_create(
     _new_set: *mut processor_set_t,
     _new_name: *mut processor_set_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn processor_set_destroy(_pset: processor_set_t) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -457,7 +457,7 @@ pub unsafe extern "C" fn processor_set_max_priority(
     _max_priority: c_int,
     _change_threads: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -468,7 +468,7 @@ pub unsafe extern "C" fn processor_set_policy_control(
     _count: mach_msg_type_number_t,
     _change: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -477,7 +477,7 @@ pub unsafe extern "C" fn processor_set_policy_disable(
     _policy: c_int,
     _change_threads: boolean_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -485,7 +485,7 @@ pub unsafe extern "C" fn processor_set_policy_enable(
     _pset: processor_set_t,
     _policy: c_int,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -497,7 +497,7 @@ pub unsafe extern "C" fn processor_set_stack_usage(
     _maxusagep: *mut vm_size_t,
     _maxstackp: *mut vm_offset_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -506,7 +506,7 @@ pub unsafe extern "C" fn processor_set_tasks(
     _task_list: *mut task_array_t,
     _count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -516,7 +516,7 @@ pub unsafe extern "C" fn processor_set_tasks_with_flavor(
     _task_list: *mut task_array_t,
     _count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -525,7 +525,7 @@ pub unsafe extern "C" fn processor_set_threads(
     _thread_list: *mut thread_array_t,
     _count: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[cfg(test)]
@@ -575,7 +575,7 @@ mod tests {
     }
 
     /// MAX_SCHED_CPUS bounds the array, so a machine with more CPUs than that must clamp rather
-    /// than write past the end. The clamp is in dtape_processor_init; this pins the bound it
+    /// than write past the end. The clamp is in xnu_sys_processor_init; this pins the bound it
     /// clamps to, which is the value the array is sized with.
     #[test]
     fn the_cpu_bound_is_the_array_length() {

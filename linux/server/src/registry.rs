@@ -1,4 +1,4 @@
-//! Process/thread tables: map a guest pid -> its dtape task, so each guest's calls
+//! Process/thread tables: map a guest pid -> its xnu_sys task, so each guest's calls
 //! run on its OWN task (its own XNU state), not the shared kernel task. A microthread
 //! spawned via `spawn_on` is bound to the guest's task, so sched::current_task()
 //! inside its handler returns that task -- the routing mechanism. See
@@ -11,9 +11,9 @@ use std::os::raw::c_void;
 
 // Was an `extern "C"` declaration resolving back into this crate through the linker; imported
 // directly since xnu-sys became Rust (#71, #75).
-use crate::xnu::task::dtape_task_create;
+use crate::xnu::task::xnu_sys_task_create;
 
-/// The architecture arrives from the RPC wire as a plain u32; dtape_task_create takes the
+/// The architecture arrives from the RPC wire as a plain u32; xnu_sys_task_create takes the
 /// bindgen ENUM.
 ///
 /// THIS CONVERSION WAS ALREADY HAPPENING, just invisibly. The extern declaration removed above
@@ -37,15 +37,15 @@ fn arch_from_wire(arch: u32) -> crate::bindings::dserver_rpc_architecture_t {
 }
 
 pub struct Registry {
-    kernel_task: *mut dtape_task_t,
-    tasks: HashMap<u32, *mut dtape_task_t>, // guest pid -> dtape task
+    kernel_task: *mut xnu_sys_task_t,
+    tasks: HashMap<u32, *mut xnu_sys_task_t>, // guest pid -> xnu_sys task
     ctxs: HashMap<u32, Box<TaskCtx>>,       // keep task contexts alive + address-stable
     parked: HashMap<(u32, u64), *mut Microthread>, // (pid,tid) -> guest thread blocked mid-call
     host_pids: HashMap<u32, libc::pid_t>,   // nsid -> daemon-namespace pid (for memory ops)
 }
 
 impl Registry {
-    pub fn new(kernel_task: *mut dtape_task_t) -> Self {
+    pub fn new(kernel_task: *mut xnu_sys_task_t) -> Self {
         Registry {
             kernel_task,
             tasks: HashMap::new(),
@@ -63,9 +63,9 @@ impl Registry {
         self.host_pids.insert(nsid, host_pid);
     }
 
-    /// Get or create the dtape task for a guest pid (nsid = pid). Parent is NULL for
+    /// Get or create the xnu_sys task for a guest pid (nsid = pid). Parent is NULL for
     /// now (a real checkin would pass the parent process's task).
-    pub unsafe fn ensure_task(&mut self, pid: u32, arch: u32) -> *mut dtape_task_t {
+    pub unsafe fn ensure_task(&mut self, pid: u32, arch: u32) -> *mut xnu_sys_task_t {
         if let Some(&t) = self.tasks.get(&pid) {
             return t;
         }
@@ -86,7 +86,7 @@ impl Registry {
         //
         // The lookup happens HERE rather than in Handler::set_current because the task is
         // created before the first call is dispatched, so set_current's parent link comes
-        // too late to be passed to dtape_task_create.
+        // too late to be passed to xnu_sys_task_create.
         let parent = crate::task::read_ppid(host_pid)
             .and_then(|ppid| {
                 self.host_pids
@@ -96,19 +96,19 @@ impl Registry {
             })
             .and_then(|pnsid| self.tasks.get(&pnsid).copied())
             .unwrap_or(std::ptr::null_mut());
-        let t = dtape_task_create(parent, pid, ctx_ptr, arch_from_wire(arch));
-        assert!(!t.is_null(), "dtape_task_create failed for pid {pid}");
+        let t = xnu_sys_task_create(parent, pid, ctx_ptr, arch_from_wire(arch));
+        assert!(!t.is_null(), "xnu_sys_task_create failed for pid {pid}");
         self.tasks.insert(pid, t);
         self.ctxs.insert(pid, ctx);
-        // Publish to the task_lookup table so the static dtape hook can resolve this task.
+        // Publish to the task_lookup table so the static xnu_sys hook can resolve this task.
         sched::register_task_lookup(pid, t, host_pid);
         t
     }
 
-    pub fn task_for_pid(&self, pid: u32) -> Option<*mut dtape_task_t> {
+    pub fn task_for_pid(&self, pid: u32) -> Option<*mut xnu_sys_task_t> {
         self.tasks.get(&pid).copied()
     }
-    pub fn kernel_task(&self) -> *mut dtape_task_t { self.kernel_task }
+    pub fn kernel_task(&self) -> *mut xnu_sys_task_t { self.kernel_task }
     pub fn task_count(&self) -> usize { self.tasks.len() }
 
     /// Spawn a microthread for guest thread `tid` on process `pid`'s task, to run one
@@ -119,8 +119,8 @@ impl Registry {
         let host_pid = self.host_pids.get(&pid).copied().unwrap_or(pid as libc::pid_t);
         let mt = sched::spawn_with_nsid(task, tid, body);
         (*mt).set_host_pid(host_pid);
-        // Publish to the thread_lookup table so the static dtape hook can resolve this thread.
-        sched::register_thread_lookup(tid, (*mt).dtape_thread());
+        // Publish to the thread_lookup table so the static xnu_sys hook can resolve this thread.
+        sched::register_thread_lookup(tid, (*mt).xnu_sys_thread());
         mt
     }
 
@@ -169,14 +169,14 @@ impl Registry {
     }
 
     /// The parked (suspended) microthread for a guest thread, if any -- so the serve loop can
-    /// read its at_dowork_top / dtape_thread for the nested signal-interrupt path (task #58).
+    /// read its at_dowork_top / xnu_sys_thread for the nested signal-interrupt path (task #58).
     pub fn parked_mt(&self, pid: u32, tid: u64) -> Option<*mut Microthread> {
         self.parked.get(&(pid, tid)).copied()
     }
 
     /// The task a guest thread's microthread is bound to (for spawning a nested interrupt on
     /// the same task). None if the thread is not parked.
-    pub unsafe fn thread_task(&self, pid: u32, tid: u64) -> Option<*mut dtape_task_t> {
+    pub unsafe fn thread_task(&self, pid: u32, tid: u64) -> Option<*mut xnu_sys_task_t> {
         self.parked.get(&(pid, tid)).map(|&mt| (*mt).owning_task_ptr())
     }
 }

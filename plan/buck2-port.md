@@ -116,7 +116,7 @@ launcher, and then `cider-buck2 shell /bin/bash -c ...` times out with no output
 the identical command takes seconds on the host through both endpoints.
 
 The test dumps the daemon log, the process list and the uid/userns state on failure, and the
-log says the container BOOTS: full dtape init, `execve expand /usr/libexec/shellspawn`,
+log says the container BOOTS: full xnu_sys init, `execve expand /usr/libexec/shellspawn`,
 `cider_sigexc_self()`. Then it hangs.
 
 The lead recorded here used to be a one-line difference in the daemon log -- `dtype for fd 2`

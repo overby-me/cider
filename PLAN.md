@@ -209,7 +209,7 @@ flag was wrong.
 2. **#71, DONE (16 of 16). Kept only for the numbers, which were wrong when the task was
    written.**
    19 first-party glue `.c` (12,415 lines), not 17; **300** XNU `.c` behind the `-sys` crate,
-   not 49; and the FFI surface is **189 distinct `dtape_*` symbols** referenced from Rust.
+   not 49; and the FFI surface is **189 distinct `xnu_sys_*` symbols** referenced from Rust.
    Re-counted: `xnu-sys/src/*.c` is **16 files, 8,525 lines** (the 19/12,415 above also swept
    in `pthread/kern_synch.c` 2,805 and `kern_support.c` 1,020, which sit outside that dir).
    `thread.c` 2,072, `task.c` 1,766 and `memory.c` 1,554 are 63% of it.
@@ -218,24 +218,24 @@ flag was wrong.
    instead of arguing it. Only two things are hard blockers: a C VARIADIC DEFINITION (stable
    Rust cannot write `extern "C" fn(...)`) and a MACRO CALL (bindgen binds no macros).
    * `misc.c` was named a first candidate. It ranked **last of sixteen** because it DEFINES
-     three variadic functions (`dtape_log`, `kprintf`, `scnprintf`), which Rust cannot express.
+     three variadic functions (`xnu_sys_log`, `kprintf`, `scnprintf`), which Rust cannot express.
      That verdict was too strong and it went twelfth: see the variadic note below.
    * `timer.c` was the other. It calls `mpqueue_init`, a MACRO, so it needs a shim either way.
-   * `traps.c` is not blocker-free either: its last line is `DSERVER_DTAPE_DEFS`, a generated
+   * `traps.c` is not blocker-free either: its last line is `DSERVER_XNU_SYS_DEFS`, a generated
      object-like macro. (It is still a thin FFI shim that buys little.)
-   * `init.c` (137) has the best BLOCKER profile: no variadics, one macro (`dtape_log_debug`).
+   * `init.c` (137) has the best BLOCKER profile: no variadics, one macro (`xnu_sys_log_debug`).
 
    **BLOCKERS ARE NOT THE ONLY AXIS, and the two disagree.** The tool also reads the FFI
    surface off each compiled object, which is the truth the linker sees: symbols the port must
    EXPORT, and symbols it must CALL OUT to. `semaphore.c`, which went first and worked, was
    5 exports / 7 calls. By that measure `init.c` is the WORST of the small files at 4 / **40**,
-   and `traps.c` (fewest blockers) is 35 / 36 because `DSERVER_DTAPE_DEFS` expands to so much.
+   and `traps.c` (fewest blockers) is 35 / 36 because `DSERVER_XNU_SYS_DEFS` expands to so much.
    **`condvar.c` is 3 / 7**, the closest match to the file that worked, and its five macros are
    `TAILQ_*` and `__container_of`, all trivial intrusive-list operations to write in Rust.
    So `condvar.c` is the next one, not `init.c`.
 
    `init.c` is still worth doing, and its one real unknown is already retired: it defines the
-   `dtape_hooks` GLOBAL that every other C glue file dereferences, and a C archive reading a
+   `xnu_sys_hooks` GLOBAL that every other C glue file dereferences, and a C archive reading a
    Rust-defined global was verified to link and run (negative control: removing it fails the
    link with undefined reference).
 
@@ -252,7 +252,7 @@ flag was wrong.
    `/nix/store/f0h9xzhq7qfmc393s4sqzm0cdrn7fkw4-vm-test-run-cider-buck2-smoke`). Not a
    vacuous pass: inside the VM, `command -v cider-buck2` succeeded, `cider-buck2 shell
    /bin/bash -c 'exit 0'` succeeded in 0.17 s, the `exit 1` arm correctly FAILED, and exit
-   codes propagated out of the container. So a buck2-built Darling whose `dtape_semaphore_*`
+   codes propagated out of the container. So a buck2-built Darling whose `xnu_sys_semaphore_*`
    come from Rust boots a container and runs bash in the guest.
    **That run was launched on the semaphore-only commit, so it validates `semaphore.c` and NOT
    `condvar.c`**; condvar's prefix gate is a separate run.
@@ -328,13 +328,13 @@ flag was wrong.
 
    **THE VARIADIC BLOCKER IS CLOSED.** `stubs.c` and `misc.c` were called blocked on 1 and 3
    variadic DEFINITIONS. All four are pure forwarders to a `v`-variant, so all four stay in C in
-   `xnu-sys/src/dtape_rs_shims.c` beside the macro shims, and everything else in both files is
+   `xnu-sys/src/xnu_sys_rs_shims.c` beside the macro shims, and everything else in both files is
    Rust. Rust can CALL a variadic even though it cannot define one, so the ported code formats
    with `format!` and passes a plain `%s`, which is safer than the C it replaces: a specifier
    that disagrees with its argument is now a compile error. No remaining file is blocked.
 
    **THE SHIM IS THE MAIN TOOL, and it is what made the second half tractable.**
-   `xnu-sys/src/dtape_rs_shims.c` exports twelve macro-only or inline-only operations as real
+   `xnu-sys/src/xnu_sys_rs_shims.c` exports twelve macro-only or inline-only operations as real
    symbols, with a header so bindgen generates the signatures. Each exists because Rust cannot
    reach the thing, never for convenience: `kalloc` and `kheap_alloc` expand to statement
    expressions holding a static `vm_allocation_site_t`; `io_release` is `static inline` so
@@ -411,30 +411,30 @@ flag was wrong.
    already links it, so porting it would remove a C archive from that link entirely. It stays
    C-ABI either way, since the still-C glue calls it too.
 
-   `scripts/dtape_stub.rs` now provides `dtape_stub`, `dtape_stub_safe` and
-   `dtape_stub_unsafe` as Rust macros over the real `dtape_stub_log` symbol, so the seven
+   `scripts/xnu_sys_stub.rs` now provides `xnu_sys_stub`, `xnu_sys_stub_safe` and
+   `xnu_sys_stub_unsafe` as Rust macros over the real `xnu_sys_stub_log` symbol, so the seven
    remaining files that use them do not each re-derive it.
 
    Two mechanisms were proven by experiment before any port code, both with negative controls:
    bindgen PARSES the XNU internal headers given xnu-sys's own flags (`-fblocks` is load
    bearing), and a C ARCHIVE RESOLVES against a Rust rlib, which is the direction the port needs
-   since `kqchan.c` stays C and calls `dtape_semaphore_up`.
+   since `kqchan.c` stays C and calls `xnu_sys_semaphore_up`.
 
    **The runtime check for a port is `scripts/xnu-sys-runtime-check.nu`, about a minute**,
    not the hour-long minimal-prefix gate. It builds `//linux/server:scheduler_demo` and blocks
-   a microthread on a xnu-sys semaphore, so `dtape_semaphore_create`, `down_simple` and `up`
+   a microthread on a xnu-sys semaphore, so `xnu_sys_semaphore_create`, `down_simple` and `up`
    all run for real, down through XNU and back out through the suspend/resume hooks. It asserts
    on the OUTPUT (`SCHED_DEMO_OK`), never the exit code: breaking `down_simple` to report every
    successful wait as interrupted prints `SCHED_DEMO_DOWN_FAILED` and STILL EXITS 0, because the
    demo's own asserts (did it suspend, did it finish) both still hold.
 
    **`semaphore.c` IS PORTED** (60 lines, one macro, and it exercises the whole seam). Proof it
-   is not vacuous: in `libciderd_xnu_sys.a` the four `dtape_semaphore_*` are `U` and
+   is not vacuous: in `libciderd_xnu_sys.a` the four `xnu_sys_semaphore_*` are `U` and
    `semaphore.o` is gone; in the linked daemon they are `T`. Types and the `xnu_task` offset come
    from bindgen, not transcription: `linux/server/wrapper.h` binds the internal structs, and
    `flags.bzl` (generated) keeps the buck2 and cargo include sets identical.
 
-   Keep the existing `dtape_*` symbol names so the Rust daemon links unchanged.
+   Keep the existing `xnu_sys_*` symbol names so the Rust daemon links unchanged.
    **THE VERIFICATION IS ITSELF A PROBLEM, and this was checked before writing any port code.**
    `checks.cider-buck2-smoke` builds the FULL prefix, and at `--max-jobs 5` it ran 106 minutes,
    2,212 builders, **zero builder failures**, and then died with
@@ -696,10 +696,10 @@ tracks below.
   for `process_vm_readv` because the guest is in its own PID namespace).
 - **xnu-sys** (`src/external/ciderd/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
-  `linux/server/build.rs`: bindgen generates the 36-field `dtape_hooks_t` from source
+  `linux/server/build.rs`: bindgen generates the 36-field `xnu_sys_hooks_t` from source
   headers; static libs (`libciderd_xnu_sys.a`, `liblibsimple_ciderd.a`)
-  come via the `XNU_SYS_LIB` env var. The Rust/C seam is the frozen `dtape_*` API +
-  `dtape_hooks` vtable — Rust above, C+XNU below.
+  come via the `XNU_SYS_LIB` env var. The Rust/C seam is the frozen `xnu_sys_*` API +
+  `xnu_sys_hooks` vtable — Rust above, C+XNU below.
 - **mldr loader** (`darwin/loader`, libc + goblin): guest Mach-O loader — segment mmap/slide,
   commpage, the elfcalls vtable (ELF↔Mach-O), start stack, daemon checkin, jump to dyld.
 - **Container model:** an overlayfs prefix (`~/.cider`, macOS FS hierarchy) entered
@@ -1099,7 +1099,7 @@ the shell before the probe can report.
   port target: `condvar debug host init kqchan locks memory misc processor psynch semaphore
   stubs task thread timer traps` plus `pthread/kern_synch.c`.
   Two traps already paid for once: `init.c` is TWO PHASE (multithreaded guests need
-  `dtape_init_in_thread` on a kernel microthread), and `psynch.c` produced a silent SIGSEGV
+  `xnu_sys_init_in_thread` on a kernel microthread), and `psynch.c` produced a silent SIGSEGV
   from a null `pthread_list_mlock`. Both fail under threads, not at boot.
 
   **AND THE VENDORED `xnu-sys/xnu` CAN BECOME A PIN WITH PATCHES. Costed 2026-08-10, not
@@ -1260,7 +1260,7 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
 
   ROOT CAUSE FOUND AND FIXED (the first cause, not the whole task). Every guest task was
   created with NO PARENT: Registry::ensure_task passed std::ptr::null_mut() to
-  dtape_task_create, which its own comment admitted ("Parent is NULL for now"). ipc_task_init's
+  xnu_sys_task_create, which its own comment admitted ("Parent is NULL for now"). ipc_task_init's
   parent==TASK_NULL branch sets itk_bootstrap = IP_NULL, so a launchd JOB could never inherit
   launchd's bootstrap port however correct everything else was. It asked, got nil, sent its
   first service lookup to MACH_PORT_NULL and exited.
@@ -1273,8 +1273,8 @@ derivation (the ~40-min monolith → seconds-incremental, fully cacheable, pure-
 
   Measured, same boot, before and after:
 
-        before   dtape_task_create: nsid=4 parent=(nil)      GET bootstrap -> (nil)   INVALID_DEST dest=0x0
-        after    dtape_task_create: nsid=4 parent=0x..d8e10  GET bootstrap -> 0x..cbe50   INVALID_DEST count 0
+        before   xnu_sys_task_create: nsid=4 parent=(nil)      GET bootstrap -> (nil)   INVALID_DEST dest=0x0
+        after    xnu_sys_task_create: nsid=4 parent=0x..d8e10  GET bootstrap -> 0x..cbe50   INVALID_DEST count 0
 
   launchd STILL does not complete. It is NOT a deadlock: it is a 30-SECOND POLL LOOP.
   Timestamping the daemon's own strace and measuring the gaps gives 29.555s, 30.001s, 30.001s,
@@ -1517,7 +1517,7 @@ concrete failure justifies it:
   stack, so elfcall-reachable loader code must be movaps-free — no `mem::zeroed`/`Default` of
   a >8-byte struct on the stack (emits an aligned SSE store that #GPs); use `MaybeUninit` +
   scalar fills.
-- **xnu-sys two-phase init:** `dtape_init` then `dtape_init_in_thread` on a kernel
+- **xnu-sys two-phase init:** `xnu_sys_init` then `xnu_sys_init_in_thread` on a kernel
   microthread (psynch etc.); no hook in the 36-field vtable may ever be NULL (NULL → indirect
   call to 0x0).
 - **RPC socket fork-safety:** sockets live at high fds + FD_CLOEXEC (so a forked subshell's

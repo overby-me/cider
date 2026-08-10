@@ -412,7 +412,7 @@ ipc_object_alloc(
 	object->io_references = 1; /* for entry, not caller */
 
 #if DSERVER_EXTENDED_DEBUG
-	dtape_hooks->task_register_name(dtape_task_for_xnu_task(current_task())->context, *namep, (uintptr_t)object);
+	xnu_sys_hooks->task_register_name(xnu_sys_task_for_xnu_task(current_task())->context, *namep, (uintptr_t)object);
 #endif
 
 	*objectp = object;

@@ -7,10 +7,10 @@
 //! rather than the hour the minimal-prefix gate takes.
 //!
 //! The path it drives, all of it Rust as of the condvar port:
-//!   dtape_condvar_wait   takes the queue lock, DROPS the caller's mutex, puts the thread's
+//!   xnu_sys_condvar_wait   takes the queue lock, DROPS the caller's mutex, puts the thread's
 //!                        mutex_link on the intrusive queue, and suspends the microthread
 //!                        through the thread_suspend hook (which also drops the queue lock)
-//!   dtape_condvar_signal pops a link, walks back to the containing dtape_thread through the
+//!   xnu_sys_condvar_signal pops a link, walks back to the containing xnu_sys_thread through the
 //!                        container_of offset, and resumes it via the thread_resume hook
 //!
 //! Both halves of the queue arithmetic have to be right for this to finish: a wrong
@@ -20,7 +20,7 @@
 //! The verdict is the printed line, not the exit code, for the same reason as
 //! scheduler_demo: the harness asserts hold in cases where the result is still wrong.
 
-use cider::bindings::{dtape_condvar_t, dtape_mutex_t};
+use cider::bindings::{xnu_sys_condvar_t, xnu_sys_mutex_t};
 use cider::sched;
 
 // These were `extern "C"` declarations resolving through the linker back into the cider
@@ -31,34 +31,34 @@ use cider::sched;
 // the original #75 edit list had it wrong for all of them.
 //
 // All six matched their definitions already, so no call site changes: the declarations spelled
-// dtape_mutex_t and dtape_condvar_t exactly as locks.rs and condvar.rs do.
-use cider::xnu::condvar::{dtape_condvar_init, dtape_condvar_signal, dtape_condvar_wait};
-use cider::xnu::locks::{dtape_mutex_init, dtape_mutex_lock, dtape_mutex_unlock};
+// xnu_sys_mutex_t and xnu_sys_condvar_t exactly as locks.rs and condvar.rs do.
+use cider::xnu::condvar::{xnu_sys_condvar_init, xnu_sys_condvar_signal, xnu_sys_condvar_wait};
+use cider::xnu::locks::{xnu_sys_mutex_init, xnu_sys_mutex_lock, xnu_sys_mutex_unlock};
 
 fn main() {
     unsafe {
         let kt = sched::init();
 
-        let mut mutex: Box<dtape_mutex_t> = Box::new(std::mem::zeroed());
-        let mut condvar: Box<dtape_condvar_t> = Box::new(std::mem::zeroed());
-        dtape_mutex_init(&mut *mutex);
-        dtape_condvar_init(&mut *condvar);
+        let mut mutex: Box<xnu_sys_mutex_t> = Box::new(std::mem::zeroed());
+        let mut condvar: Box<xnu_sys_condvar_t> = Box::new(std::mem::zeroed());
+        xnu_sys_mutex_init(&mut *mutex);
+        xnu_sys_condvar_init(&mut *condvar);
 
         // Addresses rather than pointers, so the closure stays Send-ish for spawn.
-        let mutex_addr = (&mut *mutex as *mut dtape_mutex_t) as usize;
-        let condvar_addr = (&mut *condvar as *mut dtape_condvar_t) as usize;
+        let mutex_addr = (&mut *mutex as *mut xnu_sys_mutex_t) as usize;
+        let condvar_addr = (&mut *condvar as *mut xnu_sys_condvar_t) as usize;
 
         let mt = sched::spawn(
             kt,
             Box::new(move || {
-                let m = mutex_addr as *mut dtape_mutex_t;
-                let c = condvar_addr as *mut dtape_condvar_t;
-                dtape_mutex_lock(m);
+                let m = mutex_addr as *mut xnu_sys_mutex_t;
+                let c = condvar_addr as *mut xnu_sys_condvar_t;
+                xnu_sys_mutex_lock(m);
                 eprintln!("[condvar-mt] waiting (drops the mutex, suspends)...");
-                dtape_condvar_wait(c, m);
+                xnu_sys_condvar_wait(c, m);
                 // Back here only if the signal found us on the queue AND the wait reacquired
                 // the mutex on the way out.
-                dtape_mutex_unlock(m);
+                xnu_sys_mutex_unlock(m);
                 println!("CONDVAR_DEMO_OK");
             }),
         );
@@ -70,7 +70,7 @@ fn main() {
         );
 
         eprintln!("[condvar] suspended; signalling one waiter");
-        dtape_condvar_signal(&mut *condvar, 1);
+        xnu_sys_condvar_signal(&mut *condvar, 1);
 
         sched::drain();
         assert!((*mt).is_finished(), "the microthread did not finish after the signal");

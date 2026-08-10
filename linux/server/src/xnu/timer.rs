@@ -3,7 +3,7 @@
 //!
 //! xnu-sys does not emulate XNU's per-CPU timer hardware. It keeps ONE queue, and asks the
 //! daemon to arm a real timer through the `timer_arm` hook; when that fires, the daemon calls
-//! [`dtape_timer_fired`], which expires the queue and re-arms for whatever is next.
+//! [`xnu_sys_timer_fired`], which expires the queue and re-arms for whatever is next.
 //!
 //! WHY THIS FILE WAS NOT PORTED EARLIER, AND WHY THAT WAS WRONG. It was backed off twice on
 //! the grounds that `mpqueue_init` needs `mpqueue_head`'s internals, and that reopening the
@@ -26,11 +26,11 @@ use std::ptr;
 
 use crate::bindings::{
     mpqueue_head_t, pal_rtc_nanotime, timer_coalescing_priority_params_ns_t, boolean_t,
-    dtape_hooks_t, lck_mtx_init_ext, mach_absolute_time, timer_queue_expire, NSEC_PER_SEC,
+    xnu_sys_hooks_t, lck_mtx_init_ext, mach_absolute_time, timer_queue_expire, NSEC_PER_SEC,
 };
 
 extern "C" {
-    static dtape_hooks: *const dtape_hooks_t;
+    static xnu_sys_hooks: *const xnu_sys_hooks_t;
 }
 
 /// The single timer queue. XNU asks for "the queue for CPU n" and always gets this one.
@@ -79,9 +79,9 @@ unsafe fn mpqueue_init(q: *mut mpqueue_head_t) {
     ptr::write_bytes(pq as *mut u8, 0, std::mem::size_of_val(&*pq));
 }
 
-/// Initialise the queue. Called from `dtape_init`.
+/// Initialise the queue. Called from `xnu_sys_init`.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_timer_init() {
+pub unsafe extern "C" fn xnu_sys_timer_init() {
     mpqueue_init(ptr::addr_of_mut!(TIMER_QUEUE));
 }
 
@@ -95,9 +95,9 @@ pub unsafe extern "C" fn _rtc_nanotime_read(_rntp: *mut pal_rtc_nanotime) -> u64
 
 /// The daemon's timer fired: expire whatever is due and re-arm for the next deadline.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_timer_fired() {
+pub unsafe extern "C" fn xnu_sys_timer_fired() {
     let next_deadline = timer_queue_expire(ptr::addr_of_mut!(TIMER_QUEUE), mach_absolute_time());
-    if let Some(arm) = (*dtape_hooks).timer_arm {
+    if let Some(arm) = (*xnu_sys_hooks).timer_arm {
         arm(next_deadline, true);
     }
 }
@@ -117,7 +117,7 @@ pub unsafe extern "C" fn timer_call_nosync_cpu(
 /// Give XNU a queue for `deadline`, arming the daemon's timer on the way.
 #[no_mangle]
 pub unsafe extern "C" fn timer_queue_assign(deadline: u64) -> *mut mpqueue_head_t {
-    if let Some(arm) = (*dtape_hooks).timer_arm {
+    if let Some(arm) = (*xnu_sys_hooks).timer_arm {
         arm(deadline, false);
     }
     ptr::addr_of_mut!(TIMER_QUEUE)
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn timer_queue_cancel(
     _deadline: u64,
     new_deadline: u64,
 ) {
-    if let Some(arm) = (*dtape_hooks).timer_arm {
+    if let Some(arm) = (*xnu_sys_hooks).timer_arm {
         arm(new_deadline, true);
     }
 }
@@ -146,13 +146,13 @@ pub unsafe extern "C" fn timer_queue_cpu(_cpu: c_int) -> *mut mpqueue_head_t {
 
 #[no_mangle]
 pub unsafe extern "C" fn timer_resort_threshold(_skew: u64) -> boolean_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ml_timer_forced_evaluation() -> boolean_t {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
     0
 }
 

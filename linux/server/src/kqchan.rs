@@ -7,7 +7,7 @@
 //! message, no length prefix), matching ciderd's MessageQueue. Mirrors
 //! DarlingServer::Kqchan::Process (kqchan.cpp). See PLAN.md (bucket B.8).
 
-use crate::bindings::dtape_task_t;
+use crate::bindings::xnu_sys_task_t;
 use crate::sched;
 use std::collections::VecDeque;
 use std::io;
@@ -221,7 +221,7 @@ impl Drop for ProcKqchan {
 // message lands on the port, the xnu-sys fires our notification_callback (from inside the
 // sender's mach_msg RPC, on the serve loop) -- no thread ever blocks waiting, so this fits the
 // single-worker model. `modify` (register/change the filter) and `read` (drain pending messages
-// via dtape_kqchan_mach_port_fill) call dtape functions that need a current-thread + the guest
+// via xnu_sys_kqchan_mach_port_fill) call xnu_sys functions that need a current-thread + the guest
 // task's memory context, so they run on a microthread bound to the owning task (sched::run_on_task)
 // -- the cooperative-yield replacement for C++'s impersonate + kernelAsync. Mirrors
 // DarlingServer::Kqchan::MachPort (kqchan.cpp).
@@ -250,9 +250,9 @@ struct CallMachPortRead {
 // swap can be verified instead of assumed. This was the last of #75.
 //
 // THE TWO LOCAL TYPES THAT USED TO SIT HERE ARE GONE. kqchan.rs declared its own opaque
-// DtapeKqchanMachPort and its own ReplyMachPortRead, a hand-written mirror of a wire struct that
-// dtape_kqchan_mach_port_fill WRITES THROUGH, while the definitions take
-// dtape_kqchan_mach_port_t and dserver_kqchan_reply_mach_port_read_t. The mirror was compared
+// XnuSysKqchanMachPort and its own ReplyMachPortRead, a hand-written mirror of a wire struct that
+// xnu_sys_kqchan_mach_port_fill WRITES THROUGH, while the definitions take
+// xnu_sys_kqchan_mach_port_t and dserver_kqchan_reply_mach_port_read_t. The mirror was compared
 // field by field first (177732f6) and did not differ, so this is a swap and not a fix:
 //
 //   Kev against dserver_kqchan_reply_mach_port_read__bindgen_ty_1
@@ -264,11 +264,11 @@ struct CallMachPortRead {
 // Replyhdr STAYS local, because ReplyProcModify and ReplyMachPortModify still use it. Only the
 // two types the FFI boundary needed moved to the generated ones.
 use crate::bindings;
-use crate::bindings::{dserver_kqchan_reply_mach_port_read_t, dtape_kqchan_mach_port_t};
+use crate::bindings::{dserver_kqchan_reply_mach_port_read_t, xnu_sys_kqchan_mach_port_t};
 use crate::xnu::kqchan::{
-    dtape_kqchan_mach_port_create, dtape_kqchan_mach_port_destroy,
-    dtape_kqchan_mach_port_disable_notifications, dtape_kqchan_mach_port_fill,
-    dtape_kqchan_mach_port_has_events, dtape_kqchan_mach_port_modify,
+    xnu_sys_kqchan_mach_port_create, xnu_sys_kqchan_mach_port_destroy,
+    xnu_sys_kqchan_mach_port_disable_notifications, xnu_sys_kqchan_mach_port_fill,
+    xnu_sys_kqchan_mach_port_has_events, xnu_sys_kqchan_mach_port_modify,
 };
 
 /// Duct-tape notification callback: a message landed on the watched port. `context` is the
@@ -281,15 +281,15 @@ extern "C" fn mach_port_notify_cb(context: *mut c_void) {
 }
 
 /// One Mach-port-watching kqueue channel. Heap-boxed: its address is the xnu-sys callback's
-/// context, so it must never move while the dtape kqchan is alive (Drop disables notifications
+/// context, so it must never move while the xnu_sys kqchan is alive (Drop disables notifications
 /// first, so the callback can never fire into a freed box).
 pub struct MachPortKqchan {
     /// Our end of the socketpair (nonblocking SEQPACKET); the guest sends modify/read here.
     pub daemon_fd: RawFd,
     /// The xnu-sys kqchan (XNU knote on the port); null only transiently during open().
-    dtape: *mut dtape_kqchan_mach_port_t,
+    xnu_sys: *mut xnu_sys_kqchan_mach_port_t,
     /// The owning guest task -- modify/read run on a microthread bound to it.
-    owning_task: *mut dtape_task_t,
+    owning_task: *mut xnu_sys_task_t,
     /// Throttle: at most one unacknowledged notification outstanding (the guest acks by reading).
     can_send_notification: bool,
 }
@@ -298,7 +298,7 @@ impl MachPortKqchan {
     /// Open a channel watching `port` on `owning_task`. Returns the boxed daemon-side channel and
     /// the guest end to hand back over SCM_RIGHTS. Mirrors Kqchan::MachPort::MachPort + setup().
     pub fn open(
-        owning_task: *mut dtape_task_t,
+        owning_task: *mut xnu_sys_task_t,
         port: u32,
         receive_buffer: u64,
         receive_buffer_size: u64,
@@ -318,14 +318,14 @@ impl MachPortKqchan {
         }
         let mut b = Box::new(MachPortKqchan {
             daemon_fd,
-            dtape: std::ptr::null_mut(),
+            xnu_sys: std::ptr::null_mut(),
             owning_task,
             can_send_notification: true,
         });
-        // The callback context is the box's stable heap address (it never moves while dtape lives).
+        // The callback context is the box's stable heap address (it never moves while xnu_sys lives).
         let ctx = b.as_mut() as *mut MachPortKqchan as *mut c_void;
-        let dtape = unsafe {
-            dtape_kqchan_mach_port_create(
+        let xnu_sys = unsafe {
+            xnu_sys_kqchan_mach_port_create(
                 owning_task,
                 port,
                 receive_buffer,
@@ -335,16 +335,16 @@ impl MachPortKqchan {
                 ctx,
             )
         };
-        if dtape.is_null() {
+        if xnu_sys.is_null() {
             unsafe {
                 libc::close(daemon_fd);
                 libc::close(guest_fd);
             }
             return Err(io::Error::from_raw_os_error(libc::ESRCH));
         }
-        b.dtape = dtape;
+        b.xnu_sys = xnu_sys;
         // If a message is already queued, notify now (the client's filter is level-triggered).
-        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+        if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             b.send_notification();
         }
         Ok((b, guest_fd))
@@ -399,22 +399,22 @@ impl MachPortKqchan {
         }
     }
 
-    /// Register/modify the port filter, then ack. The dtape modify runs on a microthread bound to
+    /// Register/modify the port filter, then ack. The xnu_sys modify runs on a microthread bound to
     /// the owning task (thread context) -- the cooperative stand-in for C++'s impersonate. No
     /// `&mut self` is held across run_on_task, so the notify callback can safely fire during it.
     fn modify(&mut self, receive_buffer: u64, receive_buffer_size: u64, saved_filter_flags: u64) {
-        let (dtape, task) = (self.dtape, self.owning_task);
+        let (xnu_sys, task) = (self.xnu_sys, self.owning_task);
         unsafe {
             sched::run_on_task(
                 task,
                 Box::new(move || {
-                    dtape_kqchan_mach_port_modify(dtape, receive_buffer, receive_buffer_size, saved_filter_flags);
+                    xnu_sys_kqchan_mach_port_modify(xnu_sys, receive_buffer, receive_buffer_size, saved_filter_flags);
                 }),
             );
         }
         let reply = ReplyMachPortModify { header: Replyhdr { number: MSGNUM_MACH_PORT_MODIFY, code: 0 } };
         self.send(as_bytes(&reply));
-        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+        if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             self.send_notification();
         }
     }
@@ -424,7 +424,7 @@ impl MachPortKqchan {
     /// microthread (which also copies the message body into the guest's buffer). Mirrors _read.
     fn read(&mut self, default_buffer: u64, default_buffer_size: u64) {
         self.can_send_notification = true; // ack: may notify again
-        let (dtape, task, daemon_fd) = (self.dtape, self.owning_task, self.daemon_fd);
+        let (xnu_sys, task, daemon_fd) = (self.xnu_sys, self.owning_task, self.daemon_fd);
         // No `&mut self` is held across this run, so a notify callback that fires mid-fill only
         // touches self through the raw pointer (no aliasing). The reply is sent from the body so it
         // precedes any such notification, keeping the channel in order (cf. _read's deferral note).
@@ -438,7 +438,7 @@ impl MachPortKqchan {
                     reply.header.number =
                         bindings::dserver_kqchan_msgnum::dserver_kqchan_msgnum_mach_port_read;
                     reply.header.code = 0;
-                    if !dtape_kqchan_mach_port_fill(dtape, &mut reply, default_buffer, default_buffer_size) {
+                    if !xnu_sys_kqchan_mach_port_fill(xnu_sys, &mut reply, default_buffer, default_buffer_size) {
                         // 0xdead: "no events" sentinel (matches ProcKqchan + kqchan.cpp).
                         reply.header.code = 0xdead;
                     }
@@ -451,7 +451,7 @@ impl MachPortKqchan {
                 }),
             );
         }
-        if unsafe { dtape_kqchan_mach_port_has_events(dtape) } {
+        if unsafe { xnu_sys_kqchan_mach_port_has_events(xnu_sys) } {
             self.send_notification();
         }
     }
@@ -460,10 +460,10 @@ impl MachPortKqchan {
 impl Drop for MachPortKqchan {
     fn drop(&mut self) {
         unsafe {
-            if !self.dtape.is_null() {
+            if !self.xnu_sys.is_null() {
                 // Disable notifications BEFORE destroy so the callback can never fire into a freed box.
-                dtape_kqchan_mach_port_disable_notifications(self.dtape);
-                dtape_kqchan_mach_port_destroy(self.dtape);
+                xnu_sys_kqchan_mach_port_disable_notifications(self.xnu_sys);
+                xnu_sys_kqchan_mach_port_destroy(self.xnu_sys);
             }
             libc::close(self.daemon_fd);
         }

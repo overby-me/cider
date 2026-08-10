@@ -6,7 +6,7 @@
 //!
 //! WHAT THIS DRIVES, through the real MachPortKqchan::open path rather than the FFI directly:
 //!
-//!   dtape_kqchan_mach_port_create        builds the XNU knote on the watched port and hands
+//!   xnu_sys_kqchan_mach_port_create        builds the XNU knote on the watched port and hands
 //!                                        back the handle. open() turns a null return into
 //!                                        ESRCH, so reaching Ok at all means it was non-null.
 //!   the notification callback            registered by that same call. Until e721f238 it was
@@ -15,9 +15,9 @@
 //!                                        could not express the null the callee accepts. This
 //!                                        demo is what would have caught a null or mistyped
 //!                                        entry there, instead of a crash inside the kext.
-//!   dtape_kqchan_mach_port_has_events    open() calls it once the handle exists, to decide
+//!   xnu_sys_kqchan_mach_port_has_events    open() calls it once the handle exists, to decide
 //!                                        whether a message is already queued.
-//!   dtape_kqchan_mach_port_destroy       run from Drop when the channel goes out of scope.
+//!   xnu_sys_kqchan_mach_port_destroy       run from Drop when the channel goes out of scope.
 //!
 //! THE PORT IS A REAL ONE. mach_reply_port allocates a receive right in the CURRENT task ipc
 //! space, which is why all of this runs on a kernel microthread rather than on the main thread:
@@ -26,7 +26,7 @@
 //!
 //! WHAT THIS DOES NOT COVER, stated rather than implied. The guest side of the protocol is not
 //! driven: nothing sends a modify or read datagram down the socketpair, so
-//! dtape_kqchan_mach_port_modify, _fill and _disable_notifications are still untouched, and so
+//! xnu_sys_kqchan_mach_port_modify, _fill and _disable_notifications are still untouched, and so
 //! is on_readable. A message actually arriving on the watched port, which is what fires the
 //! notification callback for real, is not exercised either. That is the second layer and it
 //! needs a sender; this is the first, and it is the one that turns "never executed" into
@@ -39,13 +39,13 @@
 //! output ends in a core dump rather than a tidy panic message.
 //!
 //! PROVEN TO FAIL, which is the only reason a green run means anything here. Watching a made-up
-//! port name instead of a real receive right makes dtape_kqchan_mach_port_create return null,
+//! port name instead of a real receive right makes xnu_sys_kqchan_mach_port_create return null,
 //! open turn that into ESRCH, and the demo die without printing its verdict. So the pass depends
 //! on the create path actually working.
 //!
 //! The verdict is the printed line, not the exit code, as with the other demos.
 
-use cider::bindings::dtape_task_t;
+use cider::bindings::xnu_sys_task_t;
 use cider::kqchan::MachPortKqchan;
 use cider::mach::mach_reply_port;
 use cider::sched;
@@ -60,7 +60,7 @@ fn main() {
         let mt = sched::spawn(
             kt,
             Box::new(move || {
-                let task = kt_addr as *mut dtape_task_t;
+                let task = kt_addr as *mut xnu_sys_task_t;
 
                 let port = mach_reply_port();
                 assert!(
@@ -77,7 +77,7 @@ fn main() {
                     Ok(v) => v,
                     Err(e) => panic!(
                         "MachPortKqchan::open failed: {e}. open turns a null return from \
-                         dtape_kqchan_mach_port_create into ESRCH, so this is either a null \
+                         xnu_sys_kqchan_mach_port_create into ESRCH, so this is either a null \
                          handle or the port is not watchable"
                     ),
                 };
@@ -88,7 +88,7 @@ fn main() {
                     "open returned Ok but one end of the socketpair is not a valid descriptor"
                 );
 
-                // Drop runs dtape_kqchan_mach_port_destroy. Explicit rather than implicit so a
+                // Drop runs xnu_sys_kqchan_mach_port_destroy. Explicit rather than implicit so a
                 // failure lands here, on a named line, rather than in the closure epilogue.
                 drop(channel);
                 libc::close(guest_fd);

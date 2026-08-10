@@ -1,12 +1,12 @@
 //! xnu-sys start-up: the Rust replacement for `xnu-sys/src/init.c` (#71, sixth file).
 //!
-//! `dtape_init` is the single entry point the daemon calls to bring the XNU emulation up. It
+//! `xnu_sys_init` is the single entry point the daemon calls to bring the XNU emulation up. It
 //! creates the zones the kernel allocates out of, initialises two locks, and then runs about
 //! twenty subsystem initialisers in an order that matters.
 //!
 //! WHY THIS FILE IS TRACTABLE, which was not obvious and took three corrections to the ranking
-//! tool to see. Its only apparent blocker was `dtape_log_debug`, and that is a macro forwarding
-//! to `dtape_log`, which is a real symbol in the archive; Rust cannot DEFINE a C variadic but
+//! tool to see. Its only apparent blocker was `xnu_sys_log_debug`, and that is a macro forwarding
+//! to `xnu_sys_log`, which is a real symbol in the archive; Rust cannot DEFINE a C variadic but
 //! it can CALL one, exactly as `semaphore.rs` calls `panic`. Its opaque count read 23 and was
 //! really 9, the difference being function names the pattern matched and a preprocessor run
 //! that had been failing on a generated header.
@@ -18,7 +18,7 @@
 //! to get its size. That definition now lives in `wrapper.h`, so the size is still one the C
 //! compiler computed (24) rather than a number typed into Rust.
 //!
-//! THIS FILE DEFINES `dtape_hooks`, the vtable every other glue file dereferences. That
+//! THIS FILE DEFINES `xnu_sys_hooks`, the vtable every other glue file dereferences. That
 //! direction, a C archive reading a Rust-defined global, was proven by experiment before any
 //! of this port was written, with a negative control: removing the definition fails the link
 //! with an undefined reference.
@@ -29,14 +29,14 @@ use std::ptr;
 use crate::xnu::locks::{lck_mtx_init, lck_spin_init};
 
 use crate::bindings::{
-    dtape_hooks_t, ipc_kmsg_zone, ipc_object_zones, ipc_space_zone, lck_attr_t, lck_grp_t,
+    xnu_sys_hooks_t, ipc_kmsg_zone, ipc_object_zones, ipc_space_zone, lck_attr_t, lck_grp_t,
     lck_spin_t, processor_t, realhost, zone_create,
     zone_create_flags_t, zone_t, IOT_PORT, IOT_PORT_SET,
 };
 
 use crate::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_IKM_SAVED_KMSG_SIZE as IKM_SAVED_KMSG_SIZE,
-    dtape_rs_host_consts_DTAPE_RS_SIZEOF_TASK_ID_TOKEN as SIZEOF_TASK_ID_TOKEN,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_IKM_SAVED_KMSG_SIZE as IKM_SAVED_KMSG_SIZE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_TASK_ID_TOKEN as SIZEOF_TASK_ID_TOKEN,
     zone_create_flags_t_ZC_CACHING as ZC_CACHING, zone_create_flags_t_ZC_NONE as ZC_NONE,
     zone_create_flags_t_ZC_NOENCRYPT as ZC_NOENCRYPT,
     zone_create_flags_t_ZC_NOSEQUESTER as ZC_NOSEQUESTER,
@@ -45,14 +45,14 @@ use crate::bindings::{
 
 /// The hooks vtable, DEFINED here as the C did. Every other glue file reads it.
 #[no_mangle]
-pub static mut dtape_hooks: *const dtape_hooks_t = ptr::null();
+pub static mut xnu_sys_hooks: *const xnu_sys_hooks_t = ptr::null();
 
 // xnu-sys is Rust since #71, so its four initialisers are imported rather than declared
 // through the linker (#75).
-use crate::xnu::psynch::dtape_psynch_init;
-use crate::xnu::task::dtape_task_init;
-use crate::xnu::memory::dtape_memory_init;
-use crate::xnu::timer::dtape_timer_init;
+use crate::xnu::psynch::xnu_sys_psynch_init;
+use crate::xnu::task::xnu_sys_task_init;
+use crate::xnu::memory::xnu_sys_memory_init;
+use crate::xnu::timer::xnu_sys_timer_init;
 
 extern "C" {
     // The zones and the lock this file fills in. The C declares these extern itself, at the top
@@ -63,10 +63,10 @@ extern "C" {
     static mut task_id_token_zone: zone_t;
     static mut ipc_importance_lock_data: lck_spin_t;
 
-    // The subsystem initialisers, in the order dtape_init runs them. Declared rather than bound
+    // The subsystem initialisers, in the order xnu_sys_init runs them. Declared rather than bound
     // because init.c declares most of them itself; they are all void(void). The four that are
     // RUST now are imported below instead (#75); what stays here is XNU.
-    fn dtape_mk_timer_init();
+    fn xnu_sys_mk_timer_init();
     fn timer_call_init();
     fn ipc_table_init();
     fn ipc_voucher_init();
@@ -87,26 +87,26 @@ extern "C" {
     fn ipc_processor_init(processor: processor_t);
     fn ipc_processor_enable(processor: processor_t);
 
-    // Variadic, and callable even though Rust cannot define one. dtape_log_debug is a macro
+    // Variadic, and callable even though Rust cannot define one. xnu_sys_log_debug is a macro
     // forwarding to this with the debug level, so the port calls it directly.
-    fn dtape_log(level: c_int, format: *const c_char, ...);
+    fn xnu_sys_log(level: c_int, format: *const c_char, ...);
 }
 
-/// `dtape_log_level_debug`, the level `dtape_log_debug` passes.
+/// `xnu_sys_log_level_debug`, the level `xnu_sys_log_debug` passes.
 ///
 /// Spelled out because it is an enumerator in a header this file does not otherwise need, and
 /// because it is a RETURN-less trace call: a wrong value here mislabels a log line and nothing
 /// else. Every other constant in this file is generated.
-const DTAPE_LOG_LEVEL_DEBUG: c_int = 0;
+const XNU_SYS_LOG_LEVEL_DEBUG: c_int = 0;
 
-/// `dtape_log_debug("...")` for a fixed string, which is every use in this file.
+/// `xnu_sys_log_debug("...")` for a fixed string, which is every use in this file.
 fn log_debug(what: &str) {
     // The C passes a literal format string with no arguments. Building a NUL-terminated copy
     // and passing it as the format is the same call; the string never contains a percent.
     let mut buf = Vec::with_capacity(what.len() + 1);
     buf.extend_from_slice(what.as_bytes());
     buf.push(0);
-    unsafe { dtape_log(DTAPE_LOG_LEVEL_DEBUG, buf.as_ptr() as *const c_char) }
+    unsafe { xnu_sys_log(XNU_SYS_LOG_LEVEL_DEBUG, buf.as_ptr() as *const c_char) }
 }
 
 /// Create a zone, with the name as a C string literal.
@@ -117,14 +117,14 @@ unsafe fn zone(name: &[u8], size: usize, flags: zone_create_flags_t) -> zone_t {
 
 /// Bring xnu-sys up. Called once by the daemon, before any guest exists.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
-    dtape_hooks = hooks;
+pub unsafe extern "C" fn xnu_sys_init(hooks: *const xnu_sys_hooks_t) {
+    xnu_sys_hooks = hooks;
 
-    log_debug("dtape_processor_init");
-    crate::xnu::processor::dtape_processor_init();
+    log_debug("xnu_sys_processor_init");
+    crate::xnu::processor::xnu_sys_processor_init();
 
-    log_debug("dtape_memory_init");
-    dtape_memory_init();
+    log_debug("xnu_sys_memory_init");
+    xnu_sys_memory_init();
 
     // Sizes only: none of these structs has a field touched here, so they stay OPAQUE in the
     // bindings and only their size crosses.
@@ -186,11 +186,11 @@ pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
         ptr::null_mut::<lck_attr_t>(),
     );
 
-    log_debug("dtape_timer_init");
-    dtape_timer_init();
+    log_debug("xnu_sys_timer_init");
+    xnu_sys_timer_init();
 
-    log_debug("dtape_mk_timer_init");
-    dtape_mk_timer_init();
+    log_debug("xnu_sys_mk_timer_init");
+    xnu_sys_mk_timer_init();
 
     log_debug("timer_call_init");
     timer_call_init();
@@ -201,8 +201,8 @@ pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
     log_debug("ipc_voucher_init");
     ipc_voucher_init();
 
-    log_debug("dtape_task_init");
-    dtape_task_init();
+    log_debug("xnu_sys_task_init");
+    xnu_sys_task_init();
 
     log_debug("ipc_init");
     ipc_init();
@@ -246,7 +246,7 @@ pub unsafe extern "C" fn dtape_init(hooks: *const dtape_hooks_t) {
 /// thread-call subsystems allocate per-thread state), so the split is load bearing and not
 /// tidiness.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_init_in_thread() {
+pub unsafe extern "C" fn xnu_sys_init_in_thread() {
     log_debug("thread_call_initialize");
     thread_call_initialize();
 
@@ -261,12 +261,12 @@ pub unsafe extern "C" fn dtape_init_in_thread() {
 
     ux_handler_setup();
 
-    dtape_psynch_init();
+    xnu_sys_psynch_init();
 }
 
 /// Empty in the C, and kept empty rather than dropped: it is part of the exported contract.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_deinit() {}
+pub unsafe extern "C" fn xnu_sys_deinit() {}
 
 #[cfg(test)]
 mod tests {

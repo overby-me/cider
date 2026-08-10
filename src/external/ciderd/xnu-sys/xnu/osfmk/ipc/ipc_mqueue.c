@@ -800,7 +800,7 @@ ipc_mqueue_post(
 		 *
 		 * So: receiver=NULL together with a non-zero set id is the deadlock, stated.
 		 */
-		dtape_log_debug("mqueue_post: mqueue=%p is_set=%d set_id=0x%llx msgcount=%d -> receiver=%p",
+		xnu_sys_log_debug("mqueue_post: mqueue=%p is_set=%d set_id=0x%llx msgcount=%d -> receiver=%p",
 		    mqueue, imq_is_set(mqueue) ? 1 : 0,
 		    (unsigned long long)waitq->waitq_set_id, mqueue->imq_msgcount,
 		    receiver);
@@ -834,7 +834,7 @@ ipc_mqueue_post(
 					 * thing left that can tell a watcher a message arrived: a knote
 					 * on the port's own klist. If there is no klist, nobody learns.
 					 */
-					dtape_log_debug("mqueue_post: no receiver on mq=%p; active=%d recv_name=0x%x recv_active=%d has_klist=%d",
+					xnu_sys_log_debug("mqueue_post: no receiver on mq=%p; active=%d recv_name=0x%x recv_active=%d has_klist=%d",
 					    mqueue, ip_active(port) ? 1 : 0, port->ip_receiver_name,
 					    (port->ip_receiver_name != MACH_PORT_NULL && is_active(port->ip_receiver)) ? 1 : 0,
 					    ipc_mqueue_has_klist(mqueue) ? 1 : 0);
@@ -1189,7 +1189,7 @@ ipc_mqueue_receive_on_thread(
 			 * it is what distinguishes a queued message that gets consumed from one
 			 * that is genuinely stranded.
 			 */
-			dtape_log_debug("mqueue_receive: immediate on mq=%p (was queued)", mqueue);
+			xnu_sys_log_debug("mqueue_receive: immediate on mq=%p (was queued)", mqueue);
 #endif
 			if (option & MACH_PEEK_MSG) {
 				ipc_mqueue_peek_on_thread(mqueue, option, thread);
@@ -1211,7 +1211,7 @@ ipc_mqueue_receive_on_thread(
 	 * blocks on is the whole question: a SET only ever sees its MEMBERS' preposts, so a
 	 * thread blocked on the set cannot be woken by a message to a port that is not in it.
 	 */
-	dtape_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d thread=%p",
+	xnu_sys_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d thread=%p",
 	    mqueue, imq_is_set(mqueue) ? 1 : 0,
 	    (unsigned long long)mqueue->imq_wait_queue.waitq_set_id, mqueue->imq_msgcount,
 	    thread);

@@ -346,7 +346,7 @@ def main [flag?: string] {
     let sym_count = (wc_l ($dt_syms | str join "\n"))
     # Floor lowered from 2700 with #71 for the same reason as the member count.
     if $sym_count >= 2100 { ok $"defines ($sym_count) symbols" } else { bad $"expected >= 2100 symbols, got ($sym_count)" }
-    # dtape_init and dtape_init_in_thread are NOT here any more: #71 made them Rust, they live
+    # xnu_sys_init and xnu_sys_init_in_thread are NOT here any more: #71 made them Rust, they live
     # at linux/server/src/xnu/init.rs. Asserting them against the C archive asserted something
     # false. What covers them now is the ciderd LINK plus the demos, both in
     # scripts/xnu-sys-runtime-check.nu, which is a 40 second gate.

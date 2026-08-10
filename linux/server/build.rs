@@ -1,9 +1,9 @@
 // Stage 0 build script.
 //
-// 1. bindgen the dtape hooks contract from SOURCE headers (no build needed) ->
-//    proves the 36-field dtape_hooks_t + all dtape types bind correctly in Rust.
+// 1. bindgen the xnu_sys hooks contract from SOURCE headers (no build needed) ->
+//    proves the 36-field xnu_sys_hooks_t + all xnu_sys types bind correctly in Rust.
 // 2. When XNU_SYS_LIB is set (a dir with the cider build's static libs), link
-//    the real xnu-sys + libsimple so dtape_init resolves -> the Stage 0 link proof.
+//    the real xnu-sys + libsimple so xnu_sys_init resolves -> the Stage 0 link proof.
 // 3. Compile fast_context.c (the landed P1 signal-mask-free ucontext) into the
 //    crate for the Stage 3 spike (Arm A).
 //
@@ -18,15 +18,15 @@ fn main() {
     // <repo>/src/external/ciderd. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
-    let dtape = manifest.join("../../src/external/ciderd/xnu-sys");
-    let dtape_inc = dtape.join("include");
+    let xnu_sys = manifest.join("../../src/external/ciderd/xnu-sys");
+    let xnu_sys_inc = xnu_sys.join("include");
     let libsimple_inc = manifest.join("../../src/libsimple/include");
     let fast_context = manifest.join("../../src/external/ciderd/src/fast_context.c");
 
     // ---- (1) bindgen: the hooks contract + types (source headers only) ----
     let mut builder = bindgen::Builder::default()
         .header("wrapper.h")
-        .clang_arg(format!("-I{}", dtape_inc.display()))
+        .clang_arg(format!("-I{}", xnu_sys_inc.display()))
         .clang_arg(format!("-I{}", libsimple_inc.display()));
 
     // The internal structs the ported glue needs (#71). wrapper.h reaches internal-include,
@@ -35,16 +35,16 @@ fn main() {
     // place semaphore_create and semaphore_destroy are declared.
     //
     // The generated trees do not exist in a bare checkout, so cargo is TOLD where they are
-    // rather than guessing: DTAPE_GEN_INCLUDE, colon separated, exactly as -I takes them.
+    // rather than guessing: XNU_SYS_GEN_INCLUDE, colon separated, exactly as -I takes them.
     // It is required, not optional. Making it optional would mean a cargo build and a buck2
     // build produce crates with different contents from identical sources, and a divergence
     // like that surfaces later as a bug that only reproduces under one of them.
-    println!("cargo:rerun-if-env-changed=DTAPE_GEN_INCLUDE");
-    let gen_roots = env::var("DTAPE_GEN_INCLUDE").unwrap_or_default();
+    println!("cargo:rerun-if-env-changed=XNU_SYS_GEN_INCLUDE");
+    let gen_roots = env::var("XNU_SYS_GEN_INCLUDE").unwrap_or_default();
     let gen_roots: Vec<&str> = gen_roots.split(':').filter(|s| !s.is_empty()).collect();
     if gen_roots.is_empty() {
         panic!(
-            "DTAPE_GEN_INCLUDE is not set.\n\
+            "XNU_SYS_GEN_INCLUDE is not set.\n\
              wrapper.h binds xnu-sys's internal structs, which reach two GENERATED header \
              trees (ciderd/rpc.h and the MIG mach/task.h). Point this at their \
              directories, colon separated. buck2 wires them as target deps, so the usual \
@@ -63,7 +63,7 @@ fn main() {
         "internal-include", "defines", "xnu/osfmk", "xnu/bsd", "xnu/libkern",
         "xnu/osfmk/libsa", "xnu/pexpert", "xnu/iokit", "xnu/EXTERNAL_HEADERS", "xnu",
     ] {
-        builder = builder.clang_arg(format!("-I{}", dtape.join(root).display()));
+        builder = builder.clang_arg(format!("-I{}", xnu_sys.join(root).display()));
     }
     builder = builder
         .clang_arg(format!(
@@ -78,8 +78,8 @@ fn main() {
         .clang_arg("-Wno-nullability-completeness")
         .clang_arg("-Wno-expansion-to-defined")
         .clang_arg("-Wno-elaborated-enum-base")
-        .allowlist_type("dtape_semaphore")
-        .allowlist_type("dtape_task")
+        .allowlist_type("xnu_sys_semaphore")
+        .allowlist_type("xnu_sys_task")
         .allowlist_function("semaphore_create")
         .allowlist_function("semaphore_destroy")
         .allowlist_function("semaphore_signal")
@@ -94,20 +94,20 @@ fn main() {
     }
 
     let bindings = builder
-        // The dtape surface we care about; keep the XNU/libsimple internals out.
-        .allowlist_type("dtape_hooks_t")
-        .allowlist_type("dtape_hooks")
-        .allowlist_type("dtape_.*_t")
-        .allowlist_type("dtape_.*_f")
+        // The xnu_sys surface we care about; keep the XNU/libsimple internals out.
+        .allowlist_type("xnu_sys_hooks_t")
+        .allowlist_type("xnu_sys_hooks")
+        .allowlist_type("xnu_sys_.*_t")
+        .allowlist_type("xnu_sys_.*_f")
         .allowlist_type("libsimple_lock_t")
-        .allowlist_var("DTAPE_.*")
+        .allowlist_var("XNU_SYS_.*")
         // fn-pointer struct fields become Option<unsafe extern "C" fn...>, which
         // lets us zero-init the vtable and fill only the hooks we implement.
         .default_enum_style(bindgen::EnumVariation::Rust { non_exhaustive: true })
         .derive_default(false)
         .layout_tests(false)
         .generate()
-        .expect("bindgen failed on the dtape hooks contract");
+        .expect("bindgen failed on the xnu_sys hooks contract");
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
         .write_to_file(out.join("xnu_sys.rs"))

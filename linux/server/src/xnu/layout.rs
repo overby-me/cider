@@ -4,7 +4,7 @@
 //! contains it:
 //!
 //! ```text
-//! (xnu_task as *mut u8).sub(offset_of!(dtape_task, xnu_task)) as *mut dtape_task
+//! (xnu_task as *mut u8).sub(offset_of!(xnu_sys_task, xnu_task)) as *mut xnu_sys_task
 //! ```
 //!
 //! That is only correct while Rust and C agree, byte for byte, on the layout of both structs.
@@ -16,7 +16,7 @@
 //! nothing else can catch.
 //!
 //! So the C compiler is asked for the answers in `wrapper.h`, as enumerators of
-//! `dtape_rs_host_consts`, and this module asserts Rust against them. `const` assertions, so a
+//! `xnu_sys_rs_host_consts`, and this module asserts Rust against them. `const` assertions, so a
 //! disagreement is a BUILD failure rather than a test that has to be remembered and run.
 //!
 //! Both sizes and both offsets are checked, for task and for thread. The sizes matter as much as
@@ -27,41 +27,41 @@
 use std::mem::{offset_of, size_of};
 
 use crate::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_OFFSETOF_DTAPE_TASK_XNU_TASK,
-    dtape_rs_host_consts_DTAPE_RS_OFFSETOF_DTAPE_THREAD_XNU_THREAD,
-    dtape_rs_host_consts_DTAPE_RS_SIZEOF_DTAPE_TASK,
-    dtape_rs_host_consts_DTAPE_RS_SIZEOF_DTAPE_THREAD, dtape_rs_host_consts_DTAPE_RS_SIZEOF_XNU_TASK,
-    dtape_rs_host_consts_DTAPE_RS_SIZEOF_XNU_THREAD, dtape_task, dtape_thread, task, thread,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_OFFSETOF_XNU_SYS_TASK_XNU_TASK,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_OFFSETOF_XNU_SYS_THREAD_XNU_THREAD,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_SYS_TASK,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_SYS_THREAD, xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_TASK,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_THREAD, xnu_sys_task, xnu_sys_thread, task, thread,
 };
 
 const _: () = assert!(
-    size_of::<task>() == dtape_rs_host_consts_DTAPE_RS_SIZEOF_XNU_TASK as usize,
-    "Rust and C disagree on sizeof(struct task); every dtape_task offset is suspect"
+    size_of::<task>() == xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_TASK as usize,
+    "Rust and C disagree on sizeof(struct task); every xnu_sys_task offset is suspect"
 );
 
 const _: () = assert!(
-    size_of::<thread>() == dtape_rs_host_consts_DTAPE_RS_SIZEOF_XNU_THREAD as usize,
-    "Rust and C disagree on sizeof(struct thread); every dtape_thread offset is suspect"
+    size_of::<thread>() == xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_THREAD as usize,
+    "Rust and C disagree on sizeof(struct thread); every xnu_sys_thread offset is suspect"
 );
 
 const _: () = assert!(
-    size_of::<dtape_task>() == dtape_rs_host_consts_DTAPE_RS_SIZEOF_DTAPE_TASK as usize,
-    "Rust and C disagree on sizeof(struct dtape_task)"
+    size_of::<xnu_sys_task>() == xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_SYS_TASK as usize,
+    "Rust and C disagree on sizeof(struct xnu_sys_task)"
 );
 
 const _: () = assert!(
-    size_of::<dtape_thread>() == dtape_rs_host_consts_DTAPE_RS_SIZEOF_DTAPE_THREAD as usize,
-    "Rust and C disagree on sizeof(struct dtape_thread)"
+    size_of::<xnu_sys_thread>() == xnu_sys_rs_host_consts_XNU_SYS_RS_SIZEOF_XNU_SYS_THREAD as usize,
+    "Rust and C disagree on sizeof(struct xnu_sys_thread)"
 );
 
 const _: () = assert!(
-    offset_of!(dtape_task, xnu_task)
-        == dtape_rs_host_consts_DTAPE_RS_OFFSETOF_DTAPE_TASK_XNU_TASK as usize,
-    "dtape_task_for_xnu_task would compute the wrong pointer"
+    offset_of!(xnu_sys_task, xnu_task)
+        == xnu_sys_rs_host_consts_XNU_SYS_RS_OFFSETOF_XNU_SYS_TASK_XNU_TASK as usize,
+    "xnu_sys_task_for_xnu_task would compute the wrong pointer"
 );
 
 const _: () = assert!(
-    offset_of!(dtape_thread, xnu_thread)
-        == dtape_rs_host_consts_DTAPE_RS_OFFSETOF_DTAPE_THREAD_XNU_THREAD as usize,
-    "dtape_thread_for_xnu_thread would compute the wrong pointer"
+    offset_of!(xnu_sys_thread, xnu_thread)
+        == xnu_sys_rs_host_consts_XNU_SYS_RS_OFFSETOF_XNU_SYS_THREAD_XNU_THREAD as usize,
+    "xnu_sys_thread_for_xnu_thread would compute the wrong pointer"
 );

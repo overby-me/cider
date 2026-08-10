@@ -291,7 +291,7 @@ mig_init(void)
 	}
 #ifdef __DARLING__
 	#include <ciderd/xnu-sys/log.h>
-	dtape_log_debug("mig_table_max_displ = %d mach_kobj_count = %d\n",
+	xnu_sys_log_debug("mig_table_max_displ = %d mach_kobj_count = %d\n",
 	    mig_table_max_displ, mach_kobj_count);
 #else
 	printf("mig_table_max_displ = %d mach_kobj_count = %d\n",

@@ -1,7 +1,7 @@
 //! Stage 4 slice: the daemon's epoll accept loop over a REAL unix socket. A client
 //! thread connects and sends a uidgid call; the main thread's epoll loop accepts the
 //! connection, receives the message, dispatches it on a sched microthread (real
-//! dtape_task_uidgid, routed to the guest's task via the registry), and replies.
+//! xnu_sys_task_uidgid, routed to the guest's task via the registry), and replies.
 use cider::registry::Registry;
 use cider::rpc_io::{recv_message, send_message};
 use cider::rpc_wire::{
@@ -15,7 +15,7 @@ use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
 
 extern "C" {
-    fn dtape_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
+    fn xnu_sys_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
 }
 fn as_bytes<T>(v: &T) -> &[u8] {
     unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }
@@ -57,7 +57,7 @@ fn main() {
                 let out = slot.clone();
                 let mt = reg.spawn_on(hdr.pid as u32, hdr.tid as u64, hdr.architecture, Box::new(move || {
                     let (mut ou, mut og): (c_int, c_int) = (-1, -1);
-                    dtape_task_uidgid(sched::current_task() as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
+                    xnu_sys_task_uidgid(sched::current_task() as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
                     out.set(Some(ReplyUidgid { old_uid: ou, old_gid: og }));
                 }));
                 sched::run(mt);

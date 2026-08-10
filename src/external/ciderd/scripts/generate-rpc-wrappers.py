@@ -11,7 +11,7 @@ XNU_TRAP_NOPREFIX      = 1 << 1
 XNU_TRAP_NOSUFFIX      = 1 << 2
 XNU_TRAP_NOSUFFIX_ARGS = 1 << 3
 XNU_TRAP_BSD           = 1 << 4
-XNU_TRAP_NO_DTAPE_DEF  = 1 << 5
+XNU_TRAP_NO_XNU_SYS_DEF  = 1 << 5
 XNU_BSD_TRAP_CALL      = XNU_TRAP_CALL | XNU_TRAP_NOPREFIX | XNU_TRAP_NOSUFFIX | XNU_TRAP_NOSUFFIX_ARGS | XNU_TRAP_BSD
 UNMANAGED_CALL         = 1 << 6
 ALLOW_INTERRUPTIONS    = 1 << 7
@@ -67,7 +67,7 @@ calls = [
 	#   XNU_TRAP_BSD
 	#     this indicates the XNU trap is for a BSD syscall. BSD syscalls have 2 return codes: one for failure and one for success.
 	#     this flag informs the RPC wrapper generator about this so it can handle it appropriately.
-	#   XNU_TRAP_NO_DTAPE_DEF
+	#   XNU_TRAP_NO_XNU_SYS_DEF
 	#     by default, the RPC wrapper generator code will generate xnu-sys wrappers for XNU traps that automatically call the
 	#     XNU handler function for the trap. this flag tells it not to do that; this means you must define the xnu-sys handler yourself.
 	#   UNMANAGED_CALL
@@ -522,7 +522,7 @@ calls = [
 		('tid', 'uint64_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF),
 
 	('psynch_cvclrprepost', [
 		('cv', 'uint64_t'),
@@ -534,7 +534,7 @@ calls = [
 		('flags', 'uint32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF),
 
 	('psynch_cvsignal', [
 		('cv', 'uint64_t'),
@@ -547,7 +547,7 @@ calls = [
 		('flags', 'uint32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF),
 
 	('psynch_cvwait', [
 		('cv', 'uint64_t'),
@@ -560,7 +560,7 @@ calls = [
 		('nsec', 'uint32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF | ALLOW_INTERRUPTIONS),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF | ALLOW_INTERRUPTIONS),
 
 	('psynch_mutexdrop', [
 		('mutex', 'uint64_t'),
@@ -570,7 +570,7 @@ calls = [
 		('flags', 'uint32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF),
 
 	('psynch_mutexwait', [
 		('mutex', 'uint64_t'),
@@ -580,7 +580,7 @@ calls = [
 		('flags', 'uint32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF | ALLOW_INTERRUPTIONS),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF | ALLOW_INTERRUPTIONS),
 
 	('psynch_rw_rdlock', [
 		('rwlock', 'uint64_t'),
@@ -590,7 +590,7 @@ calls = [
 		('flags', 'int32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF | ALLOW_INTERRUPTIONS),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF | ALLOW_INTERRUPTIONS),
 
 	('psynch_rw_unlock', [
 		('rwlock', 'uint64_t'),
@@ -600,7 +600,7 @@ calls = [
 		('flags', 'int32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF),
 
 	('psynch_rw_wrlock', [
 		('rwlock', 'uint64_t'),
@@ -610,7 +610,7 @@ calls = [
 		('flags', 'int32_t'),
 	], [
 		('retval', 'uint32_t'),
-	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_DTAPE_DEF | ALLOW_INTERRUPTIONS),
+	], XNU_BSD_TRAP_CALL | XNU_TRAP_NO_XNU_SYS_DEF | ALLOW_INTERRUPTIONS),
 
 	#
 	# debug calls
@@ -1105,7 +1105,7 @@ for call in calls:
 		internal_header.write("\t\t\t} \\\n")
 		internal_header.write("\t\t}; \\\n")
 
-	internal_header.write("\t\tThread::syscallReturn(dtape_{0}(".format(call_name))
+	internal_header.write("\t\tThread::syscallReturn(xnu_sys_{0}(".format(call_name))
 
 	is_first = True
 	for param in call_parameters:
@@ -1127,7 +1127,7 @@ for call in calls:
 	internal_header.write("\t}; \\\n")
 internal_header.write("\n")
 
-internal_header.write("#define DSERVER_DTAPE_DECLS \\\n")
+internal_header.write("#define DSERVER_XNU_SYS_DECLS \\\n")
 for call in calls:
 	call_name = call[0]
 	call_parameters = call[1]
@@ -1137,7 +1137,7 @@ for call in calls:
 	if (flags & XNU_TRAP_CALL) == 0:
 		continue
 
-	internal_header.write("\tint dtape_{0}(".format(call_name))
+	internal_header.write("\tint xnu_sys_{0}(".format(call_name))
 
 	is_first = True
 	for param in call_parameters:
@@ -1158,14 +1158,14 @@ for call in calls:
 	internal_header.write("); \\\n")
 internal_header.write("\n")
 
-internal_header.write("#define DSERVER_DTAPE_DEFS \\\n")
+internal_header.write("#define DSERVER_XNU_SYS_DEFS \\\n")
 for call in calls:
 	call_name = call[0]
 	call_parameters = call[1]
 	flags = call[3] if len(call) >= 4 else 0
 	camel_name = to_camel_case(call_name)
 
-	if (flags & XNU_TRAP_CALL) == 0 or (flags & XNU_TRAP_NO_DTAPE_DEF) != 0:
+	if (flags & XNU_TRAP_CALL) == 0 or (flags & XNU_TRAP_NO_XNU_SYS_DEF) != 0:
 		continue
 
 	trap_name = call_name
@@ -1180,7 +1180,7 @@ for call in calls:
 	if (flags & (XNU_TRAP_NOSUFFIX | XNU_TRAP_NOSUFFIX_ARGS)) == 0:
 		trap_args_name = trap_args_name + "_trap"
 
-	internal_header.write("\tint dtape_{0}(".format(call_name))
+	internal_header.write("\tint xnu_sys_{0}(".format(call_name))
 
 	is_first = True
 	for param in call_parameters:

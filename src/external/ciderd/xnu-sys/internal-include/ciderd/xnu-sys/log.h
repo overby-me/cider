@@ -4,11 +4,11 @@
 #include <ciderd/xnu-sys/types.h>
 
 __attribute__((format(printf, 2, 3)))
-extern void dtape_log(dtape_log_level_t level, const char* format, ...);
+extern void xnu_sys_log(xnu_sys_log_level_t level, const char* format, ...);
 
-#define dtape_log_debug(format, ...) dtape_log(dtape_log_level_debug, format, ## __VA_ARGS__)
-#define dtape_log_info(format, ...) dtape_log(dtape_log_level_info, format, ## __VA_ARGS__)
-#define dtape_log_warning(format, ...) dtape_log(dtape_log_level_warning, format, ## __VA_ARGS__)
-#define dtape_log_error(format, ...) dtape_log(dtape_log_level_error, format, ## __VA_ARGS__)
+#define xnu_sys_log_debug(format, ...) xnu_sys_log(xnu_sys_log_level_debug, format, ## __VA_ARGS__)
+#define xnu_sys_log_info(format, ...) xnu_sys_log(xnu_sys_log_level_info, format, ## __VA_ARGS__)
+#define xnu_sys_log_warning(format, ...) xnu_sys_log(xnu_sys_log_level_warning, format, ## __VA_ARGS__)
+#define xnu_sys_log_error(format, ...) xnu_sys_log(xnu_sys_log_level_error, format, ## __VA_ARGS__)
 
 #endif // _DARLINGSERVER_XNU_SYS_LOG_H_

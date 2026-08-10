@@ -29,9 +29,9 @@ use std::os::raw::{c_int, c_long, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    clear_wait, dserver_kqchan_reply_mach_port_read_t, dtape_kqchan_mach_port_notification_callback_f,
-    dtape_kqchan_mach_port_t, dtape_rs_imq_is_set, dtape_rs_ipc_mqueue_receive_event,
-    dtape_rs_os_ref_init, dtape_rs_os_ref_release, dtape_rs_task_reference, dtape_task_t,
+    clear_wait, dserver_kqchan_reply_mach_port_read_t, xnu_sys_kqchan_mach_port_notification_callback_f,
+    xnu_sys_kqchan_mach_port_t, xnu_sys_rs_imq_is_set, xnu_sys_rs_ipc_mqueue_receive_event,
+    xnu_sys_rs_os_ref_init, xnu_sys_rs_os_ref_release, xnu_sys_rs_task_reference, xnu_sys_task_t,
     ipc_mqueue_peek, ipc_mqueue_set_peek, kernel_thread_start, klist, knote,
     kn_status_t, task_deallocate, thread_deallocate, thread_t, thread_terminate_self, waitq,
     waitq_assert_wait64, wait_result_t, EVFILT_MACHPORT, EV_DISPATCH2, EV_ERROR, EV_ONESHOT,
@@ -39,9 +39,9 @@ use crate::bindings::{
 };
 
 use crate::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_KN_VANISHED as KN_VANISHED_C,
-    dtape_rs_host_consts_DTAPE_RS_THREAD_INTERRUPTED as THREAD_INTERRUPTED,
-    dtape_rs_host_consts_DTAPE_RS_THREAD_INTERRUPTIBLE as THREAD_INTERRUPTIBLE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_KN_VANISHED as KN_VANISHED_C,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_THREAD_INTERRUPTED as THREAD_INTERRUPTED,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_THREAD_INTERRUPTIBLE as THREAD_INTERRUPTIBLE,
 };
 
 extern "C" {
@@ -54,22 +54,22 @@ extern "C" {
     fn filt_machportpeek(kn: *mut knote) -> c_int;
 
     fn panic(format: *const std::os::raw::c_char, ...);
-    fn dtape_log(level: c_int, format: *const std::os::raw::c_char, ...);
+    fn xnu_sys_log(level: c_int, format: *const std::os::raw::c_char, ...);
 
     /// NOT allowlisted as a binding: several daemon modules do `use crate::bindings::*` and
     /// have their own parameter called kernel_task, which a bound static would shadow.
     static mut kernel_task: crate::bindings::task_t;
 }
 
-const DTAPE_LOG_LEVEL_DEBUG: c_int = 0;
-const DTAPE_LOG_LEVEL_WARNING: c_int = 2;
+const XNU_SYS_LOG_LEVEL_DEBUG: c_int = 0;
+const XNU_SYS_LOG_LEVEL_WARNING: c_int = 2;
 const THREAD_WAITING: wait_result_t = -1;
 
 fn log_at(level: c_int, what: &str) {
     let mut buf = Vec::with_capacity(what.len() + 1);
     buf.extend_from_slice(what.as_bytes());
     buf.push(0);
-    unsafe { dtape_log(level, buf.as_ptr() as *const _) }
+    unsafe { xnu_sys_log(level, buf.as_ptr() as *const _) }
 }
 
 unsafe fn fail(message: &[u8]) -> ! {
@@ -143,41 +143,41 @@ unsafe fn kn_mqueue(kn: *mut knote) -> *mut crate::bindings::ipc_mqueue {
     (*kn).__bindgen_anon_2.kn_mqueue
 }
 
-/// The kqchan a knote is embedded in: `__container_of(kn, dtape_kqchan_mach_port_t, knote)`.
+/// The kqchan a knote is embedded in: `__container_of(kn, xnu_sys_kqchan_mach_port_t, knote)`.
 #[inline]
-unsafe fn kqchan_for_knote(kn: *mut knote) -> *mut dtape_kqchan_mach_port_t {
-    (kn as *mut u8).sub(offset_of!(crate::bindings::dtape_kqchan_mach_port, knote))
-        as *mut dtape_kqchan_mach_port_t
+unsafe fn kqchan_for_knote(kn: *mut knote) -> *mut xnu_sys_kqchan_mach_port_t {
+    (kn as *mut u8).sub(offset_of!(crate::bindings::xnu_sys_kqchan_mach_port, knote))
+        as *mut xnu_sys_kqchan_mach_port_t
 }
 
 // ---------------------------------------------------------------------------------------
 
 /// Create a channel watching `port`, attaching XNU's Mach-port filter to it.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_create(
-    owning_task: *mut dtape_task_t,
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_create(
+    owning_task: *mut xnu_sys_task_t,
     port: u32,
     receive_buffer: u64,
     receive_buffer_size: u64,
     saved_filter_flags: u64,
-    notification_callback: dtape_kqchan_mach_port_notification_callback_f,
+    notification_callback: xnu_sys_kqchan_mach_port_notification_callback_f,
     context: *mut c_void,
-) -> *mut dtape_kqchan_mach_port_t {
-    let kqchan = libc::malloc(std::mem::size_of::<dtape_kqchan_mach_port_t>())
-        as *mut dtape_kqchan_mach_port_t;
+) -> *mut xnu_sys_kqchan_mach_port_t {
+    let kqchan = libc::malloc(std::mem::size_of::<xnu_sys_kqchan_mach_port_t>())
+        as *mut xnu_sys_kqchan_mach_port_t;
     if kqchan.is_null() {
         return ptr::null_mut();
     }
-    ptr::write_bytes(kqchan as *mut u8, 0, std::mem::size_of::<dtape_kqchan_mach_port_t>());
+    ptr::write_bytes(kqchan as *mut u8, 0, std::mem::size_of::<xnu_sys_kqchan_mach_port_t>());
 
     (*kqchan).callback = notification_callback;
     (*kqchan).context = context;
     (*kqchan).task = owning_task;
 
     // Hold a reference to the task for as long as the channel exists.
-    dtape_rs_task_reference(ptr::addr_of_mut!((*(*kqchan).task).xnu_task));
+    xnu_sys_rs_task_reference(ptr::addr_of_mut!((*(*kqchan).task).xnu_task));
 
-    dtape_rs_os_ref_init(ptr::addr_of_mut!((*kqchan).refcount) as *mut _);
+    xnu_sys_rs_os_ref_init(ptr::addr_of_mut!((*kqchan).refcount) as *mut _);
 
     let kn = ptr::addr_of_mut!((*kqchan).knote);
     (*kn).kn_kevent.kei_ident = port as u64;
@@ -197,8 +197,8 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_create(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_destroy(kqchan: *mut dtape_kqchan_mach_port_t) {
-    if dtape_rs_os_ref_release(ptr::addr_of_mut!((*kqchan).refcount) as *mut _) != 0 {
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_destroy(kqchan: *mut xnu_sys_kqchan_mach_port_t) {
+    if xnu_sys_rs_os_ref_release(ptr::addr_of_mut!((*kqchan).refcount) as *mut _) != 0 {
         fail(b"Duct-taped Mach port kqchan over-retained or still in-use at destruction\0");
     }
 
@@ -210,8 +210,8 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_destroy(kqchan: *mut dtape_kqcha
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_modify(
-    kqchan: *mut dtape_kqchan_mach_port_t,
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_modify(
+    kqchan: *mut xnu_sys_kqchan_mach_port_t,
     receive_buffer: u64,
     receive_buffer_size: u64,
     saved_filter_flags: u64,
@@ -224,8 +224,8 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_modify(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_disable_notifications(
-    kqchan: *mut dtape_kqchan_mach_port_t,
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_disable_notifications(
+    kqchan: *mut xnu_sys_kqchan_mach_port_t,
 ) {
     (*kqchan).callback = None;
     (*kqchan).context = ptr::null_mut();
@@ -233,8 +233,8 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_disable_notifications(
 
 /// Turn whatever is pending into a reply, or report that there was nothing.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_fill(
-    kqchan: *mut dtape_kqchan_mach_port_t,
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_fill(
+    kqchan: *mut xnu_sys_kqchan_mach_port_t,
     reply: *mut dserver_kqchan_reply_mach_port_read_t,
     default_buffer: u64,
     default_buffer_size: u64,
@@ -267,18 +267,18 @@ pub unsafe extern "C" fn dtape_kqchan_mach_port_fill(
         != 0;
 
     if !(*kqchan).waiter_read_semaphore.is_null() {
-        crate::xnu::semaphore::dtape_semaphore_up((*kqchan).waiter_read_semaphore);
+        crate::xnu::semaphore::xnu_sys_semaphore_up((*kqchan).waiter_read_semaphore);
     }
 
     result
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_kqchan_mach_port_has_events(
-    kqchan: *mut dtape_kqchan_mach_port_t,
+pub unsafe extern "C" fn xnu_sys_kqchan_mach_port_has_events(
+    kqchan: *mut xnu_sys_kqchan_mach_port_t,
 ) -> bool {
     let mq = kn_mqueue(ptr::addr_of_mut!((*kqchan).knote));
-    if dtape_rs_imq_is_set(mq) != 0 {
+    if xnu_sys_rs_imq_is_set(mq) != 0 {
         ipc_mqueue_set_peek(mq) != 0
     } else {
         ipc_mqueue_peek(mq, ptr::null_mut(), ptr::null_mut(), ptr::null_mut(),
@@ -320,7 +320,7 @@ pub unsafe extern "C" fn knote(list: *mut klist, hint: c_long) {
 /// remove the knote from this very list, so the successor is taken BEFORE the body runs.
 #[no_mangle]
 pub unsafe extern "C" fn knote_vanish(list: *mut klist, _make_active: bool) {
-    log_at(DTAPE_LOG_LEVEL_DEBUG, "klist is vanishing");
+    log_at(XNU_SYS_LOG_LEVEL_DEBUG, "klist is vanishing");
     let mut kn = (*list).slh_first;
     while !kn.is_null() {
         let next = (*kn).kn_selnext.sle_next;
@@ -337,7 +337,7 @@ pub unsafe extern "C" fn knote_vanish(list: *mut klist, _make_active: bool) {
 /// `__builtin_unreachable()`; a Rust function that let control fall out of a noreturn call is
 /// the exact shape of the mldr-rs SIGILL recorded earlier in this project.
 unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_result: wait_result_t) -> ! {
-    let kqchan = context as *mut dtape_kqchan_mach_port_t;
+    let kqchan = context as *mut xnu_sys_kqchan_mach_port_t;
 
     loop {
         let wq = (*kqchan).waitq;
@@ -347,7 +347,7 @@ unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_resul
 
         let mut wait_result = waitq_assert_wait64(
             wq,
-            dtape_rs_ipc_mqueue_receive_event(),
+            xnu_sys_rs_ipc_mqueue_receive_event(),
             THREAD_INTERRUPTIBLE as crate::bindings::wait_interrupt_t,
             0,
         );
@@ -367,13 +367,13 @@ unsafe extern "C" fn kqchan_waitq_waiter_entry(context: *mut c_void, _wait_resul
         }
 
         // Wait until the reader has taken it, or give up if interrupted.
-        if !crate::xnu::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_read_semaphore) {
+        if !crate::xnu::semaphore::xnu_sys_semaphore_down_simple((*kqchan).waiter_read_semaphore) {
             break;
         }
     }
 
     // The death semaphore is what stops the kqchan being freed while this is still running.
-    crate::xnu::semaphore::dtape_semaphore_up((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::xnu_sys_semaphore_up((*kqchan).waiter_death_semaphore);
 
     thread_terminate_self();
     unreachable!("thread_terminate_self returned")
@@ -388,14 +388,14 @@ pub unsafe extern "C" fn knote_link_waitq(
     let kqchan = kqchan_for_knote(kn);
 
     if !(*kqchan).waitq.is_null() {
-        log_at(DTAPE_LOG_LEVEL_WARNING, "Attempt to link kqchan while it was already linked");
+        log_at(XNU_SYS_LOG_LEVEL_WARNING, "Attempt to link kqchan while it was already linked");
         return 1;
     }
 
     (*kqchan).waitq = wq;
-    let ktask = crate::xnu::debug::dtape_task_for_xnu_task(kernel_task);
-    (*kqchan).waiter_death_semaphore = crate::xnu::semaphore::dtape_semaphore_create(ktask, 0);
-    (*kqchan).waiter_read_semaphore = crate::xnu::semaphore::dtape_semaphore_create(ktask, 0);
+    let ktask = crate::xnu::debug::xnu_sys_task_for_xnu_task(kernel_task);
+    (*kqchan).waiter_death_semaphore = crate::xnu::semaphore::xnu_sys_semaphore_create(ktask, 0);
+    (*kqchan).waiter_read_semaphore = crate::xnu::semaphore::xnu_sys_semaphore_create(ktask, 0);
 
     if kernel_thread_start(
         Some(std::mem::transmute::<
@@ -431,12 +431,12 @@ pub unsafe extern "C" fn knote_unlink_waitq(kn: *mut knote, wq: *mut waitq) -> c
     (*kqchan).waiter_thread = ptr::null_mut();
 
     // Block until it has actually died, so nothing below frees a structure it is still in.
-    crate::xnu::semaphore::dtape_semaphore_down_simple((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::xnu_sys_semaphore_down_simple((*kqchan).waiter_death_semaphore);
 
-    crate::xnu::semaphore::dtape_semaphore_destroy((*kqchan).waiter_death_semaphore);
+    crate::xnu::semaphore::xnu_sys_semaphore_destroy((*kqchan).waiter_death_semaphore);
     (*kqchan).waiter_death_semaphore = ptr::null_mut();
 
-    crate::xnu::semaphore::dtape_semaphore_destroy((*kqchan).waiter_read_semaphore);
+    crate::xnu::semaphore::xnu_sys_semaphore_destroy((*kqchan).waiter_read_semaphore);
     (*kqchan).waiter_read_semaphore = ptr::null_mut();
 
     0
@@ -444,20 +444,20 @@ pub unsafe extern "C" fn knote_unlink_waitq(kn: *mut knote, wq: *mut waitq) -> c
 
 #[no_mangle]
 pub unsafe extern "C" fn knote_link_waitqset_lazy_alloc(_kn: *mut knote) {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn knote_link_waitqset_should_lazy_alloc(
     _kn: *mut knote,
 ) -> crate::bindings::boolean_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     0
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn kqueue_alloc_turnstile(_kq: *mut c_void) -> *mut c_void {
-    crate::dtape_stub!();
+    crate::xnu_sys_stub!();
     ptr::null_mut()
 }
 

@@ -1,8 +1,8 @@
 //! ciderd: the Rust host-side rewrite of ciderd.
 //!
-//! Boundary (frozen): the C xnu-sys (XNU emulation) is consumed via the dtape_*
-//! API + the dtape_hooks vtable; everything above it is safe-ish Rust. See
-//! PLAN.md. Proven so far (spikes): the link + dtape_init
+//! Boundary (frozen): the C xnu-sys (XNU emulation) is consumed via the xnu_sys_*
+//! API + the xnu_sys_hooks vtable; everything above it is safe-ish Rust. See
+//! PLAN.md. Proven so far (spikes): the link + xnu_sys_init
 //! (Stage 0), both microthread suspend/resume paths across the FFI (Stage 3), and
 //! the byte-identical RPC wire codec (Stage 1). This library is the Stage 4
 //! foundation: a reusable, static-mut-free microthread scheduler + hook layer
@@ -10,7 +10,7 @@
 
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case, dead_code)]
 
-/// bindgen-generated dtape hooks contract + types (from build.rs).
+/// bindgen-generated xnu_sys hooks contract + types (from build.rs).
 pub mod bindings {
     include!(concat!(env!("OUT_DIR"), "/xnu_sys.rs"));
 }
@@ -20,13 +20,13 @@ pub mod bindings {
 #[path = "rpc_wire.rs"]
 pub mod rpc_wire;
 
-/// The microthread scheduler + dtape hook layer.
+/// The microthread scheduler + xnu_sys hook layer.
 pub mod sched;
 
 /// Daemon-side RPC message I/O (receive/decode half of the loop).
 pub mod rpc_io;
 
-/// Process/thread tables: guest pid/tid -> dtape task/thread.
+/// Process/thread tables: guest pid/tid -> xnu_sys task/thread.
 pub mod registry;
 
 /// The epoll accept loop (listening socket + connection multiplexing).
@@ -35,7 +35,7 @@ pub mod server;
 /// Mach special-port traps (task_self/host_self/thread_self/mach_reply_port).
 pub mod mach;
 
-/// Task-level xnu-sys operations (dtape_task_* on an explicit task pointer).
+/// Task-level xnu-sys operations (xnu_sys_task_* on an explicit task pointer).
 pub mod task;
 /// The XNU kernel emulation: the Rust replacements for the 16 xnu-sys
 /// glue files (#71). Paired with the xnu_sys bindings underneath.
@@ -45,7 +45,7 @@ pub mod xnu;
 /// Thread-level xnu-sys operations (sigexc enter/exit for the interrupt mechanism).
 pub mod thread;
 
-/// XNU-trap xnu-sys wrappers (the thin dtape_<name> traps: mach port/vm/semaphore/timer).
+/// XNU-trap xnu-sys wrappers (the thin xnu_sys_<name> traps: mach port/vm/semaphore/timer).
 pub mod traps;
 
 /// Process kqueue channels (EVFILT_PROC): the daemon side of the guest's process waiters.

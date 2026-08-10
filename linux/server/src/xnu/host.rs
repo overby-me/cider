@@ -7,7 +7,7 @@
 //!
 //! WHY THIS FILE WAS PICKED, and it was picked by measurement rather than by feel.
 //! `scripts/xnu-sys-portability.py` ranks the sixteen glue files, and after it was taught
-//! that `dtape_stub`, `dtape_stub_safe` and `dtape_stub_unsafe` are already Rust, this one has
+//! that `xnu_sys_stub`, `xnu_sys_stub_safe` and `xnu_sys_stub_unsafe` are already Rust, this one has
 //! exactly ONE unresolved blocker left: `panic`, which `semaphore.rs` already calls as an
 //! extern variadic and which gate3 validated. At 245 lines and 12 exports it is also the
 //! smallest remaining file.
@@ -18,7 +18,7 @@
 //! simply believes the machine has the wrong amount of memory or the wrong CPU count. So every
 //! struct here is filled through a BINDGEN type, never through a hand-written offset, and every
 //! count comes from `sizeof` evaluated by the C compiler rather than written down. See the
-//! `dtape_rs_host_consts` enum in `wrapper.h`.
+//! `xnu_sys_rs_host_consts` enum in `wrapper.h`.
 //!
 //! TWO DELIBERATE DEPARTURES FROM THE C, both of which make it more correct rather than less:
 //!
@@ -51,19 +51,19 @@ use crate::bindings::{
 };
 
 // The counts and the CPU identifiers, evaluated by the C compiler from the real macros (see
-// the dtape_rs_host_consts enum in wrapper.h). bindgen cannot const-evaluate either
+// the xnu_sys_rs_host_consts enum in wrapper.h). bindgen cannot const-evaluate either
 // sizeof(...)/sizeof(integer_t) or ((cpu_type_t) 7), so without that enum these come out
 // missing, and the only alternative would be transcribing them here.
 use crate::bindings::{
-    dtape_rs_host_consts_DTAPE_RS_CPU_SUBTYPE_X86_64_ALL as CPU_SUBTYPE_X86_64_ALL,
-    dtape_rs_host_consts_DTAPE_RS_CPU_THREADTYPE_NONE as CPU_THREADTYPE_NONE,
-    dtape_rs_host_consts_DTAPE_RS_CPU_TYPE_X86 as CPU_TYPE_X86,
-    dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_COUNT as HOST_BASIC_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_BASIC_INFO_OLD_COUNT as HOST_BASIC_INFO_OLD_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_PREFERRED_USER_ARCH_COUNT as HOST_PREFERRED_USER_ARCH_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_PRIORITY_INFO_COUNT as HOST_PRIORITY_INFO_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_VM_INFO64_COUNT as HOST_VM_INFO64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_HOST_VM_INFO_REV0_COUNT as HOST_VM_INFO_REV0_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_CPU_SUBTYPE_X86_64_ALL as CPU_SUBTYPE_X86_64_ALL,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_CPU_THREADTYPE_NONE as CPU_THREADTYPE_NONE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_CPU_TYPE_X86 as CPU_TYPE_X86,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_BASIC_INFO_COUNT as HOST_BASIC_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_BASIC_INFO_OLD_COUNT as HOST_BASIC_INFO_OLD_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_PREFERRED_USER_ARCH_COUNT as HOST_PREFERRED_USER_ARCH_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_PRIORITY_INFO_COUNT as HOST_PRIORITY_INFO_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_VM_INFO64_COUNT as HOST_VM_INFO64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_HOST_VM_INFO_REV0_COUNT as HOST_VM_INFO_REV0_COUNT,
 };
 
 extern "C" {
@@ -131,7 +131,7 @@ pub unsafe extern "C" fn host_info(
 
             if (*count as u32) >= HOST_BASIC_INFO_COUNT as u32 {
                 // TODO: properly differentiate physical vs. logical cores
-                crate::dtape_stub_safe!("modern HOST_BASIC_INFO");
+                crate::xnu_sys_stub_safe!("modern HOST_BASIC_INFO");
                 (*basic).cpu_threadtype = CPU_THREADTYPE_NONE as cpu_threadtype_t;
                 (*basic).physical_cpu = (*basic).avail_cpus;
                 (*basic).physical_cpu_max = (*basic).max_cpus;
@@ -187,10 +187,10 @@ pub unsafe extern "C" fn host_info(
             kr(KERN_SUCCESS)
         }
 
-        HOST_SCHED_INFO => crate::dtape_stub_unsafe!("HOST_SCHED_INFO"),
-        HOST_RESOURCE_SIZES => crate::dtape_stub_unsafe!("HOST_RESOURCE_SIZES"),
-        HOST_CAN_HAS_DEBUGGER => crate::dtape_stub_unsafe!("HOST_CAN_HAS_DEBUGGER"),
-        HOST_VM_PURGABLE => crate::dtape_stub_unsafe!("HOST_VM_PURGABLE"),
+        HOST_SCHED_INFO => crate::xnu_sys_stub_unsafe!("HOST_SCHED_INFO"),
+        HOST_RESOURCE_SIZES => crate::xnu_sys_stub_unsafe!("HOST_RESOURCE_SIZES"),
+        HOST_CAN_HAS_DEBUGGER => crate::xnu_sys_stub_unsafe!("HOST_CAN_HAS_DEBUGGER"),
+        HOST_VM_PURGABLE => crate::xnu_sys_stub_unsafe!("HOST_VM_PURGABLE"),
 
         // Both are "how many of these traps do you have", and the answer is none.
         HOST_MACH_MSG_TRAP | HOST_SEMAPHORE_TRAPS => {
@@ -217,7 +217,7 @@ pub unsafe extern "C" fn host_statistics(
                 return kr(KERN_FAILURE);
             }
 
-            crate::dtape_stub_safe!("HOST_VM_INFO");
+            crate::xnu_sys_stub_safe!("HOST_VM_INFO");
             // The C zeroes (*count) * sizeof(integer_t), which is the CALLER's buffer length,
             // not the struct size. Kept exactly: the caller may have asked for a revision
             // longer or shorter than the one this build knows about.
@@ -231,11 +231,11 @@ pub unsafe extern "C" fn host_statistics(
         }
 
         HOST_CPU_LOAD_INFO => {
-            crate::dtape_stub_safe!("HOST_CPU_LOAD_INFO");
+            crate::xnu_sys_stub_safe!("HOST_CPU_LOAD_INFO");
             kr(KERN_INVALID_ARGUMENT)
         }
 
-        _ => crate::dtape_stub_unsafe!(),
+        _ => crate::xnu_sys_stub_unsafe!(),
     }
 }
 
@@ -250,7 +250,7 @@ pub unsafe extern "C" fn vm_stats(info: *mut c_void, count: *mut c_uint) -> kern
     // opaque in the bindings, which still carries its size and is all this needs.
     ptr::write_bytes(info as *mut u8, 0, std::mem::size_of::<vm_statistics64>());
 
-    crate::dtape_stub!("TODO: actually fill in the values with something useful");
+    crate::xnu_sys_stub!("TODO: actually fill in the values with something useful");
 
     *count = HOST_VM_INFO64_COUNT as c_uint;
 
@@ -269,7 +269,7 @@ pub unsafe extern "C" fn host_default_memory_manager(
     _default_manager: *mut memory_object_default_t,
     _cluster_size: memory_object_cluster_size_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn host_get_boot_info(
     // kernel_boot_info_t is an ARRAY typedef, and an array parameter decays to a pointer in C.
     _boot_info: *mut c_char,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -286,7 +286,7 @@ pub unsafe extern "C" fn host_get_UNDServer(
     _host_priv: host_priv_t,
     _serverp: *mut UNDServerRef,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -294,7 +294,7 @@ pub unsafe extern "C" fn host_set_UNDServer(
     _host_priv: host_priv_t,
     _server: UNDServerRef,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -303,12 +303,12 @@ pub unsafe extern "C" fn host_lockgroup_info(
     _lockgroup_infop: *mut lockgroup_info_array_t,
     _lockgroup_infoCntp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn host_reboot(_host_priv: host_priv_t, _options: c_int) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 /// The one stub that RETURNS rather than aborting, because the guest asks for this on a normal
@@ -325,7 +325,7 @@ pub unsafe extern "C" fn host_security_create_task_token(
     _inherit_memory: boolean_t,
     _child_task: *mut task_t,
 ) -> kern_return_t {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     kr(KERN_NOT_SUPPORTED)
 }
 
@@ -337,7 +337,7 @@ pub unsafe extern "C" fn host_security_set_task_token(
     _audit_token: audit_token_t,
     _host_priv: host_priv_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
@@ -346,7 +346,7 @@ pub unsafe extern "C" fn host_virtual_physical_table_info(
     _infop: *mut hash_info_bucket_array_t,
     _countp: *mut mach_msg_type_number_t,
 ) -> kern_return_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[cfg(test)]

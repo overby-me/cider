@@ -30,8 +30,8 @@ use crate::xnu::condvar::{tailq_first, tailq_init, tailq_insert_tail, tailq_remo
 
 use crate::bindings::{
     assert_wait, assert_wait_deadline, assert_wait_timeout, boolean_t, current_thread,
-    dtape_mutex_link_t, dtape_mutex_t, dtape_rs_kalloc, dtape_rs_kfree,
-    dtape_rs_thread_rwlock_count, dtape_rs_thread_sched_flags, dtape_rs_waitq_interlock,
+    xnu_sys_mutex_link_t, xnu_sys_mutex_t, xnu_sys_rs_kalloc, xnu_sys_rs_kfree,
+    xnu_sys_rs_thread_rwlock_count, xnu_sys_rs_thread_sched_flags, xnu_sys_rs_waitq_interlock,
     event_t, lck_attr_t, lck_grp_t, lck_mtx_t, lck_rw_t, lck_rw_type_t, lck_sleep_action_t,
     lck_spin_t, lck_ticket_t, libsimple_lock_lock, libsimple_lock_t, libsimple_lock_try_lock,
     libsimple_lock_unlock, thread_block, thread_t, wait_interrupt_t, wait_result_t, waitq,
@@ -41,11 +41,11 @@ use crate::bindings::{
 
 extern "C" {
     fn panic(format: *const std::os::raw::c_char, ...);
-    fn dtape_log(level: c_int, format: *const std::os::raw::c_char, ...);
+    fn xnu_sys_log(level: c_int, format: *const std::os::raw::c_char, ...);
 }
 
-/// `dtape_log_level_warning`. See init.rs for why the level is spelled out.
-const DTAPE_LOG_LEVEL_WARNING: c_int = 2;
+/// `xnu_sys_log_level_warning`. See init.rs for why the level is spelled out.
+const XNU_SYS_LOG_LEVEL_WARNING: c_int = 2;
 
 /// `THREAD_WAITING`, `THREAD_CONTINUE_NULL`, `THREAD_UNINT`, `THREAD_TIMED_OUT`.
 ///
@@ -60,7 +60,7 @@ fn log_warning(what: &str) {
     let mut buf = Vec::with_capacity(what.len() + 1);
     buf.extend_from_slice(what.as_bytes());
     buf.push(0);
-    unsafe { dtape_log(DTAPE_LOG_LEVEL_WARNING, buf.as_ptr() as *const _) }
+    unsafe { xnu_sys_log(XNU_SYS_LOG_LEVEL_WARNING, buf.as_ptr() as *const _) }
 }
 
 unsafe fn fail(message: &[u8]) -> ! {
@@ -73,15 +73,15 @@ unsafe fn fail(message: &[u8]) -> ! {
 // ---------------------------------------------------------------------------------------
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_mutex_init(mutex: *mut dtape_mutex_t) {
-    (*mutex).dtape_owner = 0;
-    crate::xnu::condvar::lock_init(ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t);
-    tailq_init(ptr::addr_of_mut!((*mutex).dtape_queue_head));
+pub unsafe extern "C" fn xnu_sys_mutex_init(mutex: *mut xnu_sys_mutex_t) {
+    (*mutex).xnu_sys_owner = 0;
+    crate::xnu::condvar::lock_init(ptr::addr_of_mut!((*mutex).xnu_sys_queue_lock) as *mut libsimple_lock_t);
+    tailq_init(ptr::addr_of_mut!((*mutex).xnu_sys_queue_head));
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_mutex_assert(mutex: *mut dtape_mutex_t, should_be_owned: bool) {
-    let owned = (*mutex).dtape_owner == current_thread() as usize;
+pub unsafe extern "C" fn xnu_sys_mutex_assert(mutex: *mut xnu_sys_mutex_t, should_be_owned: bool) {
+    let owned = (*mutex).xnu_sys_owner == current_thread() as usize;
 
     if should_be_owned && !owned {
         fail(b"Lock assertion failed (not owned but expected to be owned)\0");
@@ -91,10 +91,10 @@ pub unsafe extern "C" fn dtape_mutex_assert(mutex: *mut dtape_mutex_t, should_be
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
+pub unsafe extern "C" fn xnu_sys_mutex_lock(mutex: *mut xnu_sys_mutex_t) {
     let xthread = current_thread();
     let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
-    let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
+    let queue_lock = ptr::addr_of_mut!((*mutex).xnu_sys_queue_lock) as *mut libsimple_lock_t;
 
     if thread.is_null() {
         log_warning("Trying to lock mutex without an active thread!");
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
         // taking this path really does sleep the whole thread, so it must hold briefly.
         loop {
             libsimple_lock_lock(queue_lock);
-            if (*mutex).dtape_owner == 0 {
+            if (*mutex).xnu_sys_owner == 0 {
                 return;
             }
             libsimple_lock_unlock(queue_lock);
@@ -110,26 +110,26 @@ pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
         }
     }
 
-    dtape_mutex_assert(mutex, false);
+    xnu_sys_mutex_assert(mutex, false);
 
     loop {
         libsimple_lock_lock(queue_lock);
 
-        if (*mutex).dtape_owner == 0 || (*mutex).dtape_owner == xthread as usize {
-            (*mutex).dtape_owner = xthread as usize;
+        if (*mutex).xnu_sys_owner == 0 || (*mutex).xnu_sys_owner == xthread as usize {
+            (*mutex).xnu_sys_owner = xthread as usize;
             libsimple_lock_unlock(queue_lock);
             std::sync::atomic::fence(std::sync::atomic::Ordering::Acquire);
             return;
         }
 
         tailq_insert_tail(
-            ptr::addr_of_mut!((*mutex).dtape_queue_head),
-            ptr::addr_of_mut!((*thread).mutex_link) as *mut dtape_mutex_link_t,
+            ptr::addr_of_mut!((*mutex).xnu_sys_queue_head),
+            ptr::addr_of_mut!((*thread).mutex_link) as *mut xnu_sys_mutex_link_t,
         );
 
         // Called with the queue lock HELD: the hook drops it once the microthread is fully
         // suspended, which is what stops a waker slipping in between the insert and the sleep.
-        let hooks = crate::xnu::init::dtape_hooks;
+        let hooks = crate::xnu::init::xnu_sys_hooks;
         if let Some(suspend) = (*hooks).thread_suspend {
             suspend(
                 (*thread).context,
@@ -142,15 +142,15 @@ pub unsafe extern "C" fn dtape_mutex_lock(mutex: *mut dtape_mutex_t) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_mutex_try_lock(mutex: *mut dtape_mutex_t) -> bool {
+pub unsafe extern "C" fn xnu_sys_mutex_try_lock(mutex: *mut xnu_sys_mutex_t) -> bool {
     let xthread = current_thread();
     let thread = crate::xnu::condvar::thread_for_xnu_thread(xthread);
-    let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
+    let queue_lock = ptr::addr_of_mut!((*mutex).xnu_sys_queue_lock) as *mut libsimple_lock_t;
 
     if thread.is_null() {
         log_warning("Trying to lock mutex without an active thread!");
         if libsimple_lock_try_lock(queue_lock) {
-            if (*mutex).dtape_owner == 0 {
+            if (*mutex).xnu_sys_owner == 0 {
                 return true;
             }
             libsimple_lock_unlock(queue_lock);
@@ -158,10 +158,10 @@ pub unsafe extern "C" fn dtape_mutex_try_lock(mutex: *mut dtape_mutex_t) -> bool
         return false;
     }
 
-    dtape_mutex_assert(mutex, false);
+    xnu_sys_mutex_assert(mutex, false);
 
-    if (*mutex).dtape_owner == 0 || (*mutex).dtape_owner == xthread as usize {
-        (*mutex).dtape_owner = xthread as usize;
+    if (*mutex).xnu_sys_owner == 0 || (*mutex).xnu_sys_owner == xthread as usize {
+        (*mutex).xnu_sys_owner = xthread as usize;
         libsimple_lock_unlock(queue_lock);
         std::sync::atomic::fence(std::sync::atomic::Ordering::Acquire);
         return true;
@@ -171,10 +171,10 @@ pub unsafe extern "C" fn dtape_mutex_try_lock(mutex: *mut dtape_mutex_t) -> bool
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t) {
+pub unsafe extern "C" fn xnu_sys_mutex_unlock(mutex: *mut xnu_sys_mutex_t) {
     let xcurr = current_thread();
     let curr = crate::xnu::condvar::thread_for_xnu_thread(xcurr);
-    let queue_lock = ptr::addr_of_mut!((*mutex).dtape_queue_lock) as *mut libsimple_lock_t;
+    let queue_lock = ptr::addr_of_mut!((*mutex).xnu_sys_queue_lock) as *mut libsimple_lock_t;
 
     if curr.is_null() {
         log_warning("Trying to unlock mutex without an active thread!");
@@ -182,19 +182,19 @@ pub unsafe extern "C" fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t) {
         return;
     }
 
-    dtape_mutex_assert(mutex, true);
+    xnu_sys_mutex_assert(mutex, true);
 
     libsimple_lock_lock(queue_lock);
-    (*mutex).dtape_owner = 0;
+    (*mutex).xnu_sys_owner = 0;
 
-    let head = ptr::addr_of_mut!((*mutex).dtape_queue_head);
+    let head = ptr::addr_of_mut!((*mutex).xnu_sys_queue_head);
     let link = tailq_first(head);
 
     if !link.is_null() {
         // Contended: wake the OLDEST waiter, which is the head of the queue.
         tailq_remove(head, link);
         let thread = crate::xnu::condvar::thread_for_mutex_link(link);
-        let hooks = crate::xnu::init::dtape_hooks;
+        let hooks = crate::xnu::init::xnu_sys_hooks;
         if let Some(resume) = (*hooks).thread_resume {
             resume((*thread).context);
         }
@@ -205,34 +205,34 @@ pub unsafe extern "C" fn dtape_mutex_unlock(mutex: *mut dtape_mutex_t) {
 }
 
 // ---------------------------------------------------------------------------------------
-// lck_mtx, which is a dtape_mutex with an XNU name
+// lck_mtx, which is a xnu_sys_mutex with an XNU name
 // ---------------------------------------------------------------------------------------
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_init(lock: *mut lck_mtx_t, _grp: *mut lck_grp_t, _attr: *mut lck_attr_t) {
-    dtape_mutex_init(ptr::addr_of_mut!((*lock).dtape_mutex));
+    xnu_sys_mutex_init(ptr::addr_of_mut!((*lock).xnu_sys_mutex));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_destroy(lock: *mut lck_mtx_t, _grp: *mut lck_grp_t) {
-    if (*lock).dtape_mutex.dtape_owner != 0 {
+    if (*lock).xnu_sys_mutex.xnu_sys_owner != 0 {
         fail(b"Attempt to destroy lock while being held\0");
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_assert(lock: *mut lck_mtx_t, r#type: c_uint) {
-    dtape_mutex_assert(ptr::addr_of_mut!((*lock).dtape_mutex), r#type == LCK_ASSERT_OWNED);
+    xnu_sys_mutex_assert(ptr::addr_of_mut!((*lock).xnu_sys_mutex), r#type == LCK_ASSERT_OWNED);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_lock(lock: *mut lck_mtx_t) {
-    dtape_mutex_lock(ptr::addr_of_mut!((*lock).dtape_mutex));
+    xnu_sys_mutex_lock(ptr::addr_of_mut!((*lock).xnu_sys_mutex));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_try_lock(lock: *mut lck_mtx_t) -> boolean_t {
-    dtape_mutex_try_lock(ptr::addr_of_mut!((*lock).dtape_mutex)) as boolean_t
+    xnu_sys_mutex_try_lock(ptr::addr_of_mut!((*lock).xnu_sys_mutex)) as boolean_t
 }
 
 /// Spinning is not a thing here: xnu-sys cannot disable preemption, so a spin variant is the
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn lck_mtx_lock_spin(lock: *mut lck_mtx_t) {
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_unlock(lock: *mut lck_mtx_t) {
-    dtape_mutex_unlock(ptr::addr_of_mut!((*lock).dtape_mutex));
+    xnu_sys_mutex_unlock(ptr::addr_of_mut!((*lock).xnu_sys_mutex));
 }
 
 #[no_mangle]
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn lck_mtx_alloc_init(
     grp: *mut lck_grp_t,
     attr: *mut lck_attr_t,
 ) -> *mut lck_mtx_t {
-    let lck = dtape_rs_kalloc(std::mem::size_of::<lck_mtx_t>()) as *mut lck_mtx_t;
+    let lck = xnu_sys_rs_kalloc(std::mem::size_of::<lck_mtx_t>()) as *mut lck_mtx_t;
     if lck.is_null() {
         return ptr::null_mut();
     }
@@ -278,7 +278,7 @@ pub unsafe extern "C" fn lck_mtx_alloc_init(
 #[no_mangle]
 pub unsafe extern "C" fn lck_mtx_free(lck: *mut lck_mtx_t, grp: *mut lck_grp_t) {
     lck_mtx_destroy(lck, grp);
-    dtape_rs_kfree(lck as *mut c_void, std::mem::size_of::<lck_mtx_t>());
+    xnu_sys_rs_kfree(lck as *mut c_void, std::mem::size_of::<lck_mtx_t>());
 }
 
 // ---------------------------------------------------------------------------------------
@@ -287,32 +287,32 @@ pub unsafe extern "C" fn lck_mtx_free(lck: *mut lck_mtx_t, grp: *mut lck_grp_t) 
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_init(lock: *mut lck_spin_t, grp: *mut lck_grp_t, attr: *mut lck_attr_t) {
-    lck_mtx_init(ptr::addr_of_mut!((*lock).dtape_interlock), grp, attr);
+    lck_mtx_init(ptr::addr_of_mut!((*lock).xnu_sys_interlock), grp, attr);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_assert(lock: *mut lck_spin_t, r#type: c_uint) {
-    lck_mtx_assert(ptr::addr_of_mut!((*lock).dtape_interlock), r#type);
+    lck_mtx_assert(ptr::addr_of_mut!((*lock).xnu_sys_interlock), r#type);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_destroy(lock: *mut lck_spin_t, grp: *mut lck_grp_t) {
-    lck_mtx_destroy(ptr::addr_of_mut!((*lock).dtape_interlock), grp);
+    lck_mtx_destroy(ptr::addr_of_mut!((*lock).xnu_sys_interlock), grp);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_lock(lock: *mut lck_spin_t) {
-    lck_mtx_lock(ptr::addr_of_mut!((*lock).dtape_interlock));
+    lck_mtx_lock(ptr::addr_of_mut!((*lock).xnu_sys_interlock));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_try_lock(lock: *mut lck_spin_t) -> boolean_t {
-    lck_mtx_try_lock(ptr::addr_of_mut!((*lock).dtape_interlock))
+    lck_mtx_try_lock(ptr::addr_of_mut!((*lock).xnu_sys_interlock))
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_spin_unlock(lock: *mut lck_spin_t) {
-    lck_mtx_unlock(ptr::addr_of_mut!((*lock).dtape_interlock));
+    lck_mtx_unlock(ptr::addr_of_mut!((*lock).xnu_sys_interlock));
 }
 
 #[no_mangle]
@@ -334,22 +334,22 @@ pub unsafe extern "C" fn lck_spin_try_lock_grp(
 
 #[no_mangle]
 pub unsafe extern "C" fn waitq_lock_init(wq: *mut waitq) {
-    usimple_lock_init(dtape_rs_waitq_interlock(wq), 0);
+    usimple_lock_init(xnu_sys_rs_waitq_interlock(wq), 0);
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn waitq_lock(wq: *mut waitq) {
-    usimple_lock(dtape_rs_waitq_interlock(wq), ptr::null_mut());
+    usimple_lock(xnu_sys_rs_waitq_interlock(wq), ptr::null_mut());
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn waitq_unlock(wq: *mut waitq) {
-    usimple_unlock(dtape_rs_waitq_interlock(wq));
+    usimple_unlock(xnu_sys_rs_waitq_interlock(wq));
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn waitq_lock_try(wq: *mut waitq) -> c_uint {
-    usimple_lock_try(dtape_rs_waitq_interlock(wq), ptr::null_mut())
+    usimple_lock_try(xnu_sys_rs_waitq_interlock(wq), ptr::null_mut())
 }
 
 /// A usimple_lock is a lck_spin_t with one field, so the interlock is at offset zero and the
@@ -411,22 +411,22 @@ pub unsafe extern "C" fn lck_ticket_assert_owned(tlock: *mut lck_ticket_t) {
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_rw_done(_lock: *mut lck_rw_t) -> lck_rw_type_t {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_rw_lock_exclusive(_lock: *mut lck_rw_t) {
-    crate::dtape_stub_unsafe!()
+    crate::xnu_sys_stub_unsafe!()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn lck_rw_clear_promotion(_thread: thread_t, _trace_obj: usize) {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn unslide_for_kdebug(_object: *mut c_void) -> usize {
-    crate::dtape_stub_safe!();
+    crate::xnu_sys_stub_safe!();
     0
 }
 
@@ -440,16 +440,16 @@ pub unsafe extern "C" fn unslide_for_kdebug(_object: *mut c_void) -> usize {
 /// only place this file reaches into struct thread.
 #[inline]
 unsafe fn rwlock_promote(thread: thread_t) {
-    *dtape_rs_thread_rwlock_count(thread as *mut crate::bindings::thread) += 1;
+    *xnu_sys_rs_thread_rwlock_count(thread as *mut crate::bindings::thread) += 1;
 }
 
 #[inline]
 unsafe fn rwlock_demote(thread: thread_t, event: event_t) {
-    let count = dtape_rs_thread_rwlock_count(thread as *mut crate::bindings::thread);
+    let count = xnu_sys_rs_thread_rwlock_count(thread as *mut crate::bindings::thread);
     let was = *count;
     *count -= 1;
     // The C tests the value BEFORE the decrement against 1, so the field is zero afterwards.
-    if was == 1 && (dtape_rs_thread_sched_flags(thread as *mut crate::bindings::thread)
+    if was == 1 && (xnu_sys_rs_thread_sched_flags(thread as *mut crate::bindings::thread)
         & TH_SFLAG_RW_PROMOTED) != 0
     {
         lck_rw_clear_promotion(thread, unslide_for_kdebug(event as *mut c_void));

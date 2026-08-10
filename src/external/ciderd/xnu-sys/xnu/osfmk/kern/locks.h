@@ -105,7 +105,7 @@ typedef union {
 
 typedef struct {
 #ifdef __DARLING__
-	lck_spin_t dtape_lock;
+	lck_spin_t xnu_sys_lock;
 #else
 	lck_ticket_internal tu;
 	uintptr_t lck_owner;

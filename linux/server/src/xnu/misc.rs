@@ -2,12 +2,12 @@
 //!
 //! 150 lines, and the smallest remaining file, but it is the one that had to solve the problem
 //! blocking the last two: xnu-sys exports four VARIADIC DEFINITIONS, and stable Rust cannot
-//! define a variadic function. Three of the four are here (`dtape_log`, `kprintf`, `scnprintf`),
+//! define a variadic function. Three of the four are here (`xnu_sys_log`, `kprintf`, `scnprintf`),
 //! the fourth is `panic` in stubs.c.
 //!
 //! THE SOLUTION IS NOT TO PORT THEM. Each is a pure forwarder to a `v`-variant, so all four stay
-//! in C, in `xnu-sys/src/dtape_rs_shims.c` alongside the eighteen macro shims, for exactly the
-//! same reason those are there: they do the one thing Rust cannot express. `dtape_logv` goes with
+//! in C, in `xnu-sys/src/xnu_sys_rs_shims.c` alongside the eighteen macro shims, for exactly the
+//! same reason those are there: they do the one thing Rust cannot express. `xnu_sys_logv` goes with
 //! them, since its parameter is a `va_list`.
 //!
 //! Nothing is lost by that. Rust can CALL a C variadic even though it cannot define one, so the
@@ -26,45 +26,45 @@ use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    self, dtape_log_level_t, dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE, dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_PAGEIN_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_PAGEIN_STATE_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_FULL_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_FULL_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE32,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE32_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE64,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE64_COUNT,
-    dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE_COUNT, ipc_kmsg_t, ipc_port_t,
+    self, xnu_sys_log_level_t, xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE, xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_FULL_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_FULL_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64_COUNT,
+    xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE_COUNT, ipc_kmsg_t, ipc_port_t,
     mach_msg_body_t, mach_msg_option_t, mach_msg_type_descriptor_t, waitq,
     MACH_MSGH_BITS_COMPLEX,
 };
@@ -97,26 +97,26 @@ pub static mut version: [u8; 13] = *b"Darling 11.5\0";
 /// it here as an out-of-bounds write at compile time.
 const MACHINE_STATE_COUNT_LEN: usize = {
     let flavors = [
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_FULL_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE32 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE64 as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE as usize,
-        dtape_rs_host_consts_DTAPE_RS_X86_PAGEIN_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_FULL_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64 as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE as usize,
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE as usize,
     ];
     let mut max = 0;
     let mut i = 0;
@@ -136,46 +136,46 @@ const MACHINE_STATE_COUNT_LEN: usize = {
 #[no_mangle]
 pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
     let mut c = [0 as c_uint; MACHINE_STATE_COUNT_LEN];
-    c[dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_THREAD_FULL_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_FULL_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_THREAD_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_FLOAT_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_EXCEPTION_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_DEBUG_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE32 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE32_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE64 as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE64_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_AVX512_STATE_COUNT as c_uint;
-    c[dtape_rs_host_consts_DTAPE_RS_X86_PAGEIN_STATE as usize] =
-        dtape_rs_host_consts_DTAPE_RS_X86_PAGEIN_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_FULL_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_FULL_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_THREAD_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_FLOAT_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_EXCEPTION_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_DEBUG_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE32_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64 as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE64_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_AVX512_STATE_COUNT as c_uint;
+    c[xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE as usize] =
+        xnu_sys_rs_host_consts_XNU_SYS_RS_X86_PAGEIN_STATE_COUNT as c_uint;
     c
 };
 
@@ -185,9 +185,9 @@ pub static mut _MachineStateCount: [c_uint; MACHINE_STATE_COUNT_LEN] = {
 
 /// Log through xnu-sys's own variadic entry point, with the message already formatted.
 ///
-/// The C reaches `dtape_log` through variadic MACROS (`dtape_log_debug` and friends). Rust
+/// The C reaches `xnu_sys_log` through variadic MACROS (`xnu_sys_log_debug` and friends). Rust
 /// formats first and passes `%s`, which cannot disagree with its arguments.
-pub(crate) fn log(level: dtape_log_level_t, message: &str) {
+pub(crate) fn log(level: xnu_sys_log_level_t, message: &str) {
     let c = match CString::new(message) {
         Ok(c) => c,
         // An interior NUL can only come from a %s of foreign data; log the prefix rather than
@@ -198,7 +198,7 @@ pub(crate) fn log(level: dtape_log_level_t, message: &str) {
             CString::new(v).unwrap_or_default()
         }
     };
-    unsafe { bindings::dtape_log(level, b"%s\0".as_ptr() as *const c_char, c.as_ptr()) }
+    unsafe { bindings::xnu_sys_log(level, b"%s\0".as_ptr() as *const c_char, c.as_ptr()) }
 }
 
 #[no_mangle]
@@ -231,7 +231,7 @@ pub unsafe extern "C" fn ipc_kmsg_trace_send(kmsg: ipc_kmsg_t, _option: mach_msg
     }
 
     log(
-        bindings::dtape_log_level_t::dtape_log_level_debug,
+        bindings::xnu_sys_log_level_t::xnu_sys_log_level_debug,
         &format!(
             "sending kmsg {:p} to pid {} id={} size={} bits=0x{:x} remote={:p} local={:p} \
              ndesc={} dtype={}",
@@ -274,7 +274,7 @@ pub(crate) unsafe fn cstr<'a>(p: *const c_char) -> std::borrow::Cow<'a, str> {
 /// comparison is done in C and only its result crosses.
 #[no_mangle]
 pub unsafe extern "C" fn waitq_held(wq: *mut waitq) -> c_uint {
-    bindings::dtape_rs_waitq_held(wq)
+    bindings::xnu_sys_rs_waitq_held(wq)
 }
 
 //

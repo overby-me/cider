@@ -241,7 +241,7 @@ ipc_pset_add(
 
 #if DSERVER_EXTENDED_DEBUG
 	if (kr == KERN_SUCCESS) {
-		dtape_hooks->task_add_port_set_member(dtape_task_for_xnu_task(current_task())->context, (dtape_port_set_id_t)pset, (dtape_port_id_t)port);
+		xnu_sys_hooks->task_add_port_set_member(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset, (xnu_sys_port_id_t)port);
 	}
 #endif
 
@@ -276,7 +276,7 @@ ipc_pset_remove(
 
 #if DSERVER_EXTENDED_DEBUG
 	if (kr == KERN_SUCCESS) {
-		dtape_hooks->task_remove_port_set_member(dtape_task_for_xnu_task(current_task())->context, (dtape_port_set_id_t)pset, (dtape_port_id_t)port);
+		xnu_sys_hooks->task_remove_port_set_member(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset, (xnu_sys_port_id_t)port);
 	}
 #endif
 
@@ -375,7 +375,7 @@ ipc_pset_destroy(
 	assert(ips_active(pset));
 
 #if DSERVER_EXTENDED_DEBUG
-	dtape_hooks->task_clear_port_set(dtape_task_for_xnu_task(current_task())->context, (dtape_port_set_id_t)pset);
+	xnu_sys_hooks->task_clear_port_set(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset);
 #endif
 
 	pset->ips_object.io_bits &= ~IO_BITS_ACTIVE;

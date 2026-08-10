@@ -348,11 +348,29 @@
     import os, shutil, sys
     out, src = sys.argv[1], sys.argv[2]
 
+    # A pin records the path it was written against, and the Cider rename moved ours. The
+    # security pin ships darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu/,
+    # which resolves to src/external/darlingserver/duct-tape/xnu. Nothing is there any more,
+    # so the lexists test below failed, the carry was skipped IN SILENCE, the link stayed
+    # dangling and security_codesigning_obj could not find security/mac.h. The same table
+    # buck-src-normalise.py uses, longest prefix first.
+    #
+    # The DESTINATION keeps the name the dangling link actually points at; only the SOURCE
+    # is translated. Rewriting the destination would leave the link dangling all the same.
+    RENAMES = [("src/external/darlingserver/duct-tape", "src/external/ciderd/xnu-sys"),
+               ("src/external/darlingserver",           "src/external/ciderd")]
+
+    def translate(rel):
+        for old, new in RENAMES:
+            if rel == old or rel.startswith(old + "/"):
+                return new + rel[len(old):]
+        return rel
+
     def carry(rel, depth=0):
         if depth > 8:
             return
         dst = os.path.join(out, rel)
-        s = os.path.join(src, rel)
+        s = os.path.join(src, translate(rel))
         if os.path.lexists(dst) or not os.path.lexists(s):
             return
         os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -375,7 +393,7 @@
                     continue
                 d = os.path.normpath(os.path.join(os.path.dirname(p), t))
                 rel = os.path.relpath(d, out)
-                if rel.startswith("..") or not os.path.lexists(os.path.join(src, rel)):
+                if rel.startswith("..") or not os.path.lexists(os.path.join(src, translate(rel))):
                     continue
                 pending.append(rel)
         if not pending:
@@ -764,7 +782,7 @@
   # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
   # NOT catch it, because a symlink target is recorded as a string.
   #
-  # MEASURED, both ways, by appending one comment line to xnu-sys/src/dtape_rs_shims.c and
+  # MEASURED, both ways, by appending one comment line to xnu-sys/src/xnu_sys_rs_shims.c and
   # evaluating cider-buck2-prefix-min.pinsTree.drvPath either side of it:
   #
   #   wide root, src/external/ciderd     knklrz6g... -> bdbznvsi...   MOVED
@@ -813,7 +831,7 @@
   # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
   # libsimple stays put) but it STARVES the xnu-sys compiles:
   #   clang: error: no such file or directory:
-  #     src/external/ciderd/xnu-sys/src/dtape_rs_shims.c
+  #     src/external/ciderd/xnu-sys/src/xnu_sys_rs_shims.c
   # because src/external is deliberately outside the per-target union mechanism. The grouping
   # rule in scripts/buck2-graph-sources.py excludes buck-src and src/external as pins staged
   # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
@@ -854,7 +872,7 @@
   # SO: 1,558 builders and 61 minutes, to 44 and 2.5 minutes. 35 times fewer builders, 24 times
   # faster. An ordinary leaf edit costs 7, and the 44 left ARE the xnu-sys cone and should
   # rebuild: dt_objects, dt_mig_objects, dt_pthread_objects, ciderd_xnu_sys, the mig_*
-  # set, dtape_bindings, ciderd, cider and the prefix.
+  # set, xnu_sys_bindings, ciderd, cider and the prefix.
   #
   # Counted with `^building`, never with the "these N will be built" list. dserver_rpc is the
   # reason that matters: narrowing ownerPrefix moved its drv, so nix LISTED it, and it produced
@@ -864,7 +882,6 @@
     "src/external/ciderd" = {
       shared = [
         "src/external/ciderd/include"
-        "src/external/ciderd/internal-include"
         "src/external/ciderd/scripts"
         "src/external/ciderd/src"
         "src/external/ciderd/tools"
@@ -1119,7 +1136,7 @@
           pkgs.coreutils
           pkgs.bash
           # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
-          # generates the daemon's dtape vtable. Both appear in the recorded argv as bare
+          # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
           # command names, exactly as on the daemon path, so they have to be on PATH here.
           pkgs.rustc
           pkgs.rust-bindgen

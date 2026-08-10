@@ -1569,7 +1569,7 @@ done:
 	waitq_prepost_release_reserve(wq_reserved_prepost);
 
 #ifdef __DARLING__
-	dtape_log_debug("mach_port_move_member: member=0x%x after=0x%x -> kr=%d", member, after, kr);
+	xnu_sys_log_debug("mach_port_move_member: member=0x%x after=0x%x -> kr=%d", member, after, kr);
 #endif
 	return kr;
 }
@@ -2281,7 +2281,7 @@ mach_port_insert_member(
 done:
 #ifdef __DARLING__
 	/* Task #47: which ports actually make it into a portset, and which do not. */
-	dtape_log_debug("mach_port_insert_member: name=0x%x psname=0x%x -> kr=%d",
+	xnu_sys_log_debug("mach_port_insert_member: name=0x%x psname=0x%x -> kr=%d",
 	    name, psname, kr);
 #endif
 	/* on success, wq_link_id is reset to 0, so this is always safe */

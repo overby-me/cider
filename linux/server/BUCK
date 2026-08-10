@@ -23,7 +23,7 @@ cc_lib_dir(
     visibility = ["PUBLIC"],
 )
 
-# The dtape hooks contract, generated from the real headers.
+# The xnu_sys hooks contract, generated from the real headers.
 #
 # The daemon implements a 36-function-pointer vtable that xnu-sys calls back into, and
 # binding it from hooks.h rather than transcribing it is what keeps the Rust side honest
@@ -36,24 +36,24 @@ bindgen_gen(
     name = "xnu_sys",
     out = "xnu_sys.rs",
     header = "wrapper.h",
-    # The same allowlist build.rs uses: the dtape surface, without the XNU and libsimple
+    # The same allowlist build.rs uses: the xnu_sys surface, without the XNU and libsimple
     # internals those headers drag in.
     flags = [
-        "--allowlist-type=dtape_hooks_t",
-        "--allowlist-type=dtape_hooks",
-        "--allowlist-type=dtape_.*_t",
-        "--allowlist-type=dtape_.*_f",
+        "--allowlist-type=xnu_sys_hooks_t",
+        "--allowlist-type=xnu_sys_hooks",
+        "--allowlist-type=xnu_sys_.*_t",
+        "--allowlist-type=xnu_sys_.*_f",
         "--allowlist-type=libsimple_lock_t",
-        "--allowlist-var=DTAPE_.*",
+        "--allowlist-var=XNU_SYS_.*",
         # The internal structs and XNU entry points the ported glue needs (#71). semaphore.c
         # is Rust now and walks owning_task->xnu_task, so the offset of xnu_task inside
-        # struct dtape_task has to be GENERATED; a hand-written offset drifts silently the
+        # struct xnu_sys_task has to be GENERATED; a hand-written offset drifts silently the
         # next time that struct gains a field.
-        "--allowlist-type=dtape_semaphore",
-        "--allowlist-type=dtape_task",
-        "--allowlist-type=dtape_thread",
-        "--allowlist-type=dtape_condvar",
-        "--allowlist-type=dtape_mutex.*",
+        "--allowlist-type=xnu_sys_semaphore",
+        "--allowlist-type=xnu_sys_task",
+        "--allowlist-type=xnu_sys_thread",
+        "--allowlist-type=xnu_sys_condvar",
+        "--allowlist-type=xnu_sys_mutex.*",
         "--allowlist-type=mpqueue_head",
         "--allowlist-type=timer_coalescing_priority_params_ns_t",
         "--allowlist-type=pal_rtc_nanotime",
@@ -62,8 +62,8 @@ bindgen_gen(
         "--allowlist-function=lck_mtx_init_ext",
         "--allowlist-var=NSEC_PER_SEC",
         "--allowlist-function=current_thread",
-        "--allowlist-function=dtape_mutex_lock",
-        "--allowlist-function=dtape_mutex_unlock",
+        "--allowlist-function=xnu_sys_mutex_lock",
+        "--allowlist-function=xnu_sys_mutex_unlock",
         "--allowlist-function=libsimple_lock_.*",
         "--allowlist-function=semaphore_create",
         "--allowlist-function=semaphore_destroy",
@@ -92,7 +92,7 @@ bindgen_gen(
         "--allowlist-var=KERN_INVALID_ARGUMENT",
         "--allowlist-var=KERN_FAILURE",
         "--allowlist-var=KERN_NOT_SUPPORTED",
-        "--allowlist-type=dtape_rs_host_consts",
+        "--allowlist-type=xnu_sys_rs_host_consts",
         # The scalar typedefs the host.c signatures are written in. Allowlisted rather than
         # respelled in Rust: an ABI typedef transcribed by hand is one that goes wrong quietly.
         # struct host stays opaque, so host_t crossing does not reopen it.
@@ -186,12 +186,12 @@ bindgen_gen(
         # descriptor; Assert and the trace both log, and Rust CALLS those variadics rather than
         # defining them.
         "--allowlist-function=ipc_port_get_receiver_task",
-        "--allowlist-function=dtape_log",
+        "--allowlist-function=xnu_sys_log",
         "--allowlist-function=panic",
         "--allowlist-type=mach_msg_body_t",
         "--allowlist-type=mach_msg_type_descriptor_t",
         "--allowlist-type=mach_msg_header_t",
-        "--allowlist-type=dtape_log_level_t",
+        "--allowlist-type=xnu_sys_log_level_t",
         "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
         # stubs.c (#71). Two of these are load bearing rather than cosmetic: machine_info and
         # dead_task_statistics are GLOBALS that XNU writes into, so their sizes have to be the
@@ -227,7 +227,7 @@ bindgen_gen(
         "--allowlist-function=ipc_port_release_send",
         "--allowlist-function=mach_port_deallocate",
         "--allowlist-function=copyout",
-        "--allowlist-function=dtape_vm_map_.*",
+        "--allowlist-function=xnu_sys_vm_map_.*",
         "--allowlist-type=task_basic_info_32",
         "--allowlist-type=task_basic_info_64",
         "--allowlist-type=mach_task_basic_info",
@@ -426,7 +426,7 @@ bindgen_gen(
         "--allowlist-type=semaphore",
         "--allowlist-type=zone_t",
         "--allowlist-type=zone_create_flags_t",
-        "--allowlist-type=dtape_rs_task_id_token",
+        "--allowlist-type=xnu_sys_rs_task_id_token",
         "--allowlist-function=zone_create",
         "--allowlist-type=lck_spin_t",
         "--allowlist-type=lck_mtx_t",
@@ -454,12 +454,12 @@ bindgen_gen(
         "--allowlist-function=assert_wait_deadline",
         "--allowlist-function=assert_wait_timeout",
         "--allowlist-function=thread_block",
-        "--allowlist-function=dtape_thread_for_xnu_thread",
+        "--allowlist-function=xnu_sys_thread_for_xnu_thread",
         "--allowlist-function=ipc_kmsg_queue_next",
         "--allowlist-function=ipc_entry_lookup",
         "--allowlist-function=ipc_mqueue_copyin",
         "--allowlist-function=ipc_mqueue_set_gather_member_names",
-        "--allowlist-function=dtape_task_for_xnu_task",
+        "--allowlist-function=xnu_sys_task_for_xnu_task",
         "--allowlist-var=ipc_space_zone",
         "--allowlist-var=ipc_kmsg_zone",
         "--allowlist-var=ipc_object_zones",
@@ -503,7 +503,7 @@ bindgen_gen(
         "--allowlist-type=processor_t",
         "--allowlist-type=processor_set_t",
         "--allowlist-type=simple_lock_data_t",
-        "--allowlist-type=dtape_load_info_t",
+        "--allowlist-type=xnu_sys_load_info_t",
         "--allowlist-var=MAX_SCHED_CPUS",
         "--allowlist-var=PROCESSOR_BASIC_INFO",
         "--allowlist-var=PROCESSOR_CPU_LOAD_INFO",
@@ -511,9 +511,9 @@ bindgen_gen(
         "--allowlist-var=CPU_STATE_.*",
         "--allowlist-var=KERN_INVALID_PROCESSOR_SET",
         "--allowlist-function=usimple_lock_init",
-        # A PATTERN, not a list: every shim added to xnu-sys/src/dtape_rs_shims.c should bind
+        # A PATTERN, not a list: every shim added to xnu-sys/src/xnu_sys_rs_shims.c should bind
         # without anyone remembering to come back here.
-        "--allowlist-function=dtape_rs_.*",
+        "--allowlist-function=xnu_sys_rs_.*",
         "--allowlist-type=mach_port_t",
         # psynch (#71). The nine pthread-kext entry points psynch.c forwards to, plus the
         # per-proc hash the task hooks drive and the zone init. They live in the pthread kext,
@@ -522,7 +522,7 @@ bindgen_gen(
         "--allowlist-function=_psynch_.*",
         "--allowlist-function=psynch_zoneinit",
         "--allowlist-function=_pth_proc_hash.*",
-        "--allowlist-function=dtape_psynch_thread_dying",
+        "--allowlist-function=xnu_sys_psynch_thread_dying",
         # The mutex and sleep primitives _sleep drives. lck_mtx_sleep and its deadline form
         # are the msleep path; the plain lock/unlock are the relock after a block.
         "--allowlist-function=lck_mtx_lock",
@@ -557,12 +557,12 @@ bindgen_gen(
         # descriptor; Assert and the trace both log, and Rust CALLS those variadics rather than
         # defining them.
         "--allowlist-function=ipc_port_get_receiver_task",
-        "--allowlist-function=dtape_log",
+        "--allowlist-function=xnu_sys_log",
         "--allowlist-function=panic",
         "--allowlist-type=mach_msg_body_t",
         "--allowlist-type=mach_msg_type_descriptor_t",
         "--allowlist-type=mach_msg_header_t",
-        "--allowlist-type=dtape_log_level_t",
+        "--allowlist-type=xnu_sys_log_level_t",
         "--allowlist-var=MACH_MSGH_BITS_COMPLEX",
         # stubs.c (#71). Two of these are load bearing rather than cosmetic: machine_info and
         # dead_task_statistics are GLOBALS that XNU writes into, so their sizes have to be the
@@ -598,7 +598,7 @@ bindgen_gen(
         "--allowlist-function=ipc_port_release_send",
         "--allowlist-function=mach_port_deallocate",
         "--allowlist-function=copyout",
-        "--allowlist-function=dtape_vm_map_.*",
+        "--allowlist-function=xnu_sys_vm_map_.*",
         "--allowlist-type=task_basic_info_32",
         "--allowlist-type=task_basic_info_64",
         "--allowlist-type=mach_task_basic_info",
@@ -772,7 +772,7 @@ bindgen_gen(
         # Plain consts, not a Rust enum: two of these share a value (HOST_VM_INFO_REV0_COUNT
         # equals HOST_BASIC_INFO_COUNT at 12) and an enum cannot hold duplicate discriminants,
         # so bindgen aliases one to the other. Constified, each is simply its own value.
-        "--constified-enum=dtape_rs_host_consts",
+        "--constified-enum=xnu_sys_rs_host_consts",
         # init.c ORs the zone flags together (ZC_NOENCRYPT | ZC_CACHING | ...), which a Rust
         # enum cannot express. Constified, they are plain integers and the OR is the C one.
         "--constified-enum=zone_create_flags_t",
@@ -782,8 +782,8 @@ bindgen_gen(
         # TURNSTILE_INHERITOR_THREAD), which a Rust enum cannot express.
         "--constified-enum=turnstile_update_flags",
         # memory.c ANDs the protection bits and ORs the memory flags, which a Rust enum cannot do.
-        "--constified-enum=dtape_memory_protection",
-        "--constified-enum=dtape_memory_flags",
+        "--constified-enum=xnu_sys_memory_protection",
+        "--constified-enum=xnu_sys_memory_flags",
         # Only the SIZE of the XNU giants crosses. Without this, struct task drags most of
         # osfmk into the bindings for no gain: nothing here reads its fields.
         "--opaque-type=os_ref.*",
@@ -822,7 +822,7 @@ bindgen_gen(
         "//src/external/ciderd/xnu-sys:xnu_root",
         "//src/libsimple:libsimple_headers",
         "//src/external/ciderd:dserver_headers",
-        # xnu-sys.h uses DSERVER_DTAPE_DECLS, from the RPC wrapper generator.
+        # xnu-sys.h uses DSERVER_XNU_SYS_DECLS, from the RPC wrapper generator.
         "//src/external/ciderd:dserver_rpc",
         "//src/startup:rtsig_header",
     ],
@@ -860,8 +860,8 @@ rust_library(
 # scheduler_demo: a microthread blocks on a xnu-sys semaphore, suspends, and is woken.
 #
 # This exists as a TARGET now because it is the fastest runtime check of the ported glue
-# (#71). It drives dtape_semaphore_create, dtape_semaphore_down_simple and
-# dtape_semaphore_up, which are Rust as of the semaphore port, all the way down through XNU
+# (#71). It drives xnu_sys_semaphore_create, xnu_sys_semaphore_down_simple and
+# xnu_sys_semaphore_up, which are Rust as of the semaphore port, all the way down through XNU
 # and back out through the thread_suspend/thread_resume hooks, and it asserts that the
 # microthread actually suspended and actually finished. It builds and runs in about a minute,
 # against roughly an hour for checks.cider-buck2-min-smoke, so a broken port is visible
@@ -892,7 +892,7 @@ rust_binary(
 )
 
 # stage3_spike: the STRESS version of the same path. Phase 3 drives 500,000
-# suspend/resume round-trips through dtape_semaphore_down_simple and dtape_semaphore_up,
+# suspend/resume round-trips through xnu_sys_semaphore_down_simple and xnu_sys_semaphore_up,
 # which are Rust as of the semaphore port, so a leak, a corrupted queue or an off-by-one
 # shows up here where a single round-trip would not. It also prints ns/round-trip.
 rust_binary(
@@ -1001,7 +1001,7 @@ rust_binary(
 
 # kqchan_demo: kqchan was the last ported file nothing drove (#80), the position psynch was in
 # before #77. Drives the real MachPortKqchan::open path on a kernel microthread, so it exercises
-# dtape_kqchan_mach_port_create, the notification callback registration, has_events, and destroy
+# xnu_sys_kqchan_mach_port_create, the notification callback registration, has_events, and destroy
 # through Drop. The port it watches is a REAL receive right from mach_reply_port, because a
 # made-up port number would exercise the failure path and prove much less. The guest side of the
 # socket protocol (modify, fill, disable_notifications, on_readable) is still uncovered.

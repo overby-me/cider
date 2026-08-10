@@ -324,7 +324,7 @@
         pkgs.buck2
         pkgs.clang
         # The Rust side of the port: rustc for the three crates, bindgen for the daemon's
-        # dtape vtable. Both are TOOLS here, exactly as on the daemon path.
+        # xnu_sys vtable. Both are TOOLS here, exactly as on the daemon path.
         pkgs.rustc
         pkgs.rust-bindgen
         pkgs.bison

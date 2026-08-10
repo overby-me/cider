@@ -59,7 +59,7 @@ struct mk_timer {
 #ifdef __DARLING__
 zone_t mk_timer_zone;
 
-void dtape_mk_timer_init(void) {
+void xnu_sys_mk_timer_init(void) {
 	mk_timer_zone = zone_create("mk_timer", sizeof(struct mk_timer), ZC_NOENCRYPT);
 };
 #else

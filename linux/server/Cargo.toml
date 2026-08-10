@@ -1,8 +1,8 @@
 # server -- the cider host-side daemon (Rust rewrite of ciderd, Stage 0 onward).
 # The lib crate is named "cider", so bins import it as cider::server, cider::registry, etc.
 # See PLAN.md (plan) + PLAN.md (the make-or-break
-# spike). Stage 0: bindgen the real dtape hooks contract + link the prebuilt
-# xnu-sys static lib and call the real dtape_init(&hooks). The prior end-to-end
+# spike). Stage 0: bindgen the real xnu_sys hooks contract + link the prebuilt
+# xnu-sys static lib and call the real xnu_sys_init(&hooks). The prior end-to-end
 # link-model proof (stub xnu-sys) was validated in a throwaway prototype, since removed.
 [package]
 name = "server"
@@ -13,13 +13,13 @@ publish = false
 [lib]
 name = "cider"
 
-# Stage 0 deliverable: prove the real xnu-sys links and dtape_init is callable.
+# Stage 0 deliverable: prove the real xnu-sys links and xnu_sys_init is callable.
 [[bin]]
-name = "dtape-link-proof"
+name = "xnu_sys-link-proof"
 path = "src/main.rs"
 
 # Stage 3 make-or-break spike (PLAN.md): a stackful Rust
-# microthread suspends/resumes across the dtape FFI via a semaphore.
+# microthread suspends/resumes across the xnu_sys FFI via a semaphore.
 [[bin]]
 name = "stage3-spike"
 path = "src/bin/stage3_spike.rs"

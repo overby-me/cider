@@ -9,7 +9,7 @@
 //!
 //! WHAT THIS ASSERTS, and why each one can actually fail.
 //!
-//! THE INIT INVARIANTS. dtape_psynch_init runs in phase 2 (dtape_init_in_thread), which must
+//! THE INIT INVARIANTS. xnu_sys_psynch_init runs in phase 2 (xnu_sys_init_in_thread), which must
 //! happen on a kernel microthread, and sched::init drives that. It allocates in the C's order,
 //! pthread_list_mlock first, then the hash, then psynch_thcall. Asserting both pointers are
 //! non-null after init is the direct regression test for the bug that actually happened: unwire
@@ -56,7 +56,7 @@ macro_rules! assert_cb {
 
 fn main() {
     unsafe {
-        // Phase 1 and phase 2, the latter on a kernel microthread. dtape_psynch_init runs
+        // Phase 1 and phase 2, the latter on a kernel microthread. xnu_sys_psynch_init runs
         // inside phase 2, so everything below is checking state that init left behind.
         let _kt = sched::init();
 
@@ -64,7 +64,7 @@ fn main() {
         assert!(
             !bindings::pthread_list_mlock.is_null(),
             "pthread_list_mlock is NULL after init. This exact state shipped once: phase 2 \
-             (dtape_init_in_thread) was not wired, so the mutex was never allocated and the \
+             (xnu_sys_init_in_thread) was not wired, so the mutex was never allocated and the \
              first contended pthread wait died in the kext with a SIGSEGV, surfacing only as a \
              guest task exiting -111."
         );

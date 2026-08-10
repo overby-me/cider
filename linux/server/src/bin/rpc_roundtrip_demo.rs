@@ -1,6 +1,6 @@
 //! Stage 4 slice: the full daemon request->reply cycle on one call. The client
 //! sends an RpcCallUidgid over a unix socket; the server decodes it, runs the
-//! handler ON A sched MICROTHREAD (which calls dtape_task_uidgid in the xnu-sys),
+//! handler ON A sched MICROTHREAD (which calls xnu_sys_task_uidgid in the xnu-sys),
 //! encodes the RpcReplyUidgid, and sends it back; the client verifies the reply.
 //! This exercises: rpc_io recv/send + rpc_wire decode/encode + sched dispatch +
 //! a real xnu-sys call from a microthread.
@@ -16,7 +16,7 @@ use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
 
 extern "C" {
-    fn dtape_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
+    fn xnu_sys_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
 }
 
 fn as_bytes<T>(v: &T) -> &[u8] {
@@ -24,7 +24,7 @@ fn as_bytes<T>(v: &T) -> &[u8] {
 }
 
 /// Handle one message on `fd`: decode -> dispatch on a microthread -> reply.
-unsafe fn serve_one(fd: RawFd, kt: *mut cider::bindings::dtape_task_t) {
+unsafe fn serve_one(fd: RawFd, kt: *mut cider::bindings::xnu_sys_task_t) {
     let msg = recv_message(fd).unwrap().expect("no message");
     let hdr = msg.header().expect("header");
     match hdr.number {
@@ -36,7 +36,7 @@ unsafe fn serve_one(fd: RawFd, kt: *mut cider::bindings::dtape_task_t) {
             let kt_addr = kt as usize;
             let mt = sched::spawn(kt, Box::new(move || {
                 let (mut ou, mut og): (c_int, c_int) = (-1, -1);
-                dtape_task_uidgid(kt_addr as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
+                xnu_sys_task_uidgid(kt_addr as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
                 out.set(Some(ReplyUidgid { old_uid: ou, old_gid: og }));
             }));
             sched::run(mt);
@@ -92,7 +92,7 @@ fn main() {
         assert_eq!(reply2.body.old_uid, 7000, "second call should see the uid we set");
         assert_eq!(reply2.body.old_gid, 7001);
 
-        println!("RPC_ROUNDTRIP_OK: call -> decode -> microthread handler (dtape_task_uidgid) -> reply -> verified (incl. state across two calls)");
+        println!("RPC_ROUNDTRIP_OK: call -> decode -> microthread handler (xnu_sys_task_uidgid) -> reply -> verified (incl. state across two calls)");
         for fd in [client, server] { libc::close(fd); }
     }
 }

@@ -8,36 +8,36 @@
 
 #include <ciderd/xnu-sys/locks.h>
 
-struct dtape_task;
+struct xnu_sys_task;
 
-typedef struct dtape_map_shared_descriptor {
+typedef struct xnu_sys_map_shared_descriptor {
 	os_refcnt_t refcount;
 	int memfd;
 	uint64_t size;
-} dtape_map_shared_descriptor_t;
+} xnu_sys_map_shared_descriptor_t;
 
-typedef struct dtape_map_shared_entry {
-	RB_ENTRY(dtape_map_shared_entry) link;
+typedef struct xnu_sys_map_shared_entry {
+	RB_ENTRY(xnu_sys_map_shared_entry) link;
 	uint64_t address;
 	uint64_t size;
 	uint64_t page_offset;
-	dtape_map_shared_descriptor_t* descriptor;
-} dtape_map_shared_entry_t;
+	xnu_sys_map_shared_descriptor_t* descriptor;
+} xnu_sys_map_shared_entry_t;
 
-typedef RB_HEAD(dtape_map_shared_entry_head, dtape_map_shared_entry) dtape_map_shared_entry_head_t;
+typedef RB_HEAD(xnu_sys_map_shared_entry_head, xnu_sys_map_shared_entry) xnu_sys_map_shared_entry_head_t;
 
 struct _vm_map {
-	uint32_t dtape_page_shift;
+	uint32_t xnu_sys_page_shift;
 	uint64_t max_offset;
 	os_refcnt_t map_refcnt;
-	struct dtape_task* dtape_task;
-	dtape_map_shared_entry_head_t shared_entries;
-	dtape_mutex_t shared_entry_lock;
+	struct xnu_sys_task* xnu_sys_task;
+	xnu_sys_map_shared_entry_head_t shared_entries;
+	xnu_sys_mutex_t shared_entry_lock;
 };
 
-typedef struct _vm_map dtape_map_t;
+typedef struct _vm_map xnu_sys_map_t;
 
-#define VM_MAP_PAGE_SHIFT(map) ((map) ? (map)->dtape_page_shift : PAGE_SHIFT)
+#define VM_MAP_PAGE_SHIFT(map) ((map) ? (map)->xnu_sys_page_shift : PAGE_SHIFT)
 
 struct vm_map_header {
 
@@ -52,7 +52,7 @@ struct vm_map_copy {
 		vm_object_t object;
 		void* kdata;
 	} c_u;
-	char dtape_copy_data[];
+	char xnu_sys_copy_data[];
 };
 
 #define cpy_hdr c_u.hdr
@@ -64,8 +64,8 @@ struct vm_map_copy {
 #define VM_MAP_COPY_OBJECT 2
 #define VM_MAP_COPY_KERNEL_BUFFER 3
 
-void dtape_memory_init(void);
-vm_map_t dtape_vm_map_create(struct dtape_task* task);
-void dtape_vm_map_destroy(vm_map_t map);
+void xnu_sys_memory_init(void);
+vm_map_t xnu_sys_vm_map_create(struct xnu_sys_task* task);
+void xnu_sys_vm_map_destroy(vm_map_t map);
 
 #endif // _DARLINGSERVER_XNU_SYS_MEMORY_H_

@@ -105,7 +105,7 @@ def action_category(identity: str) -> str:
 #
 # THE STAGED FARM ROOTS ALONE WERE NOT ENOUGH, and this is what proved it. The first version of
 # this script rooted only artifacts a staged farm contains, which finds mig, the ELF wrappers
-# and rtsig but MISSES bindgen: dtape_bindings is consumed by a cargo build through OUT_DIR and
+# and rtsig but MISSES bindgen: xnu_sys_bindings is consumed by a cargo build through OUT_DIR and
 # never lands in a farm. So linux/server/wrapper.h was emptied, bindgen wrote nothing, and the
 # skeleton graph died with 83 rustc errors in sched.rs on an unresolved crate::bindings. The
 # experiment is what found it; the closure did not.

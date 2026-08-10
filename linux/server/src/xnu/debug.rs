@@ -28,31 +28,31 @@ use std::os::raw::c_void;
 use std::ptr;
 
 use crate::bindings::{
-    dtape_debug_message_t, dtape_debug_port_list_messages_iterator_f, dtape_debug_port_t,
-    dtape_debug_portset_list_members_iterator_f, dtape_debug_task_list_ports_iterator_f,
-    dtape_rs_io_release, dtape_rs_ip_object_to_port, dtape_rs_kalloc, dtape_rs_kfree,
-    dtape_rs_mach_port_make, dtape_rs_task_ipc_space, dtape_task_t,
+    xnu_sys_debug_message_t, xnu_sys_debug_port_list_messages_iterator_f, xnu_sys_debug_port_t,
+    xnu_sys_debug_portset_list_members_iterator_f, xnu_sys_debug_task_list_ports_iterator_f,
+    xnu_sys_rs_io_release, xnu_sys_rs_ip_object_to_port, xnu_sys_rs_kalloc, xnu_sys_rs_kfree,
+    xnu_sys_rs_mach_port_make, xnu_sys_rs_task_ipc_space, xnu_sys_task_t,
     ipc_entry, ipc_kmsg, ipc_mqueue, ipc_object, ipc_space, mach_port_name_t,
     ipc_entry_lookup, ipc_mqueue_copyin, ipc_mqueue_set_gather_member_names, ipc_kmsg_queue_next,
     IE_BITS_GEN_MASK, IE_BITS_TYPE_MASK, IE_BITS_UREFS_MASK, KERN_SUCCESS,
 };
 
-/// `dtape_task_for_xnu_task`: XNU's task is EMBEDDED in the xnu-sys one, so this walks back
+/// `xnu_sys_task_for_xnu_task`: XNU's task is EMBEDDED in the xnu-sys one, so this walks back
 /// by the field offset.
 ///
 /// COMPUTED, NOT CALLED, and the first version of this file got that wrong. The C is
 /// `__attribute__((always_inline)) static`, so there is NO SYMBOL to link against. Declaring it
 /// extern compiled and even linked the demos, because nothing in them reaches this path and the
 /// linker garbage collected it; only building ciderd, where handler.rs does call it,
-/// produced the undefined reference. Same shape as `dtape_thread_for_xnu_thread`, which
+/// produced the undefined reference. Same shape as `xnu_sys_thread_for_xnu_thread`, which
 /// condvar.rs computes for the same reason.
 #[inline]
-pub(crate) unsafe fn dtape_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut dtape_task_t {
+pub(crate) unsafe fn xnu_sys_task_for_xnu_task(xnu_task: crate::bindings::task_t) -> *mut xnu_sys_task_t {
     if xnu_task.is_null() {
         return ptr::null_mut();
     }
-    (xnu_task as *mut u8).sub(std::mem::offset_of!(crate::bindings::dtape_task, xnu_task))
-        as *mut dtape_task_t
+    (xnu_task as *mut u8).sub(std::mem::offset_of!(crate::bindings::xnu_sys_task, xnu_task))
+        as *mut xnu_sys_task_t
 }
 
 /// `MACH_PORT_TYPE_NONE`, the empty capability. Spelled out because it is `0` by construction
@@ -75,13 +75,13 @@ fn ie_bits_urefs(bits: u32) -> u32 {
 
 /// The task's IPC space, through the shim, because `struct task` is opaque on purpose.
 #[inline]
-unsafe fn task_space(task: *mut dtape_task_t) -> *mut ipc_space {
-    dtape_rs_task_ipc_space(task as *mut crate::bindings::dtape_task) as *mut ipc_space
+unsafe fn task_space(task: *mut xnu_sys_task_t) -> *mut ipc_space {
+    xnu_sys_rs_task_ipc_space(task as *mut crate::bindings::xnu_sys_task) as *mut ipc_space
 }
 
 /// How many ports a task holds.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_debug_task_port_count(task: *mut dtape_task_t) -> u64 {
+pub unsafe extern "C" fn xnu_sys_debug_task_port_count(task: *mut xnu_sys_task_t) -> u64 {
     (*task_space(task)).is_table_hashed as u64
 }
 
@@ -91,9 +91,9 @@ pub unsafe extern "C" fn dtape_debug_task_port_count(task: *mut dtape_task_t) ->
 /// the returned count is the true number of ports rather than the number reported. Preserved
 /// exactly: a caller that stops early still learns how many there were.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_debug_task_list_ports(
-    task: *mut dtape_task_t,
-    iterator: dtape_debug_task_list_ports_iterator_f,
+pub unsafe extern "C" fn xnu_sys_debug_task_list_ports(
+    task: *mut xnu_sys_task_t,
+    iterator: xnu_sys_debug_task_list_ports_iterator_f,
     context: *mut c_void,
 ) -> u64 {
     let space = task_space(task);
@@ -106,10 +106,10 @@ pub unsafe extern "C" fn dtape_debug_task_list_ports(
             continue;
         }
 
-        let port = dtape_rs_ip_object_to_port((*entry).ie_object as *mut ipc_object);
+        let port = xnu_sys_rs_ip_object_to_port((*entry).ie_object as *mut ipc_object);
 
-        let debug_port = dtape_debug_port_t {
-            name: dtape_rs_mach_port_make(index, ie_bits_gen((*entry).ie_bits)),
+        let debug_port = xnu_sys_debug_port_t {
+            name: xnu_sys_rs_mach_port_make(index, ie_bits_gen((*entry).ie_bits)),
             refs: ie_bits_urefs((*entry).ie_bits) as u64,
             rights: ie_bits_type((*entry).ie_bits),
             // imq_msgcount, which is a macro alias for data.port.msgcount.
@@ -130,10 +130,10 @@ pub unsafe extern "C" fn dtape_debug_task_list_ports(
 
 /// Walk the members of a port set.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_debug_portset_list_members(
-    task: *mut dtape_task_t,
+pub unsafe extern "C" fn xnu_sys_debug_portset_list_members(
+    task: *mut xnu_sys_task_t,
     portset: u32,
-    iterator: dtape_debug_portset_list_members_iterator_f,
+    iterator: xnu_sys_debug_portset_list_members_iterator_f,
     context: *mut c_void,
 ) -> u64 {
     let mut object: *mut ipc_object = ptr::null_mut();
@@ -153,13 +153,13 @@ pub unsafe extern "C" fn dtape_debug_portset_list_members(
     // there really are, and a set that grew between the two calls goes round again.
     loop {
         if !names.is_null() {
-            dtape_rs_kfree(
+            xnu_sys_rs_kfree(
                 names as *mut c_void,
                 std::mem::size_of::<mach_port_name_t>() * member_count as usize,
             );
         }
 
-        names = dtape_rs_kalloc(std::mem::size_of::<mach_port_name_t>() * actual_count as usize)
+        names = xnu_sys_rs_kalloc(std::mem::size_of::<mach_port_name_t>() * actual_count as usize)
             as *mut mach_port_name_t;
         member_count = actual_count;
 
@@ -179,9 +179,9 @@ pub unsafe extern "C" fn dtape_debug_portset_list_members(
     for i in 0..member_count as usize {
         let name = *names.add(i);
         let entry = ipc_entry_lookup(task_space(task), name);
-        let port = dtape_rs_ip_object_to_port((*entry).ie_object as *mut ipc_object);
+        let port = xnu_sys_rs_ip_object_to_port((*entry).ie_object as *mut ipc_object);
 
-        let debug_port = dtape_debug_port_t {
+        let debug_port = xnu_sys_debug_port_t {
             name,
             refs: ie_bits_urefs((*entry).ie_bits) as u64,
             rights: ie_bits_type((*entry).ie_bits),
@@ -196,23 +196,23 @@ pub unsafe extern "C" fn dtape_debug_portset_list_members(
     }
 
     if !names.is_null() {
-        dtape_rs_kfree(
+        xnu_sys_rs_kfree(
             names as *mut c_void,
             std::mem::size_of::<mach_port_name_t>() * member_count as usize,
         );
     }
 
-    dtape_rs_io_release(object);
+    xnu_sys_rs_io_release(object);
 
     member_count as u64
 }
 
 /// Walk the messages queued on a port.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_debug_port_list_messages(
-    task: *mut dtape_task_t,
+pub unsafe extern "C" fn xnu_sys_debug_port_list_messages(
+    task: *mut xnu_sys_task_t,
     port: u32,
-    iterator: dtape_debug_port_list_messages_iterator_f,
+    iterator: xnu_sys_debug_port_list_messages_iterator_f,
     context: *mut c_void,
 ) -> u64 {
     let mut object: *mut ipc_object = ptr::null_mut();
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn dtape_debug_port_list_messages(
     let queue = ptr::addr_of_mut!((*mqueue).data.port.messages);
     let mut kmsg: *mut ipc_kmsg = (*queue).ikmq_base;
     while !kmsg.is_null() {
-        let mut debug_message = dtape_debug_message_t {
+        let mut debug_message = xnu_sys_debug_message_t {
             sender: 0,
             size: (*kmsg).ikm_size as u64,
         };
@@ -239,7 +239,7 @@ pub unsafe extern "C" fn dtape_debug_port_list_messages(
         if !remote.is_null() {
             let receiver = (*remote).data.receiver;
             if !receiver.is_null() {
-                let dtask = dtape_task_for_xnu_task((*receiver).is_task);
+                let dtask = xnu_sys_task_for_xnu_task((*receiver).is_task);
                 if !dtask.is_null() {
                     debug_message.sender = (*dtask).saved_pid as u32;
                 }
@@ -256,7 +256,7 @@ pub unsafe extern "C" fn dtape_debug_port_list_messages(
         kmsg = ipc_kmsg_queue_next(queue, kmsg);
     }
 
-    dtape_rs_io_release(object);
+    xnu_sys_rs_io_release(object);
 
     message_count
 }

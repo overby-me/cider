@@ -157,7 +157,7 @@ struct waitq {
 	    waitq_eventmask:_EVENT_MASK_BITS;
 	/* the wait queue set (set-of-sets) to which this queue belongs */
 #ifdef __DARLING__
-	decl_simple_lock_data(, dtape_waitq_interlock);
+	decl_simple_lock_data(, xnu_sys_waitq_interlock);
 #else
 #if __arm64__
 	hw_lock_bit_t   waitq_interlock;        /* interlock */

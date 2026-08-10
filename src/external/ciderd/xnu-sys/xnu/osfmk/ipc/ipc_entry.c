@@ -414,7 +414,7 @@ ipc_entry_dealloc(
 	mach_port_index_t index;
 
 #if DSERVER_EXTENDED_DEBUG
-	dtape_hooks->task_unregister_name(dtape_task_for_xnu_task(current_task())->context, name);
+	xnu_sys_hooks->task_unregister_name(xnu_sys_task_for_xnu_task(current_task())->context, name);
 #endif
 
 	assert(is_active(space));

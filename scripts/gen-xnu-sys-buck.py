@@ -47,9 +47,9 @@ FLAGS_BZL = os.path.join(REPO, "buck/generated/xnu_sys_flags.bzl")
 # never binds). semaphore.c went first because it is 60 lines with one macro while still
 # exercising the whole seam -- exported C ABI, called from C, calling into XNU.
 # First-party sources compiled INTO xnu-sys that upstream does not list. See
-# src/dtape_rs_shims.c for why a shim beats a Rust reimplementation for these.
+# src/xnu_sys_rs_shims.c for why a shim beats a Rust reimplementation for these.
 RUST_SHIM_SOURCES = [
-    "src/dtape_rs_shims.c",
+    "src/xnu_sys_rs_shims.c",
     # The copied-XNU half of task.c, split out when the glue half moved to Rust (#71).
     # Listed here rather than picked up by the glob because the glob is what PORTED_TO_RUST
     # subtracts from, and this file must survive its own source file being excluded.
@@ -297,7 +297,7 @@ def main(argv: list[str]) -> int:
         w(f'    headers = glob(["{root}/**/*.h", "{root}/**/*.defs"]),')
         w(f'    root = "{root}",')
         # PUBLIC because linux/server runs bindgen over these same roots now: the ported
-        # glue needs xnu-sys's own structs, and struct dtape_task embeds the XNU one.
+        # glue needs xnu-sys's own structs, and struct xnu_sys_task embeds the XNU one.
         w('    visibility = ["PUBLIC"],')
         w(")")
         w("")

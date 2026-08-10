@@ -1,5 +1,5 @@
 //! Stage 4 slice: per-guest routing via the process/thread tables. Two "guests"
-//! (pids 100 and 200) each get their own dtape task; uidgid calls routed by pid run
+//! (pids 100 and 200) each get their own xnu_sys task; uidgid calls routed by pid run
 //! on the right task, so each guest has independent uid state -- proven by second
 //! calls reporting each guest's own previously-set value as "old".
 use cider::registry::Registry;
@@ -10,7 +10,7 @@ use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
 
 extern "C" {
-    fn dtape_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
+    fn xnu_sys_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
 }
 
 /// Run a uidgid handler for guest (pid,tid) on ITS task and return the reply. The
@@ -21,7 +21,7 @@ unsafe fn call_uidgid(reg: &mut Registry, pid: u32, tid: u64, call: CallUidgid) 
     let mt = reg.spawn_on(pid, tid, 2 /* x86_64 */, Box::new(move || {
         let task = sched::current_task(); // <-- routed to this guest's task
         let (mut ou, mut og): (c_int, c_int) = (-1, -1);
-        dtape_task_uidgid(task as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
+        xnu_sys_task_uidgid(task as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
         out.set(Some(ReplyUidgid { old_uid: ou, old_gid: og }));
     }));
     sched::run(mt);
@@ -48,6 +48,6 @@ fn main() {
         assert_eq!(b2.old_uid, 2200, "pid200 must see its own prior uid");
         assert_eq!(reg.task_count(), 2, "two distinct guest tasks");
 
-        println!("REGISTRY_OK: two guests routed to independent dtape tasks by pid; per-guest state isolated");
+        println!("REGISTRY_OK: two guests routed to independent xnu_sys tasks by pid; per-guest state isolated");
     }
 }

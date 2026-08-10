@@ -18,9 +18,9 @@ wrong in two ways that both flattered the answer, and it picked the wrong file:
 
   * it dumped macros from ONE fixed header list and intersected every file against it. A file
     that includes more sees macros that list lacks, so init.c scored a false 0 when it really
-    uses dtape_log_debug, and misc.c scored 3 object-like macros when it really uses 43.
+    uses xnu_sys_log_debug, and misc.c scored 3 object-like macros when it really uses 43.
   * it counted only function-like macros, so traps.c looked like a zero-blocker file when its
-    last line is DSERVER_DTAPE_DEFS, a GENERATED object-like macro.
+    last line is DSERVER_XNU_SYS_DEFS, a GENERATED object-like macro.
 
 So each file is preprocessed WITH ITS OWN INCLUDES and both macro kinds are counted. The
 ranking below is the corrected one; the earlier note in the task list that named misc.c as an
@@ -84,7 +84,7 @@ def generated_include_roots():
     THE ANSWER. Measured: debug.c and traps.c both died on ciderd/rpc.internal.h and
     host.c on mach/mach_host.h, and every one of them still produced thousands of macros for
     the columns to be computed from. That is how traps.c came to rank FIRST with zero blockers
-    in every run: its one blocker, DSERVER_DTAPE_DEFS, is defined in rpc.internal.h, the very
+    in every run: its one blocker, DSERVER_XNU_SYS_DEFS, is defined in rpc.internal.h, the very
     header that was not found.
 
     mig FIRST, matching the include order linux/server/BUCK documents: mach/task.h exists both
@@ -133,7 +133,7 @@ def macros_visible_to(path, args):
     binds a plain integer define, so those are not blockers; a macro whose body contains a
     brace or a semicolon expands to declarations or statements and bindgen cannot help at all.
     That distinction is what traps.c turns on: its single object-like macro,
-    DSERVER_DTAPE_DEFS, expands to about 29 function DEFINITIONS, and while it was lumped in
+    DSERVER_XNU_SYS_DEFS, expands to about 29 function DEFINITIONS, and while it was lumped in
     with the constants the file read as blocker-free in every run.
     """
     p = subprocess.run(["clang", "-E", "-dM", "-x", "c", *args, path],
@@ -246,12 +246,12 @@ def archive_defined_symbols():
     """Symbols the xnu-sys archive DEFINES, for deciding whether a macro is really a blocker.
 
     A macro that merely forwards to a real function is not a blocker: Rust cannot DEFINE a C
-    variadic but it can CALL one, which is how semaphore.rs calls panic. dtape_log_debug is the
+    variadic but it can CALL one, which is how semaphore.rs calls panic. xnu_sys_log_debug is the
     same shape,
 
-        #define dtape_log_debug(format, ...) dtape_log(dtape_log_level_debug, format, ...)
+        #define xnu_sys_log_debug(format, ...) xnu_sys_log(xnu_sys_log_level_debug, format, ...)
 
-    and dtape_log is T in the archive, so a port calls it and moves on. Counting it as a blocker
+    and xnu_sys_log is T in the archive, so a port calls it and moves on. Counting it as a blocker
     kept init.c looking blocked when it is not.
     """
     a = os.path.join(ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/linux/server"
@@ -312,7 +312,7 @@ def keep_only_types(path, args, candidates):
         return []
     ordered = sorted(candidates)
     body = ['#include "%s"' % path]
-    body += ["typedef %s dtape_probe_%d;" % (c, i) for i, c in enumerate(ordered)]
+    body += ["typedef %s xnu_sys_probe_%d;" % (c, i) for i, c in enumerate(ordered)]
     with tempfile.NamedTemporaryFile("w", suffix=".c", delete=False) as f:
         f.write("\n".join(body) + "\n")
         probe = f.name
@@ -418,22 +418,22 @@ def solved_macro_names_and_allowlist():
     command's output can hide its traceback.
     """
 
-    # A macro is only a blocker while it has NO Rust equivalent. dtape_stub, dtape_stub_safe
-    # and dtape_stub_unsafe live in linux/server/src/dtape_stub.rs and were ported precisely so
+    # A macro is only a blocker while it has NO Rust equivalent. xnu_sys_stub, xnu_sys_stub_safe
+    # and xnu_sys_stub_unsafe live in linux/server/src/xnu_sys_stub.rs and were ported precisely so
     # that the files calling them could be, yet they kept ranking as blockers for host.c and
     # processor.c and pushed both down the list. Read the crate for macro_rules! rather than
     # keeping a hand written list here, for the same reason PORTED_TO_RUST is read from the
     # generator: a second copy drifts, and this tool is only useful if it is trusted.
-    # Macros solved by a C SHIM count as solved too. xnu-sys/src/dtape_rs_shims.c exports
-    # macro-only operations as real symbols, named dtape_rs_<macro>, for the cases where a Rust
+    # Macros solved by a C SHIM count as solved too. xnu-sys/src/xnu_sys_rs_shims.c exports
+    # macro-only operations as real symbols, named xnu_sys_rs_<macro>, for the cases where a Rust
     # reimplementation would cost more than it saves: kalloc expands to a statement expression
     # holding a static vm_allocation_site_t, so writing it in Rust would mean un-opaquing part
     # of vm_.* for the whole crate. Read the shim rather than listing them here, same rule as
     # everywhere else in this file.
     have = set()
-    shim = os.path.join(DT, "src/dtape_rs_shims.c")
+    shim = os.path.join(DT, "src/xnu_sys_rs_shims.c")
     if os.path.exists(shim):
-        have |= set(re.findall(r"^\w[\w \*]*\bdtape_rs_(\w+)\s*\(",
+        have |= set(re.findall(r"^\w[\w \*]*\bxnu_sys_rs_(\w+)\s*\(",
                                open(shim, errors="ignore").read(), re.M))
 
     for dirpath, _, names in os.walk(os.path.join(ROOT, "linux/server/src")):
@@ -493,7 +493,7 @@ def main():
             # C file after macro expansion, so a type reached ONLY through a macro that is now
             # shimmed still shows up, even though a Rust port calls the shim and never expands
             # it. processor.c is the live example: vm_allocation_site_t is listed, and it comes
-            # entirely from the kalloc expansion, which dtape_rs_kalloc now absorbs.
+            # entirely from the kalloc expansion, which xnu_sys_rs_kalloc now absorbs.
             # Not corrected automatically because it needs types attributed to the macro that
             # introduced them. The obvious cheap fix does NOT work: passing -Dkalloc(a0)=... on
             # the command line changes nothing, because kern/kalloc.h redefines the macro
@@ -524,7 +524,7 @@ def main():
         r["ported"] = f in ported
         # The raw counts stay as measured; what changes is which of them still BLOCK.
         # A code-emitting object-like macro is as much a blocker as a function-like one, and
-        # for traps.c it is the ONLY one: DSERVER_DTAPE_DEFS expands to about 29 function
+        # for traps.c it is the ONLY one: DSERVER_XNU_SYS_DEFS expands to about 29 function
         # definitions, so porting the file means writing a Rust emitter for that table.
         forwards = macros_that_only_forward(
             os.path.join(srcdir, f), cargs, r["fn_macros"], defined_syms)

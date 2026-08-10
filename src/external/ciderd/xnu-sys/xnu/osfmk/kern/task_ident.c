@@ -139,10 +139,10 @@ task_create_identity_token(
 
 	task_lock(task);
 #ifdef __DARLING__
-	dtape_task_t* dtape_task = dtape_task_for_xnu_task(task);
-	if (dtape_task) {
+	xnu_sys_task_t* xnu_sys_task = xnu_sys_task_for_xnu_task(task);
+	if (xnu_sys_task) {
 		token->port = IP_NULL;
-		token->ident = proc_ident(dtape_task);
+		token->ident = proc_ident(xnu_sys_task);
 #else
 	if (task->bsd_info) {
 		token->port = IP_NULL;

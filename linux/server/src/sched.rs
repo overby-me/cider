@@ -1,7 +1,7 @@
-//! Microthread scheduler + dtape hook layer (Stage 4 foundation).
+//! Microthread scheduler + xnu_sys hook layer (Stage 4 foundation).
 //!
 //! A stackful microthread runs XNU C on the FFI'd P1 fast_context; when that C
-//! suspends it (dtape_hooks->thread_suspend, from inside the call stack), we do the
+//! suspends it (xnu_sys_hooks->thread_suspend, from inside the call stack), we do the
 //! getcontext-returns-twice switch back to the worker loop, and resume it later.
 //! Both suspend paths (stackful + continuation) were proven in the Stage 3 spike;
 //! this is the same logic promoted off `static mut` into thread-local per-worker
@@ -22,32 +22,32 @@ use std::sync::atomic::{AtomicU64, Ordering};
 // ---- `extern "C"` declarations they used to be (#75). The linker matched those by name and
 // ---- rustc never compared them against the definitions, so each was free to disagree.
 //
-//   dtape_init_in_thread   the SECOND init phase (init.c:117). dtape_init (phase 1) only sets
+//   xnu_sys_init_in_thread   the SECOND init phase (init.c:117). xnu_sys_init (phase 1) only sets
 //                          up processor, memory, timer and task; the rest, thread_call_initialize,
 //                          ipc_thread_call_init, clock_service_create,
-//                          thread_deallocate_daemon_init, ux_handler_setup AND dtape_psynch_init,
+//                          thread_deallocate_daemon_init, ux_handler_setup AND xnu_sys_psynch_init,
 //                          lives here and MUST run on a kernel microthread (it needs a
 //                          current-thread context and spawns kernel daemon threads). The C++
-//                          daemon did Thread::kernelSync(dtape_init_in_thread) after dtape_init
+//                          daemon did Thread::kernelSync(xnu_sys_init_in_thread) after xnu_sys_init
 //                          (server.cpp:533). Omitting it left psynch pthread_list_mlock NULL, so
 //                          the first contended pthread wait crashed. psynch_demo asserts on that
 //                          now (#77).
-//   dtape_task_retain      bump a task refcount so a task_lookup(retain=true) result stays alive
-//                          for its caller, paired with a dtape_task_release. xnu-sys.h:85.
-//   dtape_thread_for_port  resolve a guest Mach thread port to its dtape_thread, and recover the
-//                          void* context handed to dtape_thread_create (our *mut Microthread).
+//   xnu_sys_task_retain      bump a task refcount so a task_lookup(retain=true) result stays alive
+//                          for its caller, paired with a xnu_sys_task_release. xnu-sys.h:85.
+//   xnu_sys_thread_for_port  resolve a guest Mach thread port to its xnu_sys_thread, and recover the
+//                          void* context handed to xnu_sys_thread_create (our *mut Microthread).
 //                          Backs thread_for_port. xnu-sys.h:71.
-//   dtape_thread_retain    same as the task one, xnu-sys.h:77.
-//   dtape_timer_fired      invoked when a timer armed via the timer_arm hook expires; wakes any
+//   xnu_sys_thread_retain    same as the task one, xnu-sys.h:77.
+//   xnu_sys_timer_fired      invoked when a timer armed via the timer_arm hook expires; wakes any
 //                          XNU threads whose deadline has passed. May itself briefly wait, so it
 //                          runs on a kernel microthread.
-use crate::xnu::task::{dtape_task_create, dtape_task_retain};
+use crate::xnu::task::{xnu_sys_task_create, xnu_sys_task_retain};
 use crate::xnu::thread::{
-    dtape_thread_context, dtape_thread_create, dtape_thread_entering, dtape_thread_exiting,
-    dtape_thread_for_port, dtape_thread_retain,
+    xnu_sys_thread_context, xnu_sys_thread_create, xnu_sys_thread_entering, xnu_sys_thread_exiting,
+    xnu_sys_thread_for_port, xnu_sys_thread_retain,
 };
-use crate::xnu::init::{dtape_init, dtape_init_in_thread};
-use crate::xnu::timer::dtape_timer_fired;
+use crate::xnu::init::{xnu_sys_init, xnu_sys_init_in_thread};
+use crate::xnu::timer::xnu_sys_timer_fired;
 
 // ---- FFI. What is left here is genuinely foreign: the fast context switch helpers and
 // ---- libsimple, both C, neither part of xnu-sys.
@@ -59,7 +59,7 @@ extern "C" {
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
 }
 
-const KERNEL_NSID_BASE: u64 = 1 << 22; // DTAPE_KERNEL_THREAD_ID_THRESHOLD
+const KERNEL_NSID_BASE: u64 = 1 << 22; // XNU_SYS_KERNEL_THREAD_ID_THRESHOLD
 const STACK_SIZE: usize = 512 * 1024;
 static NEXT_EID: AtomicU64 = AtomicU64::new(1);
 static NEXT_KTID: AtomicU64 = AtomicU64::new(KERNEL_NSID_BASE + 1);
@@ -79,21 +79,21 @@ pub fn init_timer() -> c_int {
     fd
 }
 
-/// Drain the fired timerfd and deliver the expiry to XNU: run dtape_timer_fired on a fresh
+/// Drain the fired timerfd and deliver the expiry to XNU: run xnu_sys_timer_fired on a fresh
 /// kernel microthread (it may briefly wait, so it cannot run on the serve loop directly),
 /// then drain any guest threads it woke. Mirrors server.cpp's timerfd handler +
-/// `Thread::kernelAsync(dtape_timer_fired)`.
-pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
+/// `Thread::kernelAsync(xnu_sys_timer_fired)`.
+pub unsafe fn timer_fired(kernel_task: *mut xnu_sys_task_t) {
     let fd = TIMER_FD.load(Ordering::Relaxed);
     if fd >= 0 {
         let mut buf = [0u8; 8];
         libc::read(fd, buf.as_mut_ptr() as *mut c_void, 8);
     }
     TIMER_DEADLINE.store(0, Ordering::Relaxed);
-    let mt = spawn(kernel_task, Box::new(|| dtape_timer_fired()));
+    let mt = spawn(kernel_task, Box::new(|| xnu_sys_timer_fired()));
     run(mt);
     if (*mt).is_suspended() {
-        // dtape_timer_fired parked (rare); leave it for a later drain to finish.
+        // xnu_sys_timer_fired parked (rare); leave it for a later drain to finish.
         schedule(mt);
     } else {
         drop(Box::from_raw(mt));
@@ -104,8 +104,8 @@ pub unsafe fn timer_fired(kernel_task: *mut dtape_task_t) {
 /// Run a one-shot operation on a fresh microthread bound to `task`, so the xnu-sys sees a
 /// current-thread + the task's guest-memory context, then drain anything it wakes. This is the
 /// cooperative-yield stand-in for C++'s `impersonate` + `kernelAsync` -- used by the mach-port
-/// kqchan modify/read (task #54), which call dtape_kqchan_mach_port_* that need that context.
-pub unsafe fn run_on_task(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) {
+/// kqchan modify/read (task #54), which call xnu_sys_kqchan_mach_port_* that need that context.
+pub unsafe fn run_on_task(task: *mut xnu_sys_task_t, body: Box<dyn FnOnce()>) {
     let mt = spawn(task, body);
     run(mt);
     if (*mt).is_suspended() {
@@ -137,16 +137,16 @@ pub struct Microthread {
     has_loop_top: bool,
     suspended: bool,
     finished: bool,
-    dtape_thread: *mut dtape_thread_t,
-    owning_task: *mut dtape_task_t,
+    xnu_sys_thread: *mut xnu_sys_thread_t,
+    owning_task: *mut xnu_sys_task_t,
     interrupt_disable: u32,
     body: Option<Box<dyn FnOnce()>>,
-    pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
+    pending_cont: Option<(xnu_sys_thread_continuation_callback_f, *mut c_void)>,
     // Set by the current_thread_syscall_return hook: the result a blocking call (e.g. a
     // mach_msg receive that waited) delivered via its continuation instead of returning
     // to the Rust caller. This is what the real daemon would put in the RPC reply.
     syscall_return: Option<i32>,
-    // Set by the thread_set_pending_signal hook during dtape_thread_process_signal: the
+    // Set by the thread_set_pending_signal hook during xnu_sys_thread_process_signal: the
     // BSD signal the guest should actually deliver (sigprocess returns it).
     pending_signal: i32,
     // The u32 return value of an in-flight BSD trap (psynch retval). A stable per-thread
@@ -156,7 +156,7 @@ pub struct Microthread {
     // with the syscall's errno code.
     bsd_retval: u32,
     // ---- guest-thread identity (Foundation A) ----
-    // Resolved from a Mach thread port via dtape_thread_for_port -> dtape_thread_context
+    // Resolved from a Mach thread port via xnu_sys_thread_for_port -> xnu_sys_thread_context
     // (which returns this Microthread), these answer the port-keyed thread calls without a
     // separate registry. The guest tid (nsid) this thread was created with. C++ Thread::_nstid.
     nsid_tid: u64,
@@ -199,7 +199,7 @@ struct SavedActivation {
     has_loop_top: bool,
     suspended: bool,
     finished: bool,
-    pending_cont: Option<(dtape_thread_continuation_callback_f, *mut c_void)>,
+    pending_cont: Option<(xnu_sys_thread_continuation_callback_f, *mut c_void)>,
     at_dowork_top: bool,
     body: Option<Box<dyn FnOnce()>>,
 }
@@ -207,7 +207,7 @@ struct SavedActivation {
 impl Microthread {
     pub fn is_finished(&self) -> bool { self.finished }
     pub fn is_suspended(&self) -> bool { self.suspended }
-    pub fn dtape_thread(&self) -> *mut dtape_thread_t { self.dtape_thread }
+    pub fn xnu_sys_thread(&self) -> *mut xnu_sys_thread_t { self.xnu_sys_thread }
     /// The pending BSD signal set during signal processing (sigprocess reads this).
     pub fn pending_signal(&self) -> i32 { self.pending_signal }
     /// Override the signal this thread will deliver from its in-flight signal-interrupt (ptrace
@@ -280,10 +280,10 @@ impl Microthread {
     }
     /// Whether a nested-interrupt activation is currently pushed on this microthread.
     pub fn has_saved_activation(&self) -> bool { !self.activations.is_empty() }
-    /// The dtape_thread this microthread runs on (for a nested interrupt sharing it).
-    pub fn dtape_thread_ptr(&self) -> *mut dtape_thread_t { self.dtape_thread }
+    /// The xnu_sys_thread this microthread runs on (for a nested interrupt sharing it).
+    pub fn xnu_sys_thread_ptr(&self) -> *mut xnu_sys_thread_t { self.xnu_sys_thread }
     /// The task this microthread is bound to (for spawning a nested interrupt on the same task).
-    pub fn owning_task_ptr(&self) -> *mut dtape_task_t { self.owning_task }
+    pub fn owning_task_ptr(&self) -> *mut xnu_sys_task_t { self.owning_task }
     /// The guest's host-namespace pid (tgkill target group), or -1 if unknown.
     pub fn host_pid(&self) -> libc::pid_t { self.host_pid }
     /// Bind the host pid discovered when this guest thread first checked in (set by spawn_on).
@@ -329,12 +329,12 @@ fn derive_host_tid(host_pid: libc::pid_t, nsid_tid: u64) -> libc::pid_t {
     -1
 }
 
-/// Create a microthread that SHARES an existing `dtape_thread` (rather than creating a fresh
+/// Create a microthread that SHARES an existing `xnu_sys_thread` (rather than creating a fresh
 /// one), for running a signal interrupt nested on the blocked thread's own XNU thread while
 /// that thread's doWork microthread stays suspended mid-call. Because it shares the
-/// dtape_thread, reaping it must NOT tear the thread down (no dtape_thread_dying). Mirrors the
+/// xnu_sys_thread, reaping it must NOT tear the thread down (no xnu_sys_thread_dying). Mirrors the
 /// nesting in C++ Thread::doWork, where the interrupt runs on the same _dtapeThread. See #58.
-pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dtape_thread_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
+pub unsafe fn spawn_sharing_xnu_sys(task: *mut xnu_sys_task_t, xnu_sys_thread: *mut xnu_sys_thread_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
     let mt = Box::into_raw(Box::new(Microthread {
         resume_ctx: MaybeUninit::uninit(),
         stack: vec![0u8; STACK_SIZE],
@@ -343,7 +343,7 @@ pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dt
         has_loop_top: false,
         suspended: false,
         finished: false,
-        dtape_thread,
+        xnu_sys_thread,
         owning_task: task,
         interrupt_disable: 0,
         body: Some(body),
@@ -359,19 +359,19 @@ pub unsafe fn spawn_sharing_dtape(task: *mut dtape_task_t, dtape_thread: *mut dt
         s2c_peer: None,
         activations: Vec::new(),
     }));
-    // NOTE: no dtape_thread_create -- we deliberately reuse the caller's dtape_thread.
+    // NOTE: no xnu_sys_thread_create -- we deliberately reuse the caller's xnu_sys_thread.
     mt
 }
 
 /// Resolve a guest Mach thread port to its Microthread, via the xnu-sys port registry
-/// (dtape_thread_for_port) and the context stored at dtape_thread_create. Returns None for an
+/// (xnu_sys_thread_for_port) and the context stored at xnu_sys_thread_create. Returns None for an
 /// invalid or dead port. Mirrors C++ Thread::threadForPort (thread.cpp:916).
 pub unsafe fn thread_for_port(thread_port: u32) -> Option<*mut Microthread> {
-    let dt = dtape_thread_for_port(thread_port);
+    let dt = xnu_sys_thread_for_port(thread_port);
     if dt.is_null() {
         return None;
     }
-    let ctx = dtape_thread_context(dt);
+    let ctx = xnu_sys_thread_context(dt);
     if ctx.is_null() {
         return None;
     }
@@ -385,43 +385,43 @@ thread_local! {
     static CURRENT: Cell<*mut Microthread> = const { Cell::new(std::ptr::null_mut()) };
     // Shared work queue -> Mutex+condvar when this goes multi-worker.
     static RUN_QUEUE: RefCell<VecDeque<*mut Microthread>> = const { RefCell::new(VecDeque::new()) };
-    // nsid -> (dtape_task, host_pid), so the static task_lookup dtape hook can resolve a task
+    // nsid -> (xnu_sys_task, host_pid), so the static task_lookup xnu_sys hook can resolve a task
     // by id without reaching the serve-loop-local Registry. Populated by registry::ensure_task
     // (single worker, so same thread as the hook). Tasks are currently leak-lived (task #52),
     // so an entry stays valid for the daemon's life: a lookup after the process exits returns a
     // leaked-but-valid pointer, never a dangling one. Mirrors C++ processRegistry() lookups.
-    static TASK_BY_NSID: RefCell<HashMap<u32, (*mut dtape_task_t, libc::pid_t)>> = RefCell::new(HashMap::new());
-    // guest tid (nsid) -> dtape_thread, for the thread_lookup dtape hook. Populated per guest
-    // thread by registry::spawn_on, removed on death (dtape_thread_dying). Like the task table,
-    // dtape_threads are currently leak-lived (the daemon never dtape_thread_release's them), so
+    static TASK_BY_NSID: RefCell<HashMap<u32, (*mut xnu_sys_task_t, libc::pid_t)>> = RefCell::new(HashMap::new());
+    // guest tid (nsid) -> xnu_sys_thread, for the thread_lookup xnu_sys hook. Populated per guest
+    // thread by registry::spawn_on, removed on death (xnu_sys_thread_dying). Like the task table,
+    // xnu_sys_threads are currently leak-lived (the daemon never xnu_sys_thread_release's them), so
     // even a stale entry is a valid pointer, never dangling. Mirrors C++ threadRegistry().
-    static THREAD_BY_TID: RefCell<HashMap<u64, *mut dtape_thread_t>> = RefCell::new(HashMap::new());
+    static THREAD_BY_TID: RefCell<HashMap<u64, *mut xnu_sys_thread_t>> = RefCell::new(HashMap::new());
 }
 
 /// Record a guest task in the task_lookup table (called once per task from ensure_task).
-pub fn register_task_lookup(nsid: u32, task: *mut dtape_task_t, host_pid: libc::pid_t) {
+pub fn register_task_lookup(nsid: u32, task: *mut xnu_sys_task_t, host_pid: libc::pid_t) {
     TASK_BY_NSID.with(|m| m.borrow_mut().insert(nsid, (task, host_pid)));
 }
 
 /// Resolve a task by guest nsid for the RPC handlers (ptrace targets another process), null if
-/// unknown. The handler-facing counterpart of the task_lookup dtape hook.
-pub fn task_for_nsid(nsid: u32) -> *mut dtape_task_t {
+/// unknown. The handler-facing counterpart of the task_lookup xnu_sys hook.
+pub fn task_for_nsid(nsid: u32) -> *mut xnu_sys_task_t {
     TASK_BY_NSID.with(|m| m.borrow().get(&nsid).map(|&(t, _)| t).unwrap_or(std::ptr::null_mut()))
 }
 
 /// Record a guest thread in the thread_lookup table (called once per guest thread by spawn_on).
-pub fn register_thread_lookup(tid: u64, thread: *mut dtape_thread_t) {
+pub fn register_thread_lookup(tid: u64, thread: *mut xnu_sys_thread_t) {
     THREAD_BY_TID.with(|m| m.borrow_mut().insert(tid, thread));
 }
 
-/// Remove a thread from the thread_lookup table by its dtape_thread pointer (on death, so a
+/// Remove a thread from the thread_lookup table by its xnu_sys_thread pointer (on death, so a
 /// later lookup of the dead thread returns null). Called from thread::dying.
-pub fn unregister_thread_lookup(thread: *mut dtape_thread_t) {
+pub fn unregister_thread_lookup(thread: *mut xnu_sys_thread_t) {
     THREAD_BY_TID.with(|m| m.borrow_mut().retain(|_, &mut t| t != thread));
 }
 
-/// Resolve a guest thread's Microthread by its nsid tid: thread_lookup table -> dtape_thread ->
-/// the context handed to dtape_thread_create. null if unknown. Lets ptrace_thupdate (task #61)
+/// Resolve a guest thread's Microthread by its nsid tid: thread_lookup table -> xnu_sys_thread ->
+/// the context handed to xnu_sys_thread_create. null if unknown. Lets ptrace_thupdate (task #61)
 /// reach a target (traced) thread that is not the current dispatcher.
 pub fn microthread_for_tid(tid: u64) -> *mut Microthread {
     let dt = THREAD_BY_TID
@@ -430,7 +430,7 @@ pub fn microthread_for_tid(tid: u64) -> *mut Microthread {
     if dt.is_null() {
         return std::ptr::null_mut();
     }
-    unsafe { dtape_thread_context(dt) as *mut Microthread }
+    unsafe { xnu_sys_thread_context(dt) as *mut Microthread }
 }
 
 fn back_to_top_ptr() -> *mut libc::ucontext_t {
@@ -443,7 +443,7 @@ pub fn current() -> *mut Microthread {
 
 /// The task the currently-running microthread is bound to -- the routing key. A
 /// handler calls this to operate on its guest's task without capturing it.
-pub fn current_task() -> *mut dtape_task_t {
+pub fn current_task() -> *mut xnu_sys_task_t {
     let mt = current();
     if mt.is_null() { std::ptr::null_mut() } else { unsafe { (*mt).owning_task } }
 }
@@ -483,9 +483,9 @@ pub unsafe fn run_dowork_loop(mut step: impl FnMut(Option<i32>) -> bool) {
 }
 
 /// Create a microthread on `task` with an explicit thread namespace id, backed by a
-/// fresh dtape_thread. Use a guest tid for guest threads, or a kernel id (>= 1<<22)
+/// fresh xnu_sys_thread. Use a guest tid for guest threads, or a kernel id (>= 1<<22)
 /// for daemon-internal work.
-pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
+pub unsafe fn spawn_with_nsid(task: *mut xnu_sys_task_t, nsid: u64, body: Box<dyn FnOnce()>) -> *mut Microthread {
     let mt = Box::into_raw(Box::new(Microthread {
         resume_ctx: MaybeUninit::uninit(),
         stack: vec![0u8; STACK_SIZE],
@@ -494,7 +494,7 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         has_loop_top: false,
         suspended: false,
         finished: false,
-        dtape_thread: std::ptr::null_mut(),
+        xnu_sys_thread: std::ptr::null_mut(),
         owning_task: task,
         interrupt_disable: 0,
         body: Some(body),
@@ -510,12 +510,12 @@ pub unsafe fn spawn_with_nsid(task: *mut dtape_task_t, nsid: u64, body: Box<dyn 
         s2c_peer: None,
         activations: Vec::new(),
     }));
-    (*mt).dtape_thread = dtape_thread_create(task, nsid, mt as *mut c_void);
+    (*mt).xnu_sys_thread = xnu_sys_thread_create(task, nsid, mt as *mut c_void);
     mt
 }
 
 /// Create a kernel microthread (auto kernel-range nsid) with the given body.
-pub unsafe fn spawn(task: *mut dtape_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
+pub unsafe fn spawn(task: *mut xnu_sys_task_t, body: Box<dyn FnOnce()>) -> *mut Microthread {
     spawn_with_nsid(task, NEXT_KTID.fetch_add(1, Ordering::Relaxed), body)
 }
 
@@ -551,7 +551,7 @@ unsafe fn setup_fresh_stack(mt: *mut Microthread, trampoline: extern "C" fn(), o
 /// returns-twice worker loop (port of Thread::doWork).
 pub unsafe fn run(mt: *mut Microthread) {
     CURRENT.with(|c| c.set(mt));
-    dtape_thread_entering((*mt).dtape_thread);
+    xnu_sys_thread_entering((*mt).xnu_sys_thread);
 
     RETURNING.with(|r| r.set(false));
     dserver_fast_getcontext(back_to_top_ptr()); // returns twice
@@ -561,7 +561,7 @@ pub unsafe fn run(mt: *mut Microthread) {
         if !(*mt).suspended {
             (*mt).finished = true;
         }
-        dtape_thread_exiting((*mt).dtape_thread);
+        xnu_sys_thread_exiting((*mt).xnu_sys_thread);
         CURRENT.with(|c| c.set(std::ptr::null_mut()));
         return;
     }
@@ -587,7 +587,7 @@ pub unsafe fn run(mt: *mut Microthread) {
 /// Suspend the current microthread (called from the thread_suspend hook, i.e. from
 /// inside a C/XNU call stack). Stackful when `cont` is None; otherwise the current
 /// stack is discarded and `cont` runs on a fresh stack on resume.
-pub unsafe fn suspend_current(cont: dtape_thread_continuation_callback_f, cont_ctx: *mut c_void, unlock_me: *mut libsimple_lock_t) {
+pub unsafe fn suspend_current(cont: xnu_sys_thread_continuation_callback_f, cont_ctx: *mut c_void, unlock_me: *mut libsimple_lock_t) {
     let mt = current();
     (*mt).suspended = true;
     if !unlock_me.is_null() {
@@ -628,7 +628,7 @@ extern "C" fn continuation_trampoline() {
 // ---- guest memory access (the foundation mach_msg copyin/copyout depends on) ----
 
 /// Per-guest-task context handed to the xnu-sys as the task's `void*` context (the
-/// 3rd arg of dtape_task_create) and handed back to the memory hooks. Carries the
+/// 3rd arg of xnu_sys_task_create) and handed back to the memory hooks. Carries the
 /// guest's host-visible Linux pid -- what process_vm_readv/writev key on. The Registry
 /// heap-boxes it so the pointer stays address-stable while C holds it.
 #[repr(C)]
@@ -680,9 +680,9 @@ pub unsafe fn write_process_memory(pid: libc::pid_t, remote_address: usize, loca
     n >= 0 && n as usize == local.len()
 }
 
-/// dtape hook: read `length` bytes from the task's guest process at `remote_address`
+/// xnu_sys hook: read `length` bytes from the task's guest process at `remote_address`
 /// into `local_buffer`. Recovers the guest pid from the TaskCtx the task was created
-/// with. Mirrors DarlingServer::Process::readMemory (server.cpp dtape_hook_task_read_memory).
+/// with. Mirrors DarlingServer::Process::readMemory (server.cpp xnu_sys_hook_task_read_memory).
 pub unsafe extern "C" fn task_read_memory(task_context: *mut c_void, remote_address: usize, local_buffer: *mut c_void, length: usize) -> bool {
     if task_context.is_null() || local_buffer.is_null() {
         return false;
@@ -692,7 +692,7 @@ pub unsafe extern "C" fn task_read_memory(task_context: *mut c_void, remote_addr
     read_process_memory(pid, remote_address, local)
 }
 
-/// dtape hook: write `length` bytes from `local_buffer` into the task's guest process
+/// xnu_sys hook: write `length` bytes from `local_buffer` into the task's guest process
 /// at `remote_address`. Mirror of task_read_memory.
 pub unsafe extern "C" fn task_write_memory(task_context: *mut c_void, remote_address: usize, local_buffer: *const c_void, length: usize) -> bool {
     if task_context.is_null() || local_buffer.is_null() {
@@ -703,42 +703,42 @@ pub unsafe extern "C" fn task_write_memory(task_context: *mut c_void, remote_add
     write_process_memory(pid, remote_address, local)
 }
 
-// ---- dtape hooks (the 36-field vtable the xnu-sys calls back through) ----
+// ---- xnu_sys hooks (the 36-field vtable the xnu-sys calls back through) ----
 mod hooks {
     use super::*;
     use std::os::raw::c_char;
 
-    pub(super) static mut KERNEL_TASK: *mut dtape_task_t = std::ptr::null_mut();
+    pub(super) static mut KERNEL_TASK: *mut xnu_sys_task_t = std::ptr::null_mut();
 
-    pub(super) unsafe extern "C" fn log(_l: dtape_log_level_t, m: *const c_char) {
+    pub(super) unsafe extern "C" fn log(_l: xnu_sys_log_level_t, m: *const c_char) {
         if !m.is_null() {
-            eprintln!("[dtape] {}", std::ffi::CStr::from_ptr(m).to_string_lossy());
+            eprintln!("[xnu_sys] {}", std::ffi::CStr::from_ptr(m).to_string_lossy());
         }
     }
-    pub(super) unsafe extern "C" fn current_task() -> *mut dtape_task_t {
+    pub(super) unsafe extern "C" fn current_task() -> *mut xnu_sys_task_t {
         let mt = current();
         if mt.is_null() { KERNEL_TASK } else { (*mt).owning_task }
     }
-    pub(super) unsafe extern "C" fn current_thread() -> *mut dtape_thread_t {
+    pub(super) unsafe extern "C" fn current_thread() -> *mut xnu_sys_thread_t {
         let mt = current();
-        if mt.is_null() { std::ptr::null_mut() } else { (*mt).dtape_thread }
+        if mt.is_null() { std::ptr::null_mut() } else { (*mt).xnu_sys_thread }
     }
-    pub(super) unsafe extern "C" fn thread_suspend(ctx: *mut c_void, cont: dtape_thread_continuation_callback_f, cont_ctx: *mut c_void, unlock_me: *mut libsimple_lock_t) {
+    pub(super) unsafe extern "C" fn thread_suspend(ctx: *mut c_void, cont: xnu_sys_thread_continuation_callback_f, cont_ctx: *mut c_void, unlock_me: *mut libsimple_lock_t) {
         debug_assert_eq!(ctx, current() as *mut c_void, "suspend of non-current thread");
         suspend_current(cont, cont_ctx, unlock_me);
     }
     pub(super) unsafe extern "C" fn thread_resume(ctx: *mut c_void) { schedule(ctx as *mut Microthread); }
     /// Create a kernel microthread (no body yet -- thread_setup installs it, thread_resume
-    /// schedules it). Used by dtape_init_in_thread + the kernel daemons (thread_call, etc.).
-    /// The microthread is leaked; the dtape side owns its lifecycle via thread_terminate.
-    /// Mirrors C++ dtape_hook_thread_create_kernel.
-    pub(super) unsafe extern "C" fn thread_create_kernel() -> *mut dtape_thread_t {
+    /// schedules it). Used by xnu_sys_init_in_thread + the kernel daemons (thread_call, etc.).
+    /// The microthread is leaked; the xnu_sys side owns its lifecycle via thread_terminate.
+    /// Mirrors C++ xnu_sys_hook_thread_create_kernel.
+    pub(super) unsafe extern "C" fn thread_create_kernel() -> *mut xnu_sys_thread_t {
         let mt = spawn(KERNEL_TASK, Box::new(|| {}));
-        (*mt).dtape_thread
+        (*mt).xnu_sys_thread
     }
     /// Install a kernel thread's startup body: when scheduled, it runs `cb(cb_ctx)`. Mirrors
-    /// C++ dtape_hook_thread_setup (setupKernelThread). `ctx` is the microthread pointer.
-    pub(super) unsafe extern "C" fn thread_setup(ctx: *mut c_void, cb: dtape_thread_continuation_callback_f, cb_ctx: *mut c_void) {
+    /// C++ xnu_sys_hook_thread_setup (setupKernelThread). `ctx` is the microthread pointer.
+    pub(super) unsafe extern "C" fn thread_setup(ctx: *mut c_void, cb: xnu_sys_thread_continuation_callback_f, cb_ctx: *mut c_void) {
         if ctx.is_null() {
             return;
         }
@@ -749,7 +749,7 @@ mod hooks {
             }
         }));
     }
-    /// dtape_thread_process_signal calls this with the BSD signal the guest should deliver;
+    /// xnu_sys_thread_process_signal calls this with the BSD signal the guest should deliver;
     /// record it on the microthread (sigprocess returns it).
     pub(super) unsafe extern "C" fn thread_set_pending_signal(ctx: *mut c_void, sig: c_int) {
         if !ctx.is_null() { (*(ctx as *mut Microthread)).pending_signal = sig; }
@@ -766,19 +766,19 @@ mod hooks {
     pub(super) unsafe extern "C" fn thread_terminate(_ctx: *mut c_void) {}
 
     // ---- Lookups, thread introspection, and the S2C VM hooks. These were all left NULL,
-    // and a NULL dtape hook is an indirect-call-to-0 -> SIGSEGV the moment any guest
+    // and a NULL xnu_sys hook is an indirect-call-to-0 -> SIGSEGV the moment any guest
     // exercises it (e.g. `hostinfo` -> host statistics). Wire safe defaults so no hook is
     // ever NULL: lookups report "not found" (null), the S2C VM ops (allocate/free/map/
     // protect/sync -- the daemon-delegates-to-guest path, not yet implemented) report
     // failure, and memory introspection returns empty. Real impls arrive with a global
-    // thread/task registry (lookups) and s2c (VM). Mirrors the C++ DTapeHooks set. ----
+    // thread/task registry (lookups) and s2c (VM). Mirrors the C++ XnuSysHooks set. ----
     pub(super) unsafe extern "C" fn thread_set_pending_call_override(_ctx: *mut c_void, _o: bool) {}
-    /// Resolve a guest thread by its nsid (tid), returning the dtape_thread (retained if asked,
+    /// Resolve a guest thread by its nsid (tid), returning the xnu_sys_thread (retained if asked,
     /// so it outlives the lookup for its caller). null if unknown. Lookup by host tid
     /// (`is_nsid == false`) is not supported (the daemon does not track host tids) and returns
-    /// null. Mirrors C++ dtape_hook_thread_lookup -> threadRegistry().lookupEntryByNSID
+    /// null. Mirrors C++ xnu_sys_hook_thread_lookup -> threadRegistry().lookupEntryByNSID
     /// (server.cpp:173).
-    pub(super) unsafe extern "C" fn thread_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut dtape_thread_t {
+    pub(super) unsafe extern "C" fn thread_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut xnu_sys_thread_t {
         if !is_nsid {
             return std::ptr::null_mut();
         }
@@ -786,26 +786,26 @@ mod hooks {
         match thread {
             Some(t) if !t.is_null() => {
                 if retain {
-                    dtape_thread_retain(t);
+                    xnu_sys_thread_retain(t);
                 }
                 t
             }
             _ => std::ptr::null_mut(),
         }
     }
-    pub(super) unsafe extern "C" fn thread_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_thread_t {
+    pub(super) unsafe extern "C" fn thread_lookup_eternal(_eid: xnu_sys_eternal_id_t, _retain: bool) -> *mut xnu_sys_thread_t {
         std::ptr::null_mut()
     }
-    pub(super) unsafe extern "C" fn thread_get_state(_ctx: *mut c_void) -> dtape_thread_state_t {
-        dtape_thread_state::dtape_thread_state_running
+    pub(super) unsafe extern "C" fn thread_get_state(_ctx: *mut c_void) -> xnu_sys_thread_state_t {
+        xnu_sys_thread_state::xnu_sys_thread_state_running
     }
     pub(super) unsafe extern "C" fn thread_send_signal(_ctx: *mut c_void, _sig: c_int) -> c_int {
         0
     }
-    /// Resolve a task by its guest nsid (`is_nsid`) or its host pid, returning the dtape_task
+    /// Resolve a task by its guest nsid (`is_nsid`) or its host pid, returning the xnu_sys_task
     /// (retained if asked, so it outlives the lookup for its caller). null if unknown. Mirrors
-    /// C++ dtape_hook_task_lookup -> processRegistry().lookupEntryByNSID/ByID (server.cpp:247).
-    pub(super) unsafe extern "C" fn task_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut dtape_task_t {
+    /// C++ xnu_sys_hook_task_lookup -> processRegistry().lookupEntryByNSID/ByID (server.cpp:247).
+    pub(super) unsafe extern "C" fn task_lookup(id: c_int, is_nsid: bool, retain: bool) -> *mut xnu_sys_task_t {
         let task = TASK_BY_NSID.with(|m| {
             let m = m.borrow();
             if is_nsid {
@@ -817,17 +817,17 @@ mod hooks {
         match task {
             Some(t) if !t.is_null() => {
                 if retain {
-                    dtape_task_retain(t);
+                    xnu_sys_task_retain(t);
                 }
                 t
             }
             _ => std::ptr::null_mut(),
         }
     }
-    pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: dtape_eternal_id_t, _retain: bool) -> *mut dtape_task_t {
+    pub(super) unsafe extern "C" fn task_lookup_eternal(_eid: xnu_sys_eternal_id_t, _retain: bool) -> *mut xnu_sys_task_t {
         std::ptr::null_mut()
     }
-    pub(super) unsafe extern "C" fn task_get_memory_info(ctx: *mut c_void, info: *mut dtape_memory_info_t) {
+    pub(super) unsafe extern "C" fn task_get_memory_info(ctx: *mut c_void, info: *mut xnu_sys_memory_info_t) {
         if info.is_null() {
             return;
         }
@@ -852,17 +852,17 @@ mod hooks {
         (*info).virtual_size = vsz;
         (*info).resident_size = rss;
     }
-    pub(super) unsafe extern "C" fn task_get_memory_region_info(_ctx: *mut c_void, _addr: usize, _info: *mut dtape_memory_region_info_t) -> bool {
+    pub(super) unsafe extern "C" fn task_get_memory_region_info(_ctx: *mut c_void, _addr: usize, _info: *mut xnu_sys_memory_region_info_t) -> bool {
         false
     }
     /// Allocate `pages` in the guest's address space via an S2C mmap (the guest does the
-    /// mmap on our behalf). dtape memory protections (read=1/write=2/exec=4) match PROT_*,
+    /// mmap on our behalf). xnu_sys memory protections (read=1/write=2/exec=4) match PROT_*,
     /// and the memory flags carry fixed/overwrite. Returns the guest address, or 0 on
     /// failure (MAP_FAILED). Mirrors C++ Process/Thread::allocatePages.
-    pub(super) unsafe extern "C" fn task_allocate_pages(_ctx: *mut c_void, pages: usize, prot: c_int, hint: usize, flags: dtape_memory_flags_t) -> usize {
-        let flags_u = flags as u32; // dtape_memory_flags is repr(u32); may be a fixed|overwrite bitfield
-        let fixed = (flags_u & 1) != 0; // dtape_memory_flag_fixed
-        let overwrite = (flags_u & 2) != 0; // dtape_memory_flag_overwrite
+    pub(super) unsafe extern "C" fn task_allocate_pages(_ctx: *mut c_void, pages: usize, prot: c_int, hint: usize, flags: xnu_sys_memory_flags_t) -> usize {
+        let flags_u = flags as u32; // xnu_sys_memory_flags is repr(u32); may be a fixed|overwrite bitfield
+        let fixed = (flags_u & 1) != 0; // xnu_sys_memory_flag_fixed
+        let overwrite = (flags_u & 2) != 0; // xnu_sys_memory_flag_overwrite
         let length = pages.saturating_mul(4096);
         let (addr, err) = crate::s2c::perform_mmap(hint, length, prot, crate::s2c::mmap_flags(fixed, overwrite), -1, 0);
         if err != 0 || addr == usize::MAX {
@@ -883,10 +883,10 @@ mod hooks {
     /// daemon passes a dup of the fd to the guest, which mmaps it. File mappings are MAP_SHARED
     /// (not the anonymous MAP_PRIVATE of task_allocate_pages). Returns the mapped address, or 0
     /// on failure. Mirrors C++ Thread::mapFile (thread.cpp) + Process::mapFile.
-    pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, fd: c_int, pages: usize, prot: c_int, hint: usize, page_offset: usize, flags: dtape_memory_flags_t) -> usize {
+    pub(super) unsafe extern "C" fn task_map_file(_ctx: *mut c_void, fd: c_int, pages: usize, prot: c_int, hint: usize, page_offset: usize, flags: xnu_sys_memory_flags_t) -> usize {
         let flags_u = flags as u32;
-        let fixed = (flags_u & 1) != 0; // dtape_memory_flag_fixed
-        let overwrite = (flags_u & 2) != 0; // dtape_memory_flag_overwrite
+        let fixed = (flags_u & 1) != 0; // xnu_sys_memory_flag_fixed
+        let overwrite = (flags_u & 2) != 0; // xnu_sys_memory_flag_overwrite
         let mut mflags = libc::MAP_SHARED;
         if fixed && overwrite {
             mflags |= libc::MAP_FIXED;
@@ -956,9 +956,9 @@ mod hooks {
         dserver_fast_setcontext(back_to_top_ptr());
         unreachable!("thread_syscall_return did not transfer control back to the daemon");
     }
-    pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
-    pub(super) unsafe extern "C" fn thread_eternal_id(_c: *mut c_void) -> dtape_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
-    pub(super) unsafe extern "C" fn get_load_info(li: *mut dtape_load_info_t) {
+    pub(super) unsafe extern "C" fn task_eternal_id(_c: *mut c_void) -> xnu_sys_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
+    pub(super) unsafe extern "C" fn thread_eternal_id(_c: *mut c_void) -> xnu_sys_eternal_id_t { NEXT_EID.fetch_add(1, Ordering::Relaxed) }
+    pub(super) unsafe extern "C" fn get_load_info(li: *mut xnu_sys_load_info_t) {
         if li.is_null() {
             return;
         }
@@ -971,7 +971,7 @@ mod hooks {
     /// Arm (or, with a 0/UINT64_MAX deadline, disarm) the daemon timerfd for the XNU timer
     /// subsystem. `override_` forces the deadline even if it is later than the current one;
     /// otherwise a later deadline than the one already set is ignored (we keep the nearest).
-    /// Mirrors server.cpp's dtape_hook_timer_arm.
+    /// Mirrors server.cpp's xnu_sys_hook_timer_arm.
     pub(super) unsafe extern "C" fn timer_arm(deadline_ns: u64, override_: bool) {
         let mut deadline = deadline_ns;
         if deadline == u64::MAX {
@@ -998,8 +998,8 @@ mod hooks {
     }
 }
 
-fn make_hooks() -> dtape_hooks_t {
-    let mut h: dtape_hooks_t = unsafe { std::mem::zeroed() };
+fn make_hooks() -> xnu_sys_hooks_t {
+    let mut h: xnu_sys_hooks_t = unsafe { std::mem::zeroed() };
     h.log = Some(hooks::log);
     h.current_task = Some(hooks::current_task);
     h.current_thread = Some(hooks::current_thread);
@@ -1008,7 +1008,7 @@ fn make_hooks() -> dtape_hooks_t {
     h.thread_create_kernel = Some(hooks::thread_create_kernel);
     h.thread_setup = Some(hooks::thread_setup);
     // Lookups + introspection + S2C VM hooks (safe defaults; see the hooks module) -- wired
-    // so no dtape hook is ever NULL (a NULL hook is an indirect-call-to-0 crash).
+    // so no xnu_sys hook is ever NULL (a NULL hook is an indirect-call-to-0 crash).
     h.thread_set_pending_call_override = Some(hooks::thread_set_pending_call_override);
     h.thread_lookup = Some(hooks::thread_lookup);
     h.thread_lookup_eternal = Some(hooks::thread_lookup_eternal);
@@ -1042,14 +1042,14 @@ fn make_hooks() -> dtape_hooks_t {
 }
 
 /// Initialize the xnu-sys with the Rust hook vtable and return the kernel task.
-/// (Leaks the hooks vtable intentionally: dtape_init stores the pointer for the
+/// (Leaks the hooks vtable intentionally: xnu_sys_init stores the pointer for the
 /// process lifetime.)
-pub unsafe fn init() -> *mut dtape_task_t {
+pub unsafe fn init() -> *mut xnu_sys_task_t {
     let hooks = Box::leak(Box::new(make_hooks()));
-    dtape_init(hooks);
+    xnu_sys_init(hooks);
     // The kernel task has no architecture. This was a bare 0 while the declaration claimed the
     // parameter was a u32; it is the bindgen enum, and the zero variant is named, so say so.
-    let kt = dtape_task_create(
+    let kt = xnu_sys_task_create(
         std::ptr::null_mut(),
         0,
         std::ptr::null_mut(),
@@ -1057,9 +1057,9 @@ pub unsafe fn init() -> *mut dtape_task_t {
     );
     hooks::KERNEL_TASK = kt;
     // Phase 2 (init.c:117) on a kernel microthread -- C++'s Thread::kernelSync(
-    // dtape_init_in_thread). Sets up thread_call/ipc/clock/psynch; spawns kernel daemon
+    // xnu_sys_init_in_thread). Sets up thread_call/ipc/clock/psynch; spawns kernel daemon
     // threads (which park waiting for work, so drain() after to settle them).
-    let mt = spawn(kt, Box::new(|| dtape_init_in_thread()));
+    let mt = spawn(kt, Box::new(|| xnu_sys_init_in_thread()));
     run(mt);
     if (*mt).is_suspended() {
         schedule(mt);

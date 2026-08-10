@@ -102,8 +102,8 @@ typedef struct uthread *uthread_t;
 //#define __FAILEDUSERTEST__(s) do { panic(s); } while (0)
 
 #ifdef __DARLING__
-#define __FAILEDUSERTEST__(s) do { dtape_log_error("PSYNCH: pid[%d]: %s\n", proc_pid(current_proc()), s); } while (0)
-#define __FAILEDUSERTEST2__(s, x...) do { dtape_log_error("PSYNCH: pid[%d]: " s "\n", proc_pid(current_proc()), x); } while (0)
+#define __FAILEDUSERTEST__(s) do { xnu_sys_log_error("PSYNCH: pid[%d]: %s\n", proc_pid(current_proc()), s); } while (0)
+#define __FAILEDUSERTEST2__(s, x...) do { xnu_sys_log_error("PSYNCH: pid[%d]: " s "\n", proc_pid(current_proc()), x); } while (0)
 #else
 #define __FAILEDUSERTEST__(s) do { printf("PSYNCH: pid[%d]: %s\n", proc_pid(current_proc()), s); } while (0)
 #define __FAILEDUSERTEST2__(s, x...) do { printf("PSYNCH: pid[%d]: " s "\n", proc_pid(current_proc()), x); } while (0)
@@ -2796,7 +2796,7 @@ _pthread_find_owner(thread_t thread,
 }
 
 #ifdef __DARLING__
-void dtape_psynch_thread_dying(thread_t thread, struct ksyn_waitq_element* kwe) {
+void xnu_sys_psynch_thread_dying(thread_t thread, struct ksyn_waitq_element* kwe) {
 	if (kwe->kwe_kwqqueue) {
 		kq_index_t kqi = (thread->block_hint == kThreadWaitPThreadRWLockRead) ? KSYN_QUEUE_READ : KSYN_QUEUE_WRITE;
 		ksyn_queue_remove_item(kwe->kwe_kwqqueue, &((struct ksyn_wait_queue*)kwe->kwe_kwqqueue)->kw_ksynqueues[kqi], kwe);

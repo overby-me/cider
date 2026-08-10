@@ -3,6 +3,6 @@
 
 #include <ciderd/xnu-sys/hooks.h>
 
-extern const dtape_hooks_t* dtape_hooks;
+extern const xnu_sys_hooks_t* xnu_sys_hooks;
 
 #endif // _DARLINGSERVER_XNU_SYS_HOOKS_INTERNAL_H_

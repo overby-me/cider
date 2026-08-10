@@ -3,7 +3,7 @@
 //!
 //! These are the condvars duct-taped XNU code blocks on, built on the microthread scheduler
 //! rather than on pthreads: a waiter puts its own `mutex_link` on an intrusive queue and
-//! suspends its microthread through `dtape_hooks->thread_suspend`, and a signaller pops
+//! suspends its microthread through `xnu_sys_hooks->thread_suspend`, and a signaller pops
 //! links and resumes them. Upstream calls its own implementation half-assed; this is a
 //! faithful port of it, not a redesign.
 //!
@@ -17,7 +17,7 @@
 //! which is visible in `nm -u condvar.c.o`: they are absent from the undefined list because
 //! the C inlines them.
 //!   * `libsimple_lock_init` is a `static` one-liner (`lock->state = 0`).
-//!   * `dtape_thread_for_xnu_thread` is `always_inline`: pointer arithmetic back from the
+//!   * `xnu_sys_thread_for_xnu_thread` is `always_inline`: pointer arithmetic back from the
 //!     embedded XNU thread to the xnu-sys one.
 //! The `TAILQ_*` macros are the same story one level up: bindgen binds no macros, so the
 //! four used here are written out below. They are BSD intrusive-list pointer arithmetic, and
@@ -32,14 +32,14 @@ use std::os::raw::c_void;
 use std::ptr;
 
 use crate::bindings::{
-    dtape_condvar_t, dtape_hooks_t, dtape_mutex_link_t, dtape_mutex_t, dtape_thread,
+    xnu_sys_condvar_t, xnu_sys_hooks_t, xnu_sys_mutex_link_t, xnu_sys_mutex_t, xnu_sys_thread,
     libsimple_lock_t, thread_t,
 };
 
 extern "C" {
     /// The hook vtable, still defined by the C `init.c`. Rust only READS it here, which is
     /// the easy direction; `init.c` moving to Rust is what would make this a Rust global.
-    static dtape_hooks: *const dtape_hooks_t;
+    static xnu_sys_hooks: *const xnu_sys_hooks_t;
 
     fn libsimple_lock_lock(lock: *mut libsimple_lock_t);
     fn libsimple_lock_unlock(lock: *mut libsimple_lock_t);
@@ -47,7 +47,7 @@ extern "C" {
 
 // Rust since #71, so imported rather than declared (#75). libsimple above stays foreign.
 use crate::xnu::thread::current_thread;
-use crate::xnu::locks::{dtape_mutex_lock, dtape_mutex_unlock};
+use crate::xnu::locks::{xnu_sys_mutex_lock, xnu_sys_mutex_unlock};
 
 /// `libsimple_lock_init`, which is a `static` function in libsimple/lock.h and so has no
 /// symbol to call.
@@ -56,45 +56,45 @@ pub(crate) unsafe fn lock_init(lock: *mut libsimple_lock_t) {
     (*lock).state = 0;
 }
 
-/// `dtape_thread_for_xnu_thread`: XNU's thread is EMBEDDED in the xnu-sys one, so this
+/// `xnu_sys_thread_for_xnu_thread`: XNU's thread is EMBEDDED in the xnu-sys one, so this
 /// walks back by the field offset. `always_inline` in C, so there is no symbol for it.
 #[inline]
-pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut dtape_thread {
+pub(crate) unsafe fn thread_for_xnu_thread(xnu_thread: thread_t) -> *mut xnu_sys_thread {
     if xnu_thread.is_null() {
         return ptr::null_mut();
     }
-    (xnu_thread as *mut u8).sub(offset_of!(dtape_thread, xnu_thread)) as *mut dtape_thread
+    (xnu_thread as *mut u8).sub(offset_of!(xnu_sys_thread, xnu_thread)) as *mut xnu_sys_thread
 }
 
-/// `__container_of(link, dtape_thread_t, mutex_link)`.
+/// `__container_of(link, xnu_sys_thread_t, mutex_link)`.
 #[inline]
-pub(crate) unsafe fn thread_for_mutex_link(link: *mut dtape_mutex_link_t) -> *mut dtape_thread {
-    (link as *mut u8).sub(offset_of!(dtape_thread, mutex_link)) as *mut dtape_thread
+pub(crate) unsafe fn thread_for_mutex_link(link: *mut xnu_sys_mutex_link_t) -> *mut xnu_sys_thread {
+    (link as *mut u8).sub(offset_of!(xnu_sys_thread, mutex_link)) as *mut xnu_sys_thread
 }
 
 // --- the four TAILQ macros this file uses (pub(crate): locks.rs needs the same four, on the
-// same dtape_mutex_head_t, and duplicating intrusive-list arithmetic is how it goes wrong) ---
-// --- originally: the four TAILQ macros this file uses, on dtape_mutex_head_t / dtape_mutex_link_t ---
+// same xnu_sys_mutex_head_t, and duplicating intrusive-list arithmetic is how it goes wrong) ---
+// --- originally: the four TAILQ macros this file uses, on xnu_sys_mutex_head_t / xnu_sys_mutex_link_t ---
 
 /// `TAILQ_INIT`: empty list, and tqh_last points AT the head's own first-pointer, which is
 /// what makes an insert into an empty list write through to tqh_first.
 #[inline]
-pub(crate) unsafe fn tailq_init(head: *mut crate::bindings::dtape_mutex_head_t) {
+pub(crate) unsafe fn tailq_init(head: *mut crate::bindings::xnu_sys_mutex_head_t) {
     (*head).tqh_first = ptr::null_mut();
     (*head).tqh_last = ptr::addr_of_mut!((*head).tqh_first);
 }
 
 /// `TAILQ_FIRST`.
 #[inline]
-pub(crate) unsafe fn tailq_first(head: *mut crate::bindings::dtape_mutex_head_t) -> *mut dtape_mutex_link_t {
+pub(crate) unsafe fn tailq_first(head: *mut crate::bindings::xnu_sys_mutex_head_t) -> *mut xnu_sys_mutex_link_t {
     (*head).tqh_first
 }
 
 /// `TAILQ_INSERT_TAIL`.
 #[inline]
 pub(crate) unsafe fn tailq_insert_tail(
-    head: *mut crate::bindings::dtape_mutex_head_t,
-    elm: *mut dtape_mutex_link_t,
+    head: *mut crate::bindings::xnu_sys_mutex_head_t,
+    elm: *mut xnu_sys_mutex_link_t,
 ) {
     (*elm).link.tqe_next = ptr::null_mut();
     (*elm).link.tqe_prev = (*head).tqh_last;
@@ -107,8 +107,8 @@ pub(crate) unsafe fn tailq_insert_tail(
 /// this element's tqe_prev instead.
 #[inline]
 pub(crate) unsafe fn tailq_remove(
-    head: *mut crate::bindings::dtape_mutex_head_t,
-    elm: *mut dtape_mutex_link_t,
+    head: *mut crate::bindings::xnu_sys_mutex_head_t,
+    elm: *mut xnu_sys_mutex_link_t,
 ) {
     let next = (*elm).link.tqe_next;
     let prev = (*elm).link.tqe_prev;
@@ -122,14 +122,14 @@ pub(crate) unsafe fn tailq_remove(
 
 /// Initialise `condvar`.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_condvar_init(condvar: *mut dtape_condvar_t) {
+pub unsafe extern "C" fn xnu_sys_condvar_init(condvar: *mut xnu_sys_condvar_t) {
     lock_init(ptr::addr_of_mut!((*condvar).queue_lock));
     tailq_init(ptr::addr_of_mut!((*condvar).queue_head));
 }
 
 /// Wake up to `count` waiters on `condvar`.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_condvar_signal(condvar: *mut dtape_condvar_t, count: usize) {
+pub unsafe extern "C" fn xnu_sys_condvar_signal(condvar: *mut xnu_sys_condvar_t, count: usize) {
     let mut remaining = count;
     let head = ptr::addr_of_mut!((*condvar).queue_head);
 
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn dtape_condvar_signal(condvar: *mut dtape_condvar_t, cou
 
         tailq_remove(head, link);
         let thread = thread_for_mutex_link(link);
-        if let Some(resume) = (*dtape_hooks).thread_resume {
+        if let Some(resume) = (*xnu_sys_hooks).thread_resume {
             resume((*thread).context);
         }
 
@@ -153,9 +153,9 @@ pub unsafe extern "C" fn dtape_condvar_signal(condvar: *mut dtape_condvar_t, cou
 
 /// Wait on `condvar`, having dropped `mutex`, and reacquire it on wake-up.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_condvar_wait(
-    condvar: *mut dtape_condvar_t,
-    mutex: *mut dtape_mutex_t,
+pub unsafe extern "C" fn xnu_sys_condvar_wait(
+    condvar: *mut xnu_sys_condvar_t,
+    mutex: *mut xnu_sys_mutex_t,
 ) {
     let thread = thread_for_xnu_thread(current_thread());
 
@@ -163,7 +163,7 @@ pub unsafe extern "C" fn dtape_condvar_wait(
 
     // Dropping the mutex here is safe: we cannot be signalled until the queue lock goes,
     // and that only happens once we have actually suspended, so no wakeup can be missed.
-    dtape_mutex_unlock(mutex);
+    xnu_sys_mutex_unlock(mutex);
 
     tailq_insert_tail(
         ptr::addr_of_mut!((*condvar).queue_head),
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn dtape_condvar_wait(
     );
 
     // Suspending also drops the queue lock, which is why it is handed to the hook.
-    if let Some(suspend) = (*dtape_hooks).thread_suspend {
+    if let Some(suspend) = (*xnu_sys_hooks).thread_suspend {
         suspend(
             (*thread).context,
             None,
@@ -181,7 +181,7 @@ pub unsafe extern "C" fn dtape_condvar_wait(
     }
 
     // Awake again; take the mutex back.
-    dtape_mutex_lock(mutex);
+    xnu_sys_mutex_lock(mutex);
 }
 
 /// A wake-up must not be lost when the list is empty, and `tqe_prev` must be the address of
@@ -190,10 +190,10 @@ pub unsafe extern "C" fn dtape_condvar_wait(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bindings::dtape_mutex_head_t;
+    use crate::bindings::xnu_sys_mutex_head_t;
 
-    unsafe fn empty_head() -> Box<dtape_mutex_head_t> {
-        let mut h: Box<dtape_mutex_head_t> = Box::new(std::mem::zeroed());
+    unsafe fn empty_head() -> Box<xnu_sys_mutex_head_t> {
+        let mut h: Box<xnu_sys_mutex_head_t> = Box::new(std::mem::zeroed());
         tailq_init(&mut *h);
         h
     }
@@ -204,14 +204,14 @@ mod tests {
             let mut h = empty_head();
             assert!(tailq_first(&mut *h).is_null(), "fresh list must be empty");
 
-            let mut a: dtape_mutex_link_t = std::mem::zeroed();
+            let mut a: xnu_sys_mutex_link_t = std::mem::zeroed();
             tailq_insert_tail(&mut *h, &mut a);
             assert_eq!(tailq_first(&mut *h), &mut a as *mut _, "insert must be visible");
 
             tailq_remove(&mut *h, &mut a);
             assert!(tailq_first(&mut *h).is_null(), "removing the only element must empty it");
             // and the head must be reusable, which is what a wrong tqh_last would break
-            let mut b: dtape_mutex_link_t = std::mem::zeroed();
+            let mut b: xnu_sys_mutex_link_t = std::mem::zeroed();
             tailq_insert_tail(&mut *h, &mut b);
             assert_eq!(tailq_first(&mut *h), &mut b as *mut _);
         }
@@ -221,9 +221,9 @@ mod tests {
     fn fifo_order_is_preserved() {
         unsafe {
             let mut h = empty_head();
-            let mut a: dtape_mutex_link_t = std::mem::zeroed();
-            let mut b: dtape_mutex_link_t = std::mem::zeroed();
-            let mut c: dtape_mutex_link_t = std::mem::zeroed();
+            let mut a: xnu_sys_mutex_link_t = std::mem::zeroed();
+            let mut b: xnu_sys_mutex_link_t = std::mem::zeroed();
+            let mut c: xnu_sys_mutex_link_t = std::mem::zeroed();
             tailq_insert_tail(&mut *h, &mut a);
             tailq_insert_tail(&mut *h, &mut b);
             tailq_insert_tail(&mut *h, &mut c);
@@ -242,9 +242,9 @@ mod tests {
     fn removing_from_the_middle_relinks_both_sides() {
         unsafe {
             let mut h = empty_head();
-            let mut a: dtape_mutex_link_t = std::mem::zeroed();
-            let mut b: dtape_mutex_link_t = std::mem::zeroed();
-            let mut c: dtape_mutex_link_t = std::mem::zeroed();
+            let mut a: xnu_sys_mutex_link_t = std::mem::zeroed();
+            let mut b: xnu_sys_mutex_link_t = std::mem::zeroed();
+            let mut c: xnu_sys_mutex_link_t = std::mem::zeroed();
             tailq_insert_tail(&mut *h, &mut a);
             tailq_insert_tail(&mut *h, &mut b);
             tailq_insert_tail(&mut *h, &mut c);

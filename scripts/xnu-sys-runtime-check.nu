@@ -9,8 +9,8 @@
 # One demo per ported file, each blocking a kernel microthread and waking it, so the path runs
 # down through XNU and back out through the thread_suspend and thread_resume hooks:
 #
-#   scheduler_demo  dtape_semaphore_create / down_simple / up      (semaphore.c port)
-#   condvar_demo    dtape_condvar_wait / signal, over a dtape_mutex (condvar.c port)
+#   scheduler_demo  xnu_sys_semaphore_create / down_simple / up      (semaphore.c port)
+#   condvar_demo    xnu_sys_condvar_wait / signal, over a xnu_sys_mutex (condvar.c port)
 #   stage3_spike    the same semaphore path, 500,000 round-trips    (semaphore.c, stress)
 #   host_demo       host_info, host_statistics, processor_set_info      (host.c, processor.c)
 #   psynch_demo     the init invariants and the callback vtable          (psynch.c port)
@@ -39,7 +39,7 @@
 # TWO THINGS THIS GETS RIGHT THAT ARE EASY TO GET WRONG:
 #
 # IT ASSERTS ON THE OUTPUT, NOT THE EXIT CODE. Verified by breaking it on purpose: making
-# dtape_semaphore_down_simple report every successful wait as interrupted prints
+# xnu_sys_semaphore_down_simple report every successful wait as interrupted prints
 # SCHED_DEMO_DOWN_FAILED and STILL EXITS 0, because the demo own asserts (did it suspend, did
 # it finish) both still hold. An exit-code check would have passed a broken semaphore.
 #
@@ -143,7 +143,7 @@ def run_one [target: string, verdict: string, covers: string, seconds: int] {
 # THE LINK CHECK, and it runs FIRST because it is the cheapest way to be wrong.
 #
 # Every port before locks.c was proven with the demos plus a symbol table check, and both
-# PASSED on a debug.rs that could not link. dtape_task_for_xnu_task is always_inline static in
+# PASSED on a debug.rs that could not link. xnu_sys_task_for_xnu_task is always_inline static in
 # task.h, so there is no symbol; the port declared it extern, and the DEMOS still linked because
 # nothing in them reaches that path and the linker garbage collected it. Only ciderd,
 # where handler.rs really calls it, produced the undefined reference.
@@ -159,7 +159,7 @@ def link_check [] {
         if not ($undef | is-empty) {
             say $"  ($undef | first)"
             say "  an always_inline or static inline C function has NO symbol to link against;"
-            say "  compute it in Rust instead, as condvar.rs does for dtape_thread_for_xnu_thread"
+            say "  compute it in Rust instead, as condvar.rs does for xnu_sys_thread_for_xnu_thread"
         }
         return false
     }
@@ -168,11 +168,11 @@ def link_check [] {
 }
 
 # The 29 trap wrappers in traps_generated.rs are emitted from the RPC table by
-# scripts/gen-dtape-traps.py and CHECKED IN, so they can go stale if that table moves. The C
+# scripts/gen-xnu-sys-traps.py and CHECKED IN, so they can go stale if that table moves. The C
 # they replace could not: it was a macro expanded at compile time. This restores that property.
 def traps_check [] {
     say "traps_generated.rs -- still matches the RPC table it was generated from"
-    let r = (do -i { ^python3 scripts/gen-dtape-traps.py --check } | complete)
+    let r = (do -i { ^python3 scripts/gen-xnu-sys-traps.py --check } | complete)
     if $r.exit_code != 0 {
         say "  FAIL: the generated trap wrappers are stale"
         say ($r.stderr | lines | last 3 | str join "\n")

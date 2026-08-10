@@ -20,7 +20,7 @@ use std::os::fd::RawFd;
 use std::rc::Rc;
 
 /// The daemon's handler for the special-port traps. Each mirrors call.cpp: call the
-/// dtape trap on the current task/thread, reply with the port name.
+/// xnu_sys trap on the current task/thread, reply with the port name.
 struct Traps;
 impl rpc_wire::RpcHandler for Traps {
     fn task_self_trap(&mut self, _fds: &[RawFd]) -> Result<ReplyTaskSelfTrap, i32> {

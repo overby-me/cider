@@ -183,7 +183,7 @@
       #            system_dyld_final fail.
       #   4. 539s  THE ACTUAL CAUSE, once the dump stopped truncating buck2 stderr to the last
       #            1500 characters. Inside the BXL step buck2 prints
-      #              Waiting on //linux/server:dtape_bindings -- action (bindgen ...)
+      #              Waiting on //linux/server:xnu_sys_bindings -- action (bindgen ...)
       #              Waiting on //src/hosttools:cider-coredump -- action (cxx_compile ...)
       #              Action failed: //buck-src:libtrustd_obj (c_compile TrustURLSessionCache.m)
       #            on Foundation/NSAppleEventDescriptor.h "expected a type".

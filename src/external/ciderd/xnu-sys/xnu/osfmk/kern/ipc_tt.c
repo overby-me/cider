@@ -257,7 +257,7 @@ ipc_task_init(
 		 * after launchd clears it, inherits nil and dies on its first service lookup.
 		 * This says which window this task was created in.
 		 */
-		dtape_log_debug("ipc_task_init: task=%p parent=%p parent_bootstrap=%p",
+		xnu_sys_log_debug("ipc_task_init: task=%p parent=%p parent_bootstrap=%p",
 		    task, parent, parent->itk_bootstrap);
 #endif
 
@@ -1727,7 +1727,7 @@ task_get_special_port_internal(
 		 * Task #47: a job whose bootstrap port is null sends its first service lookup
 		 * to MACH_PORT_NULL and exits. This says whether the task HAS one to hand out.
 		 */
-		dtape_log_debug("special_port GET bootstrap: task=%p itk_bootstrap=%p -> port=%p",
+		xnu_sys_log_debug("special_port GET bootstrap: task=%p itk_bootstrap=%p -> port=%p",
 		    task, task->itk_bootstrap, port);
 #endif
 		itk_unlock(task);
@@ -1980,7 +1980,7 @@ task_set_special_port_internal(
 		old = task->itk_bootstrap;
 		task->itk_bootstrap = port;
 #ifdef __DARLING__
-		dtape_log_debug("special_port SET bootstrap: task=%p old=%p new=%p", task, old, port);
+		xnu_sys_log_debug("special_port SET bootstrap: task=%p old=%p new=%p", task, old, port);
 #endif
 		break;
 

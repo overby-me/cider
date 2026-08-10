@@ -2,7 +2,7 @@
 //! mach_port_allocate and mach_port_deallocate. mach_port_allocate returns its result
 //! by writing the allocated port NAME back into the guest's memory (copyout), so this
 //! composes the port machinery with the task_write_memory hook: the XNU trap's copyout
-//! runs copyoutmap -> dtape_hooks->task_write_memory -> process_vm_writev (memory.c).
+//! runs copyoutmap -> xnu_sys_hooks->task_write_memory -> process_vm_writev (memory.c).
 //! The demo's guest task carries the demo's OWN pid, so that copyout lands in a local.
 //! See PLAN.md (bucket A, mach IPC core).
 

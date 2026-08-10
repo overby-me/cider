@@ -22,7 +22,7 @@ use std::os::raw::{c_int, c_void};
 use std::rc::Rc;
 
 extern "C" {
-    fn dtape_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
+    fn xnu_sys_task_uidgid(task: *mut c_void, new_uid: c_int, new_gid: c_int, old_uid: *mut c_int, old_gid: *mut c_int);
 }
 fn as_bytes<T>(v: &T) -> &[u8] {
     unsafe { std::slice::from_raw_parts(v as *const T as *const u8, size_of::<T>()) }
@@ -35,7 +35,7 @@ impl rpc_wire::RpcHandler for Daemon {
     fn uidgid(&mut self, call: &CallUidgid, _fds: &[RawFd]) -> Result<ReplyUidgid, i32> {
         unsafe {
             let (mut ou, mut og): (c_int, c_int) = (-1, -1);
-            dtape_task_uidgid(sched::current_task() as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
+            xnu_sys_task_uidgid(sched::current_task() as *mut c_void, call.new_uid, call.new_gid, &mut ou, &mut og);
             Ok(ReplyUidgid { old_uid: ou, old_gid: og })
         }
     }
@@ -94,6 +94,6 @@ fn main() {
         assert_eq!(code1, 0);
         assert_eq!(old1, 0, "first call sees uid 0");
         assert_eq!(old2, 8100, "second call must see the uid the first set");
-        println!("DAEMON_OK: epoll + registry routing + sched microthread + generated dispatch + real dtape handler; state persisted across two calls (old2={old2})");
+        println!("DAEMON_OK: epoll + registry routing + sched microthread + generated dispatch + real xnu_sys handler; state persisted across two calls (old2={old2})");
     }
 }

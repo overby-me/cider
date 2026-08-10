@@ -17,7 +17,7 @@
 //! neither is obvious:
 //!
 //! * A C ARCHIVE RESOLVES AGAINST A RUST RLIB. `kqchan.c` stays C and calls
-//!   `dtape_semaphore_up`, so the port needs the C-to-Rust direction. rustc puts rlibs and
+//!   `xnu_sys_semaphore_up`, so the port needs the C-to-Rust direction. rustc puts rlibs and
 //!   native static libs on one link line and ld resolves archives left to right, so this is
 //!   a real failure mode. Built the smallest case with the archive listed AFTER the rlib:
 //!   links, runs, returns the right answer. With the definition removed it fails to link.
@@ -32,7 +32,7 @@ use std::os::raw::{c_char, c_int, c_void};
 use std::ptr;
 
 use crate::bindings::{
-    dtape_semaphore_t, dtape_task_t, semaphore_create, semaphore_destroy, semaphore_signal,
+    xnu_sys_semaphore_t, xnu_sys_task_t, semaphore_create, semaphore_destroy, semaphore_signal,
     semaphore_wait, KERN_ABORTED, KERN_SUCCESS,
 };
 
@@ -42,7 +42,7 @@ extern "C" {
     fn panic(format: *const c_char, ...);
 }
 
-/// Mirrors `dtape_semaphore_wait_result_t` in xnu-sys/include/.../types.h.
+/// Mirrors `xnu_sys_semaphore_wait_result_t` in xnu-sys/include/.../types.h.
 ///
 /// Spelled out rather than reusing the bindgen enum because this is a RETURN type across
 /// the C ABI: the C header pins the discriminants at -1/0/1, so they are pinned here too.
@@ -58,13 +58,13 @@ pub enum WaitResult {
 ///
 /// Returns null if the allocation or the XNU semaphore fails, exactly as the C did.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_semaphore_create(
-    owning_task: *mut dtape_task_t,
+pub unsafe extern "C" fn xnu_sys_semaphore_create(
+    owning_task: *mut xnu_sys_task_t,
     initial_value: c_int,
-) -> *mut dtape_semaphore_t {
+) -> *mut xnu_sys_semaphore_t {
     // malloc/free rather than Box: this pointer is handed to and freed through C code paths,
     // so it has to stay on the C allocator.
-    let semaphore = libc::malloc(std::mem::size_of::<dtape_semaphore_t>()) as *mut dtape_semaphore_t;
+    let semaphore = libc::malloc(std::mem::size_of::<xnu_sys_semaphore_t>()) as *mut xnu_sys_semaphore_t;
     if semaphore.is_null() {
         return ptr::null_mut();
     }
@@ -91,7 +91,7 @@ pub unsafe extern "C" fn dtape_semaphore_create(
 
 /// Destroy `semaphore` and free it. Fatal if XNU refuses, as in the C.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_semaphore_destroy(semaphore: *mut dtape_semaphore_t) {
+pub unsafe extern "C" fn xnu_sys_semaphore_destroy(semaphore: *mut xnu_sys_semaphore_t) {
     let xnu_task = ptr::addr_of_mut!((*(*semaphore).owning_task).xnu_task) as *mut _;
 
     if semaphore_destroy(xnu_task, (*semaphore).xnu_semaphore) != KERN_SUCCESS as i32 {
@@ -103,7 +103,7 @@ pub unsafe extern "C" fn dtape_semaphore_destroy(semaphore: *mut dtape_semaphore
 
 /// Raise the up-count of `semaphore` (signal it).
 #[no_mangle]
-pub unsafe extern "C" fn dtape_semaphore_up(semaphore: *mut dtape_semaphore_t) {
+pub unsafe extern "C" fn xnu_sys_semaphore_up(semaphore: *mut xnu_sys_semaphore_t) {
     if semaphore_signal((*semaphore).xnu_semaphore) != KERN_SUCCESS as i32 {
         panic(c"Failed to raise up-count of duct-taped XNU semaphore".as_ptr());
     }
@@ -111,7 +111,7 @@ pub unsafe extern "C" fn dtape_semaphore_up(semaphore: *mut dtape_semaphore_t) {
 
 /// Wait on `semaphore`, blocking the calling microthread until it is signaled.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_semaphore_down(semaphore: *mut dtape_semaphore_t) -> WaitResult {
+pub unsafe extern "C" fn xnu_sys_semaphore_down(semaphore: *mut xnu_sys_semaphore_t) -> WaitResult {
     let kr = semaphore_wait((*semaphore).xnu_semaphore);
     if kr == KERN_SUCCESS as i32 {
         WaitResult::Ok
@@ -122,11 +122,11 @@ pub unsafe extern "C" fn dtape_semaphore_down(semaphore: *mut dtape_semaphore_t)
     }
 }
 
-/// [`dtape_semaphore_down`] for callers that only care whether they were interrupted.
+/// [`xnu_sys_semaphore_down`] for callers that only care whether they were interrupted.
 /// Fatal on a real error, as in the C.
 #[no_mangle]
-pub unsafe extern "C" fn dtape_semaphore_down_simple(semaphore: *mut dtape_semaphore_t) -> bool {
-    match dtape_semaphore_down(semaphore) {
+pub unsafe extern "C" fn xnu_sys_semaphore_down_simple(semaphore: *mut xnu_sys_semaphore_t) -> bool {
+    match xnu_sys_semaphore_down(semaphore) {
         WaitResult::Ok => true,
         WaitResult::Interrupted => false,
         WaitResult::Error => {
