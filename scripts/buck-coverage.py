@@ -27,9 +27,31 @@ def load_gen():
     return mod
 
 
+# THE REFERENCE PREDATES THE CIDER RENAME, so three edges look unported when the port builds
+# them under new names. Coverage matches by artifact name, so without this map it reports a
+# porting gap that does not exist, and the suite stays permanently red for a naming reason.
+#
+# Verified target by target rather than assumed: root//src/hosttools:cider-coredump,
+# root//src/libsimple:libsimple_cider and root//src/libsimple:libsimple_ciderd all resolve,
+# and the archive registry holds liblibsimple_cider.a and liblibsimple_ciderd.a.
+#
+# This is a MAP rather than a re-frozen reference on purpose. Refreshing result-graph-ref
+# would make these pass by moving the denominator, which also silently absorbs any REAL
+# regression present at the moment of refreshing. A rename map states exactly what changed
+# name and leaves every other edge still compared.
+RENAMED = {
+    "darling-coredump": "cider-coredump",
+    "liblibsimple_darling.a": "liblibsimple_cider.a",
+    "liblibsimple_darlingserver.a": "liblibsimple_ciderd.a",
+}
+
 # Deliberately not ported, with the reason. Counted separately so "what is left" stays
 # an honest number rather than a permanent three.
 OUT_OF_SCOPE = {
+    "libdarlingserver_duct_tape.a":
+        "duct-tape was ported to Rust in #71, all 16 glue files, so the C archive no longer "
+        "exists as a link edge. Not a gap: the functionality lives in the Rust daemon and "
+        "the XNU subset it wraps is a pin. Structural, unlike the three RENAMED entries.",
     "x86_64-apple-darwin20-ld":
         "Darling's ld64 and cctools come from Nix (nix/lib/cider-ld64.nix, the ld64 "
         "input to ciderBuck2Graph); the port CONSUMES them through [cider] ld and "
@@ -126,8 +148,11 @@ def main(argv: list[str]) -> int:
             # <target>` pragma, and final_registry() keys those by path. So resolve by
             # path first and fall back to the artifact name, which still covers the
             # blocks that predate the pragma.
+            # A renamed edge is matched under its CURRENT name as well as its reference one.
+            alias = RENAMED.get(base)
             if kind.endswith("STATIC_LIBRARY_LINKER"):
-                kinds["archive"].append((o, base, o in arch_reg or base in arch_reg))
+                kinds["archive"].append((o, base, o in arch_reg or base in arch_reg
+                                         or (alias is not None and alias in arch_reg)))
             elif kind.endswith("SHARED_LIBRARY_LINKER"):
                 if base.endswith(".so"):
                     # A loadable MODULE: -shared, no -dylib_install_name. zsh's 35.
@@ -137,7 +162,8 @@ def main(argv: list[str]) -> int:
                         "lib").removesuffix(".dylib").removesuffix("_firstpass") in reg
                     kinds["dylib"].append((o, base, ported))
             elif kind.endswith("EXECUTABLE_LINKER"):
-                kinds["exe"].append((o, base, o in final_reg or base in exe_names))
+                kinds["exe"].append((o, base, o in final_reg or base in exe_names
+                                     or (alias is not None and alias in exe_names)))
             else:
                 unclassified.append(f"{base} ({kind})")
             if ((kind, base) in ambiguous and o not in final_reg and o not in arch_reg
