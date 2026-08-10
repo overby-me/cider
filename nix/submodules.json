@@ -499,9 +499,9 @@
     "path": "src/external/configd",
     "owner": "darlinghq",
     "repo": "darling-configd",
-    "rev": "b1627eefca647933ad84dc36b5adc73025a7e5c7",
+    "rev": "98e52de19c52f7938e581ed20385f38abd7fa197",
     "recursive": false,
-    "hash": "sha256-QPLTphmzm35l0Aa8/GD4djONsohSUBuvUV0MrO6Y/SA="
+    "hash": "sha256-qwm7MQT8tSnCAqS3CQbm4I4QWNysF1DZBeJwiaJ4Z+M="
   },
   {
     "path": "src/external/IONetworkingFamily",
@@ -1172,17 +1172,17 @@
     "path": "src/external/xnu",
     "owner": "darlinghq",
     "repo": "darling-xnu",
-    "rev": "5f26a4c2365d9774b5a1e66ae7da20b61ab6d2db",
+    "rev": "fa29287aa2f0115271e091f1031f53c9e024005d",
     "recursive": false,
-    "hash": "sha256-7rFICLV9d0m8966Z2eAYnXLFq+sQk4N2SnZxZHWYbaI="
+    "hash": "sha256-xce77DUpR113LoVZK0RHg4Qh1f01hpBUhDqo1yo6re0="
   },
   {
     "path": "src/external/ciderd/xnu-sys/xnu",
     "owner": "darlinghq",
     "repo": "darling-xnu",
-    "rev": "5f26a4c2365d9774b5a1e66ae7da20b61ab6d2db",
+    "rev": "fa29287aa2f0115271e091f1031f53c9e024005d",
     "recursive": false,
-    "hash": "sha256-7rFICLV9d0m8966Z2eAYnXLFq+sQk4N2SnZxZHWYbaI=",
+    "hash": "sha256-xce77DUpR113LoVZK0RHg4Qh1f01hpBUhDqo1yo6re0=",
     "patches": "xnu-sys-xnu"
   }
 ]
