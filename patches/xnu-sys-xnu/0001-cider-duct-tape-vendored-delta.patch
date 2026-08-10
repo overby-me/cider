@@ -1,0 +1,1912 @@
+--- a/EXTERNAL_HEADERS/stdatomic.h
++++ b/EXTERNAL_HEADERS/stdatomic.h
+@@ -31,7 +31,7 @@
+ /* If we're hosted, fall back to the system's stdatomic.h. FreeBSD, for
+  * example, already has a Clang-compatible stdatomic.h header.
+  */
+-#if !defined(DARLING) && __STDC_HOSTED__ && __has_include_next(<stdatomic.h>)
++#if __STDC_HOSTED__ && __has_include_next(<stdatomic.h>) && !defined(__DARLING__)
+ # include_next <stdatomic.h>
+ #else
+ 
+--- a/bsd/libkern/libkern.h
++++ b/bsd/libkern/libkern.h
+@@ -199,7 +199,9 @@
+ #endif
+ 
+ int     copystr(const void *kfaddr, void *kdaddr, size_t len, size_t *done);
++#ifndef __DARLING__
+ int     copyinstr(const user_addr_t uaddr, void *kaddr, size_t len, size_t *done) OS_WARN_RESULT;
++#endif
+ int     copyoutstr(const void *kaddr, user_addr_t udaddr, size_t len, size_t *done);
+ #if XNU_KERNEL_PRIVATE
+ int     copyin_atomic32(const user_addr_t user_addr, uint32_t *u32);
+--- a/bsd/sys/proc_internal.h
++++ b/bsd/sys/proc_internal.h
+@@ -425,6 +425,7 @@
+ 	pid_t           p_sessionid;
+ };
+ 
++#ifndef __DARLING__
+ /*
+  * Identify a process uniquely.
+  * proc_ident's fields match 1-1 with those in struct proc.
+@@ -434,6 +435,7 @@
+ 	pid_t           p_pid;
+ 	int             p_idversion;
+ };
++#endif // __DARLING__
+ 
+ #define PGRPID_DEAD 0xdeaddead
+ 
+--- a/bsd/sys/types.h
++++ b/bsd/sys/types.h
+@@ -155,9 +155,15 @@
+ 
+ #else   /* !__cplusplus */
+ 
++#if !defined(__DARLING__) || !defined(major)
+ #define major(x)        ((int32_t)(((u_int32_t)(x) >> 24) & 0xff))
++#endif
++#if !defined(__DARLING__) || !defined(minor)
+ #define minor(x)        ((int32_t)((x) & 0xffffff))
++#endif
++#if !defined(__DARLING__) || !defined(makedev)
+ #define makedev(x, y)    ((dev_t)(((x) << 24) | (y)))
++#endif
+ 
+ #endif  /* !__cplusplus */
+ #endif  /* !_POSIX_C_SOURCE */
+--- a/libkern/os/trace.h
++++ b/libkern/os/trace.h
+@@ -42,9 +42,7 @@
+ 
+ __BEGIN_DECLS
+ 
+-#ifndef DARLING
+ extern void *__dso_handle;
+-#endif
+ 
+ OS_ALWAYS_INLINE
+ static inline void
+--- a/osfmk/i386/cpu_data.h
++++ b/osfmk/i386/cpu_data.h
+@@ -390,7 +390,9 @@
+  * the real thing,
+  */
+ 
+-
++#ifdef __DARLING__
++thread_t current_thread(void);
++#else
+ /*
+  * The "volatile" flavor of current_thread() is intended for use by
+  * scheduler code which may need to update the thread pointer in the
+@@ -421,6 +423,7 @@
+ #define current_thread_fast()           get_active_thread()
+ #define current_thread_volatile()       get_active_thread_volatile()
+ #define current_thread()                current_thread_fast()
++#endif // __DARLING__
+ 
+ #define cpu_mode_is64bit()              TRUE
+ 
+@@ -427,3 +430,4 @@
++#ifdef __DARLING__
+ static inline int
+ get_preemption_level(void)
+ {
+@@ -430,3 +434,9 @@
++	return 0;
++}
++#else
++static inline int
++get_preemption_level(void)
++{
+ 	return CPU_DATA()->cpu_preemption_level;
+ }
+ static inline int
+@@ -455,6 +465,7 @@
+ {
+ 	return CPU_DATA()->cpu_this;
+ }
++#endif // __DARLING__
+ 
+ /*
+  * Facility to diagnose preemption-level imbalances, which are otherwise
+@@ -663,6 +674,7 @@
+ static inline void
+ disable_preemption_internal(void)
+ {
++#ifndef __DARLING__
+ 	assert(get_preemption_level() >= 0);
+ 
+ 	os_compiler_barrier();
+@@ -669,6 +681,7 @@
+ 	CPU_DATA()->cpu_preemption_level++;
+ 	os_compiler_barrier();
+ 	pltrace(FALSE);
++#endif // __DARLING__
+ }
+ 
+ static inline void
+@@ -675,5 +688,6 @@
+ enable_preemption_internal(void)
+ {
++#ifndef __DARLING__
+ 	assert(get_preemption_level() > 0);
+ 	pltrace(TRUE);
+ 	os_compiler_barrier();
+@@ -681,6 +695,7 @@
+ 		kernel_preempt_check();
+ 	}
+ 	os_compiler_barrier();
++#endif // __DARLING__
+ }
+ 
+ static inline void
+@@ -687,5 +702,6 @@
+ enable_preemption_no_check(void)
+ {
++#ifndef __DARLING__
+ 	assert(get_preemption_level() > 0);
+ 
+ 	pltrace(TRUE);
+@@ -692,6 +708,7 @@
+ 	os_compiler_barrier();
+ 	CPU_DATA()->cpu_preemption_level--;
+ 	os_compiler_barrier();
++#endif // __DARLING__
+ }
+ 
+ static inline void
+--- a/osfmk/i386/cpu_threads.h
++++ b/osfmk/i386/cpu_threads.h
+@@ -51,6 +51,7 @@
+ #define cpu_to_die(cpu)                 ((cpu_to_lcpu(cpu) != NULL) ? _cpu_to_lcpu(cpu)->die : NULL)
+ #define cpu_to_package(cpu)             ((cpu_to_lcpu(cpu) != NULL) ? _cpu_to_lcpu(cpu)->package : NULL)
+ 
++#ifndef __DARLING__
+ /* Fast access: */
+ #define x86_lcpu()                      (&current_cpu_datap()->lcpu)
+ #define x86_core()                      (x86_lcpu()->core)
+@@ -57,5 +58,6 @@
+ #define x86_die()                       (x86_lcpu()->die)
+ #define x86_package()                   (x86_lcpu()->package)
++#endif // __DARLING__
+ 
+ #define cpu_is_same_core(cpu1, cpu2)     (cpu_to_core(cpu1) == cpu_to_core(cpu2))
+ #define cpu_is_same_die(cpu1, cpu2)      (cpu_to_die(cpu1) == cpu_to_die(cpu2))
+--- a/osfmk/i386/locks.h
++++ b/osfmk/i386/locks.h
+@@ -37,6 +37,10 @@
+ 
+ #include <i386/hw_lock_types.h>
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/locks.h>
++#endif // __DARLING__
++
+ #define enaLkDeb                0x00000001      /* Request debug in default attribute */
+ #define enaLkStat               0x00000002      /* Request statistic in default attribute */
+ #define disLkRWPrio             0x00000004      /* Disable RW lock priority promotion */
+@@ -45,6 +49,7 @@
+ #endif /* MACH_KERNEL_PRIVATE */
+ 
+ #if     defined(MACH_KERNEL_PRIVATE)
++#ifndef __DARLING__
+ typedef struct {
+ 	volatile uintptr_t      interlock;
+ #if     MACH_LDEBUG
+@@ -51,6 +56,7 @@
+ 	unsigned long   lck_spin_pad[9];        /* XXX - usimple_lock_data_t */
+ #endif
+ } lck_spin_t;
++#endif // __DARLING__
+ 
+ #define LCK_SPIN_TAG_DESTROYED          0x00002007      /* lock marked as Destroyed */
+ 
+@@ -65,6 +71,7 @@
+ #endif
+ 
+ #ifdef  MACH_KERNEL_PRIVATE
++#ifndef __DARLING__
+ /* The definition of this structure, including the layout of the
+  * state bitfield, is tailored to the asm implementation in i386_lock.s
+  */
+@@ -96,6 +103,7 @@
+ 		};
+ 	};
+ } lck_mtx_t;
++#endif // __DARLING__
+ 
+ #define LCK_MTX_WAITERS_MSK             0x0000ffff
+ #define LCK_MTX_WAITER                  0x00000001
+--- a/osfmk/i386/rtclock.c
++++ b/osfmk/i386/rtclock.c
+@@ -86,6 +86,7 @@
+ void
+ rtc_timer_start(void)
+ {
++#ifndef __DARLING__
+ 	/*
+ 	 * Force a complete re-evaluation of timer deadlines.
+ 	 */
+@@ -92,4 +93,5 @@
+ 	x86_lcpu()->rtcDeadline = EndOfAllTime;
++#endif // __DARLING__
+ 	timer_resync_deadlines();
+ }
+ 
+@@ -286,6 +288,7 @@
+ int
+ rtclock_init(void)
+ {
++#ifndef __DARLING__
+ 	uint64_t        cycles;
+ 
+ 	assert(!ml_get_interrupts_enabled());
+@@ -314,6 +317,7 @@
+ 	/* Set fixed configuration for lapic timers */
+ 	rtc_timer->rtc_config();
+ 	rtc_timer_start();
++#endif // __DARLING__
+ 
+ 	return 1;
+ }
+@@ -452,6 +456,7 @@
+ }
+ 
+ 
++#ifndef __DARLING__
+ /*
+  *	Request timer pop from the hardware
+  */
+@@ -478,6 +483,7 @@
+ 
+ 	return pop - now;
+ }
++#endif // __DARLING__
+ 
+ uint64_t
+ mach_absolute_time(void)
+--- a/osfmk/i386/simple_lock.h
++++ b/osfmk/i386/simple_lock.h
+@@ -73,6 +73,8 @@
+ #include <i386/hw_lock_types.h>
+ #include <mach_ldebug.h>
+ 
++#include <kern/locks.h>
++
+ extern uint64_t LockTimeOutTSC; /* Lock timeout in TSC ticks */
+ extern uint32_t LockTimeOutUsec;/* Lock timeout in microseconds */
+ extern uint64_t LockTimeOut;    /* Lock timeout in absolute time */
+@@ -94,6 +96,9 @@
+ 	unsigned char   unlock_cpu;
+ } uslock_debug;
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/simple_lock.h>
++#else
+ typedef struct slock {
+ 	hw_lock_data_t  interlock;      /* must be first... see lock.c */
+ #if     USLOCK_DEBUG
+@@ -102,6 +107,7 @@
+ 	uslock_debug    debug;
+ #endif
+ } usimple_lock_data_t, *usimple_lock_t;
++#endif // __DARLING__
+ 
+ extern void                     i386_lock_unlock_with_flush(
+ 	hw_lock_t);
+--- a/osfmk/i386/thread.h
++++ b/osfmk/i386/thread.h
+@@ -186,6 +186,7 @@
+ #define STACK_IKS(stack)        \
+ 	(&(((struct thread_kernel_state *)((stack) + kernel_stack_size)) - 1)->machine)
+ 
++#ifndef __DARLING__
+ /*
+  * Return the current stack depth including thread_kernel_state
+  */
+@@ -205,6 +206,7 @@
+ 	       + sizeof(struct thread_kernel_state)
+ 	       - stack_ptr;
+ }
++#endif // __DARLING__
+ 
+ /*
+  * Return address of the function that called current function, given
+--- a/osfmk/ipc/ipc_entry.c
++++ b/osfmk/ipc/ipc_entry.c
+@@ -81,6 +81,11 @@
+ #include <string.h>
+ #include <sys/kdebug.h>
+ 
++#if DSERVER_EXTENDED_DEBUG
++	#include <ciderd/xnu-sys/task.h>
++	#include <ciderd/xnu-sys/hooks.internal.h>
++#endif
++
+ /*
+  *	Routine:	ipc_entry_lookup
+  *	Purpose:
+@@ -407,6 +412,10 @@
+ 	ipc_entry_t table;
+ 	ipc_entry_num_t size;
+ 	mach_port_index_t index;
++
++#if DSERVER_EXTENDED_DEBUG
++	xnu_sys_hooks->task_unregister_name(xnu_sys_task_for_xnu_task(current_task())->context, name);
++#endif
+ 
+ 	assert(is_active(space));
+ 	assert(entry->ie_object == IO_NULL);
+--- a/osfmk/ipc/ipc_importance.c
++++ b/osfmk/ipc/ipc_importance.c
+@@ -69,7 +69,11 @@
+ /*
+  * Importance Voucher Attribute Manager
+  */
++#ifdef __DARLING__
++lck_spin_t ipc_importance_lock_data;
++#else
+ static LCK_SPIN_DECLARE_ATTR(ipc_importance_lock_data, &ipc_lck_grp, &ipc_lck_attr);
++#endif
+ 
+ #define ipc_importance_lock() \
+ 	lck_spin_lock_grp(&ipc_importance_lock_data, &ipc_lck_grp)
+@@ -148,6 +152,10 @@
+     QUEUE_HEAD_INITIALIZER(global_iit_alloc_queue);
+ #endif
+ 
++#ifdef __DARLING__
++zone_t ipc_importance_task_zone;
++zone_t ipc_importance_inherit_zone;
++#else
+ static ZONE_DECLARE(ipc_importance_task_zone, "ipc task importance",
+     sizeof(struct ipc_importance_task), ZC_NOENCRYPT);
+ static ZONE_DECLARE(ipc_importance_inherit_zone, "ipc importance inherit",
+@@ -154,5 +162,6 @@
+     sizeof(struct ipc_importance_inherit), ZC_NOENCRYPT);
+ static zone_t ipc_importance_inherit_zone;
++#endif // __DARLING__
+ 
+ static ipc_voucher_attr_control_t ipc_importance_control;
+ 
+@@ -1368,6 +1377,7 @@
+ #endif
+ 
+ 	if (KERN_FAILURE == ret && target_task != TASK_NULL) {
++#ifndef __DARLING__
+ 		printf("BUG in process %s[%d]: "
+ 		    "attempt to acquire an additional legacy external boost assertion without holding an existing legacy external assertion. "
+ 		    "(%d total, %d external, %d legacy-external)\n",
+@@ -1374,5 +1384,6 @@
+ 		    proc_name_address(target_task->bsd_info), task_pid(target_task),
+ 		    target_assertcnt, target_externcnt, target_legacycnt);
++#endif
+ 	}
+ 
+ 	return ret;
+@@ -1462,6 +1473,7 @@
+ 
+ 	/* delayed printf for user-supplied data failures */
+ 	if (KERN_FAILURE == ret && TASK_NULL != target_task) {
++#ifndef __DARLING__
+ 		printf("BUG in process %s[%d]: over-released legacy external boost assertions (%d total, %d external, %d legacy-external)\n",
+ 		    proc_name_address(target_task->bsd_info), task_pid(target_task),
+ 		    target_assertcnt, target_externcnt, target_legacycnt);
+@@ -1468,3 +1480,4 @@
++#endif
+ 	}
+ 
+ 	return ret;
+--- a/osfmk/ipc/ipc_init.c
++++ b/osfmk/ipc/ipc_init.c
+@@ -152,8 +152,12 @@
+  *	Purpose:
+  *		Final initialization
+  */
++#ifdef __DARLING__
++void
++#else
+ __startup_func
+ static void
++#endif // __DARLING__
+ ipc_init(void)
+ {
+ 	kern_return_t kr;
+@@ -207,8 +211,10 @@
+ 		panic("ipc_init: kmem_suballoc of ipc_kernel_copy_map failed");
+ 	}
+ 
++#ifndef __DARLING__
+ 	ipc_kernel_copy_map->no_zero_fill = TRUE;
+ 	ipc_kernel_copy_map->wait_for_space = TRUE;
++#endif // __DARLING__
+ 
+ 	/*
+ 	 * As an optimization, 'small' out of line data regions using a
+--- a/osfmk/ipc/ipc_kmsg.c
++++ b/osfmk/ipc/ipc_kmsg.c
+@@ -72,6 +72,9 @@
+ 
+ 
+ #include <mach/mach_types.h>
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/log.h>
++#endif
+ #include <mach/boolean.h>
+ #include <mach/kern_return.h>
+ #include <mach/message.h>
+@@ -2845,6 +2848,11 @@
+ 	}
+ 
+ 	if (!MACH_PORT_VALID(dest_name)) {
++#ifdef __DARLING__
++		/* Task #47: which name, and which of the three ways it can be rejected. */
++		xnu_sys_log_debug("copyin_header: INVALID_DEST (name not valid) dest=0x%x reply=0x%x dest_type=%d",
++		    dest_name, reply_name, dest_type);
++#endif
+ 		return MACH_SEND_INVALID_DEST;
+ 	}
+ 
+@@ -2851,6 +2859,10 @@
+ 	is_write_lock(space);
+ 	if (!is_active(space)) {
+ 		is_write_unlock(space);
++#ifdef __DARLING__
++		xnu_sys_log_debug("copyin_header: INVALID_DEST (space dead) dest=0x%x reply=0x%x",
++		    dest_name, reply_name);
++#endif
+ 		return MACH_SEND_INVALID_DEST;
+ 	}
+ 	/* space locked and active */
+@@ -3326,6 +3338,15 @@
+ 	assert(voucher_port == IP_NULL);
+ 	assert(voucher_soright == IP_NULL);
+ 
++#ifdef __DARLING__
++	/*
++	 * Task #47: the interesting one. The name looked syntactically fine and the space
++	 * was live, so the lookup itself failed -- the guest holds a name that no longer
++	 * names a send right. This is the FIRST thing that goes wrong in a launchd boot.
++	 */
++	xnu_sys_log_debug("copyin_header: INVALID_DEST (lookup failed) dest=0x%x reply=0x%x dest_type=%d reply_type=%d",
++	    dest_name, reply_name, dest_type, reply_type);
++#endif
+ 	return MACH_SEND_INVALID_DEST;
+ }
+ 
+--- a/osfmk/ipc/ipc_kmsg.h
++++ b/osfmk/ipc/ipc_kmsg.h
+@@ -383,7 +383,7 @@
+     mach_port_seqno_t seqno, boolean_t minimal_trailer,
+     mach_vm_offset_t context);
+ 
+-#if (KDEBUG_LEVEL >= KDEBUG_LEVEL_STANDARD)
++#if (KDEBUG_LEVEL >= KDEBUG_LEVEL_STANDARD) || defined(__DARLING__)
+ extern void ipc_kmsg_trace_send(ipc_kmsg_t kmsg,
+     mach_msg_option_t option);
+ #else
+--- a/osfmk/ipc/ipc_mqueue.c
++++ b/osfmk/ipc/ipc_mqueue.c
+@@ -86,6 +86,9 @@
+ 
+ #include <ipc/port.h>
+ #include <ipc/ipc_mqueue.h>
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/log.h>
++#endif
+ #include <ipc/ipc_kmsg.h>
+ #include <ipc/ipc_port.h>
+ #include <ipc/ipc_pset.h>
+@@ -786,6 +789,23 @@
+ 		    WAITQ_KEEP_LOCKED);
+ 		/* waitq still locked, thread locked */
+ 
++#ifdef __DARLING__
++		/*
++		 * Task #47. A knote on a PORTSET is woken ONLY here: the message lands on a
++		 * MEMBER port, and the kqchan's waiter thread is blocked on the SET's waitq,
++		 * so this call has to find it by walking the port's set linkage. If it does
++		 * not, the message is merely enqueued and KNOTE() below posts to the PORT's
++		 * klist -- which a portset knote is not on -- and launchd's dispatch loop
++		 * never learns the message arrived.
++		 *
++		 * So: receiver=NULL together with a non-zero set id is the deadlock, stated.
++		 */
++		xnu_sys_log_debug("mqueue_post: mqueue=%p is_set=%d set_id=0x%llx msgcount=%d -> receiver=%p",
++		    mqueue, imq_is_set(mqueue) ? 1 : 0,
++		    (unsigned long long)waitq->waitq_set_id, mqueue->imq_msgcount,
++		    receiver);
++#endif
++
+ 		if (receiver == THREAD_NULL) {
+ 			/*
+ 			 * no receivers; queue kmsg if space still reserved
+@@ -808,6 +828,17 @@
+ 					ipc_object_t object = imq_to_object(mqueue);
+ 					assert(io_otype(object) == IOT_PORT);
+ 					ipc_port_t port = ip_object_to_port(object);
++#ifdef __DARLING__
++					/*
++					 * Task #47. With no receiver and no portset, THIS is the only
++					 * thing left that can tell a watcher a message arrived: a knote
++					 * on the port's own klist. If there is no klist, nobody learns.
++					 */
++					xnu_sys_log_debug("mqueue_post: no receiver on mq=%p; active=%d recv_name=0x%x recv_active=%d has_klist=%d",
++					    mqueue, ip_active(port) ? 1 : 0, port->ip_receiver_name,
++					    (port->ip_receiver_name != MACH_PORT_NULL && is_active(port->ip_receiver)) ? 1 : 0,
++					    ipc_mqueue_has_klist(mqueue) ? 1 : 0);
++#endif
+ 					if (ip_active(port) &&
+ 					    port->ip_receiver_name != MACH_PORT_NULL &&
+ 					    is_active(port->ip_receiver) &&
+@@ -1151,6 +1182,15 @@
+ 		 */
+ 		kmsgs = &mqueue->imq_messages;
+ 		if (ipc_kmsg_queue_first(kmsgs) != IKM_NULL) {
++#ifdef __DARLING__
++			/*
++			 * Task #47: a message was ALREADY queued on this port when the receive
++			 * ran. That is the ordinary reply-before-receive race and is benign --
++			 * it is what distinguishes a queued message that gets consumed from one
++			 * that is genuinely stranded.
++			 */
++			xnu_sys_log_debug("mqueue_receive: immediate on mq=%p (was queued)", mqueue);
++#endif
+ 			if (option & MACH_PEEK_MSG) {
+ 				ipc_mqueue_peek_on_thread(mqueue, option, thread);
+ 			} else {
+@@ -1164,6 +1204,18 @@
+ 		panic("Unknown mqueue type 0x%x: likely memory corruption!\n",
+ 		    mqueue->imq_wait_queue.waitq_type);
+ 	}
++
++#ifdef __DARLING__
++	/*
++	 * Task #47. Nothing was ready, so this thread is about to block. Which mqueue it
++	 * blocks on is the whole question: a SET only ever sees its MEMBERS' preposts, so a
++	 * thread blocked on the set cannot be woken by a message to a port that is not in it.
++	 */
++	xnu_sys_log_debug("mqueue_receive: blocking on mq=%p is_set=%d set_id=0x%llx msgcount=%d thread=%p",
++	    mqueue, imq_is_set(mqueue) ? 1 : 0,
++	    (unsigned long long)mqueue->imq_wait_queue.waitq_set_id, mqueue->imq_msgcount,
++	    thread);
++#endif
+ 
+ 	/*
+ 	 * Looks like we'll have to block.  The mqueue we will
+--- a/osfmk/ipc/ipc_object.c
++++ b/osfmk/ipc/ipc_object.c
+@@ -94,6 +94,11 @@
+ 
+ #include <security/mac_mach_internal.h>
+ 
++#if DSERVER_EXTENDED_DEBUG
++	#include <ciderd/xnu-sys/hooks.internal.h>
++	#include <ciderd/xnu-sys/task.h>
++#endif
++
+ SECURITY_READ_ONLY_LATE(zone_t) ipc_object_zones[IOT_NUMBER];
+ 
+ ZONE_INIT(&ipc_object_zones[IOT_PORT], "ipc ports", sizeof(struct ipc_port),
+@@ -405,6 +410,10 @@
+ 	io_lock(object);
+ 
+ 	object->io_references = 1; /* for entry, not caller */
++
++#if DSERVER_EXTENDED_DEBUG
++	xnu_sys_hooks->task_register_name(xnu_sys_task_for_xnu_task(current_task())->context, *namep, (uintptr_t)object);
++#endif
+ 
+ 	*objectp = object;
+ 	return KERN_SUCCESS;
+--- a/osfmk/ipc/ipc_pset.c
++++ b/osfmk/ipc/ipc_pset.c
+@@ -79,6 +79,11 @@
+ #include <libkern/section_keywords.h>
+ #include <pthread/priority_private.h>
+ 
++#if DSERVER_EXTENDED_DEBUG
++	#include <ciderd/xnu-sys/hooks.internal.h>
++	#include <ciderd/xnu-sys/task.h>
++#endif
++
+ /*
+  *	Routine:	ipc_pset_alloc
+  *	Purpose:
+@@ -234,6 +239,12 @@
+ 	kr = ipc_mqueue_add(&port->ip_messages, &pset->ips_messages,
+ 	    reserved_link, reserved_prepost);
+ 
++#if DSERVER_EXTENDED_DEBUG
++	if (kr == KERN_SUCCESS) {
++		xnu_sys_hooks->task_add_port_set_member(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset, (xnu_sys_port_id_t)port);
++	}
++#endif
++
+ 	return kr;
+ }
+ 
+@@ -263,6 +274,12 @@
+ 
+ 	kr = ipc_mqueue_remove(&port->ip_messages, &pset->ips_messages);
+ 
++#if DSERVER_EXTENDED_DEBUG
++	if (kr == KERN_SUCCESS) {
++		xnu_sys_hooks->task_remove_port_set_member(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset, (xnu_sys_port_id_t)port);
++	}
++#endif
++
+ 	return kr;
+ }
+ 
+@@ -357,6 +374,10 @@
+ {
+ 	assert(ips_active(pset));
+ 
++#if DSERVER_EXTENDED_DEBUG
++	xnu_sys_hooks->task_clear_port_set(xnu_sys_task_for_xnu_task(current_task())->context, (xnu_sys_port_set_id_t)pset);
++#endif
++
+ 	pset->ips_object.io_bits &= ~IO_BITS_ACTIVE;
+ 
+ 	/*
+@@ -699,7 +720,11 @@
+ 	return 0;
+ }
+ 
++#ifdef __DARLING__
++int
++#else
+ static int
++#endif // __DARLING__
+ filt_machportattach(
+ 	struct knote *kn,
+ 	__unused struct kevent_qos_s *kev)
+@@ -903,7 +928,11 @@
+     offsetof(struct ipc_port, ip_messages),
+     "Make sure the mqueue aliases in both ports and psets");
+ 
++#ifdef __DARLING__
++void
++#else
+ static void
++#endif // __DARLING__
+ filt_machportdetach(
+ 	struct knote *kn)
+ {
+@@ -981,7 +1010,11 @@
+  * QoS of the knote according the requested and override
+  * QoS of that first message.
+  */
++#ifdef __DARLING__
++int
++#else
+ static int
++#endif // __DARLING__
+ filt_machportevent(struct knote *kn, long hint __assert_only)
+ {
+ 	ipc_mqueue_t mqueue = kn->kn_mqueue;
+@@ -1001,7 +1034,11 @@
+ 	return result;
+ }
+ 
++#ifdef __DARLING__
++int
++#else
+ static int
++#endif // __DARLING__
+ filt_machporttouch(
+ 	struct knote *kn,
+ 	struct kevent_qos_s *kev)
+@@ -1042,7 +1079,11 @@
+ 	return result;
+ }
+ 
++#ifdef __DARLING__
++int
++#else
+ static int
++#endif // __DARLING__
+ filt_machportprocess(struct knote *kn, struct kevent_qos_s *kev)
+ {
+ 	ipc_mqueue_t mqueue = kn->kn_mqueue;
+@@ -1224,7 +1265,11 @@
+  * will catch changes in this status when the event gets posted
+  * up to the knote's kqueue).
+  */
++#ifdef __DARLING__
++int
++#else
+ static int
++#endif // __DARLING__
+ filt_machportpeek(struct knote *kn)
+ {
+ 	ipc_mqueue_t mqueue = kn->kn_mqueue;
+--- a/osfmk/ipc/ipc_table.c
++++ b/osfmk/ipc/ipc_table.c
+@@ -119,8 +119,12 @@
+ 	}
+ }
+ 
++#ifdef __DARLING__
++void
++#else
+ __startup_func
+ static void
++#endif // __DARLING__
+ ipc_table_init(void)
+ {
+ 	ipc_table_fill(ipc_table_entries, IPC_TABLE_ENTRIES_SIZE - 1,
+--- a/osfmk/ipc/ipc_voucher.c
++++ b/osfmk/ipc/ipc_voucher.c
+@@ -196,10 +196,19 @@
+ 	ipc_voucher_attr_manager_flags flags,
+ 	int *need_processing);
+ 
++#ifdef __DARLING__
++void
++#else
+ __startup_func
+ static void
++#endif // __DARLING__
+ ipc_voucher_init(void)
+ {
++#ifdef __DARLING__
++	ipc_voucher_zone = zone_create("ipc vouchers", sizeof(struct ipc_voucher), ZC_NOENCRYPT | ZC_ZFREE_CLEARMEM | ZC_NOSEQUESTER);
++	ipc_voucher_attr_control_zone = zone_create("ipc voucher attr controls", sizeof(struct ipc_voucher_attr_control), ZC_NOENCRYPT | ZC_ZFREE_CLEARMEM);
++	lck_spin_init(&ivgt_lock_data, LCK_GRP_NULL, LCK_ATTR_NULL);
++#endif // __DARLING__
+ 	/* initialize voucher hash */
+ 	for (iv_index_t i = 0; i < IV_HASH_BUCKETS; i++) {
+ 		queue_init(&ivht_bucket[i]);
+@@ -3234,8 +3243,12 @@
+ 	panic("Voucher user-data manager released");
+ }
+ 
++#ifdef __DARLING__
++void
++#else
+ __startup_func
+ static void
++#endif // __DARLING__
+ user_data_attr_manager_init(void)
+ {
+ 	kern_return_t kr;
+--- a/osfmk/ipc/mach_kernelrpc.c
++++ b/osfmk/ipc/mach_kernelrpc.c
+@@ -319,8 +319,13 @@
+ #define MACH_PORT_INFO_STACK_LIMIT 80 // current size is 68 == 17 * sizeof(integer_t)
+ 	_Static_assert(sizeof(MACH_PORT_INFO_OUT) < MACH_PORT_INFO_STACK_LIMIT,
+ 	    "mach_port_info_t has grown significantly, reevaluate stack usage");
++#ifdef __DARLING__
++	const mach_msg_type_number_t max_count = sizeof(MACH_PORT_INFO_OUT) / sizeof(MACH_PORT_INFO_OUT[0]);
++	typeof(MACH_PORT_INFO_OUT[0]) info[sizeof(MACH_PORT_INFO_OUT) / sizeof(MACH_PORT_INFO_OUT[0])];
++#else
+ 	const mach_msg_type_number_t max_count = (sizeof(MACH_PORT_INFO_OUT) / sizeof(MACH_PORT_INFO_OUT[0]));
+ 	typeof(MACH_PORT_INFO_OUT[0]) info[max_count];
++#endif
+ 
+ 	/*
+ 	 * zero out our stack buffer because not all flavors of
+--- a/osfmk/ipc/mach_port.c
++++ b/osfmk/ipc/mach_port.c
+@@ -71,6 +71,9 @@
+  */
+ 
+ #include <mach_debug.h>
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/log.h>
++#endif
+ 
+ #include <mach/port.h>
+ #include <mach/kern_return.h>
+@@ -1565,6 +1568,9 @@
+ 	waitq_link_release(wq_link_id);
+ 	waitq_prepost_release_reserve(wq_reserved_prepost);
+ 
++#ifdef __DARLING__
++	xnu_sys_log_debug("mach_port_move_member: member=0x%x after=0x%x -> kr=%d", member, after, kr);
++#endif
+ 	return kr;
+ }
+ 
+@@ -2273,6 +2279,11 @@
+ 	io_unlock(obj);
+ 
+ done:
++#ifdef __DARLING__
++	/* Task #47: which ports actually make it into a portset, and which do not. */
++	xnu_sys_log_debug("mach_port_insert_member: name=0x%x psname=0x%x -> kr=%d",
++	    name, psname, kr);
++#endif
+ 	/* on success, wq_link_id is reset to 0, so this is always safe */
+ 	waitq_link_release(wq_link_id);
+ 	waitq_prepost_release_reserve(wq_reserved_prepost);
+--- a/osfmk/ipc/mig_log.c
++++ b/osfmk/ipc/mig_log.c
+@@ -68,6 +68,11 @@
+ #include <mach/message.h>
+ #include <mach/mig_log.h>
+ 
++#ifdef __DARLING__
++__attribute__((format(printf, 1, 2)))
++int printf(const char* format, ...);
++#endif // __DARLING__
++
+ int mig_tracing, mig_errors, mig_full_tracing;
+ 
+ /*
+--- a/osfmk/kern/assert.h
++++ b/osfmk/kern/assert.h
+@@ -88,7 +88,7 @@
+ #define APPLE_KEXT_ASSERTIONS   0
+ #endif
+ 
+-#if     MACH_ASSERT
++#if     MACH_ASSERT || defined(__DARLING__)
+ 
+ #define assert(ex)  \
+ 	(__builtin_expect(!!((ex)), 1L) ? (void)0 : Assert(__FILE__, __LINE__, # ex))
+--- a/osfmk/kern/exception.c
++++ b/osfmk/kern/exception.c
+@@ -510,6 +510,7 @@
+ 	}
+ 
+ out:
++#ifndef __DARLING__
+ 	if ((exception != EXC_CRASH) && (exception != EXC_RESOURCE) &&
+ 	    (exception != EXC_GUARD) && (exception != EXC_CORPSE_NOTIFY)) {
+ 		thread_exception_return();
+@@ -516,4 +517,5 @@
+ 	}
++#endif // __DARLING__
+ 	return kr;
+ }
+ 
+--- a/osfmk/kern/host.c
++++ b/osfmk/kern/host.c
+@@ -130,6 +130,9 @@
+ static void
+ get_host_vm_stats(vm_statistics64_t out)
+ {
++#ifdef __DARLING__
++	memset(out, 0, sizeof(*out));
++#else
+ 	out->zero_fill_count = counter_load(&vm_statistics_zero_fill_count);
+ 	out->reactivations = counter_load(&vm_statistics_reactivations);
+ 	out->pageins = counter_load(&vm_statistics_pageins);
+@@ -142,6 +145,7 @@
+ 	out->decompressions = counter_load(&vm_statistics_decompressions);
+ 	out->swapins = counter_load(&vm_statistics_swapins);
+ 	out->swapouts = counter_load(&vm_statistics_swapouts);
++#endif // __DARLING__
+ }
+ vm_extmod_statistics_data_t host_extmod_statistics;
+ 
+@@ -179,6 +183,7 @@
+ 
+ extern int sched_allow_NO_SMT_threads;
+ 
++#ifndef __DARLING__
+ kern_return_t
+ host_info(host_t host, host_flavor_t flavor, host_info_t info, mach_msg_type_number_t * count)
+ {
+@@ -393,6 +398,7 @@
+ 	default: return KERN_INVALID_ARGUMENT;
+ 	}
+ }
++#endif // __DARLING__
+ 
+ kern_return_t host_statistics(host_t host, host_flavor_t flavor, host_info_t info, mach_msg_type_number_t * count);
+ 
+@@ -399,3 +405,4 @@
++#ifndef __DARLING__
+ kern_return_t
+ host_statistics(host_t host, host_flavor_t flavor, host_info_t info, mach_msg_type_number_t * count)
+ {
+@@ -585,6 +592,7 @@
+ 	default: return KERN_INVALID_ARGUMENT;
+ 	}
+ }
++#endif // __DARLING__
+ 
+ extern uint32_t c_segment_pages_compressed;
+ 
+@@ -646,6 +654,9 @@
+ host_statistics_init(void)
+ {
+ 	nanoseconds_to_absolutetime((HOST_STATISTICS_TIME_WINDOW * NSEC_PER_SEC), &host_statistics_time_window);
++#ifdef __DARLING__
++	lck_mtx_init(&host_statistics_lck, LCK_GRP_NULL, LCK_ATTR_NULL);
++#endif // __DARLING__
+ }
+ 
+ static void
+@@ -797,6 +808,7 @@
+ 	return rate_limited;
+ }
+ 
++#ifndef __DARLING__
+ kern_return_t
+ vm_stats(void *info, unsigned int *count)
+ {
+@@ -873,6 +885,7 @@
+ 
+ 	return KERN_SUCCESS;
+ }
++#endif // __DARLING__
+ 
+ kern_return_t host_statistics64(host_t host, host_flavor_t flavor, host_info_t info, mach_msg_type_number_t * count);
+ 
+@@ -1219,6 +1232,7 @@
+ 
+ 	host_lock(host_priv);
+ 	old_port = host_priv->special[id];
++#ifndef __DARLING__
+ 	if ((id == HOST_AMFID_PORT) && (current_task()->bsd_info != initproc)) {
+ 		host_unlock(host_priv);
+ 		return KERN_NO_ACCESS;
+@@ -1225,4 +1239,5 @@
+ 	}
++#endif // __DARLING__
+ 	host_priv->special[id] = port;
+ 	host_unlock(host_priv);
+ 
+@@ -1403,6 +1418,7 @@
+ 		return KERN_INVALID_ARGUMENT;
+ 	}
+ 
++#ifndef __DARLING__
+ 	/*
+ 	 * Always enforce that the multiuser bit is set
+ 	 * if a value is written to the commpage word.
+@@ -1409,5 +1425,6 @@
+ 	 */
+ 	commpage_update_multiuser_config(multiuser_config | kIsMultiUserDevice);
++#endif // __DARLING__
+ 	return KERN_SUCCESS;
+ #else
+ 	(void)host_priv;
+--- a/osfmk/kern/host_notify.c
++++ b/osfmk/kern/host_notify.c
+@@ -55,8 +55,12 @@
+ { HOST_CALENDAR_CHANGED_REPLYID,
+   HOST_CALENDAR_SET_REPLYID };
+ 
++#ifdef __DARLING__
++void
++#else
+ __startup_func
+ static void
++#endif // __DARLING__
+ host_notify_init(void)
+ {
+ 	for (int i = 0; i <= HOST_NOTIFY_TYPE_MAX; i++) {
+@@ -63,5 +67,9 @@
+ 		queue_init(&host_notify_queue[i]);
+ 	}
++#ifdef __DARLING__
++	host_notify_zone = zone_create("host_notify", sizeof(struct host_notify_entry), ZC_NONE);
++	lck_mtx_init(&host_notify_lock, LCK_GRP_NULL, LCK_ATTR_NULL);
++#endif
+ }
+ STARTUP(MACH_IPC, STARTUP_RANK_FIRST, host_notify_init);
+ 
+--- a/osfmk/kern/ipc_kobject.c
++++ b/osfmk/kern/ipc_kobject.c
+@@ -238,9 +238,17 @@
+ 	(const struct mig_subsystem *)&mach_eventlink_subsystem,
+ };
+ 
++#ifdef __DARLING__
++void
++#else
+ static void
++#endif // ___DARLING__
+ mig_init(void)
+ {
++#ifdef __DARLING__
++	ipc_kobject_label_zone = zone_create("ipc kobject labels", sizeof(struct ipc_kobject_label), ZC_NONE);
++#endif // __DARLING__
++
+ 	unsigned int i, n = sizeof(mig_e) / sizeof(const struct mig_subsystem *);
+ 	int howmany;
+ 	mach_msg_id_t j, pos, nentry, range;
+@@ -281,8 +289,14 @@
+ 			}
+ 		}
+ 	}
++#ifdef __DARLING__
++	#include <ciderd/xnu-sys/log.h>
++	xnu_sys_log_debug("mig_table_max_displ = %d mach_kobj_count = %d\n",
++	    mig_table_max_displ, mach_kobj_count);
++#else
+ 	printf("mig_table_max_displ = %d mach_kobj_count = %d\n",
+ 	    mig_table_max_displ, mach_kobj_count);
++#endif
+ }
+ STARTUP(MACH_IPC, STARTUP_RANK_FIRST, mig_init);
+ 
+--- a/osfmk/kern/ipc_tt.c
++++ b/osfmk/kern/ipc_tt.c
+@@ -69,6 +69,9 @@
+  */
+ 
+ #include <mach/mach_types.h>
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/log.h>
++#endif
+ #include <mach/boolean.h>
+ #include <mach/kern_return.h>
+ #include <mach/mach_param.h>
+@@ -247,6 +250,17 @@
+ 
+ 		/* inherit exception and bootstrap ports */
+ 
++#ifdef __DARLING__
++		/*
++		 * Task #47: the ORDERING question. A child forked while launchd holds a
++		 * bootstrap port inherits it here; one forked before launchd installs it, or
++		 * after launchd clears it, inherits nil and dies on its first service lookup.
++		 * This says which window this task was created in.
++		 */
++		xnu_sys_log_debug("ipc_task_init: task=%p parent=%p parent_bootstrap=%p",
++		    task, parent, parent->itk_bootstrap);
++#endif
++
+ 		for (i = FIRST_EXCEPTION; i < EXC_TYPES_COUNT; i++) {
+ 			task->exc_actions[i].port =
+ 			    ipc_port_copy_send(parent->exc_actions[i].port);
+@@ -1708,6 +1722,14 @@
+ 
+ 	case TASK_BOOTSTRAP_PORT:
+ 		port = ipc_port_copy_send(task->itk_bootstrap);
++#ifdef __DARLING__
++		/*
++		 * Task #47: a job whose bootstrap port is null sends its first service lookup
++		 * to MACH_PORT_NULL and exits. This says whether the task HAS one to hand out.
++		 */
++		xnu_sys_log_debug("special_port GET bootstrap: task=%p itk_bootstrap=%p -> port=%p",
++		    task, task->itk_bootstrap, port);
++#endif
+ 		itk_unlock(task);
+ 		break;
+ 
+@@ -1957,6 +1979,9 @@
+ 	case TASK_BOOTSTRAP_PORT:
+ 		old = task->itk_bootstrap;
+ 		task->itk_bootstrap = port;
++#ifdef __DARLING__
++		xnu_sys_log_debug("special_port SET bootstrap: task=%p old=%p new=%p", task, old, port);
++#endif
+ 		break;
+ 
+ 	/* Never allow overwrite of seatbelt port */
+@@ -3015,6 +3040,7 @@
+ 	}
+ 
+ 	map = task->map;
++#ifndef __DARLING__
+ 	if (map->pmap == kernel_pmap) {
+ 		if (flavor == TASK_FLAVOR_CONTROL) {
+ 			panic("userspace has control access to a "
+@@ -3027,6 +3053,7 @@
+ 	} else {
+ 		pmap_require(map->pmap);
+ 	}
++#endif // __DARLING__
+ 
+ 	vm_map_reference(map);
+ 	task_unlock(task);
+--- a/osfmk/kern/locks.h
++++ b/osfmk/kern/locks.h
+@@ -104,8 +104,12 @@
+ } lck_ticket_internal;
+ 
+ typedef struct {
++#ifdef __DARLING__
++	lck_spin_t xnu_sys_lock;
++#else
+ 	lck_ticket_internal tu;
+ 	uintptr_t lck_owner;
++#endif // __DARLING__
+ } lck_ticket_t;
+ 
+ void lck_ticket_init(lck_ticket_t *tlock, lck_grp_t *grp);
+--- a/osfmk/kern/ltable.c
++++ b/osfmk/kern/ltable.c
+@@ -48,7 +48,11 @@
+ /* default VA space for link tables (zone allocated) */
+ #define DEFAULT_MAX_TABLE_SIZE  P2ROUNDUP(8 * 1024 * 1024, PAGE_SIZE)
+ 
++#ifdef __DARLING__
++TUNABLE(vm_size_t, g_lt_max_tbl_size, "lt_tbl_size", DEFAULT_MAX_TABLE_SIZE);
++#else
+ TUNABLE(vm_size_t, g_lt_max_tbl_size, "lt_tbl_size", 0);
++#endif
+ LCK_GRP_DECLARE(g_lt_lck_grp, "link_table_locks");
+ 
+ #if DEVELOPMENT || DEBUG
+--- a/osfmk/kern/misc_protos.h
++++ b/osfmk/kern/misc_protos.h
+@@ -55,6 +55,7 @@
+ #define MAX(a, b) (((a)>(b))?(a):(b))
+ #endif  /* MAX */
+ 
++#ifndef __DARLING__
+ /* Set a bit in a bit array */
+ extern void setbit(
+ 	int             which,
+@@ -64,6 +65,7 @@
+ extern void clrbit(
+ 	int             which,
+ 	int             *bitmap);
++#endif
+ 
+ /* Find the first set bit in a bit array */
+ extern int ffsbit(
+@@ -175,7 +177,11 @@
+ extern int snprintf(char *, size_t, const char *, ...) __printflike(3, 4);
+ extern int scnprintf(char *, size_t, const char *, ...) __printflike(3, 4);
+ 
++#ifdef __DARLING__
++extern void log(int level, const char *fmt, ...) __printflike(2, 3);
++#else
+ extern void log(int level, char *fmt, ...) __printflike(2, 3);
++#endif
+ 
+ void
+ _doprnt(
+--- a/osfmk/kern/mk_timer.c
++++ b/osfmk/kern/mk_timer.c
+@@ -56,8 +56,16 @@
+ 	ipc_port_t              port;
+ };
+ 
++#ifdef __DARLING__
++zone_t mk_timer_zone;
++
++void xnu_sys_mk_timer_init(void) {
++	mk_timer_zone = zone_create("mk_timer", sizeof(struct mk_timer), ZC_NOENCRYPT);
++};
++#else
+ static ZONE_DECLARE(mk_timer_zone, "mk_timer",
+     sizeof(struct mk_timer), ZC_NOENCRYPT);
++#endif
+ 
+ static mach_port_qos_t mk_timer_qos = {
+ 	.name       = FALSE,
+--- a/osfmk/kern/processor.h
++++ b/osfmk/kern/processor.h
+@@ -402,7 +402,11 @@
+ extern uint32_t                 primary_processor_avail_count;
+ extern uint32_t                 primary_processor_avail_count_user;
+ 
++#ifdef __DARLING__
++extern processor_t master_processor;
++#else
+ #define master_processor PERCPU_GET_MASTER(processor)
++#endif // __DARLING__
+ PERCPU_DECL(struct processor, processor);
+ 
+ extern processor_t      current_processor(void);
+--- a/osfmk/kern/startup.h
++++ b/osfmk/kern/startup.h
+@@ -276,6 +276,9 @@
+ #endif
+ 
+ 
++#ifdef __DARLING__
++#define __STARTUP1(name, line, subsystem, rank, func, a, b)
++#else
+ #define __STARTUP1(name, line, subsystem, rank, func, a, b) \
+ 	__PLACE_IN_SECTION(STARTUP_HOOK_SEGMENT "," STARTUP_HOOK_SECTION) \
+ 	static const struct startup_entry \
+@@ -283,6 +286,7 @@
+ 	    STARTUP_SUB_ ## subsystem, \
+ 	    rank, __STARTUP_FUNC_CAST(func, a), b, \
+ 	}
++#endif // __DARLING__
+ 
+ #define __STARTUP(name, line, subsystem, rank, func) \
+ 	__STARTUP1(name, line, subsystem, rank, func, , NULL)
+--- a/osfmk/kern/task_ident.c
++++ b/osfmk/kern/task_ident.c
+@@ -35,6 +35,15 @@
+ #include <security/mac_mach_internal.h>
+ #include <kern/task_ident.h>
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/task.h>
++
++kern_return_t
++task_get_special_port(
++	task_t          task,
++	int             which,
++	ipc_port_t      *portp);
++#else
+ struct proc_ident {
+ 	uint64_t        p_uniqueid;
+ 	pid_t           p_pid;
+@@ -41,5 +50,6 @@
+ 	int             p_idversion;
+ };
++#endif // __DARLING__
+ 
+ extern void* proc_find_ident(struct proc_ident const *i);
+ extern int proc_rele(void* p);
+@@ -53,8 +63,12 @@
+ 	os_refcnt_t       tidt_refs;
+ };
+ 
++#ifdef __DARLING__
++zone_t task_id_token_zone;
++#else
+ static ZONE_DECLARE(task_id_token_zone, "task_id_token",
+     sizeof(struct task_id_token), ZC_ZFREE_CLEARMEM);
++#endif // __DARLING__
+ 
+ static void
+ tidt_reference(task_id_token_t token)
+@@ -124,6 +138,12 @@
+ 	token = zalloc_flags(task_id_token_zone, Z_ZERO | Z_WAITOK | Z_NOFAIL);
+ 
+ 	task_lock(task);
++#ifdef __DARLING__
++	xnu_sys_task_t* xnu_sys_task = xnu_sys_task_for_xnu_task(task);
++	if (xnu_sys_task) {
++		token->port = IP_NULL;
++		token->ident = proc_ident(xnu_sys_task);
++#else
+ 	if (task->bsd_info) {
+ 		token->port = IP_NULL;
+ 		token->ident = proc_ident(task->bsd_info);
+@@ -130,3 +150,4 @@
++#endif // __DARLING__
+ 		/* this reference will be donated to no-senders notification */
+ 		os_ref_init_count(&token->tidt_refs, NULL, 1);
+ 	} else {
+--- a/osfmk/kern/thread_call.c
++++ b/osfmk/kern/thread_call.c
+@@ -510,6 +510,10 @@
+ void
+ thread_call_initialize(void)
+ {
++#ifdef __DARLING__
++	thread_call_zone = zone_create("thread_call", sizeof(thread_call_data_t), ZC_NOENCRYPT);
++#endif // __DARLING__
++
+ 	nanotime_to_absolutetime(0, THREAD_CALL_DEALLOC_INTERVAL_NS, &thread_call_dealloc_interval_abs);
+ 	waitq_init(&daemon_waitq, SYNC_POLICY_DISABLE_IRQ | SYNC_POLICY_FIFO);
+ 
+@@ -1734,6 +1738,7 @@
+ 	thread_sched_call(self, NULL);
+ 	group->active_count--;
+ 
++#ifndef __DARLING__
+ 	if (self->callout_woken_from_icontext && !self->callout_woke_thread) {
+ 		ledger_credit(self->t_ledger, task_ledgers.interrupt_wakeups, 1);
+ 		if (self->callout_woken_from_platform_idle) {
+@@ -1740,6 +1745,7 @@
+ 			ledger_credit(self->t_ledger, task_ledgers.platform_idle_wakeups, 1);
+ 		}
+ 	}
++#endif // __DARLING__
+ 
+ 	self->callout_woken_from_icontext = FALSE;
+ 	self->callout_woken_from_platform_idle = FALSE;
+--- a/osfmk/kern/timer_call.c
++++ b/osfmk/kern/timer_call.c
+@@ -933,6 +933,7 @@
+ 			    0, (call->tc_ttd >> 32),
+ 			    (unsigned) (call->tc_ttd & 0xFFFFFFFF), call);
+ #endif
++#ifndef __DARLING__
+ 			/* Maintain time-to-deadline in per-processor data
+ 			 * structure for thread wakeup deadline statistics.
+ 			 */
+@@ -939,7 +940,10 @@
+ 			uint64_t *ttdp = &current_processor()->timer_call_ttd;
+ 			*ttdp = call->tc_ttd;
++#endif // __DARLING__
+ 			(*func)(param0, param1);
++#ifndef __DARLING__
+ 			*ttdp = 0;
++#endif // __DARLING__
+ #if CONFIG_DTRACE
+ 			DTRACE_TMR4(callout__end, timer_call_func_t, func,
+ 			    param0, param1, call);
+@@ -1954,7 +1958,7 @@
+ }
+ 
+ void
+-running_timer_enter(processor_t processor, unsigned int timer,
++timer_call_sloptimer_call_sloptimer_call_slop(processor_t processor, unsigned int timer,
+     void *param, uint64_t deadline, uint64_t now)
+ {
+ 	running_timer_setup(processor, timer, param, deadline, now);
+--- a/osfmk/kern/turnstile.c
++++ b/osfmk/kern/turnstile.c
+@@ -791,6 +791,10 @@
+ void
+ turnstiles_init(void)
+ {
++#ifdef __DARLING__
++	turnstiles_zone = zone_create("turnstiles", sizeof(struct turnstile), ZC_NONE);
++#endif // __DARLING__
++
+ 	turnstiles_hashtable_init();
+ 
+ 	thread_deallocate_daemon_register_queue(&turnstile_deallocate_queue,
+@@ -953,7 +957,9 @@
+ 
+ 	assert(turnstile->ts_inheritor == TURNSTILE_INHERITOR_NULL);
+ 	assert(SLIST_EMPTY(&turnstile->ts_free_turnstiles));
++#ifndef __DARLING__
+ 	assert(turnstile->ts_state & TURNSTILE_STATE_THREAD);
++#endif // __DARLING__
+ #if DEVELOPMENT || DEBUG
+ 	/* Remove turnstile from global list */
+ 	global_turnstiles_lock();
+--- a/osfmk/kern/ux_handler.c
++++ b/osfmk/kern/ux_handler.c
+@@ -50,6 +50,10 @@
+ 
+ #include <libkern/section_keywords.h>
+ 
++#ifdef __DARLING__
++#include <mach/host_priv_server.h>
++#endif // __DARLING__
++
+ /*
+  * Mach kobject port to reflect Mach exceptions into Unix signals.
+  *
+--- a/osfmk/kern/waitq.c
++++ b/osfmk/kern/waitq.c
+@@ -92,6 +92,13 @@
+ #  endif
+ #endif
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/log.h>
++#define wqdbg(fmt, ...) xnu_sys_log_debug("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
++#define wqdbg_v(fmt, ...) wqdbg(fmt, ## __VA_ARGS__)
++#define wqinfo(fmt, ...) xnu_sys_log_info("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
++#define wqerr(fmt, ...) xnu_sys_log_error("WQ[%s]: " fmt, __func__, ## __VA_ARGS__)
++#else
+ #if CONFIG_WAITQ_DEBUG
+ #define wqdbg(fmt, ...) \
+ 	printf("WQ[%s]:  " fmt "\n", __func__, ## __VA_ARGS__)
+@@ -111,6 +118,7 @@
+ 
+ #define wqerr(fmt, ...) \
+ 	printf("WQ[%s] ERROR: " fmt "\n", __func__, ## __VA_ARGS__)
++#endif // __DARLING__
+ 
+ /*
+  * file-static functions / data
+@@ -144,6 +152,9 @@
+ 
+ LCK_GRP_DECLARE(waitq_lck_grp, "waitq");
+ 
++#ifdef __DARLING__
++extern void waitq_lock_init(struct waitq* wq);
++#else
+ #if __arm64__
+ 
+ #define waitq_lock_to(wq, to) \
+@@ -167,6 +178,7 @@
+ 	(hw_lock_init(&(wq)->waitq_interlock))
+ 
+ #endif  /* __arm64__ */
++#endif // __DARLING__
+ 
+ /*
+  * Prepost callback function for specially marked waitq sets
+@@ -737,6 +749,7 @@
+ static void
+ wq_prepost_refill_cpu_cache(uint32_t nalloc)
+ {
++#ifndef __DARLING__
+ 	struct lt_elem *new_head, *old_head;
+ 	struct wqp_cache *cache;
+ 
+@@ -774,6 +787,7 @@
+ out:
+ 	enable_preemption();
+ 	return;
++#endif // __DARLING__
+ }
+ 
+ static void
+@@ -787,6 +801,7 @@
+ 		g_min_free_cache = (WQP_CACHE_MAX * ml_wait_max_cpus());
+ 	}
+ 
++#ifndef __DARLING__
+ 	/*
+ 	 * Ensure that we always have a pool of per-CPU prepost elements
+ 	 */
+@@ -798,6 +813,7 @@
+ 	if (free_elem < (WQP_CACHE_MAX / 3)) {
+ 		wq_prepost_refill_cpu_cache(WQP_CACHE_MAX - free_elem);
+ 	}
++#endif // __DARLING__
+ 
+ 	/*
+ 	 * Now ensure that we have a sufficient amount of free table space
+@@ -831,6 +847,7 @@
+ 		return NULL;
+ 	}
+ 
++#ifndef __DARLING__
+ 	/*
+ 	 * First try to grab the elements from the per-CPU cache if we are
+ 	 * allocating RESERVED elements
+@@ -868,6 +885,7 @@
+ 		goto out;
+ 	}
+ 	enable_preemption();
++#endif // __DARLING__
+ 
+ do_alloc:
+ 	/* fall-back to standard table allocation */
+@@ -1051,6 +1069,7 @@
+ 
+ 	elem = &wqp->wqte;
+ 
++#ifndef __DARLING__
+ 	/*
+ 	 * These are reserved elements: release them back to the per-cpu pool
+ 	 * if our cache is running low.
+@@ -1069,6 +1088,7 @@
+ 		return;
+ 	}
+ 	enable_preemption();
++#endif // __DARLING__
+ 
+ 	/* release these elements back to the main table */
+ 	nelem = lt_elem_list_release(&g_prepost_table, elem, LT_RESERVED);
+@@ -1972,6 +1992,7 @@
+  *
+  * ---------------------------------------------------------------------- */
+ 
++#ifndef __DARLING__
+ /*
+  * Double the standard lock timeout, because wait queues tend
+  * to iterate over a number of threads - locking each.  If there is
+@@ -2020,6 +2041,7 @@
+ #endif
+ 	waitq_lock_unlock(wq);
+ }
++#endif // __DARLING__
+ 
+ 
+ /**
+@@ -4943,6 +4965,7 @@
+ 	 * linkage!
+ 	 */
+ 	if (waitq) {
++#ifndef __DARLING__
+ 		disable_preemption();
+ 		cache = PERCPU_GET(wqp_cache);
+ 		if (nalloc <= (int)cache->avail) {
+@@ -4949,6 +4972,7 @@
+ 			goto do_alloc;
+ 		}
+ 		enable_preemption();
++#endif // __DARLING__
+ 
+ 		/* unlock the waitq to perform the allocation */
+ 		*did_unlock = 1;
+--- a/osfmk/kern/waitq.h
++++ b/osfmk/kern/waitq.h
+@@ -73,8 +73,13 @@
+ #elif __x86_64__
+ 	#define WQ_OPAQUE_ALIGN   8
+ 	#define WQS_OPAQUE_ALIGN  8
+-	#define WQ_OPAQUE_SIZE   48
+-	#define WQS_OPAQUE_SIZE  64
++	#ifdef __DARLING__
++		#define WQ_OPAQUE_SIZE   72
++		#define WQS_OPAQUE_SIZE  88
++	#else
++		#define WQ_OPAQUE_SIZE   48
++		#define WQS_OPAQUE_SIZE  64
++	#endif
+ #else
+ 	#error Unknown size requirement
+ #endif
+@@ -82,6 +87,7 @@
+ #ifdef MACH_KERNEL_PRIVATE
+ 
+ #include <kern/spl.h>
++
+ #include <kern/simple_lock.h>
+ 
+ #include <machine/cpu_number.h>
+@@ -150,6 +156,9 @@
+ 	    waitq_turnstile:1,   /* waitq is embedded in a turnstile */
+ 	    waitq_eventmask:_EVENT_MASK_BITS;
+ 	/* the wait queue set (set-of-sets) to which this queue belongs */
++#ifdef __DARLING__
++	decl_simple_lock_data(, xnu_sys_waitq_interlock);
++#else
+ #if __arm64__
+ 	hw_lock_bit_t   waitq_interlock;        /* interlock */
+ #else
+@@ -156,5 +165,6 @@
+ 	hw_lock_data_t  waitq_interlock;        /* interlock */
+ #endif /* __arm64__ */
++#endif // __DARLING__
+ 
+ 	uint64_t waitq_set_id;
+ 	uint64_t waitq_prepost_id;
+@@ -224,8 +234,14 @@
+  */
+ extern void waitq_invalidate_locked(struct waitq *wq);
+ 
++#ifndef __DARLING__
+ extern lck_grp_t waitq_lck_grp;
++#endif // __DARLING__
+ 
++#ifdef __DARLING__
++extern unsigned int waitq_held(struct waitq* wq);
++extern unsigned int waitq_lock_try(struct waitq* wq);
++#else
+ #if __arm64__
+ 
+ #define waitq_held(wq) \
+@@ -238,11 +254,10 @@
+ 
+ #define waitq_held(wq) \
+ 	(hw_lock_held(&(wq)->waitq_interlock))
+-
+ #define waitq_lock_try(wq) \
+ 	(hw_lock_try(&(wq)->waitq_interlock, &waitq_lck_grp))
+-
+ #endif /* __arm64__ */
++#endif // __DARLING__
+ 
+ #define waitq_wait_possible(thread) \
+ 	((thread)->waitq == NULL)
+--- a/osfmk/libsa/types.h
++++ b/osfmk/libsa/types.h
+@@ -70,7 +70,11 @@
+ 
+ typedef char *          caddr_t;        /* address of a (signed) char */
+ 
++#ifdef __DARLING__
++typedef int daddr_t;
++#else
+ typedef unsigned int    daddr_t;        /* an unsigned 32 */
++#endif
+ #if 0 /* off_t should be 64-bit ! */
+ typedef unsigned int    off_t;          /* another unsigned 32 */
+ #endif
+@@ -77,8 +81,14 @@
+ 
+ 
++#if !defined(__DARLING__) || !defined(major)
+ #define major(i)        (((i) >> 8) & 0xFF)
++#endif
++#if !defined(__DARLING__) || !defined(minor)
+ #define minor(i)        ((i) & 0xFF)
++#endif
++#if !defined(__DARLING__) || !defined(makedev)
+ #define makedev(i, j)    ((((i) & 0xFF) << 8) | ((j) & 0xFF))
++#endif
+ 
+ #ifndef NULL
+ #define NULL            ((void *) 0)    /* the null pointer */
+--- a/osfmk/mach/i386/syscall_sw.h
++++ b/osfmk/mach/i386/syscall_sw.h
+@@ -74,8 +74,6 @@
+ /*
+  * Syscall entry macros for use in libc:
+  */
+-#ifndef DARLING
+-
+ #define UNIX_SYSCALL_TRAP	\
+ 	int $(UNIX_INT)
+ #define MACHDEP_SYSCALL_TRAP	\
+@@ -82,14 +80,5 @@
+ 	int $(MACHDEP_INT)
+ 
+-#else // DARLING
+-
+-#define UNIX_SYSCALL_TRAP	\
+-	call __darling_bsd_syscall
+-#define MACHDEP_SYSCALL_TRAP	\
+-	call __darling_machdep_syscall
+-
+-#endif
+-
+ /*
+  * Macro to generate Mach call stubs in libc:
+  */
+@@ -96,4 +85,3 @@
+-#ifndef DARLING
+ 
+ #define kernel_trap(trap_name,trap_number,number_args) \
+ LEAF(_##trap_name,0) ;\
+@@ -100,13 +88,6 @@
+ 	movl	$##trap_number, %eax	;\
+ 	call	__sysenter_trap		;\
+ END(_##trap_name)
+-#else // DARLING
+-#define kernel_trap(trap_name,trap_number,number_args) \
+-LEAF(_##trap_name,0) ;\
+-	movl	$##trap_number, %eax	;\
+-	call	__darling_mach_syscall		;\
+-END(_##trap_name)
+-#endif
+ 
+ #endif /* !KERNEL */
+ 
+@@ -116,7 +97,6 @@
+ 
+ #ifndef KERNEL
+ 
+-#ifndef DARLING
+ #define UNIX_SYSCALL_TRAP	\
+ 	syscall
+ #define MACHDEP_SYSCALL_TRAP	\
+@@ -123,10 +103,4 @@
+ 	syscall
+-#else // DARLING
+-#define UNIX_SYSCALL_TRAP	\
+-	call __darling_bsd_syscall
+-#define MACHDEP_SYSCALL_TRAP	\
+-	call __darling_machdep_syscall
+-#endif
+ 
+ /*
+  * Macro to generate Mach call stubs in Libc.
+@@ -135,7 +109,6 @@
+  * macro above, we negate those numbers here for the 64-bit
+  * code path.
+  */
+-#ifndef DARLING
+ #define kernel_trap(trap_name,trap_number,number_args) \
+ LEAF(_##trap_name,0) ;\
+ 	movq	%rcx, %r10	;\
+@@ -142,13 +115,7 @@
+ 	movl	$ SYSCALL_CONSTRUCT_MACH(-##trap_number), %eax	;\
+ 	syscall		;\
+ END(_##trap_name)
+-#else // DARLING
+-#define kernel_trap(trap_name,trap_number,number_args) \
+-LEAF(_##trap_name,0) ;\
+-	movl	$##trap_number, %eax	;\
+-	call	__darling_mach_syscall;\
+-END(_##trap_name)
+-#endif
++
+ #endif /* !KERNEL */
+ 
+ #endif /* defined(__x86_64__) */
+--- a/osfmk/mach/vm_param.h
++++ b/osfmk/mach/vm_param.h
+@@ -341,6 +341,12 @@
+ #endif
+ __END_DECLS
+ 
++#ifdef __DARLING__
++#define VM_KERNEL_ADDRHIDE(_v) ((vm_address_t)(_v))
++#define VM_KERNEL_UNSLIDE_OR_PERM(_v) ((vm_offset_t)(_v))
++#define VM_KERNEL_UNSLIDE(_v) ((vm_offset_t)(_v))
++#define VM_KERNEL_ADDRPERM(_v) VM_KERNEL_UNSLIDE_OR_PERM(_v)
++#else
+ #define __DO_UNSLIDE(_v) ((vm_offset_t)VM_KERNEL_STRIP_PTR(_v) - vm_kernel_slide)
+ 
+ #if DEBUG || DEVELOPMENT
+@@ -362,6 +368,7 @@
+ 	})
+ 
+ #define VM_KERNEL_ADDRPERM(_v) VM_KERNEL_UNSLIDE_OR_PERM(_v)
++#endif
+ 
+ #undef mach_vm_round_page
+ #undef round_page
+--- a/osfmk/prng/prng_random.c
++++ b/osfmk/prng/prng_random.c
+@@ -36,6 +36,7 @@
+ #include <sys/random.h>
+ #include <prng/random.h>
+ #include <prng/entropy.h>
++#ifndef __DARLING__
+ #include <corecrypto/ccdigest.h>
+ #include <corecrypto/ccdrbg.h>
+ #include <corecrypto/cckprng.h>
+@@ -351,6 +352,7 @@
+ 
+ 	return 0;
+ }
++#endif // __DARLING__
+ 
+ /*
+  * Boolean PRNG for generating booleans to randomize order of elements
+--- a/osfmk/vm/vm32_user.c
++++ b/osfmk/vm/vm32_user.c
+@@ -67,7 +67,9 @@
+ #include <mach/boolean.h>
+ #include <mach/kern_return.h>
+ #include <mach/mach_types.h>    /* to get vm_address_t */
++#ifndef __DARLING__ // causes unnecessary build issues
+ #include <mach/memory_object.h>
++#endif // __DARLING__
+ #include <mach/std_types.h>     /* to get pointer_t */
+ #include <mach/vm_attributes.h>
+ #include <mach/vm_param.h>
+@@ -549,6 +551,7 @@
+ 	return kr;
+ }
+ 
++#ifndef __DARLING__
+ kern_return_t
+ vm32__task_wire(
+ 	vm_map_t        map,
+@@ -579,6 +582,6 @@
+ 
+ 	return KERN_SUCCESS;
+ }
+-
++#endif // __DARLING__
+ 
+ #endif /* VM32_SUPPORT */
+--- a/osfmk/vm/vm_kern.h
++++ b/osfmk/vm/vm_kern.h
+@@ -457,7 +457,12 @@
+ 
+ #endif  /* XNU_KERNEL_PRIVATE */
+ 
++#ifdef __DARLING__
++#include <kern/task.h>
++#define kernel_map (kernel_task->map)
++#else
+ extern vm_map_t kernel_map;
++#endif // __DARLING__
+ extern vm_map_t kernel_pageable_map;
+ extern vm_map_t ipc_kernel_map;
+ extern vm_map_t g_kext_map;
+--- a/osfmk/vm/vm_map.h
++++ b/osfmk/vm/vm_map.h
+@@ -151,8 +151,13 @@
+ 	vm_map_t                vmo_submap;     /* belongs to another map */
+ } vm_map_object_t;
+ 
++#ifdef __DARLING__
++#define named_entry_lock_init(object)   lck_mtx_init(&(object)->Lock, LCK_GRP_NULL, LCK_ATTR_NULL)
++#define named_entry_lock_destroy(object)        lck_mtx_destroy(&(object)->Lock, LCK_GRP_NULL)
++#else
+ #define named_entry_lock_init(object)   lck_mtx_init(&(object)->Lock, &vm_object_lck_grp, &vm_object_lck_attr)
+ #define named_entry_lock_destroy(object)        lck_mtx_destroy(&(object)->Lock, &vm_object_lck_grp)
++#endif // __DARLING__
+ #define named_entry_lock(object)                lck_mtx_lock(&(object)->Lock)
+ #define named_entry_unlock(object)              lck_mtx_unlock(&(object)->Lock)
+ #if VM_NAMED_ENTRY_LIST
+@@ -418,7 +423,7 @@
+ #define MAX_WIRE_COUNT          65535
+ 
+ 
+-
++#ifndef __DARLING__
+ /*
+  *	Type:		struct vm_map_header
+  *
+@@ -437,6 +442,7 @@
+ #endif
+ 	int                     page_shift;     /* page shift */
+ };
++#endif // __DARLING__
+ 
+ #define VM_MAP_HDR_PAGE_SHIFT(hdr) ((hdr)->page_shift)
+ #define VM_MAP_HDR_PAGE_SIZE(hdr) (1 << VM_MAP_HDR_PAGE_SHIFT((hdr)))
+@@ -443,5 +449,8 @@
+ #define VM_MAP_HDR_PAGE_MASK(hdr) (VM_MAP_HDR_PAGE_SIZE((hdr)) - 1)
+ 
++#ifdef __DARLING__
++#include <ciderd/xnu-sys/memory.h>
++#else
+ /*
+  *	Type:		vm_map_t [exported; contents invisible]
+  *
+@@ -527,6 +536,7 @@
+ 	/* reserved */ pad:14;
+ 	unsigned int            timestamp;      /* Version number */
+ };
++#endif // __DARLING__
+ 
+ #define CAST_TO_VM_MAP_ENTRY(x) ((struct vm_map_entry *)(uintptr_t)(x))
+ #define vm_map_to_entry(map) CAST_TO_VM_MAP_ENTRY(&(map)->hdr.links)
+@@ -551,6 +561,7 @@
+ 	unsigned int    main_timestamp;
+ } vm_map_version_t;
+ 
++#ifndef __DARLING__
+ /*
+  *	Type:		vm_map_copy_t [exported; contents invisible]
+  *
+@@ -599,6 +610,7 @@
+ 		void *XNU_PTRAUTH_SIGNED_PTR("vm_map_copy.kdata") kdata;  /* KERNEL_BUFFER */
+ 	} c_u;
+ };
++#endif // __DARLING__
+ 
+ 
+ #define cpy_hdr                 c_u.hdr
+@@ -644,6 +656,7 @@
+ 	((map)->timestamp = 0 ,                                         \
+ 	lck_rw_init(&(map)->lock, &vm_map_lck_grp, &vm_map_lck_rw_attr))
+ 
++#ifndef __DARLING__
+ #define vm_map_lock(map)                     \
+ 	MACRO_BEGIN                          \
+ 	DTRACE_VM(vm_map_lock_w);            \
+@@ -656,6 +669,7 @@
+ 	(map)->timestamp++;         \
+ 	lck_rw_done(&(map)->lock);  \
+ 	MACRO_END
++#endif // __DARLING__
+ 
+ #define vm_map_lock_read(map)             \
+ 	MACRO_BEGIN                       \
+@@ -1541,7 +1555,9 @@
+ /*
+  * Macros for rounding and truncation of vm_map offsets and sizes
+  */
++#ifndef __DARLING__
+ #define VM_MAP_PAGE_SHIFT(map) ((map) ? (map)->hdr.page_shift : PAGE_SHIFT)
++#endif // __DARLING__
+ #define VM_MAP_PAGE_SIZE(map) (1 << VM_MAP_PAGE_SHIFT((map)))
+ #define VM_MAP_PAGE_MASK(map) (VM_MAP_PAGE_SIZE((map)) - 1)
+ #define VM_MAP_PAGE_ALIGNED(x, pgmask) (((x) & (pgmask)) == 0)
+@@ -1568,6 +1584,7 @@
+ 	 * as it currently would on iOS.
+ 	 */
+ #if XNU_TARGET_OS_OSX
++#ifndef __DARLING__
+ 	if (map->is_alien) {
+ 		return true;
+ 	}
+@@ -1574,3 +1591,4 @@
++#endif
+ 	return false;
+ #else /* XNU_TARGET_OS_OSX */
+ 	return true;
+@@ -1597,6 +1615,7 @@
+ 	return false;
+ }
+ 
++#ifndef __DARLING__
+ static inline bool
+ VM_MAP_POLICY_ALLOW_MULTIPLE_JIT(
+ 	vm_map_t map __unused)
+@@ -1606,6 +1625,7 @@
+ 	}
+ 	return true;
+ }
++#endif // __DARLING__
+ 
+ static inline bool
+ VM_MAP_POLICY_ALLOW_JIT_RANDOM_ADDRESS(
+--- a/san/kasan.h
++++ b/san/kasan.h
+@@ -35,6 +35,7 @@
+ # error "KASAN selected, but not enabled in compiler"
+ #endif
+ 
++#ifndef __DARLING__
+ #if !KASAN && __has_feature(address_sanitizer)
+ # error "ASAN enabled in compiler, but kernel is not configured for KASAN"
+ #endif
+@@ -41,3 +42,4 @@
++#endif // __DARLING__
+ 
+ #define KASAN_GLOBAL_SEGNAME  "__DATA"
+ #define KASAN_GLOBAL_SECTNAME "__asan_globals"

@@ -1175,5 +1175,14 @@
     "rev": "5f26a4c2365d9774b5a1e66ae7da20b61ab6d2db",
     "recursive": false,
     "hash": "sha256-7rFICLV9d0m8966Z2eAYnXLFq+sQk4N2SnZxZHWYbaI="
+  },
+  {
+    "path": "src/external/ciderd/xnu-sys/xnu",
+    "owner": "darlinghq",
+    "repo": "darling-xnu",
+    "rev": "5f26a4c2365d9774b5a1e66ae7da20b61ab6d2db",
+    "recursive": false,
+    "hash": "sha256-7rFICLV9d0m8966Z2eAYnXLFq+sQk4N2SnZxZHWYbaI=",
+    "patches": "xnu-sys-xnu"
   }
 ]
