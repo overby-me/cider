@@ -305,6 +305,22 @@ def main [flag?: string] {
         say (indent7 ($escroots.stdout + $escroots.stderr | str substring 0..2000))
     }
 
+    # THE PATCH WIRING, third of the cheap ones, and the same silent shape a layer along.
+    #
+    # Patches are applied when patches/<basename or override> HAPPENS TO EXIST, so a renamed
+    # directory or a typo in the manifest field leaves the pin as the raw upstream fetch and
+    # nothing says so. The basename half has already bitten once: two different pins here are
+    # both called xnu, and the guest syscall patches would land on the duct-tape kernel subset
+    # without the explicit override the manifest now carries.
+    say "== the pin patch wiring (no nix either) =="
+    let pinpatch = (do -i { ^python3 ./scripts/buck-pin-patches-check.py } | complete)
+    if $pinpatch.exit_code == 0 {
+        ok "every patch set reaches exactly the pin it was written for"
+    } else {
+        bad $"pin patch wiring check FAILED, exit ($pinpatch.exit_code), see the output below"
+        say (indent7 ($pinpatch.stdout + $pinpatch.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //src/libsimple:libsimple_ciderd
