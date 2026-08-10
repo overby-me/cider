@@ -183,9 +183,17 @@ def expand_dir_links(root: str) -> int:
                         # target set a SECOND time under the nested path, and both
                         # copies then get built. Measured 2026-08-10: the two mirrors
                         # here contributed 91 duplicate ruby dylib targets and 4
-                        # duplicate xnu ones, which is the entire 568 to 659 growth in
-                        # the dylib count since 08-09. .buckconfig sets
-                        # [buildfile] name = BUCK, so that one name is the whole rule.
+                        # duplicate xnu ones, which is the entire growth in the dylib
+                        # count since 08-09. .buckconfig sets [buildfile] name = BUCK,
+                        # so that one name is the whole rule.
+                        #
+                        # THE NUMBER TO EXPECT AFTERWARDS IS 564, not the 568 this said
+                        # first. 659 minus 95 is 564, and a suite run on 2026-08-10
+                        # measured exactly that, along with exes 415 to 414 and firstpass
+                        # dylibs 48 to 47, all from the same duplicates. Confirmed against
+                        # the targets rather than the arithmetic: uquery over darwin_dylib
+                        # gives 792 targets with 792 DISTINCT names, and ruby appears 91
+                        # times rather than 182.
                         if f == "BUCK":
                             continue
                         d = os.path.join(dest, f)
