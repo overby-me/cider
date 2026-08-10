@@ -184,7 +184,7 @@
       #   4. 539s  THE ACTUAL CAUSE, once the dump stopped truncating buck2 stderr to the last
       #            1500 characters. Inside the BXL step buck2 prints
       #              Waiting on //linux/server:xnu_sys_bindings -- action (bindgen ...)
-      #              Waiting on //src/hosttools:cider-coredump -- action (cxx_compile ...)
+      #              Waiting on //linux/hosttools:cider-coredump -- action (cxx_compile ...)
       #              Action failed: //buck-src:libtrustd_obj (c_compile TrustURLSessionCache.m)
       #            on Foundation/NSAppleEventDescriptor.h "expected a type".
       #
@@ -544,7 +544,7 @@
             #
             # The escapes are concentrated, which is what makes a fix tractable:
             # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
-            # src/opendirectory_internal/include 24, src/startup/mldr 16, src/libm/include 7,
+            # src/opendirectory_internal/include 24, linux/startup/mldr 16, src/libm/include 7,
             # and ten groups with three or fewer. Run scripts/buck-escape-check.py groups.
             #
             # 1,989 of them land in the PINS, so the pins have to become self contained first:
@@ -749,7 +749,7 @@
           baseSrc = ./.;
         };
 
-      # The Rust launcher (src/startup/cider.c rewrite), task #64.
+      # The Rust launcher (linux/startup/cider.c rewrite), task #64.
       #   nix build .#launcher
       packages.launcher =
         pkgs:
@@ -757,7 +757,7 @@
           src = ./.;
         };
 
-      # The Rust guest Mach-O loader (src/startup/mldr rewrite), task #65.
+      # The Rust guest Mach-O loader (linux/startup/mldr rewrite), task #65.
       #   nix build .#loader
       packages.loader =
         pkgs:

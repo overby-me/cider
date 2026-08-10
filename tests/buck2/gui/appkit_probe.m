@@ -1,6 +1,6 @@
 // The smallest AppKit program that proves something.
 //
-// The GUI cone -- AppKit, cocotron, CoreGraphics and the sixteen src/native wrappers that
+// The GUI cone -- AppKit, cocotron, CoreGraphics and the sixteen linux/native wrappers that
 // bridge to the host's X11, cairo and OpenGL -- links cleanly and exports the right
 // symbols, and had never executed an instruction. Everything here is deliberately
 // step-by-step and prints as it goes, because the useful outcome of a first run is not

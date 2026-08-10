@@ -2,7 +2,7 @@
  * cider-trampoline.c - a tiny setuid-root launcher for host Darling dev builds.
  *
  * This Darling build requires euid 0 (it creates mount/PID namespaces and does
- * mounts; rootless user namespaces are disabled in src/startup/cider.c). A
+ * mounts; rootless user namespaces are disabled in linux/startup/cider.c). A
  * plain setuid *copy* of a specific build's `cider` breaks on every rebuild
  * because cider bakes an absolute INSTALL_PREFIX (store path) for
  * ciderd. This trampoline is installed setuid-root ONCE and never needs

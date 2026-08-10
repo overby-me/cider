@@ -95,9 +95,9 @@ def generated_include_roots():
         ROOT, "buck-out/v2/art/root/*/src/external/ciderd/xnu-sys/__mig_*__/mig_*__gen")))
     roots += sorted(glob.glob(os.path.join(
         ROOT, "buck-out/v2/art/root/*/src/external/ciderd/__dserver_rpc__/*gen_include")))
-    # thread.c reaches src/startup for rtsig.h, which linux/server/BUCK also lists.
+    # thread.c reaches linux/startup for rtsig.h, which linux/server/BUCK also lists.
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/startup/__rtsig_header__/*")))
+        ROOT, "buck-out/v2/art/root/*/linux/startup/__rtsig_header__/*")))
     return [r for r in roots if os.path.isdir(r)]
 
 

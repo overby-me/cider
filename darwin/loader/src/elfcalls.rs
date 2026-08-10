@@ -1,4 +1,4 @@
-// mldr M5a: the elf_calls vtable (src/startup/mldr/elfcalls/elfcalls.h). A frozen ABI of 31
+// mldr M5a: the elf_calls vtable (linux/startup/mldr/elfcalls/elfcalls.h). A frozen ABI of 31
 // native function pointers that mldr hands to the Mac side (its address is apple[2],
 // elf_calls=<ptr>) so Darwin's Mach-O dylibs can reach the native ELF loader + libc. Field
 // order and types must match elfcalls.h byte-for-byte -- libSystem reads it by offset.

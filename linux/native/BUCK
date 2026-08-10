@@ -4,7 +4,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # The sixteen HOST libraries the gui component reaches through libelfloader.
 #
-# cmake writes these as sixteen wrap_elf() calls (src/native/CMakeLists.txt). Each one
+# cmake writes these as sixteen wrap_elf() calls (linux/native/CMakeLists.txt). Each one
 # generates a Mach-O stub whose every export forwards to the real ELF library on the host,
 # so a Darwin program under Darling can call X11, cairo or OpenGL without any of them being
 # ported. See buck/rules/codegen.bzl for what elf_wrapper does and why its output depends on
@@ -71,7 +71,7 @@ _ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
         name = _n + "_wrap",
         soname = _so,
         name_base = _n,
-        wrapgen = "//src/libelfloader:wrapgen",
+        wrapgen = "//linux/libelfloader:wrapgen",
         lib_dirs = _ELF_LIB_DIRS,
         deps = ["//darwin:sdk_env"],
         visibility = ["PUBLIC"],
@@ -93,7 +93,7 @@ _ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
         deps = [
             "//darwin:sdk_env",
             # elfcalls.h: the ABI every generated stub forwards through.
-            "//src/startup:mldr_elfcalls",
+            "//linux/startup:mldr_elfcalls",
         ],
         visibility = ["PUBLIC"],
     )

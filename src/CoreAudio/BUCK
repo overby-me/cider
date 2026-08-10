@@ -4,7 +4,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary", "darwin_dylib")
 load("//buck/rules:files.bzl", "export_file")
 
 # The five HOST libraries the audio stack reaches through libelfloader: ffmpeg's four and
-# pulseaudio. Same shape as src/native's sixteen -- see the long comment there for what
+# pulseaudio. Same shape as linux/native's sixteen -- see the long comment there for what
 # elf_wrapper does and why its output depends on a file outside the build graph. cmake
 # writes these as wrap_elf() calls in src/CoreAudio/CMakeLists.txt, all with the default
 # destination, so all five install into /usr/lib/native.
@@ -20,7 +20,7 @@ _AUDIO = [
 
 # What this package produces, for the registry in scripts/gen-buck-from-ninja.py: it is a
 # text scan for a literal name/dylib_name pair and the comprehensions below write neither.
-# Same reason src/native carries these; buck-test.nu fails if the list and _AUDIO disagree.
+# Same reason linux/native carries these; buck-test.nu fails if the list and _AUDIO disagree.
 #
 # buck-registry: libswresample.dylib = swresample_dylib
 # buck-registry: libavcodec.dylib = avcodec_dylib
@@ -35,7 +35,7 @@ _ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
         name = _n + "_wrap",
         soname = _so,
         name_base = _n,
-        wrapgen = "//src/libelfloader:wrapgen",
+        wrapgen = "//linux/libelfloader:wrapgen",
         lib_dirs = _ELF_LIB_DIRS,
         deps = ["//darwin:sdk_env"],
         visibility = ["PUBLIC"],
@@ -56,7 +56,7 @@ _ELF_LIB_DIRS = read_root_config("cider", "elf_lib_dirs", "")
         toolchain = "toolchains//:darwin_cc",
         deps = [
             "//darwin:sdk_env",
-            "//src/startup:mldr_elfcalls",
+            "//linux/startup:mldr_elfcalls",
         ],
         visibility = ["PUBLIC"],
     )
@@ -132,8 +132,8 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
     ],
     visibility = ["PUBLIC"],
 )
@@ -233,8 +233,8 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":AudioToolbox_inc_src_CoreAudio_include",
     ],
     visibility = ["PUBLIC"],
@@ -321,8 +321,8 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":AudioUnit_inc_src_CoreAudio_include",
     ],
     visibility = ["PUBLIC"],
@@ -436,8 +436,8 @@ cc_objects(
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_AudioUnit",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":CoreAudioComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
         ":CoreAudioComponent_inc_UtilityClasses_CoreAudio_AudioUnits_AUPublic",
     ],
@@ -543,8 +543,8 @@ cc_objects(
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_AudioUnit",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":AFAVFormatComponent_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
         ":AFAVFormatComponent_inc_AudioUtilityClasses_CoreAudio_AudioFile_AFPublic",
         ":AFAVFormatComponent_inc_lityClasses_CoreAudio_AudioUnits_AUPublic_AUBase",
@@ -648,8 +648,8 @@ cc_objects(
         "//darwin/frameworks:fw_SearchKit",
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":afconvert_inc_src_CoreAudio_AudioFileTools",
         ":afconvert_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
     ],
@@ -775,8 +775,8 @@ cc_objects(
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_AudioUnit",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":AudioFileTools_util_inc_src_CoreAudio_AudioFileTools",
         ":AudioFileTools_util_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
     ],
@@ -841,8 +841,8 @@ cc_objects(
         "//darwin/frameworks:fw_CoreServices",
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":afinfo_inc_src_CoreAudio_AudioFileTools",
         ":afinfo_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
     ],
@@ -940,8 +940,8 @@ cc_objects(
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_AudioUnit",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":afplay_inc_src_CoreAudio_AudioFileTools",
         ":afplay_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
     ],
@@ -1043,8 +1043,8 @@ cc_objects(
         "//src/CoreAudio:fw_AudioToolbox",
         "//src/CoreAudio:fw_AudioUnit",
         "//src/CoreAudio:fw_CoreAudio",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
         ":afrecord_inc_src_CoreAudio_AudioFileTools",
         ":afrecord_inc__CoreAudioUtilityClasses_CoreAudio_PublicUtility",
     ],

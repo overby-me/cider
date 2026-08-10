@@ -108,7 +108,7 @@ cc_header_root(
         "//src/libsimple:libsimple_headers",
         "//src/external/ciderd:dserver_headers",
         "//src/external/ciderd:dserver_rpc",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
     ],
     visibility = ["PUBLIC"],
 )

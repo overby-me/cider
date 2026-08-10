@@ -1,5 +1,5 @@
 // mldr thread bridge: darling_thread_create (elfcalls) -- create a Darwin thread on a native
-// pthread, per src/startup/mldr/elfcalls/threads.c:145-325. The native pthread's entry sets up
+// pthread, per linux/startup/mldr/elfcalls/threads.c:145-325. The native pthread's entry sets up
 // the thread's per-thread RPC socket, checks in, sets the Darwin TSD base (via the guest's
 // callbacks), fetches the mach thread-self port, then switches to the Darwin stack and jumps to
 // the real entry with the exact Darwin thread-start register ABI. Register-exact + ABI-frozen;

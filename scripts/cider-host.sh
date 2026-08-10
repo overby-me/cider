@@ -2,7 +2,7 @@
 # cider-host.sh - run Darling on the host via a setuid-root copy.
 #
 # This Darling build requires euid 0 (it creates mount/PID namespaces and does
-# mounts); rootless user namespaces are disabled in src/startup/cider.c. On a
+# mounts); rootless user namespaces are disabled in linux/startup/cider.c. On a
 # non-NixOS host without the programs.cider module, the supported way to run
 # it is a setuid-root copy of the cider binary. The binary bakes an absolute
 # INSTALL_PREFIX, so a setuid copy anywhere still execs the correct

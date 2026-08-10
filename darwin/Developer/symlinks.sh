@@ -40,5 +40,5 @@ ln -sf "$BUILD/src/external/corecrypto/libcorecrypto.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/external/commoncrypto/libcommonCrypto.dylib" "$LIBS/system"
 ln -sf "$BUILD/src/launchd/liblaunch/liblaunch.dylib" "$LIBS/system"
 
-ln -sf "$BUILD/src/bsdln/bsdln" "$TOOLS/bsdln"
-ln -sf "$BUILD/src/bsdln/bsdln" "$TOOLS/ln"
+ln -sf "$BUILD/linux/bsdln/bsdln" "$TOOLS/bsdln"
+ln -sf "$BUILD/linux/bsdln/bsdln" "$TOOLS/ln"

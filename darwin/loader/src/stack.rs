@@ -1,4 +1,4 @@
-// mldr M3c: build the macOS start stack that dyld expects (src/startup/mldr/stack.c:56-212).
+// mldr M3c: build the macOS start stack that dyld expects (linux/startup/mldr/stack.c:56-212).
 // Allocate the guest stack just below the commpage, then lay out (from the new sp upward):
 //   sp[0] = pointer to the executable's in-memory mach_header (Darwin-specific)
 //   sp[1] = argc

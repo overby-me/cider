@@ -1,7 +1,7 @@
 #!/usr/bin/env nu
 # Run an AppKit program inside the buck2-built Darling, against a real X server.
 #
-# The GUI cone -- AppKit, cocotron, CoreGraphics, Onyx2D and the sixteen src/native stubs
+# The GUI cone -- AppKit, cocotron, CoreGraphics, Onyx2D and the sixteen linux/native stubs
 # that forward to the host's X11, cairo and OpenGL -- is the largest part of the port that
 # links cleanly, exports the right symbols and has never executed an instruction. This runs
 # tests/buck2/gui/appkit_probe.m, which brings NSApplication up, opens an NSWindow and
@@ -105,7 +105,7 @@ def main [scratch?: string] {
 
     # The host ELF libraries have to be reachable by the LOADER, not just by wrapgen. Without
     # this the probe does not merely fail to draw: loading AppKit kills the process before main,
-    # with no output at all, because the sixteen src/native stubs forward into libX11, cairo and
+    # with no output at all, because the sixteen linux/native stubs forward into libX11, cairo and
     # freetype through elfcalls and a stub whose .so cannot be dlopened takes the process with
     # it. .buckconfig.local already knows the directories -- cider.elf_lib_dirs is how wrapgen
     # found the same libraries at BUILD time -- so reuse them rather than inventing a second

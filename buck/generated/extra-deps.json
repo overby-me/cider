@@ -72,12 +72,12 @@
   "emulation": [
     "//buck-src/xnu:emulation_included_sources",
     "//src/include:cider_config",
-    "//src/startup:rtsig_header",
+    "//linux/startup:rtsig_header",
     "gen://buck-src:emmig_signal_mach_exc"
   ],
   "libsyscall_dynamic": [
     "//src/external/ciderd:dserver_rpc",
-    "//src/startup:rtsig_header"
+    "//linux/startup:rtsig_header"
   ],
   "xpc_obj": [
     "//buck-src:fw_AppKit",
@@ -153,7 +153,7 @@
   "emulation_dyld": [
     "//src/external/ciderd:dserver_headers",
     "//src/include:cider_config",
-    "//src/startup:rtsig_header",
+    "//linux/startup:rtsig_header",
     ":emulation_included_sources",
     "gen::emmig_signal_mach_exc"
   ],
@@ -858,7 +858,7 @@
     "//buck-src:fw_Foundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "ioalloccount": [
     "//buck-src:fw_CoreFoundation"
@@ -1360,7 +1360,7 @@
   ],
   "hdiutil": [
     "//buck-src:sdk_libxml2",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "installer": [
     "//buck-src:fw_CFNetwork",
@@ -1481,8 +1481,8 @@
   ],
   "fuse": [
     "gen://buck-src:fuse_wrap",
-    "//src/startup:mldr_elfcalls",
-    "//src/native:host_headers"
+    "//linux/startup:mldr_elfcalls",
+    "//linux/native:host_headers"
   ],
   "AGL": [
     "//buck-src:fw_CoreFoundation",
@@ -2303,7 +2303,7 @@
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_CoreGraphics",
     "//darwin/frameworks:fw_OpenGL",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "OpenScripting": [
     "//buck-src:fw_CFNetwork",
@@ -4088,7 +4088,7 @@
     "//darwin/frameworks:fw_AE",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "CoreGraphics": [
     "//buck-src:fw_AppKit",
@@ -4116,7 +4116,7 @@
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/frameworks:fw_SpeechSynthesis",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "CoreText": [
     "//buck-src:fw_CFNetwork",
@@ -4131,7 +4131,7 @@
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
     "//darwin/frameworks:fw_OpenGL",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "QuartzCore": [
     "//buck-src:fw_AppKit",
@@ -4188,7 +4188,7 @@
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/frameworks:fw_SpeechSynthesis",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "X11_cgbackend": [
     "//buck-src:fw_CFNetwork",
@@ -4201,7 +4201,7 @@
     "//darwin/frameworks:fw_CoreServices",
     "//darwin/frameworks:fw_HIToolbox",
     "//darwin/frameworks:fw_OpenGL",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "X11_backend": [
     "//buck-src:fw_AppKit",
@@ -4231,7 +4231,7 @@
     "//darwin/frameworks:fw_QD",
     "//darwin/frameworks:fw_SearchKit",
     "//darwin/frameworks:fw_SpeechSynthesis",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "Accessibility": [
     "//buck-src:fw_CFNetwork",
@@ -4281,7 +4281,7 @@
     "//darwin/frameworks:fw_IOSurface",
     "gen://buck-src:iokitd_mig_iokitmig",
     "gen://buck-src:iokitd_mig_powermanagement",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "pbcopy": [
     "//buck-src:fw_AppKit",
@@ -4365,7 +4365,7 @@
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "Metal": [
     "//buck-src:fw_CFNetwork",
@@ -4408,7 +4408,7 @@
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "CoreAudioComponent": [
     "//buck-src:fw_CoreFoundation",
@@ -4421,7 +4421,7 @@
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "AFAVFormatComponent": [
     "//buck-src:fw_CoreFoundation",
@@ -4434,7 +4434,7 @@
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "AudioFileTools_util": [
     "//buck-src:fw_CoreFoundation",
@@ -4447,7 +4447,7 @@
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "afconvert": [
     "//buck-src:fw_CoreFoundation",
@@ -4459,7 +4459,7 @@
     "//darwin/frameworks:fw_SearchKit",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "afinfo": [
     "//buck-src:fw_CoreFoundation",
@@ -4467,7 +4467,7 @@
     "//darwin/frameworks:fw_CoreServices",
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "afplay": [
     "//buck-src:fw_CoreFoundation",
@@ -4476,7 +4476,7 @@
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "afrecord": [
     "//buck-src:fw_CoreFoundation",
@@ -4489,7 +4489,7 @@
     "//src/CoreAudio:fw_AudioToolbox",
     "//src/CoreAudio:fw_AudioUnit",
     "//src/CoreAudio:fw_CoreAudio",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "bind9_isccc": [
     "//buck-src:sdk_libxml2"
@@ -4543,7 +4543,7 @@
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_DBusKit",
     "//buck-src:fw_Foundation",
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "AppKit_stub": [
     "//buck-src:fw_CFNetwork",
@@ -4640,9 +4640,9 @@
     "cflag:-DXS_VERSION=\"2.41\""
   ],
   "AudioUnit": [
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ],
   "ruby_zlib": [
-    "//src/native:host_headers"
+    "//linux/native:host_headers"
   ]
 }

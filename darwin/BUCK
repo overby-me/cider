@@ -70,7 +70,7 @@ _ENV_POST = [
         "//src/quarantine:sdk_src_quarantine_headers",
         "//src/sandbox:sdk_src_sandbox_headers",
         "//src/softlinking:sdk_src_softlinking_headers",
-        "//src/startup:sdk_src_startup_headers",
+        "//linux/startup:sdk_src_startup_headers",
         "//src/xcselect:sdk_src_xcselect_headers",
 ]
 

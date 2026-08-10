@@ -1,6 +1,6 @@
 //! getuuid: print the UUID(s) of a Mach-O file, semicolons between them for a fat file.
 //!
-//! Rust port of src/buildtools/getuuid.c (#76). Darling-origin, GPL, Copyright (C) 2018
+//! Rust port of linux/buildtools/getuuid.c (#76). Darling-origin, GPL, Copyright (C) 2018
 //! Lubos Dolezel; the header stays on the file and a Cider line is added beside it.
 //!
 //! BEHAVIOUR PRESERVED EXACTLY, including the parts that look like oversights, because this

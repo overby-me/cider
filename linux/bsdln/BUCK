@@ -3,10 +3,10 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
 # bsdln is a HOST tool: it makes the symlink farm the reference build installs.
 #
 # THE HEADER HERE USED TO SAY "No targets", and that its block does not link. STALE, and
-# checked rather than inherited: //src/bsdln:bsdln builds, and the binary works. Driven on a
+# checked rather than inherited: //linux/bsdln:bsdln builds, and the binary works. Driven on a
 # scratch directory it created a symlink, read the file back through it, overwrote with -sf,
 # made a hard link (link count 2), and printed the BSD usage on no arguments. The same stale
-# claim sat on src/buildtools/BUCK for getuuid and elfdep, where it was also wrong.
+# claim sat on linux/buildtools/BUCK for getuuid and elfdep, where it was also wrong.
 #
 # NOT REWRITTEN IN RUST, unlike getuuid and elfdep (#76), and the reason is provenance rather
 # than difficulty. This is FreeBSD ln.c with a small local delta, not Darling-origin code, so
@@ -17,7 +17,7 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
 # BEGIN generated: bsdln
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py bsdln   -- review before committing.
-# cmake target: bsdln  ->  src/bsdln/bsdln
+# cmake target: bsdln  ->  linux/bsdln/bsdln
 
 cc_objects(
     name = "bsdln_obj",
@@ -35,7 +35,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries bsdln   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# buck-registry: src/bsdln/bsdln = bsdln
+# buck-registry: linux/bsdln/bsdln = bsdln
 
 cc_binary(
     name = "bsdln",

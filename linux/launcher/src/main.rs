@@ -1,4 +1,4 @@
-// cider -- the Darling launcher, Rust rewrite of src/startup/cider.c (task #64).
+// cider -- the Darling launcher, Rust rewrite of linux/startup/cider.c (task #64).
 //
 // Responsibilities (cider.c does NO mounts/vchroot -- ciderd owns those):
 //   1. Acquire privilege: rootless user-namespace re-exec (or setuid-root).

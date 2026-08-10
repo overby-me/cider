@@ -2,7 +2,7 @@
 
 set -e
 
-PATH="$(pwd)/debbuild/src/buildtools:${PATH}"
+PATH="$(pwd)/debbuild/linux/buildtools:${PATH}"
 
 if ! LIBS="$(elfdep "$2" 2>&1)"; then
     exit

@@ -34,8 +34,8 @@ MEASURED on the current graph:
 
 So 92 percent of the union is buck-src, and none of it needs real bytes.
 
-VERIFIED WHERE IT COUNTS, both ways: src/startup/rtsig.c and
-src/libelfloader/wrapgen/wrapgen.cpp, the two the revert was about, are BOTH in the closure,
+VERIFIED WHERE IT COUNTS, both ways: linux/startup/rtsig.c and
+linux/libelfloader/wrapgen/wrapgen.cpp, the two the revert was about, are BOTH in the closure,
 while buck-src/adv_cmds/finger/finger.c and buck-src/vim/vim/src/main.c are both outside it.
 --check runs exactly those four and fails if any answer flips.
 
@@ -77,8 +77,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # a failed skeleton graph build to find. bindgen reads it, the daemon includes the result, and
 # emptying it produced 83 rustc errors rather than anything pointing at the skeleton.
 MUST_BE_REAL = (
-    "src/startup/rtsig.c",
-    "src/libelfloader/wrapgen/wrapgen.cpp",
+    "linux/startup/rtsig.c",
+    "linux/libelfloader/wrapgen/wrapgen.cpp",
     "linux/server/wrapper.h",
 )
 MUST_NOT_BE = ("buck-src/adv_cmds/finger/finger.c", "buck-src/vim/vim/src/main.c")

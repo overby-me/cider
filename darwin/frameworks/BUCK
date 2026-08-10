@@ -2138,7 +2138,7 @@ cc_objects(
         "//buck-src:fw_Foundation",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -10099,7 +10099,7 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//buck-src:fw_CoreGraphics",
         "//darwin/frameworks:fw_OpenGL",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -16104,14 +16104,14 @@ darwin_dylib(
         ":OpenGL_obj",
     ],
     siblings = [
-        "//src/native:EGL_dylib",
+        "//linux/native:EGL_dylib",
         "//buck-src:system_final",
         "//buck-src:CoreGraphics_dylib",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
     reexport = [
-        "//src/native:GL_dylib",
-        "//src/native:GLU_dylib",
+        "//linux/native:GL_dylib",
+        "//linux/native:GLU_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [

@@ -1080,7 +1080,7 @@
   # same probe re-run on 2026-08-09 shows the compiles no longer cascade either:
   #
   #   nix build .#cider-buck2-one          baseline, 3 buck2 derivations ran
-  #   edit src/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
+  #   edit linux/startup/rtsig.c, rebuild      ZERO buck2 derivations ran
   #   output path both times                 kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
   #
   # SMALLER PROBE THAN THE 323 ONE, and the difference matters when comparing the numbers. That
@@ -1216,7 +1216,7 @@
       #
       #   baseline                     3 buck2 derivations ran
       #                                stage-project-grouped, libsimple_ciderd, and -out
-      #   after editing src/startup/rtsig.c
+      #   after editing linux/startup/rtsig.c
       #                                ZERO buck2 derivations ran
       #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
       #

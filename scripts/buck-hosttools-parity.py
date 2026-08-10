@@ -55,13 +55,13 @@ def main(argv: list[str]) -> int:
     notmacho.write_bytes(b"not a mach-o at all\n")
 
     dylib = b / "src/libsimple/__libsimple_cider_dylib__/libsimple_cider.dylib"
-    elfobj = b / "src/startup/__rtsig__/__objs/rtsig.c.o"
+    elfobj = b / "linux/startup/__rtsig__/__objs/rtsig.c.o"
 
     pairs = [
-        ("getuuid", b / "src/buildtools/__getuuid_c__/getuuid_c",
-         b / "src/buildtools/__getuuid__/getuuid"),
-        ("elfdep", b / "src/buildtools/__elfdep_c__/elfdep_c",
-         b / "src/buildtools/__elfdep__/elfdep"),
+        ("getuuid", b / "linux/buildtools/__getuuid_c__/getuuid_c",
+         b / "linux/buildtools/__getuuid__/getuuid"),
+        ("elfdep", b / "linux/buildtools/__elfdep_c__/elfdep_c",
+         b / "linux/buildtools/__elfdep__/elfdep"),
     ]
     cases = [
         ("no args", []),
@@ -73,7 +73,7 @@ def main(argv: list[str]) -> int:
 
     missing = [str(p) for _, c, r in pairs for p in (c, r) if not p.exists()]
     if missing:
-        print("MISSING, build //src/buildtools:{getuuid,elfdep,getuuid_c,elfdep_c} first:")
+        print("MISSING, build //linux/buildtools:{getuuid,elfdep,getuuid_c,elfdep_c} first:")
         for m in missing:
             print("  ", m)
         return 2

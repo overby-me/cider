@@ -77,7 +77,7 @@ def main [--all] {
     # fuse.
     #
     # One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), the sixteen
-    # src/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
+    # linux/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
     # plus pulseaudio) that AudioToolbox decodes and plays through. Looked up by SONAME
     # against the dev shell's own -L directories (NIX_LDFLAGS), because that is the
     # authoritative list of what this shell declares. pkg-config is not enough on its own:
@@ -159,7 +159,7 @@ def main [--all] {
         | each {|it| $it.item } | uniq | sort
     )
     # NEVER LET A HOST LIBC ONTO THE GUEST INCLUDE PATH. These dirs go out as plain -I on
-    # every target that takes //src/native:host_headers, so they are searched BEFORE the
+    # every target that takes //linux/native:host_headers, so they are searched BEFORE the
     # guest SDK, and glibc-iconv ships an iconv.h that opens with #include <features.h>. The
     # guest SDK has three iconv.h of its own, so the host one is never wanted, and letting it
     # win defines __GLIBC__ for a Darwin compile: libc++ then takes its glibc branch in

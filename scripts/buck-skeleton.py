@@ -99,11 +99,11 @@ _NEVER_EMPTY = ("buck-src/", "buck-rust/", "src/external/")
 #   scripts/buck-codegen-closure.py <graph.json> <graph-data> --sources <target-sources.json>
 # and prefer --keep below, which takes a freshly computed list, over this baked default.
 _NEVER_EMPTY_FILES = frozenset([
-    "src/libelfloader/wrapgen/wrapgen.cpp",
+    "linux/libelfloader/wrapgen/wrapgen.cpp",
     "src/libsimple/include/libsimple/base.h",
     "src/libsimple/include/libsimple/lock.h",
     "src/libsimple/src/lock.c",
-    "src/startup/rtsig.c",
+    "linux/startup/rtsig.c",
 ])
 
 # Replaced wholesale by --keep when one is given.

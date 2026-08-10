@@ -1145,7 +1145,7 @@ cc_objects(
         ":libsyscall_dynamic_inc_libsyscall_wrappers",
         "//darwin:sdk_env",
         "//src/external/ciderd:dserver_rpc",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         ":libsyscall_dynamic_inc_darling_src_libsystem_kernel",
         ":libsyscall_dynamic_inc_osfmk",
         "//src/external/ciderd:dserver_headers",
@@ -1167,7 +1167,7 @@ cc_objects(
 #   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
-#   src/startup
+#   linux/startup
 
 cc_header_root(
     name = "emulation_inc_xnu_darling_src_libsystem_kernel",
@@ -1487,7 +1487,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
@@ -1521,7 +1521,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
@@ -1556,7 +1556,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",
@@ -1578,7 +1578,7 @@ cc_objects(
 #   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
-#   src/startup
+#   linux/startup
 
 cc_header_root(
     name = "emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
@@ -1898,7 +1898,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
         "//src/external/ciderd:dserver_headers",
@@ -1934,7 +1934,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
         "//src/external/ciderd:dserver_headers",
@@ -4286,7 +4286,7 @@ cc_objects(
         "//darwin:sdk_env",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         ":emulation_inc_xnu_darling_src_libsystem_kernel",
         "//src/external/ciderd:dserver_headers",
         "//src/libsimple:libsimple_headers",

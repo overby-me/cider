@@ -41,7 +41,7 @@ TWO TRAPS BUILT IN, both of which cost real time:
 NEGATIVE CONTROL, and it took THREE attempts to build a valid one, which is the point of
 insisting on them. Breaking __darling_thread_create in darwin/loader/src/elfcalls.rs
 reported PASS twice; the file contains ZERO occurrences of it, so the control was a no-op
-and proved nothing. The name lives in src/startup/mldr/elfcalls/threads.h; the loader
+and proved nothing. The name lives in linux/startup/mldr/elfcalls/threads.h; the loader
 holds the SINGLE underscore struct fields. Breaking it there gives
 
     exit 1, pins use __darling_thread_create (8 times);

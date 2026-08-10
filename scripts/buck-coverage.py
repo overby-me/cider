@@ -31,7 +31,7 @@ def load_gen():
 # them under new names. Coverage matches by artifact name, so without this map it reports a
 # porting gap that does not exist, and the suite stays permanently red for a naming reason.
 #
-# Verified target by target rather than assumed: root//src/hosttools:cider-coredump,
+# Verified target by target rather than assumed: root//linux/hosttools:cider-coredump,
 # root//src/libsimple:libsimple_cider and root//src/libsimple:libsimple_ciderd all resolve,
 # and the archive registry holds liblibsimple_cider.a and liblibsimple_ciderd.a.
 #

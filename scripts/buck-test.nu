@@ -353,7 +353,7 @@ def main [flag?: string] {
         //src/libsimple:libsimple_ciderd
         //src/libsimple:libsimple_cider
         //buck-src:migcom
-        //src/startup:rtsig_header
+        //linux/startup:rtsig_header
         //src/external/ciderd:dserver_rpc
         //src/external/ciderd/xnu-sys:ciderd_xnu_sys
         //src/external/ciderd/tools:dserverdbg
@@ -440,7 +440,7 @@ def main [flag?: string] {
     if $ver == "1.0" { ok $"migcom -version = ($ver)" } else { bad $"migcom -version = '($ver)', expected 1.0" }
 
     say "== codegen =="
-    let rtsig = (out_of //src/startup:rtsig_header)
+    let rtsig = (out_of //linux/startup:rtsig_header)
     if (grep_q $rtsig "LINUX_SIGRTMIN") { ok "rtsig.h defines LINUX_SIGRTMIN" } else { bad "rtsig.h missing LINUX_SIGRTMIN" }
     # dserver_rpc has three default outputs, and --show-output prints no path for
     # multi-output targets, so look for the generated files themselves.
@@ -998,16 +998,16 @@ def main [flag?: string] {
         }
     }
 
-    say "== the src/native ELF wrappers (stage 2, gui) =="
+    say "== the linux/native ELF wrappers (stage 2, gui) =="
     # Sixteen Mach-O stubs that forward to HOST libraries through libelfloader, one per
-    # wrap_elf() in src/native. They belong to the gui component, so they are NOT in the cli
+    # wrap_elf() in linux/native. They belong to the gui component, so they are NOT in the cli
     # graph this suite otherwise measures; they are checked here because they build today and a
     # break would otherwise go unnoticed until the stock switch.
     #
     # The export count is the real assertion. An elf_wrapper whose dlopen failed would still
     # produce a valid, EMPTY dylib, so a stub with no exports is the failure mode to catch.
     for n in [X11 cairo GL FreeType gif] {
-        let w = (out_of $"//src/native:($n)_dylib")
+        let w = (out_of $"//linux/native:($n)_dylib")
         if not ((cap [file -bL $w]) | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
             bad $"lib($n).dylib is not a Mach-O dylib"
             continue
@@ -1021,7 +1021,7 @@ def main [flag?: string] {
     }
 
     say "== the src/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
-    # The same shape as src/native's, five of them, which AudioToolbox links to decode and
+    # The same shape as linux/native's, five of them, which AudioToolbox links to decode and
     # play. Same assertion for the same reason: a failed dlopen yields a valid EMPTY dylib.
     for n in [avcodec avutil pulse] {
         let w = (out_of $"//src/CoreAudio:($n)_dylib")
@@ -1042,7 +1042,7 @@ def main [flag?: string] {
     # for a literal name/dylib_name pair. Duplicated data drifts, so assert each pragma list
     # and its table still agree. Without this they silently return to reading as unported the
     # moment someone adds one more.
-    check_wrap_table src/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
+    check_wrap_table linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
     check_wrap_table src/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
 
     say "== wrapgen (the host-ELF bridge generator) =="
@@ -1050,7 +1050,7 @@ def main [flag?: string] {
     # wrap_elf(<name> lib<name>.so) runs it over a HOST library's dynamic symbol table and emits
     # a Mach-O stub whose every export forwards through libelfloader. Running it is the
     # assertion -- it prints its three-argument usage and exits 0 with no arguments.
-    let wg = (out_of //src/libelfloader:wrapgen)
+    let wg = (out_of //linux/libelfloader:wrapgen)
     if ((cap [file -bL $wg]) | str contains "ELF 64-bit") { ok "wrapgen is a host ELF binary" } else { bad "wrapgen is not a host ELF binary" }
     let wgusage = (cap2 [$wg])
     if ($wgusage | str starts-with "Usage:") and ($wgusage | str contains "<library-name> <output-file> <var-access-header>") {
@@ -1065,7 +1065,7 @@ def main [flag?: string] {
     # <mach-o/loader.h> without pulling in the SDK headers that would collide with glibc's.
     # Running it is the assertion that the slice produced a real program -- it prints usage and
     # exits 0 with no arguments.
-    let cdump = (out_of //src/hosttools:cider-coredump)
+    let cdump = (out_of //linux/hosttools:cider-coredump)
     if ((cap [file -bL $cdump]) | str contains "ELF 64-bit") { ok "cider-coredump is a host ELF binary" } else { bad "cider-coredump is not a host ELF binary" }
     let usage = (cap2 [$cdump])
     if ($usage | str starts-with "Usage:") { ok "cider-coredump runs and prints usage" } else { bad "cider-coredump did not print usage" }

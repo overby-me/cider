@@ -1,6 +1,6 @@
 //! elfdep: print the ELF dependency (SONAME) recorded in a Mach-O file, if any.
 //!
-//! Rust port of src/buildtools/elfdep.c (#76). Darling-origin, GPL, Copyright (C) 2018-2020
+//! Rust port of linux/buildtools/elfdep.c (#76). Darling-origin, GPL, Copyright (C) 2018-2020
 //! Lubos Dolezel; the header stays and a Cider line is added beside it.
 //!
 //! The name lives in a section called __elfname inside the __TEXT segment. The walk finds the

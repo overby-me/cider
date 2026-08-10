@@ -1,4 +1,4 @@
-# The Rust rewrite of the Darling guest-side Mach-O loader (src/startup/mldr/), task #65. A
+# The Rust rewrite of the Darling guest-side Mach-O loader (linux/startup/mldr/), task #65. A
 # plain libc + goblin binary crate -- no xnu-sys, no bindgen, no build.rs -- so it builds
 # straight from the committed source via cargoLock vendoring. Installed OVER the C mldr at
 # libexec/cider/usr/libexec/cider/mldr by package.nix (and patchelf'd there in postFixup),
@@ -21,7 +21,7 @@ rustPlatform.buildRustPackage {
   doCheck = false;
 
   meta = with lib; {
-    description = "Rust rewrite of the Cider guest Mach-O loader (src/startup/mldr)";
+    description = "Rust rewrite of the Cider guest Mach-O loader (linux/startup/mldr)";
     license = licenses.gpl3Plus;
     platforms = [ "x86_64-linux" ];
     mainProgram = "mldr";

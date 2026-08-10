@@ -88,8 +88,8 @@ directly.**
 
 | upstream | here | note |
 |---|---|---|
-| `src/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
-| `src/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
+| `linux/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
+| `linux/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
 | `src/external/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `src/external/ciderd/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the

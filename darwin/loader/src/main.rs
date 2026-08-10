@@ -1,4 +1,4 @@
-// mldr -- Darling guest-side Mach-O loader, Rust rewrite of src/startup/mldr/ (task #65).
+// mldr -- Darling guest-side Mach-O loader, Rust rewrite of linux/startup/mldr/ (task #65).
 //
 // M0/M1 (this file): the crate scaffold, argv-shape detection, special-env handling, and
 // the Mach-O parse via goblin. The address-space setup (M2), dyld + start stack + commpage

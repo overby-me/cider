@@ -19,7 +19,7 @@ purpose, where iokitd stopped at "X11/Xlib.h file not found".
 
 That is the class of bug this checks for, statically and in a second, rather than waiting an
 hour for a Nix build to fail. For every reference compile carrying an absolute host -I, the
-port's target must depend on //src/native:host_headers, which exports -I for each entry of
+port's target must depend on //linux/native:host_headers, which exports -I for each entry of
 cider.host_include_dirs.
 
 Usage:
@@ -36,7 +36,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
 EXTRA_DEPS = os.path.join(REPO, "buck", "generated", "extra-deps.json")
-HOST_HEADERS = "//src/native:host_headers"
+HOST_HEADERS = "//linux/native:host_headers"
 
 # The reference stages its own sources in the store too, so "absolute" is not enough to mean
 # "host library": the project's own tree is a store path as well.

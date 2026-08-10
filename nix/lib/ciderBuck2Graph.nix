@@ -324,7 +324,7 @@
     # emptied was tried and REVERTED, and the reason is worth keeping: this derivation does
     # not only analyse. It materialises the in-process artifacts, and a staged farm of
     # GENERATED headers is produced by running a generator, which is a host tool this
-    # derivation BUILDS from first-party C -- src/startup:rtsig and src/libelfloader:wrapgen
+    # derivation BUILDS from first-party C -- linux/startup:rtsig and linux/libelfloader:wrapgen
     # among them.
     #
     # An emptied rtsig.c does not fail to compile. It compiles cleanly, links, runs, and

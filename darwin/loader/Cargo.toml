@@ -1,4 +1,4 @@
-# loader -- Rust rewrite of the Darling guest-side Mach-O loader (binary: mldr; was src/startup/mldr/)
+# loader -- Rust rewrite of the Darling guest-side Mach-O loader (binary: mldr; was linux/startup/mldr/)
 # (task #65). An ordinary Linux ELF that parses a Mach-O, maps its segments + dyld at
 # their Mach-O addresses, builds the macOS start stack (argc/argv/envp/apple[]), sets up
 # the commpage, checks in with ciderd, and jumps into dyld's entry point.

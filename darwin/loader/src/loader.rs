@@ -1,5 +1,5 @@
 // mldr M2: map a Mach-O image's segments into the address space at vmaddr+slide.
-// Mirrors src/startup/mldr/loader.c:50-343 -- the PIE slide computation and the
+// Mirrors linux/startup/mldr/loader.c:50-343 -- the PIE slide computation and the
 // LC_SEGMENT_64 mapping state machine (protection quirk, two-phase BSS map, __PAGEZERO
 // tolerance). All raw mmap; deliberately unsafe and address-exact.
 use goblin::mach::MachO;

@@ -7,7 +7,7 @@
   "//src/libsimple:libsimple_ciderd"
   "//src/libsimple:libsimple_cider"
   "//buck-src:migcom"
-  "//src/startup:rtsig_header"
+  "//linux/startup:rtsig_header"
   "//src/external/ciderd:dserver_rpc"
   "//src/external/ciderd/xnu-sys:ciderd_xnu_sys"
   "//src/external/ciderd/tools:dserverdbg"

@@ -314,7 +314,7 @@ def main(argv: list[str]) -> int:
     w('        "//src/libsimple:libsimple_headers",')
     w('        "//src/external/ciderd:dserver_headers",')
     w('        "//src/external/ciderd:dserver_rpc",')
-    w('        "//src/startup:rtsig_header",')
+    w('        "//linux/startup:rtsig_header",')
     w("    ],")
     w('    visibility = ["PUBLIC"],')
     w(")")

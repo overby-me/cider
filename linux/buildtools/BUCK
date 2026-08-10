@@ -7,7 +7,7 @@ load("//buck/rules:rust.bzl", "rust_binary")
 # THE HEADER HERE USED TO SAY "No targets", on the grounds that the compile died in cctools own
 # mach/machine.h looking for mach/machine/vm_types.h. That is STALE: both cc targets build
 # today, verified by building them. The same staleness was recorded once already for
-# src/bsdln/BUCK, so it is worth checking a claim like this rather than inheriting it.
+# linux/bsdln/BUCK, so it is worth checking a claim like this rather than inheriting it.
 #
 # The Rust ports below (#76) are the reason it stops mattering. Parsing Mach-O at checked byte
 # offsets needs no cctools headers at all, so the include path that caused the original trouble
@@ -16,9 +16,9 @@ load("//buck/rules:rust.bzl", "rust_binary")
 # BEGIN generated: getuuid
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py getuuid   -- review before committing.
-# cmake target: getuuid  ->  src/buildtools/getuuid
+# cmake target: getuuid  ->  linux/buildtools/getuuid
 # TODO these include dirs are GENERATED (codegen output):
-#   src/buildtools/include
+#   linux/buildtools/include
 #   src/include
 
 cc_objects(
@@ -39,7 +39,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries getuuid   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# buck-registry: src/buildtools/getuuid = getuuid
+# buck-registry: linux/buildtools/getuuid = getuuid
 
 cc_binary(
     name = "getuuid_c",
@@ -57,9 +57,9 @@ cc_binary(
 # BEGIN generated: elfdep
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py elfdep   -- review before committing.
-# cmake target: elfdep  ->  src/buildtools/elfdep
+# cmake target: elfdep  ->  linux/buildtools/elfdep
 # TODO these include dirs are GENERATED (codegen output):
-#   src/buildtools/include
+#   linux/buildtools/include
 #   src/include
 
 cc_objects(
@@ -80,7 +80,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries elfdep   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# buck-registry: src/buildtools/elfdep = elfdep
+# buck-registry: linux/buildtools/elfdep = elfdep
 
 cc_binary(
     name = "elfdep_c",

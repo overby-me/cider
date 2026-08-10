@@ -824,7 +824,7 @@ bindgen_gen(
         "//src/external/ciderd:dserver_headers",
         # xnu-sys.h uses DSERVER_XNU_SYS_DECLS, from the RPC wrapper generator.
         "//src/external/ciderd:dserver_rpc",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
     ],
 )
 

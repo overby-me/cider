@@ -217,7 +217,7 @@ that RAN, each probe with its own restore control that came back 0 onto the iden
 | --- | --- | --- |
 | none (control) | **0** | 16 s |
 | `libaccessibility/src/Accessibility.m`, a leaf | **7** | 165 s |
-| `src/startup/rtsig.c`, a header generator | **570** | 19 min |
+| `linux/startup/rtsig.c`, a header generator | **570** | 19 min |
 | `xnu-sys/src/*.c` BEFORE | **1,558** | 61 min |
 | `xnu-sys/src/*.c` AFTER | **44** | 2.5 min |
 
@@ -463,8 +463,8 @@ flag was wrong.
    | `src/launchd` | 26,842 | **Apple** | NO, bundled upstream |
    | `src/OpenDirectoryOld` | 7,354 | Apple-era | NO |
    | `src/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
-   | `src/hosttools` + `src/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
-   | `src/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
+   | `linux/hosttools` + `linux/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
+   | `linux/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
    | `src/xcselect` | 679 | Darling | |
    | `src/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
    | `src/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
@@ -1007,7 +1007,7 @@ concrete failure justifies it:
   cost decision rather than an open question of what to do next.
 - **Run recipe** (from a built `$out = nix build .#default`):
   `DSERVER_LIBEXEC_PATH=$out/libexec/cider
-  DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1
+  DSERVER_MLDR_PATH=$out/libexec/cider/usr/libexec/cider/mldr CIDER_NO_LAUNCHD=1
   DPREFIX=<fresh dir> $out/bin/cider shell sh -c 'uname -sm'` → `Darwin x86_64`.
 - **Phantom-path trap:** after any commit that touches a Rust crate, `.#default`'s hash
   changes and `nix eval .outPath` returns a NEW, UNBUILT path. Booting against it fails
@@ -1056,8 +1056,10 @@ frameworks, same features. What changes is only HOW it is built: buck2 instead o
 Rust instead of the C daemon/launcher/loader, Nix instead of a system install. The port is
 not a subset and is not finished when something merely boots.
 
-Darling's own COMPONENTS hierarchy (cmake/cider_parse_components.cmake) is the measure,
-because it is upstream's own decomposition:
+Darling's own COMPONENTS hierarchy is the measure, because it is upstream's own
+decomposition. It came from cider_parse_components.cmake, which #82 removed along with the
+rest of cmake, so the hierarchy now survives only in git history and in the reference
+build.ninja under result-graph-ref:
 
     core -> system -> cli
     stock = cli + python + ruby + perl + dev_gui_common + dev_gui_frameworks_common
@@ -1097,7 +1099,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    basename collision with the real frameworks.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
-   everything else in stock sits downstream of them. The 16 src/native ELF wrappers are
+   everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
    already done, see below; the rest are Darling's own framework implementations under
    src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
@@ -1109,7 +1111,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    guest-nix milestone run rather than skipped.
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
-   graph. `X11` is both the src/native wrap_elf stub and CoreGraphics' X11 backend in
+   graph. `X11` is both the linux/native wrap_elf stub and CoreGraphics' X11 backend in
    src/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
    cli was small enough that names were unique; stock is not.
 
@@ -1148,8 +1150,9 @@ has been true six times running, each time a check freshly written.
   output once with `complete`, then test it.
 - **What invalidates the Nix endpoint** (measured from two graph derivations, not
   assumed): the graph takes the staged project as one store path, and that path holds
-  the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ cmake/ etc/ misc/ patches/
-  templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. `scripts/`, `nix/`,
+  the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ etc/ misc/ patches/
+  templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. (`cmake/` was in this
+  list until #82 removed cmake; it no longer exists.) `scripts/`, `nix/`,
   `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
   are their own inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`,
   and `nix/lib/ciderBuck2{Graph,Lower}.nix`, which ARE the derivations.
@@ -1506,12 +1509,12 @@ has been true six times running, each time a check freshly written.
   header each object really read, angle-bracket includes included.
   `scripts/gen-buck-from-ninja.py` already generates these targets from that same ninja.
 - **#65: the recorded ld64 blocker is WRONG, established by reading and costing no build.**
-  `src/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
+  `linux/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
   `<mach/machine/vm_types.h>` and asks for `cctools/include/foreign` on the include path. Four
   facts say otherwise. `mach-o/loader.h` guards ALL its mach includes behind `#ifdef __APPLE__`
   and typedefs `cpu_type_t`, `cpu_subtype_t` and `vm_prot_t` itself in the `#else`, so a host
   compile never reaches `machine.h`, which is why the reference needs nothing, and its real
-  `getuuid.c.o` command carries only `src/include`, `src/buildtools/include` and
+  `getuuid.c.o` command carries only `src/include`, `linux/buildtools/include` and
   `cctools/include`. `cctools/include/mach/machine.h` has NO `#include` lines, so it cannot be
   the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
   64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
@@ -1519,7 +1522,7 @@ has been true six times running, each time a check freshly written.
   `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first.
   **THEN MEASURED, and the compile the comment says fails SUCCEEDS.** Run clang directly, no
   buck2 and no Nix, against the same include root the BUCK targets already name:
-  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c src/buildtools/getuuid.c` exits
+  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c linux/buildtools/getuuid.c` exits
   0, and so does `elfdep.c`. Verified it can fail: drop that one `-I` and it dies on
   `mach-o/loader.h` not found. `-H` says the headers opened are cctools' own `mach-o/loader.h`
   and `fat.h` and that **`mach/machine.h` is never opened at all**, and the host clang defines
@@ -1653,7 +1656,7 @@ has been true six times running, each time a check freshly written.
   an idle machine minutes later. Boot the container by hand as the tiebreaker -- it takes
   seconds and tells you at once whether the tree or the harness is at fault:
   `DPREFIX=<fresh> DSERVER_LIBEXEC_PATH=$rt/libexec/cider
-  DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr DARLING_NO_LAUNCHD=1
+  DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr CIDER_NO_LAUNCHD=1
   $rt/bin/cider shell /bin/bash -c 'echo HELLO'`.
 - **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
   gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
@@ -1696,7 +1699,7 @@ scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck2`. Ex
 
 Active blockers get a dated entry here (repro steps + what's stuck); resolved ones fold into
 Gotchas or Open work. The known standing limitations are already tracked above — the launchd
-portset deadlock (#47, bypassed by `DARLING_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
+portset deadlock (#47, bypassed by `CIDER_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
 (#44, retryable), and the nix-ninja full-graph `migHeaderIncsFor` blocker. Nothing else is
 currently un-tracked.
 

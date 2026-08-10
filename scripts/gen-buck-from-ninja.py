@@ -178,14 +178,14 @@ CROSS_PACKAGE_ROOTS = {
     # into xnu and architecture, and every target that gets this -I also depends on sdk_env.
     # So it maps to the SDK rather than to a second copy -- a glob here would only pick up
     # links that dangle in the current layout.
-    "src/startup/mldr/include": "//darwin:sdk_env",
-    "src/startup/mldr/elfcalls": "//src/startup:mldr_elfcalls",
+    "linux/startup/mldr/include": "//darwin:sdk_env",
+    "linux/startup/mldr/elfcalls": "//linux/startup:mldr_elfcalls",
     # darling-config.h, cmake's configure_file output. Every Darwin compile reaches it
     # through //darwin:sdk_env, but a HOST tool has no sdk_env, so it names the
     # generator directly -- src/include holds nothing else.
     "src/include": "//src/include:cider_config",
     # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
-    # Mach-O out of the build tree from //src/buildtools, and the pin lives in //buck-src.
+    # Mach-O out of the build tree from //linux/buildtools, and the pin lives in //buck-src.
     #
     # It has to be cctools-PORT's copy, not cctools'. The two pins both ship
     # mach-o/loader.h and they differ exactly where it matters: cctools' is the Darwin
@@ -397,6 +397,29 @@ def repo_path(p: str):
                 tgt = os.path.normpath(os.path.join(os.path.dirname(p), os.readlink(cand)))
                 if tgt.startswith("src/external/"):
                     p = tgt
+    # Task #87 emptied src/ into darwin/ and linux/, and the reference graph predates that
+    # exactly as it predates #68 above. Everything that was still in src/ is named there by its
+    # OLD path: src/startup/mldr alone appears 133 times, and linux/startup zero times.
+    #
+    # WITHOUT THIS THE FAILURE IS SILENT AND MISDIRECTED, which is why it is worth the lines.
+    # The moved path no longer exists, so the tail of this function classifies it as
+    # "generated" -- a real source becomes codegen output. Before that, the CROSS_PACKAGE_ROOTS
+    # lookup misses (its keys are repo-relative and now say linux/), so the include dir is
+    # emitted as an own glob root in a package that does not own it, which stages EMPTY. Both
+    # are invisible until some header goes missing a long way from the cause.
+    #
+    # Derived from the tree rather than from a copy of the 52 name mapping, so it cannot drift:
+    # if src/<rest> is gone and exactly one of darwin/<rest> or linux/<rest> is there, that is
+    # where it went. src/external is excluded because stage 2 has not run and the pins still
+    # live there; an unmaterialized pin is absent too, and must not be redirected.
+    if p.startswith("src/") and not p.startswith("src/external/") \
+            and not os.path.lexists(os.path.join(REPO, p)):
+        rest = p[len("src/"):]
+        for _dest in ("darwin", "linux"):
+            if os.path.lexists(os.path.join(REPO, _dest, rest)):
+                p = f"{_dest}/{rest}"
+                break
+
     if p.startswith("src/external/"):
         rel = p[len("src/external/"):]
         if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
@@ -1444,7 +1467,7 @@ def final_registry() -> dict:
 
     This is a TEXT scan, so it only sees a target whose name and dylib_name are
     written out literally. A block that builds its targets from a Starlark table --
-    src/native's sixteen wrap_elf stubs are the case -- is invisible to it, and the
+    linux/native's sixteen wrap_elf stubs are the case -- is invisible to it, and the
     sixteen read as unported for as long as nobody checks. Such a package declares
     what it produces with a `buck-registry:` pragma instead.
     """
@@ -2103,7 +2126,7 @@ def links_cxx(target: str, edges) -> bool:
     WHY IT MATTERS: linked with the C driver, a C++ program leaves every std:: symbol
     undefined. ld64 failed exactly that way, hundreds of lines of
     basic_string::_M_create and operator delete, which reads as a missing library rather
-    than a wrong driver. src/hosttools/BUCK carries the same note for cider-coredump,
+    than a wrong driver. linux/hosttools/BUCK carries the same note for cider-coredump,
     where it had to be set by hand.
     """
     want = "CXX_EXECUTABLE_LINKER__" + ninja_rule_name(target) + "_"

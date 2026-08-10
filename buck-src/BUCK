@@ -201,9 +201,9 @@ cc_header_root(
 # darling-coredump and the C mldr before it are Linux programs that still have to read
 # Mach-O structures, so they need <mach-o/loader.h> and the handful of Darwin types it
 # pulls in -- but they must NOT get the rest of the SDK, whose sys/_types.h and friends
-# would fight glibc's. src/startup/mldr/include is the reference's answer: a hand-curated
+# would fight glibc's. linux/startup/mldr/include is the reference's answer: a hand-curated
 # symlink farm holding exactly these paths, plus four SHIM headers that stub out what a
-# host compile must not see (//src/startup:mldr_shim_headers).
+# host compile must not see (//linux/startup:mldr_shim_headers).
 #
 # The values are taken from SDK_ROOT rather than written out again, so this stays one
 # subset of one map: if a pin moves or splits, the SDK generator moves this with it, and a
@@ -241,7 +241,7 @@ cc_header_root(
 # that lives in API/. Nothing assembles a JavaScriptCore framework at this point
 # in the build, so the shims are the whole mechanism, and they have to be
 # reproduced rather than substituted with a framework root.
-# cctools-PORT's public headers, for the HOST tools in //src/buildtools. Distinct from
+# cctools-PORT's public headers, for the HOST tools in //linux/buildtools. Distinct from
 # libstuff_inc_cctools_include, which stages the other pin: both ship mach-o/loader.h and
 # the port's guards its <mach/machine.h> with #ifdef __APPLE__ while cctools' includes it
 # unconditionally. A host tool needs the guarded one.
@@ -2248,7 +2248,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
         "//buck-src/xnu:emulation_inc_xnu_darling_src_libsystem_kernel",
@@ -4571,7 +4571,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:rtsig_header",
+        "//linux/startup:rtsig_header",
         "//buck-src/xnu:emulation_included_sources",
         "//src/include:cider_config",
         "//src/external/ciderd:dserver_headers",
@@ -39094,8 +39094,8 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/startup:mldr_elfcalls",
-        "//src/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
     ],
     gen_srcs = [
         "//buck-src:fuse_wrap",
@@ -48734,8 +48734,8 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src:sdk_libxml2",
-        "//src/native:host_headers",
-        "//src/startup:mldr_elfcalls",
+        "//linux/native:host_headers",
+        "//linux/startup:mldr_elfcalls",
     ],
     visibility = ["PUBLIC"],
 )
@@ -49077,7 +49077,7 @@ elf_wrapper(
     name = "fuse_wrap",
     soname = "libfuse.so",
     name_base = "fuse",
-    wrapgen = "//src/libelfloader:wrapgen",
+    wrapgen = "//linux/libelfloader:wrapgen",
     lib_dirs = read_root_config("cider", "elf_lib_dirs", ""),
     deps = ["//darwin:sdk_env"],
     visibility = ["PUBLIC"],
@@ -56602,7 +56602,7 @@ cc_objects(
         "//darwin/frameworks:fw_AE",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":Onyx2D_inc_cocotron",
@@ -56629,12 +56629,12 @@ darwin_dylib(
     siblings = [
         "//buck-src/objc4:objc_final",
         "//buck-src:z_dylib",
-        "//src/native:FreeType_dylib",
-        "//src/native:fontconfig_dylib",
-        "//src/native:jpeg_dylib",
-        "//src/native:png_dylib",
-        "//src/native:tiff_dylib",
-        "//src/native:gif_dylib",
+        "//linux/native:FreeType_dylib",
+        "//linux/native:fontconfig_dylib",
+        "//linux/native:jpeg_dylib",
+        "//linux/native:png_dylib",
+        "//linux/native:tiff_dylib",
+        "//linux/native:gif_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
         "//buck-src:Foundation_dylib",
@@ -56758,7 +56758,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":CoreGraphics_inc_cocotron",
@@ -56821,7 +56821,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":CoreGraphics_inc_cocotron",
@@ -56848,7 +56848,7 @@ darwin_dylib(
         ":CoreGraphics_obj2",
     ],
     siblings = [
-        "//src/native:GL_dylib",
+        "//linux/native:GL_dylib",
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
         "//buck-src:Onyx2D_dylib",
@@ -56918,7 +56918,7 @@ cc_objects(
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_OpenGL",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         ":CoreText_inc_cocotron_CoreText",
     ],
     visibility = ["PUBLIC"],
@@ -56942,7 +56942,7 @@ darwin_dylib(
         ":CoreText_obj",
     ],
     siblings = [
-        "//src/native:FreeType_dylib",
+        "//linux/native:FreeType_dylib",
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
         "//buck-src:CoreGraphics_dylib",
@@ -57661,7 +57661,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":AppKit_inc_cocotron",
@@ -57688,11 +57688,11 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/objc4:objc_final",
-        "//src/native:FreeType_dylib",
-        "//src/native:fontconfig_dylib",
-        "//src/native:jpeg_dylib",
-        "//src/native:png_dylib",
-        "//src/native:tiff_dylib",
+        "//linux/native:FreeType_dylib",
+        "//linux/native:fontconfig_dylib",
+        "//linux/native:jpeg_dylib",
+        "//linux/native:png_dylib",
+        "//linux/native:tiff_dylib",
         "//buck-src:system_final",
         "//buck-src:CoreText_dylib",
         "//buck-src:CoreData_dylib",
@@ -57782,7 +57782,7 @@ cc_objects(
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_HIToolbox",
         "//darwin/frameworks:fw_OpenGL",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":X11_cgbackend_inc_cocotron",
@@ -57808,11 +57808,11 @@ darwin_dylib(
         ":X11_cgbackend_obj",
     ],
     siblings = [
-        "//src/native:X11_dylib",
-        "//src/native:XRandR_dylib",
-        "//src/native:Xcursor_dylib",
-        "//src/native:xkbfile_dylib",
-        "//src/native:fontconfig_dylib",
+        "//linux/native:X11_dylib",
+        "//linux/native:XRandR_dylib",
+        "//linux/native:Xcursor_dylib",
+        "//linux/native:xkbfile_dylib",
+        "//linux/native:fontconfig_dylib",
         "//buck-src/objc4:objc_final",
         "//buck-src:system_final",
         "//darwin/frameworks:OpenGL_dylib",
@@ -57973,7 +57973,7 @@ cc_objects(
         "//darwin/frameworks:fw_QD",
         "//darwin/frameworks:fw_SearchKit",
         "//darwin/frameworks:fw_SpeechSynthesis",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
         "//buck-src/icu:icucore_inc_icu_icuSources_common",
         ":X11_backend_inc_cocotron",
@@ -57999,12 +57999,12 @@ darwin_dylib(
         ":X11_backend_obj",
     ],
     siblings = [
-        "//src/native:X11_dylib",
-        "//src/native:XRandR_dylib",
-        "//src/native:Xcursor_dylib",
-        "//src/native:xkbfile_dylib",
+        "//linux/native:X11_dylib",
+        "//linux/native:XRandR_dylib",
+        "//linux/native:Xcursor_dylib",
+        "//linux/native:xkbfile_dylib",
         "//buck-src/objc4:objc_final",
-        "//src/native:fontconfig_dylib",
+        "//linux/native:fontconfig_dylib",
         "//buck-src:system_final",
         "//buck-src:AppKit_dylib",
         "//buck-src:QuartzCore_dylib",
@@ -62999,7 +62999,7 @@ cc_objects(
         "//buck-src:iokitd_mig_powermanagement",
         "//darwin/frameworks:fw_CoreVideo",
         "//darwin/frameworks:fw_IOSurface",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
     ],
     visibility = ["PUBLIC"],
 )
@@ -63029,7 +63029,7 @@ cc_objects(
         "//buck-src:iokitd_mig_powermanagement",
         "//darwin/frameworks:fw_CoreVideo",
         "//darwin/frameworks:fw_IOSurface",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
     ],
     gen_srcs = [
         "//buck-src:iokitd_mig_iokitmig",
@@ -63056,11 +63056,11 @@ darwin_binary(
     ],
     dylibs = [
         "//buck-src:bsm.0_dylib",
-        "//src/native:X11_dylib",
-        "//src/native:XRandR_dylib",
-        "//src/native:Xext_dylib",
-        "//src/native:EGL_dylib",
-        "//src/native:GL_dylib",
+        "//linux/native:X11_dylib",
+        "//linux/native:XRandR_dylib",
+        "//linux/native:Xext_dylib",
+        "//linux/native:EGL_dylib",
+        "//linux/native:GL_dylib",
         "//buck-src/libcxx:cxx_dylib",
         "//buck-src:system_final",
         "//darwin/frameworks:IOSurface_dylib",
@@ -63133,7 +63133,7 @@ cc_objects(
         "//buck-src:fw_CoreFoundation",
         "//buck-src:fw_DBusKit",
         "//buck-src:fw_Foundation",
-        "//src/native:host_headers",
+        "//linux/native:host_headers",
         ":DBusKit_inc_dbuskit_include",
     ],
     visibility = ["PUBLIC"],
@@ -63157,7 +63157,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/objc4:objc_final",
-        "//src/native:dbus_dylib",
+        "//linux/native:dbus_dylib",
         "//buck-src:system_final",
         "//buck-src:Foundation_dylib",
     ],

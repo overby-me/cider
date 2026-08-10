@@ -126,7 +126,7 @@ src/sandbox/include/sandbox/rootless.h
 src/sandbox/private.h
 src/sandbox/sandbox.h
 src/softlinking/include/SoftLinking/SoftLinking.h
-src/startup/mldr/elfcalls/dthreads.h
-src/startup/mldr/elfcalls/elfcalls.h
-src/startup/mldr/elfcalls/threads.h
+linux/startup/mldr/elfcalls/dthreads.h
+linux/startup/mldr/elfcalls/elfcalls.h
+linux/startup/mldr/elfcalls/threads.h
 src/xcselect/include/xcselect.h

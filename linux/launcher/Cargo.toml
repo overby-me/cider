@@ -1,4 +1,4 @@
-# launcher -- Rust rewrite of the cider launcher (binary: cider; was src/startup/cider.c, task #64).
+# launcher -- Rust rewrite of the cider launcher (binary: cider; was linux/startup/cider.c, task #64).
 #
 # The `cider` launcher: userns re-exec (rootless), prefix bootstrap, spawn/join/
 # teardown of ciderd-as-container-init, readiness coordination, and the

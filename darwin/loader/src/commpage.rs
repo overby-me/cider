@@ -1,6 +1,6 @@
 // mldr M3a: the commpage -- a fixed shared page at 0x7fffffe00000 that Darwin's libSystem
 // reads for CPU capabilities, CPU counts, page sizes, and memory size. Mirrors
-// src/startup/mldr/commpage.c:23-172.
+// linux/startup/mldr/commpage.c:23-172.
 //
 // CRITICAL (commpage.c:52-73): the CPU counts must NEVER be 0. A rootless container's mount
 // namespace may hide /sys/devices/system/cpu, so _SC_NPROCESSORS_CONF returns 0/-1, and

@@ -4316,5 +4316,5 @@ SDK_REPO_HEADERS = [
 #      1 under src/quarantine/
 #      5 under src/sandbox/
 #      1 under src/softlinking/
-#      4 under src/startup/
+#      4 under linux/startup/
 #      1 under src/xcselect/
