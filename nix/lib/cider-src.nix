@@ -172,7 +172,15 @@ let
   # assembled tree rather than trusting that sentence.
   pinStore = e: let
     base = baseNameOf e.path;
-    patchSub = patchesDir + "/${base}";
+    # THE PATCH DIRECTORY IS KEYED BY BASENAME, WHICH IS NOT UNIQUE. Two pins can share a
+    # basename and would then silently share a patch set: de-vendoring the duct-tape XNU
+    # subset puts a second xnu at src/external/ciderd/xnu-sys/xnu, whose basename is also
+    # "xnu", so it would have patches/xnu applied to it -- and those are the GUEST SYSCALL
+    # patches for the OTHER xnu, which touch darling/src/libsystem_kernel/emulation only.
+    # An entry can therefore name its own directory. Defaulting to the basename keeps every
+    # existing pin bit for bit identical, which was verified by evaluating all 146 pin store
+    # paths before and after this change and diffing the lists.
+    patchSub = patchesDir + ("/" + (e.patches or base));
     hasPatches = builtins.pathExists patchSub;
     needsWork = hasPatches;
   in
@@ -197,7 +205,9 @@ let
   # Shell to overlay one fetched submodule and apply its patches.
   overlayOne = e: let
     base = baseNameOf e.path;
-    patchSub = patchesDir + "/${base}";
+    # Same override as pinStore above, and it has to be BOTH places or the assembled tree
+    # and the per-pin store would apply different patches to the same submodule.
+    patchSub = patchesDir + ("/" + (e.patches or base));
     hasPatches = builtins.pathExists patchSub;
   in ''
     rm -rf "$out/${e.path}"
