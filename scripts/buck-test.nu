@@ -321,19 +321,24 @@ def main [flag?: string] {
     if $verbose {
         ^buck2 build ...$targets
     } else {
-        let r = (do { ^buck2 build ...$targets } | complete)
+        # STDERR TO A FILE, same reason as out_of: `| complete` buffers it, and on a cold
+        # build these firstpass targets pull a large cone. The diagnostics below still need
+        # it, so it is EXTRACTED FROM THE FILE with grep rather than loaded into a variable,
+        # which would put the buffering straight back. grep on a named file extracting lines
+        # is fine; the grep here only lies about recursive walks and about counting.
+        let errf = (buck_err_file)
+        let r = (do { ^buck2 build ...$targets err> $errf } | complete)
         if $r.exit_code != 0 {
-            # The reason was in $r.stderr all along and this used to throw it away, so a
+            # The reason was in the stderr all along and this used to throw it away, so a
             # failure here read as "re-run with -v" and cost a whole extra round trip every
             # time. Print which targets failed and the first real diagnostic: the last one
             # was a missing stdbool.h forty lines down, which named the cause exactly.
             say "buck2 build FAILED"
-            let err = ($r.stderr | lines)
-            let failed = ($err | where {|l| $l | str contains "Failed to build" })
+            let failed = (do -i { ^grep -F "Failed to build" $errf } | complete | get stdout | lines)
             if ($failed | is-not-empty) { $failed | first 12 | each {|l| print -e $"       ($l)" } | ignore }
-            let diag = ($err | where {|l| ($l | str contains "error:") or ($l | str contains "fatal error") })
+            let diag = (do -i { ^grep -E "error:|fatal error" $errf } | complete | get stdout | lines)
             if ($diag | is-not-empty) { $diag | first 6 | each {|l| print -e $"       ($l)" } | ignore }
-            say "  full output: re-run with -v"
+            say $"  full output: ($errf)"
             exit 1
         }
     }
