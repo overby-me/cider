@@ -158,7 +158,25 @@ def main [--all] {
         | where {|it| (($env.NIX_CFLAGS_COMPILE? | default "") | split row " " | get ($it.index - 1)) == "-isystem" }
         | each {|it| $it.item } | uniq | sort
     )
+    # NEVER LET A HOST LIBC ONTO THE GUEST INCLUDE PATH. These dirs go out as plain -I on
+    # every target that takes //src/native:host_headers, so they are searched BEFORE the
+    # guest SDK, and glibc-iconv ships an iconv.h that opens with #include <features.h>. The
+    # guest SDK has three iconv.h of its own, so the host one is never wanted, and letting it
+    # win defines __GLIBC__ for a Darwin compile: libc++ then takes its glibc branch in
+    # __locale and hdiutil dies on "use of undeclared identifier _ISspace". Measured
+    # 2026-08-10: dropping just the glibc dirs takes that compile from 12 errors to exit 0
+    # under the unwrapped clang, with nothing else changed.
+    #
+    # MATCH ON THE PACKAGE NAME, NOT A SUBSTRING OF THE PATH. libcap-2.77-dev contains the
+    # letters "libc" and is an ordinary library the port genuinely needs, so a naive filter
+    # on "libc" would silently drop it. compiler-rt-libc is left alone deliberately: it is
+    # present in the same list and the probe above compiled with it still there.
+    let libc_pkg = '^[a-z0-9]+-glibc(-|$)'
     for d in $isystem {
+        if ($d | str replace -r '^/nix/store/' '' | str replace -r '/.*$' '' | find -r $libc_pkg | is-not-empty) {
+            print $"host include dirs: skipping host libc ($d)"
+            continue
+        }
         if ($d | path exists) and (not ($d in $host_include_dirs)) {
             $host_include_dirs = ($host_include_dirs | append $d)
         }
