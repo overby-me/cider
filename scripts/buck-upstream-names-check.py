@@ -206,12 +206,25 @@ def main():
         # _cider_bsd_syscall_entry matches them and reports an orphan that is not one. The
         # original single-form search never hit this because it looked for the DOUBLE
         # underscore, which our C never writes. Match whole identifiers only.
+        # AND THE LEADING BOUNDARY HAS ITS OWN HOLE, in the opposite direction from the
+        # trailing one above: it cannot match a -D COMPILE DEFINITION. In -DNAME the
+        # character before NAME is the D of -D, which IS a word character, so the negative
+        # lookbehind refuses. Measured: the plain pattern reports 0 matches on a BUCK file
+        # containing -DLIBSIMPLE_DARLING=1 three times, so every -D definition in the tree
+        # was invisible to this check and a rename could orphan one while it reported PASS.
+        # That is not hypothetical: it happened on 2026-08-10. LIBSIMPLE_DARLING was renamed
+        # in lock.c, the -D definition in src/libsimple/BUCK was left behind because a
+        # rename sweep with this same pattern could not see it, and the guest target died an
+        # hour into the endpoint with "linux_futex not implemented for this platform".
+        # Allowing -D as a boundary keeps every existing protection: the trailing boundary
+        # still rejects _cider_bsd_syscall_entry_trampoline, and a glued prefix like
+        # MY_CIDER_NW_STUB is still not a match.
         forms = [cider]
         if cider.startswith("__"):
             forms.append(cider[1:])
         hit = next((f for f in forms
-                    if re.search(r'(?<![A-Za-z0-9_])' + re.escape(f) + r'(?![A-Za-z0-9_])',
-                                 ours)), None)
+                    if re.search(r'(?:(?<![A-Za-z0-9_])|(?<=-D))' + re.escape(f)
+                                 + r'(?![A-Za-z0-9_])', ours)), None)
         if hit:
             orphaned.append((tok, hit, uses))
 
