@@ -63,8 +63,8 @@ EXCLUDE_PKGS = (
 EXCLUDE_LABELS = (
     # The swift and swiftc launchers, which select a toolchain that is not installed. Same
     # reasoning as the runtime dylibs under EXCLUDE_DEST: nix does not need Swift to start.
-    "//src/xcselect:swift_shim",
-    "//src/xcselect:swiftc_shim",
+    "//darwin/xcselect:swift_shim",
+    "//darwin/xcselect:swiftc_shim",
 
     "//buck-src:jsc",
 
@@ -110,9 +110,9 @@ EXCLUDE_LABELS = (
     # prefix entries that reach AppKit or CoreImage (checked by walking every entry's cone),
     # and between them they pull 752 actions of framework into a prefix defined as having no
     # GUI frameworks. Same shape as jsc: a small tool carrying a large cone.
-    "//src/pboard:pbcopy",
-    "//src/pboard:pbpaste",
-    "//src/tools:open",
+    "//darwin/pboard:pbcopy",
+    "//darwin/pboard:pbpaste",
+    "//darwin/tools:open",
 
     # The SUPERSEDED libcrypto/libssl/libtls versions. Darling ships five libcrypto builds for
     # binary compatibility with guest software linking a specific versioned dylib. Only

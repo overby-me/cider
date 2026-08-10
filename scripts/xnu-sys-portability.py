@@ -104,7 +104,7 @@ def generated_include_roots():
 def clang_args():
     incs = [f"-I{r}" for r in generated_include_roots()]
     incs += [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
-    incs.append(f"-I{os.path.join(ROOT, 'src/libsimple/include')}")
+    incs.append(f"-I{os.path.join(ROOT, 'darwin/libsimple/include')}")
     incs.append(f"-I{os.path.join(ROOT, 'src/external/ciderd/include')}")
     return buck_list("XNU_SYS_DEFINES") + buck_list("XNU_SYS_FLAGS") + incs
 

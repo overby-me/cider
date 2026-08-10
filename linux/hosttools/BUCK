@@ -36,7 +36,7 @@ cc_binary(
     # putting both in one directory, where a real file simply occupies a path the farm has
     # no symlink for; here the two are separate roots, so the order is stated.
     deps = [
-        "//src/include:cider_config",
+        "//darwin/include:cider_config",
         ":coredump_headers",
         "//linux/startup:mldr_shim_headers",
         "//buck-src:mldr_include",

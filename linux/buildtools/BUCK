@@ -28,7 +28,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
-        "//src/include:cider_config",
+        "//darwin/include:cider_config",
         "//buck-src:cctools_port_include",
     ],
     visibility = ["PUBLIC"],
@@ -69,7 +69,7 @@ cc_objects(
     ],
     toolchain = "toolchains//:native_cc",
     deps = [
-        "//src/include:cider_config",
+        "//darwin/include:cider_config",
         "//buck-src:cctools_port_include",
     ],
     visibility = ["PUBLIC"],

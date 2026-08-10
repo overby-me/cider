@@ -32,7 +32,7 @@ SOURCES = [
     ("sdk_framework_darwin_frameworks.bzl", "darwin/frameworks", "fw_"),
     ("sdk_framework_private_darwin_private_frameworks.bzl", "darwin/private-frameworks", "fwp_"),
     ("sdk_framework_darwin_Developer.bzl", "darwin/Developer", "fw_"),
-    ("sdk_framework_src_CoreAudio.bzl", "src/CoreAudio", "fw_"),
+    ("sdk_framework_src_CoreAudio.bzl", "darwin/CoreAudio", "fw_"),
 ]
 
 INCLUDE_RE = re.compile(r'^\s*#\s*(?:include|import)\s*<([A-Za-z0-9_]+)/([^>]+)>', re.M)

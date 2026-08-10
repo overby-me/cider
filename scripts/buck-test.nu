@@ -350,15 +350,15 @@ def main [flag?: string] {
 
     say "== building ported targets =="
     let targets = [
-        //src/libsimple:libsimple_ciderd
-        //src/libsimple:libsimple_cider
+        //darwin/libsimple:libsimple_ciderd
+        //darwin/libsimple:libsimple_cider
         //buck-src:migcom
         //linux/startup:rtsig_header
         //src/external/ciderd:dserver_rpc
         //src/external/ciderd/xnu-sys:ciderd_xnu_sys
         //src/external/ciderd/tools:dserverdbg
         //linux/server:xnu_sys_lib
-        //src/libsimple:libsimple_cider_dylib
+        //darwin/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
         //tests/buck2/firstpass:b
         //tests/buck2/firstpass:umbrella
@@ -376,9 +376,9 @@ def main [flag?: string] {
         //buck-src:system_asl_firstpass
         //buck-src:system_coretls_firstpass
         //buck-src:asl_ipc_mig
-        //src/duct:system_duct_firstpass
+        //darwin/duct:system_duct_firstpass
         //src/external/libtrace:system_trace_firstpass
-        //src/libsystem_coreservices:system_coreservices_firstpass
+        //darwin/libsystem_coreservices:system_coreservices_firstpass
     ]
     if $verbose {
         ^buck2 build ...$targets
@@ -408,13 +408,13 @@ def main [flag?: string] {
     "ok\n" | save -a $env.BT_TALLY
 
     say "== libsimple =="
-    let lib = (out_of //src/libsimple:libsimple_ciderd)
+    let lib = (out_of //darwin/libsimple:libsimple_ciderd)
     if (test_f $lib) { ok "archive exists" } else { bad "archive missing" }
     let syms = (field (cap [nm --defined-only $lib]) 3 | where {|s| $s | str starts-with "libsimple_" } | length)
     if $syms >= 13 { ok $"exports ($syms) libsimple_* symbols" } else { bad $"expected >= 13 libsimple_* symbols, got ($syms)" }
 
     say "== libsimple, GUEST build (Darwin/Mach-O cross toolchain) =="
-    let dlib = (out_of //src/libsimple:libsimple_cider)
+    let dlib = (out_of //darwin/libsimple:libsimple_cider)
     if (test_f $dlib) { ok "archive exists" } else { bad "archive missing" }
     let obj_kind = (do {
         cd ($dlib | path dirname)
@@ -496,7 +496,7 @@ def main [flag?: string] {
     }
 
     say "== Mach-O dylib: install_name (phase 1.2) =="
-    let dyl = (out_of //src/libsimple:libsimple_cider_dylib)
+    let dyl = (out_of //darwin/libsimple:libsimple_cider_dylib)
     let kind = (cap [file -b $dyl])
     if ($kind | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
         ok "is a Mach-O dylib"
@@ -561,9 +561,9 @@ def main [flag?: string] {
         "//buck-src/libc:system_c_firstpass:/usr/lib/system/libsystem_c.dylib"
         "//buck-src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib"
         "//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib"
-        "//src/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
+        "//darwin/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
         "//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
-        "//src/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
+        "//darwin/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
     ]
     for pair in $pairs {
         let f = ($pair | split row ":")
@@ -699,7 +699,7 @@ def main [flag?: string] {
     # Nothing is expected to fail any more: the layer outside the circular cluster
     # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
     # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-    let dylib_pkgs = "//buck-src/... + //src/duct: + //src/libm: + //src/libcache: + //src/sandbox: + //src/launchd: + //src/external/libtrace: + //src/libsystem_coreservices: + //src/lib: + //src/quarantine: + //src/networkextension:"
+    let dylib_pkgs = "//buck-src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //src/external/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
     # By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
     # and a name match swept it in here.
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -777,7 +777,7 @@ def main [flag?: string] {
     # will not have to resolve anything that is missing.
     #
     # Discovered from the graph, like the dylibs: every executable target that exists.
-    let exe_pkgs = "//buck-src/... + //src/shellspawn: + //src/vchroot: + //src/launchd:"
+    let exe_pkgs = "//buck-src/... + //darwin/shellspawn: + //darwin/vchroot: + //darwin/launchd:"
     # dyld is a DYLINKER, not an EXECUTE image, and has its own checks below.
     let exe_skip = ["dyld"]
     let all_exes = (cap [buck2 uquery $"kind\('darwin_binary', ($exe_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -801,7 +801,7 @@ def main [flag?: string] {
     # MIG servers, and which generated stub each protocol contributes is not guessable --
     # launchd compiles jobServer.c but job_forwardUser.c, from two protocols that both
     # declare job_t.
-    for t in [//src/launchd:launchd //buck-src:notifyd] {
+    for t in [//darwin/launchd:launchd //buck-src:notifyd] {
         let hdr = (macho_hdr (out_of $t))
         if ($hdr | str contains "EXECUTE") and ($hdr | str contains "NOUNDEFS") {
             ok $"($t | split row ':' | last) links with nothing undefined"
@@ -853,8 +853,8 @@ def main [flag?: string] {
         //buck-src:cxx_static //buck-src:cxxabi_static //buck-src:keymgr_static
         //buck-src:libc_static //buck-src:libc_static64 //buck-src:macho_static
         //buck-src:platform_static64 //buck-src:pthread_static
-        //buck-src:system_blocks_static //src/duct:system_duct_static
-        //buck-src:system_kernel_static64 //src/libm:system_m_static
+        //buck-src:system_blocks_static //darwin/duct:system_duct_static
+        //buck-src:system_kernel_static64 //darwin/libm:system_m_static
         //src/external/libtrace:system_trace_static //buck-src:unwind_static
     ]
     for t in $static_targets {
@@ -1020,11 +1020,11 @@ def main [flag?: string] {
         }
     }
 
-    say "== the src/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
+    say "== the darwin/CoreAudio ELF wrappers (stage 2, ffmpeg + pulseaudio) =="
     # The same shape as linux/native's, five of them, which AudioToolbox links to decode and
     # play. Same assertion for the same reason: a failed dlopen yields a valid EMPTY dylib.
     for n in [avcodec avutil pulse] {
-        let w = (out_of $"//src/CoreAudio:($n)_dylib")
+        let w = (out_of $"//darwin/CoreAudio:($n)_dylib")
         if not ((cap [file -bL $w]) | str contains "Mach-O 64-bit x86_64 dynamically linked shared library") {
             bad $"lib($n).dylib is not a Mach-O dylib"
             continue
@@ -1043,7 +1043,7 @@ def main [flag?: string] {
     # and its table still agree. Without this they silently return to reading as unported the
     # moment someone adds one more.
     check_wrap_table linux/native/BUCK _NATIVE 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*", "[^"]*"),$/\1/p'
-    check_wrap_table src/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
+    check_wrap_table darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
 
     say "== wrapgen (the host-ELF bridge generator) =="
     # The second host tool (task #8), and the one hdiutil is blocked on: cmake's

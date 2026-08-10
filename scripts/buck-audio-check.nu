@@ -10,7 +10,7 @@
 #   answer back rather than merely resolving.
 #
 #   The FRAMEWORK half is stubbed in Darling itself. Every entry point in
-#   src/CoreAudio/AudioToolbox/AudioFile.cpp is literally `return unimpErr`, so
+#   darwin/CoreAudio/AudioToolbox/AudioFile.cpp is literally `return unimpErr`, so
 #   AudioFileOpenURL answers -4 and there is no decode path at that layer to exercise. That
 #   is upstream's state, not the port's, and afinfo hides it: it prints "AudioFileOpen
 #   failed" and swallows the status, which is why this probe prints the number.

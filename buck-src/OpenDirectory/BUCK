@@ -127,7 +127,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/xtrace:xtrace_headers",
+        "//darwin/xtrace:xtrace_headers",
         ":memberd_xtrace_mig_inc_OpenDirectory_memberd_21_1",
     ],
     gen_srcs = [

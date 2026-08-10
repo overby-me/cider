@@ -143,7 +143,7 @@ def dsh_bash [ctx: record, logfile: string, cmd: string] {
 # scripts/buck-env-names-check.py exists to stop that recurring, and it treats the name written
 # as an ASSIGNMENT as the advertisement, which is why this comment names it in prose instead.
 #
-# The tracer is a constructor library. src/xtrace/xtracelib.cpp declares xtrace_setup with
+# The tracer is a constructor library. darwin/xtrace/xtracelib.cpp declares xtrace_setup with
 # __attribute__((constructor)), so it starts tracing as soon as it is LOADED, and the only
 # thing that loads it is dyld insertion. Nothing in the tree wires that up automatically,
 # which is why it has to be done here explicitly.

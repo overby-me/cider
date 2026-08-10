@@ -71,7 +71,7 @@
   ],
   "emulation": [
     "//buck-src/xnu:emulation_included_sources",
-    "//src/include:cider_config",
+    "//darwin/include:cider_config",
     "//linux/startup:rtsig_header",
     "gen://buck-src:emmig_signal_mach_exc"
   ],
@@ -129,7 +129,7 @@
     "gen::launchmig_job"
   ],
   "system_kernel": [
-    "dep://src/libsimple:libsimple_cider",
+    "dep://darwin/libsimple:libsimple_cider",
     "objs://buck-src/xnu:exc_server_obj",
     "objs://buck-src:emulation_rpc_obj"
   ],
@@ -152,7 +152,7 @@
   ],
   "emulation_dyld": [
     "//src/external/ciderd:dserver_headers",
-    "//src/include:cider_config",
+    "//darwin/include:cider_config",
     "//linux/startup:rtsig_header",
     ":emulation_included_sources",
     "gen::emmig_signal_mach_exc"
@@ -255,119 +255,119 @@
     "//darwin/frameworks:fw_SearchKit"
   ],
   "job_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
-    "gen://src/launchd:launchmig_job[xtrace]"
+    "//darwin/xtrace:xtrace_headers",
+    "gen://darwin/launchd:launchmig_job[xtrace]"
   ],
   "asl_ipc_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:asl_ipc_mig[xtrace]"
   ],
   "clock_priv_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_clock_priv[xtrace]"
   ],
   "clock_reply_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_clock_reply[xtrace]"
   ],
   "clock_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_clock[xtrace]"
   ],
   "exc_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:emmig_signal_exc[xtrace]"
   ],
   "helper_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
-    "gen://src/launchd:launchmig_helper[xtrace]"
+    "//darwin/xtrace:xtrace_headers",
+    "gen://darwin/launchd:launchmig_helper[xtrace]"
   ],
   "host_priv_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_host_priv[xtrace]"
   ],
   "host_security_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_host_security[xtrace]"
   ],
   "internal_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
-    "gen://src/launchd:launchdmig_internal[xtrace]"
+    "//darwin/xtrace:xtrace_headers",
+    "gen://darwin/launchd:launchdmig_internal[xtrace]"
   ],
   "job_forward_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
-    "gen://src/launchd:launchdmig_job_forward[xtrace]"
+    "//darwin/xtrace:xtrace_headers",
+    "gen://darwin/launchd:launchdmig_job_forward[xtrace]"
   ],
   "job_reply_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
-    "gen://src/launchd:launchdmig_job_reply[xtrace]"
+    "//darwin/xtrace:xtrace_headers",
+    "gen://darwin/launchd:launchdmig_job_reply[xtrace]"
   ],
   "lock_set_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_lock_set[xtrace]"
   ],
   "MachExceptions_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:mig_MachExceptions[xtrace]"
   ],
   "mach_exc_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:emmig_signal_mach_exc[xtrace]"
   ],
   "mach_host_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_mach_host[xtrace]"
   ],
   "mach_port_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_mach_port[xtrace]"
   ],
   "mach_vm_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_mach_vm[xtrace]"
   ],
   "mach_voucher_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_mach_voucher[xtrace]"
   ],
   "memberd_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:odmig_memberd[xtrace]"
   ],
   "memory_entry_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_memory_entry[xtrace]"
   ],
   "netname_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_servers_netname[xtrace]"
   ],
   "notify_ipc_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:notifymig_notify_ipc[xtrace]"
   ],
   "processor_set_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_processor_set[xtrace]"
   ],
   "processor_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_processor[xtrace]"
   ],
   "protocol_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:dispatchmig_protocol[xtrace]"
   ],
   "task_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_task[xtrace]"
   ],
   "thread_act_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_thread_act[xtrace]"
   ],
   "vm_map_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:ksmig_mach_vm_map[xtrace]"
   ],
   "bash": [
@@ -375,15 +375,15 @@
     "gen::bash_parser"
   ],
   "firehose_reply_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:fhmig_firehose_reply[xtrace]"
   ],
   "firehose_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:fhmig_firehose[xtrace]"
   ],
   "notify_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:launchdmig_notify[xtrace]"
   ],
   "curl": [
@@ -632,8 +632,8 @@
   ],
   "MobileGestalt": [
     "//buck-src:fw_CoreFoundation",
-    "//src/libMobileGestalt:mobilegestalt_include",
-    "//src/libMobileGestalt:sdk_src_libMobileGestalt_headers"
+    "//darwin/libMobileGestalt:mobilegestalt_include",
+    "//darwin/libMobileGestalt:sdk_src_libMobileGestalt_headers"
   ],
   "Foundation_obj": [
     "//buck-src:fw_CFNetwork",
@@ -1380,46 +1380,46 @@
     "//buck-src:sdk_libxml2"
   ],
   "ucsp_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:securityd_client_mig_ucsp[xtrace]"
   ],
   "ucspNotify_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:securityd_client_mig_ucspnotify[xtrace]"
   ],
   "ocspd_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:security_ocspd_mig[xtrace]"
   ],
   "mach_notify_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:security_utilities_mig_notify[xtrace]"
   ],
   "heim_ipc_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:heimdal_mig_ipc[xtrace]"
   ],
   "heim_ipc_async_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:heimdal_mig_ipc_async[xtrace]"
   ],
   "iokitmig_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:IOKit_mig_iokitmig64[xtrace]"
   ],
   "kextmanager_mig_xtrace_mig": [
     "//buck-src:fw_Security",
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:IOKit_mig_kextmanager[xtrace]"
   ],
   "powermanagement_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:IOKit_mig_powermanagement[xtrace]"
   ],
   "kextmanager_xtrace_mig": [
     "//buck-src:fw_CoreFoundation",
     "//buck-src:fw_Security",
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:rebootmig_kextmanager[xtrace]"
   ],
   "reboot": [
@@ -1433,7 +1433,7 @@
     "gen://buck-src:rebootmig_kextmanager"
   ],
   "self_xtrace_mig": [
-    "//src/xtrace:xtrace_headers",
+    "//darwin/xtrace:xtrace_headers",
     "gen://buck-src:securitydmig_self[xtrace]"
   ],
   "zprint": [
@@ -4407,7 +4407,7 @@
   "CoreAudio": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "CoreAudioComponent": [
@@ -4418,9 +4418,9 @@
     "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_AudioUnit",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "AFAVFormatComponent": [
@@ -4431,9 +4431,9 @@
     "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_AudioUnit",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "AudioFileTools_util": [
@@ -4444,9 +4444,9 @@
     "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_AudioUnit",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "afconvert": [
@@ -4457,25 +4457,25 @@
     "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "afinfo": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "afplay": [
     "//buck-src:fw_CoreFoundation",
     "//darwin/frameworks:fw_CarbonCore",
     "//darwin/frameworks:fw_CoreServices",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_AudioUnit",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "afrecord": [
@@ -4486,9 +4486,9 @@
     "//darwin/frameworks:fw_FSEvents",
     "//darwin/frameworks:fw_LaunchServices",
     "//darwin/frameworks:fw_SearchKit",
-    "//src/CoreAudio:fw_AudioToolbox",
-    "//src/CoreAudio:fw_AudioUnit",
-    "//src/CoreAudio:fw_CoreAudio",
+    "//darwin/CoreAudio:fw_AudioToolbox",
+    "//darwin/CoreAudio:fw_AudioUnit",
+    "//darwin/CoreAudio:fw_CoreAudio",
     "//linux/native:host_headers"
   ],
   "bind9_isccc": [

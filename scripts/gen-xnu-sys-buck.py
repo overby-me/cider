@@ -311,7 +311,7 @@ def main(argv: list[str]) -> int:
     w("    deps = [")
     for name, _ in HEADER_ROOTS:
         w(f'        ":{name}",')
-    w('        "//src/libsimple:libsimple_headers",')
+    w('        "//darwin/libsimple:libsimple_headers",')
     w('        "//src/external/ciderd:dserver_headers",')
     w('        "//src/external/ciderd:dserver_rpc",')
     w('        "//linux/startup:rtsig_header",')
@@ -405,7 +405,7 @@ def main(argv: list[str]) -> int:
     w('    exported_headers = glob(["include/**/*.h"]),')
     w('    include_root = "include",')
     w("    deps = [")
-    w('        "//src/libsimple:libsimple_ciderd",')
+    w('        "//darwin/libsimple:libsimple_ciderd",')
     w("    ],")
     w('    linker_flags = [')
     w('        "-lpthread",')

@@ -62,7 +62,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//src/libsimple:libsimple_ciderd"; };
+          { target = "//darwin/libsimple:libsimple_ciderd"; };
 
       # The host tier through the same Nix-lowered path: ciderd's xnu-sys
       # archive (real XNU osfmk/bsd sources plus mig codegen, and the artifact the
@@ -78,7 +78,7 @@
         }).buildTarget
           { target = "//src/external/ciderd/xnu-sys:ciderd_xnu_sys"; };
 
-      # A mid-size probe for the Nix-lowered path: src/duct's static archive is 8
+      # A mid-size probe for the Nix-lowered path: darwin/duct's static archive is 8
       # sources in a 165-line BUCK file, between libsimple (80 lines) and xnu-sys
       # (1044). Which of size or feature-set the interpreter runs out of road on is
       # what this answers:
@@ -89,7 +89,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//src/duct:system_duct_static"; };
+          { target = "//darwin/duct:system_duct_static"; };
 
       # Two probes for where the Nix-lowered path runs out of road. Both are
       # trivial targets; what differs is the FILE the interpreter has to read:
@@ -127,7 +127,7 @@
         pkgs:
         import ./nix/lib/ciderBuck2Graph.nix {
           inherit pkgs;
-          targets = [ "//src/libsimple:libsimple_ciderd" ];
+          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
         };
 
       # THE REAL GRAPH, and the reason this is a separate attribute: the one above is a
@@ -247,7 +247,7 @@
           inherit pkgs;
           graph = import ./nix/lib/ciderBuck2Graph.nix {
             inherit pkgs;
-            targets = [ "//src/libsimple:libsimple_ciderd" ];
+            targets = [ "//darwin/libsimple:libsimple_ciderd" ];
           };
         }).final;
 
@@ -385,7 +385,7 @@
       # a graph this store may not hold; this pairs it with buck2-targets-min.nix, which reuses
       # the graph the minimal endpoint already built, so ONE target can be tried in minutes.
       #
-      #   nix build .#cider-buck2-prefix-min-grouped.named.\"root//src/libsimple:libsimple_ciderd\"
+      #   nix build .#cider-buck2-prefix-min-grouped.named.\"root//darwin/libsimple:libsimple_ciderd\"
       packages.cider-buck2-prefix-min-grouped =
         pkgs:
         let
@@ -544,7 +544,7 @@
             #
             # The escapes are concentrated, which is what makes a fix tractable:
             # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
-            # src/opendirectory_internal/include 24, linux/startup/mldr 16, src/libm/include 7,
+            # darwin/opendirectory_internal/include 24, linux/startup/mldr 16, darwin/libm/include 7,
             # and ten groups with three or fewer. Run scripts/buck-escape-check.py groups.
             #
             # 1,989 of them land in the PINS, so the pins have to become self contained first:
@@ -603,7 +603,7 @@
       #   nix build .#cider-buck2-one --no-link -L
       #   scripts/buck-quick-check.nu
       packages.cider-buck2-one =
-        pkgs: pkgs.cider-buck2-prefix-min.named."root//src/libsimple:libsimple_ciderd";
+        pkgs: pkgs.cider-buck2-prefix-min.named."root//darwin/libsimple:libsimple_ciderd";
 
 
       # The same endpoint with each buck-src PIN lowered as one derivation instead of one
@@ -844,7 +844,7 @@
                     inherit pkgs;
                     graph = import ./nix/lib/ciderBuck2Graph.nix {
                       inherit pkgs;
-                      targets = [ "//src/libsimple:libsimple_ciderd" ];
+                      targets = [ "//darwin/libsimple:libsimple_ciderd" ];
                     };
                   }).final
                 }/liblibsimple_ciderd.a

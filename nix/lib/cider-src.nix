@@ -46,7 +46,7 @@ let
         base = baseNameOf rel;
       in
       # The port's BUCK files live INSIDE this tree -- darwin/frameworks/BUCK,
-      # src/CoreAudio/BUCK and 56 others -- because darwin/ and src/ are what cmake needs,
+      # darwin/CoreAudio/BUCK and 56 others -- because darwin/ and src/ are what cmake needs,
       # so the top-level exclusions below cannot reach them. cmake never opens one.
       #
       # Left in, editing any of them rehashes this tree, and ld64 is built from it

@@ -96,7 +96,7 @@ cc_objects(
         "-DBUILDING_LIBDYLD=1",
     ],
     prefix_headers = [
-        "//src/duct:CrashReporterClient.h",
+        "//darwin/duct:CrashReporterClient.h",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -239,7 +239,7 @@ cc_objects(
         "-fno-stack-check",
     ],
     prefix_headers = [
-        "//src/duct:CrashReporterClient.h",
+        "//darwin/duct:CrashReporterClient.h",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [
@@ -321,10 +321,10 @@ darwin_binary(
         "//buck-src:system_blocks_static",
         "//buck-src:cxx_static",
         "//buck-src:unwind_static",
-        "//src/libm:system_m_static",
+        "//darwin/libm:system_m_static",
         "//buck-src:cxxabi_static",
         "//buck-src:keymgr_static",
-        "//src/duct:system_duct_static",
+        "//darwin/duct:system_duct_static",
         "//buck-src:pthread_static",
         "//buck-src:macho_static",
         "//src/external/libtrace:system_trace_static",
@@ -333,7 +333,7 @@ darwin_binary(
         "//buck-src:compiler_rt_static64",
         "//buck-src:platform_static64",
         "//buck-src:system_kernel_static64",
-        "//src/libsimple:libsimple_cider",
+        "//darwin/libsimple:libsimple_cider",
     ],
     visibility = ["PUBLIC"],
 )

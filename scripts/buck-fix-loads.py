@@ -21,7 +21,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # This script STRIPS every //buck/rules: load and re-adds only the rules it knows about,
 # so a rule missing from the map has its load silently deleted from any file the script
 # touches. A hand-kept list guarantees that happens every time a rule is added: it took
-# out buck/prefix/BUCK's prefix_tree load, and then src/tools' stdout_gen. Deriving the
+# out buck/prefix/BUCK's prefix_tree load, and then darwin/tools' stdout_gen. Deriving the
 # map from `<name> = rule(` in buck/rules/*.bzl cannot drift.
 def _rules_map() -> dict:
     out = {}

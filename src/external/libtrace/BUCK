@@ -95,7 +95,7 @@ darwin_dylib(
         "//buck-src/libc:system_c_firstpass",
         "//buck-src:system_malloc_firstpass",
         "//buck-src:system_asl_firstpass",
-        "//src/duct:system_duct_firstpass",
+        "//darwin/duct:system_duct_firstpass",
         "//buck-src/libdispatch:libdispatch_shared_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:system_blocks_firstpass",

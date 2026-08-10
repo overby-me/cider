@@ -136,13 +136,13 @@ CROSS_PACKAGE_SRCS = {
 }
 
 CROSS_PACKAGE_ROOTS = {
-    "src/libsimple/include": "//src/libsimple:libsimple_headers",
+    "darwin/libsimple/include": "//darwin/libsimple:libsimple_headers",
     "src/external/ciderd/include": "//src/external/ciderd:dserver_headers",
     # launchd's own headers, needed by targets in OTHER packages: xtrace's per-protocol
     # stub for liblaunch's job.defs compiles a generated source whose imports reach
     # launchd's core.h. The root staged there covers src/ and liblaunch/ both.
-    "src/launchd/src": "//src/launchd:launchd_inc_src_launchd",
-    "src/launchd/liblaunch": "//src/launchd:launchd_inc_src_launchd",
+    "darwin/launchd/src": "//darwin/launchd:launchd_inc_src_launchd",
+    "darwin/launchd/liblaunch": "//darwin/launchd:launchd_inc_src_launchd",
     # CoreFoundation's tree, as Foundation includes it (-Isrc/external/corefoundation
     # reaches NSMessageBuilder.h). corefoundation is a SPLIT pin, so a glob written into
     # //buck-src cannot see its files -- it would stage empty and the miss would only
@@ -182,8 +182,8 @@ CROSS_PACKAGE_ROOTS = {
     "linux/startup/mldr/elfcalls": "//linux/startup:mldr_elfcalls",
     # darling-config.h, cmake's configure_file output. Every Darwin compile reaches it
     # through //darwin:sdk_env, but a HOST tool has no sdk_env, so it names the
-    # generator directly -- src/include holds nothing else.
-    "src/include": "//src/include:cider_config",
+    # generator directly -- darwin/include holds nothing else.
+    "darwin/include": "//darwin/include:cider_config",
     # cctools' public headers (mach-o/loader.h and friends). elfdep and getuuid read
     # Mach-O out of the build tree from //linux/buildtools, and the pin lives in //buck-src.
     #
@@ -200,7 +200,7 @@ CROSS_PACKAGE_ROOTS = {
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/mach":
         "//buck-src:sdk_include_mach",
     # libMobileKeyBag's headers, which secd reaches from //buck-src.
-    "src/MobileKeyBag/include": "//src/MobileKeyBag:MobileKeyBag_inc_src_MobileKeyBag_include",
+    "darwin/MobileKeyBag/include": "//darwin/MobileKeyBag:MobileKeyBag_inc_src_MobileKeyBag_include",
     # icu is a SPLIT pin, so its headers are named by label, not globbed from here. BOTH
     # subtrees: cocotron's CoreGraphics, Onyx2D, QuartzCore, CoreData and AppKit reach the
     # i18n half for the collation and break-iterator APIs, and only `common` was mapped, so
@@ -209,9 +209,9 @@ CROSS_PACKAGE_ROOTS = {
     "icu/icuSources/common": "//buck-src/icu:icucore_inc_icu_icuSources_common",
     "icu/icuSources/i18n": "//buck-src/icu:icucore_inc_icu_icuSources_i18n",
     # NetworkExtension's headers, which Heimdal's krb5 mech reaches for the
-    # per-app-VPN types. src/networkextension is its own package.
-    "src/networkextension/include":
-        "//src/networkextension:system_networkextension_inc_src_networkextension_include",
+    # per-app-VPN types. darwin/networkextension is its own package.
+    "darwin/networkextension/include":
+        "//darwin/networkextension:system_networkextension_inc_src_networkextension_include",
     # cocotron's Core Animation headers, which the four frameworks layered on it reach
     # from //darwin/frameworks (IconServices, ImageKit, QuartzComposer, SceneKit).
     "cocotron/QuartzCore/include":
@@ -222,7 +222,7 @@ CROSS_PACKAGE_ROOTS = {
 # that exports them: prefix_headers needs a FILE, and a rule's sources must live in
 # its own package.
 CROSS_PACKAGE_FILES = {
-    "src/duct/include/CrashReporterClient.h": "//src/duct:CrashReporterClient.h",
+    "darwin/duct/include/CrashReporterClient.h": "//darwin/duct:CrashReporterClient.h",
 }
 
 # Include dirs whose staged headers reach OUT of the include path with a relative path,
@@ -237,7 +237,7 @@ ESCAPING_ROOTS = {
     # xtrace-mig-types.h is on the include path as <xtrace/xtrace-mig-types.h> and
     # reaches back over its own root with #include "../../base.h", so the package root
     # has to be in the same staged tree. Every XtraceMig stub goes through that header.
-    "src/xtrace/include": ["src/xtrace"],
+    "darwin/xtrace/include": ["darwin/xtrace"],
     # bind9's generated code.h is a list of #includes of the rdata IMPLEMENTATIONS, by a
     # path relative to the pin root ("../../../bind9/lib/dns/rdata/in_1/a_1.c"). The
     # generated tree and the source tree are siblings under the pin, so both have to be
@@ -247,15 +247,15 @@ ESCAPING_ROOTS = {
 
 # Include dirs //darwin:sdk_env covers, relative to the repo root.
 ENV_INCLUDES = {
-    "src/include",
+    "darwin/include",
     "darwin/basic-headers",
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
     "darwin/framework-include",
     "darwin/framework-private-include",
     "src/external/lkm/include",
-    "src/libDiagnosticMessagesClient/include",
-    "src/libMobileGestalt/include",
-    "src/lib/include",
+    "darwin/libDiagnosticMessagesClient/include",
+    "darwin/libMobileGestalt/include",
+    "darwin/lib/include",
     "src/external/configd/dnsinfo",
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libxml2",
     # The C++ standard library. It MUST NOT also be emitted per-target: two copies
@@ -633,7 +633,7 @@ def real_include_dir(kind: str, p: str) -> str:
 
     buck2's glob() does not traverse a symlinked DIRECTORY: it matches nothing and the root
     stages empty, which then surfaces as "The path X does not exist in the artifact" naming
-    the staged tree rather than the link. src/CoreAudio is the case -- CoreAudioComponent
+    the staged tree rather than the link. darwin/CoreAudio is the case -- CoreAudioComponent
     and AFAVFormatComponent both reach AUPublic, AFPublic and PublicUtility through links
     into CoreAudioUtilityClasses -- and it is the ONLY case: of the 595 distinct include
     dirs in the stock graph exactly 6 are reached this way, all of them these. Resolving is
@@ -668,7 +668,7 @@ def includes_of(unit):
     A HOST tool has no environment: //darwin:sdk_env is the Darwin SDK, and elfdep
     compiles against the build machine's headers. Its include dirs are all its own,
     including the ones that would otherwise be recognised as part of the environment
-    (src/include is on both paths, and means the repo's copy in either).
+    (darwin/include is on both paths, and means the repo's copy in either).
     """
     host = unit.get("host", False)
     ordered, gen, seen_env, env_cxx = [], [], False, False
@@ -2011,12 +2011,12 @@ def archive_target_name(artifact: str) -> str:
 # archive is libsimple_cider.a here and liblibsimple_cider.a in the reference
 # (cmake doubles the "lib" for a target already called libsimple_cider).
 ARCHIVE_ALIASES = {
-    "liblibsimple_cider.a": "//src/libsimple:libsimple_cider",
+    "liblibsimple_cider.a": "//darwin/libsimple:libsimple_cider",
     # The host tier, ported before cc_static_lib existed (both are cc_library targets
     # whose archive the Rust daemon consumes through XNU_SYS_LIB).
     "libciderd_xnu_sys.a":
         "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
-    "liblibsimple_ciderd.a": "//src/libsimple:libsimple_ciderd",
+    "liblibsimple_ciderd.a": "//darwin/libsimple:libsimple_ciderd",
 }
 
 

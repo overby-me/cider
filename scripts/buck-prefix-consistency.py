@@ -49,12 +49,12 @@ def plist_source(label):
     """Where a plist label's source file actually lives.
 
     DERIVED FROM THE LABEL, not globbed, because globbing one directory silently skipped the
-    most important plist in the prefix: shellspawn is `//src/shellspawn:...`, so a glob rooted
+    most important plist in the prefix: shellspawn is `//darwin/shellspawn:...`, so a glob rooted
     at buck-src/ never found it, and shellspawn is what `cider shell` uses to spawn the guest
     shell. A check that quietly cannot see its most important case is worse than no check.
 
     Three forms, in order:
-      //src/shellspawn:me.overby.cider.shellspawn.plist -> src/shellspawn/org.cider....plist
+      //darwin/shellspawn:me.overby.cider.shellspawn.plist -> darwin/shellspawn/org.cider....plist
       //buck-src:security_OSX_sec_ipc_com.apple.secd.plist -> the name's underscores are path
           separators: buck-src/security/OSX/sec/ipc/com.apple.secd.plist
       anything else -> a repo-wide glob on the file name, as a last resort

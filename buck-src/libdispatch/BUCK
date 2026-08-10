@@ -51,7 +51,7 @@ darwin_dylib(
         "//buck-src:system_blocks_firstpass",
         "//buck-src:system_pthread_firstpass",
         "//buck-src:system_dyld_firstpass",
-        "//src/duct:system_duct_firstpass",
+        "//darwin/duct:system_duct_firstpass",
         "//buck-src:unwind_firstpass",
         "//buck-src/libplatform:platform_firstpass",
         "//buck-src:compiler_rt_firstpass",

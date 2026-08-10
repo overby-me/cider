@@ -109,7 +109,7 @@ def walk_namespace(ns: str):
             buck_rel = to_buck_src(repo_rel)
             if buck_rel is None:
                 # Not a pin but a COMMITTED repo tree, so expand it from the repo:
-                # SDK/opendirectory -> src/opendirectory_internal/include/opendirectory
+                # SDK/opendirectory -> darwin/opendirectory_internal/include/opendirectory
                 # holds odipc.h, which Libinfo includes. Skipping these dropped the
                 # whole namespace from both the pinned and the repo-side maps.
                 src_dir = os.path.join(REPO, repo_rel)

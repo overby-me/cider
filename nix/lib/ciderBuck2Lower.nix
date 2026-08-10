@@ -20,7 +20,7 @@
 {
   pkgs,
   graph,
-  # The project, for the SOURCE paths an argv names (src/libsimple/src/lock.c and such).
+  # The project, for the SOURCE paths an argv names (darwin/libsimple/src/lock.c and such).
   # FILTERED, the same way the graph derivation filters its own source. Unfiltered, every
   # lowered target took the whole project as an input, so editing a line of plan/ or of the
   # Nix that CONSUMES this graph invalidated all 259 derivations and rebuilt the port. For an
@@ -721,7 +721,7 @@
   # MEASURED, which is what makes the split worth it: of 27,591 actions, 16,255 are pinned
   # upstream code, and NOT ONE of them reads darwin/frameworks. The 1,326 pin targets that
   # touch first-party files at all read only the SDK headers under darwin/Developer plus
-  # about ten stable compatibility headers -- darwin/basic-headers, src/sandbox,
+  # about ten stable compatibility headers -- darwin/basic-headers, darwin/sandbox,
   # src/libsysmon. So editing a framework should leave every pin target cached, and today it
   # rebuilds all of them.
   #
@@ -874,7 +874,7 @@
   # NOW MEASURED, on .#cider-buck2-one, counting builders that RAN:
   #   baseline                    3 buck2 builders
   #   no-op                       0            <- the control can fail, so the test means something
-  #   one xnu-sys/src edit      6, and root//src/libsimple:libsimple_ciderd RECOMPILED
+  #   one xnu-sys/src edit      6, and root//darwin/libsimple:libsimple_ciderd RECOMPILED
   #                               src/lock.c, which has no business rebuilding for a xnu-sys edit
   # nix-diff named the single cause in buck2-stage-project-grouped, and it was neither the graph
   # nor the sources output, both of which were byte identical:

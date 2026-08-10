@@ -1,1 +1,1 @@
-../../../../../../../../../src/libMobileGestalt/include/MobileGestalt/MobileGestalt.h
+../../../../../../../../../darwin/libMobileGestalt/include/MobileGestalt/MobileGestalt.h

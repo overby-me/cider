@@ -1601,7 +1601,7 @@ darwin_dylib(
     ],
     siblings = [
         "//buck-src/openpam:pam.2_dylib",
-        "//src/libsandbox:sandbox_not_system_dylib",
+        "//darwin/libsandbox:sandbox_not_system_dylib",
         "//buck-src:system_final",
         "//darwin/frameworks:OpenDirectory_dylib",
         "//darwin/frameworks:NetFS_dylib",

@@ -102,7 +102,7 @@ upstream change for its *intent* and apply that intent to the Rust.
 
 ### Here only (no upstream counterpart)
 
-- `src/dirserv/`, `src/sandbox-exec/` -- first-party additions
+- `darwin/dirserv/`, `darwin/sandbox-exec/` -- first-party additions
 - `buck/`, `buck-src/`, `buck-rust/` -- the buck2 build (the point of this fork)
 - `nix/`, `flake.nix`, `flake.lock` -- the Nix endpoints
 - `scripts/`, `docs/`, `plan/`, `PLAN.md`, `templates/`, `tools/`, `patches/`

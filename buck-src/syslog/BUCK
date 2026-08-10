@@ -255,7 +255,7 @@ cc_objects(
     toolchain = "toolchains//:darwin_cc",
     deps = [
         "//darwin:sdk_env",
-        "//src/xtrace:xtrace_headers",
+        "//darwin/xtrace:xtrace_headers",
         ":asl_ipc_xtrace_mig_inc_syslog_libsystem_asl_tproj_include",
     ],
     gen_srcs = [

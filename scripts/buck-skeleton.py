@@ -100,9 +100,9 @@ _NEVER_EMPTY = ("buck-src/", "buck-rust/", "src/external/")
 # and prefer --keep below, which takes a freshly computed list, over this baked default.
 _NEVER_EMPTY_FILES = frozenset([
     "linux/libelfloader/wrapgen/wrapgen.cpp",
-    "src/libsimple/include/libsimple/base.h",
-    "src/libsimple/include/libsimple/lock.h",
-    "src/libsimple/src/lock.c",
+    "darwin/libsimple/include/libsimple/base.h",
+    "darwin/libsimple/include/libsimple/lock.h",
+    "darwin/libsimple/src/lock.c",
     "linux/startup/rtsig.c",
 ])
 

@@ -40,7 +40,7 @@ of them as unread produces a false positive:
                            namespace: XTRACE_INLINE, XTRACE_HIDDEN, the include guards
 
 WHY THE WIDTH MATTERS, measured rather than assumed. A first pass recognising only the first
-four idioms reported 39 names, 38 of them false: C macros in src/xtrace, the CIDER_GIT_* pair
+four idioms reported 39 names, 38 of them false: C macros in darwin/xtrace, the CIDER_GIT_* pair
 the launcher reads through env!(), and script-local names consumed by POSIX expansion. Widening
 it left three, and TWO OF THOSE THREE WERE STILL FALSE, each for its own reason worth keeping:
 

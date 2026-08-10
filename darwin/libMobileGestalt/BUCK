@@ -36,8 +36,8 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/libMobileGestalt:mobilegestalt_include",
-        "//src/libMobileGestalt:sdk_src_libMobileGestalt_headers",
+        "//darwin/libMobileGestalt:mobilegestalt_include",
+        "//darwin/libMobileGestalt:sdk_src_libMobileGestalt_headers",
     ],
     visibility = ["PUBLIC"],
 )

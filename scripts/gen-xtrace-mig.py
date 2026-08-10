@@ -122,7 +122,7 @@ def main(argv: list[str]) -> int:
         base = t["out_base"].rstrip("/")
         out_name = pkg_rel[len(base) + 1:] if base and pkg_rel.startswith(base + "/") else stem
         edits.setdefault(t["path"], []).append((t["span"], out_name))
-        extra[lib] = [f"gen:{t['label']}[xtrace]", "//src/xtrace:xtrace_headers"]
+        extra[lib] = [f"gen:{t['label']}[xtrace]", "//darwin/xtrace:xtrace_headers"]
         wired.append((lib, t["label"]))
 
     if "--dry-run" in argv:

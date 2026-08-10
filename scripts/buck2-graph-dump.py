@@ -500,7 +500,7 @@ def main(argv: list[str]) -> int:
     #     anything.
     # By PROVIDER, through BXL, not by building targets. `buck2 build <target>` produces a
     # target's DEFAULT output and nothing else, and these artifacts hang off other
-    # providers: darling-config.h is action id 2 of //src/include:cider_config, reachable
+    # providers: darling-config.h is action id 2 of //darwin/include:cider_config, reachable
     # through no subtarget, and it simply went missing when a consumer came to include it.
     # buck/bxl/materialize.bxl asks for them by provider instead, which works because the
     # port's rules are its own.

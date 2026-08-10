@@ -32,7 +32,7 @@ def load_gen():
 # porting gap that does not exist, and the suite stays permanently red for a naming reason.
 #
 # Verified target by target rather than assumed: root//linux/hosttools:cider-coredump,
-# root//src/libsimple:libsimple_cider and root//src/libsimple:libsimple_ciderd all resolve,
+# root//darwin/libsimple:libsimple_cider and root//darwin/libsimple:libsimple_ciderd all resolve,
 # and the archive registry holds liblibsimple_cider.a and liblibsimple_ciderd.a.
 #
 # This is a MAP rather than a re-frozen reference on purpose. Refreshing result-graph-ref

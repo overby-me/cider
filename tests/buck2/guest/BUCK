@@ -75,8 +75,8 @@ cc_objects(
     deps = [
         "//darwin:sdk_env",
         "//buck-src:fw_CoreFoundation",
-        "//src/CoreAudio:fw_AudioToolbox",
-        "//src/CoreAudio:fw_CoreAudio",
+        "//darwin/CoreAudio:fw_AudioToolbox",
+        "//darwin/CoreAudio:fw_CoreAudio",
         "//darwin/frameworks:fw_CoreServices",
         "//darwin/frameworks:fw_CarbonCore",
         "//darwin/frameworks:fw_AE",
@@ -97,7 +97,7 @@ darwin_binary(
         "//buck-src:system_final",
         "//buck-src/libcxx:cxx_dylib",
         "//buck-src/corefoundation:CoreFoundation_dylib",
-        "//src/CoreAudio:AudioToolbox_dylib",
+        "//darwin/CoreAudio:AudioToolbox_dylib",
     ],
     toolchain = "toolchains//:darwin_cc",
     deps = [

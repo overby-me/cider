@@ -2929,7 +2929,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -2957,7 +2957,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -2985,7 +2985,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3013,7 +3013,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3041,7 +3041,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3069,7 +3069,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3097,7 +3097,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3125,7 +3125,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3153,7 +3153,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3181,7 +3181,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3209,7 +3209,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3237,7 +3237,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3265,7 +3265,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3293,7 +3293,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3321,7 +3321,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3349,7 +3349,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3377,7 +3377,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3405,7 +3405,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3433,7 +3433,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3461,7 +3461,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3489,7 +3489,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3517,7 +3517,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3545,7 +3545,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3573,7 +3573,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3601,7 +3601,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3629,7 +3629,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3657,7 +3657,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3685,7 +3685,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3713,7 +3713,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3741,7 +3741,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3769,7 +3769,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3797,7 +3797,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3825,7 +3825,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3853,7 +3853,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3881,7 +3881,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3909,7 +3909,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3937,7 +3937,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3965,7 +3965,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -3993,7 +3993,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4021,7 +4021,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4049,7 +4049,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4077,7 +4077,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4105,7 +4105,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4133,7 +4133,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4161,7 +4161,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4189,7 +4189,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4217,7 +4217,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4245,7 +4245,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4273,7 +4273,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4301,7 +4301,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4329,7 +4329,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4357,7 +4357,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4385,7 +4385,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4413,7 +4413,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4441,7 +4441,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4469,7 +4469,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4497,7 +4497,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4525,7 +4525,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4553,7 +4553,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4581,7 +4581,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4609,7 +4609,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4637,7 +4637,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4665,7 +4665,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4693,7 +4693,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4721,7 +4721,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4749,7 +4749,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4777,7 +4777,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4805,7 +4805,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4833,7 +4833,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4861,7 +4861,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4889,7 +4889,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4917,7 +4917,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4945,7 +4945,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -4973,7 +4973,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5001,7 +5001,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5029,7 +5029,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5057,7 +5057,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5085,7 +5085,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5113,7 +5113,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5141,7 +5141,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5169,7 +5169,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5197,7 +5197,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5225,7 +5225,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5253,7 +5253,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5281,7 +5281,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5309,7 +5309,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5367,7 +5367,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5441,7 +5441,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5503,7 +5503,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5565,7 +5565,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5627,7 +5627,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5689,7 +5689,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5751,7 +5751,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5813,7 +5813,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5875,7 +5875,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5937,7 +5937,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -5999,7 +5999,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -6061,7 +6061,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -6123,7 +6123,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -6185,7 +6185,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -6247,7 +6247,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],
@@ -6306,7 +6306,7 @@ darwin_binary(
         "//buck-src/csu:crt1.10.6_obj2",
     ],
     dylibs = [
-        "//src/xcselect:xcselect_dylib",
+        "//darwin/xcselect:xcselect_dylib",
         "//buck-src:system_final",
         "//buck-src/corefoundation:CoreFoundation_dylib",
     ],

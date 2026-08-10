@@ -26,7 +26,7 @@ const INSTALL_PREFIX: &str = env!("CIDER_INSTALL_PREFIX");
 const GIT_BRANCH: &str = env!("CIDER_GIT_BRANCH");
 const GIT_COMMIT: &str = env!("CIDER_GIT_COMMIT");
 
-// ---- shellspawn wire protocol (src/shellspawn/shellspawn.h) ----
+// ---- shellspawn wire protocol (darwin/shellspawn/shellspawn.h) ----
 const SHELLSPAWN_ADDARG: u16 = 1;
 const SHELLSPAWN_SETENV: u16 = 2;
 const SHELLSPAWN_CHDIR: u16 = 3;

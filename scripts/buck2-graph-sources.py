@@ -66,7 +66,7 @@ def _project_candidates(tok: str):
             if not rest.startswith(("/", "@", "buck-out/")):
                 yield rest
     # A COMMA JOINED -Wl, TOKEN HIDES A FILE. darwin.bzl emits link_flag_files as
-    # `<flag>,<path>` in ONE argv token, so `-Wl,-alias_list,src/libm/Exports/x.alias`
+    # `<flag>,<path>` in ONE argv token, so `-Wl,-alias_list,darwin/libm/Exports/x.alias`
     # never matched anything and the alias file stayed out of the narrowed union. The
     # link then died with `ld: can't open alias file: ...`, naming a path that is right
     # there in the tree. Splitting is safe: a part that is not a path simply does not

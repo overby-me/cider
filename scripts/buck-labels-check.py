@@ -15,8 +15,8 @@ packages. They kept naming //src/external/darlingserver after that package
 became //src/external/ciderd. buck2 reported the first one only, as an analysis
 error four minutes into the endpoint:
 
-    Unknown target `darling_config` from package `root//src/include`
-    Available targets: root//src/include:cider_config
+    Unknown target `darling_config` from package `root//darwin/include`
+    Available targets: root//darwin/include:cider_config
 
 One failure per run, and the next one only after another four minutes. This
 reports all of them at once.
@@ -31,8 +31,8 @@ TWO RULES, because a general target-existence check is not available cheaply:
 Rule 2 exists because rule 1 does not catch a package that still exists under a
 target that was renamed inside it, which is how this failed twice:
 
-    Unknown target `darling_config` from package `root//src/include`
-    Unknown target `libsimple_darling` from package `root//src/libsimple`
+    Unknown target `darling_config` from package `root//darwin/include`
+    Unknown target `libsimple_darling` from package `root//darwin/libsimple`
 
 Full target existence was measured and rejected: after expanding the two macro
 shapes that can be resolved statically (the fw_* header roots from
@@ -43,8 +43,8 @@ file. Reporting those 105 as failures would make the check useless, so it does
 not claim to check what it cannot see.
 
 Verified both ways. Against the tree as the rename left it: 205 occurrences of
-//src/external/darlingserver, 10 of //src/include:darling_config and 5 of
-//src/libsimple:libsimple_darling. Clean now, except two labels ignored by name
+//src/external/darlingserver, 10 of //darwin/include:darling_config and 5 of
+//darwin/libsimple:libsimple_darling. Clean now, except two labels ignored by name
 below.
 
 Exit 0 if every label resolves, 1 otherwise.

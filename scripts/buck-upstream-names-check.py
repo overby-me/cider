@@ -276,7 +276,7 @@ def main():
         # containing -DLIBSIMPLE_DARLING=1 three times, so every -D definition in the tree
         # was invisible to this check and a rename could orphan one while it reported PASS.
         # That is not hypothetical: it happened on 2026-08-10. LIBSIMPLE_DARLING was renamed
-        # in lock.c, the -D definition in src/libsimple/BUCK was left behind because a
+        # in lock.c, the -D definition in darwin/libsimple/BUCK was left behind because a
         # rename sweep with this same pattern could not see it, and the guest target died an
         # hour into the endpoint with "linux_futex not implemented for this platform".
         # Allowing -D as a boundary keeps every existing protection: the trailing boundary

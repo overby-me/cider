@@ -62,12 +62,12 @@ FRAMEWORK_PACKAGES = [
     # Kernel and System, whose headers are the SDK's own rather than a framework tree.
     # zprint includes <Kernel/IOKit/IOKitDebug.h>.
     "//darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include:",
-    # AudioToolbox, AudioUnit and CoreAudio, which are NOT in the SDK: src/CoreAudio's
+    # AudioToolbox, AudioUnit and CoreAudio, which are NOT in the SDK: darwin/CoreAudio's
     # CMakeLists calls remove_sdk_framework() on all three and supplies its own headers, so
     # this package is the only place their roots exist. Left out, all three of CoreAudio,
     # AudioToolbox and AudioUnit failed with "no framework root for CoreAudio" -- a
     # framework including ITSELF, which the SDK packages never have to express.
-    "//src/CoreAudio:",
+    "//darwin/CoreAudio:",
 ]
 
 

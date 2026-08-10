@@ -77,7 +77,7 @@ def main [--all] {
     # fuse.
     #
     # One entry per wrap_elf() in the tree: fuse for hdiutil (darling-dmg), the sixteen
-    # linux/native ones the gui component wraps, and the five src/CoreAudio ones (ffmpeg's four
+    # linux/native ones the gui component wraps, and the five darwin/CoreAudio ones (ffmpeg's four
     # plus pulseaudio) that AudioToolbox decodes and plays through. Looked up by SONAME
     # against the dev shell's own -L directories (NIX_LDFLAGS), because that is the
     # authoritative list of what this shell declares. pkg-config is not enough on its own:

@@ -163,7 +163,7 @@ darwin_dylib(
         "//buck-src/libdispatch:libdispatch_shared_firstpass",
         "//buck-src/libplatform:platform_firstpass",
         "//buck-src:system_malloc_firstpass",
-        "//src/launchd:launch_firstpass",
+        "//darwin/launchd:launch_firstpass",
         "//buck-src:system_info_firstpass",
         "//buck-src:system_dyld_firstpass",
         "//buck-src:unwind_firstpass",

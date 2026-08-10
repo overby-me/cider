@@ -51,9 +51,9 @@ const TARGETS = [
     "//buck-src:X11_cgbackend_obj"
     "//darwin/frameworks:OpenGL_obj"
     "//darwin/frameworks:fseventsd_obj"
-    "//src/CoreAudio:CoreAudio_obj"
-    "//src/CoreAudio:AudioToolbox_obj"
-    "//src/CoreAudio:AFAVFormatComponent_obj"
+    "//darwin/CoreAudio:CoreAudio_obj"
+    "//darwin/CoreAudio:AudioToolbox_obj"
+    "//darwin/CoreAudio:AFAVFormatComponent_obj"
 ]
 
 def main [] {

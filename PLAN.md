@@ -235,7 +235,7 @@ because each costs a full rebuild. Measured 2026-08-09 with a control either sid
 | run | builders | time | prefix output |
 | --- | --- | --- | --- |
 | none (control) | **0** | 18 s | `6fx01v8p...` |
-| one leaf BUCK edit (`src/libaccessibility/BUCK`) | **3** | 7.5 min | `6fx01v8p...` UNCHANGED |
+| one leaf BUCK edit (`darwin/libaccessibility/BUCK`) | **3** | 7.5 min | `6fx01v8p...` UNCHANGED |
 | restore | **0** | 1 s | `6fx01v8p...` |
 
 The 3 are the graph pipeline itself, skeleton then graph then sources. Nothing downstream moves,
@@ -458,16 +458,16 @@ flag was wrong.
 
    | subsystem | lines | origin | verdict |
    |---|---|---|---|
-   | `src/CoreAudio` | 73,619 | **MIXED, mostly Apple** | 233 of 316 files are Apple: `CoreAudioUtilityClasses` (195) is Apple's published sample library, `AudioFileTools` (38) is Apple's. Darling's own is ~83 files, the component and toolbox glue plus the ffmpeg bridge |
-   | `src/libm` | 61,868 | Apple Libm, containing Sun 1993 fdlibm | NO, upstream |
-   | `src/launchd` | 26,842 | **Apple** | NO, bundled upstream |
-   | `src/OpenDirectoryOld` | 7,354 | Apple-era | NO |
-   | `src/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
+   | `darwin/CoreAudio` | 73,619 | **MIXED, mostly Apple** | 233 of 316 files are Apple: `CoreAudioUtilityClasses` (195) is Apple's published sample library, `AudioFileTools` (38) is Apple's. Darling's own is ~83 files, the component and toolbox glue plus the ffmpeg bridge |
+   | `darwin/libm` | 61,868 | Apple Libm, containing Sun 1993 fdlibm | NO, upstream |
+   | `darwin/launchd` | 26,842 | **Apple** | NO, bundled upstream |
+   | `darwin/OpenDirectoryOld` | 7,354 | Apple-era | NO |
+   | `darwin/xtrace` | 4,391 | Darling | syscall tracer, guest-side |
    | `linux/hosttools` + `linux/buildtools` | 1,509 | Darling | **BEST FIRST TARGET**, see below |
    | `linux/libelfloader` | 864 | Darling | mldr is already Rust and consumes this |
-   | `src/xcselect` | 679 | Darling | |
-   | `src/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
-   | `src/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
+   | `darwin/xcselect` | 679 | Darling | |
+   | `darwin/shellspawn` | 634 | Darling | load-bearing: it is what `cider shell` uses, and it is in the minimal prefix |
+   | `darwin/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
 
    **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
    `src/external/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
@@ -488,7 +488,7 @@ flag was wrong.
    everywhere except the daemon. A first port outside xnu-sys should buy experience without
    buying that failure mode.
 
-   `src/libsimple` is the other one worth naming, for a different reason: the Rust daemon
+   `darwin/libsimple` is the other one worth naming, for a different reason: the Rust daemon
    already links it, so porting it would remove a C archive from that link entirely. It stays
    C-ABI either way, since the still-C glue calls it too.
 
@@ -1101,7 +1101,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
    everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
    already done, see below; the rest are Darling's own framework implementations under
-   src/frameworks (101) and src/private-frameworks (45), plus 314 in src/external which is
+   darwin/frameworks (101) and darwin/private-frameworks (45), plus 314 in src/external which is
    mostly python, ruby, perl and their extension modules.
 
    Stage 2 is effectively complete: 1354 of 1359 stock link edges. The five that remain
@@ -1112,7 +1112,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 
    Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
    graph. `X11` is both the linux/native wrap_elf stub and CoreGraphics' X11 backend in
-   src/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
+   darwin/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
    cli was small enough that names were unique; stock is not.
 
 2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
@@ -1276,7 +1276,7 @@ has been true six times running, each time a check freshly written.
   **Splitting the source into per-subtree stores cannot work for this tree.** A group is staged
   as one symlink to its own store path, and **2,306 of the 2,970 symlinks under `darwin`, `src`
   and `linux` are relative and cross a group boundary** (15 groups; `darwin/Developer/Platforms`
-  2,189, `frameworks/SystemConfiguration` 52, `src/opendirectory_internal/include` 24). The
+  2,189, `frameworks/SystemConfiguration` 52, `darwin/opendirectory_internal/include` 24). The
   endpoint failed 1,194 targets on `CoreServices/MacTypes.h`, which is itself a link to
   `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
   1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
@@ -1317,9 +1317,9 @@ has been true six times running, each time a check freshly written.
   **AND THE SDK INVERTS THE WHOLE IDEA FOR A COMPILING TARGET, measured.** Every darwin compile
   needs `darwin/Developer/Platforms`, and that tree is a HUB: 2,633 symlinks reaching TWELVE
   roots (1,898 `src/external`, 444 `darwin/Developer`, 118 `darwin/frameworks`, 57
-  `darwin/private-frameworks`, 34 `build/src`, 23 `darwin/basic-headers`, then `src/launchd`,
-  `src/libm`, `src/sandbox`, `src/CoreAudio`, `src/libacm`,
-  `src/libDiagnosticMessagesClient`). Counted as GROUPS:
+  `darwin/private-frameworks`, 34 `build/src`, 23 `darwin/basic-headers`, then `darwin/launchd`,
+  `darwin/libm`, `darwin/sandbox`, `darwin/CoreAudio`, `darwin/libacm`,
+  `darwin/libDiagnosticMessagesClient`). Counted as GROUPS:
 
   | | |
   |---|---|
@@ -1458,14 +1458,14 @@ has been true six times running, each time a check freshly written.
   | **the four names `buildFlags` passed** | 3,515 | **3,114** | **197** |
 
   `cctools-port/cctools/misc` defines NO `install_name_tool` and NO `nmedit`, only `lipo`, so
-  ninja resolved those bare names to the GUEST tools under `src/xcselect`. That is where libc
+  ninja resolved those bare names to the GUEST tools under `darwin/xcselect`. That is where libc
   (635 compiles), icu (446), xnu (415), compiler-rt (139), corefoundation (127) and Libinfo
   (106) came from, and it is the 369 directories.
   **AND THE RESULT WAS DISCARDED**, which is what made the fix safe rather than a trade-off:
   `installPhase` looked for them under `cctools-port/cctools/misc`, where those targets never
   wrote, so its `find` failed and the `note: not built` branch fired. Checked three ways that
   nothing consumed them: the lowering never names them, no action's argv invokes them, and the
-  only actions mentioning them BUILD them (precisely the `src/xcselect` shims ninja resolved to).
+  only actions mentioning them BUILD them (precisely the `darwin/xcselect` shims ninja resolved to).
   VERIFIED: dropping the two names reproduces
   `sha256-tHH+BndVNL2V8g9iM7++iD/aGY3Pz5AirmcwEqJSblc=` exactly and collapses onto an EXISTING
   store path, so no consumer moves. The oracle was confirmed live first: three separate ld64
@@ -1514,7 +1514,7 @@ has been true six times running, each time a check freshly written.
   facts say otherwise. `mach-o/loader.h` guards ALL its mach includes behind `#ifdef __APPLE__`
   and typedefs `cpu_type_t`, `cpu_subtype_t` and `vm_prot_t` itself in the `#else`, so a host
   compile never reaches `machine.h`, which is why the reference needs nothing, and its real
-  `getuuid.c.o` command carries only `src/include`, `linux/buildtools/include` and
+  `getuuid.c.o` command carries only `darwin/include`, `linux/buildtools/include` and
   `cctools/include`. `cctools/include/mach/machine.h` has NO `#include` lines, so it cannot be
   the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
   64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
@@ -1586,8 +1586,8 @@ has been true six times running, each time a check freshly written.
   buck2 normally gives, a declared header farm per target, and the 85x was the dump
   FLATTENING those farms per consumer, recomputable from data already in the same file.
   Depfiles would have been a ninja-shaped answer to a buck2 question. Three source-tree
-  include roots remain as rule bugs worth fixing on their own: `src/xtrace/include`
-  (44 uses), `src/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
+  include roots remain as rule bugs worth fixing on their own: `darwin/xtrace/include`
+  (44 uses), `darwin/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
 - **IFD is not the problem. The 1.62 GB payload is. Do not bet on an experimental feature
   before fixing the representation.** recursive-nix works here, verified end to end: an
   inner derivation built from inside a build, INNER_OK read back out of the store. The

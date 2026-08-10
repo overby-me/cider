@@ -2425,7 +2425,7 @@ darwin_binary(
     ],
     dylibs = [
         "//buck-src:util_dylib",
-        "//src/libcompression:compression_dylib",
+        "//darwin/libcompression:compression_dylib",
         "//buck-src:system_final",
     ],
     toolchain = "toolchains//:darwin_cc",
