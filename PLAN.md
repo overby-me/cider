@@ -66,6 +66,13 @@ Rung 1 is only cheap against the endpoint that is actually gated: pointed at
 seconds** because it rebuilt that graph first. Naming the wrong endpoint does not fail, it
 just silently costs a graph build. Never start at rung 3.
 
+**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.py <log>`. The endpoint
+reproducibly hits a nix-daemon stall where the worker holds max-jobs unreaped children with
+none live and nothing moves again; the cause is unknown and needs root to chase. Recovery is
+`kill -TERM` the CLIENT, never the daemon, then relaunch, which resumes from the store with no
+work lost. Do not judge it by `ps` %CPU: that is a lifetime average and reads ~42 percent for
+a worker doing 0.35.
+
 **CMAKE IS GONE (#82), buck2 is the only build.** Removed 2026-08-09 on the user's word that
 they do not ship it: 13 cmake package outputs, 8 nix-ninja group outputs, 8 nix libs
 (`package.nix`, `xnu-sys.nix`, `cctools-port.nix`, `cider-{graph,base,component,components}
