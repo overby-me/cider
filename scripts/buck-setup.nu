@@ -43,6 +43,33 @@ def main [--all] {
     let clang_resource_dir = (^clang -print-resource-dir | str trim)
     print $"clang resource dir: ($clang_resource_dir)"
 
+    # THE GUEST TOOLCHAIN MUST NOT BE THE WRAPPED CLANG, and ciderBuck2Graph.nix has always
+    # known it: the Nix graph derivation pins darwin_cc to clang-unwrapped and unsets
+    # NIX_CFLAGS/NIX_LDFLAGS. This file set neither, so darwin_cc fell back to the bare name
+    # clang from buck/toolchains/BUCK, which in the dev shell is the WRAPPED one, and it
+    # breaks a guest build two separate ways:
+    #   1. add-hardening.sh appends -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 AFTER the argv, so
+    #      the -D_FORTIFY_SOURCE=0 the port passes loses. libc secure/_stdio.h then turns
+    #      snprintf into a macro over __builtin___snprintf_chk, which rewrites libc OWN
+    #      DEFINITION of snprintf, and //buck-src/libc:libc-stdio_obj does not parse.
+    #   2. bin/clang re-sources the binutils add-flags whenever the bintools sentinel is
+    #      unset, which is true here and false inside a derivation, so every link gets
+    #      -Wl,-dynamic-linker=<glibc ld.so> and ld64 dies with "unknown option".
+    # Measured 2026-08-10: those two are the whole of a clean buck-test reporting
+    # "built, 432 of 659 reported an output" with 227 FAIL lines, while the Nix endpoint was
+    # green. A green endpoint is not evidence about the dev shell.
+    #
+    # cc and cxx stay WRAPPED deliberately. Host ELF tools DO need the nixpkgs dynamic linker
+    # and the -L paths, and the unwrapped clang cannot even find stdio.h without them.
+    let nix_cc = ($env.NIX_CC? | default "")
+    if ($nix_cc | is-empty) or not ($"($nix_cc)/nix-support/orig-cc" | path exists) {
+        print -e "ERROR: NIX_CC is unset or has no nix-support/orig-cc, so the unwrapped clang"
+        print -e "cannot be located. Run this from inside the dev shell."
+        exit 1
+    }
+    let clang_unwrapped = (open $"($nix_cc)/nix-support/orig-cc" | str trim)
+    print $"unwrapped clang (guest toolchain): ($clang_unwrapped)"
+
     # Darling reaches HOST libraries through libelfloader, and wrapgen builds the Mach-O stub
     # for each one by dlopen()ing the real .so at BUILD time to read its dynamic symbol table.
     # dlopen goes through the loader's search path, so every such library's directory has to
@@ -152,6 +179,8 @@ def main [--all] {
 ld = ($ld64)/bin/($triplet)-ld
 ld64_dir = ($ld64)/bin
 clang_resource_dir = ($clang_resource_dir)
+darwin_cc = ($clang_unwrapped)/bin/clang
+darwin_cxx = ($clang_unwrapped)/bin/clang++
 elf_lib_dirs = ($elf_lib_dirs | str join ':')
 host_include_dirs = ($host_include_dirs | str join ':')
 "
