@@ -17,6 +17,19 @@
 # Seeing all three at once is correct when both routes are being built, and is exactly what a
 # run after a source change looks like.
 #
+# WHAT BELONGS IN "other", because an unclassified bucket is how a counter quietly misleads.
+# It should stay in the single digits and hold the things that are neither route: the pin
+# derivations and whatever check sits at the top. Read off the last full run rather than
+# guessed, where all four were expected:
+#
+#   cider-pin-pins-bootstrap_cmds   the patched pin
+#   materialize-pins                the pin assembly
+#   cider-dyn-gen-pairs             the comparison input
+#   cider-dyn-gen-all               the check itself
+#
+# If this number grows into the dozens something is being built that none of the three
+# patterns recognises, and the fix is to look at the names before trusting the other counts.
+#
 # COUNT WHAT RAN, NEVER THE WILL-BE-BUILT LIST. nix prints "these N derivations will be built"
 # and then may build none of them, because a content addressed placeholder always moves even
 # when the output does not. Only `building '...'` lines mean a builder started.
