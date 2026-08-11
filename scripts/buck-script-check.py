@@ -112,6 +112,41 @@ def main(argv: list) -> int:
         print(f"    {label}")
     rc = 0 if not bad else 1
 
+    # DO THE GENERATOR'S TWO OUTPUTS AGREE? full.json is what the lowering joins; dyn/*.json is
+    # what the bridge emits. They come from the same renderer, but they are written separately
+    # and read by different consumers, so a divergence would mean the two routes build
+    # DIFFERENT THINGS while both look healthy. Nothing else checks this.
+    #
+    # The dyn spec differs in exactly two known ways, and both are asserted rather than
+    # skipped over: the EXPORTS slot is empty, because an emitted action gets the placeholders
+    # as env, and there is a three line preamble a runCommand would have supplied.
+    dyn_dir = os.path.join(specs_dir, "dyn")
+    if full is not None and os.path.isdir(dyn_dir):
+        from buck_lowering import join_parts
+        agree, disagree, missing = 0, [], 0
+        for label in dump["drvs"]:
+            name = Needs.safe_name(label)
+            path = os.path.join(dyn_dir, name + ".json")
+            if not os.path.exists(path):
+                missing += 1
+                continue
+            spec = json.load(open(path))
+            want = join_parts(full[name], lambda v: "" if v == "EXPORTS" else '"$' + v + '"')
+            got = spec["args"][1]
+            i = got.find("mkdir -p work && cd work")
+            if i < 0 or got[i:] != want:
+                disagree.append(label)
+            else:
+                agree += 1
+        print(f"\n== the generator's two outputs, full.json against dyn/ ==")
+        print(f"  agree            {agree}")
+        print(f"  differ           {len(disagree)}")
+        print(f"  no dyn spec      {missing}")
+        for label in disagree[:5]:
+            print(f"    {label}")
+        if disagree or missing:
+            rc = 1
+
     if controls:
         # EACH BREAKS ONE THING and must be caught. A comparison of two things that agree says
         # nothing about whether it could have disagreed, and this one compares hashes, where a
