@@ -37,6 +37,17 @@
 # per ACTION rather than per group, 8,704 of them, would cost about 83 minutes and cannot pay
 # for itself here.
 #
+# DO NOT QUOTE THE 14 MINUTES WITHOUT THIS CAVEAT. The LINEARITY is the suspect part, and it is
+# exactly what a saturated machine would produce: gate16 was building throughout, so there were
+# no free cores for the producers to spread over. Producers are independent derivations with no
+# edges between them, so on an idle box Nix should run them --max-jobs wide, and 1,474 of them
+# over ~22 cores at 0.57 s each is about 38 SECONDS rather than 14 minutes. That is not a
+# refinement of the conclusion, it reverses it. Re-run this quiet before any decision rests on
+# the number, and compare the SLOPE at two sizes again rather than trusting one.
+#
+# The earlier evidence points that way too: n=4 took LONGER than n=16, which only happens if
+# the producers were overlapping at that size.
+#
 # `stamp` must change to force real work. Reusing it measures the store's ability to do
 # nothing, which is fast and meaningless -- the same trap buck-dyndrv-check.nu guards with its
 # never-used knob values.
