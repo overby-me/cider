@@ -373,7 +373,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar; };
 
 
       # THE MINIMAL ENDPOINT WITH sourceGroups ON (#54), which is the flag with the RIGHT
@@ -412,7 +412,7 @@
           };
         in
         lowered.named."root//buck/prefix-min:cider_prefix_min"
-        // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
+        // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar; };
 
       # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
       # assembled tree they replace. The lowering plants pins from cider-src, which is ONE
@@ -584,7 +584,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix-min:cider_prefix_min" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
+        lowered.named."root//buck/prefix-min:cider_prefix_min" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar; };
 
       # ONE TARGET, ONE COMMAND, ONE EVAL (task #68). The most common operation in this work is
       # "does this one target still build, and what RAN", and it used to cost TWO evaluations of
@@ -813,7 +813,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar; };
 
       packages.cider-buck2-prefix-coarse =
         pkgs:
@@ -841,7 +841,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv specName depVar; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.

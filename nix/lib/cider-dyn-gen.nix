@@ -28,14 +28,10 @@
 }: let
   inherit (pkgs) lib;
 
-  # Mirrors safe_name in the generator and specName in the lowering, which is the key the spec
-  # files are named by.
-  specName = l: lib.stringAsChars (c:
-    if (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")
-    || c == "_" || c == "." || c == "-"
-    then c
-    else "_")
-  l;
+  # THE LOWERING'S OWN, not a sixth copy. This file had its own transcription of safe_name,
+  # which is the mapping the spec files are named by, and a transcription that drifted would
+  # not error: the name would simply not be found, or worse would find another group's spec.
+  inherit (lowered) specName;
 
   coneOf = l: let
     direct = lowered.drvs.${l}.passthru.deps;

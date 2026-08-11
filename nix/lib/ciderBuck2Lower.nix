@@ -1607,6 +1607,13 @@ in
   # so the check has to substitute the real path back before comparing.
   graphData = graph.data;
 
+  # THE TWO NAME MAPPINGS, exposed so a consumer does not write a SIXTH copy of them. There are
+  # already several: the generator's safe_name, buck_lowering's, buck-specs-check's, this one,
+  # and dep_var in two places. A mismatch between any pair is silent in the worst way, since a
+  # wrong name simply does not match and the variable expands to empty.
+  # scripts/buck-names-check.nu compares them all on the real 1,474 labels.
+  inherit specName depVar;
+
   # The spec dir, so a consumer can reach ${graph.specs}/dyn: the bridge-shaped specs the
   # generator wrote. nix/lib/cider-dyn-gen.nix feeds those to nix/lib/dyn-actions.nix, which is
   # the arrangement #66 is for, with nothing serialised in the evaluator.
