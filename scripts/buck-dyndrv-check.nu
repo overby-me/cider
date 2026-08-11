@@ -1,15 +1,15 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the six things #66 depends on?
+# Do dynamic derivations still do the seven things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if six properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if seven properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
-# away. 4 to 6 are properties of nix/lib/dyn-actions.nix, and the first two of those were false when
+# away. 4 to 7 are properties of nix/lib/dyn-actions.nix, and the first two of those were false when
 # first checked: the DAG edge and the whole specDir mode. Neither had a fixture, so
 # neither could have been noticed.
 #
@@ -34,6 +34,9 @@
 #      thing directly beneath it with the caller threading the outputOf string by hand. A
 #      generator-written spec cannot interpolate anything, so the action has to find its
 #      dependency through the env the bridge sets, transitively.
+#   7. A DAG THROUGH specDir, the combination a real consumer needs and the last to work.
+#      specDir cannot interpolate, so the edges travel in a deps.json beside the specs. A
+#      generator that omits it gets a SET, silently, every action seeing an empty dependency.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -177,8 +180,24 @@ def main [] {
         ok (open --raw ($dag.stdout | str trim | lines | last) | str trim)
     }
 
+    # 7. A DAG THROUGH specDir, which is the combination a real consumer actually needs and the
+    # last one to work. `actions` mode can express a DAG easily because the caller is writing
+    # Nix and can interpolate anything; specDir cannot, since the spec is a file nobody parses.
+    # The edges travel in a deps.json beside the specs instead. A generator that omits it gets
+    # a SET, silently: every action still emits and builds, in a plausible order, each seeing an
+    # empty dependency. Verified both ways -- stripping deps.json from the spec dir yields
+    # "SPECDIR-BETA saw " with nothing after it, and exit 0 from the build.
+    let sdd = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-specdir-dag-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $sdd.exit_code != 0 {
+        bad "specDir mode cannot carry a dependency"
+        print -e ($sdd.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($sdd.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, a DAG three levels deep, and both modes agreeing"
+        say "PASS: outputOf, early cutoff, both modes agreeing, and a DAG in each of them"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"

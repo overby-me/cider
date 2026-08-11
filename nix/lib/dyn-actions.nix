@@ -119,11 +119,12 @@
       inherit (a) name;
       builder = a.builder;
       args = a.args;
+      # NO deps HANDLING HERE. They are injected by dyn-actions-spec-fixup.py when the producer
+      # runs, in BOTH modes, because in specDir mode this function is never called: the spec is
+      # a file the producer copies without anyone parsing it. Doing deps in two places would be
+      # two implementations of one rule, and they would drift.
       env =
         (a.env or {})
-        // builtins.listToAttrs (map (d:
-          lib.nameValuePair (depVar d) outputs.${d})
-        (a.deps or []))
         // {
           inherit (a) name;
           builder = a.builder;
@@ -155,12 +156,14 @@
         # ways 2026-08-11.
         #
         # `deps` is the same mechanism with the plumbing done for you: it names OTHER ACTIONS
-        # rather than store paths, and each becomes both a source here and a DYN_DEP_<name>
-        # entry in the emitted action's env, so the action can find its dependency without the
-        # caller having to thread outputOf strings through itself. It is what makes specDir
-        # mode usable for a DAG, where the spec is a static file and the caller has no chance
-        # to interpolate anything.
-        srcs = (a.inputSrcs or []) ++ map (d: outputs.${d}) (a.deps or []);
+        # rather than store paths, and each becomes both a source AND a DYN_DEP_<name> entry in
+        # the emitted action's env, so the action can find its dependency without the caller
+        # threading outputOf strings through itself. That is what makes specDir mode usable for
+        # a DAG, where the spec is a static file nobody parses.
+        #
+        # deps are appended by dyn-actions-spec-fixup.py rather than here, precisely BECAUSE
+        # specDir mode never calls this function.
+        srcs = a.inputSrcs or [];
       };
       outputs.${outputName} = {
         hashAlgo = "sha256";
@@ -176,9 +179,18 @@
   # How the builder gets its spec. In specDir mode Nix NEVER reads or serialises it: the
   # interpolation is a store path, so the evaluator's whole job per action is one cheap
   # derivation. That is the difference between this scaling and not.
+  # chmod, BECAUSE A STORE FILE IS 444 AND cp KEEPS THAT. The fixup step below rewrites
+  # spec.json in place, so an unwritable copy makes it die with PermissionError.
+  #
+  # THAT FAILED SILENTLY BEFORE, which is the more useful half of this note. The fixup used to
+  # be an inline `python3 -c` with no error check, so in specDir mode it crashed, the shell
+  # carried on, and `nix derivation add` read the UNFIXED spec. For actions with no sources
+  # that spec is perfectly valid, so the specdir fixture passed while the step it depended on
+  # was not running at all. It only surfaced once the step was given `|| exit 1` and an action
+  # that actually needed it.
   writeSpec = n:
     if fromDir
-    then "cp ${specDir}/${n}.json spec.json"
+    then "cp ${specDir}/${n}.json spec.json && chmod u+w spec.json"
     else "printf '%s' ${lib.escapeShellArg (specOf (actionOf n))} > spec.json";
 
   actionOf = n:
@@ -186,36 +198,58 @@
     (throw "dyn-actions: no action named ${n}")
     actions;
 
+  # WHICH ACTIONS EACH ACTION DEPENDS ON, from whichever mode is in use. In specDir mode it is
+  # a deps.json beside the specs, because the spec files themselves are copied without being
+  # parsed and so cannot carry it. The file is OPTIONAL: a spec dir of independent actions is
+  # perfectly valid and predates this, so its absence means no dependencies rather than an
+  # error. One readFile for the whole map, which is the point -- per-action reads out of a
+  # deferred output cost about 13 ms each, measured.
+  depsMap =
+    if fromDir
+    then
+      (
+        if builtins.pathExists "${specDir}/deps.json"
+        then builtins.fromJSON (builtins.readFile "${specDir}/deps.json")
+        else {}
+      )
+    else builtins.listToAttrs (map (a: lib.nameValuePair a.name (a.deps or [])) actions);
+
+  depsOf = n: depsMap.${n} or [];
+
   producerOf = n:
-    derivation {
-      inherit system;
-      name = "${n}.drv";
-      builder = "/bin/sh";
-      args = [
-        "-c"
-        ''
-          export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:${pkgs.python3}/bin:$PATH
-          ${writeSpec n}
-          # inputs.srcs must be store-dir-relative, and it can only be made so HERE: at eval
-          # time an entry may still be an outputOf placeholder that the outer Nix has not
-          # substituted yet. See the srcs comment in specOf.
-          python3 -c 'import json,sys
-p=sys.argv[1]
-d=json.load(open(p))
-s=d.get("inputs",{}).get("srcs",[])
-d["inputs"]["srcs"]=[x.rsplit("/",1)[-1] for x in s]
-json.dump(d,open(p,"w"))' spec.json
-          emitted=$(nix --extra-experimental-features \
-            "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \
-            || { echo "dyn-actions: derivation add failed for ${n}" >&2; exit 1; }
-          cp "$emitted" "$out"
-        ''
-      ];
-      __contentAddressed = true;
-      outputHashMode = "text";
-      outputHashAlgo = "sha256";
-      requiredSystemFeatures = ["recursive-nix"];
-    };
+    derivation ({
+        inherit system;
+        name = "${n}.drv";
+        builder = "/bin/sh";
+        args = [
+          "-c"
+          ''
+            export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:${pkgs.python3}/bin:$PATH
+            ${writeSpec n}
+            # Store-dir-relative srcs, and the dependency injection, both of which can only
+            # happen HERE. See nix/lib/dyn-actions-spec-fixup.py for why.
+            python3 ${./dyn-actions-spec-fixup.py} spec.json || exit 1
+            emitted=$(nix --extra-experimental-features \
+              "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \
+              || { echo "dyn-actions: derivation add failed for ${n}" >&2; exit 1; }
+            cp "$emitted" "$out"
+          ''
+        ];
+        __contentAddressed = true;
+        outputHashMode = "text";
+        outputHashAlgo = "sha256";
+        requiredSystemFeatures = ["recursive-nix"];
+
+        # THE DEPENDENCY PATHS REACH THE FIXUP SCRIPT THROUGH THIS ENVIRONMENT, and that is the
+        # only route available. Their values are builtins.outputOf placeholders which the outer
+        # Nix substitutes when THIS derivation runs, so by the time the script reads them they
+        # are real, realised store paths. Putting them in the producer env also declares the
+        # dependency, which is what makes Nix realise them first.
+        DYN_DEP_NAMES = lib.concatStringsSep " " (depsOf n);
+      }
+      // builtins.listToAttrs (map (d:
+        lib.nameValuePair (depVar d) outputs.${d})
+      (depsOf n)));
 
   producers = lib.listToAttrs (map (n: lib.nameValuePair n (producerOf n)) names);
 
@@ -256,6 +290,10 @@ json.dump(d,open(p,"w"))' spec.json
       names
       + ''
         printf '%s\n' ${lib.escapeShellArg (lib.concatStringsSep "\n" names)} > "$out/names"
+        # deps.json, because the spec files are copied without being parsed and cannot carry
+        # the dependency edges themselves. A generator writing its own spec dir must write this
+        # too, or its DAG silently becomes a set.
+        printf '%s' ${lib.escapeShellArg (builtins.toJSON depsMap)} > "$out/deps.json"
       ''));
 in
   assertOneSource (assertNotOut (assertUnique {
