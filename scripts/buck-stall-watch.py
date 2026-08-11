@@ -68,15 +68,40 @@ def children(pid):
     return z, live
 
 
-def client_pid():
-    out = subprocess.run(["pgrep", "-x", "nix"], capture_output=True, text=True).stdout.split()
-    return int(out[0]) if out else None
+def client_pid(match=None):
+    """The nix client to act on, or None.
+
+    SCOPED, AND THAT MATTERS BECAUSE THIS FEEDS A KILL. The first version took the FIRST result
+    of `pgrep -x nix` with no tie to the log being watched. On a shared box that is a loaded gun:
+    when the watched build ends, or merely goes quiet for the idle window, the first nix running
+    may belong to somebody else -- the user, or a second agent session -- and --restart would
+    terminate THAT one. The standing ops note warns about --relaunch-cmd aiming at whatever nix
+    runs next; the same hazard is already present in choosing the client.
+
+    So a kill now requires --client-match, an argv substring naming the build to act on, and
+    main() refuses --restart without it. Report-only stays unscoped, because reporting on the
+    wrong pid costs nothing.
+    """
+    out = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True).stdout
+    for line in out.splitlines():
+        parts = line.strip().split(None, 1)
+        if len(parts) != 2:
+            continue
+        argv = parts[1]
+        cmd = argv.split(None, 1)[0].rsplit("/", 1)[-1]
+        if cmd != "nix":
+            continue
+        if match is not None and match not in argv:
+            continue
+        return int(parts[0])
+    return None
 
 
 def worker_of(client):
-    """The nix-daemon worker serving this client. The daemon forks one per connection, and
-    the client's own command line carries the parent daemon pid, so match on the worker whose
-    argv names our client."""
+    """The nix-daemon worker serving this client. The daemon forks one per connection, and the
+    WORKER's command line carries the CLIENT pid (it runs as `nix-daemon <client-pid>`), so match
+    on the worker whose argv names our client. Verified against a live pair on 2026-08-11:
+    2591760 was `nix-daemon 2591741` while 2591741 was the `nix build` doing the work."""
     out = subprocess.run(["ps", "-eo", "pid=,args="], capture_output=True, text=True).stdout
     for line in out.splitlines():
         parts = line.strip().split(None, 1)
@@ -98,9 +123,17 @@ def main():
     ap.add_argument("--max-restarts", type=int, default=5,
                     help="give up and report after this many, so a degraded daemon does not "
                          "become an endless kill and relaunch loop")
+    ap.add_argument("--client-match", default=None,
+                    help="argv substring identifying WHICH nix client to act on, e.g. the "
+                         "flake attribute. REQUIRED with --restart: without it the watcher "
+                         "would kill the first nix on the box, which on a shared machine can "
+                         "belong to the user or to another session")
     a = ap.parse_args()
     if a.relaunch_cmd:
         a.restart = True
+    if a.restart and not a.client_match:
+        ap.error("--restart needs --client-match: killing the first nix found is how a watcher "
+                 "ends somebody else's build. Report-only mode needs no match.")
 
     last_n, last_change = builders(a.log), time.time()
     restarts = 0
@@ -118,7 +151,7 @@ def main():
         if idle_for < a.idle_secs:
             continue
 
-        cp = client_pid()
+        cp = client_pid(a.client_match)
         if cp is None:
             print(f"[watch] no nix client left, build is over at {n} builders", flush=True)
             return 0
