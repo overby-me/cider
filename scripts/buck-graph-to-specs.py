@@ -42,9 +42,30 @@ import re
 import sys
 
 
+# buck2 renders an action identity as `LABEL (CONFIGURATION) (ACTION)`. Anchored, because
+# this is the ONE place the adapter reimplements a buck2 concept rather than moving data
+# buck2 already extracted, and a wrong answer here is silent: a mis-split label produces a
+# group that looks perfectly plausible and quietly merges or splits derivations.
+#
+# The lowering says `lib.head (lib.splitString " (" identity)`, which takes the prefix before
+# the FIRST " (" and cannot fail. That is fine while every identity has this shape, and all
+# 8,704 in the current graph do, measured. It stops being fine the moment one does not.
+# Parsing buck2's Display output at all is the weakness; #92 is the proper fix, which is to
+# take the label from buck2's own types instead of re-deriving it from a rendered string.
+_IDENTITY = re.compile(r"^(?P<label>[^ ]+) \((?P<cfg>[^)]*)\) \((?P<action>.+)\)$")
+
+
 def target_of(identity: str) -> str:
-    """The buck2 label, identity up to the first " (". Same as targetOf in the lowering."""
-    return identity.split(" (")[0]
+    """The buck2 label. Same answer as targetOf in the lowering, but it refuses to guess."""
+    m = _IDENTITY.match(identity)
+    if not m:
+        raise SystemExit(
+            f"FAIL: cannot parse a buck2 action identity: {identity!r}\n"
+            f"Expected `LABEL (CONFIGURATION) (ACTION)`. Splitting on the first ' (' would "
+            f"return a label that LOOKS right and silently group this action wrongly, so "
+            f"this stops instead. See #92: the real fix is to read the label from buck2's "
+            f"own types rather than from its rendered output.")
+    return m.group("label")
 
 
 def group_of(label: str, coarse_pin_of: dict, coarse_pins: bool) -> str:
