@@ -39,10 +39,12 @@ def from_full(full: dict, name: str, label: str, exports: str) -> str:
     agreement would be guaranteed and would say nothing about what the graph derivation actually
     WROTE. A generator that rendered correctly and then wrote the wrong dict key, or truncated,
     or serialised something else, passes the function comparison and fails this one."""
-    from buck_lowering import EXPORTS_MARKER
-    if EXPORTS_MARKER not in full[name]:
-        raise SystemExit(f"the generator's script for {name} ({label}) has no exports marker")
-    return full[name].replace(EXPORTS_MARKER, exports, 1)
+    from buck_lowering import join_parts
+    parts = full[name]
+    if not isinstance(parts, list) or len(parts) % 2 == 0:
+        raise SystemExit(f"the generator's template for {name} ({label}) is not an odd-length "
+                         f"alternating list")
+    return join_parts(parts, lambda v: exports if v == "EXPORTS" else '"$' + v + '"')
 
 
 def render(n: Needs, label: str, group_script: str, exports: str, info: dict, data: str,

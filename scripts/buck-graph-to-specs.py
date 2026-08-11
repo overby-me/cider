@@ -58,7 +58,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from buck_lowering import Needs, builder_script  # noqa: E402
+from buck_lowering import Needs, builder_parts  # noqa: E402
 
 
 # buck2 renders an action identity as `LABEL (CONFIGURATION) (ACTION)`. Anchored, because
@@ -415,9 +415,35 @@ def main(argv: list[str]) -> int:
         only_b = sorted(set(groups) - set(needs.targets))[:3]
         raise SystemExit(f"FAIL: the two groupings disagree, {len(needs.targets)} against "
                          f"{len(groups)}; only in Needs {only_a}, only in group_specs {only_b}")
-    full = {safe_name(g): builder_script(needs, g, scripts[safe_name(g)]) for g in groups}
+    # AN ALTERNATING TEMPLATE, not a finished string: literal, variable, literal, ...
+    # A consumer has to put its own paths in, and doing that to a finished string means
+    # replaceStrings scanning 77 MB against up to 130 patterns per script. Measured on this
+    # graph: the lowering assembling it itself 11.5 s, reading and substituting 28.0 s, reading
+    # without substituting 5.2 s. The reads are the win and the SCAN is the loss, so the shape
+    # here removes the scan rather than the reads.
+    full = {safe_name(g): builder_parts(needs, g, scripts[safe_name(g)]) for g in groups}
     with open(os.path.join(outdir, "full.json"), "w") as f:
         json.dump(full, f)
+
+    # AND THE ANSWER needsOf USED TO COMPUTE IN THE EVALUATOR, for the same reason as the
+    # script: it is a function of the graph alone, so computing it per `nix build` is waste. It
+    # was 3.3 s of a 12 s evaluation, the largest single chunk, and it touches 389,452 input
+    # paths to produce 22,473 edges.
+    #
+    #   t      the groups this one copies outputs from, as LABELS, since a consumer indexes
+    #          its own derivations by label rather than by the safe name
+    #   s      the staged artifacts it restores, both kinds
+    #   trees  the subset of s that has a link map, IN ORDER, which is what the template's
+    #          CIDER_TREE_<i> numbering counts. Emitted rather than left to the consumer to
+    #          re-derive, because deriving it a second way is how the numbering drifted before.
+    needs_out = {}
+    for g in groups:
+        got = needs.of(g)
+        trees = [o for o in got["s"]
+                 if (needs.staged_trees.get(o) or {}).get("n", 0) > 0]
+        needs_out[safe_name(g)] = {"t": got["t"], "s": got["s"], "trees": trees}
+    with open(os.path.join(outdir, "needs.json"), "w") as f:
+        json.dump(needs_out, f)
 
     # THE DEPENDENCY EDGES, keyed and valued by SAFE NAME because that is the action name
     # nix/lib/dyn-actions.nix knows. It reads this file in specDir mode and can infer nothing

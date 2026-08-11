@@ -44,7 +44,10 @@ def main [
   # BOTH HALVES OF needsOf, per label. fromTargets alone would leave the farms untested, and
   # they are the half that fails late: a missing farm is a header not found in some other
   # target an hour later, not an error here.
-  let expr = "l: builtins.mapAttrs (n: d: { t = d.passthru.deps; s = d.passthru.stagedNeeds; }) l.drvs"
+  # definitionNeeds, NOT deps: `deps` is read from needs.json, which the python generator
+  # wrote, so comparing against it would compare the python against itself and pass whatever
+  # either side believed. definitionNeeds calls needsOf, which is the definition being ported.
+  let expr = "l: builtins.mapAttrs (n: d: { t = d.passthru.definitionNeeds.fromTargets; s = d.passthru.definitionNeeds.fromStaged; }) l.drvs"
   let tmp = (mktemp -t --suffix .json)
   let e = (do -i { ^nix eval --json $endpoint --apply $expr } | complete)
   if $e.exit_code != 0 {

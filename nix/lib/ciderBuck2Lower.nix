@@ -171,22 +171,67 @@
   # they survive as ${CIDER_PH_*} shell variables the builder exports. See the action-script
   # block below.
 
-  # #66. EVERY GROUP'S ACTION SCRIPT, IN ONE READ. Keyed by specName, value is the rendered
-  # command sequence scripts/buck-graph-to-specs.py produced inside the graph derivation.
+  # THE scripts.json READ IS GONE. It held each group's ACTION SEQUENCE, and full.json below
+  # contains that same text inside the whole builder script, so reading both meant parsing the
+  # actions twice: 59 MB of JSON for something already present in the 77 MB. The generator
+  # still writes scripts.json, because it is the input the full script is built FROM and other
+  # things read it; this consumer simply no longer needs it.
   #
-  # ONE readFile, NOT 1,474, and the difference is 19.6 s of a 32.6 s evaluation. Reading the
-  # per-group .sh files individually cost about 13 ms each, against 0.10 s for all 1,474 read
-  # from a plain store path. The context is what differs: these come from a derivation OUTPUT
-  # which is DEFERRED, because the graph it reads is content addressed, so the real path is
-  # unknown until it is realised and every readFile resolves that again. Hoisting the path
-  # into a let does not help, because what gets hoisted is the placeholder; making the specs
-  # derivation input addressed does not help either, because the deferral comes from its
-  # input. Both were measured at 33 s before this was found.
+  # WHAT THAT READ TAUGHT, kept because it still applies to full.json: one readFile beats 1,474
+  # by 19.6 s of a 32.6 s evaluation. These come from a derivation OUTPUT which is DEFERRED,
+  # because the graph it reads is content addressed, so the real path is unknown until it is
+  # realised and every readFile resolves that again. Hoisting the path into a let does not help,
+  # because what gets hoisted is the placeholder; making the specs derivation input addressed
+  # does not help either, because the deferral comes from its input. Both were measured.
+
+  # #66, AND THIS IS THE WHOLE SCRIPT rather than just the action sequence: the staging call,
+  # the dependency copies, the staged tree restores and the output copies as well. Everything
+  # builderScriptWith used to assemble HERE, on every evaluation, for all 1,474 groups.
   #
-  # fromJSON of the 59 MB costs about a second, once, instead of nineteen.
-  scripts = builtins.fromJSON (
-    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/scripts.json")
+  # WHAT IS LEFT FOR THIS FILE TO DO IS SUBSTITUTION. The generator runs inside the graph
+  # derivation and cannot name a single path this consumer owns, so it writes shell variables
+  # and a marker, and the four values below get put back. That division is what makes the text
+  # portable: the same full.json serves any consumer, and this one fills it from its own inputs.
+  #
+  # PROVEN BYTE FOR BYTE BEFORE THIS SWITCHED OVER, which is why it can be trusted at all:
+  # scripts/buck-script-check.nu hashes the substituted text against the builderScript this
+  # file used to assemble, for every label, and reads full.json out of the STORE rather than
+  # re-rendering it. 1,474 of 1,474 identical, with three controls firing.
+  fullScripts = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/full.json")
   );
+
+  # #66. WHAT EACH GROUP NEEDS, ALSO PRECOMPUTED. needsOf is still below, because it is the
+  # definition this file is checked against and scripts/buck-needs-check.nu compares the two,
+  # but the BUILD PATH reads this instead: it was 3.3 s of a 12 s evaluation, the largest
+  # single chunk, and it is a function of the graph alone.
+  #
+  # `trees` IS EMITTED RATHER THAN DERIVED HERE, deliberately. It is the subset of `s` with a
+  # link map, in order, and it is what the template's CIDER_TREE_<i> numbering counts. Deriving
+  # it a second way here is exactly how that numbering drifted before, silently, for 744 of
+  # 1,474 labels.
+  precomputedNeeds = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/needs.json")
+  );
+
+  needsFor = label:
+    precomputedNeeds.${specName label}
+    or (throw "buck2 lower: no precomputed needs for ${label} (looked for ${specName label} in ${graph.specs}/needs.json). Rebuild the graph derivation; scripts/buck-needs-check.nu compares this against needsOf.");
+
+  # MIRRORS dep_var IN scripts/buck_lowering.py, composed after specName. That one maps every
+  # NON-ALPHANUMERIC character to an underscore, and specName has already restricted the
+  # alphabet to [A-Za-z0-9_.-], so only the dot and the dash are left to map. Getting this
+  # wrong does not fail: the variable simply never matches, and the emitted script copies from
+  # an unexpanded string.
+  depVar = d: "DYN_DEP_" + builtins.replaceStrings ["." "-"] ["_" "_"] (specName d);
+
+  # The placeholder exports, as one block, in the position the marker holds. Uniform across
+  # groups, so it is computed once here rather than per label.
+  phExports =
+    lib.concatStringsSep "\n" (lib.mapAttrsToList
+      (k: v: "export ${phVar k}=${lib.escapeShellArg v}")
+      placeholders)
+    + "\n";
 
   # #66. THESE TWO MUST MATCH scripts/buck-graph-to-specs.py EXACTLY, and they are the only
   # coupling between this file and the generator, so they are stated together here rather
@@ -1274,7 +1319,14 @@
     "buck2-" + lib.strings.sanitizeDerivationName (lib.last (lib.splitString ":" label));
 
   drvs = lib.mapAttrs (label: actions: let
-    needs = needsOf label;
+    # FROM THE FILE, not from needsOf. Same shape, one extra field: `trees`.
+    needs = let
+      n = needsFor label;
+    in {
+      fromTargets = n.t;
+      fromStaged = n.s;
+      trees = n.trees;
+    };
     outs = lib.unique (lib.concatMap (a: a.outputs) actions);
     # WHICH ACTIONS MAY RUN CONCURRENTLY is now decided in the generator (#66), and the rule
     # is unchanged, so it is recorded here where the reason for it lives. JavaScriptCore_obj
@@ -1327,127 +1379,83 @@
     # change. The lowered derivation resolves a dependency to another lowered derivation; an
     # adapter emitting the whole cone resolves it to the EMITTED output instead. That is the
     # only place a dependency path enters this script, so it is the only knob needed.
-    builderScriptWith = depPathOf: ''
-      mkdir -p work && cd work
-      ${if sourceGroups then stageProjectFor label else stageProject}
+    # #66. READ AND SUBSTITUTED, NOT ASSEMBLED. This used to be seventy lines of Nix building
+    # the whole builder script per group at evaluation time: the staging call, a copy plus a
+    # chmod per dependency, a restore per staged tree, the concurrency harness, the action
+    # sequence and a copy per output. scripts/buck_lowering.py renders all of that inside the
+    # graph derivation now, which already runs, once, instead of on every `nix build`.
+    #
+    # FIVE THINGS THE GENERATOR CANNOT NAME, and they are exactly the consumer-owned ones:
+    #   "$CIDER_STAGE"        this group's staging script, one store path
+    #   "$CIDER_DATA"         the tree of artifacts buck2 produced in-process
+    #   "$CIDER_TREE_<i>"     the staged tree scripts, positional, counting scripts EMITTED
+    #   "$DYN_DEP_<name>"     each dependency, through depPathOf, which is what lets an
+    #                         emitted action bind to another emitted output instead of a
+    #                         lowered one
+    #   the exports marker    the placeholder values, in the middle of the script rather than
+    #                         at the top, because moving them would change the text
+    #
+    # THE VARIABLE NAMES ARE THE BRIDGE'S, not this file's invention. DYN_DEP_ is what
+    # nix/lib/dyn-actions.nix sets, so the same rendered text works whether the consumer is
+    # this lowering or an emitted derivation. That is the point of #66 and not a coincidence.
+    #
+    # AN ALTERNATING TEMPLATE IS WHAT IS READ, and that shape was chosen by measurement.
+    # full.json used to hold finished text with "$VAR" in it, which meant substituting with
+    # builtins.replaceStrings: a scan of every byte of every script against every pattern, over
+    # 77 MB and up to 130 patterns. Interleaved, on the endpoint drvPath:
+    #
+    #   the lowering assembling the script itself      11.5 s
+    #   reading full.json and substituting             28.0 s
+    #   reading full.json, lists built, no scan         5.2 s
+    #
+    # THE 5.2 s LINE IS NOT A WORKING LOWERING and was read as one for about ten minutes. It
+    # used builtins.seq, which forces a list to WHNF and NOT its elements, so the staging
+    # script, the tree scripts and the dependency paths were never evaluated. What it isolates
+    # is the SCAN, honestly: same reads, same lists, 23 s cheaper without replaceStrings.
+    #
+    # MEASURED AGAIN WITH THE TEMPLATE, interleaved: 12.3 s against the old 12.0 s. So removing
+    # the scan bought back exactly what reading full.json cost, and no more. The remaining
+    # evaluation is needsOf and the JSON parses, which is where the next cut has to come from.
+    # Even index literal, odd index a variable name, always odd length: joining is linear in
+    # the output with no matching in it.
+    builderScriptWith = depPathOf: let
+      raw =
+        fullScripts.${specName label}
+        or (throw "buck2 lower: no rendered builder script for ${label} (looked for ${specName label} in ${graph.specs}/full.json). The lowering and scripts/buck-graph-to-specs.py disagree about grouping or naming; scripts/buck-script-check.nu compares the two.");
 
-      # What other targets built, at the paths this target's argv expects. Modes are
-      # PRESERVED: a dependency can be a TOOL -- migcom is, and the port's every codegen
-      # edge runs it -- and dropping the executable bit turns into "Permission denied"
-      # inside mig.sh, a long way from here. Writability is restored afterwards instead,
-      # because the store copy is read-only and later actions write next to it.
-      ${lib.concatMapStrings (dep: ''
-        cp -a ${depPathOf dep}/. .
-        # After EACH one, not at the end: the copy reproduces the store's read-only
-        # directories, and two dependencies share parent directories under buck-out, so
-        # the second copy cannot write into what the first one just created.
-        find . -type d ! -perm -u+w -exec chmod u+w {} +
-      '')
-      needs.fromTargets}
+      # The same list, in the same order, that the renderer numbered its references by: only
+      # the staged entries that actually have links emit a script.
+      treeScripts = map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) needs.trees;
 
-      # And the artifacts buck2 made in-process rather than by running a command. A staged
-      # include root is rebuilt from its link map; anything buck2 GENERATED rather than
-      # linked was copied out and is restored from there.
-      ${lib.concatMapStrings (o: let
-        links = (g.stagedTrees or {}).${o} or null;
-        # An entry with no links at all used to be spelled {} and is now {n = 0;}. Both
-        # mean the same thing: there is no farm to rebuild, so only the copied data below
-        # applies.
-        hasLinks = links != null && (links.n or 0) > 0;
-        data = (g.staged or {}).${o} or null;
-      in
-        lib.optionalString hasLinks ''
-          ${stagedTreeScript o links}
-        ''
-        + lib.optionalString (data != null) (
-          if hasLinks
-          then ''
-            # MERGED, not replaced: a tree can hold both links into the project and files
-            # buck2 generated (rtsig.h is one), and copying over the farm with -T destroys
-            # the links that were just made.
-            cp -a ${graph.data}/${data}/. ${lib.escapeShellArg o}/
-            chmod -R u+w ${lib.escapeShellArg o}
-          ''
-          else ''
-            mkdir -p "$(dirname ${lib.escapeShellArg o})"
-            cp -aT ${graph.data}/${data} ${lib.escapeShellArg o}
-            chmod -R u+w ${lib.escapeShellArg o}
-          ''
-        ))
-      needs.fromStaged}
-
-      for _v in $(env | sed -n 's/^\(NIX_\(CFLAGS\|LDFLAGS\)[A-Za-z0-9_]*\)=.*/\1/p'); do
-        unset "$_v"
-      done
-      export TMPDIR="$NIX_BUILD_TOP/tmp" BUCK_SCRATCH_PATH="$NIX_BUILD_TOP/scratch"
-      mkdir -p "$TMPDIR" "$BUCK_SCRATCH_PATH"
-
-      # This target's own actions, in the order buck2 ran them, which is a topological one:
-      # buck2 only runs an action once its inputs exist. Independent ones run CONCURRENTLY,
-      # bounded by NIX_BUILD_CORES the way any other builder is -- so balance this with
-      # `--cores` alongside `--max-jobs`, since 6 jobs each allowed 22 cores is 132 compiles.
-      _max=''${NIX_BUILD_CORES:-1}
-      if [ "$_max" -lt 1 ]; then _max=1; fi
-      _running=0
-      # Checked EXPLICITLY, not left to set -e: a background job's failure does not abort the
-      # shell, and an unnoticed one here means a target quietly missing an object and a link
-      # error somewhere else entirely.
-      _reap() {
-        if ! wait -n; then
-          echo "buck2 lower: an action of ${label} failed" >&2
-          exit 1
-        fi
-        _running=$((_running - 1))
-      }
-      _spawn() {
-        "$@" &
-        _running=$((_running + 1))
-        while [ "$_running" -ge "$_max" ]; do _reap; done
-      }
-      _drain() { while [ "$_running" -gt 0 ]; do _reap; done; }
-
-      # #66: THE ACTION SCRIPT IS READ, NOT COMPUTED HERE. It used to be a concatMapStrings
-      # over every action, escaping every argv element and running replaceStrings over each
-      # for the placeholders: per-argv work across 208,515 entries, in the EVALUATOR, on
-      # every invocation. scripts/buck-graph-to-specs.py now renders it inside the graph
-      # derivation, which already runs, and this reads the result.
-      #
-      # WHY IT IS EMBEDDED RATHER THAN SOURCED, which is the whole design question here and
-      # was got wrong first. Sourcing ''${graph.specs}/<name>.sh looks better -- the drv stays
-      # tiny -- but graph.specs is ONE store path covering ALL 1,474 scripts, so changing a
-      # single action moves it and every target's build command with it. That is a universal
-      # rebuild on any BUCK edit, which is #37 again and undoes what #50, #53 and #55 bought.
-      # Embedding the text keeps the granularity exactly where it was: a target's drv changes
-      # only when ITS OWN script changes. The drv is no bigger than before either, because
-      # this is the same text the old concatMapStrings produced.
-      #
-      # THE CONTEXT COMES OFF for the same reason it does on graph.json above: keeping it
-      # would make every target depend on graph.specs and reintroduce the cascade the
-      # embedding exists to avoid. Nothing is lost, since the text is self-contained.
-      #
-      # THE PLACEHOLDERS STAY AS SHELL VARIABLES rather than being substituted. The script
-      # says ''${CIDER_PH_CLANG} where the argv said @CLANG@, so the graph stays portable, the
-      # text names no store path, and this consumer fills them from its OWN inputs with the
-      # same values `fill` used. A clang bump therefore does not rewrite 8,704 command lines.
-      # (Escaped above because a # does NOT start a comment inside a Nix indented string: the
-      # whole block is one string, so a bare dollar-brace here is Nix antiquotation.)
-      ${lib.concatStringsSep "\n" (lib.mapAttrsToList
-        (k: v: "export ${phVar k}=${lib.escapeShellArg v}")
-        placeholders)}
-      ${
-        scripts.${specName label}
-        or (throw "buck2 lower: no rendered action script for ${label} (looked for ${specName label} in ${graph.specs}/scripts.json). The lowering and scripts/buck-graph-to-specs.py disagree about grouping or naming; scripts/buck-specs-check.py compares the two.")
-      }
-      _drain
-
-      # Everything this target produced, at the SAME relative paths, so a consumer can
-      # stage it exactly where its own argv expects it.
-      ${lib.concatMapStrings (o: ''
-        mkdir -p "$out/$(dirname ${lib.escapeShellArg o})"
-        cp -aT ${lib.escapeShellArg o} "$out/${o}"
-      '')
-      outs}
-    '';
+      # A DEPENDENCY RESOLVES THROUGH depPathOf, which is the one knob that lets an emitted
+      # action bind to another EMITTED output instead of a lowered derivation. Everything else
+      # is a value only this consumer has.
+      byTree = lib.listToAttrs (lib.imap0 (i: s:
+        lib.nameValuePair ("CIDER_TREE_" + toString i) "${s}")
+      treeScripts);
+      byDep = lib.listToAttrs (map (d:
+        lib.nameValuePair (depVar d) (depPathOf d))
+      needs.fromTargets);
+      values =
+        {
+          CIDER_STAGE =
+            if sourceGroups
+            then "${stageProjectFor label}"
+            else "${stageProject}";
+          CIDER_DATA = "${graph.data}";
+          EXPORTS = phExports;
+        }
+        // byTree
+        // byDep;
+      resolve = v:
+        values.${v}
+        or (throw "buck2 lower: ${label}'s builder template names ${v}, which this consumer does not supply. The lowering and scripts/buck_lowering.py disagree about the variable set.");
+    in
+      lib.concatStrings (lib.imap0 (i: p:
+        if lib.mod i 2 == 0
+        then p
+        else resolve p)
+      raw);
 
     # What the lowered derivation itself runs: a dependency is the lowered derivation for it.
     builderScript = builderScriptWith (d: "${drvs.${d}}");
@@ -1502,17 +1510,21 @@
         # Comparing fromTargets alone would leave the farms untested, and they are the half
         # that fails late and quietly. scripts/buck-needs-check.nu does the comparison.
         stagedNeeds = needs.fromStaged;
+
+        # THE DEFINITION, NOT THE FILE, and this attribute exists precisely so the check does
+        # not become circular. `deps` and `stagedNeeds` above now come from needs.json, which
+        # scripts/buck_lowering.py wrote, so comparing THOSE against the python would compare
+        # the python against itself and pass no matter what either believed. needsOf is still
+        # the definition; this calls it, and scripts/buck-needs-check.nu reads this one.
+        #
+        # It costs nothing unless asked: passthru is lazy and nixpkgs strips it before building.
+        definitionNeeds = needsOf label;
         # THE STAGED TREE SCRIPTS THIS GROUP RUNS, in the order builderScriptWith runs them.
         # Each is a store path to a CA shell script, which is why the python port does not have
         # to reproduce the script BODY: it emits a reference and the consumer supplies the path.
         # Exposed so the port can be compared against this script byte for byte, which needs
         # the same paths substituted back in the same order.
-        treeScripts = lib.concatMap (o: let
-          links = (g.stagedTrees or {}).${o} or null;
-        in
-          lib.optional (links != null && (links.n or 0) > 0)
-          (stagedTreeScript o links))
-        needs.fromStaged;
+        treeScripts = map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) needs.trees;
         actionCount = lib.length actions;
 
         # WHAT THE ADAPTER NEEDS TO FEED THIS GROUP THROUGH nix/lib/dyn-actions.nix (#66): the

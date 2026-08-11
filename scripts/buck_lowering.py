@@ -181,40 +181,63 @@ def sh_quote(s: str) -> str:
 EXPORTS_MARKER = "@@CIDER_PLACEHOLDER_EXPORTS@@\n"
 
 
-def builder_script(n, label: str, group_script: str, exports: str = EXPORTS_MARKER) -> str:
-    """The whole of builderScriptWith, rendered here instead of in the evaluator.
+def builder_parts(n, label: str, group_script: str) -> list:
+    """The whole of builderScriptWith, as an ALTERNATING TEMPLATE: literal, variable, literal,
+    variable, ..., literal. Always odd length, so index parity alone says which is which.
 
-    THE SHAPE IS THE NIX TEMPLATE'S, line for line, including the blank lines. That is not
-    tidiness: the check compares this against passthru.builderScript byte for byte across all
-    1,474 labels, and a match on 5,662 bytes of shell is worth far more than a match on an idea
-    of what the script should do.
+    WHY A TEMPLATE AND NOT A FINISHED STRING WITH "$VAR" IN IT, which is what this returned
+    first and it was MEASURED rather than argued. A consumer has to put its own paths in, and
+    with a finished string that means builtins.replaceStrings, which scans every byte of every
+    script against every pattern. On this graph, 77 MB of text against up to 130 patterns:
 
-    `exports` is the placeholder block. The generator leaves the MARKER, because @CLANG@ and
-    friends are the consumer's paths and only it knows them; the check passes the real ones, so
-    the comparison covers that block and its escaping too.
+        the lowering assembling the script itself      11.5 s
+        reading full.json and substituting             28.0 s
+        reading full.json, no substitution              5.2 s
+
+    So the reads are a WIN and the scan is a 23 s loss. A template turns the same job into
+    concatenation, which is linear in the output and has no pattern matching in it at all.
+
+    THE SHAPE IS THE NIX TEMPLATE'S, line for line, including the blank lines: the check
+    compares the joined result against passthru.builderScript byte for byte across all 1,474
+    labels, and a match on 5,662 bytes of shell is worth far more than a match on an idea of
+    what the script should do.
+
+    VARIABLE NAMES ARE THE BRIDGE'S. DYN_DEP_<name> is what nix/lib/dyn-actions.nix sets, so
+    the same text serves a lowered consumer and an emitted one. EXPORTS is the placeholder
+    block, which only a consumer knows.
     """
     needs = n.of(label)
-    out = []
-    out.append("mkdir -p work && cd work\n")
-    # The staging script: one store path, per group, chosen by the consumer.
-    out.append('"$CIDER_STAGE"\n')
-    out.append("\n")
-    out.append("# What other targets built, at the paths this target's argv expects. Modes are\n")
-    out.append("# PRESERVED: a dependency can be a TOOL -- migcom is, and the port's every codegen\n")
-    out.append('# edge runs it -- and dropping the executable bit turns into "Permission denied"\n')
-    out.append("# inside mig.sh, a long way from here. Writability is restored afterwards instead,\n")
-    out.append("# because the store copy is read-only and later actions write next to it.\n")
+    parts = [""]
+
+    def lit(s):
+        parts[-1] += s
+
+    def var(v):
+        parts.append(v)
+        parts.append("")
+
+    lit("mkdir -p work && cd work\n")
+    var("CIDER_STAGE")
+    lit("\n")
+    lit("\n")
+    lit("# What other targets built, at the paths this target's argv expects. Modes are\n")
+    lit("# PRESERVED: a dependency can be a TOOL -- migcom is, and the port's every codegen\n")
+    lit('# edge runs it -- and dropping the executable bit turns into "Permission denied"\n')
+    lit("# inside mig.sh, a long way from here. Writability is restored afterwards instead,\n")
+    lit("# because the store copy is read-only and later actions write next to it.\n")
     for dep in needs["t"]:
-        out.append('cp -a "$%s"/. .\n' % dep_var(n.safe_name(dep)))
-        out.append("# After EACH one, not at the end: the copy reproduces the store's read-only\n")
-        out.append("# directories, and two dependencies share parent directories under buck-out, so\n")
-        out.append("# the second copy cannot write into what the first one just created.\n")
-        out.append("find . -type d ! -perm -u+w -exec chmod u+w {} +\n")
-    out.append("\n")
-    out.append("\n")
-    out.append("# And the artifacts buck2 made in-process rather than by running a command. A staged\n")
-    out.append("# include root is rebuilt from its link map; anything buck2 GENERATED rather than\n")
-    out.append("# linked was copied out and is restored from there.\n")
+        lit("cp -a ")
+        var(dep_var(n.safe_name(dep)))
+        lit("/. .\n")
+        lit("# After EACH one, not at the end: the copy reproduces the store's read-only\n")
+        lit("# directories, and two dependencies share parent directories under buck-out, so\n")
+        lit("# the second copy cannot write into what the first one just created.\n")
+        lit("find . -type d ! -perm -u+w -exec chmod u+w {} +\n")
+    lit("\n")
+    lit("\n")
+    lit("# And the artifacts buck2 made in-process rather than by running a command. A staged\n")
+    lit("# include root is rebuilt from its link map; anything buck2 GENERATED rather than\n")
+    lit("# linked was copied out and is restored from there.\n")
     # NUMBERED BY SCRIPTS EMITTED, not by position in fromStaged. An entry with no links emits
     # no script, so indexing on the loop variable silently shifts every later number past the
     # first such entry: 730 of 1,474 labels matched anyway, because a group whose entries all
@@ -225,34 +248,51 @@ def builder_script(n, label: str, group_script: str, exports: str = EXPORTS_MARK
         has_links = links is not None and links.get("n", 0) > 0
         data = n.staged.get(o)
         if has_links:
-            out.append('"$CIDER_TREE_%d"\n' % tree)
+            var("CIDER_TREE_%d" % tree)
+            lit("\n")
             tree += 1
         if data is not None:
             if has_links:
-                out.append("# MERGED, not replaced: a tree can hold both links into the project and files\n")
-                out.append("# buck2 generated (rtsig.h is one), and copying over the farm with -T destroys\n")
-                out.append("# the links that were just made.\n")
-                out.append('cp -a "$CIDER_DATA"/%s/. %s/\n' % (data, sh_quote(o)))
-                out.append("chmod -R u+w %s\n" % sh_quote(o))
+                lit("# MERGED, not replaced: a tree can hold both links into the project and files\n")
+                lit("# buck2 generated (rtsig.h is one), and copying over the farm with -T destroys\n")
+                lit("# the links that were just made.\n")
+                lit("cp -a ")
+                var("CIDER_DATA")
+                lit("/%s/. %s/\n" % (data, sh_quote(o)))
+                lit("chmod -R u+w %s\n" % sh_quote(o))
             else:
-                out.append('mkdir -p "$(dirname %s)"\n' % sh_quote(o))
-                out.append('cp -aT "$CIDER_DATA"/%s %s\n' % (data, sh_quote(o)))
-                out.append("chmod -R u+w %s\n" % sh_quote(o))
-    out.append("\n")
-    out.append("\n")
-    out.append(_HARNESS % {"label": label})
-    out.append(exports)
+                lit('mkdir -p "$(dirname %s)"\n' % sh_quote(o))
+                lit("cp -aT ")
+                var("CIDER_DATA")
+                lit("/%s %s\n" % (data, sh_quote(o)))
+                lit("chmod -R u+w %s\n" % sh_quote(o))
+    lit("\n")
+    lit("\n")
+    lit(_HARNESS % {"label": label})
+    var("EXPORTS")
     # THE TEMPLATE'S OWN NEWLINE, after the interpolation. Both this one and the final one
     # below were missing at first and cost exactly two bytes across 5,662, which is precisely
     # the kind of thing a comparison against the real script catches and a reading of the code
     # does not.
-    out.append(group_script + "\n")
-    out.append("_drain\n")
-    out.append("\n")
-    out.append("# Everything this target produced, at the SAME relative paths, so a consumer can\n")
-    out.append("# stage it exactly where its own argv expects it.\n")
+    lit(group_script + "\n")
+    lit("_drain\n")
+    lit("\n")
+    lit("# Everything this target produced, at the SAME relative paths, so a consumer can\n")
+    lit("# stage it exactly where its own argv expects it.\n")
     for o in n.outs_of(label):
-        out.append('mkdir -p "$out/$(dirname %s)"\n' % sh_quote(o))
-        out.append('cp -aT %s "$out/%s"\n' % (sh_quote(o), o))
-    out.append("\n")
-    return "".join(out)
+        lit('mkdir -p "$out/$(dirname %s)"\n' % sh_quote(o))
+        lit("cp -aT %s \"$out/%s\"\n" % (sh_quote(o), o))
+    lit("\n")
+    return parts
+
+
+def join_parts(parts: list, resolve) -> str:
+    """Even index literal, odd index variable name. The one place that rule is written down."""
+    return "".join(p if i % 2 == 0 else resolve(p) for i, p in enumerate(parts))
+
+
+def builder_script(n, label: str, group_script: str, exports: str = EXPORTS_MARKER) -> str:
+    """The template joined with the variables left as shell references, which is what the check
+    compares. EXPORTS is the one variable a consumer must substitute rather than export."""
+    return join_parts(builder_parts(n, label, group_script),
+                      lambda v: exports if v == "EXPORTS" else '"$' + v + '"')
