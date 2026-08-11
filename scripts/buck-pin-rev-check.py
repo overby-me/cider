@@ -81,6 +81,30 @@ def main():
     entries = [e for e in json.load(open(a.manifest, encoding="utf-8"))
                if e.get("hash")]
 
+    # NO TWO PINS MAY MATERIALIZE TO THE SAME PLACE. This is the invariant the whole
+    # directly-under-the-pin-root rule exists to protect, and until #87 stage 2 nothing
+    # asserted it: the collision was found once by an endpoint build dying at BXL
+    # materialisation, an hour in, with "File not found: root//.../buck-src/xnu".
+    # pins/xnu and pins/ciderd/xnu-sys/xnu share the basename xnu, so getting the depth
+    # test wrong collapses them onto buck-src/xnu and one silently overwrites the other.
+    # It costs a dictionary to say so here instead.
+    dest_owners = {}
+    collisions = []
+    for e in entries:
+        d = dest_for(e["path"])
+        if d in dest_owners:
+            collisions.append(f"{e['path']} and {dest_owners[d]} both materialize to "
+                              f"{os.path.relpath(d, ROOT)}, so one overwrites the other")
+        else:
+            dest_owners[d] = e["path"]
+    if collisions:
+        print(f"\n{len(collisions)} pin destination collision(s):")
+        for c in collisions:
+            print(f"  {c}")
+        print("\nFAIL: two pins cannot share a materialization directory. This is what the "
+              "depth rule in dest_for prevents, and a wrong depth reintroduces it.")
+        return 1
+
     materialized = stale = unstamped = 0
     problems = []
     for e in entries:
