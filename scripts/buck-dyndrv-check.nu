@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the twelve things #66 depends on?
+# Do dynamic derivations still do the thirteen things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if twelve properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if thirteen properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -276,8 +276,37 @@ def main [] {
         ok (open --raw ($nd.stdout | str trim | lines | last) | str trim)
     }
 
+    # 13. DUPLICATE ACTION NAMES ARE REJECTED, and this one BUILDS NOTHING: it is an
+    # evaluation-time assertion, so both directions are one `nix eval` each.
+    #
+    # WHY IT MATTERS: the name keys the consumer lookup, so two actions sharing one would
+    # silently merge into a single derivation and one of them would simply never be built.
+    # The assertion has been in dyn-actions.nix since the start and nothing had ever fired it,
+    # which is the same as not having it.
+    #
+    # ASSERTED IN BOTH DIRECTIONS, because a guard that throws unconditionally would pass a
+    # one-sided test: duplicates must THROW and distinct names must EVALUATE.
+    let dupExpr = "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; actions = [ { name = \"dup\"; builder = \"/bin/sh\"; args = [\"-c\" \"true\"]; } { name = \"dup\"; builder = \"/bin/sh\"; args = [\"-c\" \"true\"]; } ]; }).outputs"
+    let okExpr = "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; actions = [ { name = \"a1\"; builder = \"/bin/sh\"; args = [\"-c\" \"true\"]; } { name = \"a2\"; builder = \"/bin/sh\"; args = [\"-c\" \"true\"]; } ]; }).outputs"
+    let dup = (do -i { ^nix eval --impure --json --expr $dupExpr } | complete)
+    let uniq = (do -i { ^nix eval --impure --json --expr $okExpr } | complete)
+    if $dup.exit_code == 0 {
+        bad "two actions with the SAME name were accepted, so one would silently vanish"
+        $fails += 1
+    } else if $uniq.exit_code != 0 {
+        bad "two actions with DISTINCT names were rejected, so the guard fires on everything"
+        print -e ($uniq.stderr | lines | last 6 | str join "\n")
+        $fails += 1
+    } else if not ($dup.stderr | str contains "names must be unique") {
+        bad "duplicates were rejected, but not by the uniqueness assertion"
+        print -e ($dup.stderr | lines | last 6 | str join "\n")
+        $fails += 1
+    } else {
+        ok "duplicate action names throw, distinct ones evaluate"
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir, an over-long argument and an optional deps.json"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir, an over-long argument, an optional deps.json and unique names"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
