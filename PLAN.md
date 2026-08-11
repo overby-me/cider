@@ -349,20 +349,35 @@ GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Noth
 reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
 Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
 
-- **A, the bridge, DONE.** `nix/lib/dyn-actions.nix`, plus five fixtures beside it.
-  `scripts/buck-dyndrv-check.nu` asserts **seven** properties and PASSES. Three are properties
-  of Nix; four are of the bridge, and **three of those four were false when first checked**
-  (the DAG edge, the whole of `specDir` mode, and specDir-plus-a-DAG). None had a fixture, so
-  none could have been noticed.
+- **A, the bridge, DONE.** `nix/lib/dyn-actions.nix`, plus six fixtures beside it.
+  `scripts/buck-dyndrv-check.nu` asserts **eight** properties and PASSES. Three are properties
+  of Nix; five are of the bridge, and **three of those were false when first checked** (the DAG
+  edge, the whole of `specDir` mode, and specDir-plus-a-DAG). None had a fixture, so none could
+  have been noticed.
 - **B, the adapter, PART DONE.** The lowering reads its action script instead of computing it
   (gate16 GREEN, prefix byte identical to gate15 across all 5,563 files), and
-  `scripts/buck-graph-to-specs.py` emits the group dependency edges: 1,474 groups, 22,473
-  edges, no cycle. `scripts/buck-specs-check.py` verifies both, with seven controls that fire.
-- **STILL OPEN: A and B do not meet.** `nix derivation add` rejects the adapter's `<name>.json`
-  ("Expected JSON object to contain key 'name'"). specDir wants a DERIVATION; the adapter
-  writes the action data one would be built from. The conversion needs the consumer's store
-  paths (builder, staged tree, toolchain), so it belongs to a third derivation. After that the
-  endpoint binds through `outputOf` and stops computing 1,474 derivations.
+  `scripts/buck-graph-to-specs.py` emits the group dependency edges: 1,474 groups, **23,765**
+  edges, no cycle. `scripts/buck-specs-check.py` verifies both, with eight controls that fire.
+- **REAL GROUPS RUN THROUGH THE BRIDGE NOW.** Five fixtures, each diffing an emitted output
+  against the lowered one: `dyn-one` (2 actions, 0 deps), `dyn-deps` (1 link, 103 deps from the
+  lowering), `dyn-cone` and `-deep` (2 and 4 groups, ALL emitted), and `dyn-cone-specdir` (the
+  same 4 read from a spec FILE, dependencies resolved as `DYN_DEP_<name>` shell variables so
+  nothing is interpolated). Both modes emit the SAME output path. The adaptation is three
+  lines: PATH, `set -e`, `out`; plus `inferSrcs` for inputs named inside the script.
+  `builderScriptWith` is the one knob added to the lowering, parameterising the single place a
+  dependency path enters; verified inert (zero builders, same out path).
+- **THREE FAILURES WORTH THE SPACE, all one shape: a green result over a broken build.** A run
+  that passed with `find`/`sed` missing (nativeBuildInputs is only what the lowering ADDS to
+  stdenv); the deep cone failing on `llvm-ar`, because **an emitted action runs no setup hooks**
+  and `makeBinPath` follows neither hooks nor propagation (checked: `closePropagation` over 33
+  tools gives 53 packages, still no llvm); and the specDir check reporting OK while its diff
+  never ran, because both modes produced a **byte-identical check derivation**. Look for the
+  artifact, never the exit code.
+- **STILL OPEN: the generator.** What remains is writing the 1,474 specs from a derivation
+  rather than assembling them in Nix per group, which is still the eval cost #66 removes. The
+  spec content is settled; the open part is that `builderScript` is assembled by the lowering
+  at EVAL, so the staging preamble, dep copies and staged-tree restores have to move into the
+  generator alongside the action script it already emits.
 - **THE PRICE IS KNOWN AND FAVOURABLE: ~55s** of build at 1,474 groups (0.037s per producer,
   quiet, 22 cores) against ~12.95s of evaluation removed, paid once per graph change. It breaks
   even after four or five evaluations. The first attempt measured 0.57s and 14 MINUTES and
