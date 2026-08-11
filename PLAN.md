@@ -349,13 +349,23 @@ GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Noth
 reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
 
 - **A. THE BRIDGE, done.** `nix/lib/dyn-actions.nix` turns action specs into one emitted
-  `.drv` per action plus `builtins.outputOf` accessors. Toy fixture `dyn-actions-toy.nix`,
-  minimal worked example and the plumbing traps in `dyn-drv-probe.nix`, asserted by
-  `scripts/buck-dyndrv-check.nu`. THE CONSTRAINT THAT SHAPES IT: a `.drv`-named derivation
-  must be text-hashed CA with a single output named `out`, and `builtins.placeholder "out"`
-  is a constant of the OUTPUT NAME, so every emitted action must name its output something
-  else or the producer rejects its own drv as a self-reference. `NIX_REMOTE=daemon` breaks
-  recursive-nix, which supplies its own socket.
+  `.drv` per action plus `builtins.outputOf` accessors. THE CONSTRAINT THAT SHAPES IT: a
+  `.drv`-named derivation must be text-hashed CA with a single output named `out`, and
+  `builtins.placeholder "out"` is a constant of the OUTPUT NAME, so every emitted action must
+  name its output something else or the producer rejects its own drv as a self-reference.
+  `NIX_REMOTE=daemon` breaks recursive-nix, which supplies its own socket.
+  `scripts/buck-dyndrv-check.nu` asserts **six** properties over four fixtures
+  (`dyn-drv-probe`, `dyn-actions-toy`, `-dep-probe`, `-specdir-toy`, `-dag-toy`). Two of the
+  six were FALSE when first checked and neither had a fixture, so neither could have been
+  noticed: the DAG edge (`inputSrcs` went to `nix derivation add` as a full store path, which
+  it rejects, so no declared source had ever worked) and the whole of `specDir` mode (nothing
+  had ever produced a spec directory, so half the API was evaluated and never built).
+  An action may declare `deps = [names]`; each becomes a source AND a `DYN_DEP_<name>` env
+  entry, so a spec read from a FILE can find its dependencies without interpolating anything.
+  Use `depVar` to name the variable: action names are free-form, shell variable names are not,
+  and the mismatch expands to EMPTY rather than failing. Likewise `"$${x}"` is a Nix escape
+  for a literal `${` -- concatenate instead. Both bugs produced clean successful builds with
+  empty results, so fixtures must check CONTENT, never path existence.
 - **B. THE ADAPTER, done.** `scripts/buck-graph-to-specs.py` groups the actions the way the
   lowering does and renders each group's command sequence, inside the graph derivation.
   `ciderBuck2Lower.nix` reads the result; `escArgCache`, `escArg`, `fill`, `ownOutputs` and
@@ -366,6 +376,20 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   against a 12.95s floor if the scripts cost nothing at all. So 0.6s, not the ~12s first
   claimed. The ~12.95s that remains is computing 1,474 DERIVATIONS, and that is what A is
   for. Kept for what it enables, not for the 0.6s.
+- **GATE16 GREEN, which is the verification the wiring owed.** 1,463 builders, zero
+  nix-level failures, 2,874s, and the prefix is **byte identical to gate15 across all 5,563
+  regular files**. Zero differ, which was the stated expectation: the wiring changes where
+  the action script is computed, not what it says.
+  IDENTIFY THE REFERENCE BY CONTENT, never by picking the newest directory: store paths carry
+  epoch mtimes and seven prefixes sit in the store with identical file SETS. gate16 differs
+  from `hnsbi7v08ypk` in exactly `.prefix-manifest.tsv`, `bin/ciderd`, `usr/lib/dyld` and
+  `libsystem_kernel.dylib`, the recorded four-file gate15-against-pre-stage-2 signature, which
+  is what identifies `pzc39fn070qj` as gate15's.
+  TWO TRAPS, both of which look like failure and are not: `grep -ci 'error:'` on the log
+  returns 221 and every one is an Objective-C selector (`error:(NSError **)error`) or warning
+  text, so count nix-level failures instead; and this endpoint spends about **17 minutes**
+  between launch and its first `building` line, with zero children and a near-idle daemon,
+  which is the CA resolution pass and is indistinguishable from a hang while it runs.
 - **STILL OPEN, and A and B DO NOT YET MEET.** Tested 2026-08-11: `nix derivation add`
   rejects the adapter's `<name>.json` with "Expected JSON object to contain key 'name'".
   `specDir` mode wants a DERIVATION; the adapter writes the action data a derivation would be
