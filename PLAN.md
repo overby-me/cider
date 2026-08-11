@@ -763,11 +763,19 @@ re-running.
 **WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
 
     bsdln       GONE. Zero files match anywhere in the tree, pins included.
-    wrapgen     linux/libelfloader/wrapgen/wrapgen.cpp, 320 lines of C++, and it has NO
-                copyright header at all. That is the blocker: #76 says provenance checked, and
-                an absent header means provenance has to be established from history or from
-                upstream before a line is written. It IS a host tool, so unlike the two below
-                it is portable today.
+    wrapgen     linux/libelfloader/wrapgen/wrapgen.cpp, 320 lines of C++. It IS a host tool,
+                so unlike the two below it is portable today, and the blocker is provenance
+                rather than the toolchain.
+                THE ABSENCE IS DIRECTORY-WIDE, not one omission, which changes how it
+                resolves. All FOUR files in linux/libelfloader/wrapgen carry no copyright,
+                no licence and no Darling marker: wrapgen.cpp, print_wrapped_elf.cpp,
+                stubgen32.cpp, produce_stubs_example.h.
+                AND LOCAL HISTORY CANNOT SETTLE IT. jj file annotate attributes every line to
+                the #87 stage 1a move, and the log for the path holds that one commit, so the
+                pre-move history was squashed. Nothing in the tree says where this came from.
+                So provenance here means a comparison against Darling upstream libelfloader,
+                which needs network, not a header read. Do that BEFORE writing any Rust: the
+                task says provenance checked, and this is the part that is not.
     xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
     PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
 
