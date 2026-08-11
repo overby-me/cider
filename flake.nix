@@ -605,6 +605,22 @@
       packages.cider-buck2-one =
         pkgs: pkgs.cider-buck2-prefix-min.named."root//darwin/libsimple:libsimple_ciderd";
 
+      # #66, THE ADAPTER'S FIRST REAL CONSUMER TEST: the same group, taken through
+      # nix/lib/dyn-actions.nix as an EMITTED derivation, with its output diffed against the
+      # lowered one. Generating specs for all 1,474 groups is mechanical once this holds and
+      # pointless if it does not.
+      #
+      #   nix build .#cider-buck2-dyn-one --no-link -L
+      #
+      # It needs the dynamic-derivation features, which the endpoint does not: recursive-nix,
+      # ca-derivations and dynamic-derivations. See nix/lib/dyn-drv-probe.nix.
+      packages.cider-buck2-dyn-one = pkgs:
+        (import ./nix/lib/cider-dyn-one.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+        })
+        .check;
+
       # The SECOND probe, and it exists because libsimple_ciderd cannot fail the way #87 did.
       # It owns its own sources, so a wrong include dir in some OTHER package is invisible to
       # it. This one is the xnu pin package, which reaches ACROSS into first-party header
