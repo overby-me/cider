@@ -1,16 +1,16 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the five things #66 depends on?
+# Do dynamic derivations still do the six things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if five properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if six properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
-# away. 4 and 5 are properties of nix/lib/dyn-actions.nix, and BOTH were already false when
-# they were first checked: the DAG edge and the whole specDir mode. Neither had a fixture, so
+# away. 4 to 6 are properties of nix/lib/dyn-actions.nix, and the first two of those were false when
+# first checked: the DAG edge and the whole specDir mode. Neither had a fixture, so
 # neither could have been noticed.
 #
 #   1. builtins.outputOf works end to end.
@@ -30,6 +30,10 @@
 #   5. THE TWO MODES OF dyn-actions.nix AGREE. `actions` serialises specs in the evaluator;
 #      `specDir` reads pre-serialised ones off disk and is the mode that scales. Nothing had
 #      ever BUILT a spec dir until 2026-08-11, so half the API was evaluated and never run.
+#   6. A DAG THREE LEVELS DEEP, reached through `deps`. 4 only shows an action can see the
+#      thing directly beneath it with the caller threading the outputOf string by hand. A
+#      generator-written spec cannot interpolate anything, so the action has to find its
+#      dependency through the env the bridge sets, transitively.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -159,8 +163,22 @@ def main [] {
         ok (open --raw ($sd.stdout | str trim | lines | last) | str trim)
     }
 
+    # 6. THREE LEVELS, THROUGH `deps`. Property 4 only proves an action can reach the thing
+    # directly beneath it, with the caller threading the outputOf string itself. cider's groups
+    # are deeper than that and its generator cannot interpolate anything, so the interesting
+    # case is an action reaching its dependency through the env the bridge sets, transitively,
+    # without naming the level below that.
+    let dag = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-dag-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $dag.exit_code != 0 {
+        bad "the three level DAG does not carry through"
+        print -e ($dag.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($dag.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, a real DAG, and both modes agreeing"
+        say "PASS: outputOf, early cutoff, a DAG three levels deep, and both modes agreeing"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"

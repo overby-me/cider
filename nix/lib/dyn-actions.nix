@@ -94,6 +94,23 @@
     lib.throwIf (lib.length (lib.unique names) != lib.length names)
     "dyn-actions: action names must be unique; they key the consumer lookup";
 
+  # THE ENV VAR AN ACTION READS A DEPENDENCY THROUGH. Names are free-form -- a buck2 label, a
+  # path, anything -- and a shell variable name is not: it is [A-Za-z_][A-Za-z0-9_]*. The first
+  # version interpolated the name raw, so `dag-alpha-dag1` became $DYN_DEP_dag-alpha-dag1,
+  # which the shell reads as $DYN_DEP_dag followed by the literal text "-alpha-dag1". It
+  # EXPANDS TO EMPTY rather than failing, so the dependent action ran, produced an empty
+  # result, and only a fixture that checked the CONTENT caught it.
+  #
+  # Exposed as `depVar` in the result so a caller can name the variable it has to read without
+  # reimplementing this, which would be the same bug again one file over.
+  depVar = name:
+    "DYN_DEP_"
+    + lib.stringAsChars (c:
+      if (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")
+      then c
+      else "_")
+    name;
+
   # One action as the JSON `nix derivation add` accepts. Keep this the ONLY place that knows
   # the on-disk derivation format.
   specOf = a:
@@ -104,6 +121,9 @@
       args = a.args;
       env =
         (a.env or {})
+        // builtins.listToAttrs (map (d:
+          lib.nameValuePair (depVar d) outputs.${d})
+        (a.deps or []))
         // {
           inherit (a) name;
           builder = a.builder;
@@ -112,23 +132,11 @@
           outputHashMode = "recursive";
           inherit system;
         };
-      # NO DEPENDENCY ON ANOTHER EMITTED DERIVATION CAN BE EXPRESSED, and this empty attrset
-      # is why. It is the single biggest limitation of this bridge, so it is stated where it
-      # is caused rather than only in the header.
-      #
-      # MEASURED, not assumed: nix/lib/dyn-actions-dep-probe.nix builds two emitted actions
-      # where B names A's output through builtins.outputOf. Both emit, both build, and A is
-      # realised BEFORE B -- and B still reports B-BLIND, because A's output is not in B's
-      # sandbox. Ordering happens for the wrong reason: the PRODUCER of B carries A's outputOf
-      # string in its args, and that string has context, so Nix realises A to compute B's spec.
-      # The emitted B declares nothing.
-      #
-      # The placeholder in B's args is already correct -- builtins.outputOf yields exactly the
-      # downstream placeholder the format wants. What is missing is naming A's EMITTED drv
-      # path here. producerOf currently throws that path away (it copies the drv to its own
-      # output), so closing this means keeping it and letting a dependent producer take the
-      # dependency's producer as an input. Until then this bridge does a SET of independent
-      # actions, not a DAG.
+      # inputs.drvs STAYS EMPTY and that is not the limitation it looks like. A dependency on
+      # another emitted action is expressed through srcs, not drvs: by the time this spec
+      # reaches `nix derivation add`, the outer Nix has already substituted the dependency's
+      # outputOf placeholder with a real, realised store path, so it is an ordinary source.
+      # nix/lib/dyn-actions-dep-probe.nix holds the measurement and the two dead ends.
       inputs = {
         drvs = {};
         # FULL PATHS HERE, TURNED INTO BASENAMES AT BUILD TIME by the producer below, and
@@ -145,7 +153,14 @@
         # Taking baseNameOf, or discarding the context, mangles that text so the substitution
         # never happens and the emitted drv names a path that "is not valid". Measured both
         # ways 2026-08-11.
-        srcs = a.inputSrcs or [];
+        #
+        # `deps` is the same mechanism with the plumbing done for you: it names OTHER ACTIONS
+        # rather than store paths, and each becomes both a source here and a DYN_DEP_<name>
+        # entry in the emitted action's env, so the action can find its dependency without the
+        # caller having to thread outputOf strings through itself. It is what makes specDir
+        # mode usable for a DAG, where the spec is a static file and the caller has no chance
+        # to interpolate anything.
+        srcs = (a.inputSrcs or []) ++ map (d: outputs.${d}) (a.deps or []);
       };
       outputs.${outputName} = {
         hashAlgo = "sha256";
@@ -204,6 +219,18 @@ json.dump(d,open(p,"w"))' spec.json
 
   producers = lib.listToAttrs (map (n: lib.nameValuePair n (producerOf n)) names);
 
+  # What a consumer binds to: the OUTPUT of the dynamically emitted derivation. This is the
+  # string that lets the evaluator not know the derivation.
+  #
+  # IT LIVES IN THE let, NOT ONLY IN THE RESULT, because specOf needs it: `deps` resolves an
+  # action name to this. Nix ties the knot lazily, so an action referring to another action's
+  # output is fine as long as the dependency graph is ACYCLIC. A cycle here surfaces as a bare
+  # infinite recursion with nothing pointing at the two actions responsible.
+  outputs =
+    lib.mapAttrs
+    (n: p: builtins.outputOf p.outPath outputName)
+    producers;
+
   # A DERIVATION HOLDING THIS ACTION LIST AS A SPEC DIR, in exactly the layout specDir mode
   # reads back: one <name>.json per action plus a `names` index.
   #
@@ -235,12 +262,5 @@ in
     # The emitted .drv per action, before realisation. Useful for inspection and for tests.
     inherit producers;
 
-    # What a consumer actually binds to: the OUTPUT of the dynamically emitted derivation.
-    # This is the string that makes the evaluator not need to know the derivation.
-    outputs =
-      lib.mapAttrs
-      (n: p: builtins.outputOf p.outPath outputName)
-      producers;
-
-    inherit outputName mkSpecDir;
+    inherit outputs outputName mkSpecDir depVar;
   }))
