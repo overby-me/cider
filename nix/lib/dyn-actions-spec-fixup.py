@@ -73,6 +73,24 @@ def main(argv: list) -> int:
         spec["inputs"]["srcs"].append(value)
         spec["env"][var] = value
 
+    # CONSUMER SUPPLIED PATHS, the same route as a dependency and for the same reason: a spec
+    # read from a file cannot have a store path interpolated into it, because the generator that
+    # wrote it ran before any consumer path existed. Each becomes an env entry so the script can
+    # name it, and a source so the sandbox actually has it.
+    #
+    # SEPARATE FROM DYN_DEP_NAMES because a dependency is also an EDGE and this is not: the
+    # value is already a realised path rather than another action's output.
+    for name in os.environ.get("DYN_EXTRA_NAMES", "").split():
+        value = os.environ.get(name)
+        if not value:
+            print(f"dyn-actions: extraEnv {name!r} is not in the environment", file=sys.stderr)
+            return 1
+        spec["env"][name] = value
+        # Only a store path can be a source. A caller may legitimately pass a plain string, so
+        # a non-path is carried in the env and simply not declared.
+        if _STORE_PATH.match(value):
+            spec["inputs"]["srcs"].append(value)
+
     # INFERRED SOURCES: every store path the command itself names.
     #
     # WHY THIS CAN ONLY HAPPEN HERE, and why it is worth having. A caller assembling an action

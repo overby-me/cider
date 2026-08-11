@@ -77,6 +77,19 @@
   # setting, and a caller that knows its inputs exactly should say so and get an error when it
   # is wrong rather than have the mistake papered over.
   inferSrcs ? false,
+  # Store paths the CONSUMER knows and the spec cannot name, as {NAME = path;}. Each becomes an
+  # env entry and a source on every emitted action.
+  #
+  # WHY specDir NEEDS THIS. A spec read from a file is static: the generator that wrote it ran
+  # long before any consumer path existed, so it cannot interpolate one. `deps` already solves
+  # that for other ACTIONS, and this is the same route for everything else a consumer supplies:
+  # a toolchain, a staging script, a data tree. The generator writes ${NAME} in the script and
+  # the value arrives at build time.
+  #
+  # THE VALUES MAY CARRY STRING CONTEXT, and should: putting them in the producer's env is what
+  # makes Nix realise them before the producer runs, which is what makes the path real by the
+  # time the fixup reads it. Same mechanism as deps, which is why they share the code.
+  extraEnv ? {},
 }: let
   inherit (pkgs) lib;
   system = pkgs.stdenv.hostPlatform.system;
@@ -261,7 +274,11 @@
           if inferSrcs
           then "1"
           else "";
+        # The same route as the dependency paths, for values the CONSUMER supplies. Named
+        # separately so the fixup can tell them apart: a dep is also an edge, this is not.
+        DYN_EXTRA_NAMES = lib.concatStringsSep " " (lib.attrNames extraEnv);
       }
+      // extraEnv
       // builtins.listToAttrs (map (d:
         lib.nameValuePair (depVar d) outputs.${d})
       (depsOf n)));

@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the eight things #66 depends on?
+# Do dynamic derivations still do the nine things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if eight properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if nine properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -40,6 +40,9 @@
 #   8. inferSrcs, for the caller whose input paths live inside an existing build SCRIPT rather
 #      than in a list. Asserted in BOTH directions: a flag that does nothing and a flag that
 #      fires unconditionally both pass a one-sided test.
+#   9. extraEnv, so a specDir action can use a store path its SPEC NEVER NAMES. That is the
+#      position a generator is in: it writes specs before any consumer path exists. The toy
+#      checks the path is ABSENT from the spec as well as present at build time.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -213,8 +216,22 @@ def main [] {
         ok (open --raw ($inf.stdout | str trim | lines | last) | str trim)
     }
 
+    # 9. extraEnv: a specDir action using a store path its SPEC NEVER NAMES. That is the
+    # position a generator is in, since it writes the specs long before any consumer path
+    # exists, and it is how a toolchain, a staging script or a data tree reaches the action.
+    # The toy asserts the path is absent from the spec file as well as present at build time,
+    # because a spec that happened to bake it in would pass for the wrong reason.
+    let xe = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-extraenv-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $xe.exit_code != 0 {
+        bad "extraEnv does not carry a consumer path into a specDir action"
+        print -e ($xe.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($xe.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes agreeing, a DAG in each, and inferSrcs"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs and extraEnv"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
