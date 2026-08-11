@@ -1090,16 +1090,39 @@
   # revision, and pins and buck-rust stay REAL directories because the pins are
   # planted inside them; the comment on stageProject records that losing that cost a whole
   # endpoint build.
-  stageProjectFor = label:
-    caShellScript "buck2-stage-project-grouped" ''
-      ${stageGroupsFor label}
-      mkdir -p buck-rust pins buck-src
-      for _c in ${rustVendor}/*/; do
-        ln -sfn "$_c" "buck-rust/$(basename "$_c")"
-      done
-      ${lib.concatMapStrings (p: pinStageLines p)
-      wantedPins}
-    '';
+  # THE STAGING SCRIPT TEXT for one label. Split out from the derivation below so the
+  # derivation can be shared between labels that produce the same text (#94).
+  stageTextFor = label: ''
+    ${stageGroupsFor label}
+    mkdir -p buck-rust pins buck-src
+    for _c in ${rustVendor}/*/; do
+      ln -sfn "$_c" "buck-rust/$(basename "$_c")"
+    done
+    ${lib.concatMapStrings (p: pinStageLines p)
+    wantedPins}
+  '';
+
+  # ONE DERIVATION PER DISTINCT SCRIPT, not one per label. Measured 2026-08-11: 1,474 labels
+  # produce 94 distinct staging scripts, 15.7x redundancy, and one script serves 711 of them.
+  # Building the derivation per label cost about 5.7 s of a 15 s endpoint evaluation, the
+  # largest single remaining chunk.
+  #
+  # THE KEY IS THE CONTENT, deliberately. Keying on what the script is DERIVED from -- the
+  # label's source groups and shallow list -- would be faster to compute and would risk the one
+  # failure that matters: a key missing something the text depends on makes two groups SHARE a
+  # script that should differ, which does not fail at eval and surfaces much later as a missing
+  # file in someone else's compile. Hashing the text cannot be wrong about the text.
+  #
+  # listToAttrs COLLAPSES THE DUPLICATES FOR FREE. Values are lazy, so the 1,380 entries that
+  # lose the name collision are never forced and their derivations are never built.
+  stageTextByLabel = lib.mapAttrs (label: _: stageTextFor label) targets;
+  stageKeyByLabel = lib.mapAttrs (_: text: builtins.hashString "sha256" text) stageTextByLabel;
+  stageDrvByKey = builtins.listToAttrs (lib.mapAttrsToList (label: text:
+    lib.nameValuePair stageKeyByLabel.${label}
+    (caShellScript "buck2-stage-project-grouped" text))
+  stageTextByLabel);
+
+  stageProjectFor = label: stageDrvByKey.${stageKeyByLabel.${label}};
 
   # CA for the same reason the stage-tree scripts are, though MEASURED it buys nothing while
   # #54 is off, and why is worth keeping. This script embeds ${projectSrc}, NOT ${graph.data}
@@ -1434,6 +1457,19 @@
         # variable is whatever dyn-actions names it rather than `out`.
         inherit builderScript builderScriptWith;
         tools = targetTools;
+
+        # THE STAGING SCRIPT THIS GROUP USES (#94). Exposed so a change to how it is computed
+        # can be checked the only way that is safe: capture the store path for all 1,474 labels
+        # before and after, and require every one to be unchanged.
+        #
+        # WHY A GREEN LADDER IS NOT ENOUGH THERE. Two groups wrongly SHARING a staging script
+        # does not fail at eval and need not fail the probe targets either; it fails much later
+        # as a missing file in some other target's compile, which is how the first coarse build
+        # died an hour in. The per-label path is the thing that actually distinguishes them.
+        stageScript =
+          if sourceGroups
+          then stageProjectFor label
+          else stageProject;
       };
     }
     builderScript)
