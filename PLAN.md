@@ -408,12 +408,17 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
   is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
   every *other* derivation is invisible to it.
-- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE.** All 1,474 producers and all 1,474
-  emitted actions ran, prefix action included. The comparison found 0 files present in one tree
-  and not the other, 3 binaries differing, and all 3 by `__DATE__`: stdenv sets
-  `SOURCE_DATE_EPOCH` in its SETUP SCRIPT rather than as a derivation attribute, so it is
-  invisible in the lowered derivation env and an emitted action never gets it. The other 57 diff
-  lines were the check following dangling symlinks that are IDENTICAL in both trees.
+- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE, AND REPRODUCES IT.** All 1,474 producers
+  and all 1,474 emitted actions ran with zero build failures. Diffing every group against its
+  lowered counterpart: **1,364 identical, 110 differing, and all 110 are mig groups** with the
+  same single line, `stub generated <wall clock>`. That is #95, a pre-existing
+  non-reproducibility in the port rather than anything the emitted route introduced.
+- **TWO REAL DEFECTS THE FULL-SCALE RUN FOUND FIRST.** `SOURCE_DATE_EPOCH` is set by stdenv's
+  SETUP SCRIPT, not as a derivation attribute, so it is invisible when comparing derivations and
+  an emitted action never gets it; and the stdenv tool list was hand-picked and missing `xz`,
+  which surfaced 981 builders in. Both fixed. An earlier run also reported 57 diff lines that
+  were the check following dangling symlinks IDENTICAL in both trees, fixed with
+  `--no-dereference`.
 - **THE ADAPTER NO LONGER CONSUMES THE LOWERING.** It read `tools`, `stageScript`,
   `treeScripts` and `deps` from `lowered.drvs.<label>.passthru`, which forces a whole
   mkDerivation per group; it now reads top-level accessors. Emitted derivations are unmoved,
