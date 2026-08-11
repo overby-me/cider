@@ -31,12 +31,30 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from buck_lowering import Needs, builder_script, dep_var  # noqa: E402
 
 
-def render(n: Needs, label: str, group_script: str, exports: str, info: dict, data: str) -> str:
+def from_full(full: dict, name: str, label: str, exports: str) -> str:
+    """The generator's OWN full.json text, with the placeholder exports put back where the
+    renderer puts them: immediately after the static harness.
+
+    WHY READ THE FILE RATHER THAN CALL THE RENDERER AGAIN. Both would use the same function, so
+    agreement would be guaranteed and would say nothing about what the graph derivation actually
+    WROTE. A generator that rendered correctly and then wrote the wrong dict key, or truncated,
+    or serialised something else, passes the function comparison and fails this one."""
+    from buck_lowering import _HARNESS
+    # THE HARNESS CARRIES THE REAL LABEL, in the message a failed action prints, while the dict
+    # is keyed by the SAFE name. Passing one for the other looks like a missing harness.
+    h = _HARNESS % {"label": label}
+    if h not in full[name]:
+        raise SystemExit(f"the generator's script for {name} does not contain the harness")
+    return full[name].replace(h, h + exports, 1)
+
+
+def render(n: Needs, label: str, group_script: str, exports: str, info: dict, data: str,
+           full_text: bool = False) -> str:
     """Render, then put the consumer's values where the variables are. Same order the bridge
     resolves them in: the staging script and the data tree are one value each, the tree scripts
     are positional in fromStaged order, and the dependencies are keyed by the bridge's own
     variable name."""
-    t = builder_script(n, label, group_script, exports)
+    t = group_script if full_text else builder_script(n, label, group_script, exports)
     t = t.replace('"$CIDER_STAGE"', info["g"]).replace('"$CIDER_DATA"', data)
     for i, path in enumerate(info["r"]):
         t = t.replace('"$CIDER_TREE_%d"' % i, path)
@@ -45,14 +63,15 @@ def render(n: Needs, label: str, group_script: str, exports: str, info: dict, da
     return t
 
 
-def run(n, scripts, dump, exports, mutate=None):
+def run(n, scripts, dump, exports, mutate=None, full=None):
     """Returns (identical, [labels that differ]). `mutate` breaks one thing, for the controls."""
     ok, bad = 0, []
     for label, info in dump["drvs"].items():
-        gs = scripts[Needs.safe_name(label)]
+        gs = (from_full(full, Needs.safe_name(label), label, exports) if full is not None
+              else scripts[Needs.safe_name(label)])
         if mutate is not None:
             gs, info = mutate(label, gs, info)
-        t = render(n, label, gs, exports, info, dump["data"])
+        t = render(n, label, gs, exports, info, dump["data"], full_text=full is not None)
         if hashlib.sha256(t.encode()).hexdigest() == info["h"]:
             ok += 1
         else:
@@ -80,8 +99,14 @@ def main(argv: list) -> int:
     exports = sample[b:c]
 
     total = len(dump["drvs"])
-    ok, bad = run(n, scripts, dump, exports)
-    print(f"== builderScript: the python renderer against the lowering, {total} labels ==")
+    # --from-full judges the ARTIFACT: the full.json the generator wrote, rather than a fresh
+    # call to the same renderer.
+    full = None
+    if "--from-full" in argv:
+        full = json.load(open(os.path.join(specs_dir, "full.json")))
+    ok, bad = run(n, scripts, dump, exports, full=full)
+    what = "the generator's full.json" if full is not None else "the python renderer"
+    print(f"== builderScript: {what} against the lowering, {total} labels ==")
     print(f"  byte identical   {ok}")
     print(f"  differ           {len(bad)}")
     for label in bad[:8]:
@@ -96,7 +121,7 @@ def main(argv: list) -> int:
         fails = 0
 
         def control(name, mutate):
-            _, b2 = run(n, scripts, dump, exports, mutate)
+            _, b2 = run(n, scripts, dump, exports, mutate, full=full)
             print(f"  {'FIRES ' if b2 else 'SILENT'} {name}: {len(b2)} label(s) differ")
             return 0 if b2 else 1
 

@@ -68,8 +68,19 @@ def main [
   }
   $e.stdout | save -f $tmp
 
+  # PREFER THE ARTIFACT WHEN IT IS THERE. full.json is what the generator WROTE; without it
+  # the check calls the renderer again, which is the same function on both sides and so cannot
+  # see a generator that renders correctly and then writes the wrong thing. Detected rather
+  # than flagged, so the strongest available check is the one that runs, and it says which.
+  let fromFull = ($specs | path join "full.json" | path exists)
+  if $fromFull {
+    print "  reading the generator's full.json (the artifact)"
+  } else {
+    print "  no full.json in the specs, re-rendering instead (weaker: same function both sides)"
+  }
   # let, not mut: `do -i { ... }` is a closure and nushell will not capture a mutable.
   let args = ([($graph | first | path join "graph.json") $specs $tmp]
+    | append (if $fromFull { ["--from-full"] } else { [] })
     | append (if $no_controls { [] } else { ["--controls"] }))
   let r = (do -i { ^python3 ./scripts/buck-script-check.py ...$args } | complete)
   print $r.stdout

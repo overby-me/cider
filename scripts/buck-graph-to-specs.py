@@ -56,6 +56,10 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from buck_lowering import Needs, builder_script  # noqa: E402
+
 
 # buck2 renders an action identity as `LABEL (CONFIGURATION) (ACTION)`. Anchored, because
 # this is the ONE place the adapter reimplements a buck2 concept rather than moving data
@@ -389,6 +393,31 @@ def main(argv: list[str]) -> int:
         # serve any machine.
         scripts[n] = action_script(acts)
     open(os.path.join(outdir, "names"), "w").write("\n".join(names) + "\n")
+
+    # AND THE WHOLE BUILDER SCRIPT, not just this group's actions (#66). The staging preamble,
+    # the dependency copies, the staged tree restores and the output copies were assembled by
+    # ciderBuck2Lower.nix at EVALUATION time; rendering them here is the point of #66, since
+    # this derivation already runs and the evaluator runs on every `nix build`.
+    #
+    # NOTHING A CONSUMER OWNS IS IN THIS TEXT. The staging script, the staged tree scripts, the
+    # data tree and the dependency outputs are shell variables, filled in by extraEnv and
+    # DYN_DEP_* in nix/lib/dyn-actions.nix. That is what makes writing them HERE possible at
+    # all: this runs long before any consumer path exists.
+    #
+    # VERIFIED BYTE FOR BYTE, not by inspection: scripts/buck-script-check.nu hashes each of
+    # these against the lowering's own passthru.builderScript, and they agreed on all 1,474.
+    needs = Needs(graph)
+    # THE TWO GROUPINGS MUST BE THE SAME ONE. Needs regroups the graph itself, so a divergence
+    # here would hand every group somebody else's dependency list, quietly. Cheap to check and
+    # impossible to notice otherwise.
+    if set(needs.targets) != set(groups):
+        only_a = sorted(set(needs.targets) - set(groups))[:3]
+        only_b = sorted(set(groups) - set(needs.targets))[:3]
+        raise SystemExit(f"FAIL: the two groupings disagree, {len(needs.targets)} against "
+                         f"{len(groups)}; only in Needs {only_a}, only in group_specs {only_b}")
+    full = {safe_name(g): builder_script(needs, g, scripts[safe_name(g)]) for g in groups}
+    with open(os.path.join(outdir, "full.json"), "w") as f:
+        json.dump(full, f)
 
     # THE DEPENDENCY EDGES, keyed and valued by SAFE NAME because that is the action name
     # nix/lib/dyn-actions.nix knows. It reads this file in specDir mode and can infer nothing
