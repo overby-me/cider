@@ -1167,7 +1167,7 @@ cc_objects(
 #   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
-#   linux/startup
+#   src/startup
 
 cc_header_root(
     name = "emulation_inc_xnu_darling_src_libsystem_kernel",
@@ -1578,7 +1578,7 @@ cc_objects(
 #   src/external/ciderd/include
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall
-#   linux/startup
+#   src/startup
 
 cc_header_root(
     name = "emulation_dyld_inc_xnu_darling_src_libsystem_kernel",
@@ -2036,7 +2036,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2154,7 +2154,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2272,7 +2272,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2334,7 +2334,7 @@ cc_objects(
         "-Wno-compare-distinct-pointer-types",
         "-fPIC",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -2443,7 +2443,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2561,7 +2561,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2679,7 +2679,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2741,7 +2741,7 @@ cc_objects(
         "-Wno-compare-distinct-pointer-types",
         "-fPIC",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -2850,7 +2850,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -2968,7 +2968,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3086,7 +3086,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3204,7 +3204,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3322,7 +3322,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3440,7 +3440,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3558,7 +3558,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3676,7 +3676,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3794,7 +3794,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -3912,7 +3912,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [
@@ -4030,7 +4030,7 @@ cc_objects(
         "-fPIC",
         "-D__XNU_PRIVATE_EXTERN=",
         "-I",
-        "src/xtrace/include",
+        "darwin/xtrace/include",
         "-Wno-extern-initializer",
     ],
     prefix_headers = [

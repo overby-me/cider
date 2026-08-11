@@ -348,6 +348,19 @@ def main [flag?: string] {
         say (indent7 ($envnames.stdout + $envnames.stderr | str substring 0..2000))
     }
 
+    # A FIRST-PARTY PATH WE QUOTE MUST EXIST. buck2 reads a missing include dir as an EMPTY
+    # one, so a stale path never fails where it is written. #87 left 44 "src/xtrace/include"
+    # strings behind in pin BUCK files and gate11 died an HOUR later with 118 errors that all
+    # named base.h, memory.h and string.h, none of them naming the path that was wrong.
+    say "== the first-party paths we quote in build files (no nix either) =="
+    let fpaths = (do -i { ^python3 ./scripts/buck-first-party-paths-check.py } | complete)
+    if $fpaths.exit_code == 0 {
+        ok "every quoted first-party path resolves"
+    } else {
+        bad $"first-party path check FAILED, exit ($fpaths.exit_code), see the output below"
+        say (indent7 ($fpaths.stdout + $fpaths.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //darwin/libsimple:libsimple_ciderd

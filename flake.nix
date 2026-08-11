@@ -605,6 +605,27 @@
       packages.cider-buck2-one =
         pkgs: pkgs.cider-buck2-prefix-min.named."root//darwin/libsimple:libsimple_ciderd";
 
+      # The SECOND probe, and it exists because libsimple_ciderd cannot fail the way #87 did.
+      # It owns its own sources, so a wrong include dir in some OTHER package is invisible to
+      # it. This one is the xnu pin package, which reaches ACROSS into first-party header
+      # roots, and that is exactly the edge a path move breaks: gate11 failed with 118 errors
+      # and all 44 were that shape, base.h/memory.h/string.h not found, from 44 stale
+      # src/xtrace/include strings, 19 of them in buck-src/xnu/BUCK itself.
+      #
+      #   nix build .#cider-buck2-xnu-one --no-link -L
+      #
+      # `named` HOLDS 30 ENDPOINTS, NOT EVERY TARGET, which is worth knowing before reaching
+      # for one: it maps link targets, so an intermediate _obj target is not addressable here
+      # and asking for one fails at eval with attribute missing. Check with
+      #   nix eval .#cider-buck2-prefix-min.named --apply builtins.attrNames
+      #
+      # And do NOT reach for --impure with builtins.getFlake to build some other target ad
+      # hoc. Measured 2026-08-11: on a dirty tree that re-ingests the working copy, and it had
+      # read 24.3 GB without starting a builder when it was stopped. Add an attribute here
+      # instead; flake.nix is outside projectSrc, so doing so invalidates nothing.
+      packages.cider-buck2-xnu-one =
+        pkgs: pkgs.cider-buck2-prefix-min.named."root//buck-src/xnu:system_kernel_firstpass";
+
 
       # The same endpoint with each buck-src PIN lowered as one derivation instead of one
       # per target (#53). buck-src is 58.9 percent of the actions and only moves when a

@@ -677,6 +677,18 @@ CoreGraphics' backend slot, and shipped an EMPTY AppKit over the real one. Every
 resolves by reference PATH now, via the `buck-registry: <path> = <target>` pragma the
 generated blocks already carried.
 
+**A path in a build file lives in one of FOUR spaces and they look identical.** (1)
+repo-relative and CURRENT: an include dir, a `root =`, a src. Must move. (2) pin-relative,
+`openssl/src/tools/c_hash`. Must not. (3) FROZEN REFERENCE: a `buck-registry:` KEY, a
+`# cmake target: X ->` line. Must not. (4) cmake BINARY-DIR, everything under `# TODO these
+include dirs are GENERATED (codegen output):`. Must not. The existence test separates 1 from 2
+and is self-validating (rewrite only when `src/<rest>` is gone and exactly one of
+`darwin/<rest>`/`linux/<rest>` exists), but it CANNOT see 4, because cmake mirrors the source
+layout into its binary dir: `src/CoreAudio/CoreAudio` is generated while
+`darwin/CoreAudio/CoreAudio` is real, so both exist. Key class 4 on the comment block, not the
+path. For classes 3 and 4 the generator is the arbiter: run `gen-buck-from-ninja.py <target>`
+and read what it emits rather than reasoning about it.
+
 **Two ways a glob silently stages NOTHING**: crossing a package boundary, and traversing a
 symlinked directory. A CYCLIC symlink instead wedges the materializer with the daemon at 0%
 CPU and nothing written. `find <tree> -type l` before debugging buck2.

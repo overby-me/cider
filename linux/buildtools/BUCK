@@ -16,9 +16,9 @@ load("//buck/rules:rust.bzl", "rust_binary")
 # BEGIN generated: getuuid
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py getuuid   -- review before committing.
-# cmake target: getuuid  ->  linux/buildtools/getuuid
+# cmake target: getuuid  ->  src/buildtools/getuuid
 # TODO these include dirs are GENERATED (codegen output):
-#   linux/buildtools/include
+#   src/buildtools/include
 #   src/include
 
 cc_objects(
@@ -39,7 +39,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries getuuid   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# buck-registry: linux/buildtools/getuuid = getuuid
+# buck-registry: src/buildtools/getuuid = getuuid
 
 cc_binary(
     name = "getuuid_c",
@@ -57,9 +57,9 @@ cc_binary(
 # BEGIN generated: elfdep
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py elfdep   -- review before committing.
-# cmake target: elfdep  ->  linux/buildtools/elfdep
+# cmake target: elfdep  ->  src/buildtools/elfdep
 # TODO these include dirs are GENERATED (codegen output):
-#   linux/buildtools/include
+#   src/buildtools/include
 #   src/include
 
 cc_objects(
@@ -80,7 +80,7 @@ cc_objects(
 # GENERATED from the reference build.ninja by
 # scripts/gen-buck-from-ninja.py --binaries elfdep   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
-# buck-registry: linux/buildtools/elfdep = elfdep
+# buck-registry: src/buildtools/elfdep = elfdep
 
 cc_binary(
     name = "elfdep_c",

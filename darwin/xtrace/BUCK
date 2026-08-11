@@ -43,7 +43,7 @@ cc_header_root(
         "include/*.c",
         "**/*",
     ]),
-    root = "src/xtrace",
+    root = "darwin/xtrace",
     include_subdirs = [
         "include",
         ".",

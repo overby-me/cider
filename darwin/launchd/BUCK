@@ -196,7 +196,7 @@ cc_header_root(
         "liblaunch/*.h",
         "liblaunch/**/*.h",
     ]),
-    root = "src/launchd",
+    root = "darwin/launchd",
     include_subdirs = [
         "src",
         "liblaunch",
@@ -284,7 +284,7 @@ cc_header_root(
         "liblaunch/**/*.h",
         "liblaunch/*.c",
     ]),
-    root = "src/launchd",
+    root = "darwin/launchd",
     include_subdirs = [
         "src",
         "liblaunch",
@@ -369,7 +369,7 @@ cc_header_root(
         "liblaunch/**/*.h",
         "liblaunch/*.c",
     ]),
-    root = "src/launchd",
+    root = "darwin/launchd",
     include_subdirs = [
         "src",
         "liblaunch",

@@ -55,7 +55,15 @@ GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
 BUCK_SRC = "buck-src"
 
 # The nix build's source and binary dirs, as they appear in build.ninja.
-SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-cider-cmake-src")
+# BOTH SPELLINGS, AND THE OLD ONE IS NOT OPTIONAL. The reference build.ninja is FROZEN and
+# cmake-era, so it predates the #84 Cider rename and names its source store
+# darling-cmake-src, 489,654 times. Renaming this regex with everything else quietly broke
+# every path it was supposed to strip: the prefix survived, the path no longer started with
+# src/, so the #87 fallback below could not fire and repo_path fell through to "generated" --
+# real first-party sources reported as codegen output. Nothing rebuilt, because the BUCK files
+# are committed; it only bites on REGENERATION, which is why it sat unnoticed. A frozen
+# artifact cannot be renamed, so the reader has to accept the name it actually carries.
+SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-(?:cider|darling)-cmake-src")
 BIN_DIR = "/build/build"
 
 # Flags //darwin:sdk_env already supplies, so a generated target does not repeat
