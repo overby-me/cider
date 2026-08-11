@@ -342,96 +342,32 @@ referenced is completed. Git history holds them.
 
 What follows is only what is still OPEN.
 
-### #66 — get the lowering out of the evaluator
+### #66 - get the lowering out of the evaluator
 
 A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
 GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Nothing in the
 reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
+Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
 
-- **A. THE BRIDGE, done.** `nix/lib/dyn-actions.nix` turns action specs into one emitted
-  `.drv` per action plus `builtins.outputOf` accessors. THE CONSTRAINT THAT SHAPES IT: a
-  `.drv`-named derivation must be text-hashed CA with a single output named `out`, and
-  `builtins.placeholder "out"` is a constant of the OUTPUT NAME, so every emitted action must
-  name its output something else or the producer rejects its own drv as a self-reference.
-  `NIX_REMOTE=daemon` breaks recursive-nix, which supplies its own socket.
-  `scripts/buck-dyndrv-check.nu` asserts **six** properties over four fixtures
-  (`dyn-drv-probe`, `dyn-actions-toy`, `-dep-probe`, `-specdir-toy`, `-dag-toy`). Two of the
-  six were FALSE when first checked and neither had a fixture, so neither could have been
-  noticed: the DAG edge (`inputSrcs` went to `nix derivation add` as a full store path, which
-  it rejects, so no declared source had ever worked) and the whole of `specDir` mode (nothing
-  had ever produced a spec directory, so half the API was evaluated and never built).
-  An action may declare `deps = [names]`; each becomes a source AND a `DYN_DEP_<name>` env
-  entry, so a spec read from a FILE can find its dependencies without interpolating anything.
-  Use `depVar` to name the variable: action names are free-form, shell variable names are not,
-  and the mismatch expands to EMPTY rather than failing. Likewise `"$${x}"` is a Nix escape
-  for a literal `${` -- concatenate instead. Both bugs produced clean successful builds with
-  empty results, so fixtures must check CONTENT, never path existence.
-- **B. THE ADAPTER, done.** `scripts/buck-graph-to-specs.py` groups the actions the way the
-  lowering does and renders each group's command sequence, inside the graph derivation.
-  `ciderBuck2Lower.nix` reads the result; `escArgCache`, `escArg`, `fill`, `ownOutputs` and
-  `readsSibling` are gone from it. Checked by `scripts/buck-specs-check.nu`, which
-  re-derives the answer from graph.json instead of asking the generator, with four negative
-  controls that must fire.
-- **WHAT IT WAS WORTH, measured old against new on the same tree and graph:** 15.1s → 14.5s,
-  against a 12.95s floor if the scripts cost nothing at all. So 0.6s, not the ~12s first
-  claimed. The ~12.95s that remains is computing 1,474 DERIVATIONS, and that is what A is
-  for. Kept for what it enables, not for the 0.6s.
-- **GATE16 GREEN, which is the verification the wiring owed.** 1,463 builders, zero
-  nix-level failures, 2,874s, and the prefix is **byte identical to gate15 across all 5,563
-  regular files**. Zero differ, which was the stated expectation: the wiring changes where
-  the action script is computed, not what it says.
-  IDENTIFY THE REFERENCE BY CONTENT, never by picking the newest directory: store paths carry
-  epoch mtimes and seven prefixes sit in the store with identical file SETS. gate16 differs
-  from `hnsbi7v08ypk` in exactly `.prefix-manifest.tsv`, `bin/ciderd`, `usr/lib/dyld` and
-  `libsystem_kernel.dylib`, the recorded four-file gate15-against-pre-stage-2 signature, which
-  is what identifies `pzc39fn070qj` as gate15's.
-  TWO TRAPS, both of which look like failure and are not: `grep -ci 'error:'` on the log
-  returns 221 and every one is an Objective-C selector (`error:(NSError **)error`) or warning
-  text, so count nix-level failures instead; and this endpoint spends about **17 minutes**
-  between launch and its first `building` line, with zero children and a near-idle daemon,
-  which is the CA resolution pass and is indistinguishable from a hang while it runs.
-- **THE ENDGAME COSTS ABOUT 55s OF BUILD, so it is worth building.** Every emitted action
-  needs a producer derivation running `nix derivation add` in a recursive-nix sandbox, and
-  `nix/lib/dyn-actions-scale-toy.nix` prices it: quiet, 22 cores, n=64/128/256 gives 0.039 and
-  0.036s per producer, so ~55s at 1,474 groups against the ~12.95s of evaluation removed. Paid
-  once per graph change, not per invocation, so it breaks even after four or five evaluations.
-  THE FIRST MEASUREMENT SAID 0.57s AND 14 MINUTES and argued the opposite. It was taken beside
-  a running gate with every core busy, so the producers could not overlap and it priced
-  contention; it came out convincingly LINEAR, which is what made it credible. The tell was in
-  the data before the re-run: n=4 measured slower than n=16, which only happens if they were
-  overlapping. **Never price a parallel thing on a busy machine.**
-- **specDir PLUS A DAG WORKS, which was the last gap in A.** `actions` mode could always
-  express a DAG because the caller is writing Nix; `specDir` could not, since the spec is a
-  file nobody parses. Edges travel in a `deps.json` beside the specs; the bridge puts each
-  dependency's `outputOf` string in the PRODUCER's env and `dyn-actions-spec-fixup.py` writes
-  it into the spec as a source AND a `DYN_DEP_<name>` entry once Nix has substituted the real
-  path. Stripping `deps.json` degrades to a SET **silently, exit zero**, so fixtures check
-  content. A silent failure this uncovered: the fixup was an inline `python3 -c` with no error
-  check, and in specDir mode the spec is `cp`d from the store at mode 444, so it died with
-  PermissionError, the shell carried on, and `derivation add` read the unfixed spec.
-- **B HAS STARTED: the adapter emits the edges.** 1,474 groups, 925 with dependencies, 22,473
-  edges, biggest fan-in 128, **no cycle** -- also the first group-level confirmation that the
-  coarse-pin contraction held, since the dump only ever ran Tarjan at pin level. The generator
-  refuses to emit a cycle. `buck-specs-check.py` checks `deps.json` against the graph AND
-  against buck2's action ORDER, which is an independent property; seven controls, all firing.
-- **EARLY CUTOFF MEASURED ON A REAL CHANGE.** Adding `deps.json` moved the specs store path and
-  **zero** target derivations rebuilt; `cider-buck2-one` is at the identical out path. That is
-  the embed-not-source decision paying off: had the lowering sourced the script from
-  `graph.specs`, all 1,474 would have re-run.
-- **STILL OPEN, and A and B DO NOT YET MEET.** Tested 2026-08-11: `nix derivation add`
-  rejects the adapter's `<name>.json` with "Expected JSON object to contain key 'name'".
-  `specDir` mode wants a DERIVATION; the adapter writes the action data a derivation would be
-  built from. The conversion needs the consumer's store paths (builder, staged tree,
-  toolchain), which neither the graph derivation nor the generator has, so it is a third
-  derivation's job. After that, the endpoint binds through `outputOf` and the evaluator stops
-  computing 1,474 derivations, which is where the ~12.95s actually is.
-- **The readFile trap, because it cost a wrong turn:** reading the 1,474 rendered scripts as
-  separate files makes evaluation 32.6s, WORSE than computing them. The specs output is
-  deferred (the graph it reads is CA), so its real path is unknown until realised and every
-  `readFile` resolves that again, ~13ms each; the same files from a plain store path are
-  0.10s total. Hoisting the path does not help (it hoists the placeholder, and fails in pure
-  mode); input-addressing the specs derivation does not help (the deferral comes from its
-  input). One `scripts.json` read once is the fix.
+- **A, the bridge, DONE.** `nix/lib/dyn-actions.nix`, plus five fixtures beside it.
+  `scripts/buck-dyndrv-check.nu` asserts **seven** properties and PASSES. Three are properties
+  of Nix; four are of the bridge, and **three of those four were false when first checked**
+  (the DAG edge, the whole of `specDir` mode, and specDir-plus-a-DAG). None had a fixture, so
+  none could have been noticed.
+- **B, the adapter, PART DONE.** The lowering reads its action script instead of computing it
+  (gate16 GREEN, prefix byte identical to gate15 across all 5,563 files), and
+  `scripts/buck-graph-to-specs.py` emits the group dependency edges: 1,474 groups, 22,473
+  edges, no cycle. `scripts/buck-specs-check.py` verifies both, with seven controls that fire.
+- **STILL OPEN: A and B do not meet.** `nix derivation add` rejects the adapter's `<name>.json`
+  ("Expected JSON object to contain key 'name'"). specDir wants a DERIVATION; the adapter
+  writes the action data one would be built from. The conversion needs the consumer's store
+  paths (builder, staged tree, toolchain), so it belongs to a third derivation. After that the
+  endpoint binds through `outputOf` and stops computing 1,474 derivations.
+- **THE PRICE IS KNOWN AND FAVOURABLE: ~55s** of build at 1,474 groups (0.037s per producer,
+  quiet, 22 cores) against ~12.95s of evaluation removed, paid once per graph change. It breaks
+  even after four or five evaluations. The first attempt measured 0.57s and 14 MINUTES and
+  argued the opposite; it was taken beside a running gate, so it priced contention and came out
+  convincingly linear. **Never price a parallel thing on a busy machine.**
 
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
