@@ -824,3 +824,32 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   mode); input-addressing the specs derivation does not help (the deferral comes from its
   input). One `scripts.json` read once is the fix.
 
+### The edge set was checked against the REALISED derivation graph (2026-08-11)
+
+deps.json is derived from graph.json, so comparing it back to graph.json would only prove the
+generator ran. The independent evidence is the drv graph the LOWERING already builds, which
+comes from Nix rather than from the adapter.
+
+Taking the biggest group, root//buck-src/libc:system_c_final, and reading its drv references
+straight out of the gate16 log so it is provably the current graph rather than a store-wide
+glob mixing two:
+
+    my deps                 128 groups, 128 distinct drv names
+    drv target references   129
+    only in the drv           1   x86_64-apple-darwin20-ld
+    only in mine              0
+
+THE ONE EXTRA IS NOT A MISSING EDGE, and it was checked rather than explained away. It IS a
+group, so the obvious reading is that the adapter missed it. It is not: system_c_final has 660
+inputs and the ld group has 1 output, and the ARTIFACT OVERLAP IS ZERO. No argv of the group
+names ld64 either. The lowering puts ld64 in nativeBuildInputs for every target, so it is a
+uniform TOOLCHAIN input rather than a graph edge, and the adapter must supply it the same way.
+
+TWO HARNESS BUGS ON THE WAY, both of which made a correct map look broken:
+  - the drv name is sanitizeDerivationName of the LAST COLON COMPONENT of the label, not
+    anything recoverable by splitting the safe name on underscores. Comparing on the wrong tail
+    reported 130 of 130 mismatching.
+  - a CA derivation has two forms in the log, and the RESOLVED one has no drv references at
+    all, because resolution replaces input drvs with their content-addressed outputs. Reading
+    that one reports zero references and looks like a total mismatch.
+
