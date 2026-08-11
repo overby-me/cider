@@ -241,8 +241,20 @@ def main(argv: list[str]) -> int:
         n = safe_name(g)
         names.append(n)
         json.dump({"group": g, "actions": acts}, open(os.path.join(outdir, n + ".json"), "w"))
+        # AND THE RENDERED SCRIPT, which is what the lowering actually needs. The .json is
+        # the data; the .sh is the thing a builder sources instead of Nix concatenating it
+        # per action at eval time. Emitting both means the consumer never re-renders and the
+        # data stays available for anything that wants to inspect or re-render it.
+        #
+        # It references ${CIDER_PH_*} for each placeholder, so whoever sources it must export
+        # those first. That is the whole portability trade: the script names no store path,
+        # and the consumer supplies them from its OWN inputs, which is what lets one graph
+        # serve any machine.
+        with open(os.path.join(outdir, n + ".sh"), "w") as f:
+            f.write(action_script(acts))
     open(os.path.join(outdir, "names"), "w").write("\n".join(names) + "\n")
-    print(f"wrote {len(names)} group spec(s), {total_actions} action(s), to {outdir}")
+    print(f"wrote {len(names)} group spec(s) and script(s), {total_actions} action(s), "
+          f"to {outdir}")
     return 0
 
 
