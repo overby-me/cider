@@ -342,6 +342,34 @@ referenced is completed. Git history holds them.
 
 What follows is only what is still OPEN.
 
+### #95 - migcom stamps the build time into every stub, so 110 groups never cache
+
+FOUND BY #66's full-graph comparison, which is the only thing that has ever compared two
+independent builds of the whole port. 1,364 of 1,474 groups came out identical and 110 differed;
+every content difference was the same line:
+
+    * stub generated Tue Aug 11 18:57:26 2026    against    13:19:33 the same day
+
+Those are the wall-clock times the two routes RAN. It is NOT an emitted-route defect: the
+lowering is non-reproducible here too, and two lowered builds at different times differ the same
+way.
+
+THE CAUSE IS ONE LINE OF UPSTREAM. `buck-src/bootstrap_cmds/migcom.tproj/mig.c:324`
+
+    loc = time((time_t *)0);
+    GenerationDate = ctime(&loc);
+
+and `migcom.tproj/utils.c:67` prints it into every generated stub. migcom ignores
+`SOURCE_DATE_EPOCH`, which is the standard reproducible-builds knob and is already exported by
+stdenv.
+
+WHY IT COSTS SOMETHING RATHER THAN BEING COSMETIC. Under content addressing, a mig group that
+reruns for any reason produces new bytes even when nothing about its inputs changed in a way
+that matters, so early cutoff cannot stop there and everything downstream of it rebuilds. That
+is the property #50 and #55 were built to get.
+
+NOT YET DONE, and buck-src is not safe to edit during a build.
+
 ### #66 - get the lowering out of the evaluator
 
 A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
