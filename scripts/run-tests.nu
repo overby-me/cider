@@ -48,7 +48,7 @@ const SUITES = [
 ]
 
 # Test directory inside the Darling prefix
-const DARLING_TEST_DIR = "/tmp/cider-nix-tests"
+const CIDER_TEST_DIR = "/tmp/cider-nix-tests"
 
 # Colours only on a terminal, the same condition the bash version used.
 def colours [] {
@@ -132,7 +132,7 @@ def main [
         let base = ($s.source | path basename)
         let bin = ($base | str replace --regex '\.c$' '')
         log $c $"  Compiling ($base) ..."
-        let cmd = $"cd ($DARLING_TEST_DIR) && cc -Wall -Wextra -o '($bin)' '($base)' ($s.cflags) 2>&1"
+        let cmd = $"cd ($CIDER_TEST_DIR) && cc -Wall -Wextra -o '($bin)' '($base)' ($s.cflags) 2>&1"
         let r = (^cider shell bash -c $cmd | complete)
         if $r.exit_code != 0 {
             err $c $"  Compilation of ($base) FAILED:"
@@ -172,18 +172,18 @@ def main [
         mut code = 0
         if $s.type == "c" {
             let bin = ($base | str replace --regex '\.c$' '')
-            let chk = (^cider shell test -x $"($DARLING_TEST_DIR)/($bin)" | complete)
+            let chk = (^cider shell test -x $"($CIDER_TEST_DIR)/($bin)" | complete)
             if $chk.exit_code != 0 {
                 print $"  ($c.yellow)SKIPPED($c.reset) \u{2014} compilation failed"
                 print ""
                 $results = ($results | append {name: $s.name, verdict: "skip"})
                 continue
             }
-            let r = (^cider shell bash -c $"cd ($DARLING_TEST_DIR) && ./($bin) 2>&1" | complete)
+            let r = (^cider shell bash -c $"cd ($CIDER_TEST_DIR) && ./($bin) 2>&1" | complete)
             $out = $"($r.stdout)($r.stderr)"
             $code = $r.exit_code
         } else {
-            let r = (^cider shell bash -c $"cd ($DARLING_TEST_DIR) && sh '($base)' 2>&1" | complete)
+            let r = (^cider shell bash -c $"cd ($CIDER_TEST_DIR) && sh '($base)' 2>&1" | complete)
             $out = $"($r.stdout)($r.stderr)"
             $code = $r.exit_code
         }
@@ -211,7 +211,7 @@ def main [
         log $c "Cleaning up test files from prefix..."
         ^rm -rf $prefix_test_dir
     } else {
-        log $c $"Test binaries preserved at: ($DARLING_TEST_DIR) \(inside prefix)"
+        log $c $"Test binaries preserved at: ($CIDER_TEST_DIR) \(inside prefix)"
         log $c $"  Host path: ($prefix_test_dir)"
     }
 
@@ -250,9 +250,9 @@ def main [
         print -e "  \u{2022} Re-run with --verbose to see full output for passing tests"
         print -e "  \u{2022} Run a single suite: scripts/run-tests.nu --suite <name>"
         print -e "  \u{2022} Run with --keep to preserve binaries, then inspect inside:"
-        print -e $"      cider shell ($DARLING_TEST_DIR)/<test_binary>"
+        print -e $"      cider shell ($CIDER_TEST_DIR)/<test_binary>"
         print -e "  \u{2022} Trace syscalls: strace -f -p $(pidof ciderd) 2>&1 | head"
-        print -e $"  \u{2022} Syscall trace: env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell ($DARLING_TEST_DIR)/<test_binary>"
+        print -e $"  \u{2022} Syscall trace: env DYLD_INSERT_LIBRARIES=/usr/lib/cider/libxtrace.dylib cider shell ($CIDER_TEST_DIR)/<test_binary>"
         print -e ""
         exit 1
     } else if $skipped > 0 and $passed == 0 {

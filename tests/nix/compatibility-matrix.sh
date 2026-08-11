@@ -17,7 +17,8 @@
 #   ./tests/nix/compatibility-matrix.sh --help
 #
 # Environment variables:
-#   DARLING_NIX          Path to the cider-nix wrapper (default: auto-detect)
+#   CIDER_NIX            Path to the cider-nix wrapper (default: auto-detect)
+#                        (DARLING_NIX is still honoured)
 #   DARLING              Path to the cider binary (default: cider)
 #   DPREFIX              Darling prefix path (default: auto)
 #   NIX_SYSTEM           Target system (default: x86_64-darwin)
@@ -86,7 +87,7 @@ TIER4_PACKAGES=(
 
 # ── Configuration defaults ───────────────────────────────────────────
 
-DARLING_NIX="${DARLING_NIX:-}"
+CIDER_NIX="${CIDER_NIX:-${DARLING_NIX:-}}"
 DARLING="${CIDER:-${DARLING:-cider}}"
 NIX_SYSTEM="${NIX_SYSTEM:-x86_64-darwin}"
 COMPAT_NIXPKGS="${COMPAT_NIXPKGS:-<nixpkgs>}"
@@ -123,8 +124,8 @@ die() {
 
 # Auto-detect the cider-nix wrapper script
 find_cider_nix() {
-    if [[ -n "$DARLING_NIX" ]]; then
-        echo "$DARLING_NIX"
+    if [[ -n "$CIDER_NIX" ]]; then
+        echo "$CIDER_NIX"
         return
     fi
 
@@ -375,7 +376,8 @@ Options:
   --help, -h           Show this help
 
 Environment:
-  DARLING_NIX          Path to cider-nix wrapper (auto-detected)
+  CIDER_NIX            Path to cider-nix wrapper (auto-detected)
+                       (DARLING_NIX is still honoured)
   DARLING              Path to cider binary (default: cider)
   DPREFIX              Darling prefix path (default: auto)
   NIX_SYSTEM           Target system (default: x86_64-darwin)

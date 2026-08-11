@@ -44,11 +44,15 @@ four idioms reported 39 names, 38 of them false: C macros in darwin/xtrace, the 
 the launcher reads through env!(), and script-local names consumed by POSIX expansion. Widening
 it left three, and TWO OF THOSE THREE WERE STILL FALSE, each for its own reason worth keeping:
 
-  DARLING_CMD is a bash ARRAY. It is assigned as DARLING_CMD=(cider) and read as
-  ${DARLING_CMD[@]}, so a ${NAME} pattern anchored on : or } misses it. The subscript is a read.
+  CIDER_CMD is a bash ARRAY. It is assigned as CIDER_CMD=(cider) and read as
+  ${CIDER_CMD[@]}, so a ${NAME} pattern anchored on : or } misses it. The subscript is a read.
 
-  DARLING_EMIT_TARGET_SOURCES is read by os.environ.get, a Python idiom absent from the first
+  CIDER_EMIT_TARGET_SOURCES is read by os.environ.get, a Python idiom absent from the first
   list entirely.
+
+  (Both carried the DARLING_ spelling when they were found. They are CIDER_ now, and the two
+  that are genuinely read from the ENVIRONMENT kept a DARLING_ fallback while the script-local
+  ones did not, because a fallback on a variable no one can set from outside is theatre.)
 
 Both looked exactly like the real defect until the file was opened. That is the whole lesson:
 an unrecognised idiom and an unimplemented variable are indistinguishable from the outside, so

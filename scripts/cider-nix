@@ -23,7 +23,7 @@
 #
 # Environment:
 #   DPREFIX           Override the default Darling prefix (~/.cider)
-#   DARLING_NIX_VERBOSE  Set to 1 for debug output
+#   CIDER_NIX_VERBOSE Set to 1 for debug output (DARLING_NIX_VERBOSE still honoured)
 #
 # See: PLAN.md (Task 3.4)
 
@@ -31,8 +31,11 @@ set -euo pipefail
 
 # ── Defaults ────────────────────────────────────────────────────────────────
 
-DARLING_PREFIX="${DPREFIX:-}"
-VERBOSE="${DARLING_NIX_VERBOSE:-0}"
+# CIDER_PREFIX is script local: it is seeded from DPREFIX and set by --prefix, and nothing
+# ever reads a variable of this name out of the environment, so there is no fallback to keep.
+CIDER_PREFIX="${DPREFIX:-}"
+# CIDER_NIX_VERBOSE is the opposite: a real environment knob, so DARLING_ still works.
+VERBOSE="${CIDER_NIX_VERBOSE:-${DARLING_NIX_VERBOSE:-0}}"
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -59,7 +62,8 @@ Options:
 
 Environment:
   DPREFIX                Override the default Darling prefix
-  DARLING_NIX_VERBOSE    Set to 1 for debug output
+  CIDER_NIX_VERBOSE      Set to 1 for debug output
+                         (DARLING_NIX_VERBOSE is still honoured)
 
 Examples:
   cider-nix nix --version
@@ -77,7 +81,7 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --prefix)
             [ $# -ge 2 ] || die "--prefix requires an argument"
-            DARLING_PREFIX="$2"
+            CIDER_PREFIX="$2"
             shift 2
             ;;
         --help|-h)
@@ -109,10 +113,10 @@ if ! command -v cider &>/dev/null; then
 fi
 
 # Build the cider command with optional --prefix
-DARLING_CMD=(cider)
-if [ -n "$DARLING_PREFIX" ]; then
-    DARLING_CMD+=(--prefix "$DARLING_PREFIX")
-    debug "using prefix: $DARLING_PREFIX"
+CIDER_CMD=(cider)
+if [ -n "$CIDER_PREFIX" ]; then
+    CIDER_CMD+=(--prefix "$CIDER_PREFIX")
+    debug "using prefix: $CIDER_PREFIX"
 fi
 
 # ── Build the inner command ─────────────────────────────────────────────────
@@ -126,7 +130,7 @@ for arg in "$@"; do
 done
 
 debug "inner command:${ESCAPED_ARGS}"
-debug "cider cmd: ${DARLING_CMD[*]}"
+debug "cider cmd: ${CIDER_CMD[*]}"
 
 # The inner script:
 #   1. Sources the Nix profile so nix/nix-env/etc. are on PATH.
@@ -155,4 +159,4 @@ exec${ESCAPED_ARGS}
 
 # Run the command inside Darling, forwarding the exit code.
 # We use `bash -lc` to get a login shell (which sources /etc/profile.d/*).
-exec "${DARLING_CMD[@]}" shell bash -lc "$INNER_SCRIPT"
+exec "${CIDER_CMD[@]}" shell bash -lc "$INNER_SCRIPT"

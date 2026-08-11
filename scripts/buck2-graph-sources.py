@@ -450,9 +450,11 @@ def main(argv: list) -> int:
     # which a person runs by hand. Measured: the script's own phases are 19 s of a 53 s
     # derivation, so the rest is nix moving data, and this file is 87 percent of the output.
     #
-    # Set DARLING_EMIT_TARGET_SOURCES=1 when a hand-run tool wants it.
-    if os.environ.get("DARLING_EMIT_TARGET_SOURCES") != "1":
-        print("  skipping target-sources.json (set DARLING_EMIT_TARGET_SOURCES=1 to emit)",
+    # Set CIDER_EMIT_TARGET_SOURCES=1 when a hand-run tool wants it. This one is read out of
+    # the ENVIRONMENT, so the DARLING_ spelling keeps working for anything that already sets it.
+    if (os.environ.get("CIDER_EMIT_TARGET_SOURCES")
+            or os.environ.get("DARLING_EMIT_TARGET_SOURCES")) != "1":
+        print("  skipping target-sources.json (set CIDER_EMIT_TARGET_SOURCES=1 to emit)",
               file=sys.stderr)
     else:
       with open(os.path.join(outdir, "target-sources.json"), "w") as fh:
