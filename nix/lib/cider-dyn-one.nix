@@ -14,8 +14,11 @@
 # THE THREE THINGS AN EMITTED ACTION LACKS, all of which runCommand had supplied and none of
 # which are defects in the bridge:
 #
-#   PATH     there is no stdenv, so nothing is on it. `tools` is the same list the lowered
-#            derivation puts in nativeBuildInputs, so the commands resolve identically.
+#   PATH     there is no stdenv, so nothing is on it. `tools` is NOT enough on its own, which
+#            cost a false pass: the first run of this fixture reported OK while the build log
+#            carried "find: command not found" and "sed: command not found" from the staging
+#            preamble. nativeBuildInputs is only what the lowering ADDS to stdenv, and stdenv
+#            quietly supplies findutils, gnused, gnugrep and the rest. They are listed here.
 #   set -e   stdenv sets it. Without it a failing `cp` in the staging preamble would be
 #            invisible and the failure would surface much later as a missing file.
 #   out      the script writes to $out throughout, and an emitted action's output variable is
@@ -38,6 +41,23 @@
   lowerDrv = lowered.drvs.${label};
   name = "cider-dyn-" + lib.strings.sanitizeDerivationName (lib.last (lib.splitString ":" label));
 
+  # WHAT stdenv WOULD HAVE PUT ON PATH. nativeBuildInputs lists only what the lowering ADDS,
+  # so taking it alone leaves the staging preamble without find, sed and friends. Kept as an
+  # explicit list rather than pulling in stdenv, since the point of an emitted action is that
+  # it does not have one.
+  stdenvBasics = [
+    pkgs.coreutils
+    pkgs.findutils
+    pkgs.gnused
+    pkgs.gnugrep
+    pkgs.gawk
+    pkgs.gnutar
+    pkgs.gzip
+    pkgs.diffutils
+    pkgs.patch
+    pkgs.bash
+  ];
+
   bridge = import ./dyn-actions.nix {
     inherit pkgs;
     inferSrcs = true;
@@ -49,11 +69,35 @@
           "-c"
           ''
             set -e
-            export PATH=${lib.makeBinPath lowerDrv.passthru.tools}
+            export PATH=${lib.makeBinPath (lowerDrv.passthru.tools ++ stdenvBasics)}
             export out="$result"
-            ${lowerDrv.passthru.builderScript}
+
+            # A MISSING COMMAND MUST NOT PASS QUIETLY. It did once: the staging preamble lost
+            # find and sed, the build carried on, and the diff still matched because this
+            # group's two output files did not depend on those steps. So the whole script runs
+            # with its stderr teed, and a "command not found" anywhere in it is fatal even
+            # though the shell was willing to continue.
+            set +e
+            (
+              set -e
+              ${lowerDrv.passthru.builderScript}
+            ) 2> >(tee "$TMPDIR/stderr.log" >&2)
+            rc=$?
+            set -e
+            if [ "$rc" != 0 ]; then
+              echo "cider-dyn-one: the group script failed with $rc" >&2
+              exit "$rc"
+            fi
+            if grep -q "command not found" "$TMPDIR/stderr.log"; then
+              echo "cider-dyn-one: something was missing from PATH:" >&2
+              grep "command not found" "$TMPDIR/stderr.log" >&2
+              exit 1
+            fi
           ''
         ];
+        # The script writes into $TMPDIR and the sandbox provides one, but an emitted action
+        # gets no stdenv to set it, so name it explicitly.
+        env.TMPDIR = "/build";
       }
     ];
   };
