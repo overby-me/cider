@@ -368,7 +368,24 @@ reruns for any reason produces new bytes even when nothing about its inputs chan
 that matters, so early cutoff cannot stop there and everything downstream of it rebuilds. That
 is the property #50 and #55 were built to get.
 
-NOT YET DONE, and buck-src is not safe to edit during a build.
+WHICH COPY, resolved, because there are two and the recorded trap is that pins collide
+silently by basename. `nix/submodules.json` pins `pins/bootstrap_cmds`, but `buck-src/BUCK:50`
+globs `bootstrap_cmds/migcom.tproj/*.h` with `root = "bootstrap_cmds/migcom.tproj"`, so the
+COMMITTED tree at `buck-src/bootstrap_cmds` is what gets compiled. Confirm the pin does not
+overlay it before editing.
+
+THE FIX IS THE STANDARD ONE: take the epoch from the environment when it is set.
+
+    loc = time((time_t *)0);
+  becomes
+    const char *sde = getenv("SOURCE_DATE_EPOCH");
+    loc = sde ? (time_t) strtoll(sde, NULL, 10) : time((time_t *)0);
+
+VERIFYING IT IS THE EXPENSIVE PART, not the edit: it needs a graph rebuild and then
+`.#cider-buck2-dyn-gen-all`, which should go from 110 differing to 0. That check exists and
+names every differing group.
+
+NOT YET DONE.
 
 ### #66 - get the lowering out of the evaluator
 
