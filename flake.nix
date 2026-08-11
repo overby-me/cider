@@ -676,6 +676,21 @@
         })
         .check;
 
+      # THE SAME ARRANGEMENT ON A CONE FULL OF STAGED TREES, which unwind_static barely has.
+      # CIDER_TREE_<i> is numbered by scripts EMITTED rather than by position in fromStaged,
+      # and getting that wrong is silent: it matched on 730 of 1,474 labels, because a group
+      # whose staged entries ALL have links has the two numberings agree. 4 groups, 6 actions
+      # and 42 trees, so it is still seconds to build.
+      #
+      #   nix build .#cider-buck2-dyn-gen-trees --no-link -L
+      packages.cider-buck2-dyn-gen-trees = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck-src/xnu:libsyscall_dynamic_obj";
+        })
+        .check;
+
       packages.cider-buck2-dyn-cone-specdir = pkgs:
         (import ./nix/lib/cider-dyn-cone.nix {
           inherit pkgs;
