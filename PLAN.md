@@ -381,6 +381,12 @@ target, so it counts only what that target pulls. The cascade this task is about
 one. **So the probe must be run with `--attr .#cider-buck2-prefix-min`,** or it will report a
 handful of builders and read as "caching is fine" while measuring something else entirely.
 
+THE PROBE EDITS A FIRST-PARTY SOURCE, so it must not run while a build is in flight: `darwin/`
+and `linux/` are on the not-safe list precisely because jj auto-snapshots and what nix builds is
+the working copy. And if a probe is interrupted it leaves its marker line behind, which the next
+build would snapshot; `--revert-only` strips it by tag rather than by whole line, so it recovers
+even after a kill.
+
 Re-take it before any work, since 323 predates #95 and the rest of 2026-08-11: edit one leaf
 source, rebuild the ENDPOINT, count builders that RAN, revert. The probe proves its counter
 first, by building a fresh-nonce derivation that must report exactly 1, and it puts a nonce in
