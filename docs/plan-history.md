@@ -1080,3 +1080,734 @@ the staging script through `CIDER_STAGE`, so both routes rebuilt from there.
 
 So the rebuild was real and necessary, but its cause was the source tree rather than the graph,
 and a re-run of the port checks after it compares against the same graph as before.
+
+## The stage 1 and stage 2 queue, moved out of PLAN.md 2026-08-12
+
+MOVED RATHER THAN DELETED, and it is 634 lines, which was 45 percent of PLAN.md. Every
+numbered item in it is a finished task: the stock switch and the GUI frameworks (#18 to
+#22), the nine unported cli edges (#21), the host tools (#8), the NixOS VM (#10, #12), the
+daemon growth traps (#48), the relative escape findings (#74, #79, now guarded by
+buck-escape-check.py), and a getuuid analysis that ends by measuring that the compile it
+worried about actually succeeds. Its own first entry opens with THIS ENTRY IS STALE.
+
+Kept because the measurements in it are real and were expensive to take. Nothing here is
+a live instruction.
+### Near-term queue (stage 1, cli)
+
+Re-derive before trusting: `scripts/buck-coverage.py --missing` and
+`scripts/gen-install-from-manifests.py`.
+
+1. **The `all` component.** Sized and started; see "Stage 3" above.
+
+   THIS ENTRY IS STALE and was written when three targets were left. What it said, and what
+   is true now:
+
+   - JavaScriptCore, recorded as HANGING buck2 with the daemon at 0% CPU. The hang was
+     found and fixed, a cyclic symlink; the task list has it, and #23 then ran jsc on a
+     script. NOT re-verified here, deliberately: the minimal endpoint's graph does not
+     contain JavaScriptCore at all, so it is no evidence either way.
+   - MachExceptions_xtrace_mig, recorded as not linking. IT LINKS. The current minimal
+     graph carries `MachExceptions_xtrace_mig_obj` AND `_dylib`, counted out of graph.json.
+   - the 9 dev-stub frameworks, recorded as hidden behind a basename collision. Ported, and
+     the coverage metric was taught to see them.
+
+   Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
+   everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
+   already done, see below; the rest are Darling's own framework implementations under
+   darwin/frameworks (101) and darwin/private-frameworks (45), plus 314 in pins which is
+   mostly python, ruby, perl and their extension modules.
+
+   Stage 2 is effectively complete: 1354 of 1359 stock link edges. The five that remain
+   (DBusKit, iokitd, bsdln, getuuid, elfdep) have their blocks removed and their causes
+   written up above. The next item is THE STOCK SWITCH itself, which unlike everything
+   else in stage 2 does change buck/prefix/BUCK, so it needs the runtime checks and the
+   guest-nix milestone run rather than skipped.
+
+   Beware NAME COLLISIONS when driving the generator by cmake target name across the wider
+   graph. `X11` is both the linux/native wrap_elf stub and CoreGraphics' X11 backend in
+   darwin/frameworks, and `gen-buck-from-ninja.py --dylibs X11` silently picks the latter.
+   cli was small enough that names were unique; stock is not.
+
+2. **The 9 genuinely unported in-scope cli edges**: bsdln, elfdep, getuuid (host tools),
+   csparser.bundle, lzfse, ping, vifs, libbind9_isccc.a, libopendirectory_internal.a. None
+   is installed by the cli component, which is why UNMAPPED is 0 without them.
+
+2. **launchservicesd** (darwin/frameworks/CoreServices/src/LaunchServices/launchservicesd;
+   launchservicesd.m and LSBundle.m; links Foundation CoreServices FMDB sqlite3 z).
+3. **hdiutil** (buck-src/darling-dmg; wants fuse, a HOST library, so check how the reference
+   supplies it before assuming this is portable).
+4. **Make the generators re-runnable** before the reference graph goes away.
+   gen-mig-from-ninja.py is the worst case: buck-split-pins.py has since rewritten its
+   committed blocks' `defs` to labels and changed `out_base`, so regenerating would clobber
+   them and the last fix had to be spliced in by hand.
+5. The other four host tools (bsdln, elfdep, getuuid, wrapgen). Not install entries and not
+   used by the port, so low priority.
+6. Task #11 per-action source filtering; #10/#12 NixOS VM; #63 exec-cross-arch; #57 linker;
+   #26/#39 nix-ninja.
+
+---
+
+## Harness traps (read before writing a check or blaming the port)
+
+Every one of these presented as "the port is broken" when it was the harness. The rule that
+falls out: when a script and an identical hand-run disagree, the SCRIPT is the suspect. That
+has been true six times running, each time a check freshly written.
+
+- **`llvm-nm`, never bare `nm`, for Mach-O.** Inside `nix develop` the bare name is the
+  clang wrapper's binutils nm, which answers "file format not recognized" and, with stderr
+  discarded, yields an empty symbol list indistinguishable from a library missing
+  everything.
+- **Capture, then match, in buck-test.nu.** Under the bash suite `cmd | grep -q` reported
+  FAILURE on a MATCH (grep exits early, the writer takes SIGPIPE, pipefail propagates it);
+  under nushell a non-zero external in a pipeline throws instead. Either way: collect the
+  output once with `complete`, then test it.
+- **What invalidates the Nix endpoint** (measured from two graph derivations, not
+  assumed): the graph takes the staged project as one store path, and that path holds
+  the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ etc/ misc/ patches/
+  templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. (`cmake/` was in this
+  list until #82 removed cmake; it no longer exists.) `scripts/`, `nix/`,
+  `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
+  are their own inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`,
+  and `nix/lib/ciderBuck2{Graph,Lower}.nix`, which ARE the derivations.
+  `scripts/buck-endpoint-stale.nu` answers this in a second, and it now takes the rule from
+  the two filters rather than from a listing of the result: both drop `tests/**/*.nix`, so
+  editing the VM test is NEUTRAL (measured: the prefix derivation did not move, and
+  `nix build .#cider-buck2` afterwards consumed the very store path the earlier build had
+  produced), while `tests/buck2/**` holds real targets and is not.
+- **Evaluating the endpoint: 155s to 58s, measured with the eval profiler.**
+  `nix eval --raw .#cider-buck2-prefix.drvPath --eval-profiler flamegraph
+  --eval-profile-file <f>` works in nix 2.34 and puts 57 percent of the self time in
+  ciderBuck2Lower.nix. Three output-preserving fixes: the staged-tree script escaped the
+  same destination TWICE per link (155 to 68), argv escaping now runs once per DISTINCT
+  argument since 97.5 percent of 208,515 entries repeat (68 to 60), and staged link targets
+  the same way at 45 percent repeats (60 to 58). Each one is safe because the prefix
+  derivation does not move; that identity is the check.
+  What is left: about 40 percent is still the staged-tree script, which emits two escaped
+  shell lines per link. Removing that means emitting a table plus a loop, or having the
+  dumper emit it, either of which CHANGES an input or the output and so costs a full
+  endpoint rebuild to verify. `lib.unique` is 3 percent and order-sensitive here, so it
+  stays.
+- **58 seconds is not a regression from the 9 seconds of commit 45098ec. The graph grew.**
+  That measurement was 1,115 staged trees; graph.json is now 1.62 GB holding 5,282 trees
+  with 3,581,461 links, 27,591 actions and 3,225 targets. Per staged tree the evaluation
+  costs 10.7k function calls and 3.9 MB today against 17k and 5.6 MB then, so the work per
+  unit of graph went DOWN; the absolute number went up because the port did. Getting under
+  10 seconds again at this scale is a structural change, not another micro-fix.
+  Section sizes come out of graph.json in under a second, without parsing 1.62 GB, because
+  the dump writes it with `indent=2` and `sort_keys=True`: `grep -bn '^  "[a-zA-Z]*":'`
+  gives every top-level key with its byte and line offset, and the counts are then line
+  arithmetic (`^    "` is an entry, `^      "` is a link).
+- **THE NIX ENDPOINT BUILDS A WORKING DARLING, END TO END, FOR THE FIRST TIME.** 8,472
+  derivations, zero builder failures. The prefix is 622 MB and 34,126 files with
+  `bin/cider`, `bin/ciderd` and `bin/cider-coredump`, and
+  `scripts/buck-bash-check.nu --prefix result/cider_prefix__prefix` PASSES: the container
+  boots and prints `BUCK2_BASH_OK 3.2.57(1)-release x86_64-apple-darwin19`, which is the
+  Darwin bash and not the host's 5.x. Wall time: 29m41s for the graph, then about four
+  hours for the lowering, most of it two avoidable problems (#48, #52).
+  THREE OPERATIONAL TRAPS, each of which cost a run:
+  1. `nix-daemon` forks a worker per CONNECTION that grows 8-9 MB per derivation BUILT
+     (11.1 GB at 1,171, 15.3 GB at 1,873, swap to 9.1 GB), which extrapolates past this
+     machine's 30 GB and is why the endpoint had never finished. It is all returned on
+     disconnect, so CYCLE THE CONNECTION: `timeout 900 nix build ...` in a retry loop, since
+     nix resumes from the store. Capping `--max-jobs` does not help, the growth is per
+     derivation processed.
+  2. BUT A CYCLING WINDOW MUST EXCEED THE LONGEST SINGLE DERIVATION or it livelocks. The 15
+     minute window killed `JavaScriptCore_obj` (54 minutes on its own) and restarted it from
+     zero, twice, before this was spotted. Drop the timeout for the last few derivations.
+  3. The harness KILLS BACKGROUND JOBS THAT GO SILENT. Two runs died that way, one piped
+     through `tail` (which buffers to exit, leaving a ZERO BYTE log and nothing to diagnose)
+     and one compiling JSC quietly. Run with `-L` AND a heartbeat, and never through `tail`.
+- **THE ROOT INVALIDATION CAUSE IS THE GRAPH DERIVATION ITSELF (#56), and #50, #53, #54 and
+  #55 are all downstream of it.** `ciderBuck2Graph.nix` takes the project as ONE
+  `builtins.path` that excludes only plan, docs, nix, scripts and a few dotfiles, so
+  `darwin/`, `pins/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
+  rebuilds (30-47 min of buck2 analysis), its drv moves, and every lowered derivation moves
+  with it, because each binds to the graph's DERIVATION rather than to its output. No amount
+  of per-target or per-group granularity can matter beneath that. The comment on that filter
+  already said so: keying the graph on the build DEFINITION rather than on file contents is
+  the next step. The fix is to split ANALYSIS (BUCK, .bzl, configs, plus a NAME manifest of
+  the sources) from MATERIALISATION (real sources, producing staged/ and treelinks/).
+  WHAT THIS COSTS IN HINDSIGHT: four mechanisms were built and flagged off before anyone
+  measured a one-file-edit rebuild. Measure that FIRST next time; it is the only number the
+  work is for.
+- **DONE (#53): a buck-src PIN can be lowered as ONE derivation, and the merge is
+  byte-identical.** The dump decides WHICH pins, because contracting a DAG can create
+  cycles and this graph has them: 43 of 157 pins form one strongly connected component over
+  the system cone (Libinfo, cctools, corefoundation), mutually dependent at target level
+  though the target graph is acyclic; `coarse_pin_map` runs Tarjan and offers only the 114
+  that are clean, covering 1,310 of 3,225 targets. `groupOfLabel` is then a lookup.
+  Verified on a real merged pin rather than a full rebuild: `pin-JavaScriptCore` merges five
+  targets and its 1,091 files contain all 1,082 of `JavaScriptCore_obj` with ZERO checksum
+  differences, the extra nine being exactly the other four targets' objects. 23 minutes.
+  STILL OFF BY DEFAULT. Flipping `coarsePins` is a separate decision and wants the full
+  coarse prefix built and diffed first; the expected win is ~1,196 fewer derivations and 31
+  percent fewer staging passes, NOT less compile work.
+- **#44: the narrowing gap was 25 quoted includes, and depfiles were not needed to close it.**
+  HISTORICAL as of 2026-08-09: `narrowSources` is deleted, so this gap no longer gates
+  anything. The comment it argued with said only depfiles could answer this case, and that
+  narrowing waited on a 90 minute build. Both were wrong; it measured on the host in ten
+  seconds, which is the transferable part.
+  I FIRST REPORTED FIVE, and that was too narrow: I scanned only includes spelled `../`
+  and missed the subdirectory form, which is the same problem (`libcxxabi` reaching for
+  `include/atomic_support.h` and `demangle/ItaniumDemangle.h`, `fseventsd.m` for
+  `linux/fanotify.h`). The closure in the dump always covered both; only the count was
+  wrong. `scripts/buck-include-closure-check.py` now measures it properly and is verified
+  both ways: 25 against a pre-closure graph, 0 after.
+  The narrowing that matters: of 64,903 C-family files, 734 have a quoted `../` include and
+  93 are uncovered, but 40 name a file that does not exist (guarded out) and 48 of the
+  remaining 53 are vim GUI files this port never compiles (`gui_x11.c`, `gui_motif.c`,
+  `gui_gtk.c` have ZERO compile actions, against 1 for `YarrPattern.cpp`). Never judge a
+  gap by its raw count; judge it by what is actually compiled.
+  #49 is answered too, and the answer is DO NOTHING:
+  dropping `indent=2` saves ~0.4s of parse and destroys the `grep -bn` section-offset trick
+  used repeatedly to measure this graph, and interning `target-sources.json` only matters
+  once narrowing is on, so it belongs with #44.
+- **`nix-diff <old.drv> <new.drv>` answers "why did this rebuild", and it is already
+  installed.** It walks the derivation tree and names the first real difference, which for a
+  content-addressed dependency is the thing that is otherwise hard to see: a consumer binds
+  to the producing DERIVATION, not to its output path, so it prints
+  `The input derivation named cider-buck2-graph.drv differs` and then `Sources: - old
+  buck2-graph-dump.py + new`. That is the whole #55 cascade in one command. It beats
+  decoding the `text` env var out of a `.drv` by hand, which is how this was first found.
+  Pair the SAME artifact across the two revisions, not two different variants: comparing the
+  default prefix against the coarse one just reports pin merging and tells you nothing.
+- **VERIFY ON ONE DERIVATION, NOT ON A FULL PREFIX REBUILD.** #50 was proven on
+  `.#cider-buck2-lowered` in minutes and #52 on a single target in 10 minutes, both by
+  diffing a sorted file list plus per-file sha256 against a known-good output. Queueing #53
+  behind a 3 hour rebuild of all ~8,400 derivations tested nothing that
+  `nix build /nix/store/<hash>.drv^out` would not have caught, and blocked every other
+  increment while it ran. Reach for a whole-endpoint build only to produce the deliverable,
+  or when the change really does touch every derivation, and say which it is.
+  Two related traps: a CONTENT ADDRESSED drv holds a deferred placeholder, so grepping a
+  `.drv` for a store path finds nothing and the derivation has to come from the closure;
+  and for the same reason the check is whether nix RERUNS THE BUILDER, not whether a
+  drvPath moved.
+- **#55 DONE. #54 IS NOT, AND EVERY SHORTCUT TO IT IS NOW CLOSED BY MEASUREMENT.** The goal is
+  reachable: with `sourceGroups` on, editing `ACAccount.m` and rebuilding
+  `libsimple_ciderd` ran **0 builders**, against 323 with neither flag. What fails is
+  every available way of getting there.
+  **Splitting the source into per-subtree stores cannot work for this tree.** A group is staged
+  as one symlink to its own store path, and **2,306 of the 2,970 symlinks under `darwin`, `src`
+  and `linux` are relative and cross a group boundary** (15 groups; `darwin/Developer/Platforms`
+  2,189, `frameworks/SystemConfiguration` 52, `darwin/opendirectory_internal/include` 24). The
+  endpoint failed 1,194 targets on `CoreServices/MacTypes.h`, which is itself a link to
+  `../../../../basic-headers/MacTypes.h`. Two fixes were tried and both fail:
+  1. A LINK FARM CANNOT REPAIR A RELATIVE ESCAPE. The kernel resolves `..` against the REAL
+     parent once it crosses the farm symlink, so
+     `readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu` gives `/nix/store/xnu`
+     while `<farm>/src/external/xnu` exists and is never consulted.
+  2. REWRITING ESCAPES TO ABSOLUTE PATHS RELOCATES THE PROBLEM, since the destination store has
+     escapes of its own: for the pins it took 143 dangling links to **413**. The SDK
+     `usr/include` extracted alone is **1,987 dangling of 1,987 symlinks**, against 0 of 2,928
+     inside the assembled tree. It is nothing but relative links into the rest of the project.
+  **Neither flag cut it either.** `sourceGroups` has the right granularity and the wrong
+  mechanism; `narrowSources`, deleted since, was the reverse, because `projectSrc` was ONE
+  union shared by every target (probed: the compile RAN). And their combination was closed at
+  evaluation time: one
+  `builtins.path` union costs **~4 seconds**, so 3,225 of them is **3.6 hours of eval**.
+  **What is left untried** is the same idea at BUILD time: one CONTENT-ADDRESSED SUBSET
+  DERIVATION PER TARGET, cut from the shared `projectSrc` and reproducing the project layout.
+  One root so the web resolves, one shared input so the daemon does not blow up (147 distinct
+  paths per staging script is what took it to 4.9 GB and stalled it), and an output addressed
+  by the subset so an unchanged target collapses to the same path.
+  `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
+  <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
+  **THE LAYOUT THAT SUBSET DERIVATION HAS TO REPRODUCE IS NOW KNOWN, and it is cheaper than a
+  copy: REAL DIRECTORIES PLUS ONE SYMLINK PER FILE.** What broke the link farm was that a GROUP
+  was staged as one symlink to a DIRECTORY, so `..` left the tree. Per FILE it does not: the
+  containing directory is real and inside our own tree. Tested with clang on a scratch tree,
+  both cases that matter and a negative control that really fails:
+  `#include "../d.h"` through a per-file link **exit 0**; a staged source that is ITSELF a
+  relative symlink **exit 0**; the same include with the destination NOT staged **exit 1**.
+  The rule that makes it hold is the one the closure already applies: when a staged path is a
+  symlink, stage its DESTINATION too.
+  **AND IT HOLDS AGAINST REAL READ-ONLY STORE PATHS**, which the scratch test did not cover:
+  the two groups realised with `builtins.path` (mode 444, `dr-xr-xr-x`), staged by the exact
+  shell `stageGroupsFor` now emits. 0 staging errors, `MacTypes.h` resolves, 147 symlinks and
+  28 real directories, and the store source is unmodified afterwards. The only 2 dangling links
+  point at `src/external/...`, which this partial stage deliberately did not plant, because
+  pins arrive from the `wantedPins` section rather than from a group.
+  **AND THE SDK INVERTS THE WHOLE IDEA FOR A COMPILING TARGET, measured.** Every darwin compile
+  needs `darwin/Developer/Platforms`, and that tree is a HUB: 2,633 symlinks reaching TWELVE
+  roots (1,898 `src/external`, 444 `darwin/Developer`, 118 `darwin/frameworks`, 57
+  `darwin/private-frameworks`, 34 `build/src`, 23 `darwin/basic-headers`, then `darwin/launchd`,
+  `darwin/libm`, `darwin/sandbox`, `darwin/CoreAudio`, `darwin/libacm`,
+  `darwin/libDiagnosticMessagesClient`). Counted as GROUPS:
+
+  | | |
+  |---|---|
+  | distinct groups referenced by all 2,339 targets combined | **90** |
+  | groups the SDK alone links into | **255** |
+  | median groups per target | 24 |
+
+  **CORRECTION, and the conclusion I first drew from those numbers was WRONG.** A compile does
+  not read the SDK at its project path at all. Every one of the 58 include roots of
+  `SecItemShimOSX_obj` is a `buck-out` STAGED FARM, the SDK among them as
+  `.../__sdk_repo_include__/...`, and the lowering stages farms by their own mechanism. So the
+  255 counts links INSIDE a tree that is reached through a farm, and staging the SDK as groups,
+  or as one pre-assembled artifact, addresses neither. I built that artifact, it was correct
+  (it carried the destinations and its internal links resolved), and the target failed exactly
+  as before. Removed.
+
+  **THE REAL RULE IS ONE LINE: A STAGED FARM'S LINK DESTINATIONS MUST BE STAGED, TRANSITIVELY.**
+  The closure records hop one (the farm's link target). It misses the hops after it, and this
+  tree is full of them: `usr/include/os/log_private.h` is a link to
+  `src/external/libtrace/...`, and `usr/include/IOKit` is a link to
+  `../../System/Library/Frameworks/IOKit.framework/Headers` which does not resolve in the repo
+  at all. Every remaining grouped-staging failure has been an instance of this, so the fix is
+  the transitive closure and not another destination.
+
+  **THE CLOSURE'S ONE SILENT FAILURE MODE IS MEASURABLY ABSENT HERE (#69).** The per-target file
+  list is inferred, and the way that could be wrong WITHOUT a build error is an `#include`
+  the regex cannot resolve, i.e. one assembled from a macro. Counted:
+
+  | | files | non-literal `#include` |
+  |---|---|---|
+  | first-party (`darwin`, `src`, `linux`) | 26,884 | **0** |
+  | pins (`buck-src`) | 81,835 | 424 (0.52%) |
+
+  The pin ones cannot bite, because pins are staged WHOLESALE: `pinsTree` carries each pin in
+  full, so a macro include inside one always resolves. The inferred list only gates FIRST-PARTY
+  groups, and there the count is zero. The regex also over-approximates by ignoring `#if`, which
+  is the safe direction. So #69 is about genericity and deleting a pass, NOT about correctness
+  risk, and the "silent wrong output" framing was wrong.
+
+  **#54 IS DONE. THE GROUPED ENDPOINT IS BYTE IDENTICAL AND THE CASCADE IS CUT.**
+
+  | | |
+  |---|---|
+  | `.#cider-buck2-prefix-min-grouped` | 1,617 builders, 0 root failures, 70 min |
+  | content hash | `sha256-hkJQ0xJVx6tDzrBt2bsISkYDCvJtNXsQ08NTwxk9ADQ=`, the recorded one |
+  | probe: unrelated `.m` edit, `SecItemShimOSX_obj` | **2 builders**, target NOT rebuilt, output path IDENTICAL |
+
+  The probe target is the one that reads through a nested submodule and exposed the per-pin
+  store regression, so it is a check that can fail. The two builders that do run are
+  `cider-buck2-skeleton` and `cider-buck2-sources`, the graph-side content passes.
+  What made it work, after `sourceGroups` had the right granularity and the wrong mechanism for
+  months: MIRRORING instead of directory links (groups AND pins), and `pinsTree`, one CA tree of
+  all 147 pins whose escape destinations come from their own store paths rather than from the
+  project.
+  Root failures on the way down, each from a real run: **90** (coarse pins had no group entry)
+  to **9** (non-pin `src/external`) to **1** (a `script_gen` needs those too, not just compiles)
+  to **0**.
+
+  **AND POINTING pinPath AT THE PER-PIN STORES BROKE THE DEFAULT ENDPOINT. Reverted (#74).**
+  Seven pins carry nested submodules, and the per-pin store does not have their content, so the
+  pin's own link `darling/include/IOKit/IOReturn.h ->
+  ../../../darling/submodules/xnu/iokit/IOKit/IOReturn.h` dangles INSIDE the store.
+  `stageProject` uses `pinPath` too, so this was not confined to grouped staging:
+  `SecItemShimOSX_obj` failed on `prefix-min`, an endpoint that had built green with a matching
+  prefix hash. The revert rebuilt **0 builders**, i.e. it resolved to the cached pre-regression
+  output.
+  Not pinStore's fault, and not the fetch's either: `src/external/IOKitUser/darling/submodules/
+  xnu` IS ITSELF A SYMLINK, to `../../../xnu/`, which resolves to a SIBLING PIN. The "1 entry"
+  was that link. In the assembled tree it resolves (23 entries); planted as
+  `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,
+  so it dangles. THE SAME MECHANISM as the group-directory link that failed 1,194 targets on
+  `MacTypes.h`. `scripts/buck-escape-check.py` documents this exact case, naming this exact
+  file, and I walked into it anyway.
+  **So the fix is the session's own result applied to pins: ONE CA `pinsTree` holding all 147
+  pins MIRRORED (real directories, one link per file) at their `pins/<name>` paths.**
+  Self contained, so a sibling escape resolves inside it; input is the frozen pins, so it moves
+  only on a pin bump, which is the cascade cut per-pin `pinPath` was reaching for.
+  `scripts/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
+  hash records a symlink TARGET as a STRING. `buck-escape-check.py` documents that exact trap,
+  for this exact class of bug, and the pin check still uses the method it warns against.
+
+  **THE PIN PATH WAS THE LAST SHARED INPUT, not the groups.** `pinPath` was
+  `"${ciderSrc}/${p}"` and `ciderSrc` is the whole project, so every staging script that
+  named a pin moved on any edit. Taking pins from `ciderSrc.pinPaths` instead, which the
+  GRAPH has done since the per-pin split, is what finally cut it: on one target, an unrelated
+  `.m` edit went from 6 builders to **2**, neither of them the target, and the target's output
+  is the SAME store path either side of the edit.
+- **#54 MEASURED, and per-target granularity is worth a lot: the median edit would rebuild 5
+  targets instead of 2,339.** From `target-sources.json`: 2,339 targets, 74,621 distinct files,
+  6,419,328 (target, file) pairs. Blast radius of editing ONE file, if each target depended
+  only on what it reads:
+
+  | percentile | targets invalidated |
+  |---|---|
+  | p25 | 2 |
+  | **p50** | **5** |
+  | p75 | 27 |
+  | p90 | 78 |
+  | p99 | 1,265 |
+  | max | 1,267 |
+
+  22 percent of files are read by exactly ONE target, 58 percent by ten or fewer, 94 percent by
+  a hundred or fewer, and **no file is read by more than 1,267 targets**, so even the worst case
+  is half the project rather than all of it. Today every edit rebuilds all 2,339.
+  The cost side, same source: the median target reads 4,048 files (p90 5,640, max 13,726), so
+  2,339 subsets is about 9.5 million entries. That rules out COPYING (tens of GB) and points at
+  symlink farms, which work here for the reason group staging did not: every directory is real
+  and only the leaves are links, so a relative link inside the subset resolves against the
+  subset instead of escaping into another store path. Rough cost is derivation overhead, about
+  2,339 builds, not the link creation.
+- **#64: ld64 is content addressed, and narrowing its source is NOT possible as scoped.** The
+  rebuild no longer propagates (its outputs from a clean tree and from an edited one are bit
+  identical), but it still costs 26 to 28 minutes on any first-party edit. The plan was to drop
+  `darwin/frameworks` and `darwin/private-frameworks` on the premise that the linker compiles
+  nothing in them. **That premise is false**, and two fast experiments show it:
+  deleting the trees fails at cmake GENERATE, not on dangling SDK symlinks but on
+  `add_dependencies(QuartzCore CoreVideo)` in `src/external/cocotron` reaching a target defined
+  under `darwin/frameworks`; and blanking only the implementation files gets past configure and
+  then fails at LINK, because CFNetwork needs `_SCNetworkReachabilitySetCallback` and friends
+  that `darwin/frameworks/SystemConfiguration` defines.
+  One measurement explains both: **this ld64 derivation compiles across 369 distinct
+  directories**. It is most of Darling, not a cctools build, which is also why it takes half an
+  hour. Reducing it means changing WHAT it depends on in cmake, not which files reach the
+  derivation, and that work should start from the ninja graph (26,351 edges) rather than from
+  guesses about directories. Both experiments are reverted.
+- **#70 CORRECTS THE ABOVE: it was never a property of ld64, it was two wrong target names.**
+  Taking #64's own advice and starting from the ninja graph, the transitive closure over
+  inputs, implicit inputs and order-only inputs says:
+
+  | target set | edges | compiles | dirs |
+  |---|---|---|---|
+  | `x86_64-apple-darwin20-ld` alone | 42 | **40** | 7 |
+  | ld64 + everything `cctools-port/misc` offers | 82 | **62** | 9 |
+  | bare `install_name_tool` | 3,510 | 3,113 | 197 |
+  | bare `nmedit` | 3,510 | 3,113 | 197 |
+  | **the four names `buildFlags` passed** | 3,515 | **3,114** | **197** |
+
+  `cctools-port/cctools/misc` defines NO `install_name_tool` and NO `nmedit`, only `lipo`, so
+  ninja resolved those bare names to the GUEST tools under `darwin/xcselect`. That is where libc
+  (635 compiles), icu (446), xnu (415), compiler-rt (139), corefoundation (127) and Libinfo
+  (106) came from, and it is the 369 directories.
+  **AND THE RESULT WAS DISCARDED**, which is what made the fix safe rather than a trade-off:
+  `installPhase` looked for them under `cctools-port/cctools/misc`, where those targets never
+  wrote, so its `find` failed and the `note: not built` branch fired. Checked three ways that
+  nothing consumed them: the lowering never names them, no action's argv invokes them, and the
+  only actions mentioning them BUILD them (precisely the `darwin/xcselect` shims ninja resolved to).
+  VERIFIED: dropping the two names reproduces
+  `sha256-tHH+BndVNL2V8g9iM7++iD/aGY3Pz5AirmcwEqJSblc=` exactly and collapses onto an EXISTING
+  store path, so no consumer moves. The oracle was confirmed live first: three separate ld64
+  outputs in the store all carry that hash.
+  **THE WALL-CLOCK SAVING IS NOT THE 50x THE COMPILE COUNTS SUGGEST.** It ran in 1,290s (21.5
+  min) against a recorded 26 to 28, but it shared the machine with a 1,049-derivation endpoint
+  build throughout, and the recorded baseline was taken under unknown load. The compile cut
+  (3,114 to 62) is certain; the time saving is not cleanly attributed, because the whole-project
+  cmake CONFIGURE that both pay is now the dominant term. A fair number needs an idle re-measure.
+- **DONE (#68): one command, one evaluation, and a counter that self-tests.**
+  `.#cider-buck2-one` is the endpoint's OWN derivation for `libsimple_ciderd`,
+  reached through `cider-buck2-prefix-min` rather than lowered again, so it is the same drv
+  the endpoint builds (both evaluate to `jahgjqzjq…`). `scripts/buck-quick-check.nu` builds it
+  and counts builders that RAN, with a probe mode that edits, rebuilds, counts and reverts by
+  stripping its own marker, so an interrupted run leaves something the next one can clean up.
+  IT PROVES ITS COUNTER FIRST, by building a derivation carrying a fresh nonce that must
+  report exactly 1; otherwise `ran=0` could mean the log format changed rather than nothing
+  rebuilt. Verified both ways: a fresh build reads 1, a rerun reads 0.
+  **The 12s evaluation is paid once per change to the FLAKE SOURCE TREE, not per build**:
+  rerun unchanged 0.3s, rerun after editing `nix/` 12.3s with ran=0, first build 12.7s. So it
+  bites only when iterating on the lowering itself, which is much less of the loop than the
+  14.5s one-target figure suggested. #66 IS NOT AN EVAL SAVING HERE, measured rather than
+  assumed: forcing 1,474 producer drvPaths against forcing the same 1,474 lowered outPaths
+  runs 10.45 / 10.84 / 12.56 against 11.16 / 10.55 / 11.07 interleaved, which is a wash.
+  builtins.outputOf needs the producer outPath, so binding through it instantiates one
+  derivation per action exactly as the lowering does. What DID come out of the evaluator is
+  the script: the lowering reads full.json and needs.json now and computes neither, 12.0 to
+  10.6s, and that keeps whichever route wins. The earlier 0.6s figure was for moving the
+  action scripts alone, which was a smaller and different change. That probe also
+  confirms for the first time what the source filters promise: a `nix/` edit rebuilds nothing.
+- **#69 MEASURED: the declaration gap is a PER-TARGET question, and it is 675 files.**
+  `scripts/buck-declaration-gap.py` splits each target's source set into what buck2 SAYS (argv
+  tokens, staged-tree link targets) and what the closure pass COMPENSATES for (include roots
+  taken wholesale, quoted includes), and verifies that partition against
+  `buck2-graph-sources.py` on all 2,339 targets. On the current graph, union 74,620 files:
+  wholesale include roots are **2 directories, 25 files, 2 targets**; quoted includes are
+  **675 files over 693 edges, reached by 1,266 targets**.
+  THIS DOES NOT CONTRADICT the 5-then-0 of `buck-include-closure-check.py`, which asks whether
+  the UNION misses a file entirely and only for `../` escapes. A header can be declared for
+  one target through its staged tree and be quoted-only for another. Both stand.
+  WHY THE PORT WORKS ANYWAY: `cc_objects` declares only `srcs`. `finger_obj` lists five `.c`
+  files and no headers, while `lprint.c` includes `finger.h` from its own directory. Compiles
+  run IN THE PROJECT TREE against project-relative paths, so that resolves only because every
+  target is staged with the whole project. The missing declarations and the #54 cascade are
+  one fact seen from two sides.
+  THE MECHANICAL ROUTE beats hand-written globs: the reference `build.ninja` carries depfiles
+  on **26,198 of 40,014 edges**, so one cmake build with its `.d` files kept states every
+  header each object really read, angle-bracket includes included.
+  `scripts/gen-buck-from-ninja.py` already generates these targets from that same ninja.
+- **#65: the recorded ld64 blocker is WRONG, established by reading and costing no build.**
+  `linux/buildtools/BUCK` says the compile dies in cctools' own `mach/machine.h` on
+  `<mach/machine/vm_types.h>` and asks for `cctools/include/foreign` on the include path. Four
+  facts say otherwise. `mach-o/loader.h` guards ALL its mach includes behind `#ifdef __APPLE__`
+  and typedefs `cpu_type_t`, `cpu_subtype_t` and `vm_prot_t` itself in the `#else`, so a host
+  compile never reaches `machine.h`, which is why the reference needs nothing, and its real
+  `getuuid.c.o` command carries only `darwin/include`, `linux/buildtools/include` and
+  `cctools/include`. `cctools/include/mach/machine.h` has NO `#include` lines, so it cannot be
+  the file failing, while `foreign/mach/machine.h` includes `<mach/machine/vm_types.h>` at line
+  64. `cc_header_root` stages by a plain prefix strip and `cctools_port_include` sets no
+  `include_subdirs`, so `foreign/` cannot collide into the root. And `include/mach/` has no
+  `vm_prot.h`, so a compile with `__APPLE__` defined would die on that first.
+  **THEN MEASURED, and the compile the comment says fails SUCCEEDS.** Run clang directly, no
+  buck2 and no Nix, against the same include root the BUCK targets already name:
+  `clang -DDARLING -Ibuck-src/cctools-port/cctools/include -c linux/buildtools/getuuid.c` exits
+  0, and so does `elfdep.c`. Verified it can fail: drop that one `-I` and it dies on
+  `mach-o/loader.h` not found. `-H` says the headers opened are cctools' own `mach-o/loader.h`
+  and `fat.h` and that **`mach/machine.h` is never opened at all**, and the host clang defines
+  no `__APPLE__`, which is the guard doing its job. So no include path change is needed and
+  `foreign` must NOT be added.
+  The one remaining doubt was buck2's own staging, since globs do not traverse a symlinked
+  directory (the recorded DBusKit trap) and `foreign/` contains one. **Bounded, and it does not
+  matter here**: the whole root holds 331 real headers and exactly TWO symlinked directories,
+  `foreign/arm` and `foreign/mach/arm`, both pointing at `i386`, together reaching 31 ARM
+  headers that x86_64 never needs and that `foreign/` keeps off the include path anyway. The
+  two headers these tools do need are real files. So nothing about staging blocks the host
+  tools; running buck2 only confirms it.
+  The stale comment stays put on purpose: it is a BUCK file, so correcting it alone costs ld64
+  plus the graph. Fold it into the next batch.
+- **DONE (#50): the graph derivation has two outputs and is content addressed, so a
+  dump-format change no longer rebuilds the port.** `graph.json` and `target-sources.json`
+  are read only by the EVALUATOR and stay in `out`; `staged/` and `treelinks/` are read only
+  by the lowered BUILDERS and move to `data`. Recorded paths are relative, so the split is a
+  move. Verified BOTH ways on `.#cider-buck2-lowered`: adding a key to graph.json rebuilt
+  only the graph and left the target at the same output with no builder run, while writing
+  one file into `treelinks/` moved the data path and did rebuild it; removing the probe
+  returned to the identical baseline output.
+  THE CHECK IS "DOES IT REBUILD", NOT "DID THE drvPath MOVE". A consumer of a content
+  addressed output holds a DEFERRED reference carrying the producing drv, so its drvPath
+  always moves and the old plan would have read a false negative. Nix resolves it after the
+  dependency builds and reuses the output when the resolution is identical.
+- **DONE (#52): a target's independent actions run concurrently. JavaScriptCore 54m to
+  10m36s at only `--cores 8`, and the objects are IDENTICAL.** 1,082 files each way, zero
+  difference in the file list and zero across all 1,082 sha256 sums, and the 10m36s even
+  includes rebuilding the dependency chain that the serial baseline did not pay. The test
+  needs no ordering pass: actions are in buck2 topological order, so an action reading none
+  of its siblings' outputs cannot depend on anything already launched, which is one set
+  membership. `_reap` checks every background job EXPLICITLY, because `set -e` does not
+  catch a background failure and an unnoticed one is a target quietly missing an object.
+  Bounded by `NIX_BUILD_CORES`, so pair `--cores` with `--max-jobs`: 6 jobs each allowed 22
+  cores is 132 compiles. Evaluation is unaffected, 21.4s and 1.76 GB.
+  VERIFIED AT FULL BLAST RADIUS, because it changed every builder: a complete rebuild of all
+  3,199 target derivations (the 5,282 farms were untouched and reused) ran 4 cycles in
+  1h48m with zero failures, and the resulting prefix is BYTE-IDENTICAL to the serial one --
+  39,173 entries, no tree difference, no difference across all 34,126 checksums -- and still
+  passes `buck-bash-check.nu`. What limits a rebuild is not compile parallelism but
+  per-derivation STAGING, paid once per target derivation: concurrency oscillates 0 to 18
+  with repeated stretches at zero. That is the argument for #53.
+- **DONE (#51, #47): the endpoint evaluation is 22.4s and 2.49 GB, from 58.8s and 9.0 GB.**
+  Allocation went 20.6 GB to 5.95 GB, calls 56.5M to 38.5M, and graph.json 1.62 GB to
+  481 MB. Two changes, both moving work out of the evaluator: the dump writes the UNION of
+  project sources instead of a per-target map that repeated it 85 times (the per-target
+  breakdown now lives in target-sources.json, which only narrowing reads), and staged farm
+  links travel as `treelinks/*.tsv` plus `*.dirs` tables that a fixed-size read loop
+  consumes, so nothing in Nix is proportional to the 3,581,461 links. Together with the
+  three escaping fixes earlier the same evaluation has gone 161s to 22.4s. The prefix
+  derivation MOVED, by design, so the guard did not apply: verified instead by building
+  `.#cider-buck2-lowered` and a real codegen target (dserver_rpc) out of the new graph,
+  and by reading an emitted staging script. The diagnosis that led there is kept below.
+- **How it was found, since the method transfers and the conclusions above do not.** The
+  evaluation split into a PARSE (11.0s, 3.73 GB, `fromJSON` alone) and the LOWERING on top
+  (48s, 5.3 GB), so both halves had to be attacked separately. The parse was large because
+  the graph repeated itself 85 times, and the instructive part was WHICH branch caused it:
+  the `-I` walk fires only 46 times over 3 directories, because 96.4 percent of the
+  1,251,596 include roots already point into buck-out. The port therefore HAS the precision
+  buck2 normally gives, a declared header farm per target, and the 85x was the dump
+  FLATTENING those farms per consumer, recomputable from data already in the same file.
+  Depfiles would have been a ninja-shaped answer to a buck2 question. Three source-tree
+  include roots remain as rule bugs worth fixing on their own: `darwin/xtrace/include`
+  (44 uses), `darwin/launchd/src`, `buck-src/security/OSX/libsecurityd/mig`.
+- **IFD is not the problem. The 1.62 GB payload is. Do not bet on an experimental feature
+  before fixing the representation.** recursive-nix works here, verified end to end: an
+  inner derivation built from inside a build, INNER_OK read back out of the store. The
+  gotcha, which cost one failed run, is that the socket is exposed as
+  `NIX_REMOTE=unix:///build/.nix-socket` and NOT the daemon path, so exporting
+  `NIX_REMOTE=daemon` fails with "cannot connect to socket at
+  /nix/var/nix/daemon-socket/socket". Keep that as a FALLBACK. It and dynamic-derivations
+  are CppNix-specific and long-experimental, and snix takes IFD as a supported feature
+  rather than a wart. After #51 the graph is tens of MB rather than 1.62 GB, an IFD that
+  size costs a fraction of a second, and the architecture that exists today becomes
+  affordable without any experimental feature. Do #51 and #47, RE-MEASURE, and only then
+  decide whether granularity still needs a lever.
+- **The OOM was NOT eval, and this bullet used to say it was.** The evaluator holding a
+  9.0 GB heap resident for the whole IFD build was a contributor and is now 1.76 GB. The
+  cause is `nix-daemon`, which forks a worker per CONNECTION that grows 8-9 MB per
+  derivation BUILT: 11.1 GB at 1,171 and 15.3 GB at 1,873, extrapolating past 30 GB for
+  8,472. It is all returned on disconnect, so CYCLE THE CONNECTION rather than capping
+  memory, and `--max-jobs` does not help because the growth is per derivation PROCESSED.
+  Full detail with the endpoint milestone above.
+- **nushell traps** (task #40, one increment each): a `(...)` inside `$"..."` is a
+  subexpression, so a literal `(Phase 4.1)` calls a command named `Phase` and fails at
+  RUNTIME, not at parse time; an `else if` must sit on the closing brace line or it parses
+  as a call to `else`; raw strings are `r#'...'#`, never `r#"..."#`; `get` with a computed
+  index takes `-o`, not a trailing `?`; `input` reads the terminal, not stdin; a def cannot
+  mutate its caller's variables and its `$env` writes do not propagate out.
+  **`default` substitutes for NULL, not for an empty string.** A flag declared
+  `--scratch: string = ""` is the empty string when omitted, so `$scratch | default <x>`
+  keeps the empty string. That made a scratch root empty, and a cleanup loop that killed
+  processes whose exe lives under it matched EVERYTHING and killed an unrelated build.
+  The older checks take such an argument as an optional POSITIONAL, which really is null.
+- **file(1) strings**: `Mach-O 64-bit x86_64 dynamically linked shared library` and
+  `Mach-O 64-bit x86_64 executable`. x86_64 comes BEFORE "dynamically". Copy an existing
+  case rather than writing it from memory.
+- **A whole-tree glob over a vendored pin dies on one dangling symlink**, failing the whole
+  package with an error naming a subtree unrelated to what you built. Check with
+  `find buck-src/<pin> -xtype l`; fix in `GLOB_EXCLUDE` in gen-buck-from-ninja.py.
+- **MIG runs the C preprocessor over the .defs**, so its -D flags decide which routines
+  EXIST. A mysteriously absent symbol from a MIG-generated library is a mig_flags question
+  first.
+- **Confirm a port with a direct `buck2 build <label>`**, never with buck-port.py's verdict.
+  It also says "failed (no recognisable error)" when the cause is a package-level file
+  error.
+- **buck2 runs**: `nix develop --command nu -c 'source scripts/buck-env.nu; buck2 ...'`,
+  nu rather than bash now that the file is nushell.
+  Sourcing buck-env.nu alone is not enough: the direnv cache goes stale (rustc and bindgen
+  went missing that way), and buck2's daemon inherits the client PATH at daemon START, so
+  `buck2 killall` after fixing PATH.
+- **Never pre-create DPREFIX.** cider treats an existing prefix as already set up, and
+  launchd then boots into an unpopulated filesystem and stalls deterministically.
+- **`pkill -f <pattern>` matches the command you are about to run** (exit 144). For
+  containers use one ERE pattern: `pkill -9 -x 'mldr|cider|ciderd|shellspawn'`.
+- **A `jj git push` "Could not read from remote repository" is the remote**, not you
+  (`ssh -o BatchMode=yes git@tangled.org` shows an IPv6 connect timeout). Retry.
+- **Rebuild costs**: touching buck/generated/sdk_headers.bzl or the ksmig mig_flags rebuilds
+  essentially everything, roughly 14,000 actions, about 20 minutes.
+- **Known flakes**, re-run before believing a failure: buck-bash-check.nu fails roughly 1 in
+  5 with a core dump (shared SIGFPE); buck-smoke-check.sh failed once at 11/31 then passed
+  3/3.
+- **All three runtime checks failing together is usually the MACHINE, not the tree**, and it
+  has had three separate causes so far, so work through them in order before believing a
+  regression. (1) Leftover containers, especially after a guest-nix milestone, which leaves
+  its own prefix and daemon behind: `pkill -9 -x 'mldr|cider|ciderd|shellspawn'`.
+  (2) A wrong ARTIFACT at a right path, which looks identical from outside: read the
+  `buck/prefix/BUCK` diff, which is how a dylib landing at usr/bin/login was found. (3) Load.
+  Running the checks immediately after a large rebuild fails them; the same scripts pass on
+  an idle machine minutes later. Boot the container by hand as the tiebreaker -- it takes
+  seconds and tells you at once whether the tree or the harness is at fault:
+  `DPREFIX=<fresh> DSERVER_LIBEXEC_PATH=$rt/libexec/cider
+  DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr CIDER_NO_LAUNCHD=1
+  $rt/bin/cider shell /bin/bash -c 'echo HELLO'`.
+- **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
+  gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
+  backtracking regex I first blamed.
+
+Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then
+`DSERVER_LIBEXEC_PATH=$rt/libexec/cider
+DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr bash
+scripts/build-hello-bypass.nu --mono $rt --prefix /tmp/cider-hello-m1-buck2`. Expect
+`build_rc=0` and "Hello, world!".
+
+---
+
+## Working agreements
+
+- **Verification is execution in a clean prefix**, not inspection. A task is done when its
+  test runs green from a fresh prefix, not when the code looks right.
+- **Small commits**, phase-tagged (`feat(phaseB.3): ...`), tests included, this doc updated
+  in the same commit.
+- **When blocked** (a nixpkgs-side change seems required, a licensing question, a
+  divergence-class stop-the-line, or >1 day stuck on one signature): add a dated entry under
+  Blockers with reproduction steps and stop that thread; take the next ranked item.
+- **Insurance:** mirror the bootstrap-tools closure + key reference narinfo/nars to our own
+  Cachix early (the oracle depends on cache retention past 26.05 EOL, end of 2026).
+
+## Risk register
+
+| Risk | Class | Mitigation |
+|---|---|---|
+| Silent output divergence (shim lies subtly) | correctness | Phase D oracle + stop-the-line |
+| Stalls in event-loop-heavy builds (kqueue/poll) | fidelity | C.4b watchdog + stall triage |
+| macOS-14 symbol surface larger than expected | scope | demand-driven ordering; stubs last |
+| Mach IPC perf through userspace daemon | perf | measure during E; acceptable for CI |
+| Cache retention past 26.05 EOL | infra | mirror reference closures to own Cachix |
+| x86-only effort waste | strategy | ARCH tags; Phase F keeps the boundary honest |
+
+---
+
+## Blockers
+
+Active blockers get a dated entry here (repro steps + what's stuck); resolved ones fold into
+Gotchas or Open work. The known standing limitations are already tracked above — the launchd
+portset deadlock (#47, bypassed by `CIDER_NO_LAUNCHD=1`), the SIGFPE exec-fidelity flake
+(#44, retryable), and the nix-ninja full-graph `migHeaderIncsFor` blocker. Nothing else is
+currently un-tracked.
+
+
+The task #80 grouped-build eval-speed analysis moved to `docs/plan-history.md`.
+
+## #66 full entry as it stood when the task closed, moved out of PLAN.md 2026-08-12
+
+The PLAN entry is now a summary. This is what it said in full, kept for the measurements
+and for the two claims it records as WRONG, which are the useful part.
+
+### #66 - get the lowering out of the evaluator (DONE 2026-08-11)
+
+BOTH HALVES ARE DONE. A, the bridge, passes fourteen properties over eleven fixtures and is
+enforced to reference nothing outside itself. B, the adapter, builds the whole 1,474-group graph
+through the emitted route and matches the lowered route on every group. The result to remember
+is in the bullet marked B IS DONE below.
+
+KEEP BOTH ROUTES. The recommendation on record, and the reason is empirical rather than
+aesthetic: the DIFFERENTIAL between the two routes is what found four real defects, including
+two that no single route could expose. A second implementation that agrees is a test; deleting
+it converts a working check into an unverified assumption.
+
+A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
+GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Nothing in the
+reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
+Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
+
+- **A, the bridge, DONE and GENERAL.** `nix/lib/dyn-actions.nix` plus nine fixtures beside it.
+  `scripts/buck-dyndrv-check.nu` asserts **ten** properties and PASSES. Three are properties of
+  Nix; the rest are of the bridge, and several were false when first checked (the DAG edge, the
+  whole of `specDir` mode, specDir-plus-a-DAG). None had a fixture, so none could have been
+  noticed. `extraEnv` is asked **per action**, which is the case a consumer actually has; and
+  specDir mode now accepts a spec dir the bridge did NOT write, holding only name, builder and
+  args, with the fixup supplying the system, version, outputs and the output PLACEHOLDER, since
+  none of those is something a generator can know.
+- **B, the adapter, and A and B are CONNECTED.** `scripts/buck_lowering.py` renders the WHOLE
+  builder script and `buck-graph-to-specs.py` writes it, along with `needs.json` and a `dyn/`
+  directory of bridge-shaped specs, inside the graph derivation.
+  **`.#cider-buck2-dyn-gen` builds a real cider cone from those specs with nothing serialised
+  in the evaluator, and `diff -r` against the lowered derivation is clean.** A second cone,
+  `-trees`, covers the staged-tree numbering; `-scale` instantiates all **1,474** producers in
+  ~13 s, against the lowering's own 10.6 s.
+- **THE LOWERING NO LONGER ASSEMBLES A SCRIPT.** It reads the template and supplies five
+  consumer values. All 1,474 labels unchanged, endpoint drvPath identical, rung 2 zero
+  builders. Verified byte for byte by `scripts/buck-script-check.nu`, which reads the
+  generator's own `full.json` out of the store rather than re-rendering, and by
+  `scripts/buck-needs-check.nu`, which reads `passthru.definitionNeeds` rather than `deps` so
+  it cannot compare the python against itself.
+- **THREE FAILURES WORTH THE SPACE, all one shape: a green result over a broken build.** A run
+  that passed with `find`/`sed` missing (nativeBuildInputs is only what the lowering ADDS to
+  stdenv); the deep cone failing on `llvm-ar`, because **an emitted action runs no setup hooks**
+  and `makeBinPath` follows neither hooks nor propagation; and the specDir check reporting OK
+  while its diff never ran, because both modes produced a **byte-identical check derivation**.
+  Look for the artifact, never the exit code.
+- **THE INVARIANCE CHECK IS A TOOL,** `scripts/buck-lowering-invariance-check.nu`. It
+  fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
+  is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
+  every *other* derivation is invisible to it.
+- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE AND REPRODUCES IT EXACTLY. B IS DONE.**
+  Final run, 2026-08-11, 4,516 builders and zero nix-level errors, all 1,474 producers and all
+  1,474 emitted actions:
+
+      OK the whole graph emitted, all 1474 group(s) match the lowered route
+
+  **THE CHECK IS KNOWN TO FIRE, which is the only reason that zero is worth anything:** the
+  SAME check on the SAME graph reported `identical 1364, differ 110` one run earlier, and named
+  every differing group. The 110 were all mig groups differing by one line, `stub generated
+  <wall clock>`, which is #95 and is now fixed. So the difference between 110 and 0 is a fix to
+  the port, measured by a check that had just demonstrated it can report a non-zero.
+- **WHAT THAT MAKES #66.** The emitted route is not a proposal, it is a second independent
+  implementation of the whole 1,474-group graph that agrees with the first byte for byte. The
+  differential is what found the four real defects listed below; none was visible from either
+  route alone.
+- **TWO REAL DEFECTS THE FULL-SCALE RUN FOUND FIRST.** `SOURCE_DATE_EPOCH` is set by stdenv's
+  SETUP SCRIPT, not as a derivation attribute, so it is invisible when comparing derivations and
+  an emitted action never gets it; and the stdenv tool list was hand-picked and missing `xz`,
+  which surfaced 981 builders in. Both fixed. An earlier run also reported 57 diff lines that
+  were the check following dangling symlinks IDENTICAL in both trees, fixed with
+  `--no-dereference`.
+- **THE ADAPTER NO LONGER CONSUMES THE LOWERING.** It read `tools`, `stageScript`,
+  `treeScripts` and `deps` from `lowered.drvs.<label>.passthru`, which forces a whole
+  mkDerivation per group; it now reads top-level accessors. Emitted derivations are unmoved,
+  checked against a running build's log. **The claim that this coupling was why the two routes
+  cost the same was WRONG**: from eval statistics, which ignore machine load, decoupling moves
+  thunks -1.3 percent and sets -8 percent while envs and calls go slightly up. A wash. The real
+  reason is that `builtins.outputOf` forces one derivation per action either way. B remains a
+  VERIFICATION of the bridge at full scale, not a replacement path.
+- **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting or
+  rebuilding the toolchain list, the staging script and the staged tree scripts, which is a
+  chunk of the lowering reimplemented. Nothing measured says what that would cost or save.
