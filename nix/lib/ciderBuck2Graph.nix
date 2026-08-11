@@ -519,7 +519,15 @@
     outputHashAlgo = "sha256";
     nativeBuildInputs = [pkgs.python3];
   } ''
-    python3 ${../../scripts/buck-graph-to-specs.py} ${graph}/graph.json "$out"
+    # BOTH FILES, and the module has to sit BESIDE the script. A nix path interpolation copies
+    # ONE file into the store under its own hash, so the generator's `from buck_lowering import`
+    # found nothing there and the build died with ModuleNotFoundError. Staging them into a
+    # directory here is what puts them in the same place, and PYTHONPATH is what makes that
+    # place importable.
+    mkdir -p gen
+    cp ${../../scripts/buck-graph-to-specs.py} gen/buck-graph-to-specs.py
+    cp ${../../scripts/buck_lowering.py} gen/buck_lowering.py
+    PYTHONPATH=gen python3 gen/buck-graph-to-specs.py ${graph}/graph.json "$out"
   '';
 
   sourcesDrv = pkgs.stdenv.mkDerivation {

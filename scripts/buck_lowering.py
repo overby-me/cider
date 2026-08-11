@@ -173,7 +173,15 @@ def sh_quote(s: str) -> str:
     return "'" + s.replace("'", "'\\''") + "'"
 
 
-def builder_script(n, label: str, group_script: str, exports: str = "") -> str:
+# WHERE THE CONSUMER'S PLACEHOLDER EXPORTS GO. A marker rather than a gap, so the substituted
+# text is BYTE IDENTICAL to what the lowering assembles today: the export block sits in the
+# middle of the script, and a consumer that prepended it at the top instead would produce a
+# script that works and hashes differently, which throws away both the proof and CA early
+# cutoff for every target.
+EXPORTS_MARKER = "@@CIDER_PLACEHOLDER_EXPORTS@@\n"
+
+
+def builder_script(n, label: str, group_script: str, exports: str = EXPORTS_MARKER) -> str:
     """The whole of builderScriptWith, rendered here instead of in the evaluator.
 
     THE SHAPE IS THE NIX TEMPLATE'S, line for line, including the blank lines. That is not
@@ -181,9 +189,9 @@ def builder_script(n, label: str, group_script: str, exports: str = "") -> str:
     1,474 labels, and a match on 5,662 bytes of shell is worth far more than a match on an idea
     of what the script should do.
 
-    `exports` is the placeholder block. The generator passes nothing, because @CLANG@ and friends
-    are the consumer's paths; the check passes the real ones so the comparison covers that block
-    and its escaping too.
+    `exports` is the placeholder block. The generator leaves the MARKER, because @CLANG@ and
+    friends are the consumer's paths and only it knows them; the check passes the real ones, so
+    the comparison covers that block and its escaping too.
     """
     needs = n.of(label)
     out = []
