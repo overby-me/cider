@@ -643,6 +643,18 @@
         })
         .check;
 
+      # A DEEPER CONE, three dependencies rather than one, because a cone of two only shows
+      # that ONE edge resolves. unwind_static is 10 actions across 4 groups.
+      #
+      #   nix build .#cider-buck2-dyn-cone-deep --no-link -L
+      packages.cider-buck2-dyn-cone-deep = pkgs:
+        (import ./nix/lib/cider-dyn-cone.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck-src:unwind_static";
+        })
+        .check;
+
       packages.cider-buck2-dyn-deps = pkgs:
         (import ./nix/lib/cider-dyn-one.nix {
           inherit pkgs;
