@@ -75,6 +75,20 @@ argument is spilled to a store file and becomes `. <path>`, which is equivalent 
 Only a `-c` argument is rewritten, because only there is the argument known to BE a shell
 script; any other over-long argument is a named error rather than a guess.
 
+**stdenv's SETUP SCRIPT sets things its derivation does not.** An emitted action has no setup
+script, so anything exported there is simply absent, and it is absent invisibly: it does not
+appear in the lowered derivation's env either, so comparing the two derivations does not reveal
+it. Enumerated from `$stdenv/setup` rather than guessed, the ones that can change build output
+are `SOURCE_DATE_EPOCH`, `TZ=UTC`, `GZIP_NO_TIMESTAMPS`, `SHELL` and `CONFIG_SHELL`, and the
+`NIX_ENFORCE_*` pair.
+
+Only `SOURCE_DATE_EPOCH` actually mattered here, and that is a measurement rather than an
+assumption: a full-graph diff of both routes found three binaries differing and all three by
+`__DATE__`. The `NIX_*` variables made no difference because these actions invoke a raw clang
+ELF directly rather than the nixpkgs cc-wrapper, which is the script that reads them. Do not
+add the rest speculatively, since every one of them rewrites every emitted derivation; add one
+when a difference points at it.
+
 **`lib.makeBinPath` is not a PATH.** It adds each package's own `bin` and follows neither setup
 hooks nor propagation. `llvm-ar` lives in the unwrapped bintools package and reaches PATH only
 through the wrapper's setup hook, which an emitted action never runs. If you want what stdenv
