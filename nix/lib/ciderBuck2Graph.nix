@@ -325,7 +325,17 @@
     # a deferred reference carries the producing drv, so "did the drvPath move" is the WRONG
     # check for a content addressed dependency and would report a false negative here. The
     # check is whether nix actually reruns the builder.
-    outputs = ["out" "data"];
+    # A THIRD OUTPUT FOR #66, and it is separate for the same reason `data` is separate from
+    # `out`. The per-group action specs are what nix/lib/dyn-actions.nix consumes in specDir
+    # mode, so they change whenever an ACTION changes; graph.json changes whenever the dump
+    # FORMAT changes; and staged/treelinks change on neither. Folding specs into `data` would
+    # move the path every lowered derivation stages from, every time any action moved, which
+    # is exactly the #50 defect that split these in the first place.
+    #
+    # NOTHING CONSUMES THIS YET, deliberately. Emitting it is additive and cannot change what
+    # the endpoint builds; wiring the lowering to read it is a separate change that earns its
+    # own gate.
+    outputs = ["out" "data" "specs"];
     __contentAddressed = true;
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
@@ -461,6 +471,14 @@
       for d in staged treelinks; do
         if [ -e "$out/$d" ]; then mv "$out/$d" "$data/$d"; fi
       done
+
+      # #66: the per-group action specs, grouped and rendered HERE rather than in the
+      # evaluator. Measured on this graph, of the endpoint's 14.36 s of evaluation about 12 s
+      # is computing derivations from the parsed actions, and this is that computation moved
+      # into a derivation that already runs. The script costs 1.56 s of an eighteen minute
+      # build, so it is free at this scale; see #92 for why reading buck2 through its own
+      # crates would be better still than parsing its rendered output.
+      python3 ${../../scripts/buck-graph-to-specs.py} "$out/graph.json" "$specs"
 
       runHook postBuild
     '';
