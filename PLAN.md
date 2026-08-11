@@ -764,9 +764,36 @@ mappings, so an anonymous stack absent from it proves NOTHING; use the PT_LOAD p
 And `readelf -l` splits each program header over TWO lines, so a naive regex reports zero PT_LOAD
 for a core that has 186.
 
-**NEXT:** find who creates that guard page and why the initial SP sits above it with under 2 KB of
-room. Candidates are mldr's guest stack setup and the guest pthread main-thread guard. Fixing it
-is a stack-layout change, not a Rust change.
+**FIXED, AND ROUTE A IS COMPLETE.** `darwin/loader/src/stack.rs` allocated the guest start stack
+as `min(16 pages, RLIMIT_STACK)`, inherited from upstream `mldr.c:828-839`. 16 pages is 64 KB;
+macOS gives the main thread 8 MB. Rust std had consumed 63,744 of 65,536 bytes before dyld's
+first lazy bind, so the 2,696-byte XSAVE buffer ran off the bottom. Now 8 MB, still floored by
+RLIMIT_STACK. Verified by rebuilding mldr and re-running the same probe against the same prefix:
+SIGSEGV became
+
+    CIDER_RUST_OK macos
+
+exit 0, `std::env::consts::OS` reporting macos. bash survived the same stack only because its
+startup high-water mark is lower.
+
+### Route B: the official Darwin rustc under cider (STARTED, two blockers, both measured)
+
+The rustc component is fetched and installed into the guest at `/opt/rustc` (442 MB). Running it
+fails in two stages, in this order:
+
+**1. `@rpath` is not resolved by cider's dyld.** `dyld: Library not loaded:
+@rpath/librustc_driver-...dylib`, although the dylib IS at `/opt/rustc/lib` and the binary's
+`LC_RPATH` is `@loader_path/../lib`, which should resolve from `/opt/rustc/bin`. Setting
+`DYLD_LIBRARY_PATH=/opt/rustc/lib` makes it load, which isolates the gap to **`@rpath` /
+`@loader_path` handling**. That is a real, self-contained cider defect and the first route B
+finding.
+
+**2. Foundation.framework is absent from prefix-min.** Of rustc's five non-libSystem deps,
+`libobjc`, `libc++`, `libz` and `libiconv` are all present and only Foundation is missing.
+
+**So route B needs the FULL prefix**, `//buck/prefix:cider_prefix`, which is a large buck2 build
+and materially bigger than anything else here. Deliberately NOT started: that is an hour-class
+job and a user call. Everything short of it is done and reproducible.
 
 ### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
 
