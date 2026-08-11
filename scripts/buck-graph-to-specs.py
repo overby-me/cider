@@ -133,10 +133,26 @@ def group_deps(graph: dict, groups: dict) -> dict:
     emitted derivation is concerned -- and the failure is silent, because every action still
     builds and simply sees an empty dependency.
 
-    Derived from the artifacts, not from buck2's own target edges: an action's `inputs` are
-    paths, and whichever group WROTE that path is the dependency. That is the same rule the
-    lowering uses (producerTarget), and it is the one that matters here, because it is about
-    which files have to be present rather than about which targets buck2 relates.
+    TWO SOURCES, and the second is not optional. This matches needsOf in the lowering.
+
+    1. ARTIFACTS. An action's `inputs` are paths, and whichever group WROTE a path is a
+       dependency. A path nobody writes is a SOURCE, not a missing edge: most inputs are
+       project files.
+
+    2. DECLARED TARGETS, from `input_targets`. AN ACTION THAT READS ITS INPUTS FROM A FILE
+       NAMES NONE OF THEM IN ITS ARGV, so the artifact rule cannot see them. This was left out
+       of the first version of this function and the omission was large: 715 groups short of
+       1,292 edges, with the prefix alone missing 527 of them, because it passes one manifest
+       argument standing for thousands of inputs. The lowering's own comment records that this
+       is how the first coarse build died, an hour in, with a cp that could not stat a .o.
+
+    THROUGH THE SAME GROUPING, which is also not optional: input_targets arrives as raw target
+    labels while everything else here is keyed by GROUP, so under coarse pins an unmapped label
+    matches nothing and the edge disappears in silence.
+
+    A DECLARED TARGET WITH NO ACTIONS IS DROPPED, deliberately. A header root or a staged
+    include tree is a real declared input with no derivation to depend on; what it owns travels
+    as staged data instead.
     """
     producer = {}
     for g, actions in groups.items():
@@ -144,16 +160,19 @@ def group_deps(graph: dict, groups: dict) -> dict:
             for o in a["outputs"]:
                 producer[o] = g
 
+    coarse_pin_of = graph.get("coarsePinOf", {})
     deps = {}
     for g, actions in groups.items():
         seen = set()
         for a in actions:
             for i in a["inputs"]:
                 p = producer.get(i)
-                # A path with no producer is a SOURCE, not a missing edge: most inputs are
-                # project files. Only artifacts another group wrote are dependencies.
                 if p is not None and p != g:
                     seen.add(p)
+            for t in a.get("input_targets", []):
+                grp = group_of(t, coarse_pin_of, True)
+                if grp != g and grp in groups:
+                    seen.add(grp)
         deps[g] = sorted(seen)
     return deps
 

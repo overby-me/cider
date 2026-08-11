@@ -218,6 +218,11 @@ def check_deps(graph: dict, groups: dict, specdir: str) -> list:
         for o in a["outputs"]:
             producer[o] = a
 
+    # TWO EDGE SOURCES, matching needsOf in the lowering. The artifact rule alone is not the
+    # rule: an action that reads its inputs from a FILE names none of them in argv, so its
+    # dependencies only appear in input_targets. Leaving that out understates the edge set by
+    # 1,292 across 715 groups, the prefix alone by 527.
+    coarse = graph.get("coarsePinOf", {})
     want = {}
     for g, actions in groups.items():
         seen = set()
@@ -225,17 +230,26 @@ def check_deps(graph: dict, groups: dict, specdir: str) -> list:
             for i in a["inputs"]:
                 p = producer.get(i)
                 if p is not None:
-                    pg = group_of(p["identity"], graph.get("coarsePinOf", {}))
+                    pg = group_of(p["identity"], coarse)
                     if pg != g:
                         seen.add(pg)
+            for t in a.get("input_targets", []):
+                tg = t if t not in coarse else "root//buck-src:pin-" + coarse[t]
+                # A declared target with no actions has no derivation to depend on; what it
+                # owns travels as staged data instead.
+                if tg != g and tg in groups:
+                    seen.add(tg)
         want[safe_name(g)] = {safe_name(d) for d in seen}
 
     if set(listed) != set(want):
         problems.append(f"deps.json covers {len(listed)} groups, the graph has {len(want)}")
     for k in sorted(set(listed) & set(want)):
-        if set(listed[k]) != want[k]:
-            problems.append(f"{k}: deps.json says {sorted(listed[k])[:4]}, "
-                            f"the graph says {sorted(want[k])[:4]}")
+        got = set(listed[k])
+        if got != want[k]:
+            # THE DIFFERENCE, not the first few sorted entries. Printing sorted heads made two
+            # sets differing in their tails look identical, which is a report nobody can act on.
+            problems.append(f"{k}: only in deps.json {sorted(got - want[k])[:3]}, "
+                            f"only in the graph {sorted(want[k] - got)[:3]}")
 
     # SUFFICIENCY: could each group's commands actually find what they name? Uses the
     # label-keyed edges rather than deps.json, because this asks whether the EDGE SET is

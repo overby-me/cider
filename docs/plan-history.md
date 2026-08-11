@@ -839,11 +839,23 @@ glob mixing two:
     only in the drv           1   x86_64-apple-darwin20-ld
     only in mine              0
 
-THE ONE EXTRA IS NOT A MISSING EDGE, and it was checked rather than explained away. It IS a
-group, so the obvious reading is that the adapter missed it. It is not: system_c_final has 660
-inputs and the ld group has 1 output, and the ARTIFACT OVERLAP IS ZERO. No argv of the group
-names ld64 either. The lowering puts ld64 in nativeBuildInputs for every target, so it is a
-uniform TOOLCHAIN input rather than a graph edge, and the adapter must supply it the same way.
+THAT CONCLUSION WAS WRONG AND IS CORRECTED BELOW. What was written here first: the extra is
+not a missing edge, because the artifact overlap is zero and no argv names ld64, so it must be
+the nativeBuildInputs entry. Both observations were true and the conclusion did not follow.
+
+IT WAS A MISSING EDGE. needsOf has TWO sources and the adapter reproduced one. Besides the
+artifact rule it uses `declaredWithActions`, from each action's input_targets, and the
+lowering's own comment says why: AN ACTION THAT READS ITS INPUTS FROM A FILE NAMES NONE OF
+THEM IN ITS ARGV. So zero artifact overlap and zero argv mentions are exactly what a declared
+edge looks like, and they were read as evidence against it.
+
+THE OMISSION WAS NOT SMALL: 1,292 edges across 715 groups, and the prefix target alone was
+missing 527 of them, since it passes one manifest argument standing for thousands of inputs.
+The same comment records that mishandling this path is how the first coarse build died, an
+hour in, on a cp that could not stat a .o.
+
+With input_targets included the adapter matches needsOf exactly: 14 groups sampled from 527
+deps down to 0, ZERO mismatches either way, system_c_final 129 against 129.
 
 TWO HARNESS BUGS ON THE WAY, both of which made a correct map look broken:
   - the drv name is sanitizeDerivationName of the LAST COLON COMPONENT of the label, not

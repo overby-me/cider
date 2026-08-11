@@ -1218,6 +1218,30 @@
     # buck-graph-to-specs.py emits _spawn or _drain per action from exactly that rule.
     # Verified against a re-derivation of it over all 1,474 groups: 0 scripts with a
     # misplaced _drain, and a control that deletes one _drain is caught.
+    # THE TOOLS, hoisted out of the attrset so passthru can name them too: a Nix attrset is
+    # not recursive, so `tools = nativeBuildInputs` written beside it does not resolve.
+    targetTools =
+      [
+        pkgs.clang
+        # The guest compiler the graph derivation selected, named by absolute path in the
+        # argv: its store path has no string context by the time it arrives here, so the
+        # dependency has to be declared or the sandbox will not have it.
+        pkgs.llvmPackages.clang-unwrapped
+        pkgs.llvmPackages.bintools
+        pkgs.python3
+        pkgs.bison
+        pkgs.flex
+        pkgs.coreutils
+        pkgs.bash
+        # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
+        # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
+        # command names, exactly as on the daemon path, so they have to be on PATH here.
+        pkgs.rustc
+        pkgs.rust-bindgen
+      ]
+      ++ extraTools
+      ++ lib.optional (ld64 != null) ld64;
+
     # THE BUILDER SCRIPT AS A VALUE (#66). Bound here rather than written inline at the
     # runCommand call so the ADAPTER can reach it: feeding a group through
     # nix/lib/dyn-actions.nix needs exactly this text, and a second assembly of it
@@ -1347,27 +1371,7 @@
 
   in
     pkgs.runCommand (drvName label) {
-      nativeBuildInputs =
-        [
-          pkgs.clang
-          # The guest compiler the graph derivation selected, named by absolute path in the
-          # argv: its store path has no string context by the time it arrives here, so the
-          # dependency has to be declared or the sandbox will not have it.
-          pkgs.llvmPackages.clang-unwrapped
-          pkgs.llvmPackages.bintools
-          pkgs.python3
-          pkgs.bison
-          pkgs.flex
-          pkgs.coreutils
-          pkgs.bash
-          # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
-          # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
-          # command names, exactly as on the daemon path, so they have to be on PATH here.
-          pkgs.rustc
-          pkgs.rust-bindgen
-        ]
-        ++ extraTools
-        ++ lib.optional (ld64 != null) ld64;
+      nativeBuildInputs = targetTools;
       # Same reason as the graph derivation: the argv is buck2's, and the wrapper's
       # hardening flags are not in it. -D_FORTIFY_SOURCE alone turns libc's own sprintf
       # into a macro over its own definition.
@@ -1410,6 +1414,19 @@
         inherit label outs;
         deps = needs.fromTargets;
         actionCount = lib.length actions;
+
+        # WHAT THE ADAPTER NEEDS TO FEED THIS GROUP THROUGH nix/lib/dyn-actions.nix (#66): the
+        # exact text this derivation runs, and the tools it runs it with. Through passthru
+        # because nixpkgs strips passthru before building, so this costs nothing and cannot
+        # move a hash, and it is LAZY, so a consumer that never asks pays nothing. That matters
+        # at 1,474 groups. Verified rather than assumed: cider-buck2-one stayed at the same out
+        # path with ZERO builders after adding it.
+        #
+        # AN EMITTED ACTION IS NOT A runCommand, and the gaps are the adapter's job rather than
+        # defects here. It gets no stdenv: no PATH (hence `tools`), no `set -e`, and its output
+        # variable is whatever dyn-actions names it rather than `out`.
+        inherit builderScript;
+        tools = targetTools;
       };
     }
     builderScript)
