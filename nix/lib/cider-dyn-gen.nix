@@ -123,6 +123,18 @@ in {
   in
     toString (lib.foldl' (a: b: a + b) 0 forced);
 
+  # THE SAME COUNT ON THE OTHER ROUTE, so the two can be compared at all. Forcing producer
+  # drvPaths against forcing lowered outPaths is not the same traversal, and quoting the two
+  # timings side by side without this would be comparing a measurement to a different one.
+  #
+  # BOTH SIDES NOW FORCE the derivation AND the consumer-supplied inputs: outPath on a lowered
+  # derivation pulls in its staging script and staged tree scripts, and the producer side pulls
+  # the same values through extraEnv.
+  loweredProbe = let
+    forced = map (l: builtins.seq lowered.drvs.${l}.outPath 1) allNames;
+  in
+    toString (lib.foldl' (a: b: a + b) 0 forced);
+
   # THE WHOLE GRAPH THROUGH THE EMITTED ROUTE, which is the scale question the cones cannot
   # answer. It uses `everything` rather than coneOf: that walk is not memoised, which is fine
   # for four groups and is not something to find out about at 1,474.

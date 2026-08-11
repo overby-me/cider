@@ -715,6 +715,17 @@
         })
         .check;
 
+      # THE SAME COUNT ON THE LOWERED ROUTE, so the two eval costs can be compared without
+      # comparing a measurement to a different one.
+      #
+      #   nix eval --raw .#cider-buck2-dyn-gen-scale-lowered
+      packages.cider-buck2-dyn-gen-scale-lowered = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+        })
+        .loweredProbe;
+
       packages.cider-buck2-dyn-gen-scale = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;
