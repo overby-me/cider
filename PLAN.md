@@ -708,6 +708,42 @@ measurements, which are real and were expensive to take.
 
 THE OPEN TASKS ARE #96, #76 AND #92. Nothing else in this file is a queue.
 
+### Darwin Rust: route A builds and RUNS, and dies in dyld lazy binding (harness task #96)
+
+**BUILD: DONE.** `scripts/buck-darwin-rust-build.py` turns a Rust source into a Mach-O x86_64
+executable on Linux using our own ld64. Four things make it work and each was a dead end alone:
+the OFFICIAL rustc rather than the nixpkgs one (both are 1.95.0 at commit 59807616e, but nixpkgs
+appends `(built from a source tarball)` and rustc crate-metadata checking is a STRING COMPARE, so
+E0514); nixpkgs pkgsCross refuses on CCTOOLS not rustc, and #65 gives us our own; `-syslibroot` is
+mandatory because libSystem re-exports `/usr/lib/system/*.dylib` by ABSOLUTE path; and
+`-C linker-flavor=ld`.
+
+**IT ALSO RUNS, which was the real question.** The container boots, and the daemon log shows
+shellspawn, bash, cp, path_helper, then `execve /bin/cider-rust-probe ret 0`. Rust code executes:
+the core stack has three frames in the binary itself at 0x100048000, 0x1000015d8, 0x100001738.
+
+**THEN IT FAULTS, AND THE LOCATION IS EXACT.** SIGSEGV five lines after execve. Located by the
+[[mldr-rs-breaks-guest-nix]] core method rather than by guessing:
+
+    fault RIP                0x700e11b6e1e1
+    core mapping             0x700e11af2000-0x700e11b79000  /usr/lib/system/libdyld.dylib
+    offset                   0x7C1E1  =  dyld_stub_binder + 0xF1
+    caller                   0x7C289, same function
+
+So this is **dyld LAZY SYMBOL BINDING**: the binary calls an imported function for the first
+time, goes through the lazy stub, and the binder segfaults. Reproducible: three boots, three
+ASLR slides, the fault address ends in `1E1` every time.
+
+**TWO HYPOTHESES ALREADY KILLED, do not re-chase them.** It is NOT thread-local storage: the
+binary carries HAS_TLV_DESCRIPTORS and libdyld does export `__tlv_bootstrap`, which made TLV the
+obvious suspect, and the core says the fault is in the stub binder instead. It is NOT a fixup
+format mismatch: the probe and cider's own WORKING `/bin/bash` have the same load commands,
+`LC_DYLD_INFO_ONLY` plus `LC_MAIN`, neither uses chained fixups.
+
+**NEXT:** find WHICH symbol is being bound when it faults. bash binds lazily too and survives, so
+the difference is the particular import or its binding data, not the mechanism. Disassemble
+`dyld_stub_binder` around +0xF1 and read what it dereferences.
+
 ### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
 
 Written 2026-08-12 because the task was open in the harness with NO PLAN entry, so the next
