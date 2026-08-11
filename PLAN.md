@@ -388,11 +388,22 @@ THE FIX IS THE STANDARD ONE: take the epoch from the environment when it is set.
     const char *sde = getenv("SOURCE_DATE_EPOCH");
     loc = sde ? (time_t) strtoll(sde, NULL, 10) : time((time_t *)0);
 
-VERIFYING IT IS THE EXPENSIVE PART, not the edit: it needs a graph rebuild and then
-`.#cider-buck2-dyn-gen-all`, which should go from 110 differing to 0. That check exists and
-names every differing group.
+DONE AND VERIFIED ON THE ARTIFACT. `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`
+applies cleanly, the patched file passes `cc -fsyntax-only`, `FORCE=1 scripts/buck-src.nu
+pins/bootstrap_cmds` reports applying it, and a freshly built mig group now reads
 
-NOT YET DONE.
+    * stub generated Tue Jan  1 00:00:00 1980
+
+which is `SOURCE_DATE_EPOCH` 315532800. Before, it read the wall clock.
+
+GUARDED SO IT NEVER COSTS AN HOUR AGAIN. `scripts/buck-mig-epoch-check.nu` builds ONE mig group
+and reads one line, and is in `buck-test.nu`. Its control runs FIRST and is the half that
+matters: it asserts the `stub generated` line EXISTS before asserting what it says, because a
+migcom that stopped emitting the line, or a renamed output, would otherwise make the date
+assertion vacuously true.
+
+STILL OPEN: whether the full-graph diff now goes from 110 differing groups to 0. That run is
+the confirmation and is hour class.
 
 ### #66 - get the lowering out of the evaluator
 
