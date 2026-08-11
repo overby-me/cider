@@ -123,9 +123,41 @@ _SAFE = re.compile(r"^[A-Za-z0-9,._+:@%/-]+$")
 # substitution moves from the evaluator to the shell, where it costs nothing.
 _PLACEHOLDER = re.compile(r"@([A-Z_0-9]+)@")
 
+# WHICH placeholders the consumer actually exports. This list has to be checked rather than
+# trusted, and the failure it prevents is the silent kind: the lowering's `fill` was a
+# replaceStrings over these three names, so an argv containing some OTHER @TOKEN@ came out
+# unchanged, as a literal. Turning it into ${CIDER_PH_TOKEN} instead makes the shell expand
+# an unset variable to the EMPTY STRING, and an argument silently losing a path fragment is
+# about the worst way for this to go wrong.
+#
+# Measured on the current graph: @RESOURCE_DIR@ 8,302 times and @CLANG@ 7,637, and nothing
+# else matches. @LD64@ is declared because ciderBuck2Lower.nix supplies it whenever ld64 is
+# non-null, so it is legitimate even though this graph happens not to use it.
+KNOWN_PLACEHOLDERS = {"CLANG", "RESOURCE_DIR", "LD64"}
+
 
 def ph_var(name: str) -> str:
     return "CIDER_PH_" + name
+
+
+def check_placeholders(graph: dict) -> None:
+    """Refuse to emit a script referencing a placeholder nobody exports."""
+    seen: dict = {}
+    for a in graph["actions"]:
+        for x in a["argv"]:
+            for m in _PLACEHOLDER.finditer(x):
+                seen.setdefault(m.group(1), (a["identity"], x))
+    unknown = sorted(k for k in seen if k not in KNOWN_PLACEHOLDERS)
+    if unknown:
+        lines = [f"FAIL: {len(unknown)} placeholder(s) no consumer exports:"]
+        for k in unknown:
+            ident, arg = seen[k]
+            lines.append(f"    @{k}@  first in {ident}\n        {arg}")
+        lines.append(
+            "The emitted script would expand ${" + ph_var(unknown[0]) + "} to the empty "
+            "string. Either add it to KNOWN_PLACEHOLDERS here AND to `placeholders` in "
+            "nix/lib/ciderBuck2Lower.nix, or stop buck2-graph-dump.py from emitting it.")
+        raise SystemExit("\n".join(lines))
 
 
 def esc_with_placeholders(s: str) -> str:
@@ -196,6 +228,8 @@ def main(argv: list[str]) -> int:
         sys.exit(__doc__)
     graph_path = argv[0]
     graph = json.load(open(graph_path))
+
+    check_placeholders(graph)
 
     groups = group_specs(graph)
     total_actions = sum(len(v) for v in groups.values())

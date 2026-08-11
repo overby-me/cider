@@ -325,17 +325,13 @@
     # a deferred reference carries the producing drv, so "did the drvPath move" is the WRONG
     # check for a content addressed dependency and would report a false negative here. The
     # check is whether nix actually reruns the builder.
-    # A THIRD OUTPUT FOR #66, and it is separate for the same reason `data` is separate from
-    # `out`. The per-group action specs are what nix/lib/dyn-actions.nix consumes in specDir
-    # mode, so they change whenever an ACTION changes; graph.json changes whenever the dump
-    # FORMAT changes; and staged/treelinks change on neither. Folding specs into `data` would
-    # move the path every lowered derivation stages from, every time any action moved, which
-    # is exactly the #50 defect that split these in the first place.
-    #
-    # NOTHING CONSUMES THIS YET, deliberately. Emitting it is additive and cannot change what
-    # the endpoint builds; wiring the lowering to read it is a separate change that earns its
-    # own gate.
-    outputs = ["out" "data" "specs"];
+    # THE #66 SPECS WERE A THIRD OUTPUT HERE and are now their own derivation, specsDrv
+    # below, for a reason worth stating: an output of THIS derivation can only be produced by
+    # RUNNING this derivation, which is an eighteen minute buck2 build. That made every tweak
+    # to scripts/buck-graph-to-specs.py cost eighteen minutes to see, for a script that runs
+    # in under two seconds and reads nothing but graph.json. Split out, a generator change
+    # re-runs the python alone.
+    outputs = ["out" "data"];
     __contentAddressed = true;
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
@@ -472,14 +468,6 @@
         if [ -e "$out/$d" ]; then mv "$out/$d" "$data/$d"; fi
       done
 
-      # #66: the per-group action specs, grouped and rendered HERE rather than in the
-      # evaluator. Measured on this graph, of the endpoint's 14.36 s of evaluation about 12 s
-      # is computing derivations from the parsed actions, and this is that computation moved
-      # into a derivation that already runs. The script costs 1.56 s of an eighteen minute
-      # build, so it is free at this scale; see #92 for why reading buck2 through its own
-      # crates would be better still than parsing its rendered output.
-      python3 ${../../scripts/buck-graph-to-specs.py} "$out/graph.json" "$specs"
-
       runHook postBuild
     '';
 
@@ -492,8 +480,36 @@
       # changes no file NAME, the output is byte identical and nothing downstream moves.
       # Adding an include does change it, which is exactly when consumers should rebuild.
       sources = sourcesDrv;
+
+      # THE PER-GROUP ACTION SPECS (#66). One <name>.json and one <name>.sh per group, plus a
+      # `names` index. The .sh is the action sequence the lowering used to build in the
+      # EVALUATOR by escaping every one of 208,515 argv entries; it now reads this instead.
+      # nix/lib/dyn-actions.nix consumes the .json side in specDir mode.
+      specs = specsDrv;
     };
   };
+
+  # #66. Grouping the actions and rendering each group's command sequence, done ONCE here
+  # instead of on every evaluation. Measured on this graph: the endpoint's 14.36 s of
+  # evaluation is 0.21 s reading a 139 MB graph.json, about 2.1 s parsing it, and about 12 s
+  # computing derivations from the result. This is that computation, moved.
+  #
+  # IT TAKES graph.json AND NOTHING ELSE, which is the point of it being separate: no
+  # projectSrc, no pins, no buck2. So it costs about two seconds, it re-runs when the
+  # generator or the graph changes and at no other time, and it is content addressed, so a
+  # graph rebuild that produces the same actions leaves this path exactly where it was and
+  # nothing downstream moves.
+  #
+  # See #92 for why reading buck2 through its own crates would beat parsing its rendered
+  # output, which is what the identity regex in the generator has to do today.
+  specsDrv = pkgs.runCommand "cider-buck2-graph-specs" {
+    __contentAddressed = true;
+    outputHashMode = "recursive";
+    outputHashAlgo = "sha256";
+    nativeBuildInputs = [pkgs.python3];
+  } ''
+    python3 ${../../scripts/buck-graph-to-specs.py} ${graph}/graph.json "$out"
+  '';
 
   sourcesDrv = pkgs.stdenv.mkDerivation {
     name = "cider-buck2-sources";

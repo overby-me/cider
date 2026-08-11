@@ -139,8 +139,6 @@
     }
     // lib.optionalAttrs (ld64 != null) {"@LD64@" = "${ld64}";};
 
-  fill = str: lib.replaceStrings (lib.attrNames placeholders) (lib.attrValues placeholders) str;
-
   # The context has to come off before parsing: an argv names its tools by absolute store
   # path, so the file's text refers to store paths, and fromJSON refuses a string that
   # does. Nothing is lost -- the dependency is re-declared as nativeBuildInputs below.
@@ -163,19 +161,36 @@
     (builtins.readFile "${graph.sources}/sources.json")
   );
 
-  # One escape per DISTINCT argument rather than one per occurrence. Measured over a graph
-  # dump: 208,515 argv entries across the actions and 5,193 of them distinct, so 97.5
-  # percent are repeats -- the same compiler, the same -I flags, the same isysroot, once
-  # per compile. Both fill and escapeShellArg are pure functions of the string, so the
-  # emitted command line is identical either way; an eval profile put 12 percent of the
-  # evaluation on that one map.
-  escArgCache = builtins.listToAttrs (map (x: {
-    name = x;
-    value = lib.escapeShellArg (fill x);
-  }) (lib.concatMap (a: a.argv) (g.actions or [])));
-  # The fallback is for an argv that never appeared in g.actions, which should not happen
-  # and must not become a silent evaluation error if it does.
-  escArg = x: escArgCache.${x} or (lib.escapeShellArg (fill x));
+  # THE ARGV ESCAPE CACHE LIVED HERE and is gone with #66. It memoised
+  # `escapeShellArg (fill x)` over the 208,515 argv entries, of which 5,193 were distinct,
+  # and an eval profile still put 12 percent of the evaluation on that one map. Escaping now
+  # happens once, inside the graph derivation, in scripts/buck-graph-to-specs.py -- so the
+  # cache has nothing left to memoise and neither does the map it was hiding.
+  #
+  # `fill` goes with it. The placeholders are no longer substituted into the text at all;
+  # they survive as ${CIDER_PH_*} shell variables the builder exports. See the action-script
+  # block below.
+
+  # #66. THESE TWO MUST MATCH scripts/buck-graph-to-specs.py EXACTLY, and they are the only
+  # coupling between this file and the generator, so they are stated together here rather
+  # than being spread out. A mismatch is silent in the worst way: specName picks the wrong
+  # file and the target runs another target's actions.
+  #
+  # phVar mirrors ph_var: @CLANG@ becomes CIDER_PH_CLANG.
+  phVar = k: "CIDER_PH_" + (lib.removeSuffix "@" (lib.removePrefix "@" k));
+
+  # specName mirrors safe_name: every character outside [A-Za-z0-9_.-] becomes an underscore.
+  # The generator asserts this mapping is INJECTIVE over the real group set, because two
+  # groups colliding here would silently share one script.
+  specSafeChars =
+    lib.stringToCharacters
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.-";
+  specName = label:
+    lib.stringAsChars (c:
+      if lib.elem c specSafeChars
+      then c
+      else "_")
+    label;
 
   # The same crate sources the graph derivation analysed against, from the same lock files.
   rustVendor = import ./rust-vendor.nix {inherit pkgs;};
@@ -1168,27 +1183,24 @@
   drvs = lib.mapAttrs (label: actions: let
     needs = needsOf label;
     outs = lib.unique (lib.concatMap (a: a.outputs) actions);
-    # Which of this target's actions may run CONCURRENTLY. JavaScriptCore_obj is 1,088
-    # cxx_compile actions in one derivation and ran them one at a time, 54 minutes with 21
-    # cores idle, which was a quarter of the whole endpoint build for one target.
+    # WHICH ACTIONS MAY RUN CONCURRENTLY is now decided in the generator (#66), and the rule
+    # is unchanged, so it is recorded here where the reason for it lives. JavaScriptCore_obj
+    # is 1,088 cxx_compile actions in one derivation and ran them one at a time, 54 minutes
+    # with 21 cores idle, a quarter of the whole endpoint build for one target.
     #
     # The test is a set membership and needs no ordering pass: the actions are in buck2's
     # topological order, so an input produced by THIS target necessarily comes from an
-    # earlier action. An action that reads none of its siblings' outputs therefore depends
-    # on nothing already launched and is safe to run in the background; one that does reads
+    # earlier action. An action that reads none of its siblings' outputs therefore depends on
+    # nothing already launched and is safe to run in the background; one that does reads
     # something a sibling wrote, so everything outstanding has to land first.
     #
     # Conservative in the safe direction: such an action waits for ALL outstanding work, not
     # just for the sibling it actually needs. For the shape this targets, many compiles and
     # then one archive or link, that costs nothing.
-    ownOutputs = builtins.listToAttrs (lib.concatMap (a:
-      map (o: {
-        name = o;
-        value = true;
-      })
-      a.outputs)
-    actions);
-    readsSibling = a: lib.any (i: ownOutputs ? ${i}) a.inputs;
+    #
+    # buck-graph-to-specs.py emits _spawn or _drain per action from exactly that rule.
+    # Verified against a re-derivation of it over all 1,474 groups: 0 scripts with a
+    # misplaced _drain, and a control that deletes one _drain is caught.
   in
     pkgs.runCommand (drvName label) {
       nativeBuildInputs =
@@ -1334,24 +1346,36 @@
       }
       _drain() { while [ "$_running" -gt 0 ]; do _reap; done; }
 
-      ${lib.concatMapStrings (a: ''
-        ${lib.concatMapStrings (o: ''
-          mkdir -p "$(dirname ${lib.escapeShellArg o})"
-        '')
-        a.outputs}
-        echo "  ${a.identity}"
-        ${
-          if readsSibling a
-          then ''
-            _drain
-            ${lib.concatStringsSep " " (map escArg a.argv)}
-          ''
-          else ''
-            _spawn ${lib.concatStringsSep " " (map escArg a.argv)}
-          ''
-        }
-      '')
-      actions}
+      # #66: THE ACTION SCRIPT IS READ, NOT COMPUTED HERE. It used to be a concatMapStrings
+      # over every action, escaping every argv element and running replaceStrings over each
+      # for the placeholders: per-argv work across 208,515 entries, in the EVALUATOR, on
+      # every invocation. scripts/buck-graph-to-specs.py now renders it inside the graph
+      # derivation, which already runs, and this reads the result.
+      #
+      # WHY IT IS EMBEDDED RATHER THAN SOURCED, which is the whole design question here and
+      # was got wrong first. Sourcing ''${graph.specs}/<name>.sh looks better -- the drv stays
+      # tiny -- but graph.specs is ONE store path covering ALL 1,474 scripts, so changing a
+      # single action moves it and every target's build command with it. That is a universal
+      # rebuild on any BUCK edit, which is #37 again and undoes what #50, #53 and #55 bought.
+      # Embedding the text keeps the granularity exactly where it was: a target's drv changes
+      # only when ITS OWN script changes. The drv is no bigger than before either, because
+      # this is the same text the old concatMapStrings produced.
+      #
+      # THE CONTEXT COMES OFF for the same reason it does on graph.json above: keeping it
+      # would make every target depend on graph.specs and reintroduce the cascade the
+      # embedding exists to avoid. Nothing is lost, since the text is self-contained.
+      #
+      # THE PLACEHOLDERS STAY AS SHELL VARIABLES rather than being substituted. The script
+      # says ''${CIDER_PH_CLANG} where the argv said @CLANG@, so the graph stays portable, the
+      # text names no store path, and this consumer fills them from its OWN inputs with the
+      # same values `fill` used. A clang bump therefore does not rewrite 8,704 command lines.
+      # (Escaped above because a # does NOT start a comment inside a Nix indented string: the
+      # whole block is one string, so a bare dollar-brace here is Nix antiquotation.)
+      ${lib.concatStringsSep "\n" (lib.mapAttrsToList
+        (k: v: "export ${phVar k}=${lib.escapeShellArg v}")
+        placeholders)}
+      ${builtins.unsafeDiscardStringContext
+        (builtins.readFile "${graph.specs}/${specName label}.sh")}
       _drain
 
       # Everything this target produced, at the SAME relative paths, so a consumer can
