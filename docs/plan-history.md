@@ -865,3 +865,35 @@ TWO HARNESS BUGS ON THE WAY, both of which made a correct map look broken:
     all, because resolution replaces input drvs with their content-addressed outputs. Reading
     that one reports zero references and looks like a total mismatch.
 
+### Where the endpoint's remaining evaluation actually goes (2026-08-11)
+
+#66 removed the action-script rendering from the evaluator, worth 0.6 s. The obvious next move
+was to emit the WHOLE builderScript from the generator. Measured first, and the measurement
+says that would be a poor trade.
+
+Endpoint evaluation, `nix eval .#cider-buck2-prefix-min.drvPath`, three runs each, warm:
+
+    baseline                      14.85  15.08  15.05
+    staging reference removed     11.89   9.17   9.37   (first is cold after the edit)
+
+SO THE STAGING DERIVATIONS ARE ABOUT 5.7 s OF ~15 s, roughly 38 percent, and they are the
+largest single remaining chunk. Emitting the builderScript from the generator does NOT remove
+them: `stageProjectFor label` builds a Nix DERIVATION per group, and the script text is only
+one line of the builder that names its store path and executes it.
+
+THE REDUNDANCY IS THE INTERESTING PART. gate16 built 65 buck2-stage-project-grouped
+derivations, so 1,474 labels produce 65 distinct scripts. stageGroupsFor keys on the label's
+source GROUPS and shallow list, both small sets, so labels sharing those share the script
+entirely. Computing it per label is about 22x redundant.
+
+WHAT THAT MEANS FOR #66. The remaining eval cost is not mostly script assembly, so porting the
+builder text to the generator is worth less than it looks. Memoising the staging derivation on
+(groups, shallow) is a smaller change aimed at a bigger number, and it is independent of the
+dynamic-derivation work.
+
+THE RISK IF IT IS DONE. A memo key that misses something the script depends on makes two groups
+SHARE a script that should differ, which is wrong staging: it does not fail at eval, it fails
+much later as a missing file in somebody else's compile. The check is to compare the per-label
+stage script store path before and after and require every one to be unchanged, not to run the
+ladder and see green.
+
