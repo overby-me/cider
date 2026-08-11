@@ -154,6 +154,14 @@ in {
     + " minfields=" + toString (lib.foldl' lib.min 99 fields)
     + " maxfields=" + toString (lib.foldl' lib.max 0 fields);
 
+  # ONE TARGET THROUGH THE BRIDGE, forced, and nothing else. This is the comparison that could
+  # still separate the two routes: the LOWERING parses the whole of full.json to build a single
+  # target, because the scripts live in one file, while specDir mode reads only `names` and
+  # `deps.json` and leaves each spec as a file the producer copies. Whether that matters is a
+  # measurement, not an argument, and it is the one asymmetry left after the full-graph eval
+  # costs came out a wash.
+  oneProbe = builtins.seq everything.producers.${specName label}.drvPath "one";
+
   # nix eval .#cider-buck2-prefix-min --apply ... is awkward for this, so it is an attribute:
   #   nix eval --raw -f ... scaleProbe
   # It returns the number of producers whose derivation was instantiated.

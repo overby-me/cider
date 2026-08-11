@@ -701,6 +701,17 @@
       #   nix build .#cider-buck2-dyn-gen-all --no-link -L
       # The pairs data checkAll reads, counted at evaluation. Builds nothing.
       #   nix eval --raw .#cider-buck2-dyn-gen-pairs
+      # ONE TARGET through the bridge, forced and nothing else, against
+      # .#cider-buck2-one.drvPath which is the same single target through the lowering.
+      #   nix eval --raw .#cider-buck2-dyn-gen-one
+      packages.cider-buck2-dyn-gen-one = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//darwin/libsimple:libsimple_ciderd";
+        })
+        .oneProbe;
+
       packages.cider-buck2-dyn-gen-pairs = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;

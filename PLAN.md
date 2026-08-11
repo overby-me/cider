@@ -380,9 +380,20 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
   is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
   every *other* derivation is invisible to it.
-- **STILL OPEN.** Building 1,474 emitted groups, and whether the prefix comes out identical
-  that way, is unmeasured and is an hour-class build. Whether the bridge REPLACES the lowering
-  or stays a second route is not answered by anything measured yet.
+- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE.** All 1,474 producers and all 1,474
+  emitted actions ran, prefix action included. The comparison found 0 files present in one tree
+  and not the other, 3 binaries differing, and all 3 by `__DATE__`: stdenv sets
+  `SOURCE_DATE_EPOCH` in its SETUP SCRIPT rather than as a derivation attribute, so it is
+  invisible in the lowered derivation env and an emitted action never gets it. The other 57 diff
+  lines were the check following dangling symlinks that are IDENTICAL in both trees.
+- **THE ADAPTER CONSUMES THE LOWERING, it does not replace it,** and that is why every eval
+  comparison came out a wash. `cider-dyn-gen.nix` takes `tools`, `stageScript`, `treeScripts`
+  and `deps` from `lowered.drvs.<label>.passthru`, so forcing an emitted producer forces the
+  lowered derivation too. The emitted route is the lowering PLUS the producers. So B today is a
+  VERIFICATION of the bridge against real actions at full scale, not a replacement path.
+- **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting or
+  rebuilding the toolchain list, the staging script and the staged tree scripts, which is a
+  chunk of the lowering reimplemented. Nothing measured says what that would cost or save.
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
 - **D.1** `scripts/oracle.nu <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
