@@ -15,6 +15,16 @@
 #
 #   scripts/buck-mig-epoch-check.nu
 #
+# WHAT THE FAILING STATE LOOKED LIKE, so this is anchored to an artifact rather than to a
+# description. Before patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch, the
+# same stubs read
+#
+#     * stub generated Tue Aug 11 18:57:26 2026    and    * stub generated Tue Aug 11 13:19:33 2026
+#
+# in two builds of the SAME inputs, those being the times each build ran. After it they read
+# * stub generated Tue Jan  1 00:00:00 1980, which is SOURCE_DATE_EPOCH 315532800. So this
+# check demonstrably distinguishes the two states; it is not a zero nobody has seen fail.
+#
 # THE CONTROL IS BUILT IN, and it is the half that matters: the check first asserts the
 # "stub generated" line EXISTS. Without that, a migcom that stopped emitting the line at all,
 # or a renamed output, would make the date assertion vacuously true and the guard would report
