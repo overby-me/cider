@@ -390,6 +390,16 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   text, so count nix-level failures instead; and this endpoint spends about **17 minutes**
   between launch and its first `building` line, with zero children and a near-idle daemon,
   which is the CA resolution pass and is indistinguishable from a hang while it runs.
+- **THE ENDGAME COSTS ABOUT 55s OF BUILD, so it is worth building.** Every emitted action
+  needs a producer derivation running `nix derivation add` in a recursive-nix sandbox, and
+  `nix/lib/dyn-actions-scale-toy.nix` prices it: quiet, 22 cores, n=64/128/256 gives 0.039 and
+  0.036s per producer, so ~55s at 1,474 groups against the ~12.95s of evaluation removed. Paid
+  once per graph change, not per invocation, so it breaks even after four or five evaluations.
+  THE FIRST MEASUREMENT SAID 0.57s AND 14 MINUTES and argued the opposite. It was taken beside
+  a running gate with every core busy, so the producers could not overlap and it priced
+  contention; it came out convincingly LINEAR, which is what made it credible. The tell was in
+  the data before the re-run: n=4 measured slower than n=16, which only happens if they were
+  overlapping. **Never price a parallel thing on a busy machine.**
 - **STILL OPEN, and A and B DO NOT YET MEET.** Tested 2026-08-11: `nix derivation add`
   rejects the adapter's `<name>.json` with "Expected JSON object to contain key 'name'".
   `specDir` mode wants a DERIVATION; the adapter writes the action data a derivation would be
