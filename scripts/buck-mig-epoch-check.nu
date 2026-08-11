@@ -26,20 +26,15 @@ def main [
 ] {
   print "== does migcom honour SOURCE_DATE_EPOCH? (#95) =="
 
-  let expr = $"l: l.drvs.\"($label)\""
-  let b = (do -i { ^nix build $endpoint --apply $expr --no-link --print-out-paths } | complete)
+  # THROUGH THE ATTRIBUTE PATH. nix build has no --apply, so the group is named directly; the
+  # label needs quoting because it carries slashes and a colon.
+  let b = (do -i { ^nix build $"($endpoint).drvs.\"($label)\"" --no-link --print-out-paths } | complete)
   if $b.exit_code != 0 {
-    # --apply does not work with nix build, so build through the attribute path instead.
-    let alt = (do -i { ^nix build $"($endpoint).drvs.\"($label)\"" --no-link --print-out-paths } | complete)
-    if $alt.exit_code != 0 {
-      print "FAIL: could not build the mig group"
-      print -e ($alt.stderr | lines | last 12 | str join "\n")
-      exit 1
-    }
-    check_out ($alt.stdout | lines | last)
-  } else {
-    check_out ($b.stdout | lines | last)
+    print "FAIL: could not build the mig group"
+    print -e ($b.stderr | lines | last 12 | str join "\n")
+    exit 1
   }
+  check_out ($b.stdout | lines | last)
 }
 
 def check_out [out: string] {

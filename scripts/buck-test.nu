@@ -341,6 +341,23 @@ def main [flag?: string] {
         say (indent7 ($names.stdout + $names.stderr | str substring 0..2000))
     }
 
+    # DOES migcom STILL HONOUR SOURCE_DATE_EPOCH? #95. It stamped the wall clock into every
+    # generated stub, so two builds of the same inputs at different times produced different
+    # bytes, and under content addressing that defeats early cutoff for everything downstream
+    # of a mig group. 110 of 1,474 groups were affected.
+    #
+    # THE ONLY THING THAT CAUGHT IT was an hour-class full-graph diff. This builds ONE mig
+    # group, so it belongs in the fast loop. It touches nix, so it reports and continues like
+    # the staging check rather than failing the suite on a slow graph.
+    say "== migcom and SOURCE_DATE_EPOCH (#95) =="
+    let migep = (do -i { ^./scripts/buck-mig-epoch-check.nu } | complete)
+    if $migep.exit_code == 0 {
+        ok "migcom stamps the epoch, so the mig groups stay reproducible"
+    } else {
+        bad $"mig epoch check FAILED, exit ($migep.exit_code), see the output below"
+        say (indent7 ($migep.stdout + $migep.stderr | str substring 0..2000))
+    }
+
     # THE PATCH WIRING, third of the cheap ones, and the same silent shape a layer along.
     #
     # Patches are applied when patches/<basename or override> HAPPENS TO EXIST, so a renamed
