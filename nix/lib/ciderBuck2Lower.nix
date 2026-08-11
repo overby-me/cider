@@ -803,6 +803,36 @@
       );
   };
 
+  # HOISTED OUT OF THE PER-TARGET let, where it was computed 1,474 times for ONE answer. It is
+  # a fixed list plus extraTools plus an optional ld64, and none of those depends on the label,
+  # which is not obvious from where it used to sit. MEASURED rather than assumed: dumping
+  # passthru.tools for every label gives exactly ONE distinct 33-package set across all 1,474.
+  #
+  # Same shape as #94, where the staging derivation was computed 1,474 times for 65 distinct
+  # results. The value is unchanged, so scripts/buck-lowering-invariance-check.nu must report
+  # zero moved fingerprints, and that is the check this hoist is verified by.
+  targetTools =
+    [
+      pkgs.clang
+      # The guest compiler the graph derivation selected, named by absolute path in the
+      # argv: its store path has no string context by the time it arrives here, so the
+      # dependency has to be declared or the sandbox will not have it.
+      pkgs.llvmPackages.clang-unwrapped
+      pkgs.llvmPackages.bintools
+      pkgs.python3
+      pkgs.bison
+      pkgs.flex
+      pkgs.coreutils
+      pkgs.bash
+      # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
+      # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
+      # command names, exactly as on the daemon path, so they have to be on PATH here.
+      pkgs.rustc
+      pkgs.rust-bindgen
+    ]
+    ++ extraTools
+    ++ lib.optional (ld64 != null) ld64;
+
   # ---- the working tree an action runs in --------------------------------
 
   # As SYMLINKS, and as a SHARED script: an action only reads project files, and copying
@@ -1348,27 +1378,6 @@
     # misplaced _drain, and a control that deletes one _drain is caught.
     # THE TOOLS, hoisted out of the attrset so passthru can name them too: a Nix attrset is
     # not recursive, so `tools = nativeBuildInputs` written beside it does not resolve.
-    targetTools =
-      [
-        pkgs.clang
-        # The guest compiler the graph derivation selected, named by absolute path in the
-        # argv: its store path has no string context by the time it arrives here, so the
-        # dependency has to be declared or the sandbox will not have it.
-        pkgs.llvmPackages.clang-unwrapped
-        pkgs.llvmPackages.bintools
-        pkgs.python3
-        pkgs.bison
-        pkgs.flex
-        pkgs.coreutils
-        pkgs.bash
-        # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
-        # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
-        # command names, exactly as on the daemon path, so they have to be on PATH here.
-        pkgs.rustc
-        pkgs.rust-bindgen
-      ]
-      ++ extraTools
-      ++ lib.optional (ld64 != null) ld64;
 
     # THE BUILDER SCRIPT AS A VALUE (#66). Bound here rather than written inline at the
     # runCommand call so the ADAPTER can reach it: feeding a group through
