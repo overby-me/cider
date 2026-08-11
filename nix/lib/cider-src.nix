@@ -147,14 +147,42 @@ let
   # the graph. An hour of machine time for a tidier let block. scripts/buck-pin-store-check.nu
   # is what keeps the two honest instead, by diffing a real pin store against the real
   # assembled tree, which a shared string could not have proven anyway.
-  repointSdkLinks = findArgs: ''
+  # THE ../ COUNT IS COMPUTED FROM THE PIN'S DESTINATION DEPTH, not preserved from upstream.
+  #
+  # This used to sed `darwin/` into the target and leave the leading ../ run alone. That was
+  # right only while the pin root was TWO components: libnotify ships
+  # darling/src/notify.defs -> ../../../../../Developer/..., and five ups from
+  # src/external/libnotify/darling/src landed exactly on the repo root. #87 stage 2 made the
+  # root ONE component, so the same five ups overshoot and the link resolves to ../darwin/...,
+  # outside the tree.
+  #
+  # $out here IS the pin, so there is no repo root to be relative to and realpath cannot help:
+  # the target has to be written for where the pin will be PLANTED. That is pinPath, hence the
+  # argument. Nothing failed where the mistake was, because the graph derivation's normaliser
+  # repaired the link in passing; rung 1 and rung 2 were both green and exactly ONE lowered
+  # target of 4,563 died an hour later on "cannot read file
+  # buck-src/libnotify/notifyd/notify.defs".
+  repointSdkLinks = pinPath: findArgs: let
+    pinDepth = builtins.length (lib.splitString "/" pinPath);
+  in ''
     find ${findArgs} | while read -r l; do
       t=$(readlink "$l") || continue
       case "$t" in
         *darwin/Developer/Platforms/*) : ;;
         *Developer/Platforms/MacOSX.platform*)
-          nt=$(printf '%s' "$t" | sed 's#Developer/Platforms/MacOSX.platform#darwin/Developer/Platforms/MacOSX.platform#')
-          rm -f "$l"; ln -s "$nt" "$l" ;;
+          tail=''${t#"''${t%%[!./]*}"}          # drop the leading ../ and ./ run
+          rel=''${l#"$out/"}
+          reldir=$(dirname "$rel")
+          n=${toString pinDepth}
+          if [ "$reldir" != "." ]; then
+            n=$(( n + $(printf '%s' "$reldir" | tr -cd / | wc -c) + 1 ))
+          fi
+          up=""; i=0
+          while [ "$i" -lt "$n" ]; do up="../$up"; i=$((i+1)); done
+          # darwin/ IS the point of the rewrite (task #68 moved the SDK there); the ../ count
+          # is only how you reach it. Dropping it while fixing the count produced a link with
+          # the right depth and the wrong destination, which the first artifact check caught.
+          rm -f "$l"; ln -s "''${up}darwin/$tail" "$l" ;;
       esac
     done
   '';
@@ -200,7 +228,7 @@ let
           patch -p1 -d "$out" --force < "$p"
         done
       ''
-      + repointSdkLinks "\"$out\" -type l -print");
+      + repointSdkLinks e.path "\"$out\" -type l -print");
 
   # Shell to overlay one fetched submodule and apply its patches.
   overlayOne = e: let
@@ -261,12 +289,32 @@ pkgs.runCommand "cider-src"
     # = darwin/darwin/... and dangles them -- this silently broke all 141 framework-include
     # links (and thus <CoreFoundation/...> et al.). Only the fetched pins outside darwin/
     # carry stale root-relative Developer/ targets that actually need the rewrite.
+    # THE ../ COUNT IS RECOMPUTED, NOT PRESERVED, and #87 stage 2 is why. This used to
+    # sed `darwin/` into the target and leave the leading ../ run alone, which was right
+    # only because the pin root was TWO components: libnotify's
+    # darling/src/notify.defs ships ../../../../../Developer/..., and five ups from
+    # src/external/libnotify/darling/src landed exactly on the repo root. Under a
+    # ONE-component pins/ root the same five ups overshoot by one, the link resolves to
+    # ../darwin/... outside the tree, and it dangles.
+    #
+    # Nothing failed where the mistake was: the graph derivation's normaliser repaired it
+    # in passing, so rung 1 and rung 2 were both green and ONE lowered target out of 4,563
+    # died an hour later with "cannot read file buck-src/libnotify/notifyd/notify.defs".
+    #
+    # These targets are ROOT-RELATIVE by construction (that is what the leading ../ run
+    # means here), so the honest fix is to say where the file actually is and let realpath
+    # work out how to get there from this particular link. Depth-independent, so the next
+    # root move does not need to find this line.
     find "$out" -path "$out/darwin" -prune -o -type l -print | while read -r l; do
       t=$(readlink "$l") || continue
       case "$t" in
         *darwin/Developer/Platforms/*) : ;;
-        *Developer/Platforms/MacOSX.platform*)
-          nt=$(printf '%s' "$t" | sed 's#Developer/Platforms/MacOSX.platform#darwin/Developer/Platforms/MacOSX.platform#')
+        */Developer/Platforms/MacOSX.platform*)
+          tail=''${t#"''${t%%[!./]*}"}          # drop the leading ../ and ./ run
+          nt=$(realpath -m --relative-to="$(dirname "$l")" "$out/darwin/$tail")
+          rm -f "$l"; ln -s "$nt" "$l" ;;
+        Developer/Platforms/MacOSX.platform*)
+          nt=$(realpath -m --relative-to="$(dirname "$l")" "$out/darwin/$t")
           rm -f "$l"; ln -s "$nt" "$l" ;;
       esac
     done
