@@ -73,6 +73,16 @@
   in
     {
       CIDER_PATH = lib.makeBinPath (d.passthru.tools ++ stdenvBasics);
+
+      # WHAT stdenv SETS IN ITS SETUP SCRIPT RATHER THAN AS AN ATTRIBUTE, which is why it is
+      # invisible in the lowered derivation env and was missed. nixpkgs setup line 593 reads
+      # : "${SOURCE_DATE_EPOCH:=315532800}", and 315532800 is 1980-01-01 UTC.
+      #
+      # FOUND BY THE FULL-GRAPH DIFF and by nothing smaller: three binaries out of the whole
+      # prefix embed __DATE__, and the emitted ones said Aug against the lowered Jan. An
+      # emitted action has no setup script, so the compiler saw the real date. Everything else
+      # in the prefix was already identical.
+      SOURCE_DATE_EPOCH = "315532800";
       CIDER_STAGE = "${d.passthru.stageScript}";
       CIDER_DATA = "${lowered.graphData}";
     }
@@ -182,7 +192,7 @@ in {
     same=0
     differ=0
     while IFS="$(printf '\t')" read -r name emitted lowered; do
-      if diff -r "$emitted" "$lowered" > one.txt 2>&1; then
+      if diff -r --no-dereference "$emitted" "$lowered" > one.txt 2>&1; then
         same=$((same + 1))
       else
         differ=$((differ + 1))
@@ -220,7 +230,7 @@ in {
 
     # DIFFED, not merely built. A group that builds and produces the wrong bytes is the failure
     # this whole exercise is trying to rule out.
-    if ! diff -r "$emitted" "$lowered" > diff.txt 2>&1; then
+    if ! diff -r --no-dereference "$emitted" "$lowered" > diff.txt 2>&1; then
       echo "FAIL: the emitted output differs from the lowered one" >&2
       head -40 diff.txt >&2
       exit 1
