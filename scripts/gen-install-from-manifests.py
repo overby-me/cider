@@ -452,6 +452,34 @@ def flatten(rel: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel)
 
 
+def moved_path(rel: str) -> str:
+    """A reference source path, moved to where #87 stage 1 put it.
+
+    The install manifests come from the FROZEN reference, which names first-party trees under
+    src/. #87 emptied src/ into darwin/ and linux/, so those paths no longer resolve and every
+    file under them read as "is in no package": 14 entries went UNMAPPED, among them launchd's
+    two man pages, shellspawn's plist, xtrace, the three dirserv tools and CoreAudio's component
+    resources. Nothing was broken in the build, only in the mapping BETWEEN the reference and
+    the tree, which is why no gate could see it.
+
+    DERIVED FROM THE TREE rather than from a copy of the 52 name mapping, exactly as the
+    corresponding fallback in gen-buck-from-ninja.repo_path is: if src/<rest> is gone and one of
+    darwin/<rest> or linux/<rest> is there, that is where it went.
+
+    src/external is excluded because the pins have NOT moved; stage 2 would move them, and an
+    unmaterialized pin is absent from disk too, so redirecting on absence would be wrong there.
+    """
+    if not rel.startswith("src/") or rel.startswith("src/external/"):
+        return rel
+    if os.path.lexists(os.path.join(REPO, rel)):
+        return rel
+    rest = rel[len("src/"):]
+    for dest in ("darwin", "linux"):
+        if os.path.lexists(os.path.join(REPO, dest, rest)):
+            return f"{dest}/{rest}"
+    return rel
+
+
 def owning_package(rel: str) -> str | None:
     """The nearest ancestor package that can declare this file, or None."""
     d = os.path.dirname(rel)
@@ -480,6 +508,9 @@ def file_label(rel: str):
         # holds every materialized pin), the path is recorded as a HINT, which is the same
         # arrangement scripts/buck-split-pins.py uses.
         return (f"//buck-src:{flatten(f'{pin}/{within}')}", "buck-src")
+    # Both the package lookup and the label below need the CURRENT path, not the reference one:
+    # relpath against the new package with the old path would spell a label full of ../.
+    rel = moved_path(rel)
     pkg = owning_package(rel)
     if pkg is None:
         return (None, None)
