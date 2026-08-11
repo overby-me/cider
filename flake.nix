@@ -699,6 +699,16 @@
       # building 1,474 emitted groups only shows they build. Hour class.
       #
       #   nix build .#cider-buck2-dyn-gen-all --no-link -L
+      # The pairs data checkAll reads, counted at evaluation. Builds nothing.
+      #   nix eval --raw .#cider-buck2-dyn-gen-pairs
+      packages.cider-buck2-dyn-gen-pairs = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck/prefix-min:cider_prefix_min";
+        })
+        .pairsShape;
+
       packages.cider-buck2-dyn-gen-all = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;

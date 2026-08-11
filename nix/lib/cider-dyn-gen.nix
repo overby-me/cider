@@ -116,8 +116,33 @@
       else envFor l;
   };
   allByName = lib.listToAttrs (map (l: lib.nameValuePair (specName l) l) allNames);
+  # EVERY GROUP, PAIRED WITH ITS LOWERED COUNTERPART, in a file rather than in the script.
+  #
+  # THE FILE IS NOT TIDINESS. 1,474 pairs of store paths is about 200 KB, and a runCommand
+  # puts its script in the ENVIRONMENT, where Linux caps a single string at MAX_ARG_STRLEN,
+  # 131,072 bytes. Writing the pairs into the script would fail to exec with "Argument list too
+  # long", which is exactly the limit the bridge itself hit at 89 of these same groups.
+  pairsFile = pkgs.writeText "cider-dyn-gen-pairs" (lib.concatMapStrings (l:
+    specName l + "\t" + everything.outputs.${specName l} + "\t" + "${lowered.drvs.${l}}" + "\n")
+  allNames);
+
 in {
-  inherit bridge members specDir;
+  inherit bridge members specDir pairsFile;
+
+  # THE PAIRS DATA, counted at EVALUATION so the file can be checked without building anything
+  # that reads it. A malformed pairs file would make checkAll compare fewer groups than it
+  # claims, and it reports its own count, so this is what makes that count trustworthy.
+  pairsShape = let
+    text = lib.concatMapStrings (l:
+      specName l + "\t" + everything.outputs.${specName l} + "\t" + "${lowered.drvs.${l}}" + "\n")
+    allNames;
+    lines = lib.filter (x: x != "") (lib.splitString "\n" text);
+    fields = map (l: lib.length (lib.splitString "\t" l)) lines;
+  in
+    "lines=" + toString (lib.length lines)
+    + " expected=" + toString (lib.length allNames)
+    + " minfields=" + toString (lib.foldl' lib.min 99 fields)
+    + " maxfields=" + toString (lib.foldl' lib.max 0 fields);
 
   # nix eval .#cider-buck2-prefix-min --apply ... is awkward for this, so it is an attribute:
   #   nix eval --raw -f ... scaleProbe
@@ -146,19 +171,40 @@ in {
   # THE COMPARISON IS THE POINT. Building 1,474 emitted groups only shows they build; diffing
   # the top target against the lowered one is what says the two routes agree, and that is the
   # question the endpoint decision turns on.
+
   checkAll = pkgs.runCommand "cider-dyn-gen-all" {} ''
     echo "--- ${toString (lib.length allNames)} groups, specs from ${specDir}"
-    emitted=${everything.outputs.${specName label}}
-    lowered=${lowered.drvs.${label}}
-    echo "--- emitted $emitted"
-    if ! diff -r "$emitted" "$lowered" > diff.txt 2>&1; then
-      echo "FAIL: the emitted output differs from the lowered one" >&2
-      head -60 diff.txt >&2
+
+    # DIFFED PER GROUP, not only at the top target. A single diff of the prefix says the two
+    # routes disagree and nothing about WHERE, and it can only see a difference that propagates
+    # that far: a group whose output differs in something the prefix does not install would
+    # pass. Both outputs are realised either way, so this costs IO and no build.
+    same=0
+    differ=0
+    while IFS="$(printf '\t')" read -r name emitted lowered; do
+      if diff -r "$emitted" "$lowered" > one.txt 2>&1; then
+        same=$((same + 1))
+      else
+        differ=$((differ + 1))
+        if [ "$differ" -le 5 ]; then
+          echo "DIFFERS: $name" >&2
+          head -20 one.txt >&2
+        fi
+      fi
+    done < ${pairsFile}
+
+    echo "--- identical $same, differ $differ"
+    if [ "$differ" != 0 ]; then
+      echo "FAIL: $differ group(s) built differently through the emitted route" >&2
       exit 1
     fi
-    n=$(find "$emitted" -type f | wc -l)
-    echo "OK the whole graph emitted, top target matches lowered, $n file(s)" > $out
+    if [ "$same" != ${toString (lib.length allNames)} ]; then
+      echo "FAIL: compared $same groups, expected ${toString (lib.length allNames)}" >&2
+      exit 1
+    fi
+    echo "OK the whole graph emitted, all $same group(s) match the lowered route" > $out
   '';
+
 
   check = pkgs.runCommand "cider-dyn-gen-check" {} ''
     echo "--- cone of ${toString (lib.length members)}: ${lib.concatStringsSep " " members}"
