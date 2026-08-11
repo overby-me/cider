@@ -1,5 +1,5 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the three things #66 depends on?
+# Do dynamic derivations still do the four things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
@@ -19,6 +19,12 @@
 #      missing paths; not yet implemented", which sounds fatal and is not: it is the planning
 #      pass. Verified by deleting the output and serving it from a file:// cache. This matters
 #      because #50/#55 exist to produce a per-action cache a binary cache can serve.
+#   4. AN EMITTED DERIVATION CAN CONSUME ANOTHER ONE'S OUTPUT. cider's groups are a DAG, so a
+#      bridge that only does independent actions is no use here whatever else works. Unlike
+#      1 to 3 this is a property of nix/lib/dyn-actions.nix rather than of Nix, and it was
+#      silently broken until 2026-08-11: inputSrcs went to `nix derivation add` as a full
+#      store path, which it rejects, so no declared source had ever worked. It could not be
+#      caught by watching which builders ran, because the build ORDER was right either way.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -102,8 +108,35 @@ def main [] {
     # rebuilt. The warning is the planning pass; substitution itself is intact.
     say "  note substitution is not automated; the header gives the by-hand sequence"
 
+    # 4. THE DAG PROPERTY. cider's 1,474 groups depend on each other, so a bridge that only
+    # does INDEPENDENT actions is no use to #66 whatever else works. This was silently broken
+    # until 2026-08-11: inputSrcs was passed to `nix derivation add` as a full store path,
+    # which it rejects, so no declared source had ever worked and no toy noticed because none
+    # declares one. The probe reads its dependency's CONTENT rather than testing for the path,
+    # because an empty file at the right path would pass a weaker check for the wrong reason.
+    let feats = "nix-command ca-derivations dynamic-derivations recursive-nix"
+    let dep = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-dep-probe.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $dep.exit_code != 0 {
+        bad "the dependency probe does not build"
+        print -e ($dep.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        let said = (open --raw ($dep.stdout | str trim | lines | last) | str trim)
+        if ($said | str starts-with "B-SEES-A") {
+            ok $"an emitted derivation reads its dependency: ($said)"
+        } else if $said == "B-BLIND" {
+            # The exact regression the probe exists for: the build ORDER still looks right,
+            # so this cannot be caught by watching which builders ran.
+            bad "B-BLIND: an emitted derivation can no longer see its dependency's output"
+            $fails += 1
+        } else {
+            bad $"the dependency probe said something unexpected: ($said)"
+            $fails += 1
+        }
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf works and early cutoff survives it"
+        say "PASS: outputOf works, early cutoff survives it, and emitted drvs form a DAG"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
