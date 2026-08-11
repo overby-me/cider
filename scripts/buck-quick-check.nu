@@ -267,10 +267,25 @@ def main [
     # script exists to stop: under content addressing they differ on every run that changes
     # anything upstream, including runs where not one builder started.
     say $"  \(drvPath moves regardless and is not evidence either way\)"
+    # THE FULL LIST GOES TO A FILE, and that is not a nicety. build-and-count captures nix
+    # through `complete`, so the builder lines never reach this script's own stderr: the run log
+    # holds only what `say` prints. Printing the first five was fine while the answer was
+    # expected to BE about five, and useless the moment it is not, because the number alone
+    # cannot say whether the rebuild is the edited target, its dependents, or an unrelated
+    # cascade. Recovering the names afterwards is impossible without re-running the whole probe,
+    # which here is half an hour.
+    #
+    # So: every name, always, to <probe basename>.rebuilt.txt beside the working directory, and
+    # the first twenty to the log so the common case needs no second look.
     if ($after.ran > 0) {
-        let shown = ($after.drvs | first ([$after.ran, 5] | math min))
+        let listing = ($after.drvs | str join "\n")
+        let listfile = $"($probe | path basename).rebuilt.txt"
+        $listing | save -f $listfile
+        let shown = ($after.drvs | first ([$after.ran, 20] | math min))
         say "  rebuilt:"
         $shown | each {|d| say $"    ($d)" }
+        if $after.ran > 20 { say $"    ... and ($after.ran - 20) more" }
+        say $"  full list of all ($after.ran): ($listfile)"
     }
 
     if $expect_zero and $after.ran > 0 {
