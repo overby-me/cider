@@ -35,11 +35,16 @@
 #               builds a cheap producer pointing at a path.
 #
 # WHY THAT DISTINCTION EXISTS, measured on cider's own graph 2026-08-11. Its endpoint eval is
-# 14.36 s and splits into 0.21 s to readFile a 139 MB graph.json, about 2.1 s to fromJSON it,
-# and about 12 s to COMPUTE 8,704 derivations from the result. The computing is what #66
-# removes, so an adapter that made Nix re-serialise every action would hand most of that cost
-# straight back. The generator already runs inside the graph derivation and can write the
-# specs itself, which is what "emit drvs from the generator" actually means.
+# about 15 s and splits into 0.21 s to readFile a 139 MB graph.json, about 2.1 s to fromJSON
+# it, and about 12.95 s to COMPUTE its 1,474 derivations. That computing is what #66 removes,
+# so an adapter that made Nix re-serialise every action would hand most of it straight back.
+# The generator already runs inside the graph derivation and can write the specs itself, which
+# is what "emit drvs from the generator" actually means.
+#
+# ONE CORRECTION TO AN EARLIER NUMBER HERE, since it was quoted in three files: the 12 s is
+# the cost of the DERIVATIONS, not of rendering their action scripts. Moving just the script
+# rendering out was measured at 2.2 s, and reading it back costs 1.5 s. The derivations
+# themselves are where the remaining time is, which is what this file is for.
 {
   pkgs,
   # [{ name; builder; args; env ? {}; inputSrcs ? []; }]

@@ -171,6 +171,23 @@
   # they survive as ${CIDER_PH_*} shell variables the builder exports. See the action-script
   # block below.
 
+  # #66. EVERY GROUP'S ACTION SCRIPT, IN ONE READ. Keyed by specName, value is the rendered
+  # command sequence scripts/buck-graph-to-specs.py produced inside the graph derivation.
+  #
+  # ONE readFile, NOT 1,474, and the difference is 19.6 s of a 32.6 s evaluation. Reading the
+  # per-group .sh files individually cost about 13 ms each, against 0.10 s for all 1,474 read
+  # from a plain store path. The context is what differs: these come from a derivation OUTPUT
+  # which is DEFERRED, because the graph it reads is content addressed, so the real path is
+  # unknown until it is realised and every readFile resolves that again. Hoisting the path
+  # into a let does not help, because what gets hoisted is the placeholder; making the specs
+  # derivation input addressed does not help either, because the deferral comes from its
+  # input. Both were measured at 33 s before this was found.
+  #
+  # fromJSON of the 59 MB costs about a second, once, instead of nineteen.
+  scripts = builtins.fromJSON (
+    builtins.unsafeDiscardStringContext (builtins.readFile "${graph.specs}/scripts.json")
+  );
+
   # #66. THESE TWO MUST MATCH scripts/buck-graph-to-specs.py EXACTLY, and they are the only
   # coupling between this file and the generator, so they are stated together here rather
   # than being spread out. A mismatch is silent in the worst way: specName picks the wrong
@@ -1374,8 +1391,10 @@
       ${lib.concatStringsSep "\n" (lib.mapAttrsToList
         (k: v: "export ${phVar k}=${lib.escapeShellArg v}")
         placeholders)}
-      ${builtins.unsafeDiscardStringContext
-        (builtins.readFile "${graph.specs}/${specName label}.sh")}
+      ${
+        scripts.${specName label}
+        or (throw "buck2 lower: no rendered action script for ${label} (looked for ${specName label} in ${graph.specs}/scripts.json). The lowering and scripts/buck-graph-to-specs.py disagree about grouping or naming; scripts/buck-specs-check.py compares the two.")
+      }
       _drain
 
       # Everything this target produced, at the SAME relative paths, so a consumer can

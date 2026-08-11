@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """Group a dumped buck2 action graph into per-GROUP specs, the way the lowering does.
 
-THE ADAPTER HALF OF #66 (nix/lib/dyn-actions.nix is the reusable half). The lowering
-currently does this grouping in the EVALUATOR, and doing it here is the point: cider's
-endpoint eval is 14.36 s, of which 0.21 s is reading a 139 MB graph.json, about 2.1 s is
-parsing it, and about 12 s is computing derivations from the result. This moves the
-computing to a script that already runs inside the graph derivation.
+THE ADAPTER HALF OF #66 (nix/lib/dyn-actions.nix is the reusable half). The lowering did this
+grouping and rendering in the EVALUATOR; this does it once, inside the graph derivation.
+
+WHAT IT IS ACTUALLY WORTH, corrected 2026-08-11 after measuring, because the earlier claim
+here was too generous and the wrong thing was credited. The endpoint evaluates in 15.1 s.
+Removing the script rendering from the evaluator entirely, measured by rendering nothing at
+all, leaves 12.95 s. So the rendering is 2.2 s, NOT the ~12 s this file used to claim: that
+12 s is the cost of computing 1,474 DERIVATIONS, of which the action script is a small part.
+Reading the result back costs about 1.5 s, so the net is 15.1 -> 14.5 s.
+
+That is a small win, and it is kept for what it enables rather than for the 0.6 s: the specs
+are now the artifact nix/lib/dyn-actions.nix consumes, and the remaining ~12.95 s of
+per-derivation computation is what emitting the derivations themselves would remove.
 
 THE GROUPING IS COPIED FROM ciderBuck2Lower.nix AND MUST STAY IDENTICAL. If the two ever
 disagree, the adapter emits specs for groups the lowering does not have, or misses ones it
@@ -271,6 +279,7 @@ def main(argv: list[str]) -> int:
     outdir = argv[1]
     os.makedirs(outdir, exist_ok=True)
     names = []
+    scripts = {}
     for g, acts in groups.items():
         n = safe_name(g)
         names.append(n)
@@ -284,9 +293,24 @@ def main(argv: list[str]) -> int:
         # those first. That is the whole portability trade: the script names no store path,
         # and the consumer supplies them from its OWN inputs, which is what lets one graph
         # serve any machine.
-        with open(os.path.join(outdir, n + ".sh"), "w") as f:
-            f.write(action_script(acts))
+        scripts[n] = action_script(acts)
     open(os.path.join(outdir, "names"), "w").write("\n".join(names) + "\n")
+
+    # ONE FILE HOLDING EVERY GROUP'S SCRIPT, rather than one .sh per group, and the reason is
+    # measured. Per-group files were written first and the lowering read them individually:
+    # that cost 19.6 s of a 32.6 s evaluation, about 13 ms per file, against 0.10 s to read
+    # all 1,474 from a plain store path.
+    #
+    # The context is what differs. These live in a derivation OUTPUT, and that output is
+    # DEFERRED because this derivation reads a content addressed graph, so its real path is
+    # not known until it is realised and every readFile against it resolves that again.
+    # Hoisting the path into a let does not help: what gets hoisted is the placeholder.
+    # Making this derivation input addressed does not help either, because the deferral comes
+    # from its INPUT. Both were tried, and both measured 33 s.
+    #
+    # One readFile plus one fromJSON pays that resolution once, for about 1.5 s.
+    with open(os.path.join(outdir, "scripts.json"), "w") as f:
+        json.dump(scripts, f)
     print(f"wrote {len(names)} group spec(s) and script(s), {total_actions} action(s), "
           f"to {outdir}")
     return 0

@@ -490,9 +490,13 @@
   };
 
   # #66. Grouping the actions and rendering each group's command sequence, done ONCE here
-  # instead of on every evaluation. Measured on this graph: the endpoint's 14.36 s of
-  # evaluation is 0.21 s reading a 139 MB graph.json, about 2.1 s parsing it, and about 12 s
-  # computing derivations from the result. This is that computation, moved.
+  # instead of on every evaluation.
+  #
+  # WORTH 0.6 s, not the 12 s first claimed, and the correction matters because it says where
+  # the time actually is. Endpoint evaluation is 15.1 s with the lowering rendering the
+  # scripts itself and 12.95 s with the rendering removed entirely, so the rendering is 2.2 s;
+  # reading the result back is 1.5 s. The ~12.95 s that remains is computing 1,474
+  # DERIVATIONS, which is a different problem and the one still open.
   #
   # IT TAKES graph.json AND NOTHING ELSE, which is the point of it being separate: no
   # projectSrc, no pins, no buck2. So it costs about two seconds, it re-runs when the
