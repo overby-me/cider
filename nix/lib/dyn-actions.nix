@@ -25,12 +25,30 @@
 # See nix/lib/dyn-drv-probe.nix for the minimal worked example and the plumbing traps
 # (NIX_REMOTE=daemon BREAKS recursive-nix; nix must come through pkgs or it is absent from the
 # sandbox; experimental features are not inherited by the inner nix).
+#
+# TWO WAYS TO SUPPLY AN ACTION, and the second is the one that scales.
+#
+#   `actions`   a list of attrsets. Nix serialises each spec at EVAL time. Fine for a handful,
+#               and it is what the toy fixture uses.
+#   `specDir`   a directory holding one pre-serialised <name>.json per action, plus a
+#               `names` file listing them. Nix then does NO per-action serialisation: it only
+#               builds a cheap producer pointing at a path.
+#
+# WHY THAT DISTINCTION EXISTS, measured on cider's own graph 2026-08-11. Its endpoint eval is
+# 14.36 s and splits into 0.21 s to readFile a 139 MB graph.json, about 2.1 s to fromJSON it,
+# and about 12 s to COMPUTE 8,704 derivations from the result. The computing is what #66
+# removes, so an adapter that made Nix re-serialise every action would hand most of that cost
+# straight back. The generator already runs inside the graph derivation and can write the
+# specs itself, which is what "emit drvs from the generator" actually means.
 {
   pkgs,
   # [{ name; builder; args; env ? {}; inputSrcs ? []; }]
   # `name` must be unique across the list: it is both the derivation name and the key the
   # consumer looks the action up by.
-  actions,
+  actions ? null,
+  # A path holding <name>.json per action and a `names` file, one name per line. Mutually
+  # exclusive with `actions`.
+  specDir ? null,
   # The output every emitted action uses. NOT "out", for the reason in the header. Exposed so
   # a caller can avoid a collision with something in their own env, not so they can pick "out".
   outputName ? "result",
@@ -46,7 +64,18 @@
       and Nix rejects the result with "self-reference not allowed with text hashing".
     '';
 
-  names = map (a: a.name) actions;
+  assertOneSource =
+    lib.throwIf ((actions == null) == (specDir == null))
+    "dyn-actions: supply exactly one of `actions` or `specDir`";
+
+  # With specDir the names come off disk and NO spec is serialised in the evaluator, which is
+  # the whole reason that mode exists. See the header for the measurement.
+  fromDir = specDir != null;
+  names =
+    if fromDir
+    then lib.filter (s: s != "") (lib.splitString "\n" (builtins.readFile "${specDir}/names"))
+    else map (a: a.name) actions;
+
   assertUnique =
     lib.throwIf (lib.length (lib.unique names) != lib.length names)
     "dyn-actions: action names must be unique; they key the consumer lookup";
@@ -84,19 +113,32 @@
   # producer would rebuild every .drv whenever any action changed, which throws away the early
   # cutoff that makes this worth doing at all. Per action, a changed action re-emits only its
   # own drv and every other consumer stops at the cutoff.
-  producerOf = a:
+  # How the builder gets its spec. In specDir mode Nix NEVER reads or serialises it: the
+  # interpolation is a store path, so the evaluator's whole job per action is one cheap
+  # derivation. That is the difference between this scaling and not.
+  writeSpec = n:
+    if fromDir
+    then "cp ${specDir}/${n}.json spec.json"
+    else "printf '%s' ${lib.escapeShellArg (specOf (actionOf n))} > spec.json";
+
+  actionOf = n:
+    lib.findFirst (a: a.name == n)
+    (throw "dyn-actions: no action named ${n}")
+    actions;
+
+  producerOf = n:
     derivation {
       inherit system;
-      name = "${a.name}.drv";
+      name = "${n}.drv";
       builder = "/bin/sh";
       args = [
         "-c"
         ''
           export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:$PATH
-          printf '%s' ${lib.escapeShellArg (specOf a)} > spec.json
+          ${writeSpec n}
           emitted=$(nix --extra-experimental-features \
             "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \
-            || { echo "dyn-actions: derivation add failed for ${a.name}" >&2; exit 1; }
+            || { echo "dyn-actions: derivation add failed for ${n}" >&2; exit 1; }
           cp "$emitted" "$out"
         ''
       ];
@@ -106,9 +148,9 @@
       requiredSystemFeatures = ["recursive-nix"];
     };
 
-  producers = lib.listToAttrs (map (a: lib.nameValuePair a.name (producerOf a)) actions);
+  producers = lib.listToAttrs (map (n: lib.nameValuePair n (producerOf n)) names);
 in
-  assertNotOut (assertUnique {
+  assertOneSource (assertNotOut (assertUnique {
     # The emitted .drv per action, before realisation. Useful for inspection and for tests.
     inherit producers;
 
@@ -120,4 +162,4 @@ in
       producers;
 
     inherit outputName;
-  })
+  }))
