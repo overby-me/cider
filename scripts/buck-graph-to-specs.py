@@ -89,6 +89,49 @@ def group_specs(graph: dict, coarse_pins: bool = True) -> dict:
     return groups
 
 
+_SAFE = re.compile(r"^[A-Za-z0-9,._+:@%/-]+$")
+
+
+def esc(s: str) -> str:
+    """Shell-escape one argv element, byte for byte as nixpkgs lib.escapeShellArg does.
+
+    IT DOES NOT ALWAYS QUOTE, which is the whole reason this is a function and not a format
+    string. Modern nixpkgs leaves a string bare when it matches [[:alnum:],._+:@%/-]+ and
+    only single-quotes otherwise. Assuming it always quoted produced a script that differed
+    from the lowering's on EVERY line while being perfectly valid shell, which is the kind of
+    difference that survives testing and then shows up as every derivation moving.
+    """
+    if _SAFE.match(s):
+        return s
+    return "'" + s.replace("'", r"'\''") + "'"
+
+
+def action_script(actions: list) -> str:
+    """The per-group action sequence, byte-identical to what the lowering renders.
+
+    THE _drain BRANCH IS THE WHOLE SUBTLETY. Independent actions run concurrently through
+    _spawn; one that reads an output THIS group produces must wait for everything in flight,
+    hence _drain before it. The lowering computes that as `any input is in the group's own
+    output set`, which is sound only because the action list is topological, so an input
+    produced by this group necessarily came from an earlier action.
+    """
+    own = set()
+    for a in actions:
+        own.update(a["outputs"])
+
+    out = []
+    for a in actions:
+        for o in a["outputs"]:
+            out.append(f'mkdir -p "$(dirname {esc(o)})"\n')
+        out.append(f'echo "  {a["identity"]}"\n')
+        cmd = " ".join(esc(x) for x in a["argv"])
+        if any(i in own for i in a["inputs"]):
+            out.append(f"_drain\n{cmd}\n")
+        else:
+            out.append(f"_spawn {cmd}\n")
+    return "".join(out)
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         sys.exit(__doc__)
