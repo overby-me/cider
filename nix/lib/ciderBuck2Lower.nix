@@ -1247,7 +1247,11 @@
     # nix/lib/dyn-actions.nix needs exactly this text, and a second assembly of it
     # somewhere else would be a copy to keep in step. Moving it changed no bytes, which
     # was verified the only way that counts: the endpoint rebuilt NOTHING afterwards.
-    builderScript = ''
+    # PARAMETERISED ON WHERE A DEPENDENCY LIVES, which is the one thing an adapter has to
+    # change. The lowered derivation resolves a dependency to another lowered derivation; an
+    # adapter emitting the whole cone resolves it to the EMITTED output instead. That is the
+    # only place a dependency path enters this script, so it is the only knob needed.
+    builderScriptWith = depPathOf: ''
       mkdir -p work && cd work
       ${if sourceGroups then stageProjectFor label else stageProject}
 
@@ -1257,7 +1261,7 @@
       # inside mig.sh, a long way from here. Writability is restored afterwards instead,
       # because the store copy is read-only and later actions write next to it.
       ${lib.concatMapStrings (dep: ''
-        cp -a ${drvs.${dep}}/. .
+        cp -a ${depPathOf dep}/. .
         # After EACH one, not at the end: the copy reproduces the store's read-only
         # directories, and two dependencies share parent directories under buck-out, so
         # the second copy cannot write into what the first one just created.
@@ -1369,6 +1373,9 @@
       outs}
     '';
 
+    # What the lowered derivation itself runs: a dependency is the lowered derivation for it.
+    builderScript = builderScriptWith (d: "${drvs.${d}}");
+
   in
     pkgs.runCommand (drvName label) {
       nativeBuildInputs = targetTools;
@@ -1425,7 +1432,7 @@
         # AN EMITTED ACTION IS NOT A runCommand, and the gaps are the adapter's job rather than
         # defects here. It gets no stdenv: no PATH (hence `tools`), no `set -e`, and its output
         # variable is whatever dyn-actions names it rather than `out`.
-        inherit builderScript;
+        inherit builderScript builderScriptWith;
         tools = targetTools;
       };
     }

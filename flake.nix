@@ -631,6 +631,18 @@
       # group whose inputs are many and real.
       #
       #   nix build .#cider-buck2-dyn-deps --no-link -L
+      # THE WHOLE CONE EMITTED, nothing taken from the lowering. dyn-one and dyn-deps both let
+      # dependencies come from lowered derivations, which says nothing about the DAG; this is
+      # the arrangement the full adapter uses.
+      #
+      #   nix build .#cider-buck2-dyn-cone --no-link -L
+      packages.cider-buck2-dyn-cone = pkgs:
+        (import ./nix/lib/cider-dyn-cone.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+        })
+        .check;
+
       packages.cider-buck2-dyn-deps = pkgs:
         (import ./nix/lib/cider-dyn-one.nix {
           inherit pkgs;
