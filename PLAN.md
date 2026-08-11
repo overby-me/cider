@@ -368,10 +368,24 @@ produces; the migcom patch left it at `mv46f3p6`. The cascade is that the stagin
 `${projectSrc}`, `projectSrc` is the WHOLE filtered project, so any first-party edit moves that
 path, moves all 94 distinct staging scripts, and moves every group that stages one.
 
-**STEP 0 IS A MEASUREMENT.** The recorded figure is 323 compiles and still climbing, but it
-predates #95 and the rest of 2026-08-11 and must be re-taken before any work: edit one leaf
-source, rebuild the minimal endpoint, count builders that RAN, revert. `buck-quick-check.nu`
-has a probe mode that proves its counter first. If the number is small, record it and stop.
+**STEP 0 IS A MEASUREMENT, AND THE TARGET DECIDES WHAT IT MEANS.** Two figures are on record
+and they differ by sixty times, because they answer different questions:
+
+    5 builders, 97 s      buck-quick-check.nu header, on
+                          darwin/frameworks/AVFoundation/constants.m
+    323 compiles and      ciderBuck2Lower.nix, one first-party source edited on the minimal
+    still climbing        ENDPOINT, with 0 of 4,159 stage-trees and 1 stage-project
+
+Both are right. `buck-quick-check.nu` defaults to `DEFAULT_ATTR = .#cider-buck2-one`, ONE small
+target, so it counts only what that target pulls. The cascade this task is about is the endpoint
+one. **So the probe must be run with `--attr .#cider-buck2-prefix-min`,** or it will report a
+handful of builders and read as "caching is fine" while measuring something else entirely.
+
+Re-take it before any work, since 323 predates #95 and the rest of 2026-08-11: edit one leaf
+source, rebuild the ENDPOINT, count builders that RAN, revert. The probe proves its counter
+first, by building a fresh-nonce derivation that must report exactly 1, and it puts a nonce in
+the marker so probing the same file twice cannot reproduce an already-built tree and report a
+false zero. If the number is genuinely small at endpoint scale, record it and stop.
 
 THE FIX, if the number justifies it: narrow the staged source per staging KEY. The lowering
 already partitions 1,474 groups into 94 staging scripts, so give each key a `projectSrc`
