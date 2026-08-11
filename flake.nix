@@ -694,6 +694,19 @@
       # thing here big enough for producer count, dependency depth and build load to interact.
       #
       #   nix build .#cider-buck2-dyn-gen-big --no-link -L
+      # THE WHOLE GRAPH THROUGH THE EMITTED ROUTE. Every group emitted, and the top target
+      # diffed against the lowered one, which is the question the endpoint decision turns on:
+      # building 1,474 emitted groups only shows they build. Hour class.
+      #
+      #   nix build .#cider-buck2-dyn-gen-all --no-link -L
+      packages.cider-buck2-dyn-gen-all = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck/prefix-min:cider_prefix_min";
+        })
+        .checkAll;
+
       packages.cider-buck2-dyn-gen-big = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;

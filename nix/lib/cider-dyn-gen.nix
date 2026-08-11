@@ -127,6 +127,27 @@ in {
   in
     toString (lib.foldl' (a: b: a + b) 0 forced);
 
+  # THE WHOLE GRAPH THROUGH THE EMITTED ROUTE, which is the scale question the cones cannot
+  # answer. It uses `everything` rather than coneOf: that walk is not memoised, which is fine
+  # for four groups and is not something to find out about at 1,474.
+  #
+  # THE COMPARISON IS THE POINT. Building 1,474 emitted groups only shows they build; diffing
+  # the top target against the lowered one is what says the two routes agree, and that is the
+  # question the endpoint decision turns on.
+  checkAll = pkgs.runCommand "cider-dyn-gen-all" {} ''
+    echo "--- ${toString (lib.length allNames)} groups, specs from ${specDir}"
+    emitted=${everything.outputs.${specName label}}
+    lowered=${lowered.drvs.${label}}
+    echo "--- emitted $emitted"
+    if ! diff -r "$emitted" "$lowered" > diff.txt 2>&1; then
+      echo "FAIL: the emitted output differs from the lowered one" >&2
+      head -60 diff.txt >&2
+      exit 1
+    fi
+    n=$(find "$emitted" -type f | wc -l)
+    echo "OK the whole graph emitted, top target matches lowered, $n file(s)" > $out
+  '';
+
   check = pkgs.runCommand "cider-dyn-gen-check" {} ''
     echo "--- cone of ${toString (lib.length members)}: ${lib.concatStringsSep " " members}"
     echo "--- specs came from ${specDir}"
