@@ -908,8 +908,13 @@ def main [flag?: string] {
     # means a regression that drops targets cannot pass unnoticed.
     # RUN IT ONCE. This used to invoke buck-coverage.py THREE times: twice right here, purely
     # to read field 2 and field 4 of the SAME "^total" line, and a third time below for
-    # "^by-name". Each run walks the reference graph and every BUCK file and takes 1 to 2
-    # minutes, so two thirds of that was recomputing an answer already in hand.
+    # "^by-name". Two of the three were recomputing an answer already in hand.
+    #
+    # THE SAVING IS ABOUT 10 SECONDS, NOT MINUTES, and the first version of this comment said
+    # minutes because I had confused this script with buck-upstream-names-check.py. MEASURED on
+    # an idle box: buck-coverage.py is 6 s, 5 s, 4 s across three runs, while the upstream-names
+    # check runs for over 110 s. Worth doing, and worth not overselling: if the suite is ever
+    # actually slow, this is not where the time is.
     let covout = (cap [./scripts/buck-coverage.py])
     let cov = (awk_field $covout '^total' 2)
     let tot = (awk_field $covout '^total' 4)
