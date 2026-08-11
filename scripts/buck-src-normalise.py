@@ -53,9 +53,28 @@ def set_repo(root: str) -> None:
 # four minutes into the endpoint, naming a path that appears nowhere in the tree:
 #     File not found: root//buck-src/darlingserver/duct-tape/xnu
 # Longest prefix first, so the duct-tape entry wins over the plain one.
+#
+# THE ROOT MOVED TOO, AND THAT IS A SEPARATE ENTRY. #87 stage 2 emptied src/ into darwin/,
+# linux/ and pins/, so a link written before it names src/external/<pin> for what is now
+# pins/<pin>. Without this entry such a link resolves INSIDE the repo at a path that no longer
+# exists, which is a case `in_tree_target` had no branch for: it is not dangling inside
+# buck-src, and it does not escape the repo, so it fell through to the `pins/` test below,
+# failed it, and returned None. 2,077 links under buck-src/*/darling/submodules/xnu sat in
+# exactly that state and the normaliser reported nothing, because nothing it could see was
+# wrong.
+#
+# MEASURED BEFORE LANDING: all 2,077 have an existing pins/ counterpart, 0 missing, so this is
+# a pure re-rooting rather than a guess about where the tree went.
+#
+# IT COST A WHOLE ENDPOINT. buck2 fails the package load with
+#     File not found: root//src/external/ciderd/xnu-sys/xnu/...  Included in buck-src/BUCK
+# naming a path that appears NOWHERE in any BUCK file, because the path lives in a symlink
+# TARGET and a target is not file content. Same class this file already exists to fix, and the
+# same class as the join two branches down that used to build src/external from parts.
 FIRST_PARTY_RENAMES = [
     ("pins/darlingserver/duct-tape", "pins/ciderd/xnu-sys"),
     ("pins/darlingserver", "pins/ciderd"),
+    ("src/external", PIN_ROOT),
 ]
 
 
