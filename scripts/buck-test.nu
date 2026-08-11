@@ -906,8 +906,13 @@ def main [flag?: string] {
     # Measured, not estimated: scripts/buck-coverage.py counts every LINK EDGE in the
     # reference build.ninja and reports which have a buck2 target. Asserting a floor here
     # means a regression that drops targets cannot pass unnoticed.
-    let cov = (awk_field (cap [./scripts/buck-coverage.py]) '^total' 2)
-    let tot = (awk_field (cap [./scripts/buck-coverage.py]) '^total' 4)
+    # RUN IT ONCE. This used to invoke buck-coverage.py THREE times: twice right here, purely
+    # to read field 2 and field 4 of the SAME "^total" line, and a third time below for
+    # "^by-name". Each run walks the reference graph and every BUCK file and takes 1 to 2
+    # minutes, so two thirds of that was recomputing an answer already in hand.
+    let covout = (cap [./scripts/buck-coverage.py])
+    let cov = (awk_field $covout '^total' 2)
+    let tot = (awk_field $covout '^total' 4)
     # The floor tracks the real number. It sat at 208 long after coverage passed 800, which
     # made it decorative: anything short of losing three quarters of the port passed it.
     #
@@ -958,7 +963,7 @@ def main [flag?: string] {
         bad $"codegen unconsumed rose to (num_or_s $unc 'unknown'), ceiling is 227"
     }
 
-    let soft = (awk_field (cap [./scripts/buck-coverage.py]) '^by-name' 2)
+    let soft = (awk_field $covout '^by-name' 2)
     if (num_or $soft 0) <= 0 {
         ok $"coverage matches (num_or_s $soft '0') edges by name alone \(ceiling 0\)"
     } else {

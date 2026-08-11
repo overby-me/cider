@@ -634,9 +634,19 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 
 ## Buck2 port: where it stands
 
-Every in-scope link edge of the reference graph is ported and builds: **1452 of 1452**,
-install **UNMAPPED 0**, `buck2 build //...` green over all ~12k targets, `buck-test.nu`
-**151 of 151**, and every runtime check at 0 or a documented 3.
+Every in-scope link edge of the reference graph is ported and builds: **1451 of 1451**,
+`buck2 build //...` green over all ~12k targets, `buck-test.nu` **157 of 159**, and every
+runtime check at 0 or a documented 3. Measured 2026-08-11, not remembered.
+
+The denominator is 1451, not the 1452 this line used to claim: #71 ported duct-tape to Rust,
+so `libdarlingserver_duct_tape.a` stopped being a link edge. The floor had been left at 1452,
+above the achievable maximum, so that check could not pass at all until b82c9e32.
+
+The two remaining suite failures are known and neither is a build gap. Install **UNMAPPED 5**:
+four pre-existing gaps plus the shellspawn plist, which the Cider rename renamed on disk while
+the frozen reference still names the old one; deliberately not mapped away, since that would
+hide a real divergence. And the host-header check, whose 1,275 is the wrong population, not
+1,275 defects (see the #86 notes).
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
 all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
