@@ -22,111 +22,13 @@ Usage: buck-needs-check.py <graph.json> <needs-from-nix.json> [--controls]
 from __future__ import annotations
 
 import json
+import os
 import sys
 
-
-def target_of(identity: str) -> str:
-    """The label out of a buck2 action identity. Mirrors targetOf in the lowering."""
-    i = identity.find(" (")
-    return identity[:i] if i > 0 else identity
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
-def group_of_label(label: str, coarse_pin_of: dict) -> str:
-    pin = coarse_pin_of.get(label)
-    return label if pin is None else "root//buck-src:pin-" + pin
-
-
-def uniq(xs):
-    """Order preserving, which is what lib.unique is. Never sorted: see the header."""
-    seen, out = set(), []
-    for x in xs:
-        if x not in seen:
-            seen.add(x)
-            out.append(x)
-    return out
-
-
-class Needs:
-    """The lowering's needsOf, in python. Field for field, so it can be diffed by eye."""
-
-    def __init__(self, graph: dict, coarse_pins: bool = True):
-        self.coarse_pin_of = graph.get("coarsePinOf", {}) if coarse_pins else {}
-        self.staged = graph.get("staged", {})
-        self.staged_trees = graph.get("stagedTrees", {})
-        self.staged_tree_deps = graph.get("stagedTreeDeps", {})
-
-        # targets = lib.groupBy groupOf g.actions
-        self.targets: dict = {}
-        for a in graph["actions"]:
-            self.targets.setdefault(
-                group_of_label(target_of(a["identity"]), self.coarse_pin_of), []).append(a)
-
-        # producerTarget: which GROUP writes which artifact.
-        self.producer: dict = {}
-        for a in graph["actions"]:
-            g = group_of_label(target_of(a["identity"]), self.coarse_pin_of)
-            for o in a["outputs"]:
-                self.producer[o] = g
-
-        # known = producerTarget // staged // stagedTrees, membership only.
-        self.known = set(self.producer) | set(self.staged) | set(self.staged_trees)
-
-        # ATTRIBUTE NAMES COME OUT OF NIX SORTED, so the two halves are sorted separately and
-        # then concatenated, exactly as `attrNames a ++ attrNames b` does. Feeding python dict
-        # order here would produce the right SET with the wrong order, which is the failure
-        # this file goes out of its way to be able to see.
-        self.staged_names = sorted(self.staged) + sorted(self.staged_trees)
-        self.staged_by_target: dict = {}
-        for o in self.staged_names:
-            self.staged_by_target.setdefault(self.producer.get(o, ""), []).append(o)
-
-        self._owner_cache: dict = {}
-
-    def owner_of(self, path: str, exact: bool = False):
-        """The LONGEST known prefix of a path, or None. An input can be a file INSIDE a
-        directory output, so exact matching is not enough: that is the difference between this
-        and the cheaper producer lookup group_deps does."""
-        if exact:
-            return path if path in self.known else None
-        hit = self._owner_cache.get(path)
-        if hit is not None or path in self._owner_cache:
-            return hit
-        segs = path.split("/")
-        got = None
-        for n in range(len(segs), 0, -1):
-            p = "/".join(segs[:n])
-            if p in self.known:
-                got = p
-                break
-        self._owner_cache[path] = got
-        return got
-
-    def of(self, label: str, break_rule: str = "") -> dict:
-        """`break_rule` disables exactly ONE rule, for the controls. Breaking a rule here rather
-        than mangling the result afterwards is the difference between a control that proves the
-        rule is exercised by this graph and one that only proves the comparison can subtract."""
-        acts = self.targets.get(label, [])
-        ins = uniq(i for a in acts for i in a["inputs"])
-        ex = break_rule == "exact"
-        direct = uniq(o for o in (self.owner_of(i, ex) for i in ins) if o is not None)
-        via = ([] if break_rule == "vialinks" else
-               uniq(self.owner_of(t, ex)
-                    for o in direct for t in self.staged_tree_deps.get(o, [])))
-        owners = uniq(direct + [x for x in via if x is not None])
-
-        declared = ([] if break_rule == "declared" else
-                    uniq(group_of_label(t, self.coarse_pin_of)
-                         for a in acts for t in a.get("input_targets", [])))
-        declared_with_actions = [t for t in declared if t in self.targets]
-        declared_staged = [o for t in declared for o in self.staged_by_target.get(t, [])]
-
-        from_targets = uniq(
-            t for t in ([self.producer.get(o) for o in owners] + declared_with_actions)
-            if t is not None and t != label)
-        from_staged = uniq(
-            [o for o in owners if o in self.staged or o in self.staged_trees]
-            + declared_staged)
-        return {"t": from_targets, "s": from_staged}
+from buck_lowering import Needs, group_of_label, target_of, uniq  # noqa: E402
 
 
 def compare(mine: dict, theirs: dict) -> dict:

@@ -1502,6 +1502,17 @@
         # Comparing fromTargets alone would leave the farms untested, and they are the half
         # that fails late and quietly. scripts/buck-needs-check.nu does the comparison.
         stagedNeeds = needs.fromStaged;
+        # THE STAGED TREE SCRIPTS THIS GROUP RUNS, in the order builderScriptWith runs them.
+        # Each is a store path to a CA shell script, which is why the python port does not have
+        # to reproduce the script BODY: it emits a reference and the consumer supplies the path.
+        # Exposed so the port can be compared against this script byte for byte, which needs
+        # the same paths substituted back in the same order.
+        treeScripts = lib.concatMap (o: let
+          links = (g.stagedTrees or {}).${o} or null;
+        in
+          lib.optional (links != null && (links.n or 0) > 0)
+          (stagedTreeScript o links))
+        needs.fromStaged;
         actionCount = lib.length actions;
 
         # WHAT THE ADAPTER NEEDS TO FEED THIS GROUP THROUGH nix/lib/dyn-actions.nix (#66): the
@@ -1578,6 +1589,11 @@ in
   # out of the top-level exclusion list) failed all 1798 lowered targets and was only visible
   # 90 minutes into a build.
   inherit stageProject stageProjectUsed;
+
+  # The tree of artifacts buck2 produced in-process. Exposed for the same reason stageProject
+  # is: the python port of the builder script names it as a variable rather than containing it,
+  # so the check has to substitute the real path back before comparing.
+  graphData = graph.data;
 
   # The single target's output, for the common case of asking for one thing.
   final = let
