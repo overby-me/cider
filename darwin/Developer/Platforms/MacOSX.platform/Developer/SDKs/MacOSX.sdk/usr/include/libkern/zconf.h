@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/zconf.h
+../../../../../../../../../../pins/xnu/libkern/libkern/zconf.h

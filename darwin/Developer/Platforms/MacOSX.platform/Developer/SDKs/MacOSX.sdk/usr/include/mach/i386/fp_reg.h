@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/fp_reg.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/fp_reg.h

@@ -1,1 +1,1 @@
-../../src/external/AvailabilityVersions/AvailabilityVersions.h
+../../pins/AvailabilityVersions/AvailabilityVersions.h

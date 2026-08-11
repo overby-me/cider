@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/lockstat.h
+../../../../../../../../../../pins/xnu/bsd/sys/lockstat.h

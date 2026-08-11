@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/private/pthread/workqueue_private.h
+../../../../../../../../../../pins/libpthread/private/pthread/workqueue_private.h

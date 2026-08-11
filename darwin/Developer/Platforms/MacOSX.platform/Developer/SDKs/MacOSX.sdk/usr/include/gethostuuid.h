@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/xnu/libsyscall/wrappers/gethostuuid.h
+../../../../../../../../../pins/xnu/libsyscall/wrappers/gethostuuid.h

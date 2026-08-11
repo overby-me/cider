@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach/ppc/_structs.h
+../../../../../../../../../../../pins/cctools/include/mach/ppc/_structs.h

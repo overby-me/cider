@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/clock.h
+../../../../../../../../../../pins/xnu/osfmk/kern/clock.h

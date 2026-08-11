@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/os/workgroup_object.h
+../../../../../../../../../../pins/libdispatch/os/workgroup_object.h

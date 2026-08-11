@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCNetworkSignaturePrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCNetworkSignaturePrivate.h

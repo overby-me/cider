@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/bsm/audit_socket_type.h
+../../../../../../../../../../pins/xnu/bsd/bsm/audit_socket_type.h

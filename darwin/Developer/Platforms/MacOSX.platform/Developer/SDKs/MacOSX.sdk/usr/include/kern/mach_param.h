@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/mach_param.h
+../../../../../../../../../../pins/xnu/osfmk/kern/mach_param.h

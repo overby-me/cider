@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libsyscall/os/tsd.h
+../../../../../../../../../../pins/xnu/libsyscall/os/tsd.h

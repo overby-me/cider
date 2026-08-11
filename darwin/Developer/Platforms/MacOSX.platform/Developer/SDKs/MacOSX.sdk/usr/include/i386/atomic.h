@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/atomic.h
+../../../../../../../../../../pins/xnu/osfmk/i386/atomic.h

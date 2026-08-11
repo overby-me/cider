@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/kern_memorystatus.h
+../../../../../../../../../../../pins/xnu/bsd/sys/kern_memorystatus.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/objc-runtime-new.h
+../../../../../../../../../../pins/objc4/runtime/objc-runtime-new.h

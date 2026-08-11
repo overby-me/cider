@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/exec.h
+../../../../../../../../../../pins/xnu/bsd/machine/exec.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/memory_maintenance.h
+../../../../../../../../../../pins/xnu/bsd/sys/memory_maintenance.h

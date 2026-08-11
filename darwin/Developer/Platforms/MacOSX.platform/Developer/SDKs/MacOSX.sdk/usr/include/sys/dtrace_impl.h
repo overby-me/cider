@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/dtrace_impl.h
+../../../../../../../../../../pins/xnu/bsd/sys/dtrace_impl.h

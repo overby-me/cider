@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/OSRuntime.h
+../../../../../../../../../../pins/xnu/libkern/libkern/OSRuntime.h

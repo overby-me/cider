@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/resource_monitors.h
+../../../../../../../../../../pins/xnu/osfmk/mach/resource_monitors.h

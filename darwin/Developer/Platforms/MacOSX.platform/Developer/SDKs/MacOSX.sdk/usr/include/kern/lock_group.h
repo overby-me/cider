@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/lock_group.h
+../../../../../../../../../../pins/xnu/osfmk/kern/lock_group.h

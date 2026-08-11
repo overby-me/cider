@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/nfsdiskless.h
+../../../../../../../../../../pins/xnu/bsd/nfs/nfsdiskless.h

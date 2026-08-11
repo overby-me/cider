@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/pal_native.h
+../../../../../../../../../../pins/xnu/osfmk/i386/pal_native.h

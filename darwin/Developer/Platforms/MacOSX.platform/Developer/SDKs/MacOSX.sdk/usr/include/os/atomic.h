@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/atomic.h
+../../../../../../../../../../pins/xnu/libkern/os/atomic.h

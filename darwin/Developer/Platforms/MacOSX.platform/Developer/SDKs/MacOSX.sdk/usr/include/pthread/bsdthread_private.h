@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/pthread/bsdthread_private.h
+../../../../../../../../../../pins/xnu/bsd/pthread/bsdthread_private.h

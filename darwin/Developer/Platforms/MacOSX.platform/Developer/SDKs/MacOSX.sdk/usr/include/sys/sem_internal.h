@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/sem_internal.h
+../../../../../../../../../../pins/xnu/bsd/sys/sem_internal.h

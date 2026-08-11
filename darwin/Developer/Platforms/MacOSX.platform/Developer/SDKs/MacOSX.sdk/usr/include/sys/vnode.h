@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/vnode.h
+../../../../../../../../../../pins/xnu/bsd/sys/vnode.h

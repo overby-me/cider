@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/ncurses/darling/include/menu.h
+../../../../../../../../../pins/ncurses/darling/include/menu.h

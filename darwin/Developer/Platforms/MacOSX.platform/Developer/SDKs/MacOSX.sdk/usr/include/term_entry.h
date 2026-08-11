@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/ncurses/darling/include/term_entry.h
+../../../../../../../../../pins/ncurses/darling/include/term_entry.h

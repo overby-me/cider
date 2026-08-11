@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/libkern/libkern/OSKextLibPrivate.h
+../../../../../../../../../../../pins/xnu/libkern/libkern/OSKextLibPrivate.h

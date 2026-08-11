@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/vm_prot.h
+../../../../../../../../../../pins/xnu/osfmk/mach/vm_prot.h

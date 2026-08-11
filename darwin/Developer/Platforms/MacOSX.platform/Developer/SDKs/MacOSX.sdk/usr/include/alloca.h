@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/alloca.h
+../../../../../../../../../pins/libc/include/alloca.h

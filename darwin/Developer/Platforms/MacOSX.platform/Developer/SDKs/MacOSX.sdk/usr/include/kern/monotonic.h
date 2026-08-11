@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/monotonic.h
+../../../../../../../../../../pins/xnu/osfmk/kern/monotonic.h

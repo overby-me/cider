@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/vm_types.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/vm_types.h

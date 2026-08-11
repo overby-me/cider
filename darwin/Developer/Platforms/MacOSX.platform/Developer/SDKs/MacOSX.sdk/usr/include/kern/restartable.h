@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/restartable.h
+../../../../../../../../../../pins/xnu/osfmk/kern/restartable.h

@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCNetworkReachabilityInternal.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCNetworkReachabilityInternal.h

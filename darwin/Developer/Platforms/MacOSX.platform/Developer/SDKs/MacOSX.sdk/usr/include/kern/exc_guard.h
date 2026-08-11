@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/exc_guard.h
+../../../../../../../../../../pins/xnu/osfmk/kern/exc_guard.h

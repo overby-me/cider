@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/syslog.h
+../../../../../../../../../../pins/xnu/bsd/sys/syslog.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/stack_protector.h
+../../../../../../../../../../pins/xnu/libkern/libkern/stack_protector.h

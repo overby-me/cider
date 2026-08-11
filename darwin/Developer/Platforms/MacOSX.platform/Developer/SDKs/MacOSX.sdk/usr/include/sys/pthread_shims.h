@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/pthread_shims.h
+../../../../../../../../../../pins/xnu/bsd/sys/pthread_shims.h

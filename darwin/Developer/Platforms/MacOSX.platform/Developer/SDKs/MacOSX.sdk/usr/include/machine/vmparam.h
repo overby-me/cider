@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/vmparam.h
+../../../../../../../../../../pins/xnu/bsd/machine/vmparam.h

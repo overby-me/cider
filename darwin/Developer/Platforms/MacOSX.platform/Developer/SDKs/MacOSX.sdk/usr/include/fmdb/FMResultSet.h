@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/fmdb/src/fmdb/FMResultSet.h
+../../../../../../../../../../pins/fmdb/src/fmdb/FMResultSet.h

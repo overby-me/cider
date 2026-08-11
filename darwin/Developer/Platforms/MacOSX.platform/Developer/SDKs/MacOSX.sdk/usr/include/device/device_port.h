@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/device/device_port.h
+../../../../../../../../../../pins/xnu/osfmk/device/device_port.h

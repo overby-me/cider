@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach/arm/thread_status.h
+../../../../../../../../../../../pins/cctools/include/mach/arm/thread_status.h

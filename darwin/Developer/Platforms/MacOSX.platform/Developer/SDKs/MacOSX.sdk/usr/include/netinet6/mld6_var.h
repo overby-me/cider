@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet6/mld6_var.h
+../../../../../../../../../../pins/xnu/bsd/netinet6/mld6_var.h

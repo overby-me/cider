@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCD.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCD.h

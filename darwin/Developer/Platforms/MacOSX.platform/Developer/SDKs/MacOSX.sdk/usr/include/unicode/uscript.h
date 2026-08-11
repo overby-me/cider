@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/uscript.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/uscript.h

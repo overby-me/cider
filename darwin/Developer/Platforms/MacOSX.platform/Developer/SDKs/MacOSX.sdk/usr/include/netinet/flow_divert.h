@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/flow_divert.h
+../../../../../../../../../../pins/xnu/bsd/netinet/flow_divert.h

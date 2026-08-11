@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/times.h
+../../../../../../../../../../pins/xnu/bsd/sys/times.h

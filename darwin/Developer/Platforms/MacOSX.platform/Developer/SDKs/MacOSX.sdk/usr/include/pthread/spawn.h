@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/include/pthread/spawn.h
+../../../../../../../../../../pins/libpthread/include/pthread/spawn.h

@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/DHCPClientPreferences.h
+../../../../../pins/configd/SystemConfiguration.fproj/DHCPClientPreferences.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/readpassphrase.h
+../../../../../../../../../pins/libc/include/readpassphrase.h

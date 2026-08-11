@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/nghttp2/lib/includes/nghttp2/nghttp2.h
+../../../../../../../../../../pins/nghttp2/lib/includes/nghttp2/nghttp2.h

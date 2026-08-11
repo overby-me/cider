@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/task.h
+../../../../../../../../../../pins/xnu/osfmk/kern/task.h

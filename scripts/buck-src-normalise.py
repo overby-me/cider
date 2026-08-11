@@ -30,6 +30,10 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUCK_SRC = os.path.join(REPO, "buck-src")
 
+# Where upstream pins live in this repo. Named once so the join below cannot drift from the
+# rename table, which is the drift that broke #87 stage 2's first rung.
+PIN_ROOT = "pins"
+
 
 def set_repo(root: str) -> None:
     global REPO, BUCK_SRC
@@ -89,7 +93,14 @@ def in_tree_target(link: str, target: str) -> str | None:
         # than to pins, which is why fixing only the other branch left the
         # endpoint failing with the re-pointed count still at 103.
         rel = resolved[len(BUCK_SRC) + 1:]
-        cand = os.path.join(REPO, rename_first_party(os.path.join("src", "external", rel)))
+        # PIN_ROOT, not the two literals this used to join. It said
+        # os.path.join("src", "external", rel), and #87 stage 2 moved the pin root to pins/.
+        # Because the path was ASSEMBLED FROM SEPARATE ARGUMENTS rather than written out, no
+        # textual sweep could see it: the rename table above moved to pins/ and this went on
+        # building src/external/..., so nothing matched, the security link stayed dangling and
+        # the graph died with "File not found: root//buck-src/darlingserver/duct-tape/xnu".
+        # Same class as the symlink targets this very file exists to fix, one level further in.
+        cand = os.path.join(REPO, rename_first_party(os.path.join(PIN_ROOT, rel)))
         if os.path.lexists(cand):
             return os.path.relpath(cand, os.path.dirname(link))
         return None

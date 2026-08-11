@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/fsproperties.h
+../../../../../../../../../pins/libc/include/fsproperties.h

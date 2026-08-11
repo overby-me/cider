@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/message.h
+../../../../../../../../../../pins/xnu/osfmk/mach/message.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/processor_info.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/processor_info.h

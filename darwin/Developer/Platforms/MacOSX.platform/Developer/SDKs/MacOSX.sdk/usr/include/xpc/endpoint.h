@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxpc/include/xpc/endpoint.h
+../../../../../../../../../../pins/libxpc/include/xpc/endpoint.h

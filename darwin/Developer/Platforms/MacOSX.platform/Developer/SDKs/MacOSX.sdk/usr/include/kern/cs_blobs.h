@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/cs_blobs.h
+../../../../../../../../../../pins/xnu/osfmk/kern/cs_blobs.h

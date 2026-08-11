@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/private/pthread/spinlock_private.h
+../../../../../../../../../../pins/libpthread/private/pthread/spinlock_private.h

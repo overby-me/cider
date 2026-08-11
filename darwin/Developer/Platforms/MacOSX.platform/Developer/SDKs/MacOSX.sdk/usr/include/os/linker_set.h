@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/os/linker_set.h
+../../../../../../../../../../pins/libc/os/linker_set.h

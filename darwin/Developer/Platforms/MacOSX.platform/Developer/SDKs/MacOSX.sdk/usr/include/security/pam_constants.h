@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/openpam/openpam/include/security/pam_constants.h
+../../../../../../../../../../pins/openpam/openpam/include/security/pam_constants.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/bytestrie.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/bytestrie.h

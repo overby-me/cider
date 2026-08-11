@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/lookup.subproj/si_data.h
+../../../../../../../../../pins/Libinfo/lookup.subproj/si_data.h

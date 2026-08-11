@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libsystem/alloc_once_private.h
+../../../../../../../../../../pins/libsystem/alloc_once_private.h

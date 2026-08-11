@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ipc_kobject.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ipc_kobject.h

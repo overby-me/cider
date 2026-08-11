@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/rquota.h
+../../../../../../../../../../pins/librpcsvc/gen/rquota.h

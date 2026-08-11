@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/timex.h
+../../../../../../../../../../pins/xnu/bsd/sys/timex.h

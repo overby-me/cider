@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/openpam/openpam/include/security/openpam_version.h
+../../../../../../../../../../pins/openpam/openpam/include/security/openpam_version.h

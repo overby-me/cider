@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/membership.subproj/ntsid.h
+../../../../../../../../../pins/Libinfo/membership.subproj/ntsid.h

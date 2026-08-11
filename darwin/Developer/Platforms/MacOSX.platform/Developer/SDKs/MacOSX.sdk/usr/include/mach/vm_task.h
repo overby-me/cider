@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libsyscall/mach/mach/vm_task.h
+../../../../../../../../../../pins/xnu/libsyscall/mach/mach/vm_task.h

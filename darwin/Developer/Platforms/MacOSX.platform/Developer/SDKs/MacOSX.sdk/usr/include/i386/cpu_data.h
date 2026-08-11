@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/cpu_data.h
+../../../../../../../../../../pins/xnu/osfmk/i386/cpu_data.h

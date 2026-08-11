@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/policy.h
+../../../../../../../../../../pins/xnu/osfmk/mach/policy.h

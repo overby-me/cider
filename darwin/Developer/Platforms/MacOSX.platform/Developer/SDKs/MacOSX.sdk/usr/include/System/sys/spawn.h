@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/spawn.h
+../../../../../../../../../../../pins/xnu/bsd/sys/spawn.h

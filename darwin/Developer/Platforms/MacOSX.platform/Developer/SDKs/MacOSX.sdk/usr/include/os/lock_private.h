@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/os/lock_private.h
+../../../../../../../../../../pins/libplatform/private/os/lock_private.h

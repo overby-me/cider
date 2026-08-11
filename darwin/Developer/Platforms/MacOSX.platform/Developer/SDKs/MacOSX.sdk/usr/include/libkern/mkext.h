@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/mkext.h
+../../../../../../../../../../pins/xnu/libkern/libkern/mkext.h

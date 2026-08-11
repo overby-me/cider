@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/include/os/lock.h
+../../../../../../../../../../pins/libplatform/include/os/lock.h

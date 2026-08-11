@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/locks.h
+../../../../../../../../../../pins/xnu/osfmk/i386/locks.h

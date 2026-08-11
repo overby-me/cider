@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/host_statistics.h
+../../../../../../../../../../pins/xnu/osfmk/kern/host_statistics.h

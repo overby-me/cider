@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/kalloc.h
+../../../../../../../../../../pins/xnu/osfmk/kern/kalloc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/dirent.h
+../../../../../../../../../../pins/xnu/bsd/sys/dirent.h

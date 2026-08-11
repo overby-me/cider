@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/mk_timer.h
+../../../../../../../../../../pins/xnu/osfmk/kern/mk_timer.h

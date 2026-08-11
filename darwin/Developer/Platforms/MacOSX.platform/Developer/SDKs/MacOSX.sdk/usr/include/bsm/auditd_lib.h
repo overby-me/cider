@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/bsm/openbsm/bsm/auditd_lib.h
+../../../../../../../../../../pins/bsm/openbsm/bsm/auditd_lib.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/if_media.h
+../../../../../../../../../../pins/xnu/bsd/net/if_media.h

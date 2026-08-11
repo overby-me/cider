@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/mpqueue.h
+../../../../../../../../../../pins/xnu/osfmk/kern/mpqueue.h

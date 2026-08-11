@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/startup.h
+../../../../../../../../../../pins/xnu/osfmk/kern/startup.h

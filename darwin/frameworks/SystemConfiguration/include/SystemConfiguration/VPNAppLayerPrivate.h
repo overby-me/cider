@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/VPNAppLayerPrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/VPNAppLayerPrivate.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach_debug/ipc_info.h
+../../../../../../../../../../pins/xnu/osfmk/mach_debug/ipc_info.h

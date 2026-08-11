@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/arpa/nameser_compat.h
+../../../../../../../../../../pins/libc/include/arpa/nameser_compat.h

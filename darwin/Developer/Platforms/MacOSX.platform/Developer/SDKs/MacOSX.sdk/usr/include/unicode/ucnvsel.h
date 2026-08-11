@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ucnvsel.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ucnvsel.h

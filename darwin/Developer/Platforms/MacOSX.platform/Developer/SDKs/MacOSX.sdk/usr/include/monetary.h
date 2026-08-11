@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/monetary.h
+../../../../../../../../../pins/libc/include/monetary.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/posix_sem.h
+../../../../../../../../../../pins/xnu/bsd/sys/posix_sem.h

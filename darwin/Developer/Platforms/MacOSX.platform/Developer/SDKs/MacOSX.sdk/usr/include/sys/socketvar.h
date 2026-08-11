@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/socketvar.h
+../../../../../../../../../../pins/xnu/bsd/sys/socketvar.h

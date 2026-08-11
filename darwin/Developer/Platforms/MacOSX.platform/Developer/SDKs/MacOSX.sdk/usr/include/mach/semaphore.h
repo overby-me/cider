@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/semaphore.h
+../../../../../../../../../../pins/xnu/osfmk/mach/semaphore.h

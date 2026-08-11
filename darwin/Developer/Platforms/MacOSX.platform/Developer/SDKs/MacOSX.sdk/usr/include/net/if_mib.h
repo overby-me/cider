@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/if_mib.h
+../../../../../../../../../../pins/xnu/bsd/net/if_mib.h

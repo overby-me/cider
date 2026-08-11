@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/private/mach_private.h
+../../../../../../../../../../pins/libdispatch/private/mach_private.h

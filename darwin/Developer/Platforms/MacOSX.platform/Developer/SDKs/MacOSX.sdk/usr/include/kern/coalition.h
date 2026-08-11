@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/coalition.h
+../../../../../../../../../../pins/xnu/osfmk/kern/coalition.h

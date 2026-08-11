@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/exc_resource.h
+../../../../../../../../../../pins/xnu/osfmk/kern/exc_resource.h

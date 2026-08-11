@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/random.h
+../../../../../../../../../../pins/xnu/bsd/sys/random.h

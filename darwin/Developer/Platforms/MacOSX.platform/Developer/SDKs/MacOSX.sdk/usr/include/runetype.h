@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/runetype.h
+../../../../../../../../../pins/libc/include/runetype.h

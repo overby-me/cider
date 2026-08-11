@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/kext_alloc.h
+../../../../../../../../../../pins/xnu/osfmk/kern/kext_alloc.h

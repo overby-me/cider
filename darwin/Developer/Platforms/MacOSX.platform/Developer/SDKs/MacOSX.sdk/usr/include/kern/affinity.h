@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/affinity.h
+../../../../../../../../../../pins/xnu/osfmk/kern/affinity.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/syscall_sw.h
+../../../../../../../../../../pins/xnu/osfmk/mach/syscall_sw.h

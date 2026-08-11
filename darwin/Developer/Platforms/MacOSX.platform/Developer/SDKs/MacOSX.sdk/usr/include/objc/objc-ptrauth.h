@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/objc-ptrauth.h
+../../../../../../../../../../pins/objc4/runtime/objc-ptrauth.h

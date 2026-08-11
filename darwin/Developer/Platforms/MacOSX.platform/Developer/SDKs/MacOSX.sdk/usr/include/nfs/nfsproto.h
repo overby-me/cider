@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/nfsproto.h
+../../../../../../../../../../pins/xnu/bsd/nfs/nfsproto.h

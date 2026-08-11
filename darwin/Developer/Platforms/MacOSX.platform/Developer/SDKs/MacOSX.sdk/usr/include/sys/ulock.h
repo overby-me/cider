@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/ulock.h
+../../../../../../../../../../pins/xnu/bsd/sys/ulock.h

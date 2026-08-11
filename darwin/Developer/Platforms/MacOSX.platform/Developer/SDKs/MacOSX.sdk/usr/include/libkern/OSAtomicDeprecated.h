@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/include/libkern/OSAtomicDeprecated.h
+../../../../../../../../../../pins/libplatform/include/libkern/OSAtomicDeprecated.h

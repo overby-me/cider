@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/wait.h
+../../../../../../../../../../pins/xnu/bsd/sys/wait.h

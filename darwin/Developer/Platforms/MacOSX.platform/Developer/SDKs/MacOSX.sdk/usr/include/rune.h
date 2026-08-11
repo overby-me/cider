@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/rune.h
+../../../../../../../../../pins/libc/include/rune.h

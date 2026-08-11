@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach-o/nlist.h
+../../../../../../../../../../pins/cctools/include/mach-o/nlist.h

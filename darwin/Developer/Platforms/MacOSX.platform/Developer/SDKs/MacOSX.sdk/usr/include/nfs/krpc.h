@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/krpc.h
+../../../../../../../../../../pins/xnu/bsd/nfs/krpc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/objc-locks-new.h
+../../../../../../../../../../pins/objc4/runtime/objc-locks-new.h

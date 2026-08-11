@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/signal.h
+../../../../../../../../../../pins/xnu/bsd/machine/signal.h

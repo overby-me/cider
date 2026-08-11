@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/munge.h
+../../../../../../../../../../pins/xnu/bsd/sys/munge.h

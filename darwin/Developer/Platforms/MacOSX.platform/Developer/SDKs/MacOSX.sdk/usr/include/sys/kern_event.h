@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kern_event.h
+../../../../../../../../../../pins/xnu/bsd/sys/kern_event.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/disktab.h
+../../../../../../../../../pins/libc/include/disktab.h

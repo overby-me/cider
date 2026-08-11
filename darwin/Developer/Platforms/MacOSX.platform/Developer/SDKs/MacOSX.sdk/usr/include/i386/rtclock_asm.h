@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/rtclock_asm.h
+../../../../../../../../../../pins/xnu/osfmk/i386/rtclock_asm.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/decmpfs.h
+../../../../../../../../../../pins/xnu/bsd/sys/decmpfs.h

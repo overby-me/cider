@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/socket.h
+../../../../../../../../../../pins/xnu/bsd/sys/socket.h

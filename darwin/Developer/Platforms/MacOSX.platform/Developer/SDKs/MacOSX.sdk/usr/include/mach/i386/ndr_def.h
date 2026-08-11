@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/ndr_def.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/ndr_def.h

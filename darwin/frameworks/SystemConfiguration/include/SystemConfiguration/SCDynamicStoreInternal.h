@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCDynamicStoreInternal.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCDynamicStoreInternal.h

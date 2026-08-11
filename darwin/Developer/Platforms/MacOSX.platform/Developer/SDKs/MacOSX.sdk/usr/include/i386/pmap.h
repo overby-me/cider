@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/pmap.h
+../../../../../../../../../../pins/xnu/osfmk/i386/pmap.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libmalloc/private/malloc_private.h
+../../../../../../../../../pins/libmalloc/private/malloc_private.h

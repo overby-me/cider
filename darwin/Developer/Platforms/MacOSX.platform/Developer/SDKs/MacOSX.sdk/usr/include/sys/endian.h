@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/fbsdcompat/sys/endian.h
+../../../../../../../../../../pins/libc/fbsdcompat/sys/endian.h

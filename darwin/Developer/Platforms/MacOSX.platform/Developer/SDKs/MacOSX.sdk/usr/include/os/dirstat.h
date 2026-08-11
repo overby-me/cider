@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/libdarwin/h/dirstat.h
+../../../../../../../../../../pins/libc/libdarwin/h/dirstat.h

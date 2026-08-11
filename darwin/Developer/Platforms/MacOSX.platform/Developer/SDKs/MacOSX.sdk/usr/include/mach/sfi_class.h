@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/sfi_class.h
+../../../../../../../../../../pins/xnu/osfmk/mach/sfi_class.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/darwin/libc_private.h
+../../../../../../../../../pins/libc/darwin/libc_private.h

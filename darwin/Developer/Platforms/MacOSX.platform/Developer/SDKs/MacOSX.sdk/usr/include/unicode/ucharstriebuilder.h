@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ucharstriebuilder.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ucharstriebuilder.h

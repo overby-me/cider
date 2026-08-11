@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach-o/getsect.h
+../../../../../../../../../../pins/cctools/include/mach-o/getsect.h

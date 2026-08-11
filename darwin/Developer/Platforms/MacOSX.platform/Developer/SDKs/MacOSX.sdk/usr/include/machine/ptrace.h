@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/ptrace.h
+../../../../../../../../../../pins/xnu/bsd/machine/ptrace.h

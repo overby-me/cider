@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/_structs.h
+../../../../../../../../../../pins/xnu/bsd/sys/_structs.h

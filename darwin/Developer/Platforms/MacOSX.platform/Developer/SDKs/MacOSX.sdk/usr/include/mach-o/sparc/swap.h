@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach-o/sparc/swap.h
+../../../../../../../../../../../pins/cctools/include/mach-o/sparc/swap.h

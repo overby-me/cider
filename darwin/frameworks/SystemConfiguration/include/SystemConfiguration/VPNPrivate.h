@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/VPNPrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/VPNPrivate.h

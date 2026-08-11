@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/lookup.subproj/aliasdb.h
+../../../../../../../../../pins/Libinfo/lookup.subproj/aliasdb.h

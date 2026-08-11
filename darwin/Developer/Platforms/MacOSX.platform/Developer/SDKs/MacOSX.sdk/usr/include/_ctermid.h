@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/_ctermid.h
+../../../../../../../../../pins/libc/include/_ctermid.h

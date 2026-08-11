@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/user_ldt.h
+../../../../../../../../../../pins/xnu/osfmk/i386/user_ldt.h

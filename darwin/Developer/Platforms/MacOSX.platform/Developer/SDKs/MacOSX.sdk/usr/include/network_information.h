@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/configd/nwi/network_information.h
+../../../../../../../../../pins/configd/nwi/network_information.h

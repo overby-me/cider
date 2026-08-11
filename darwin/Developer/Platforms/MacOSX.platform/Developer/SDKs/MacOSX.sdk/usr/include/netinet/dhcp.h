@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/dhcp.h
+../../../../../../../../../../pins/xnu/bsd/netinet/dhcp.h

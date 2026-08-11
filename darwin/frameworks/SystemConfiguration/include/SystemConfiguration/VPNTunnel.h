@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/VPNTunnel.h
+../../../../../pins/configd/SystemConfiguration.fproj/VPNTunnel.h

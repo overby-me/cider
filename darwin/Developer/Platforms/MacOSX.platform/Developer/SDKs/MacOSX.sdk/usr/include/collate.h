@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/locale/FreeBSD/collate.h
+../../../../../../../../../pins/libc/locale/FreeBSD/collate.h

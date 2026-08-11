@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/SecurityTokend/lib/tokend_types.h
+../../../../../../../../../../pins/SecurityTokend/lib/tokend_types.h

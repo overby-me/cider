@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/sync_sema.h
+../../../../../../../../../../pins/xnu/osfmk/kern/sync_sema.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/monitor.h
+../../../../../../../../../pins/libc/include/monitor.h

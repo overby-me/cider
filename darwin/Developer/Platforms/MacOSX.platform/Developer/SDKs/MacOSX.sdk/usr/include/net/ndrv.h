@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/ndrv.h
+../../../../../../../../../../pins/xnu/bsd/net/ndrv.h

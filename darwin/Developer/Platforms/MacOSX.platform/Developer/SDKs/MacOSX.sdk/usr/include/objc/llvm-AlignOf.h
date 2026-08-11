@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/llvm-AlignOf.h
+../../../../../../../../../../pins/objc4/runtime/llvm-AlignOf.h

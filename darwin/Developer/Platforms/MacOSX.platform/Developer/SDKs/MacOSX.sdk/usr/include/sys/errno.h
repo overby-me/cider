@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/errno.h
+../../../../../../../../../../pins/xnu/bsd/sys/errno.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/kern/remote_time.h
+../../../../../../../../../../../pins/xnu/osfmk/kern/remote_time.h

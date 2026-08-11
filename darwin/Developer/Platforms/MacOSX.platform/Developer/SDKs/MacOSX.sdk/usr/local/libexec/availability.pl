@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/AvailabilityVersions/availability.pl
+../../../../../../../../../../pins/AvailabilityVersions/availability.pl

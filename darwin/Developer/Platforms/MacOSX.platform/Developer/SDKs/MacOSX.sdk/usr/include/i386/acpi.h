@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/acpi.h
+../../../../../../../../../../pins/xnu/osfmk/i386/acpi.h

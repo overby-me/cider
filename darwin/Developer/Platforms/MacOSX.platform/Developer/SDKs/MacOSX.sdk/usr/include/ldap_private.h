@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/OpenLDAP/OpenLDAP/include/ldap_private.h
+../../../../../../../../../pins/OpenLDAP/OpenLDAP/include/ldap_private.h

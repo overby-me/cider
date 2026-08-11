@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libtrace/include/os/trace_private.h
+../../../../../../../../../../pins/libtrace/include/os/trace_private.h

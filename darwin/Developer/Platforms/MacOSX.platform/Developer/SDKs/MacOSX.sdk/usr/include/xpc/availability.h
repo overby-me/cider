@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxpc/include/xpc/availability.h
+../../../../../../../../../../pins/libxpc/include/xpc/availability.h

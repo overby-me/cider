@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kpi_socket.h
+../../../../../../../../../../pins/xnu/bsd/sys/kpi_socket.h

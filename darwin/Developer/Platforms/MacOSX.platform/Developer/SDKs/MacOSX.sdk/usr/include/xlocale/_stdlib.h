@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/xlocale/_stdlib.h
+../../../../../../../../../../pins/libc/include/xlocale/_stdlib.h

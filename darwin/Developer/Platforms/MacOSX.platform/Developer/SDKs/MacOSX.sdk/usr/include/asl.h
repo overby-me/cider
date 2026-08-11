@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/syslog/libsystem_asl.tproj/include/asl.h
+../../../../../../../../../pins/syslog/libsystem_asl.tproj/include/asl.h

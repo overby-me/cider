@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/notify.h
+../../../../../../../../../../pins/xnu/osfmk/mach/notify.h

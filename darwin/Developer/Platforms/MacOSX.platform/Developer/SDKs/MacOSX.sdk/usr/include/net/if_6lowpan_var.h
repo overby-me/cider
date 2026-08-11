@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/if_6lowpan_var.h
+../../../../../../../../../../pins/xnu/bsd/net/if_6lowpan_var.h

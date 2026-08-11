@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/secure/_common.h
+../../../../../../../../../../pins/libc/include/secure/_common.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/fts.h
+../../../../../../../../../pins/libc/include/fts.h

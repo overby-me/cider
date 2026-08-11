@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/policy_internal.h
+../../../../../../../../../../pins/xnu/osfmk/kern/policy_internal.h

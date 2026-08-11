@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/imgact.h
+../../../../../../../../../../pins/xnu/bsd/sys/imgact.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/queue.h
+../../../../../../../../../../pins/xnu/osfmk/kern/queue.h

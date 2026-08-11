@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/bits.h
+../../../../../../../../../../pins/xnu/osfmk/kern/bits.h

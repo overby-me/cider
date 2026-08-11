@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/nfsm_subs.h
+../../../../../../../../../../pins/xnu/bsd/nfs/nfsm_subs.h

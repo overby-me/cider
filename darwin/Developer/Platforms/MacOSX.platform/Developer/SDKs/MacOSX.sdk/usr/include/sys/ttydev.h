@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/ttydev.h
+../../../../../../../../../../pins/xnu/bsd/sys/ttydev.h

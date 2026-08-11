@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/memory_object.h
+../../../../../../../../../../pins/xnu/osfmk/mach/memory_object.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxpc/include/xpc/debug.h
+../../../../../../../../../../pins/libxpc/include/xpc/debug.h

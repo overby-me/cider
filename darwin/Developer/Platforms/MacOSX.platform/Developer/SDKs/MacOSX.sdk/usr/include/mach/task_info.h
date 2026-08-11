@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/task_info.h
+../../../../../../../../../../pins/xnu/osfmk/mach/task_info.h

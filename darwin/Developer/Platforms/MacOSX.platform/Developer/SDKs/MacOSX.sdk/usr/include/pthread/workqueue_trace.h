@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/pthread/workqueue_trace.h
+../../../../../../../../../../pins/xnu/bsd/pthread/workqueue_trace.h

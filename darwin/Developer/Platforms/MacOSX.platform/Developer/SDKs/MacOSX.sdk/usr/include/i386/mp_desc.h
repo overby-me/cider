@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/mp_desc.h
+../../../../../../../../../../pins/xnu/osfmk/i386/mp_desc.h

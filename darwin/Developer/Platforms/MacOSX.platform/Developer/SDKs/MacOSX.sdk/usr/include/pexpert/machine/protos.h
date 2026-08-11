@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/pexpert/pexpert/machine/protos.h
+../../../../../../../../../../../pins/xnu/pexpert/pexpert/machine/protos.h

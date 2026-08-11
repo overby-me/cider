@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/iso646.h
+../../../../../../../../../pins/libc/include/iso646.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach-o/sparc/reloc.h
+../../../../../../../../../../../pins/cctools/include/mach-o/sparc/reloc.h

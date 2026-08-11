@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/ndr.h
+../../../../../../../../../../pins/xnu/osfmk/mach/ndr.h

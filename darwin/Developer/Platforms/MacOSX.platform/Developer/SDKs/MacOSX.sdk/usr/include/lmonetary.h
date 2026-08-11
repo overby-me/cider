@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/locale/FreeBSD/lmonetary.h
+../../../../../../../../../pins/libc/locale/FreeBSD/lmonetary.h

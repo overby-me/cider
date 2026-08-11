@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach-o/ranlib.h
+../../../../../../../../../../pins/cctools/include/mach-o/ranlib.h

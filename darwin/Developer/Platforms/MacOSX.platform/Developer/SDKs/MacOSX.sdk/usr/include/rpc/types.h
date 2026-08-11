@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/rpc.subproj/types.h
+../../../../../../../../../../pins/Libinfo/rpc.subproj/types.h

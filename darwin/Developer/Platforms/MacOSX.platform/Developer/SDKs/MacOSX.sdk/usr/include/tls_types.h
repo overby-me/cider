@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/coretls/lib/tls_types.h
+../../../../../../../../../pins/coretls/lib/tls_types.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/misc_protos.h
+../../../../../../../../../../pins/xnu/osfmk/i386/misc_protos.h

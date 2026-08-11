@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/kern_types.h
+../../../../../../../../../../pins/xnu/osfmk/kern/kern_types.h

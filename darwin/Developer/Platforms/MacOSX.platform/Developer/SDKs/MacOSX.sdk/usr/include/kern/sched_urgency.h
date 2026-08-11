@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/sched_urgency.h
+../../../../../../../../../../pins/xnu/osfmk/kern/sched_urgency.h

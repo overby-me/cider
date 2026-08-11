@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/build_config.h
+../../../../../../../../../../pins/xnu/osfmk/kern/build_config.h

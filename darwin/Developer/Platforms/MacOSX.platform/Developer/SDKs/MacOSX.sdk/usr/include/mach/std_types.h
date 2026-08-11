@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/std_types.h
+../../../../../../../../../../pins/xnu/osfmk/mach/std_types.h

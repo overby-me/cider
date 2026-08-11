@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libsyscall/mach/mach/mach_interface.h
+../../../../../../../../../../pins/xnu/libsyscall/mach/mach/mach_interface.h

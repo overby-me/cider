@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/os/generic_win_base.h
+../../../../../../../../../../pins/libdispatch/os/generic_win_base.h

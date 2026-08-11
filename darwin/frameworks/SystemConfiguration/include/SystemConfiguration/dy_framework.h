@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/dy_framework.h
+../../../../../pins/configd/SystemConfiguration.fproj/dy_framework.h

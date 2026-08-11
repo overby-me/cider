@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/events_info.h
+../../../../../../../../../../pins/xnu/osfmk/mach/events_info.h

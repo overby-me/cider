@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/expat/expat/lib/nametab.h
+../../../../../../../../../../pins/expat/expat/lib/nametab.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/trace.h
+../../../../../../../../../../pins/xnu/bsd/sys/trace.h

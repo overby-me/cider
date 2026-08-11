@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/firewire.h
+../../../../../../../../../../pins/xnu/bsd/net/firewire.h

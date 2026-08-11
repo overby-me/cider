@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/monotonic.h
+../../../../../../../../../../../pins/xnu/bsd/sys/monotonic.h

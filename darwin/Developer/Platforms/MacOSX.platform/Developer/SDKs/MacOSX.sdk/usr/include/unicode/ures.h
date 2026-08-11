@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ures.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ures.h

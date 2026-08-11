@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/malloc.h
+../../../../../../../../../../pins/xnu/bsd/sys/malloc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/arpa/tftp.h
+../../../../../../../../../../pins/libc/include/arpa/tftp.h

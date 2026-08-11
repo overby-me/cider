@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/ncurses/darling/include/unctrl.h
+../../../../../../../../../pins/ncurses/darling/include/unctrl.h

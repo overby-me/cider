@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/MITKerberosShim/mit-include/com_err.h
+../../../../../../../../../pins/MITKerberosShim/mit-include/com_err.h

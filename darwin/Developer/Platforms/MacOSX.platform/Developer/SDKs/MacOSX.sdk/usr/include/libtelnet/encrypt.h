@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libtelnet/encrypt.h
+../../../../../../../../../../pins/libtelnet/encrypt.h

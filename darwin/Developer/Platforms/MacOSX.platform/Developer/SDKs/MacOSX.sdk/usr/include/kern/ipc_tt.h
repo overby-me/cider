@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ipc_tt.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ipc_tt.h

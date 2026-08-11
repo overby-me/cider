@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/corpses/task_corpse.h
+../../../../../../../../../../pins/xnu/osfmk/corpses/task_corpse.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libsyscall/mach/mach/mach.h
+../../../../../../../../../../pins/xnu/libsyscall/mach/mach/mach.h

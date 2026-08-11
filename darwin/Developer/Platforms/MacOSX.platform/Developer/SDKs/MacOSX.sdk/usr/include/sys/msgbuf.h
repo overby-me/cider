@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/msgbuf.h
+../../../../../../../../../../pins/xnu/bsd/sys/msgbuf.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/ipcs.h
+../../../../../../../../../../pins/xnu/bsd/sys/ipcs.h

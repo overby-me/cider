@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/wchar.h
+../../../../../../../../../pins/libc/include/wchar.h

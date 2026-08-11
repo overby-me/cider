@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/pktsched/pktsched_cbq.h
+../../../../../../../../../../../pins/xnu/bsd/net/pktsched/pktsched_cbq.h

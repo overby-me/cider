@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/OSTypes.h
+../../../../../../../../../../pins/xnu/libkern/libkern/OSTypes.h

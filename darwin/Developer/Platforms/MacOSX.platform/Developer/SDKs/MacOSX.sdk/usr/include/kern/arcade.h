@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/arcade.h
+../../../../../../../../../../pins/xnu/osfmk/kern/arcade.h

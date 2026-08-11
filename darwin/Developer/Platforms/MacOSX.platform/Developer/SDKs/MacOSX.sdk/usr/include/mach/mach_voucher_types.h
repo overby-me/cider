@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mach_voucher_types.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mach_voucher_types.h

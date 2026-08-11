@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/OSSerializeBinary.h
+../../../../../../../../../../pins/xnu/libkern/libkern/OSSerializeBinary.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/dyld_kernel.h
+../../../../../../../../../../pins/xnu/osfmk/mach/dyld_kernel.h

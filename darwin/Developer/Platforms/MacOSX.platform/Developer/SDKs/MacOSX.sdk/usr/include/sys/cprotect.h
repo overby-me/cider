@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/cprotect.h
+../../../../../../../../../../pins/xnu/bsd/sys/cprotect.h

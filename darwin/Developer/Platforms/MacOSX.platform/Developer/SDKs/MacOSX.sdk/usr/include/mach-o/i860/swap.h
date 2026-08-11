@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach-o/i860/swap.h
+../../../../../../../../../../../pins/cctools/include/mach-o/i860/swap.h

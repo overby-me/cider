@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/commoncrypto/include/CommonHMAC.h
+../../../../../../../../../../pins/commoncrypto/include/CommonHMAC.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/quota.h
+../../../../../../../../../../pins/xnu/bsd/sys/quota.h

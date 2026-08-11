@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/libdarwin/h/string.h
+../../../../../../../../../../pins/libc/libdarwin/h/string.h

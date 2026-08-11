@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/xdr_subs.h
+../../../../../../../../../../pins/xnu/bsd/nfs/xdr_subs.h

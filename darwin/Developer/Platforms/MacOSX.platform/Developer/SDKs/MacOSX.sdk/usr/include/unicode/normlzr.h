@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/normlzr.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/normlzr.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ipc_misc.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ipc_misc.h

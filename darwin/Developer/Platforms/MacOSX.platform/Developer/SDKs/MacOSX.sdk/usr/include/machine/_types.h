@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/_types.h
+../../../../../../../../../../pins/xnu/bsd/machine/_types.h

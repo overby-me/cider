@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/endian.h
+../../../../../../../../../../pins/xnu/bsd/machine/endian.h

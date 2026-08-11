@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/kpc.h
+../../../../../../../../../../pins/xnu/osfmk/kern/kpc.h

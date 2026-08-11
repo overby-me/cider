@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/rpc.subproj/rpc_msg.h
+../../../../../../../../../../pins/Libinfo/rpc.subproj/rpc_msg.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/fmdb/src/fmdb/FMDatabaseQueue.h
+../../../../../../../../../../pins/fmdb/src/fmdb/FMDatabaseQueue.h

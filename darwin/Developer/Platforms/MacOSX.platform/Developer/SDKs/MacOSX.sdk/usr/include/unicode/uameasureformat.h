@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/i18n/unicode/uameasureformat.h
+../../../../../../../../../../pins/icu/icuSources/i18n/unicode/uameasureformat.h

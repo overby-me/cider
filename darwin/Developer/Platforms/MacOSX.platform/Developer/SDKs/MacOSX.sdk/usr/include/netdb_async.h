@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/lookup.subproj/netdb_async.h
+../../../../../../../../../pins/Libinfo/lookup.subproj/netdb_async.h

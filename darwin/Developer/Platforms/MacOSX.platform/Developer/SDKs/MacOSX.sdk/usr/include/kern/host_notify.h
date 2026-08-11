@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/host_notify.h
+../../../../../../../../../../pins/xnu/osfmk/kern/host_notify.h

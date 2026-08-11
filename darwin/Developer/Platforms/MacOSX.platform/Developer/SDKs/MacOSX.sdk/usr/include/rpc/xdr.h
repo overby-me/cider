@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/rpc.subproj/xdr.h
+../../../../../../../../../../pins/Libinfo/rpc.subproj/xdr.h

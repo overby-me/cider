@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/private/pthread/tsd_private.h
+../../../../../../../../../../pins/libpthread/private/pthread/tsd_private.h

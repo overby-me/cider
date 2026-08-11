@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/tcpip.h
+../../../../../../../../../../pins/xnu/bsd/netinet/tcpip.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/NSObject.h
+../../../../../../../../../../pins/objc4/runtime/NSObject.h

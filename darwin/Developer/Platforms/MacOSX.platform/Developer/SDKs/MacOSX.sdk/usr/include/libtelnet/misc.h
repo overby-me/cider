@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libtelnet/misc.h
+../../../../../../../../../../pins/libtelnet/misc.h

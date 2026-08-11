@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/gen.subproj/ifaddrs.h
+../../../../../../../../../pins/Libinfo/gen.subproj/ifaddrs.h

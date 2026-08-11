@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/reason.h
+../../../../../../../../../../../pins/xnu/bsd/sys/reason.h

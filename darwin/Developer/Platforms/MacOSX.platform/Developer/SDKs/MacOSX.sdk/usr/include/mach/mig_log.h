@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mig_log.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mig_log.h

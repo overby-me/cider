@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/curl/curl/include/curl/mprintf.h
+../../../../../../../../../../pins/curl/curl/include/curl/mprintf.h

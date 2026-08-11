@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/ptrtools.h
+../../../../../../../../../../pins/xnu/libkern/os/ptrtools.h

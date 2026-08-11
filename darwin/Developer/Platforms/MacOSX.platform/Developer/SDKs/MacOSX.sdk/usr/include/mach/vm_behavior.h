@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/vm_behavior.h
+../../../../../../../../../../pins/xnu/osfmk/mach/vm_behavior.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/commoncrypto/include/Private/CommonCollabKeyGen.h
+../../../../../../../../../../pins/commoncrypto/include/Private/CommonCollabKeyGen.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kernel_types.h
+../../../../../../../../../../pins/xnu/bsd/sys/kernel_types.h

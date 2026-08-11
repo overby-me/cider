@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/host.h
+../../../../../../../../../../pins/xnu/osfmk/kern/host.h

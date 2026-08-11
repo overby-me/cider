@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libpthread/include/sys/_pthread/_pthread_types.h
+../../../../../../../../../../../pins/libpthread/include/sys/_pthread/_pthread_types.h

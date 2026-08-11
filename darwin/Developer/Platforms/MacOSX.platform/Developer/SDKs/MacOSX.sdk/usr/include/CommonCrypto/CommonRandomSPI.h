@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/commoncrypto/include/Private/CommonRandomSPI.h
+../../../../../../../../../../pins/commoncrypto/include/Private/CommonRandomSPI.h

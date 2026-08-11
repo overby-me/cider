@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/nlm_prot.h
+../../../../../../../../../../pins/librpcsvc/gen/nlm_prot.h

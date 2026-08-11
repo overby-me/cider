@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/MITKerberosShim/mit-include/krb5/locate_plugin.h
+../../../../../../../../../../pins/MITKerberosShim/mit-include/krb5/locate_plugin.h

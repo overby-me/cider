@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/pktsched/pktsched.h
+../../../../../../../../../../../pins/xnu/bsd/net/pktsched/pktsched.h

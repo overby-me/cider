@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/kern_return.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/kern_return.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxslt/libxslt/libxslt/attributes.h
+../../../../../../../../../../pins/libxslt/libxslt/libxslt/attributes.h

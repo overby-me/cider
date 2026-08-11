@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ux_handler.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ux_handler.h

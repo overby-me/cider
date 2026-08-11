@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/passwordserver_sasl/cyrus_sasl/include/hmac-md5.h
+../../../../../../../../../../pins/passwordserver_sasl/cyrus_sasl/include/hmac-md5.h

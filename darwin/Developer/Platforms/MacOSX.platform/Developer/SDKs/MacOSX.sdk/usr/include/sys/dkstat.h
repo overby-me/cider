@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/dkstat.h
+../../../../../../../../../../pins/xnu/bsd/sys/dkstat.h

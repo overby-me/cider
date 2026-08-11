@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/nls/FreeBSD/msgcat.h
+../../../../../../../../../pins/libc/nls/FreeBSD/msgcat.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/platform/string.h
+../../../../../../../../../../pins/libplatform/private/platform/string.h

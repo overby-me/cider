@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netkey/keysock.h
+../../../../../../../../../../pins/xnu/bsd/netkey/keysock.h

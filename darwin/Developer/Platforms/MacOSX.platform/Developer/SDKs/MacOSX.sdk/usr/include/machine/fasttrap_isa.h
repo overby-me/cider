@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/fasttrap_isa.h
+../../../../../../../../../../pins/xnu/bsd/machine/fasttrap_isa.h

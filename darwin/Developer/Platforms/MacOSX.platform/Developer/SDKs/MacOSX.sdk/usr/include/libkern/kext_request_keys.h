@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/kext_request_keys.h
+../../../../../../../../../../pins/xnu/libkern/libkern/kext_request_keys.h

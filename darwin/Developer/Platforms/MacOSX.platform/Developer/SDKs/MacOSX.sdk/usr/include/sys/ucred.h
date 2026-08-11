@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/ucred.h
+../../../../../../../../../../pins/xnu/bsd/sys/ucred.h

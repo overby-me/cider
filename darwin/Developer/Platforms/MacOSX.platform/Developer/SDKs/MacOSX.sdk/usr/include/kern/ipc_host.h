@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ipc_host.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ipc_host.h

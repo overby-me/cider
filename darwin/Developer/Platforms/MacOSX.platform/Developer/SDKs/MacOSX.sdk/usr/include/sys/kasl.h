@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kasl.h
+../../../../../../../../../../pins/xnu/bsd/sys/kasl.h

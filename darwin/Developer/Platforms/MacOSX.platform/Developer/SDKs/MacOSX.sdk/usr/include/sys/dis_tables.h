@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/dis_tables.h
+../../../../../../../../../../pins/xnu/bsd/sys/dis_tables.h

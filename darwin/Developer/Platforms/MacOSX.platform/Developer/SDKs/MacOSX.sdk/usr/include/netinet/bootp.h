@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/bootp.h
+../../../../../../../../../../pins/xnu/bsd/netinet/bootp.h

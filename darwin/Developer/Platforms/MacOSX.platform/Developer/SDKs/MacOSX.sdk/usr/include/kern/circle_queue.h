@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/circle_queue.h
+../../../../../../../../../../pins/xnu/osfmk/kern/circle_queue.h

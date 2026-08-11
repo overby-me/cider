@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/coalition.h
+../../../../../../../../../../pins/xnu/bsd/sys/coalition.h

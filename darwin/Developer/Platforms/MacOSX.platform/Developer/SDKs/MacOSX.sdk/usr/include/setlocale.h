@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/locale/FreeBSD/setlocale.h
+../../../../../../../../../pins/libc/locale/FreeBSD/setlocale.h

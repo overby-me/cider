@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/machine/thread_status.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/machine/thread_status.h

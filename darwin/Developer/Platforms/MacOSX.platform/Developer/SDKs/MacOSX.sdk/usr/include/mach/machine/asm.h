@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/machine/asm.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/machine/asm.h

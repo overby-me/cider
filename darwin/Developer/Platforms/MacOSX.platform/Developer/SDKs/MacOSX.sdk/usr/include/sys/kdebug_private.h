@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys_private/kdebug_private.h
+../../../../../../../../../../pins/xnu/bsd/sys_private/kdebug_private.h

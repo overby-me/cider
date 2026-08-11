@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCNetworkConfiguration.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCNetworkConfiguration.h

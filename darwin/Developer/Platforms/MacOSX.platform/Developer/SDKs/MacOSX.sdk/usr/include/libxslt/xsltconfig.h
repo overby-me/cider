@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxslt/Pregenerated Files/include/libxslt/xsltconfig.h
+../../../../../../../../../../pins/libxslt/Pregenerated Files/include/libxslt/xsltconfig.h

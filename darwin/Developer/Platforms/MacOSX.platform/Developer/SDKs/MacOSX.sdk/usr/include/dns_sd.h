@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/mDNSResponder/mDNSShared/dns_sd.h
+../../../../../../../../../pins/mDNSResponder/mDNSShared/dns_sd.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/kdebug.h
+../../../../../../../../../../../pins/xnu/bsd/sys/kdebug.h

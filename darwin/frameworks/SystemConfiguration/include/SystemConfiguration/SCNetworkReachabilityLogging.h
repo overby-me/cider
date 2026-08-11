@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCNetworkReachabilityLogging.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCNetworkReachabilityLogging.h

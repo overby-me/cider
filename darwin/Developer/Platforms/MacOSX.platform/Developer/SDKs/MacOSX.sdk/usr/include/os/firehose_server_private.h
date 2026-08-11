@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/os/firehose_server_private.h
+../../../../../../../../../../pins/libdispatch/os/firehose_server_private.h

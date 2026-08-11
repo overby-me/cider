@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/rpc.subproj/auth.h
+../../../../../../../../../../pins/Libinfo/rpc.subproj/auth.h

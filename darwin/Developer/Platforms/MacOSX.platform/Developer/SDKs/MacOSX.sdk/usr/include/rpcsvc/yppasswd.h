@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/yppasswd.h
+../../../../../../../../../../pins/librpcsvc/gen/yppasswd.h

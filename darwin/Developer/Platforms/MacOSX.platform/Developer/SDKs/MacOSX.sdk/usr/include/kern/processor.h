@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/processor.h
+../../../../../../../../../../pins/xnu/osfmk/kern/processor.h

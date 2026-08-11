@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/ltable.h
+../../../../../../../../../../pins/xnu/osfmk/kern/ltable.h

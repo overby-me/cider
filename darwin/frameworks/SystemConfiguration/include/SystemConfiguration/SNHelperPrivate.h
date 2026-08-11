@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SNHelperPrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/SNHelperPrivate.h

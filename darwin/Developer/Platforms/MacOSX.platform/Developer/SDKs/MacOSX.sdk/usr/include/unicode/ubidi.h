@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ubidi.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ubidi.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/content_protection.h
+../../../../../../../../../../../pins/xnu/bsd/sys/content_protection.h

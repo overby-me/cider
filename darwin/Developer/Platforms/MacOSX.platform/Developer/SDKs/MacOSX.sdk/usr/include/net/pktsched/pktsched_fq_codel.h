@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/pktsched/pktsched_fq_codel.h
+../../../../../../../../../../../pins/xnu/bsd/net/pktsched/pktsched_fq_codel.h

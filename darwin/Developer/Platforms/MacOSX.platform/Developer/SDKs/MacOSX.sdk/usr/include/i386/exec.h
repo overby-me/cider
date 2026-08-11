@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/exec.h
+../../../../../../../../../../pins/xnu/osfmk/i386/exec.h

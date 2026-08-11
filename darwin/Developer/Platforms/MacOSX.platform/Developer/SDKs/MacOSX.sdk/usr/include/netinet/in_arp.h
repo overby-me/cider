@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/in_arp.h
+../../../../../../../../../../pins/xnu/bsd/netinet/in_arp.h

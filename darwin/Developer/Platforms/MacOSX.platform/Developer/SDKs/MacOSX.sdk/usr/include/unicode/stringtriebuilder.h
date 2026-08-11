@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/stringtriebuilder.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/stringtriebuilder.h

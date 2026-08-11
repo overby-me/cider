@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mach_time.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mach_time.h

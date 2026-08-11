@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/cons.h
+../../../../../../../../../../pins/xnu/bsd/machine/cons.h

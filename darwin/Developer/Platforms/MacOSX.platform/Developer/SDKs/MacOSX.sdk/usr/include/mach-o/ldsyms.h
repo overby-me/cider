@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach-o/ldsyms.h
+../../../../../../../../../../pins/cctools/include/mach-o/ldsyms.h

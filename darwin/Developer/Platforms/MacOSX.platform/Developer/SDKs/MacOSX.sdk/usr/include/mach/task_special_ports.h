@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/task_special_ports.h
+../../../../../../../../../../pins/xnu/osfmk/mach/task_special_ports.h

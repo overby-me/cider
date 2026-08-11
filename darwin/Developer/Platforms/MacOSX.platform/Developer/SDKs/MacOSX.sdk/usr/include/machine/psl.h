@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/psl.h
+../../../../../../../../../../pins/xnu/bsd/machine/psl.h

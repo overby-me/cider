@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/strhash.h
+../../../../../../../../../pins/libc/include/strhash.h

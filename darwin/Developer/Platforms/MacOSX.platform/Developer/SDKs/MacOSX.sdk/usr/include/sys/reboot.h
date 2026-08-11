@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/reboot.h
+../../../../../../../../../../pins/xnu/bsd/sys/reboot.h

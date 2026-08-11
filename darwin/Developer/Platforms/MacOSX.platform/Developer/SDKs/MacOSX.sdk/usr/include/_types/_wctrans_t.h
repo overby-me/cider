@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/_types/_wctrans_t.h
+../../../../../../../../../../pins/libc/include/_types/_wctrans_t.h

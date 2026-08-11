@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/Protocol.h
+../../../../../../../../../../pins/objc4/runtime/Protocol.h

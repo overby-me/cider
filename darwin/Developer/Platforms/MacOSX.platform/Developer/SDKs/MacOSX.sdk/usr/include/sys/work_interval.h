@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/work_interval.h
+../../../../../../../../../../pins/xnu/bsd/sys/work_interval.h

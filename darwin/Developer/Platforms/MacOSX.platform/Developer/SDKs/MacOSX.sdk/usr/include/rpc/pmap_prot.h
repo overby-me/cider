@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/rpc.subproj/pmap_prot.h
+../../../../../../../../../../pins/Libinfo/rpc.subproj/pmap_prot.h

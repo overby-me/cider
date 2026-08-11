@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/ether_if_module.h
+../../../../../../../../../../pins/xnu/bsd/net/ether_if_module.h

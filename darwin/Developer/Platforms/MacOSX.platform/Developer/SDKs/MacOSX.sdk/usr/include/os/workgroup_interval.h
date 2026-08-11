@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/os/workgroup_interval.h
+../../../../../../../../../../pins/libdispatch/os/workgroup_interval.h

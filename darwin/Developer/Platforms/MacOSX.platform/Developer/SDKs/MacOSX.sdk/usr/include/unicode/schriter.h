@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/schriter.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/schriter.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/codedir_internal.h
+../../../../../../../../../../pins/xnu/bsd/sys/codedir_internal.h

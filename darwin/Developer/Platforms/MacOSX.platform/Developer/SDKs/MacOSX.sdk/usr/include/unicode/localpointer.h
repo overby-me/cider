@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/localpointer.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/localpointer.h

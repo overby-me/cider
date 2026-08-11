@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/codesign.h
+../../../../../../../../../../pins/xnu/bsd/sys/codesign.h

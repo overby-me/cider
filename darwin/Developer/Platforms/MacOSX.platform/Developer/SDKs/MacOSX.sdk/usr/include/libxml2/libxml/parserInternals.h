@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxml2/libxml2/include/libxml/parserInternals.h
+../../../../../../../../../../../pins/libxml2/libxml2/include/libxml/parserInternals.h

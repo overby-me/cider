@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/zlib/zlib/zlib.h
+../../../../../../../../../pins/zlib/zlib/zlib.h

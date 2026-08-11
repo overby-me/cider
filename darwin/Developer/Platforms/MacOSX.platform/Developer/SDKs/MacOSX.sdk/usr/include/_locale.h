@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/_locale.h
+../../../../../../../../../pins/libc/include/_locale.h

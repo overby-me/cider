@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/include/libkern/OSSpinLockDeprecated.h
+../../../../../../../../../../pins/libplatform/include/libkern/OSSpinLockDeprecated.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/sys_domain.h
+../../../../../../../../../../pins/xnu/bsd/sys/sys_domain.h

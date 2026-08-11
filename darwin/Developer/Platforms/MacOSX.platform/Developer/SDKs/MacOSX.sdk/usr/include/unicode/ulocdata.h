@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ulocdata.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ulocdata.h

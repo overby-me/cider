@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/in_stat.h
+../../../../../../../../../../pins/xnu/bsd/netinet/in_stat.h

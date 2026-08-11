@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/i18n/unicode/coleitr.h
+../../../../../../../../../../pins/icu/icuSources/i18n/unicode/coleitr.h

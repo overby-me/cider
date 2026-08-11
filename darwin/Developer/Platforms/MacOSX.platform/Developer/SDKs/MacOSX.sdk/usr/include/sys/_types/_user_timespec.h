@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/_types/_user_timespec.h
+../../../../../../../../../../../pins/xnu/bsd/sys/_types/_user_timespec.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/dyld/include/mach-o/dyld_images.h
+../../../../../../../../../../pins/dyld/include/mach-o/dyld_images.h

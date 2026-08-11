@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/firehose.h
+../../../../../../../../../../pins/xnu/libkern/os/firehose.h

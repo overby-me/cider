@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/hash.h
+../../../../../../../../../../pins/xnu/libkern/os/hash.h

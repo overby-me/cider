@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/MITKerberosShim/mit-include/krb5/krb5.h
+../../../../../../../../../../pins/MITKerberosShim/mit-include/krb5/krb5.h

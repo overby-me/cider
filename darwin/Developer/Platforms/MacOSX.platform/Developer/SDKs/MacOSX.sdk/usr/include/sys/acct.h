@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/acct.h
+../../../../../../../../../../pins/xnu/bsd/sys/acct.h

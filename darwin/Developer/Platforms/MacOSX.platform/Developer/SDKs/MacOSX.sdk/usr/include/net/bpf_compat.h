@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/bpf_compat.h
+../../../../../../../../../../pins/xnu/bsd/net/bpf_compat.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/private/pthread/posix_sched.h
+../../../../../../../../../../pins/libpthread/private/pthread/posix_sched.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/copyout_shim.h
+../../../../../../../../../../pins/xnu/osfmk/kern/copyout_shim.h

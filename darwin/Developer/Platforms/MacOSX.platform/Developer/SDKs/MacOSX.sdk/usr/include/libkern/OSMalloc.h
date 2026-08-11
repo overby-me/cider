@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/OSMalloc.h
+../../../../../../../../../../pins/xnu/libkern/libkern/OSMalloc.h

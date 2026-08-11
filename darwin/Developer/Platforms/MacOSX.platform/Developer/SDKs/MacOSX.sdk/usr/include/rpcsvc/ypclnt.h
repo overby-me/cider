@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/Libinfo/nis.subproj/ypclnt.h
+../../../../../../../../../../pins/Libinfo/nis.subproj/ypclnt.h

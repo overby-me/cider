@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/xlocale/_wctype.h
+../../../../../../../../../../pins/libc/include/xlocale/_wctype.h

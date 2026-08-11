@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/kpi_protocol.h
+../../../../../../../../../../pins/xnu/bsd/net/kpi_protocol.h

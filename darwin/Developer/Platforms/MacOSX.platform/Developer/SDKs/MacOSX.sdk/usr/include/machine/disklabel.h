@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/machine/disklabel.h
+../../../../../../../../../../pins/xnu/bsd/machine/disklabel.h

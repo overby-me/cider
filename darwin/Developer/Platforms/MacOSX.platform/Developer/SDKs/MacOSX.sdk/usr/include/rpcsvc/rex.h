@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/rex.h
+../../../../../../../../../../pins/librpcsvc/gen/rex.h

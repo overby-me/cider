@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/VPNFlow.h
+../../../../../pins/configd/SystemConfiguration.fproj/VPNFlow.h

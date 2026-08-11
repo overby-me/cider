@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/curl/curl/include/curl/easy.h
+../../../../../../../../../../pins/curl/curl/include/curl/easy.h

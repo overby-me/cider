@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/commoncrypto/include/CommonDigest.h
+../../../../../../../../../../pins/commoncrypto/include/CommonDigest.h

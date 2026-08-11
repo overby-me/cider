@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/priority_queue.h
+../../../../../../../../../../pins/xnu/osfmk/kern/priority_queue.h

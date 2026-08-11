@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/os/object.h
+../../../../../../../../../../pins/libdispatch/os/object.h

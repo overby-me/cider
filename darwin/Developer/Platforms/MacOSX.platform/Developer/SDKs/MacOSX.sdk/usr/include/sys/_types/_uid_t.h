@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/_types/_uid_t.h
+../../../../../../../../../../../pins/xnu/bsd/sys/_types/_uid_t.h

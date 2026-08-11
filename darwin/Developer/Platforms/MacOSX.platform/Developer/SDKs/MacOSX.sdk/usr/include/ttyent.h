@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/ttyent.h
+../../../../../../../../../pins/libc/include/ttyent.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/sysent.h
+../../../../../../../../../../pins/xnu/bsd/sys/sysent.h

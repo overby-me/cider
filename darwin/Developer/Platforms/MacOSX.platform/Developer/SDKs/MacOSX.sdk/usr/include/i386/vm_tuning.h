@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/vm_tuning.h
+../../../../../../../../../../pins/xnu/osfmk/i386/vm_tuning.h

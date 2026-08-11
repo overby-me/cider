@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach_debug/zone_info.h
+../../../../../../../../../../pins/xnu/osfmk/mach_debug/zone_info.h

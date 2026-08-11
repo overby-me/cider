@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/contiki-net.h
+../../../../../../../../../../pins/xnu/bsd/net/contiki-net.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxpc/include/xpc/private/pipe.h
+../../../../../../../../../../../pins/libxpc/include/xpc/private/pipe.h

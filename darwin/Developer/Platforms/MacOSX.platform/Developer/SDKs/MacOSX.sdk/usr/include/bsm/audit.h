@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/bsm/audit.h
+../../../../../../../../../../pins/xnu/bsd/bsm/audit.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/bit_routines.h
+../../../../../../../../../../pins/xnu/osfmk/i386/bit_routines.h

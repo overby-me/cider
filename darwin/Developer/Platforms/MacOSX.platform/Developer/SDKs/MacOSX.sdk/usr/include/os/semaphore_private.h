@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/os/semaphore_private.h
+../../../../../../../../../../pins/libplatform/private/os/semaphore_private.h

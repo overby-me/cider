@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/page_decrypt.h
+../../../../../../../../../../pins/xnu/osfmk/kern/page_decrypt.h

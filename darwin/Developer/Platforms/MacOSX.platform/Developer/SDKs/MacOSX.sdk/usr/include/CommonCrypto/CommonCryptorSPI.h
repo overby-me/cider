@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/commoncrypto/include/Private/CommonCryptorSPI.h
+../../../../../../../../../../pins/commoncrypto/include/Private/CommonCryptorSPI.h

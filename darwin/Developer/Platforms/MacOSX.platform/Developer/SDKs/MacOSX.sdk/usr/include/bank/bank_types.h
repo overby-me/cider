@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/bank/bank_types.h
+../../../../../../../../../../pins/xnu/osfmk/bank/bank_types.h

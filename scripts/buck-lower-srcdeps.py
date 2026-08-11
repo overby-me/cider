@@ -206,7 +206,7 @@ def main(argv: list[str]) -> int:
                     if os.path.lexists(os.path.join(REPO, cand)):
                         srcs.add(cand)
                         break
-                    if cand.split("/")[0] in ("buck-src", "src", "darwin", "buck-rust"):
+                    if cand.split("/")[0] in ("buck-src", "pins", "darwin", "buck-rust"):
                         # Names a project tree but is not on disk: worth seeing.
                         missing_tokens.add(cand)
             # 1b. And any project directory it puts on the include path, in full.

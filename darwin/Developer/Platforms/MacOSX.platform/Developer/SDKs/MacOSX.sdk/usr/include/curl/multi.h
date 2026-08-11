@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/curl/curl/include/curl/multi.h
+../../../../../../../../../../pins/curl/curl/include/curl/multi.h

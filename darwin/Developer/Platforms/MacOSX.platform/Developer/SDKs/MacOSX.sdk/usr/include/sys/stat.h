@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/stat.h
+../../../../../../../../../../pins/xnu/bsd/sys/stat.h

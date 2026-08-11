@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/task_inspect.h
+../../../../../../../../../../pins/xnu/osfmk/mach/task_inspect.h

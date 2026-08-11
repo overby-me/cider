@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/termios.h
+../../../../../../../../../pins/libc/include/termios.h

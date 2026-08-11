@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/in_tclass.h
+../../../../../../../../../../pins/xnu/bsd/netinet/in_tclass.h

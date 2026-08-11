@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/macro_help.h
+../../../../../../../../../../pins/xnu/osfmk/kern/macro_help.h

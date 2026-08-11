@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/block_hint.h
+../../../../../../../../../../pins/xnu/osfmk/kern/block_hint.h

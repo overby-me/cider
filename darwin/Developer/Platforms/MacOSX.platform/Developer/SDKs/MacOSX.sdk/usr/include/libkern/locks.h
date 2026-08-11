@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/locks.h
+../../../../../../../../../../pins/xnu/libkern/libkern/locks.h

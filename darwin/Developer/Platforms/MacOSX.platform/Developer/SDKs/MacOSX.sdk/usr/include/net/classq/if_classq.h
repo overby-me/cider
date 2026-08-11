@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/classq/if_classq.h
+../../../../../../../../../../../pins/xnu/bsd/net/classq/if_classq.h

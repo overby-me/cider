@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/os/alloc_once_impl.h
+../../../../../../../../../../pins/libplatform/private/os/alloc_once_impl.h

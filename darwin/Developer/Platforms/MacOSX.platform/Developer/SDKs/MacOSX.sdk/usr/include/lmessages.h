@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/locale/FreeBSD/lmessages.h
+../../../../../../../../../pins/libc/locale/FreeBSD/lmessages.h

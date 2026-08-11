@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCValidation.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCValidation.h

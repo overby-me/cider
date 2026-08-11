@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet6/in6_gif.h
+../../../../../../../../../../pins/xnu/bsd/netinet6/in6_gif.h

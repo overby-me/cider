@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/sfi.h
+../../../../../../../../../../pins/xnu/osfmk/kern/sfi.h

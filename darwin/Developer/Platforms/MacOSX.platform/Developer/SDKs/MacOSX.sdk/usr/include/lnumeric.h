@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/locale/FreeBSD/lnumeric.h
+../../../../../../../../../pins/libc/locale/FreeBSD/lnumeric.h

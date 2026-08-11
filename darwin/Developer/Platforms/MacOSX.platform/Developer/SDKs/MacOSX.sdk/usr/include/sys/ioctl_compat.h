@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/ioctl_compat.h
+../../../../../../../../../../pins/xnu/bsd/sys/ioctl_compat.h

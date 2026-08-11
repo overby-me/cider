@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/tprintf.h
+../../../../../../../../../../pins/xnu/bsd/sys/tprintf.h

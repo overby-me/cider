@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libtelnet/auth.h
+../../../../../../../../../../pins/libtelnet/auth.h

@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/_types.h
+../../../../../../../../../pins/libc/include/_types.h

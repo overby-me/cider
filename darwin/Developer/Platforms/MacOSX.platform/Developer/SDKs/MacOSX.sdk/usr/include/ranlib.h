@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/ranlib.h
+../../../../../../../../../pins/libc/include/ranlib.h

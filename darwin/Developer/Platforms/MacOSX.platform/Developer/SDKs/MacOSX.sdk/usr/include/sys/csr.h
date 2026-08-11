@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/csr.h
+../../../../../../../../../../pins/xnu/bsd/sys/csr.h

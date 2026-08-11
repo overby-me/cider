@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/mptcp_seq.h
+../../../../../../../../../../pins/xnu/bsd/netinet/mptcp_seq.h

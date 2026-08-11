@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/security/audit/audit_ioctl.h
+../../../../../../../../../../../pins/xnu/bsd/security/audit/audit_ioctl.h

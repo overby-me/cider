@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/sdt_isa.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/sdt_isa.h

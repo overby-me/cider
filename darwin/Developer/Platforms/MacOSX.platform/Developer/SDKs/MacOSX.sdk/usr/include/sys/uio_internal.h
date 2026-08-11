@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/uio_internal.h
+../../../../../../../../../../pins/xnu/bsd/sys/uio_internal.h

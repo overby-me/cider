@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/sqlite/include/sqlite3_private.h
+../../../../../../../../../pins/sqlite/include/sqlite3_private.h

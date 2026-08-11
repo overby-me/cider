@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/mman.h
+../../../../../../../../../../../pins/xnu/bsd/sys/mman.h

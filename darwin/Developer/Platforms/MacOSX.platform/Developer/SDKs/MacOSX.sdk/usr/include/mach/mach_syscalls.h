@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mach_syscalls.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mach_syscalls.h

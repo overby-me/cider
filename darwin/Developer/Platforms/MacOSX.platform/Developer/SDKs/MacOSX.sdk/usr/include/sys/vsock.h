@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/vsock.h
+../../../../../../../../../../pins/xnu/bsd/sys/vsock.h

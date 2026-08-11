@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/private/queue_private.h
+../../../../../../../../../../pins/libdispatch/private/queue_private.h

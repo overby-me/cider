@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/sysctl.h
+../../../../../../../../../../pins/xnu/libkern/libkern/sysctl.h

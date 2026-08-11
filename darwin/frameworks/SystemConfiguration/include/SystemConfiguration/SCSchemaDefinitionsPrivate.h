@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCSchemaDefinitionsPrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCSchemaDefinitionsPrivate.h

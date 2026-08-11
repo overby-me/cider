@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/backtrace.h
+../../../../../../../../../../pins/xnu/osfmk/kern/backtrace.h

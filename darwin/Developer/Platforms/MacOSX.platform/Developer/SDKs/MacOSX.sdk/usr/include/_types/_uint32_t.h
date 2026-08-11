@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/_types/_uint32_t.h
+../../../../../../../../../../pins/libc/include/_types/_uint32_t.h

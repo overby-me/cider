@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/namei.h
+../../../../../../../../../../pins/xnu/bsd/sys/namei.h

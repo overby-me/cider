@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/libkern/os/reason_private.h
+../../../../../../../../../../../pins/xnu/libkern/os/reason_private.h

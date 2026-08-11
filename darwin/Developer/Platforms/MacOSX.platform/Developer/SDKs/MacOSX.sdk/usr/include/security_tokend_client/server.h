@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/SecurityTokend/lib/server.h
+../../../../../../../../../../pins/SecurityTokend/lib/server.h

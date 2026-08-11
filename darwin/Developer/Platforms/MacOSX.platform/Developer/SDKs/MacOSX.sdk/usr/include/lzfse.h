@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/lzfse/include/lzfse.h
+../../../../../../../../../pins/lzfse/include/lzfse.h

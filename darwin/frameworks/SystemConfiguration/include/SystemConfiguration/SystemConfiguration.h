@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SystemConfiguration.h
+../../../../../pins/configd/SystemConfiguration.fproj/SystemConfiguration.h

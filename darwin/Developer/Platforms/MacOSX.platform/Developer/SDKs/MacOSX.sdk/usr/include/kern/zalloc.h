@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/zalloc.h
+../../../../../../../../../../pins/xnu/osfmk/kern/zalloc.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/nfs_prot.h
+../../../../../../../../../../pins/librpcsvc/gen/nfs_prot.h

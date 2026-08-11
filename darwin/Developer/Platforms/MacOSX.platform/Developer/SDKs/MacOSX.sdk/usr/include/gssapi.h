@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/MITKerberosShim/mit-include/gssapi.h
+../../../../../../../../../pins/MITKerberosShim/mit-include/gssapi.h

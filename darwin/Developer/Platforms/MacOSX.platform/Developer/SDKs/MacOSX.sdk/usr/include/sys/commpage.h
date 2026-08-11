@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/commpage.h
+../../../../../../../../../../pins/xnu/bsd/sys/commpage.h

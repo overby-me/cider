@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/host_reboot.h
+../../../../../../../../../../pins/xnu/osfmk/mach/host_reboot.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/ntstat.h
+../../../../../../../../../../pins/xnu/bsd/net/ntstat.h

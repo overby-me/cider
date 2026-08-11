@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/turnstile.h
+../../../../../../../../../../pins/xnu/osfmk/kern/turnstile.h

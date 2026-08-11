@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/crc.h
+../../../../../../../../../../pins/xnu/libkern/libkern/crc.h

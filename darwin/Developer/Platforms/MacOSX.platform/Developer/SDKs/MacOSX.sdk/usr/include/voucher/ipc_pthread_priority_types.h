@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/voucher/ipc_pthread_priority_types.h
+../../../../../../../../../../pins/xnu/osfmk/voucher/ipc_pthread_priority_types.h

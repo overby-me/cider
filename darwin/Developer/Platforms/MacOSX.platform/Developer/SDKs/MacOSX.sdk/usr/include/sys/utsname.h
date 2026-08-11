@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/utsname.h
+../../../../../../../../../../pins/xnu/bsd/sys/utsname.h

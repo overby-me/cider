@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/cpu_capabilities.h
+../../../../../../../../../../pins/xnu/osfmk/i386/cpu_capabilities.h

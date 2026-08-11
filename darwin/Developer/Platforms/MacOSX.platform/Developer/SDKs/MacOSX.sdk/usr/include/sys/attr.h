@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/attr.h
+../../../../../../../../../../pins/xnu/bsd/sys/attr.h

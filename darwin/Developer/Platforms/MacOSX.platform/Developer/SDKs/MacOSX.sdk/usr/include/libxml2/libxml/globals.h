@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxml2/libxml2/include/libxml/globals.h
+../../../../../../../../../../../pins/libxml2/libxml2/include/libxml/globals.h

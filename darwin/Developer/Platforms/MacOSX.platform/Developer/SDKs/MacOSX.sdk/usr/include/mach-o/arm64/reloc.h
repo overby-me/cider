@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach-o/arm64/reloc.h
+../../../../../../../../../../../pins/cctools/include/mach-o/arm64/reloc.h

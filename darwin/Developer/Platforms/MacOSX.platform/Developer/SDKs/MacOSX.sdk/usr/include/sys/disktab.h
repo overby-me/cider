@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/disktab.h
+../../../../../../../../../../pins/xnu/bsd/sys/disktab.h

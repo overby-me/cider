@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mach_traps.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mach_traps.h

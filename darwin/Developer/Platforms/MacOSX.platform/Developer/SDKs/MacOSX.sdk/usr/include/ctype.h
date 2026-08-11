@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/ctype.h
+../../../../../../../../../pins/libc/include/ctype.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/include/pthread/sched.h
+../../../../../../../../../../pins/libpthread/include/pthread/sched.h

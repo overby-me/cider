@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/libdarwin/h/libdarwin_init.h
+../../../../../../../../../../pins/libc/libdarwin/h/libdarwin_init.h

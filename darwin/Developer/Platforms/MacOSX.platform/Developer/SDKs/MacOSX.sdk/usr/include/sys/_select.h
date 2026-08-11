@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/_select.h
+../../../../../../../../../../pins/xnu/bsd/sys/_select.h

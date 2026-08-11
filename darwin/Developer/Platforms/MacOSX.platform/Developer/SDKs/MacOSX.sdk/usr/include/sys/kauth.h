@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kauth.h
+../../../../../../../../../../pins/xnu/bsd/sys/kauth.h

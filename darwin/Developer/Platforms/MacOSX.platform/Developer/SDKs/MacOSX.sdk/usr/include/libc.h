@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/libc.h
+../../../../../../../../../pins/libc/include/libc.h

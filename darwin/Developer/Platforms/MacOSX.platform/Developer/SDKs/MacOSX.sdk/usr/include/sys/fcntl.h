@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/fcntl.h
+../../../../../../../../../../pins/xnu/bsd/sys/fcntl.h

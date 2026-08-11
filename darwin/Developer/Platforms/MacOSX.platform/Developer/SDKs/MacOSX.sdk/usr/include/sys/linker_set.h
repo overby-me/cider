@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/linker_set.h
+../../../../../../../../../../pins/xnu/bsd/sys/linker_set.h

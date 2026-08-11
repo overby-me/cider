@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/vnode_if.h
+../../../../../../../../../../pins/xnu/bsd/sys/vnode_if.h

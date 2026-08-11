@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/gen/get_compat.h
+../../../../../../../../../pins/libc/gen/get_compat.h

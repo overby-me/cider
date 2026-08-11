@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/icu/icuSources/common/unicode/ustringtrie.h
+../../../../../../../../../../pins/icu/icuSources/common/unicode/ustringtrie.h

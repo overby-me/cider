@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/kcdata.h
+../../../../../../../../../../pins/xnu/osfmk/kern/kcdata.h

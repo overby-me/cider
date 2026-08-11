@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/wordexp.h
+../../../../../../../../../pins/libc/include/wordexp.h

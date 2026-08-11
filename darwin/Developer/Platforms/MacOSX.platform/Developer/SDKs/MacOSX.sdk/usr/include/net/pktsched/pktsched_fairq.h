@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/pktsched/pktsched_fairq.h
+../../../../../../../../../../../pins/xnu/bsd/net/pktsched/pktsched_fairq.h

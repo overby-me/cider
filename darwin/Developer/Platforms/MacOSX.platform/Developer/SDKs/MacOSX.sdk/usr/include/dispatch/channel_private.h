@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/private/channel_private.h
+../../../../../../../../../../pins/libdispatch/private/channel_private.h

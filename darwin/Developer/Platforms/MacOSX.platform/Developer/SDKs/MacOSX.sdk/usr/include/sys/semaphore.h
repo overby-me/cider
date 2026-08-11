@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/semaphore.h
+../../../../../../../../../../pins/xnu/bsd/sys/semaphore.h

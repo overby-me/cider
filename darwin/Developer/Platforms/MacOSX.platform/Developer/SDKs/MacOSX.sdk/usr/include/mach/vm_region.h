@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/vm_region.h
+../../../../../../../../../../pins/xnu/osfmk/mach/vm_region.h

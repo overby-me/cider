@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/include/libkern/OSAtomic.h
+../../../../../../../../../../pins/libplatform/include/libkern/OSAtomic.h

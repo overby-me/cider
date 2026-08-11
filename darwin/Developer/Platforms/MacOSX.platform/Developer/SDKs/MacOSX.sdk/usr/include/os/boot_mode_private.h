@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/os/boot_mode_private.h
+../../../../../../../../../../pins/libc/os/boot_mode_private.h

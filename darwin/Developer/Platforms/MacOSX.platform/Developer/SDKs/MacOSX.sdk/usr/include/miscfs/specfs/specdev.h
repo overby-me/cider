@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/miscfs/specfs/specdev.h
+../../../../../../../../../../../pins/xnu/bsd/miscfs/specfs/specdev.h

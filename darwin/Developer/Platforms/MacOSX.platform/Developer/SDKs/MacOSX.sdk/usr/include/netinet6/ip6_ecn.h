@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet6/ip6_ecn.h
+../../../../../../../../../../pins/xnu/bsd/netinet6/ip6_ecn.h

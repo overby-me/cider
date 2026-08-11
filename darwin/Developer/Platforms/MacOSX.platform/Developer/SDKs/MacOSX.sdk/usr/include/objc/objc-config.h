@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/objc4/runtime/objc-config.h
+../../../../../../../../../../pins/objc4/runtime/objc-config.h

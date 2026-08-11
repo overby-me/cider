@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxpc/include/xpc/private/date.h
+../../../../../../../../../../../pins/libxpc/include/xpc/private/date.h

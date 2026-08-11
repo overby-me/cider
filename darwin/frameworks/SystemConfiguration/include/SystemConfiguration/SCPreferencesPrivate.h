@@ -1,1 +1,1 @@
-../../../../../src/external/configd/SystemConfiguration.fproj/SCPreferencesPrivate.h
+../../../../../pins/configd/SystemConfiguration.fproj/SCPreferencesPrivate.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/arm/cpu_capabilities.h
+../../../../../../../../../../../pins/xnu/osfmk/arm/cpu_capabilities.h

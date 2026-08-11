@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxpc/include/xpc/private/mach_recv.h
+../../../../../../../../../../../pins/libxpc/include/xpc/private/mach_recv.h

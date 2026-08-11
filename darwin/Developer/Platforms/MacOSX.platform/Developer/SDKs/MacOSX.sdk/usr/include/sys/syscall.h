@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/gen/syscall.h
+../../../../../../../../../../pins/xnu/gen/syscall.h

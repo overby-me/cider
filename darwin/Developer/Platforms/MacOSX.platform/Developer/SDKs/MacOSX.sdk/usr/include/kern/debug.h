@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/debug.h
+../../../../../../../../../../pins/xnu/osfmk/kern/debug.h

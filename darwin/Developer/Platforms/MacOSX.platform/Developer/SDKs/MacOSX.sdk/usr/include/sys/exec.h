@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/exec.h
+../../../../../../../../../../pins/xnu/bsd/sys/exec.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/sm_inter.h
+../../../../../../../../../../pins/librpcsvc/gen/sm_inter.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/kpi_mbuf.h
+../../../../../../../../../../pins/xnu/bsd/sys/kpi_mbuf.h

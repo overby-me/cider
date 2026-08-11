@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/netboot.h
+../../../../../../../../../../pins/xnu/bsd/sys/netboot.h

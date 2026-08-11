@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/libkern/libkern/OSCrossEndian.h
+../../../../../../../../../../../pins/xnu/libkern/libkern/OSCrossEndian.h

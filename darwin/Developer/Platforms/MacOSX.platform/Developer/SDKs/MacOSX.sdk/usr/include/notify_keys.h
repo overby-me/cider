@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libnotify/notify_keys.h
+../../../../../../../../../pins/libnotify/notify_keys.h

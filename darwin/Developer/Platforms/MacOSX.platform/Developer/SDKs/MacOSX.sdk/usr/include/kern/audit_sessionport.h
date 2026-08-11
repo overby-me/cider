@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/audit_sessionport.h
+../../../../../../../../../../pins/xnu/osfmk/kern/audit_sessionport.h

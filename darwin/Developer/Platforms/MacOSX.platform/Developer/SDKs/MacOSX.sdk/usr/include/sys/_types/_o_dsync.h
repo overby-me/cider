@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/_types/_o_dsync.h
+../../../../../../../../../../../pins/xnu/bsd/sys/_types/_o_dsync.h

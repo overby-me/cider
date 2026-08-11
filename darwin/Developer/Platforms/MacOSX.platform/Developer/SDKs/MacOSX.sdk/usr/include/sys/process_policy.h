@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/process_policy.h
+../../../../../../../../../../pins/xnu/bsd/sys/process_policy.h

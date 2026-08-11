@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/dtrace/darling/include/dtrace.h
+../../../../../../../../../pins/dtrace/darling/include/dtrace.h

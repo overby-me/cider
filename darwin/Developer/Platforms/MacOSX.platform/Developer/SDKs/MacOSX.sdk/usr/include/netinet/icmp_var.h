@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/icmp_var.h
+../../../../../../../../../../pins/xnu/bsd/netinet/icmp_var.h

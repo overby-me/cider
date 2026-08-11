@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/vmx.h
+../../../../../../../../../../pins/xnu/osfmk/i386/vmx.h

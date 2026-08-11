@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/kmod.h
+../../../../../../../../../../pins/xnu/osfmk/mach/kmod.h

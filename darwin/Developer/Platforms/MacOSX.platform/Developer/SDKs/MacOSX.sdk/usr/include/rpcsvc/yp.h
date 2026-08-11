@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/librpcsvc/gen/yp.h
+../../../../../../../../../../pins/librpcsvc/gen/yp.h

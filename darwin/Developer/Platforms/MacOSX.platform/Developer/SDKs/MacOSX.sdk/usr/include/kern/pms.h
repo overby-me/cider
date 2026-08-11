@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/pms.h
+../../../../../../../../../../pins/xnu/osfmk/kern/pms.h

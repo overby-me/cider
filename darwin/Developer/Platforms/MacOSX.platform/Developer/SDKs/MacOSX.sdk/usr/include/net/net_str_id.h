@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/net_str_id.h
+../../../../../../../../../../pins/xnu/bsd/net/net_str_id.h

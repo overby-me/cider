@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/i386/tsc.h
+../../../../../../../../../../pins/xnu/osfmk/i386/tsc.h

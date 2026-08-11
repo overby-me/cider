@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/buf_internal.h
+../../../../../../../../../../pins/xnu/bsd/sys/buf_internal.h

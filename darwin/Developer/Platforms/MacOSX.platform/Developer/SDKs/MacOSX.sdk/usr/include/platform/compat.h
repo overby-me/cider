@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/platform/compat.h
+../../../../../../../../../../pins/libplatform/private/platform/compat.h

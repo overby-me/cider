@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/curl/curl/include/curl/curlver.h
+../../../../../../../../../../pins/curl/curl/include/curl/curlver.h

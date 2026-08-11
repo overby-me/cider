@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/fcntl.h
+../../../../../../../../../pins/libc/include/fcntl.h

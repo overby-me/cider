@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/nfs/nfs_gss.h
+../../../../../../../../../../pins/xnu/bsd/nfs/nfs_gss.h

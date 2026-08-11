@@ -29,6 +29,10 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Where upstream pins live. Named so the depth below is derived, not written as a number.
+PIN_ROOT = "pins"
+PIN_ROOT_DEPTH = len(PIN_ROOT.split("/"))
 SDK_INCLUDE = os.path.join(
     REPO,
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
@@ -219,11 +223,17 @@ def main(argv: list[str]) -> int:
         entries = []
         moved = split_pins()
         for include_path, repo_rel in walk_namespace(ns):
-            pin = repo_rel.split("/")[2] if repo_rel.startswith("pins/") else "(repo)"
+            # INDEX DERIVED FROM THE PIN ROOT. This was [2], the position of <name> under the old
+            # three-component root, and a textual sweep moved the startswith() prefix to
+            # pins/ while leaving the index behind, which would have attributed every
+            # header to the wrong pin.
+            pin = (repo_rel.split("/")[PIN_ROOT_DEPTH]
+                   if repo_rel.startswith(PIN_ROOT + "/") else "(repo)")
             pins[pin] = pins.get(pin, 0) + 1
             buck_rel = to_buck_src(repo_rel)
             if buck_rel is None:
-                key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("pins/") else 2])
+                key = "/".join(repo_rel.split("/")[
+                    :PIN_ROOT_DEPTH + 1 if repo_rel.startswith(PIN_ROOT + "/") else 2])
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
             entries.append((include_path, pin_value(buck_rel, moved)))

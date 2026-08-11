@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/prof_types.h
+../../../../../../../../../../pins/xnu/osfmk/mach/prof_types.h

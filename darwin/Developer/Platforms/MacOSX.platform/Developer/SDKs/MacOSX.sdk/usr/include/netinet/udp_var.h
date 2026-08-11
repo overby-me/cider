@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/udp_var.h
+../../../../../../../../../../pins/xnu/bsd/netinet/udp_var.h

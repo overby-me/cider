@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/sdt_impl.h
+../../../../../../../../../../pins/xnu/bsd/sys/sdt_impl.h

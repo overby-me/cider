@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/i386/_param.h
+../../../../../../../../../../pins/xnu/bsd/i386/_param.h

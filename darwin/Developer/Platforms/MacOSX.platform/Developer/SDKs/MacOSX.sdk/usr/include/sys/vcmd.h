@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/vcmd.h
+../../../../../../../../../../pins/xnu/bsd/sys/vcmd.h

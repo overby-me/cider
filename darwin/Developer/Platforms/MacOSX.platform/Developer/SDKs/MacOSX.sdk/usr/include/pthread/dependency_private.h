@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/private/pthread/dependency_private.h
+../../../../../../../../../../pins/libpthread/private/pthread/dependency_private.h

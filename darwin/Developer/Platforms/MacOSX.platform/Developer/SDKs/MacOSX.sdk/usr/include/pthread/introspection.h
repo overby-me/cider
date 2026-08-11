@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libpthread/include/pthread/introspection.h
+../../../../../../../../../../pins/libpthread/include/pthread/introspection.h

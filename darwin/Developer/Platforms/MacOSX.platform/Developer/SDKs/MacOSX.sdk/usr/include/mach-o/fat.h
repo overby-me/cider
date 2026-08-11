@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/cctools/include/mach-o/fat.h
+../../../../../../../../../../pins/cctools/include/mach-o/fat.h

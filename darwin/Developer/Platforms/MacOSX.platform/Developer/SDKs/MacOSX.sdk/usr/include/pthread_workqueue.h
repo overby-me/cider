@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libpthread_workqueue/include/pthread_workqueue.h
+../../../../../../../../../pins/libpthread_workqueue/include/pthread_workqueue.h

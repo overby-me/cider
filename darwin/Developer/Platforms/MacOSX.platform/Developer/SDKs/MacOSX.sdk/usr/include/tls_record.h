@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/coretls/lib/tls_record.h
+../../../../../../../../../pins/coretls/lib/tls_record.h

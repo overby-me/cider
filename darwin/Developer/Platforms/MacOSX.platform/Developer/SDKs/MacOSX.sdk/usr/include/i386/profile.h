@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/i386/profile.h
+../../../../../../../../../../pins/xnu/bsd/i386/profile.h

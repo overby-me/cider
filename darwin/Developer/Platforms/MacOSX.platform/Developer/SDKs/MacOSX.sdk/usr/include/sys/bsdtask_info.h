@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/bsdtask_info.h
+../../../../../../../../../../pins/xnu/bsd/sys/bsdtask_info.h

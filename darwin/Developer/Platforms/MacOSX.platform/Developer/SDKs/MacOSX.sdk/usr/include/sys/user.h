@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/user.h
+../../../../../../../../../../pins/xnu/bsd/sys/user.h

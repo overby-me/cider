@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/pexpert/pexpert/i386/efi.h
+../../../../../../../../../../../pins/xnu/pexpert/pexpert/i386/efi.h

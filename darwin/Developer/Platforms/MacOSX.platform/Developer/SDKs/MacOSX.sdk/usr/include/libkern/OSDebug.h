@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/OSDebug.h
+../../../../../../../../../../pins/xnu/libkern/libkern/OSDebug.h

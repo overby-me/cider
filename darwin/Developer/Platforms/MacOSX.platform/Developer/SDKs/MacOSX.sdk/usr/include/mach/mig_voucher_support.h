@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/mig_voucher_support.h
+../../../../../../../../../../pins/xnu/osfmk/mach/mig_voucher_support.h

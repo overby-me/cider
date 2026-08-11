@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libpthread/include/sys/_pthread/_pthread_attr_t.h
+../../../../../../../../../../../pins/libpthread/include/sys/_pthread/_pthread_attr_t.h

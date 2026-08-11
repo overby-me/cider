@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/passwordserver_sasl/cyrus_sasl/include/gai.h
+../../../../../../../../../../pins/passwordserver_sasl/cyrus_sasl/include/gai.h

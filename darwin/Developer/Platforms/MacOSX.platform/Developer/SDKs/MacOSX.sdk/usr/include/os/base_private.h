@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/base_private.h
+../../../../../../../../../../pins/xnu/libkern/os/base_private.h

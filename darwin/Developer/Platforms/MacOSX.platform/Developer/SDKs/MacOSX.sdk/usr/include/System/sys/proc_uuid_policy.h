@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/proc_uuid_policy.h
+../../../../../../../../../../../pins/xnu/bsd/sys/proc_uuid_policy.h

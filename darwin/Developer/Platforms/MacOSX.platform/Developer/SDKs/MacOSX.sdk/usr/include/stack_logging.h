@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libmalloc/private/stack_logging.h
+../../../../../../../../../pins/libmalloc/private/stack_logging.h

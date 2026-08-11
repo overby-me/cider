@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libxslt/libxslt/libxslt/xsltlocale.h
+../../../../../../../../../../pins/libxslt/libxslt/libxslt/xsltlocale.h

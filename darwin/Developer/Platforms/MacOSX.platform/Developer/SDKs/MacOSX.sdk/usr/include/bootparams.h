@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/Libinfo/lookup.subproj/bootparams.h
+../../../../../../../../../pins/Libinfo/lookup.subproj/bootparams.h

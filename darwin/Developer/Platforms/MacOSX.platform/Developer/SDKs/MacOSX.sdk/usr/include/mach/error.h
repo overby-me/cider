@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/error.h
+../../../../../../../../../../pins/xnu/osfmk/mach/error.h

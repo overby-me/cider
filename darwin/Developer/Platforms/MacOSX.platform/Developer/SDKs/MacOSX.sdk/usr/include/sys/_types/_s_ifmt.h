@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/sys/_types/_s_ifmt.h
+../../../../../../../../../../../pins/xnu/bsd/sys/_types/_s_ifmt.h

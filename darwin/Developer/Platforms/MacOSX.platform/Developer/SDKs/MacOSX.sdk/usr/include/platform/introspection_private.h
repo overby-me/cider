@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libplatform/private/platform/introspection_private.h
+../../../../../../../../../../pins/libplatform/private/platform/introspection_private.h

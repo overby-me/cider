@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/bridgestp.h
+../../../../../../../../../../pins/xnu/bsd/net/bridgestp.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/SecurityTokend/lib/tdtransit.h
+../../../../../../../../../../pins/SecurityTokend/lib/tdtransit.h

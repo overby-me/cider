@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/lock.h
+../../../../../../../../../../pins/xnu/bsd/sys/lock.h

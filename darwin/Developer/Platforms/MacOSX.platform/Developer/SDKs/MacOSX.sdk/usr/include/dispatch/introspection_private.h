@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libdispatch/private/introspection_private.h
+../../../../../../../../../../pins/libdispatch/private/introspection_private.h

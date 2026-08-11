@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/curl/curl/include/curl/urlapi.h
+../../../../../../../../../../pins/curl/curl/include/curl/urlapi.h

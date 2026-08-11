@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/nlist.h
+../../../../../../../../../pins/libc/include/nlist.h

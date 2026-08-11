@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/if_tun.h
+../../../../../../../../../../pins/xnu/bsd/netinet/if_tun.h

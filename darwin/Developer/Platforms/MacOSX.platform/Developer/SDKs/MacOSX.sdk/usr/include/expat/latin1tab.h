@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/expat/expat/lib/latin1tab.h
+../../../../../../../../../../pins/expat/expat/lib/latin1tab.h

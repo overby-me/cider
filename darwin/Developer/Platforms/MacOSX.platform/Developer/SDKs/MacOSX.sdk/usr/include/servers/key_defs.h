@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libsyscall/mach/servers/key_defs.h
+../../../../../../../../../../pins/xnu/libsyscall/mach/servers/key_defs.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/cctools/include/mach/i860/thread_status.h
+../../../../../../../../../../../pins/cctools/include/mach/i860/thread_status.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/energy_perf.h
+../../../../../../../../../../pins/xnu/osfmk/kern/energy_perf.h

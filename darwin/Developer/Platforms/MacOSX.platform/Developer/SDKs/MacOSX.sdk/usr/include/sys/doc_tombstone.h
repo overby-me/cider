@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/doc_tombstone.h
+../../../../../../../../../../pins/xnu/bsd/sys/doc_tombstone.h

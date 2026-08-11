@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/uuid/uuid.h
+../../../../../../../../../../pins/xnu/bsd/uuid/uuid.h

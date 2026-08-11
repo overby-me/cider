@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/etherdefs.h
+../../../../../../../../../../pins/xnu/bsd/net/etherdefs.h

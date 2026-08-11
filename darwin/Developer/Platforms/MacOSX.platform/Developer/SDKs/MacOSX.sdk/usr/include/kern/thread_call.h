@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/kern/thread_call.h
+../../../../../../../../../../pins/xnu/osfmk/kern/thread_call.h

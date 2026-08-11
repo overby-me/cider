@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/os/trace_internal.h
+../../../../../../../../../../pins/xnu/libkern/os/trace_internal.h

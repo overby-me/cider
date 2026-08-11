@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/netinet/mptcp_timer.h
+../../../../../../../../../../pins/xnu/bsd/netinet/mptcp_timer.h

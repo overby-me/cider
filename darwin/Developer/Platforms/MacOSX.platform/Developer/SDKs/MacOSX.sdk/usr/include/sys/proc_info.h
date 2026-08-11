@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/proc_info.h
+../../../../../../../../../../pins/xnu/bsd/sys/proc_info.h

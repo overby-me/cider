@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/osfmk/mach/thread_policy.h
+../../../../../../../../../../pins/xnu/osfmk/mach/thread_policy.h

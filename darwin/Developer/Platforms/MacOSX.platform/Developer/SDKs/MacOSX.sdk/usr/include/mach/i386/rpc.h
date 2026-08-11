@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/rpc.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/rpc.h

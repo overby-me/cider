@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/net/ethernet.h
+../../../../../../../../../../pins/xnu/bsd/net/ethernet.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/libkern/_OSByteOrder.h
+../../../../../../../../../../pins/xnu/libkern/libkern/_OSByteOrder.h

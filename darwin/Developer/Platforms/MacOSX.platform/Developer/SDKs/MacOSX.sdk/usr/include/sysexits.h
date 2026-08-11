@@ -1,1 +1,1 @@
-../../../../../../../../../src/external/libc/include/sysexits.h
+../../../../../../../../../pins/libc/include/sysexits.h

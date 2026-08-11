@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/libdarwin/h/ctl.h
+../../../../../../../../../../pins/libc/libdarwin/h/ctl.h

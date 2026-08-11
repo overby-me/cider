@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/kern/kern_cdata.h
+../../../../../../../../../../../pins/xnu/osfmk/kern/kern_cdata.h

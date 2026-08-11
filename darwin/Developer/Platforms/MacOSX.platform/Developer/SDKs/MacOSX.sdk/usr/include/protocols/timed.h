@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/protocols/timed.h
+../../../../../../../../../../pins/libc/include/protocols/timed.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/bsd/net/classq/classq_blue.h
+../../../../../../../../../../../pins/xnu/bsd/net/classq/classq_blue.h

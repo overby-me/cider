@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/libc/include/protocols/rwhod.h
+../../../../../../../../../../pins/libc/include/protocols/rwhod.h

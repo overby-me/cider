@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/pexpert/pexpert/machine/boot.h
+../../../../../../../../../../../pins/xnu/pexpert/pexpert/machine/boot.h

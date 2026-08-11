@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/fasttrap.h
+../../../../../../../../../../pins/xnu/bsd/sys/fasttrap.h

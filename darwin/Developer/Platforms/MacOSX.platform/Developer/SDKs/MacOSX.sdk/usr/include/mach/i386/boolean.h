@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/xnu/osfmk/mach/i386/boolean.h
+../../../../../../../../../../../pins/xnu/osfmk/mach/i386/boolean.h

@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/bsd/sys/subr_prf.h
+../../../../../../../../../../pins/xnu/bsd/sys/subr_prf.h

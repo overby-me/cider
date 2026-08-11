@@ -1,1 +1,1 @@
-../../../../../../../../../../../src/external/libxpc/include/xpc/private/plist.h
+../../../../../../../../../../../pins/libxpc/include/xpc/private/plist.h

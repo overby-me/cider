@@ -1,1 +1,1 @@
-../../../../../../../../../../src/external/xnu/libkern/firehose/private.h
+../../../../../../../../../../pins/xnu/libkern/firehose/private.h
