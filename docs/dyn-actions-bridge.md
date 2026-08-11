@@ -39,6 +39,24 @@ cannot opt out. An emitted action therefore writes to `$result`, not `$out`.
 a derivation that already runs, once, instead of the evaluator rebuilding them on every
 invocation.
 
+### The spec dir, exactly
+
+    <name>.json   one per action. Needs only `name`, `builder` and `args`; see below.
+    names         the index: one name per line. Blank lines are ignored, so a trailing
+                  newline is fine. Order carries no meaning, since everything is keyed by name.
+    deps.json     OPTIONAL. A JSON object mapping a name to a list of NAMES, not paths, not
+                  store paths. Absent means no action depends on another, which is a perfectly
+                  valid graph, so its absence is not an error.
+
+THE SPEC DIR MUST BE A STORE PATH. The producer runs in a sandbox, so a plain directory path
+is simply not there: the copy fails with `cannot stat`, and the fixup then dies on a missing
+`spec.json` rather than saying anything about the directory. Write it with `runCommand` or
+similar and pass the result.
+
+The names in `deps.json` must be the same names in `names` and in the `<name>.json` filenames.
+Nothing checks that for you, and a name that matches nothing does not fail: the dependency
+variable is simply never set and expands to EMPTY.
+
 A spec dir needs only `name`, `builder` and `args` per action. The system, the version, the
 outputs and the output PLACEHOLDER are filled in when the producer runs, because a generator
 cannot honestly supply them: the placeholder is a Nix construction and the system belongs to

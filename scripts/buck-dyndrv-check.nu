@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the eleven things #66 depends on?
+# Do dynamic derivations still do the twelve things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if eleven properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if twelve properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -263,8 +263,21 @@ def main [] {
         ok (open --raw ($ba.stdout | str trim | lines | last) | str trim)
     }
 
+    # 12. A SPEC DIR WITH NO deps.json. The file is optional and its absence means no action
+    # depends on another, which is a perfectly valid graph. That was a claim resting on a
+    # pathExists guard until this fixture existed. The probe asserts deps.json is ABSENT
+    # before building, so it cannot pass for the wrong reason.
+    let nd = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-nodeps-probe.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $nd.exit_code != 0 {
+        bad "a spec dir with no deps.json does not build"
+        print -e ($nd.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($nd.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir and an over-long argument"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir, an over-long argument and an optional deps.json"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
