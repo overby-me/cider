@@ -1218,73 +1218,12 @@
     # buck-graph-to-specs.py emits _spawn or _drain per action from exactly that rule.
     # Verified against a re-derivation of it over all 1,474 groups: 0 scripts with a
     # misplaced _drain, and a control that deletes one _drain is caught.
-  in
-    pkgs.runCommand (drvName label) {
-      nativeBuildInputs =
-        [
-          pkgs.clang
-          # The guest compiler the graph derivation selected, named by absolute path in the
-          # argv: its store path has no string context by the time it arrives here, so the
-          # dependency has to be declared or the sandbox will not have it.
-          pkgs.llvmPackages.clang-unwrapped
-          pkgs.llvmPackages.bintools
-          pkgs.python3
-          pkgs.bison
-          pkgs.flex
-          pkgs.coreutils
-          pkgs.bash
-          # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
-          # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
-          # command names, exactly as on the daemon path, so they have to be on PATH here.
-          pkgs.rustc
-          pkgs.rust-bindgen
-        ]
-        ++ extraTools
-        ++ lib.optional (ld64 != null) ld64;
-      # Same reason as the graph derivation: the argv is buck2's, and the wrapper's
-      # hardening flags are not in it. -D_FORTIFY_SOURCE alone turns libc's own sprintf
-      # into a macro over its own definition.
-      hardeningDisable = ["all"];
-      # Content addressing is per derivation, so it is one attribute here rather than a
-      # different lowering.
-      #
-      # MEASURED END TO END, 2026-08-09, and this is the verification the CA conversion owed.
-      # Build ONE target through the endpoint, edit ONE first-party source in a DIFFERENT
-      # component, rebuild the same target, and count builders that RAN:
-      #
-      #   baseline                     3 buck2 derivations ran
-      #                                stage-project-grouped, libsimple_ciderd, and -out
-      #   after editing linux/startup/rtsig.c
-      #                                ZERO buck2 derivations ran
-      #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
-      #
-      # The graph DID rebuild, as it must: projectSrc contains that file. Everything downstream
-      # of it stayed put anyway, which is the whole point of the conversion.
-      #
-      # READ THE BUILDERS, NOT THE PLAN. nix printed "these 3 derivations will be built" and
-      # named all three targets, because their drv paths moved; a CA placeholder always does.
-      # Not one of them produced a `building` line. Judging by drvPath would have reported a
-      # total cascade where nothing at all was rebuilt.
-      #
-      # SCOPE, so nobody quotes this as more than it is: one target through
-      # cider-buck2-prefix-min, which is what the task asked for (build ONE compile target,
-      # not the prefix). It says the mechanism works; it does not say every one of the 3,225
-      # targets behaves the same way.
-      __contentAddressed = contentAddressed;
-      outputHashMode =
-        if contentAddressed
-        then "recursive"
-        else null;
-      outputHashAlgo =
-        if contentAddressed
-        then "sha256"
-        else null;
-      passthru = {
-        inherit label outs;
-        deps = needs.fromTargets;
-        actionCount = lib.length actions;
-      };
-    } ''
+    # THE BUILDER SCRIPT AS A VALUE (#66). Bound here rather than written inline at the
+    # runCommand call so the ADAPTER can reach it: feeding a group through
+    # nix/lib/dyn-actions.nix needs exactly this text, and a second assembly of it
+    # somewhere else would be a copy to keep in step. Moving it changed no bytes, which
+    # was verified the only way that counts: the endpoint rebuilt NOTHING afterwards.
+    builderScript = ''
       mkdir -p work && cd work
       ${if sourceGroups then stageProjectFor label else stageProject}
 
@@ -1404,7 +1343,76 @@
         cp -aT ${lib.escapeShellArg o} "$out/${o}"
       '')
       outs}
-    '')
+    '';
+
+  in
+    pkgs.runCommand (drvName label) {
+      nativeBuildInputs =
+        [
+          pkgs.clang
+          # The guest compiler the graph derivation selected, named by absolute path in the
+          # argv: its store path has no string context by the time it arrives here, so the
+          # dependency has to be declared or the sandbox will not have it.
+          pkgs.llvmPackages.clang-unwrapped
+          pkgs.llvmPackages.bintools
+          pkgs.python3
+          pkgs.bison
+          pkgs.flex
+          pkgs.coreutils
+          pkgs.bash
+          # The Rust side: rustc compiles the daemon, launcher and loader, and bindgen
+          # generates the daemon's xnu_sys vtable. Both appear in the recorded argv as bare
+          # command names, exactly as on the daemon path, so they have to be on PATH here.
+          pkgs.rustc
+          pkgs.rust-bindgen
+        ]
+        ++ extraTools
+        ++ lib.optional (ld64 != null) ld64;
+      # Same reason as the graph derivation: the argv is buck2's, and the wrapper's
+      # hardening flags are not in it. -D_FORTIFY_SOURCE alone turns libc's own sprintf
+      # into a macro over its own definition.
+      hardeningDisable = ["all"];
+      # Content addressing is per derivation, so it is one attribute here rather than a
+      # different lowering.
+      #
+      # MEASURED END TO END, 2026-08-09, and this is the verification the CA conversion owed.
+      # Build ONE target through the endpoint, edit ONE first-party source in a DIFFERENT
+      # component, rebuild the same target, and count builders that RAN:
+      #
+      #   baseline                     3 buck2 derivations ran
+      #                                stage-project-grouped, libsimple_ciderd, and -out
+      #   after editing linux/startup/rtsig.c
+      #                                ZERO buck2 derivations ran
+      #   output path, both runs       kq3fjmpkyv7scgfdwvqfg1dg1v5dynqc, byte identical
+      #
+      # The graph DID rebuild, as it must: projectSrc contains that file. Everything downstream
+      # of it stayed put anyway, which is the whole point of the conversion.
+      #
+      # READ THE BUILDERS, NOT THE PLAN. nix printed "these 3 derivations will be built" and
+      # named all three targets, because their drv paths moved; a CA placeholder always does.
+      # Not one of them produced a `building` line. Judging by drvPath would have reported a
+      # total cascade where nothing at all was rebuilt.
+      #
+      # SCOPE, so nobody quotes this as more than it is: one target through
+      # cider-buck2-prefix-min, which is what the task asked for (build ONE compile target,
+      # not the prefix). It says the mechanism works; it does not say every one of the 3,225
+      # targets behaves the same way.
+      __contentAddressed = contentAddressed;
+      outputHashMode =
+        if contentAddressed
+        then "recursive"
+        else null;
+      outputHashAlgo =
+        if contentAddressed
+        then "sha256"
+        else null;
+      passthru = {
+        inherit label outs;
+        deps = needs.fromTargets;
+        actionCount = lib.length actions;
+      };
+    }
+    builderScript)
   targets;
 
   # A target's DEFAULT outputs under their own names, which is what a person wants: the
