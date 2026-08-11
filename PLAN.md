@@ -737,3 +737,44 @@ Moved, not deleted: docs/plan-history.md, under the 2026-08-12 heading. Go there
 measurements, which are real and were expensive to take.
 
 THE OPEN TASKS ARE #96, #76 AND #92. Nothing else in this file is a queue.
+
+### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
+
+Written 2026-08-12 because the task was open in the harness with NO PLAN entry, so the next
+increment would have rediscovered all of the below. Read off the tree, not from memory.
+
+**TWO OF THEM ARE ALREADY PORTED, and well.** `linux/buildtools/BUCK` gives the CANONICAL names
+`getuuid` and `elfdep` to `rust_binary` targets over `getuuid.rs` and `elfdep.rs`; the C survives
+as `getuuid_c` and `elfdep_c` deliberately, because `scripts/buck-hosttools-parity.py` diffs the
+two on the same inputs and that comparison is only re-runnable while both exist. Provenance was
+checked: both are Darling-origin and GPL (getuuid.c Copyright 2018 Lubos Dolezel, elfdep.c
+2018-2020), so the headers stay and a Cider line sits beside them.
+
+Parity is BYTE parity, stdout as hex and stderr verbatim, which is not pedantry: writing the
+ports from a reading of the C produced a defect that survived review and died there, because
+`std::io::Error` renders ENOENT as "No such file or directory (os error 2)" while C `strerror`
+prints only "No such file or directory". Eyes would have passed it.
+
+**NOTHING IN THE BUCK2 BUILD CONSUMES EITHER TOOL.** The one consumer, `cmake/dsym.cmake`,
+belonged to the reference CMake build this port replaced. So the `_c` targets cost one compile
+each and nothing else, and they can be dropped whenever the comparison stops being worth
+re-running.
+
+**WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
+
+    bsdln       GONE. Zero files match anywhere in the tree, pins included.
+    wrapgen     linux/libelfloader/wrapgen/wrapgen.cpp, 320 lines of C++, and it has NO
+                copyright header at all. That is the blocker: #76 says provenance checked, and
+                an absent header means provenance has to be established from history or from
+                upstream before a line is written. It IS a host tool, so unlike the two below
+                it is portable today.
+    xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
+    PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
+
+**xcrun AND PlistBuddy ARE BLOCKED, re-tested rather than recalled.** Both live under `darwin/`,
+so they are Mach-O GUEST binaries, and `buck/rules/rust.bzl` contains **zero** occurrences of
+`--target`, so it cannot emit a Darwin binary at all. That needs a Darwin Rust toolchain, which
+does not exist here. Do not start either one expecting to finish it.
+
+So the honest shape of #76 is: two done with a byte-parity harness, one gone, one portable but
+gated on a provenance question, two blocked on a missing toolchain.
