@@ -3,6 +3,14 @@
 # build.ninja this reads. It still runs against the stale result-graph-ref symlink
 # until a store GC collects it, and then it cannot run at all. The BUCK files it
 # produced are committed; this is kept for provenance, not for re-running.
+#
+# AND IT DOES NOT CURRENTLY RUN TO COMPLETION, measured 2026-08-11: sdk_env_flags()
+# below looks for the literal `exported_flags = [` inside darwin/BUCK, and darwin/BUCK
+# has a sdk_env target but no such attribute any more, so it exits with a ValueError
+# from text.index before reaching any of the path logic. Left unrepaired deliberately:
+# this file is provenance, and guessing at which attribute replaced exported_flags
+# would be inventing a result nothing verifies. Fix it when something needs to re-run
+# it, and treat the marker fix below as the only thing that has been checked here.
 """Emit mig_gen targets from the reference build.ninja's build-mig edges.
 
 MIG configurations vary more than they look. libsyscall runs mig over the SAME
@@ -31,7 +39,13 @@ import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GRAPH = os.path.join(REPO, "result-graph-ref", "build.ninja")
-SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-cider-cmake-src")
+# BOTH NAMES. The reference build.ninja is a FROZEN cmake-era artifact, so the #84 rename
+# could not reach it: it says darling-cmake-src and never cider-cmake-src. With the cider
+# spelling alone this matched nothing, the sub was a no-op, and ALL 124 mig edges came back
+# as /nix/store/<hash>-darling-cmake-src/src/... instead of src/..., measured rather than
+# assumed. Third instance of the same class, after SRC_STORE_RE in gen-buck-from-ninja.py
+# and PROJECT_MARKER in buck-host-includes.py. A reader of a frozen file takes both names.
+SRC_STORE_RE = re.compile(r"/nix/store/[a-z0-9]{32}-(?:cider|darling)-cmake-src")
 BIN_DIR = "/build/build"
 
 
