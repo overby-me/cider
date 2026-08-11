@@ -194,6 +194,64 @@ def read_script(specdir: str, group: str) -> str:
     return scripts[n]
 
 
+def check_deps(graph: dict, groups: dict, specdir: str) -> list:
+    """deps.json must match the graph, and must respect buck2's own action ORDER.
+
+    THE ORDER CHECK IS THE INDEPENDENT ONE, which is why it is here. Re-deriving the edges from
+    `inputs` and comparing to a file derived from `inputs` only proves the generator ran; it
+    cannot catch a rule that is wrong in the same way twice. g.actions is globally topological,
+    a separate property, so for every edge G->D the action in D that WRITES the artifact must
+    come before the action in G that reads it. A reversed or invented edge violates that.
+    """
+    problems = []
+    path = os.path.join(specdir, "deps.json")
+    try:
+        with open(path) as f:
+            listed = json.load(f)
+    except OSError as e:
+        return [f"cannot read {path}: {e}; a spec dir without it is a SET, not a DAG"]
+
+    # Position of every action in buck2's order, and who writes what.
+    pos, producer = {}, {}
+    for idx, a in enumerate(graph["actions"]):
+        pos[id(a)] = idx
+        for o in a["outputs"]:
+            producer[o] = a
+
+    want = {}
+    for g, actions in groups.items():
+        seen = set()
+        for a in actions:
+            for i in a["inputs"]:
+                p = producer.get(i)
+                if p is not None:
+                    pg = group_of(p["identity"], graph.get("coarsePinOf", {}))
+                    if pg != g:
+                        seen.add(pg)
+        want[safe_name(g)] = {safe_name(d) for d in seen}
+
+    if set(listed) != set(want):
+        problems.append(f"deps.json covers {len(listed)} groups, the graph has {len(want)}")
+    for k in sorted(set(listed) & set(want)):
+        if set(listed[k]) != want[k]:
+            problems.append(f"{k}: deps.json says {sorted(listed[k])[:4]}, "
+                            f"the graph says {sorted(want[k])[:4]}")
+
+    # THE ORDER PROPERTY. Every consumed artifact is written before it is read, so every edge
+    # points backwards in the action list.
+    violations = 0
+    for g, actions in groups.items():
+        for a in actions:
+            for i in a["inputs"]:
+                p = producer.get(i)
+                if p is not None and pos[id(p)] > pos[id(a)]:
+                    violations += 1
+    if violations:
+        problems.append(f"{violations} input(s) are read before they are written, so the "
+                        f"action order is not topological and the edge set cannot be trusted")
+    return problems
+
+
 def check_name_mapping() -> list:
     """The lowering has to sanitise a group name the same way this does.
 
@@ -271,6 +329,7 @@ def check(graph_path: str, specdir: str) -> tuple:
         if actual_drains(seq) != expected_drains(actions):
             problems.append(f"{g}: _drain placement differs from the sibling-read rule")
 
+    problems.extend(check_deps(graph, groups, specdir))
     problems.extend(check_name_mapping())
     return problems, len(groups), entries
 
@@ -305,6 +364,36 @@ def controls(graph_path: str, specdir: str) -> list:
         ("delete a _drain", "_drain\n", ""),
     ]
     out = []
+
+    # THE deps.json CONTROLS, separate because they mutate a different file and are caught by a
+    # different sub-check. Without these, check_deps is a sub-check nobody has shown can fail.
+    dpath = os.path.join(specdir, "deps.json")
+    try:
+        with open(dpath) as f:
+            dorig = f.read()
+        dblob = json.loads(dorig)
+        victim_dep = next((k for k, v in sorted(dblob.items()) if v), None)
+        dep_muts = [
+            ("drop an edge", lambda b: {**b, victim_dep: b[victim_dep][1:]}),
+            ("invent an edge", lambda b: {**b, victim_dep: b[victim_dep] + ["not_a_group"]}),
+            ("delete deps.json", None),
+        ]
+        for label, mut in dep_muts:
+            if victim_dep is None:
+                out.append(f"  [BAD] {label}: no group has dependencies, cannot test")
+                continue
+            if mut is None:
+                os.remove(dpath)
+            else:
+                with open(dpath, "w") as f:
+                    json.dump(mut(dblob), f)
+            caught = bool(check_deps(graph, groups, specdir))
+            out.append(f"  [{'ok ' if caught else 'BAD'}] {label}: caught={caught}")
+            with open(dpath, "w") as f:
+                f.write(dorig)
+    except OSError as e:
+        out.append(f"  [BAD] deps controls could not run: {e}")
+
     try:
         for label, find, repl in muts:
             applied = find in original

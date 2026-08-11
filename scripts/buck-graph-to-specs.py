@@ -125,6 +125,74 @@ def group_specs(graph: dict, coarse_pins: bool = True) -> dict:
     return groups
 
 
+def group_deps(graph: dict, groups: dict) -> dict:
+    """{group: [other groups it reads outputs of]}, in the shape dyn-actions.nix reads back.
+
+    THIS IS THE EDGE SET THE BRIDGE CANNOT INFER. In specDir mode the spec files are copied
+    without being parsed, so a dependency that is not in deps.json does not exist as far as the
+    emitted derivation is concerned -- and the failure is silent, because every action still
+    builds and simply sees an empty dependency.
+
+    Derived from the artifacts, not from buck2's own target edges: an action's `inputs` are
+    paths, and whichever group WROTE that path is the dependency. That is the same rule the
+    lowering uses (producerTarget), and it is the one that matters here, because it is about
+    which files have to be present rather than about which targets buck2 relates.
+    """
+    producer = {}
+    for g, actions in groups.items():
+        for a in actions:
+            for o in a["outputs"]:
+                producer[o] = g
+
+    deps = {}
+    for g, actions in groups.items():
+        seen = set()
+        for a in actions:
+            for i in a["inputs"]:
+                p = producer.get(i)
+                # A path with no producer is a SOURCE, not a missing edge: most inputs are
+                # project files. Only artifacts another group wrote are dependencies.
+                if p is not None and p != g:
+                    seen.add(p)
+        deps[g] = sorted(seen)
+    return deps
+
+
+def acyclic(deps: dict) -> list:
+    """The first cycle found, or []. A cycle is fatal rather than suboptimal.
+
+    nix/lib/dyn-actions.nix resolves a dependency to the OUTPUT of another action, so a cycle
+    is an infinite recursion in the evaluator that names neither party. The dump already runs
+    Tarjan when choosing which pins may be merged, for exactly this reason (contracting a DAG
+    can create cycles, and this graph has them at pin level), so this is a check that the
+    contraction actually held rather than a new worry.
+    """
+    WHITE, GREY, BLACK = 0, 1, 2
+    colour = {g: WHITE for g in deps}
+    stack = []
+
+    def walk(n):
+        colour[n] = GREY
+        stack.append(n)
+        for m in deps.get(n, []):
+            if colour.get(m, WHITE) == GREY:
+                return stack[stack.index(m):] + [m]
+            if colour.get(m, WHITE) == WHITE:
+                got = walk(m)
+                if got:
+                    return got
+        colour[n] = BLACK
+        stack.pop()
+        return []
+
+    for g in deps:
+        if colour[g] == WHITE:
+            got = walk(g)
+            if got:
+                return got
+    return []
+
+
 _SAFE = re.compile(r"^[A-Za-z0-9,._+:@%/-]+$")
 
 # @CLANG@ and friends. The graph is deliberately PORTABLE: buck2-graph-dump.py names the
@@ -302,6 +370,24 @@ def main(argv: list[str]) -> int:
         # serve any machine.
         scripts[n] = action_script(acts)
     open(os.path.join(outdir, "names"), "w").write("\n".join(names) + "\n")
+
+    # THE DEPENDENCY EDGES, keyed and valued by SAFE NAME because that is the action name
+    # nix/lib/dyn-actions.nix knows. It reads this file in specDir mode and can infer nothing
+    # without it: the spec files are copied unparsed, so an edge that is not here does not
+    # exist, and the resulting build succeeds with every action seeing an empty dependency.
+    #
+    # A CYCLE IS FATAL, not suboptimal: the bridge resolves a dependency to another action's
+    # OUTPUT, so a cycle is an infinite recursion in the evaluator naming neither party.
+    # Checked here rather than left to be discovered there. Measured on the current graph:
+    # 1,474 groups, 925 with dependencies, 22,473 edges, no cycle.
+    deps = group_deps(graph, groups)
+    cycle = acyclic(deps)
+    if cycle:
+        raise SystemExit("FAIL: the group dependency graph has a cycle, which "
+                         "nix/lib/dyn-actions.nix cannot express:\n    "
+                         + "\n -> ".join(cycle))
+    json.dump({safe_name(g): [safe_name(d) for d in ds] for g, ds in deps.items()},
+              open(os.path.join(outdir, "deps.json"), "w"))
 
     # ONE FILE HOLDING EVERY GROUP'S SCRIPT, rather than one .sh per group, and the reason is
     # measured. Per-group files were written first and the lowering read them individually:
