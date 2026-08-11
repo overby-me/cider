@@ -635,10 +635,10 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 ## Buck2 port: where it stands
 
 Every in-scope link edge of the reference graph is ported and builds: **1451 of 1451**,
-`buck2 build //...` green over all ~12k targets, `buck-test.nu` **159 of 161** on the last
-completed run, and every runtime check at 0 or a documented 3. Measured 2026-08-11, not
-remembered. The host-header check has since been fixed, so the next completed run should read
-160 of 161; that has not been re-measured yet and this line will say so until it has.
+`buck2 build //...` green over all ~12k targets, `buck-test.nu` **160 passed, 1 failed**, and
+every runtime check at 0 or a documented 3. Measured 2026-08-11 on a completed run, not
+remembered and not deduced: the host-header fix took it from 159 to 160, and the arithmetic
+prediction was confirmed by running the suite rather than by assuming.
 
 It reads 161 rather than 159 because two checks that existed were never invoked by anything,
 `buck-labels-check.py` and `buck-pin-paths-check.py`, and are now wired in. The nine nix-free
@@ -660,8 +660,9 @@ worth freezing. `PROJECT_MARKER` in `buck-host-includes.py` had been renamed to
 the project's own `-I` flags all counted as host includes: 98.7 percent of the population was
 noise. Reading both names gives 26 targets, 24 include dirs, 21 ported, and all 21 already
 declaring `host_headers`, so it is honestly green. Verified it can still fail by removing the
-dep from one entry, which reported exactly that entry. The suite total should therefore read
-160 of 161; that count is arithmetic and has not yet been re-measured on a completed run.
+dep from one entry, which reported exactly that entry. It also used to return 0 when the
+reference was missing, so a store GC would have turned the repair into a permanent blind pass;
+it returns 2 now. That is not hypothetical, `result-graph-stock` beside it is already collected.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
 all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
