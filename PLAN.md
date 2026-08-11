@@ -342,6 +342,40 @@ referenced is completed. Git history holds them.
 
 What follows is only what is still OPEN.
 
+### #66 — get the lowering out of the evaluator
+
+A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
+GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Nothing in the
+reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
+
+- **A. THE BRIDGE, done.** `nix/lib/dyn-actions.nix` turns action specs into one emitted
+  `.drv` per action plus `builtins.outputOf` accessors. Toy fixture `dyn-actions-toy.nix`,
+  minimal worked example and the plumbing traps in `dyn-drv-probe.nix`, asserted by
+  `scripts/buck-dyndrv-check.nu`. THE CONSTRAINT THAT SHAPES IT: a `.drv`-named derivation
+  must be text-hashed CA with a single output named `out`, and `builtins.placeholder "out"`
+  is a constant of the OUTPUT NAME, so every emitted action must name its output something
+  else or the producer rejects its own drv as a self-reference. `NIX_REMOTE=daemon` breaks
+  recursive-nix, which supplies its own socket.
+- **B. THE ADAPTER, done.** `scripts/buck-graph-to-specs.py` groups the actions the way the
+  lowering does and renders each group's command sequence, inside the graph derivation.
+  `ciderBuck2Lower.nix` reads the result; `escArgCache`, `escArg`, `fill`, `ownOutputs` and
+  `readsSibling` are gone from it. Checked by `scripts/buck-specs-check.nu`, which
+  re-derives the answer from graph.json instead of asking the generator, with four negative
+  controls that must fire.
+- **WHAT IT WAS WORTH, measured old against new on the same tree and graph:** 15.1s → 14.5s,
+  against a 12.95s floor if the scripts cost nothing at all. So 0.6s, not the ~12s first
+  claimed. The ~12.95s that remains is computing 1,474 DERIVATIONS, and that is what A is
+  for. Kept for what it enables, not for the 0.6s.
+- **STILL OPEN:** have the endpoint bind through `outputOf` so the evaluator stops computing
+  the derivations at all. That is the step with the real number behind it.
+- **The readFile trap, because it cost a wrong turn:** reading the 1,474 rendered scripts as
+  separate files makes evaluation 32.6s, WORSE than computing them. The specs output is
+  deferred (the graph it reads is CA), so its real path is unknown until realised and every
+  `readFile` resolves that again, ~13ms each; the same files from a plain store path are
+  0.10s total. Hoisting the path does not help (it hoists the placeholder, and fails in pure
+  mode); input-addressing the specs derivation does not help (the deferral comes from its
+  input). One `scripts.json` read once is the fix.
+
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
 - **D.1** `scripts/oracle.nu <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
@@ -1000,7 +1034,9 @@ has been true six times running, each time a check freshly written.
   **The 12s evaluation is paid once per change to the FLAKE SOURCE TREE, not per build**:
   rerun unchanged 0.3s, rerun after editing `nix/` 12.3s with ran=0, first build 12.7s. So it
   bites only when iterating on the lowering itself, which is much less of the loop than the
-  14.5s one-target figure suggested, and it is exactly what #66 is aimed at. That probe also
+  14.5s one-target figure suggested. #66 is aimed at it, but at the cost of computing the
+  DERIVATIONS rather than at rendering their action scripts: moving the rendering out was
+  measured at 0.6s of it. That probe also
   confirms for the first time what the source filters promise: a `nix/` edit rebuilds nothing.
 - **#69 MEASURED: the declaration gap is a PER-TARGET question, and it is 675 files.**
   `scripts/buck-declaration-gap.py` splits each target's source set into what buck2 SAYS (argv
