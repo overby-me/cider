@@ -373,7 +373,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
 
 
       # THE MINIMAL ENDPOINT WITH sourceGroups ON (#54), which is the flag with the RIGHT
@@ -412,7 +412,7 @@
           };
         in
         lowered.named."root//buck/prefix-min:cider_prefix_min"
-        // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData; };
+        // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
 
       # THE PINS, ONE STORE PATH EACH (#54), so the check below can compare them against the
       # assembled tree they replace. The lowering plants pins from cider-src, which is ONE
@@ -584,7 +584,7 @@
         # seconds instead of discovering a staging bug 90 minutes into a build.
         # `named` as well as stageProject, so packages.cider-buck2-all can link-farm THESE
         # derivations instead of lowering the graph a second time with different arguments.
-        lowered.named."root//buck/prefix-min:cider_prefix_min" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData; };
+        lowered.named."root//buck/prefix-min:cider_prefix_min" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
 
       # ONE TARGET, ONE COMMAND, ONE EVAL (task #68). The most common operation in this work is
       # "does this one target still build, and what RAN", and it used to cost TWO evaluations of
@@ -661,6 +661,21 @@
       # becomes the shell variable the bridge sets rather than an interpolated path.
       #
       #   nix build .#cider-buck2-dyn-cone-specdir --no-link -L
+      # THE ADAPTER READING THE GENERATOR'S OWN SPECS, which is the arrangement #66 is for and
+      # the one every fixture above stops short of. cider-dyn-cone-specdir proves the SHAPE
+      # works, but its spec dir comes from mkSpecDir, which serialises every spec in the
+      # EVALUATOR: exactly the cost being removed. This reads the dyn/ directory that
+      # scripts/buck-graph-to-specs.py wrote inside the graph derivation, so nothing about
+      # these derivations is computed at evaluation time.
+      #
+      #   nix build .#cider-buck2-dyn-gen --no-link -L
+      packages.cider-buck2-dyn-gen = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+        })
+        .check;
+
       packages.cider-buck2-dyn-cone-specdir = pkgs:
         (import ./nix/lib/cider-dyn-cone.nix {
           inherit pkgs;
@@ -744,7 +759,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
 
       packages.cider-buck2-prefix-coarse =
         pkgs:
@@ -772,7 +787,7 @@
             };
           };
         in
-        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData; };
+        lowered.named."root//buck/prefix:cider_prefix" // { inherit (lowered) stageProject stageProjectUsed named drvs pinsTree graphData graphSpecs placeholderEnv; };
 
       # The buck2-built Darling as something installable: the lowered prefix plus the one
       # launcher script that supplies the two paths the daemon reads from the environment.

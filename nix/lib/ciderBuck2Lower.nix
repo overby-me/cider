@@ -1607,6 +1607,18 @@ in
   # so the check has to substitute the real path back before comparing.
   graphData = graph.data;
 
+  # The spec dir, so a consumer can reach ${graph.specs}/dyn: the bridge-shaped specs the
+  # generator wrote. nix/lib/cider-dyn-gen.nix feeds those to nix/lib/dyn-actions.nix, which is
+  # the arrangement #66 is for, with nothing serialised in the evaluator.
+  graphSpecs = graph.specs;
+
+  # The placeholder values under the names the rendered scripts use. The lowering EXPORTS these
+  # in the middle of the script because a runCommand had no other way to receive them; an
+  # emitted action takes them as env, so the generator leaves that slot empty and a consumer
+  # passes this straight to the bridge's extraEnv.
+  placeholderEnv =
+    lib.mapAttrs' (k: v: lib.nameValuePair (phVar k) v) placeholders;
+
   # The single target's output, for the common case of asking for one thing.
   final = let
     all = lib.attrValues named;

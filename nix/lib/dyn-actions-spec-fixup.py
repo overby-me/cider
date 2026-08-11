@@ -114,10 +114,15 @@ def main(argv: list) -> int:
             print(f"dyn-actions: extraEnv {name!r} is not in the environment", file=sys.stderr)
             return 1
         spec["env"][name] = value
-        # Only a store path can be a source. A caller may legitimately pass a plain string, so
-        # a non-path is carried in the env and simply not declared.
-        if _STORE_PATH.match(value):
-            spec["inputs"]["srcs"].append(value)
+        # EVERY STORE PATH THE VALUE NAMES, not the value itself, and the difference is not
+        # theoretical: a PATH is a colon-joined list of <store path>/bin entries, and appending
+        # the whole string made `nix derivation add` fail with "bin is too short to be a valid
+        # store path" once the basename step below took its last component.
+        #
+        # A caller may legitimately pass a plain string with no path in it. That is carried in
+        # the env and simply declares nothing.
+        for m in _STORE_PATH.finditer(value):
+            spec["inputs"]["srcs"].append(m.group(0))
 
     # INFERRED SOURCES: every store path the command itself names.
     #
