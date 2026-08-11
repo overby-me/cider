@@ -361,6 +361,32 @@ def main [flag?: string] {
         say (indent7 ($fpaths.stdout + $fpaths.stderr | str substring 0..2000))
     }
 
+    # THESE TWO EXIST, ARE CREDITED WITH SAVING AN HOUR EACH, AND NOTHING RAN THEM. Measured
+    # 2026-08-11: neither buck-labels-check.py nor buck-pin-paths-check.py appeared anywhere in
+    # this file, and a whole-tree search found no other caller either, only prose in PLAN.md
+    # and mentions inside other scripts. That is the exact shape #85 was opened for, a check
+    # that exists and never runs, and it had quietly come back for two of them.
+    #
+    # They cost about a second each, so there is no reason to leave them to memory. Between
+    # them they cover the rename fallout classes no compiler can see: labels resolves 24,586
+    # labels, load() symbols and read_root_config sections, and pin paths resolves 8,333 paths
+    # recorded into pins across the exports tables, the three sdk maps and the fetch manifest.
+    say "== the labels and the pin paths (no nix either, about a second each) =="
+    let labels = (do -i { ^python3 ./scripts/buck-labels-check.py } | complete)
+    if $labels.exit_code == 0 {
+        ok "every label resolves and every config section is cider"
+    } else {
+        bad $"label check FAILED, exit ($labels.exit_code), see the output below"
+        say (indent7 ($labels.stdout + $labels.stderr | str substring 0..2000))
+    }
+    let pinpaths = (do -i { ^python3 ./scripts/buck-pin-paths-check.py } | complete)
+    if $pinpaths.exit_code == 0 {
+        ok "every path we record into a pin resolves"
+    } else {
+        bad $"pin path check FAILED, exit ($pinpaths.exit_code), see the output below"
+        say (indent7 ($pinpaths.stdout + $pinpaths.stderr | str substring 0..2000))
+    }
+
     say "== building ported targets =="
     let targets = [
         //darwin/libsimple:libsimple_ciderd
