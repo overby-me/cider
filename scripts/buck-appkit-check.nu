@@ -38,6 +38,20 @@ def main [scratch?: string] {
     cd ($env.FILE_PWD | path join ".." | path expand)
 
     let root = ($scratch | default $"/tmp/cider-appkit-(^id -u | str trim)")
+
+    # SEATBELT, added 2026-08-12. A wrong root here SIGKILLs the user's ENTIRE login session,
+    # because the cleanup loop below matches processes with `str starts-with $"($root)/"` and an
+    # empty root makes that `starts-with "/"`, which is true for every process on the machine.
+    # This is safe today ONLY because `scratch` is an optional POSITIONAL, so it is null when
+    # absent and `| default` fills it. It becomes lethal the moment someone declares it as a flag
+    # with an empty default, because `"" | default X` returns "" in nushell, not X. That is not
+    # hypothetical: it is exactly what buck-darwin-rust-run.nu did when it was first written.
+    # The check costs nothing and the failure costs the desktop, so it stays.
+    if ($root | is-empty) or (not ($root | str starts-with "/tmp/")) {
+        print -e $"  refusing to run: scratch root must be a path under /tmp, got [($root)]"
+        exit 2
+    }
+
     let rt = $"($root)/rt"
     let prefix_dir = $"($root)/prefix"
 
