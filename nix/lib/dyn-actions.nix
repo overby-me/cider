@@ -77,14 +77,23 @@
   # setting, and a caller that knows its inputs exactly should say so and get an error when it
   # is wrong rather than have the mistake papered over.
   inferSrcs ? false,
-  # Store paths the CONSUMER knows and the spec cannot name, as {NAME = path;}. Each becomes an
-  # env entry and a source on every emitted action.
+  # Store paths the CONSUMER knows and the spec cannot name. Either {NAME = path;}, applied to
+  # every action, or a FUNCTION from action name to that attrset, which is the general case:
+  #
+  #   extraEnv = name: { TOOLCHAIN = tc; STAGE = stageFor name; };
+  #
+  # Each entry becomes an env entry on the emitted action and, if it is a store path, a source.
   #
   # WHY specDir NEEDS THIS. A spec read from a file is static: the generator that wrote it ran
   # long before any consumer path existed, so it cannot interpolate one. `deps` already solves
   # that for other ACTIONS, and this is the same route for everything else a consumer supplies:
   # a toolchain, a staging script, a data tree. The generator writes ${NAME} in the script and
   # the value arrives at build time.
+  #
+  # PER ACTION IS THE POINT, not a refinement of it. The uniform case is real but small: what a
+  # generator usually cannot name is something computed per action, and a consumer forced to
+  # give every action the union would declare thousands of sources it does not use and rebuild
+  # all of them whenever any one changed.
   #
   # THE VALUES MAY CARRY STRING CONTEXT, and should: putting them in the producer's env is what
   # makes Nix realise them before the producer runs, which is what makes the path real by the
@@ -240,6 +249,13 @@
 
   depsOf = n: depsMap.${n} or [];
 
+  # Accepts either form of `extraEnv`. An attrset is the uniform case spelled shortly, and is
+  # exactly `_: attrs`; a function is asked per action.
+  extraEnvFor =
+    if lib.isFunction extraEnv
+    then extraEnv
+    else (_: extraEnv);
+
   producerOf = n:
     derivation ({
         inherit system;
@@ -276,9 +292,9 @@
           else "";
         # The same route as the dependency paths, for values the CONSUMER supplies. Named
         # separately so the fixup can tell them apart: a dep is also an edge, this is not.
-        DYN_EXTRA_NAMES = lib.concatStringsSep " " (lib.attrNames extraEnv);
+        DYN_EXTRA_NAMES = lib.concatStringsSep " " (lib.attrNames (extraEnvFor n));
       }
-      // extraEnv
+      // extraEnvFor n
       // builtins.listToAttrs (map (d:
         lib.nameValuePair (depVar d) outputs.${d})
       (depsOf n)));

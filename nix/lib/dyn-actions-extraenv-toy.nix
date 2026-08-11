@@ -63,8 +63,30 @@
     inherit pkgs;
     specDir = specsOff;
   };
+
+  # PER ACTION, which is the form that matters: two actions in ONE spec dir, each given a
+  # DIFFERENT path. A uniform attrset cannot express this, so if the function form were ignored
+  # (or applied to only one action, or collapsed to a union) the two would agree and the check
+  # below fails. The reverse direction is built in: each asserts it saw its OWN payload.
+  payloadP = pkgs.writeText "toy-payload-p-${stamp}" "PAYLOAD-P";
+  payloadQ = pkgs.writeText "toy-payload-q-${stamp}" "PAYLOAD-Q";
+
+  authoredPair = import ./dyn-actions.nix {
+    inherit pkgs;
+    actions = [(action "xe-p-${stamp}") (action "xe-q-${stamp}")];
+  };
+  specsPair = authoredPair.mkSpecDir "dyn-actions-extraenv-specs-pair-${stamp}";
+
+  perAction = import ./dyn-actions.nix {
+    inherit pkgs;
+    specDir = specsPair;
+    extraEnv = name:
+      if lib.hasPrefix "xe-p-" name
+      then {TOY_DATA = "${payloadP}";}
+      else {TOY_DATA = "${payloadQ}";};
+  };
 in {
-  inherit specs withEnv withoutEnv;
+  inherit specs withEnv withoutEnv perAction;
 
   check = pkgs.runCommand "dyn-actions-extraenv-toy" {} ''
     on=$(cat ${withEnv.outputs."xe-with-${stamp}"})
@@ -88,6 +110,15 @@ in {
       echo "  off said: $off" >&2
       exit 1
     fi
-    echo "OK extraEnv: on=$on off=$off, and the spec never named the path" > $out
+    p=$(cat ${perAction.outputs."xe-p-${stamp}"})
+    q=$(cat ${perAction.outputs."xe-q-${stamp}"})
+    echo "--- per action: p=$p q=$q"
+    if [ "$p" != "SAW PAYLOAD-P" ] || [ "$q" != "SAW PAYLOAD-Q" ]; then
+      echo "FAIL: per-action extraEnv did not give each action its own value" >&2
+      echo "  p=$p (wanted SAW PAYLOAD-P), q=$q (wanted SAW PAYLOAD-Q)" >&2
+      exit 1
+    fi
+
+    echo "OK extraEnv: on=$on off=$off, per action p=$p q=$q, and no spec named a path" > $out
   '';
 }
