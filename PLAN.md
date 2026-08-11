@@ -779,10 +779,32 @@ re-running.
     xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
     PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
 
-**xcrun AND PlistBuddy ARE BLOCKED, re-tested rather than recalled.** Both live under `darwin/`,
-so they are Mach-O GUEST binaries, and `buck/rules/rust.bzl` contains **zero** occurrences of
-`--target`, so it cannot emit a Darwin binary at all. That needs a Darwin Rust toolchain, which
-does not exist here. Do not start either one expecting to finish it.
+**xcrun AND PlistBuddy ARE BLOCKED, and the reason is narrower than this entry first said.**
+Both live under `darwin/`, so they are Mach-O GUEST binaries. Two separate gaps, measured
+2026-08-12:
+
+    buck/rules/rust.bzl        zero occurrences of --target, so the rule cannot ask for a
+                               non-host target even if one worked
+    rust-std for darwin        ABSENT. This is the real blocker.
+
+**THE CORRECTION IS WORTH THE SPACE, because the first version of this entry said "a Darwin Rust
+toolchain does not exist here" and that is false.** `rustc --print target-list` lists
+`x86_64-apple-darwin`, `aarch64-apple-darwin` and three more, so the COMPILER supports the
+target. What is missing is the standard library built FOR it:
+
+    rustc --target x86_64-apple-darwin hello.rs
+      error[E0463]: can't find crate for `std`
+    rustc --target x86_64-apple-darwin --emit=obj  (with #![no_std])
+      error[E0463]: can't find crate for `core`
+
+and `rustc --print target-libdir --target x86_64-apple-darwin` names a directory that does not
+exist. `core` being absent too means even a freestanding object cannot be produced.
+
+So this is UNCONFIGURED, not impossible, and the distinction changes what the work is: supply
+`core` and `std` for the target, then teach `rust.bzl` to pass `--target`. Note the project
+already owns two of the awkward prerequisites, a Mach-O linker (ld64, buck2-built since #65) and
+the Darwin SDK. Nobody has costed the rest. Do not start either tool expecting to finish it, but
+do not repeat the claim that the toolchain cannot exist.
 
 So the honest shape of #76 is: two done with a byte-parity harness, one gone, one UNBLOCKED and
 ready (wrapgen, provenance proven by blob identity), and two blocked on a missing toolchain.
