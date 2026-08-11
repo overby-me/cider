@@ -373,6 +373,12 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   tools gives 53 packages, still no llvm); and the specDir check reporting OK while its diff
   never ran, because both modes produced a **byte-identical check derivation**. Look for the
   artifact, never the exit code.
+- **THE INVARIANCE CHECK IS A TOOL NOW,** `scripts/buck-lowering-invariance-check.nu`. It
+  fingerprints every label's `builderScript` and `stageScript` and compares against a saved
+  baseline, which is the check a green ladder cannot replace: rung 2 builds ONE target, so a
+  change that moves every *other* derivation is invisible to it. It was hand-assembled four
+  times before becoming a script and caught the whitespace hoist that both rungs passed.
+  `--expect-changes` inverts the verdict, so the zero can be trusted.
 - **STILL OPEN: the generator.** What remains is writing the 1,474 specs from a derivation
   rather than assembling them in Nix per group, which is still the eval cost #66 removes. The
   spec content is settled; the open part is that `builderScript` is assembled by the lowering
