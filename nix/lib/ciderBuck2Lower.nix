@@ -700,15 +700,22 @@
     #   with the inner unique      12.11  11.62  11.85 s
     #   without it                 19.96  18.91 s
     #
-    # About 60 percent SLOWER. lib.unique is O(n squared), so what matters is the length of the
-    # list it is handed: the inner pass shrinks the input list first, and dropping it makes the
-    # outer pass run over every input of every action with duplicates intact. One group has 660
-    # inputs and the graph is 27,591 artifacts.
+    # About 60 percent SLOWER, and the reason is the MAP rather than the dedup. Dropping the
+    # inner pass makes `map ownerOf` run over 389,452 elements instead of 63,058, six times as
+    # many calls, because the dedup is what shrinks the list first.
     #
-    # The output was byte identical either way, verified by hashing the builderScript of all
-    # 1,474 labels, so only the timing distinguished them. needsOf is about 3.3 s of a 12 s
-    # endpoint evaluation and is the largest single remaining chunk; this is not the way to get
-    # it back.
+    # lib.unique IS NOT QUADRATIC HERE, and it was claimed to be before anyone checked. It folds with
+    # elem over the ACCUMULATOR, so it costs n times DISTINCT, and the distinct counts on this
+    # graph are tiny: the worst group hands it 37,616 inputs of which 100 are distinct, and no
+    # group anywhere exceeds 586. Summed properly that is 42.3 million comparisons, not the
+    # 3.55 billion an n squared model predicts, so there is no algorithmic win sitting here.
+    # An n log n order-preserving replacement was written and measured: no improvement, which
+    # is what the corrected model says to expect.
+    #
+    # The output was byte identical for both experiments, verified by hashing the builderScript
+    # of all 1,474 labels, so only timing distinguished them. needsOf is about 3.3 s of a 12 s
+    # endpoint evaluation and is the largest single remaining chunk; neither of these is the
+    # way to get it back.
     ins = lib.unique (lib.concatMap (a: a.inputs) targets.${label});
     directOwners = lib.unique (lib.filter (o: o != null) (map ownerOf ins));
     # Anything those farms link to, one level of indirection out.
