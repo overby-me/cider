@@ -40,7 +40,16 @@ HOST_HEADERS = "//linux/native:host_headers"
 
 # The reference stages its own sources in the store too, so "absolute" is not enough to mean
 # "host library": the project's own tree is a store path as well.
-PROJECT_MARKER = "cider-cmake-src"
+#
+# BOTH NAMES, and the darling one is the one that actually matches. The reference is a FROZEN
+# cmake-era artifact (#82), so the #84 rename could not touch it: it says darling-cmake-src
+# 455,547 times and cider-cmake-src zero times. While this read the cider name alone it
+# matched nothing, so the project's own -I flags all counted as HOST headers and the check
+# reported 1,275 of 1,298 ported targets "missing" a dep they did not need -- 98.7 percent of
+# the population was noise and the check was permanently red. Corrected it is 26 targets, of
+# which 21 are ported and all 21 declare it. Same class as SRC_STORE_RE in
+# gen-buck-from-ninja.py: a rename cannot reach a frozen artifact, so the READER takes both.
+PROJECT_MARKER = re.compile(r"-(?:cider|darling)-cmake-src")
 
 # The toolchain's own resource root, which the port supplies as clang_resource_dir rather
 # than through host_include_dirs.
@@ -74,7 +83,7 @@ def main(argv: list[str]) -> int:
                 continue
             hits = [
                 d for d in INC_RE.findall(s)
-                if PROJECT_MARKER not in d and not any(t in d for t in TOOLCHAIN_MARKERS)
+                if not PROJECT_MARKER.search(d) and not any(t in d for t in TOOLCHAIN_MARKERS)
             ]
             if hits and cur:
                 needs[cmake_target(cur)] = needs.get(cmake_target(cur), 0) + len(hits)
