@@ -1,15 +1,15 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the seven things #66 depends on?
+# Do dynamic derivations still do the eight things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if seven properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if eight properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
-# away. 4 to 7 are properties of nix/lib/dyn-actions.nix, and the first two of those were false when
+# away. 4 to 8 are properties of nix/lib/dyn-actions.nix, and the first two of those were false when
 # first checked: the DAG edge and the whole specDir mode. Neither had a fixture, so
 # neither could have been noticed.
 #
@@ -37,6 +37,9 @@
 #   7. A DAG THROUGH specDir, the combination a real consumer needs and the last to work.
 #      specDir cannot interpolate, so the edges travel in a deps.json beside the specs. A
 #      generator that omits it gets a SET, silently, every action seeing an empty dependency.
+#   8. inferSrcs, for the caller whose input paths live inside an existing build SCRIPT rather
+#      than in a list. Asserted in BOTH directions: a flag that does nothing and a flag that
+#      fires unconditionally both pass a one-sided test.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -196,8 +199,22 @@ def main [] {
         ok (open --raw ($sdd.stdout | str trim | lines | last) | str trim)
     }
 
+    # 8. inferSrcs FINDS WHAT THE COMMAND NAMES, and does nothing when off. For the caller
+    # whose input paths live inside an existing build SCRIPT rather than in a list: string
+    # context carries them, the outer Nix substitutes them when the producer runs, and there is
+    # no earlier point at which they could be enumerated. The toy asserts BOTH halves, because
+    # a flag that does nothing and a flag that fires unconditionally both pass a one-sided test.
+    let inf = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-infer-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $inf.exit_code != 0 {
+        bad "inferSrcs does not behave in both directions"
+        print -e ($inf.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($inf.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes agreeing, and a DAG in each of them"
+        say "PASS: outputOf, early cutoff, both modes agreeing, a DAG in each, and inferSrcs"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"

@@ -66,6 +66,17 @@
   # The output every emitted action uses. NOT "out", for the reason in the header. Exposed so
   # a caller can avoid a collision with something in their own env, not so they can pick "out".
   outputName ? "result",
+  # Declare every store path the args NAME as a source, in addition to inputSrcs and deps.
+  #
+  # FOR THE CALLER WHOSE INPUTS LIVE IN A SCRIPT rather than in a list. An action assembled
+  # from an existing build script carries its paths inside the string: Nix string context
+  # brings them along, the outer Nix substitutes them when the producer runs, and there is no
+  # earlier point at which the caller could enumerate them. See the fixup script.
+  #
+  # OFF BY DEFAULT. Over-declaring is safe and under-declaring is not, so this is the forgiving
+  # setting, and a caller that knows its inputs exactly should say so and get an error when it
+  # is wrong rather than have the mistake papered over.
+  inferSrcs ? false,
 }: let
   inherit (pkgs) lib;
   system = pkgs.stdenv.hostPlatform.system;
@@ -246,6 +257,10 @@
         # are real, realised store paths. Putting them in the producer env also declares the
         # dependency, which is what makes Nix realise them first.
         DYN_DEP_NAMES = lib.concatStringsSep " " (depsOf n);
+        DYN_INFER_SRCS =
+          if inferSrcs
+          then "1"
+          else "";
       }
       // builtins.listToAttrs (map (d:
         lib.nameValuePair (depVar d) outputs.${d})

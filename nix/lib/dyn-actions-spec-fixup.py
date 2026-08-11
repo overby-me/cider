@@ -39,6 +39,12 @@ import sys
 # first version of this shipped a clean build that produced nothing.
 _UNSAFE = re.compile(r"[^A-Za-z0-9]")
 
+# A store path as it appears once Nix has substituted it: the store directory, a 32 character
+# base-32 hash, a dash, then the name. Anchored on the hash length so a path-shaped string in
+# ordinary text cannot match. Trailing path components are deliberately NOT captured: srcs
+# names a store OBJECT, and /nix/store/xxx-foo/bar is the object xxx-foo.
+_STORE_PATH = re.compile(r"/nix/store/[a-z0-9]{32}-[A-Za-z0-9+._?=-]+")
+
 
 def dep_var(name: str) -> str:
     return "DYN_DEP_" + _UNSAFE.sub("_", name)
@@ -67,9 +73,34 @@ def main(argv: list) -> int:
         spec["inputs"]["srcs"].append(value)
         spec["env"][var] = value
 
-    # LAST, so it also catches the dependency paths just added. Everything in srcs is a store
-    # path by now: the outer Nix has substituted every placeholder.
-    spec["inputs"]["srcs"] = [s.rsplit("/", 1)[-1] for s in spec["inputs"]["srcs"]]
+    # INFERRED SOURCES: every store path the command itself names.
+    #
+    # WHY THIS CAN ONLY HAPPEN HERE, and why it is worth having. A caller assembling an action
+    # from an existing build script has the paths in the SCRIPT rather than in a list: the
+    # string carries Nix string context, the outer Nix substitutes real paths into it when this
+    # producer runs, and there is no point before that at which the caller could enumerate
+    # them. Reading them back out of the finished args is the only place the information is
+    # both present and concrete.
+    #
+    # OVER-DECLARING IS SAFE AND UNDER-DECLARING IS NOT, which is what makes this a reasonable
+    # default to offer: a path named in a comment merely puts something extra in the sandbox,
+    # whereas a missing one is a command running against a file that is not there. It is still
+    # opt-in, because a caller that knows its inputs exactly should say so and get an error
+    # when it is wrong.
+    if os.environ.get("DYN_INFER_SRCS"):
+        text = json.dumps(spec.get("args", [])) + json.dumps(spec.get("builder", ""))
+        for m in _STORE_PATH.finditer(text):
+            spec["inputs"]["srcs"].append(m.group(0))
+
+    # LAST, so it also catches the dependency and inferred paths just added. Everything in srcs
+    # is a store path by now: the outer Nix has substituted every placeholder.
+    seen, srcs = set(), []
+    for s in spec["inputs"]["srcs"]:
+        base = s.rsplit("/", 1)[-1]
+        if base not in seen:
+            seen.add(base)
+            srcs.append(base)
+    spec["inputs"]["srcs"] = srcs
 
     with open(path, "w") as f:
         json.dump(spec, f)
