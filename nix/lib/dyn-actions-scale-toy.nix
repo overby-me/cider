@@ -17,36 +17,31 @@
 # is not a detail -- n=4 measured SLOWER than n=16 here, because at that size the answer is
 # entirely fixed cost and scheduling noise.
 #
-# MEASURED 2026-08-11, alongside gate16, so these are an UPPER bound and want redoing quiet:
+# MEASURED 2026-08-11 ON A QUIET MACHINE, 22 cores. THESE ARE THE REAL NUMBERS:
 #
-#     n=4     9.9 s        n=16    8.9 s
-#     n=64   36.5 s        n=128  72.8 s
+#     n=64   7.00 s      n=128   9.49 s      n=256  14.12 s
 #
-#   16 -> 64    48 more producers, +27.6 s   0.575 s each
-#   64 -> 128   64 more producers, +36.3 s   0.567 s each
+#   64 -> 128    64 more producers, +2.50 s   0.039 s each
+#   128 -> 256  128 more producers, +4.63 s   0.036 s each
 #
-# So about 0.57 s per emitted action, and LINEAR at this size rather than parallel. AT CIDER'S
-# 1,474 GROUPS THAT IS ABOUT 14 MINUTES OF BUILD, to save the ~12.95 s of evaluation that
-# computing those derivations costs. It is paid once per graph change rather than per
-# invocation, because the producers are content addressed and only re-run when their own spec
-# moves, so it amortises over repeated builds -- roughly 65 evaluations to break even.
+# So about 0.037 s per emitted action. AT CIDER'S 1,474 GROUPS THAT IS ABOUT 55 SECONDS of
+# build, against the ~12.95 s of evaluation that computing those derivations costs. Paid once
+# per graph change rather than per invocation, because the producers are content addressed and
+# only re-run when their own spec moves, so it breaks even after four or five evaluations.
+# That makes #66's endgame clearly worth building. Even one producer per ACTION, 8,704 of them,
+# would be about five and a half minutes rather than the 83 the first measurement implied.
 #
-# THAT IS THE NUMBER #66's ENDGAME HAS TO ANSWER TO, and it is worth knowing before the adapter
-# is written rather than after. It does not say the endgame is wrong: the eval saving is per
-# invocation and the producer cost is per change. It does say a design that emits one producer
-# per ACTION rather than per group, 8,704 of them, would cost about 83 minutes and cannot pay
-# for itself here.
+# AND THE FIRST MEASUREMENT SAID 0.57 s, FIFTEEN TIMES TOO HIGH, which is worth keeping because
+# of how it went wrong rather than for the number. It was taken alongside gate16, which had
+# every core busy, so the producers could not overlap and the run measured contention. It came
+# out convincingly LINEAR and gave 14 minutes at cider size, which would have argued the
+# endgame does not pay for itself. Same fixture, same slope method, quiet machine, and the
+# conclusion reverses.
 #
-# DO NOT QUOTE THE 14 MINUTES WITHOUT THIS CAVEAT. The LINEARITY is the suspect part, and it is
-# exactly what a saturated machine would produce: gate16 was building throughout, so there were
-# no free cores for the producers to spread over. Producers are independent derivations with no
-# edges between them, so on an idle box Nix should run them --max-jobs wide, and 1,474 of them
-# over ~22 cores at 0.57 s each is about 38 SECONDS rather than 14 minutes. That is not a
-# refinement of the conclusion, it reverses it. Re-run this quiet before any decision rests on
-# the number, and compare the SLOPE at two sizes again rather than trusting one.
-#
-# The earlier evidence points that way too: n=4 took LONGER than n=16, which only happens if
-# the producers were overlapping at that size.
+# THE TELL WAS ALREADY IN THE DATA and was noticed before the re-run: n=4 measured SLOWER than
+# n=16, which only happens if the producers were overlapping. A per-item cost that is really
+# scheduling contention looks exactly like a per-item cost until you take the load away.
+# NEVER PRICE A PARALLEL THING ON A BUSY MACHINE.
 #
 # `stamp` must change to force real work. Reusing it measures the store's ability to do
 # nothing, which is fast and meaningless -- the same trap buck-dyndrv-check.nu guards with its
