@@ -108,6 +108,19 @@ So the reason to reach for this is not a smaller evaluation by itself. It is tha
 DATA becomes an artifact: written once, checkable, and shareable between consumers, instead of
 being recomputed by every invocation of every consumer.
 
+## Known boundaries, before you adopt it
+
+**One output per emitted action.** `specOf` writes exactly `outputs.<outputName>`, so an action
+produces a single tree and a consumer that wants several must have the action write them all
+under it. That is not the same constraint as the one on the PRODUCER, which genuinely cannot
+have more than one because it is text hashed; the emitted derivation could in principle carry
+several, and does not today because nothing has needed it.
+
+**The smallest working consumer** is `nix/lib/dyn-actions-minimal-spec-toy.nix`: it writes a
+spec dir with `toJSON` and nothing from this bridge, holding only `name`, `builder` and `args`
+per action plus `names` and `deps.json`, and builds a two-action DAG through it. Copy that
+before copying anything larger.
+
 ## Limits found by a real consumer, which toys did not reach
 
 **A single argument can be too long to pass.** Linux caps one argv or env string at
