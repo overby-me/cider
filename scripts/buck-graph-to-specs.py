@@ -58,7 +58,13 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from buck_lowering import Needs, builder_parts  # noqa: E402
+from buck_lowering import Needs, builder_parts, join_parts  # noqa: E402
+
+# MUST MATCH outputName IN nix/lib/dyn-actions.nix. It cannot be "out": a .drv-named
+# derivation is text hashed, and builtins.placeholder "out" is a constant of the OUTPUT
+# NAME, so an action whose output is also called out embeds the exact string its own
+# producer uses and nix rejects it as a self-reference.
+BRIDGE_OUTPUT_NAME = "result"
 
 
 # buck2 renders an action identity as `LABEL (CONFIGURATION) (ACTION)`. Anchored, because
@@ -478,6 +484,54 @@ def main(argv: list[str]) -> int:
     # One readFile plus one fromJSON pays that resolution once, for about 1.5 s.
     with open(os.path.join(outdir, "scripts.json"), "w") as f:
         json.dump(scripts, f)
+    # AND THE SAME GROUPS AS BRIDGE SPECS, in the layout nix/lib/dyn-actions.nix reads in
+    # specDir mode: one <name>.json per action, a `names` index, and deps.json. This is the
+    # whole point of #66 -- a consumer binds to these through builtins.outputOf and the
+    # evaluator never computes the derivations at all.
+    #
+    # A SUBDIRECTORY because the <name>.json at the top level is the ACTION DATA, a different
+    # shape entirely, and two files of different shape under one name is how a consumer ends up
+    # reading the wrong one without an error.
+    #
+    # THE SPEC SHAPE MIRRORS specOf IN dyn-actions.nix and has to keep mirroring it. That
+    # function is never called in specDir mode, so nothing checks this at evaluation time; what
+    # checks it is scripts/buck-dyn-specs-check.py, which compares a spec written here against
+    # the one the bridge writes for the same action.
+    #
+    # THE EXPORTS SLOT IS EMPTY HERE, not a marker. An emitted action gets CIDER_PH_* from the
+    # consumer's extraEnv directly, so there is nothing to export: the export block only exists
+    # because a runCommand had no other way to receive them.
+    #
+    # THREE LINES AN EMITTED ACTION NEEDS AND A runCommand SUPPLIED: it has no stdenv, so no
+    # PATH, no set -e, and its output variable is the bridge's outputName rather than `out`.
+    # PATH is a consumer value like any other and arrives as CIDER_PATH.
+    dyn = os.path.join(outdir, "dyn")
+    os.makedirs(dyn, exist_ok=True)
+    preamble = ("set -e\n"
+                'export PATH="$CIDER_PATH"\n'
+                'export out="$%s"\n' % BRIDGE_OUTPUT_NAME)
+    for g in groups:
+        n = safe_name(g)
+        script = preamble + join_parts(
+            builder_parts(needs, g, scripts[n]),
+            lambda v: "" if v == "EXPORTS" else '"$' + v + '"')
+        spec = {
+            "name": n,
+            "builder": "/bin/sh",
+            "args": ["-c", script],
+            # THE SYSTEM IS THE CONSUMER'S, and it is the one field here that a generator
+            # genuinely cannot know. Left out, and the consumer fills it in: see the check.
+            "env": {},
+            "inputs": {"drvs": {}, "srcs": []},
+            "outputs": {BRIDGE_OUTPUT_NAME: {"hashAlgo": "sha256", "method": "nar"}},
+            "version": 4,
+        }
+        with open(os.path.join(dyn, n + ".json"), "w") as f:
+            json.dump(spec, f)
+    open(os.path.join(dyn, "names"), "w").write("\n".join(names) + "\n")
+    json.dump({safe_name(g): [safe_name(d) for d in ds] for g, ds in deps.items()},
+              open(os.path.join(dyn, "deps.json"), "w"))
+
     print(f"wrote {len(names)} group spec(s) and script(s), {total_actions} action(s), "
           f"to {outdir}")
     return 0

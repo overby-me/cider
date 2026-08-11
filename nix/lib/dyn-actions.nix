@@ -293,6 +293,18 @@
         # The same route as the dependency paths, for values the CONSUMER supplies. Named
         # separately so the fixup can tell them apart: a dep is also an edge, this is not.
         DYN_EXTRA_NAMES = lib.concatStringsSep " " (lib.attrNames (extraEnvFor n));
+
+        # WHAT A GENERATOR CANNOT KNOW, filled in by the fixup rather than demanded of the
+        # spec. A spec dir written by some other tool has no way to produce these: the output
+        # placeholder is a Nix construction, and the system belongs to whoever is building.
+        # Requiring them made specDir mode usable only by mkSpecDir, which is this bridge
+        # writing files for itself and is not the point of the mode.
+        #
+        # A SPEC THAT DOES SUPPLY THEM IS LEFT ALONE, so mkSpecDir output and everything
+        # already written keeps working unchanged.
+        DYN_SYSTEM = system;
+        DYN_OUTPUT_NAME = outputName;
+        DYN_OUTPUT_PLACEHOLDER = builtins.placeholder outputName;
       }
       // extraEnvFor n
       // builtins.listToAttrs (map (d:

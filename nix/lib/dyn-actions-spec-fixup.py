@@ -58,7 +58,35 @@ def main(argv: list) -> int:
         spec = json.load(f)
 
     spec.setdefault("inputs", {}).setdefault("srcs", [])
+    spec.setdefault("inputs", {}).setdefault("drvs", {})
     spec.setdefault("env", {})
+
+    # WHAT ONLY THE BRIDGE KNOWS, filled in here so a spec dir can be written by a GENERATOR
+    # that has never heard of Nix placeholders. Before this, specDir mode required a fully
+    # formed version 4 derivation, which in practice meant it could only read what mkSpecDir
+    # wrote: the bridge reading its own files back, which is not what the mode is for.
+    #
+    # ANYTHING ALREADY PRESENT IS LEFT ALONE. mkSpecDir writes complete specs and they must
+    # keep working byte for byte.
+    #
+    # THE PLACEHOLDER IS NOT DERIVABLE OUTSIDE NIX. builtins.placeholder is a hash of a fixed
+    # string with the output NAME in it, and reimplementing that in a generator would be a
+    # second copy of an internal encoding. It arrives in the environment instead.
+    out_name = os.environ.get("DYN_OUTPUT_NAME")
+    placeholder = os.environ.get("DYN_OUTPUT_PLACEHOLDER")
+    system = os.environ.get("DYN_SYSTEM")
+    if out_name and placeholder and system:
+        spec.setdefault("system", system)
+        spec.setdefault("version", 4)
+        spec.setdefault("outputs", {})
+        spec["outputs"].setdefault(out_name, {"hashAlgo": "sha256", "method": "nar"})
+        env = spec["env"]
+        env.setdefault("name", spec.get("name", ""))
+        env.setdefault("builder", spec.get("builder", ""))
+        env.setdefault(out_name, placeholder)
+        env.setdefault("outputHashAlgo", "sha256")
+        env.setdefault("outputHashMode", "recursive")
+        env.setdefault("system", system)
 
     deps = os.environ.get("DYN_DEP_NAMES", "").split()
     for name in deps:

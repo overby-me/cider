@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the nine things #66 depends on?
+# Do dynamic derivations still do the ten things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if nine properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if ten properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -230,8 +230,24 @@ def main [] {
         ok (open --raw ($xe.stdout | str trim | lines | last) | str trim)
     }
 
+    # 10. A SPEC DIR WRITTEN BY SOMETHING THAT IS NOT THIS BRIDGE, holding only name, builder
+    # and args. That is the whole claim of specDir mode and it was untested until now: every
+    # other spec dir in the repo came from mkSpecDir, so the mode had only ever been shown
+    # reading files the bridge itself wrote. The system, the version, the outputs and the
+    # output PLACEHOLDER are things a generator cannot honestly supply, so the fixup fills
+    # them in. The toy asserts the spec files do not carry them, or it would pass while
+    # testing nothing.
+    let mn = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-minimal-spec-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $mn.exit_code != 0 {
+        bad "a spec dir not written by this bridge does not build"
+        print -e ($mn.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($mn.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs and extraEnv"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv and a foreign spec dir"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
