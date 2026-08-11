@@ -733,19 +733,31 @@ re-running.
 **WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
 
     bsdln       GONE. Zero files match anywhere in the tree, pins included.
-    wrapgen     linux/libelfloader/wrapgen/wrapgen.cpp, 320 lines of C++. It IS a host tool,
-                so unlike the two below it is portable today, and the blocker is provenance
-                rather than the toolchain.
-                THE ABSENCE IS DIRECTORY-WIDE, not one omission, which changes how it
-                resolves. All FOUR files in linux/libelfloader/wrapgen carry no copyright,
-                no licence and no Darling marker: wrapgen.cpp, print_wrapped_elf.cpp,
-                stubgen32.cpp, produce_stubs_example.h.
-                AND LOCAL HISTORY CANNOT SETTLE IT. jj file annotate attributes every line to
-                the #87 stage 1a move, and the log for the path holds that one commit, so the
-                pre-move history was squashed. Nothing in the tree says where this came from.
-                So provenance here means a comparison against Darling upstream libelfloader,
-                which needs network, not a header read. Do that BEFORE writing any Rust: the
-                task says provenance checked, and this is the part that is not.
+    wrapgen     linux/libelfloader/wrapgen/, 4 files. It IS a host tool, so unlike the two
+                below it is portable today. PROVENANCE IS NOW RESOLVED (2026-08-12) and it is
+                no longer blocked.
+                THE PROBLEM WAS that all four files carry no copyright, no licence and no
+                Darling marker, and local history cannot settle it either: jj file annotate
+                attributes every line to the #87 stage 1a move and the log for the path holds
+                that one commit, so the pre-move history was squashed.
+                RESOLVED BY BLOB IDENTITY AGAINST UPSTREAM, which is exact rather than a
+                judgement. Darling has these at src/libelfloader/wrapgen/, and a git blob
+                hash is sha1 over "blob <len>\\0" plus content, so it can be computed locally
+                and compared with what the GitHub API reports:
+
+                  print_wrapped_elf.cpp     3829 B  IDENTICAL  c12c01045ee7
+                  produce_stubs_example.h    156 B  IDENTICAL  b59774dba4f5
+                  wrapgen.cpp               7830 B  IDENTICAL  7079e613ecf6
+                  stubgen32.cpp             8646 B  differs by exactly our own rename
+
+                THE ONE DELTA IS FULLY ACCOUNTED FOR. stubgen32.cpp is 10 bytes shorter than
+                upstream because #84 renamed 5 occurrences of _darling_elfcalls to
+                _cider_elfcalls, and 5 sites times 2 characters is exactly 10. Reversing that
+                substitution reproduces upstream blob d1acd8c0d1aa EXACTLY, so nothing else
+                differs. That is a proof rather than an inspection.
+                SO: Darling-origin, unmodified apart from our rename, and the missing header
+                is UPSTREAM's absence which we inherit rather than something the move lost.
+                The Rust port may proceed on the same footing as getuuid and elfdep.
     xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
     PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
 
@@ -754,8 +766,15 @@ so they are Mach-O GUEST binaries, and `buck/rules/rust.bzl` contains **zero** o
 `--target`, so it cannot emit a Darwin binary at all. That needs a Darwin Rust toolchain, which
 does not exist here. Do not start either one expecting to finish it.
 
-So the honest shape of #76 is: two done with a byte-parity harness, one gone, one portable but
-gated on a provenance question, two blocked on a missing toolchain.
+So the honest shape of #76 is: two done with a byte-parity harness, one gone, one UNBLOCKED and
+ready (wrapgen, provenance proven by blob identity), and two blocked on a missing toolchain.
+
+**THE METHOD IS REUSABLE, and it is cheaper than reading history.** When provenance is in doubt
+for a file that carries no header, do not argue from style or from a squashed log. Compute the
+git blob hash locally, `sha1("blob " + len + "\0" + bytes)`, and compare it with what the GitHub
+contents API reports for the upstream path. Identical means unmodified, full stop. When it
+differs, reverse the known local transformation and hash again: if that reproduces the upstream
+blob, the delta is fully explained and nothing is hiding in it.
 
 ### #92 - read the graph through buck2 structured data, not its rendered output
 
