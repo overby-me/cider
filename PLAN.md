@@ -1041,9 +1041,14 @@ has been true six times running, each time a check freshly written.
   **The 12s evaluation is paid once per change to the FLAKE SOURCE TREE, not per build**:
   rerun unchanged 0.3s, rerun after editing `nix/` 12.3s with ran=0, first build 12.7s. So it
   bites only when iterating on the lowering itself, which is much less of the loop than the
-  14.5s one-target figure suggested. #66 is aimed at it, but at the cost of computing the
-  DERIVATIONS rather than at rendering their action scripts: moving the rendering out was
-  measured at 0.6s of it. That probe also
+  14.5s one-target figure suggested. #66 IS NOT AN EVAL SAVING HERE, measured rather than
+  assumed: forcing 1,474 producer drvPaths against forcing the same 1,474 lowered outPaths
+  runs 10.45 / 10.84 / 12.56 against 11.16 / 10.55 / 11.07 interleaved, which is a wash.
+  builtins.outputOf needs the producer outPath, so binding through it instantiates one
+  derivation per action exactly as the lowering does. What DID come out of the evaluator is
+  the script: the lowering reads full.json and needs.json now and computes neither, 12.0 to
+  10.6s, and that keeps whichever route wins. The earlier 0.6s figure was for moving the
+  action scripts alone, which was a smaller and different change. That probe also
   confirms for the first time what the source filters promise: a `nix/` edit rebuilds nothing.
 - **#69 MEASURED: the declaration gap is a PER-TARGET question, and it is 675 files.**
   `scripts/buck-declaration-gap.py` splits each target's source set into what buck2 SAYS (argv
