@@ -466,10 +466,10 @@ def moved_path(rel: str) -> str:
     corresponding fallback in gen-buck-from-ninja.repo_path is: if src/<rest> is gone and one of
     darwin/<rest> or linux/<rest> is there, that is where it went.
 
-    src/external is excluded because the pins have NOT moved; stage 2 would move them, and an
+    pins is excluded because the pins have NOT moved; stage 2 would move them, and an
     unmaterialized pin is absent from disk too, so redirecting on absence would be wrong there.
     """
-    if not rel.startswith("src/") or rel.startswith("src/external/"):
+    if not rel.startswith("src/") or rel.startswith("pins/"):
         return rel
     if os.path.lexists(os.path.join(REPO, rel)):
         return rel
@@ -518,13 +518,13 @@ def file_label(rel: str):
 
 
 def pin_of(rel: str):
-    """(pin, path within the pin) for a src/external/<pin>/... source path.
+    """(pin, path within the pin) for a pins/<pin>/... source path.
 
     NORMALISED: cmake happily installs a path with a `..` in the middle of it (file's man
     page is named .../file/file/../gen/file.1), and buck2 rejects such a source outright.
     The path on disk is the same file either way.
     """
-    m = re.match(r"src/external/([^/]+)/(.*)", os.path.normpath(rel))
+    m = re.match(r"pins/([^/]+)/(.*)", os.path.normpath(rel))
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
@@ -713,7 +713,7 @@ def main(argv: list[str]) -> int:
                     (exec_files if src in EXEC_SOURCES else sources)[full] = label
                     if needs_export == "buck-src":
                         hints.setdefault("buck-src", {})[label.split(":", 1)[1]] = \
-                            rel.removeprefix("src/external/")
+                            rel.removeprefix("pins/")
                     elif needs_export:
                         exports.setdefault(needs_export, {})[
                             label.split(":", 1)[1]] = os.path.relpath(rel, needs_export)

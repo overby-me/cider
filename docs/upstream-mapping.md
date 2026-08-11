@@ -42,25 +42,25 @@ This is the thing to internalise before trying to pull anything across.
    `cider-libc`, ...), each pinned by revision in **`nix/submodules.json`**:
 
    ```json
-   { "path": "src/external/libdispatch", "owner": "darlinghq",
+   { "path": "pins/libdispatch", "owner": "darlinghq",
      "repo": "cider-libdispatch", "rev": "380f03c1...", "hash": "sha256-..." }
    ```
 
    Upstream advances these with "Update Submodules" commits (e.g. `7276777e`). Those commits
    change *pointers*, so applying one here means **bumping `rev` and `hash` in
-   `nix/submodules.json`**, not merging a diff. The 147 pinned `src/external/<pin>`
+   `nix/submodules.json`**, not merging a diff. The 147 pinned `pins/<pin>`
    directories are **empty mount points** in this tree; content is fetched by
    `nix/lib/cider-src.nix` and materialised into `buck-src/<pin>` at build time.
 
-   **But `src/external/` is not only pins.** Three trees there are vendored first-party
+   **But `pins/` is not only pins.** Three trees there are vendored first-party
    content, tracked in this repo and NOT in `nix/submodules.json`, so they take patches
    directly:
 
    | path | files | note |
    |---|---|---|
-   | `src/external/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_xnu_sys`) |
-   | `src/external/libpthread_workqueue-0.8.2/` | 40 | vendored |
-   | `src/external/libtrace/` | 28 | vendored, see its `VENDORED.md` |
+   | `pins/ciderd/xnu-sys/` | 2,164 | the XNU shim, still built (`ciderd_xnu_sys`) |
+   | `pins/libpthread_workqueue-0.8.2/` | 40 | vendored |
+   | `pins/libtrace/` | 28 | vendored, see its `VENDORED.md` |
 
 ## Directory mapping
 
@@ -90,7 +90,7 @@ directly.**
 |---|---|---|
 | `linux/startup/mldr/` | `darwin/loader/` | the Mach-O loader, rewritten (`mldr-rs`) |
 | `linux/startup/cider.c` | `linux/launcher/` | the `cider` binary, rewritten |
-| `src/external/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `src/external/ciderd/` and is still built unchanged |
+| `pins/ciderd` (was a submodule) | `linux/server/` | the DAEMON rewritten in Rust; no longer a submodule. Its `xnu-sys/` (2,164 files) stays in `pins/ciderd/` and is still built unchanged |
 
 An upstream fix to any of these must be **re-implemented**, not cherry-picked. Read the
 upstream change for its *intent* and apply that intent to the Rust.
@@ -131,7 +131,7 @@ Done once, so it need not be redone from scratch:
 | Fedora 44 build fixes | 5 | **all already present** -- the fork converged independently, because clang 21 under Nix surfaces the same strictness Fedora 44's toolchain does (libaks `int*`, OpenDirectory Foundation import, ImageIO, DiskArbitration, SecurityFoundation) |
 | `dnsinfo.h` symlink (`27dd667e`) | 1 | **was genuinely missing -- applied**, see the fix for #59 |
 | submodule bumps | 5 | **the real remaining work**: bump `rev`/`hash` in `nix/submodules.json`, selectively |
-| configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `src/external/configd` |
+| configd removal / SystemConfiguration | 4 | already converged; we deleted vendored configd and pin `pins/configd` |
 | **`3d9752422d5e` "Add symbol for rustls crate"** | 1 | **MISSING and goal-relevant** -- it is not a symbol list, it adds `SCDynamicStore.c` defining `SCDynamicStoreCreateWithOptions` and `kSCDynamicStoreUseSessionKeys`, which the rustls crate resolves. Neither exists here |
 | stub frameworks, symbol lists, `.github` | ~14 | parity only, or not carried here: WebKit (Bibdesk), InstantMessage and AddressBook Xcode symbols, SDK stub headers for PubSub/QuickTime/Message |
 

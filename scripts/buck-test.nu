@@ -393,9 +393,9 @@ def main [flag?: string] {
         //darwin/libsimple:libsimple_cider
         //buck-src:migcom
         //linux/startup:rtsig_header
-        //src/external/ciderd:dserver_rpc
-        //src/external/ciderd/xnu-sys:ciderd_xnu_sys
-        //src/external/ciderd/tools:dserverdbg
+        //pins/ciderd:dserver_rpc
+        //pins/ciderd/xnu-sys:ciderd_xnu_sys
+        //pins/ciderd/tools:dserverdbg
         //linux/server:xnu_sys_lib
         //darwin/libsimple:libsimple_cider_dylib
         //tests/buck2/firstpass:a
@@ -416,7 +416,7 @@ def main [flag?: string] {
         //buck-src:system_coretls_firstpass
         //buck-src:asl_ipc_mig
         //darwin/duct:system_duct_firstpass
-        //src/external/libtrace:system_trace_firstpass
+        //pins/libtrace:system_trace_firstpass
         //darwin/libsystem_coreservices:system_coreservices_firstpass
     ]
     if $verbose {
@@ -495,7 +495,7 @@ def main [flag?: string] {
     }
 
     say "== xnu-sys =="
-    let dt = (out_of //src/external/ciderd/xnu-sys:ciderd_xnu_sys)
+    let dt = (out_of //pins/ciderd/xnu-sys:ciderd_xnu_sys)
     if (test_f $dt) { ok "archive exists" } else { bad "archive missing" }
     let members = (count_lines_cmd [ar t $dt])
     # WAS 93 (66 hand-written + 26 MIG-generated + pthread/kern_synch.c) BEFORE #71. That port
@@ -523,7 +523,7 @@ def main [flag?: string] {
     }
 
     say "== dserverdbg (generated RPC source + a forced -include) =="
-    let dbg = (out_of //src/external/ciderd/tools:dserverdbg)
+    let dbg = (out_of //pins/ciderd/tools:dserverdbg)
     if (is_exec $dbg) { ok "dserverdbg is executable" } else { bad "dserverdbg missing" }
     # It refuses to run without setuid, which is exactly the message we expect: the
     # binary links and its RPC surface initialized enough to reach that check.
@@ -601,7 +601,7 @@ def main [flag?: string] {
         "//buck-src/xnu:system_kernel_firstpass:/usr/lib/system/libsystem_kernel.dylib"
         "//buck-src:system_coretls_firstpass:/usr/lib/system/libsystem_coretls.dylib"
         "//darwin/duct:system_duct_firstpass:/usr/lib/system/libsystem_duct.dylib"
-        "//src/external/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
+        "//pins/libtrace:system_trace_firstpass:/usr/lib/system/libsystem_trace.dylib"
         "//darwin/libsystem_coreservices:system_coreservices_firstpass:/usr/lib/system/libsystem_coreservices.dylib"
     ]
     for pair in $pairs {
@@ -738,7 +738,7 @@ def main [flag?: string] {
     # Nothing is expected to fail any more: the layer outside the circular cluster
     # (libc++, libc++abi, libsystem_dnssd, libsystem_configuration, libquarantine,
     # libremovefile, libcopyfile, libsystem_networkextension) is ported too.
-    let dylib_pkgs = "//buck-src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //src/external/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
+    let dylib_pkgs = "//buck-src/... + //darwin/duct: + //darwin/libm: + //darwin/libcache: + //darwin/sandbox: + //darwin/launchd: + //pins/libtrace: + //darwin/libsystem_coreservices: + //darwin/lib: + //darwin/quarantine: + //darwin/networkextension:"
     # By RULE KIND, not by name: check_dylib is an EXECUTABLE whose name ends in _dylib,
     # and a name match swept it in here.
     let all_dylibs = (cap [buck2 uquery $"kind\('darwin_dylib', ($dylib_pkgs)\)"] | split row --regex '\s+' | where {|t| $t != "" })
@@ -894,7 +894,7 @@ def main [flag?: string] {
         //buck-src:platform_static64 //buck-src:pthread_static
         //buck-src:system_blocks_static //darwin/duct:system_duct_static
         //buck-src:system_kernel_static64 //darwin/libm:system_m_static
-        //src/external/libtrace:system_trace_static //buck-src:unwind_static
+        //pins/libtrace:system_trace_static //buck-src:unwind_static
     ]
     for t in $static_targets {
         let f = (out_of $t)
@@ -1182,7 +1182,7 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
 
     # The other half of that script, and the half that cost a gate run. Upstream pins link
     # into UPSTREAM's layout: the security pin ships 2,078 links naming
-    # src/external/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and
+    # pins/darlingserver/duct-tape/xnu, which is where that tree lives in Darling and
     # has not existed here since the Cider rename. A symlink TARGET is not file content, so no
     # grep and no rename sweep can see it; it showed up only as a buck2 package load failure
     # naming a path that is nowhere in the tree. Assert the translation BOTH ways: a renamed
@@ -1191,13 +1191,13 @@ m.expand_dir_links(sys.argv[1])' $norm_t } | ignore
 import importlib.util, os
 s = importlib.util.spec_from_file_location("n", "scripts/buck-src-normalise.py")
 m = importlib.util.module_from_spec(s); s.loader.exec_module(m)
-print(m.rename_first_party("src/external/darlingserver/duct-tape/xnu/APPLE_LICENSE"))
-print(m.rename_first_party("src/external/libdispatch/src/queue.c"))
+print(m.rename_first_party("pins/darlingserver/duct-tape/xnu/APPLE_LICENSE"))
+print(m.rename_first_party("pins/libdispatch/src/queue.c"))
 '])
     let rl = (lines_of $ren)
     let moved = ($rl | get 0)
     let same = ($rl | get 1)
-    if $moved == "src/external/ciderd/xnu-sys/xnu/APPLE_LICENSE" {
+    if $moved == "pins/ciderd/xnu-sys/xnu/APPLE_LICENSE" {
         if (($moved | path exists)) {
             ok "rename_first_party retargets the upstream xnu path and it resolves"
         } else {
@@ -1206,7 +1206,7 @@ print(m.rename_first_party("src/external/libdispatch/src/queue.c"))
     } else {
         bad $"rename_first_party gave ($moved)"
     }
-    if $same == "src/external/libdispatch/src/queue.c" {
+    if $same == "pins/libdispatch/src/queue.c" {
         ok "rename_first_party leaves an unrelated pin path alone"
     } else {
         bad $"rename_first_party rewrote an unrelated path to ($same)"
@@ -1227,8 +1227,14 @@ print(m.rename_first_party("src/external/libdispatch/src/queue.c"))
     # had no table at all, so it resolved the security escape against the pre-rename path,
     # failed its lexists test and skipped the carry IN SILENCE. That cost a full endpoint run
     # to find. The tables must stay identical or the same class of bug returns quietly.
-    let norm = (^bash -c "grep -oE '\\(\"src/external/[a-z/.-]+\", *\"src/external/[a-z/.-]+\"\\)' scripts/buck-src-normalise.py | tr -d ' \"()' | sort" | str trim)
-    let lower = (^bash -c "grep -oE '\\(\"src/external/[a-z/.-]+\", *\"src/external/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
+    # THE PATTERN CARRIES THE PIN ROOT, so #87 stage 2 had to move it here too. It was
+    # anchored on the literal src/external (NO-PIN-REWRITE), and after the move both tables say pins/, so the
+    # pattern would have matched NOTHING IN BOTH FILES and the comparison would have been ""
+    # against "". The guard below catches that rather than passing vacuously, but the message
+    # it prints blames buck-src-normalise.py, which would have sent the next reader to the
+    # wrong file entirely.
+    let norm = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' scripts/buck-src-normalise.py | tr -d ' \"()' | sort" | str trim)
+    let lower = (^bash -c "grep -oE '\\(\"pins/[a-z/.-]+\", *\"pins/[a-z/.-]+\"\\)' nix/lib/ciderBuck2Lower.nix | tr -d ' \"()' | sort" | str trim)
     let n_entries = ($norm | lines | length)
     if $norm == "" {
         bad "could not read FIRST_PARTY_RENAMES out of buck-src-normalise.py"

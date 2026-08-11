@@ -96,7 +96,7 @@ cc_objects(
         "-D_LIBC_NO_FEATURE_VERIFICATION",
         "-nostdinc",
         "-Wno-unused-command-line-argument",
-        "-Wl,-exported_symbols_list,src/external/commoncrypto/exports.exp-in",
+        "-Wl,-exported_symbols_list,pins/commoncrypto/exports.exp-in",
         "-Wno-error=incompatible-pointer-types",
     ],
     toolchain = "toolchains//:darwin_cc",
@@ -150,7 +150,7 @@ darwin_dylib(
         "//buck-src:macho_firstpass",
         "//buck-src/libdispatch:libdispatch_shared_firstpass",
         "//buck-src/corecrypto:corecrypto_firstpass",
-        "//src/external/libtrace:system_trace_firstpass",
+        "//pins/libtrace:system_trace_firstpass",
         "//buck-src/libplatform:platform_firstpass",
     ],
     link_flag_files = {

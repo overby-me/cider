@@ -6,7 +6,7 @@
 # list (rewritten to `name != "projectSrc"`, a Nix binding name that matches no directory),
 # src became a symlink into the store and all 1798 lowered targets died with
 #
-#   ln: failed to create symbolic link 'src/external/xnu': Permission denied
+#   ln: failed to create symbolic link 'pins/xnu': Permission denied
 #
 # Nothing caught it, because the only thing that exercises the lowering is a 90 minute build.
 # This reads the staging script instead, in seconds, and it is a fair check precisely because
@@ -86,10 +86,10 @@ def main [
     #
     # 1. The pins land under src/external. Without these the SDK symlink farm does not
     #    resolve.
-    let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ src/external/' })
+    let pins = ($lines | where {|l| $l =~ '^ln -sfn [^ ]+ pins/' })
     # 2. EVERY buck-src ALIAS MUST BE UNIQUE. A pin is aliased as buck-src/<basename> and
-    #    basenames are NOT unique: src/external/ciderd/xnu-sys/xnu ends in xnu exactly like
-    #    src/external/xnu, so both claimed buck-src/xnu and the second silently overwrote the
+    #    basenames are NOT unique: pins/ciderd/xnu-sys/xnu ends in xnu exactly like
+    #    pins/xnu, so both claimed buck-src/xnu and the second silently overwrote the
     #    first. Everything resolving through buck-src/xnu then got the wrong tree, which
     #    surfaced 90 minutes later as "redeclaration of __dso_handle with a different type"
     #    in the Security cone, naming SDK headers that have nothing to do with xnu.
@@ -101,17 +101,17 @@ def main [
     #    link INSIDE it. It has to be rm -rf. Every other check here passed while this was
     #    broken, which is why it is here: they assert the shape of the tree, not the pin lines.
     let bad_rm = ($lines | where {|l| $l =~ '^rm -f (?!-)' })
-    # 4. src/external has to be a REAL directory, in both shapes, because planting a pin
+    # 4. pins has to be a REAL directory, in both shapes, because planting a pin
     #    inside a store path is a permission error.
-    let mk_external = ($lines | where {|l| $l =~ '^mkdir -p ([^ ]+ )*src/external( |$)' })
+    let mk_external = ($lines | where {|l| $l =~ '^mkdir -p ([^ ]+ )*pins( |$)' })
 
     mut failed = false
     if ($pins | is-empty) {
-        say "FAIL: no pin is planted at src/external/<pin>"
+        say "FAIL: no pin is planted at pins/<pin>"
         $failed = true
     }
     if ($mk_external | is-empty) {
-        say "FAIL: no `mkdir -p src/external`, so src/external is not a real directory"
+        say "FAIL: no `mkdir -p pins`, so pins is not a real directory"
         $failed = true
     }
     if ($dupe_aliases | is-not-empty) {
@@ -193,9 +193,9 @@ def main [
         exit 1
     }
     if $grouped {
-        say $"PASS: ($groups | length) group\(s) mirrored into real directories, ($pins | length) pin\(s) planted under src/external"
+        say $"PASS: ($groups | length) group\(s) mirrored into real directories, ($pins | length) pin\(s) planted under pins"
     } else {
-        say $"PASS: src is a real directory, ($src_entries | length) entries linked into it, ($pins | length) pin\(s) planted under src/external"
+        say $"PASS: src is a real directory, ($src_entries | length) entries linked into it, ($pins | length) pin\(s) planted under pins"
     }
     exit 0
 }

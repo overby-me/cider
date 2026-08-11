@@ -11,10 +11,10 @@ cc_library(
     name = "dserverdbg_dserver_rpc",
     # The generated ciderd RPC library source, compiled here with the
     # debug tool's own RPC definitions forced in.
-    gen_srcs = ["//src/external/ciderd:dserver_rpc"],
+    gen_srcs = ["//pins/ciderd:dserver_rpc"],
     prefix_headers = ["dserverdbg-rpc-defs.h"],
     deps = [
-        "//src/external/ciderd:dserver_headers",
+        "//pins/ciderd:dserver_headers",
         "//linux/startup:rtsig_header",
     ],
 )

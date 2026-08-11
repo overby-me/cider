@@ -32,7 +32,7 @@
   # Darling's own ld64, which the link rules invoke by absolute path.
   ld64 ? null,
   # Feed the dump a SKELETON instead of the project (#56): every C family file outside
-  # buck-src, buck-rust and src/external emptied, keeping the name and dropping the bytes,
+  # buck-src, buck-rust and pins emptied, keeping the name and dropping the bytes,
   # except the five that feed a generator this derivation runs. OFF BY DEFAULT and an
   # EXPERIMENT until the resulting graph is shown equivalent to the one the project produces;
   # see packages.cider-buck2-graph-skeleton and scripts/buck-graph-equiv.py.
@@ -81,7 +81,7 @@
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins
-    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
+    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "pins/" e.path) manifest)
     else pins;
   # The project as Nix sees it, filtered to what the build can possibly read. BOTH
   # derivations take it whole: the graph dump and the source closure.
@@ -123,7 +123,7 @@
           # The generators and the check suite. buck2 never opens one: the only path
           # starting with scripts/ in any BUCK file is ciderd's
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
-          # to src/external/ciderd/scripts/, not here. The two scripts this
+          # to pins/ciderd/scripts/, not here. The two scripts this
           # derivation does run, buck2-graph-dump.py and buck-src-normalise.py, arrive as
           # their own store paths through Nix path interpolation, so editing either still
           # rebuilds the graph, which is correct because both change its output.
@@ -146,7 +146,7 @@
     };
 
   # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
-  # file emptied except those under buck-src, buck-rust and src/external and the five that
+  # file emptied except those under buck-src, buck-rust and pins and the five that
   # feed a generator this dump RUNS. scripts/buck-skeleton.py holds the rules and
   # scripts/buck-codegen-closure.py is what computed the five.
   #
@@ -197,11 +197,11 @@
       # The same normalisation scripts/buck-src.nu applies on the daemon path: the upstream
       # trees contain symlinks with a "." component and ones whose relative target leaves
       # the cell, and buck2 refuses both. Without it the analysis dies on libnotify's
-      # notify.defs, whose link was written for src/external/<pin> and reaches one level
+      # notify.defs, whose link was written for pins/<pin> and reaches one level
       # above the root from buck-src/<pin>.
       #
       # AFTER every pin, not per pin: the rewrite follows the SDK farm's own links to find
-      # what the escaping link means, and those point into src/external/<pin>, which only
+      # what the escaping link means, and those point into pins/<pin>, which only
       # exists once the pin loop has made all of them.
       # --repo: the script runs from the store here, so it cannot find the project by
       # looking above itself, and the rewrite that needs it would quietly do nothing.
@@ -236,25 +236,39 @@
   materializePins = pkgs.writeShellScript "materialize-pins" (
   lib.concatMapStrings (p: let
         name = builtins.baseNameOf p;
-        # THE buck-src INDIRECTION ONLY WORKS FOR A PIN DIRECTLY UNDER src/external, and it
+        # THE buck-src INDIRECTION ONLY WORKS FOR A PIN DIRECTLY UNDER pins, and it
         # makes THREE assumptions that all break for a nested one:
         #   the destination buck-src/<name> is keyed on the BASENAME, which is not unique;
-        #   the back link hardcodes ../../, which is the depth of src/external/<name>;
+        #   the back link USED TO hardcode ../../, the depth of the old root, and is now
+        #     derived from p below, which is what makes it survive #87 stage 2;
         #   and both together silently CLOBBER an existing pin of the same basename.
-        # Measured 2026-08-10 by adding src/external/ciderd/xnu-sys/xnu, whose basename is
-        # also xnu: it landed on top of src/external/xnu in buck-src/xnu and the endpoint
-        # died at BXL materialisation with "File not found:
-        # root//src/external/ciderd/buck-src/xnu, included in buck-src/BUCK".
+        # Measured 2026-08-10, and the paths here are the ones of that day rather than
+        # today's: adding src/external/ciderd/xnu-sys/xnu, whose basename is  (NO-PIN-REWRITE)
+        # also xnu, landed it on top of src/external/xnu in buck-src/xnu and the  (NO-PIN-REWRITE)
+        # endpoint died at BXL materialisation with "File not found:
+        # root//src/external/ciderd/buck-src/xnu, included in buck-src/BUCK".  (NO-PIN-REWRITE)
         # A nested pin is therefore materialised IN PLACE at its own path instead, which is
         # what cider-src.nix overlayOne already does for every pin. The 147 that do live
-        # directly under src/external keep the indirection unchanged, byte for byte.
+        # directly under pins keep the indirection unchanged, byte for byte.
         parts = lib.splitString "/" p;
-        underSrcExternal =
-          builtins.length parts == 3
-          && builtins.elemAt parts 0 == "src"
-          && builtins.elemAt parts 1 == "external";
+        # DIRECTLY UNDER THE PIN ROOT, derived rather than hardcoded. This read
+        # `length == 3 && parts0 == "src" && parts1 == "external"`, and #87 stage 2 moved the
+        # root to pins/. Writing `length == 2` would have reseated the same landmine one
+        # rename later, so both this and the back link below come from pinRoot.
+        pinRoot = "pins";
+        rootParts = lib.splitString "/" pinRoot;
+        underPinRoot =
+          builtins.length parts == builtins.length rootParts + 1
+          && lib.take (builtins.length rootParts) parts == rootParts;
+        # AND THE BACK LINK, which used to be a literal ../../ because that was the depth of
+        # pins/<name>. Under pins/<name> it is one level, and a wrong back link does
+        # not fail here: it makes the SDK symlink farm dangle and the error surfaces far away,
+        # exactly as the comment above describes. One "../" per component of p, minus the
+        # component that is the pin itself.
+        backLink = lib.concatStrings
+          (builtins.genList (_: "../") (builtins.length parts - 1));
       in
-      if !underSrcExternal then ''
+      if !underPinRoot then ''
         echo "materializing ${p} (nested pin, in place)"
         mkdir -p ${builtins.dirOf p}
         rm -rf ${p}
@@ -270,14 +284,14 @@
         cp -a --reflink=auto ${pinSrc p}/. buck-src/${name}/
         chmod -R u+w buck-src/${name}
         # And where the SDK expects it. Darling's SDK is a farm of ~1,900 committed
-        # symlinks into src/external/<pin>, and this flake is built WITHOUT git submodules,
+        # symlinks into pins/<pin>, and this flake is built WITHOUT git submodules,
         # so in the source those all dangle: the staged headers come out empty and the
         # failure lands somewhere far away (libc's vsprintf.c, on a __va_list that no
         # longer has a typedef). One relative symlink per pin makes the farm resolve, and
         # points at the copy that is already there rather than a second one.
         mkdir -p ${builtins.dirOf p}
         rmdir ${p} 2>/dev/null || true
-        ln -sfn ../../buck-src/${name} ${p}
+        ln -sfn ${backLink}buck-src/${name} ${p}
       '') wantedPins
   );
   # The vendored Rust crates, which buck-rust/BUCK globs and which are gitignored like the

@@ -62,10 +62,10 @@ CTYPE = {
 
 def header_path():
     hits = glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/ciderd/__dserver_rpc__/"
+        ROOT, "buck-out/v2/art/root/*/pins/ciderd/__dserver_rpc__/"
               "*gen_include/ciderd/rpc.internal.h"))
     if not hits:
-        sys.exit("rpc.internal.h not built; run: buck2 build //src/external/ciderd:dserver_rpc")
+        sys.exit("rpc.internal.h not built; run: buck2 build //pins/ciderd:dserver_rpc")
     return hits[0]
 
 

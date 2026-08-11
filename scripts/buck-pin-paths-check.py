@@ -147,7 +147,7 @@ def first_party_includes():
 
 
 def submodule_paths():
-    """The manifest keys a pin by its src/external path; the last component is
+    """The manifest keys a pin by its pins path; the last component is
     the buck-src directory the pin is checked out as."""
     with open(os.path.join(ROOT, "nix", "submodules.json"), encoding="utf-8") as fh:
         for entry in json.load(fh):
@@ -159,7 +159,7 @@ def present(path):
     """lexists, not exists, and the difference is the whole point.
 
     darwin/Developer is a tree of symlinks written for the STAGED layout, where
-    pins live at src/external/<pin>; in a checkout they live at buck-src/<pin>,
+    pins live at pins/<pin>; in a checkout they live at buck-src/<pin>,
     so 2,002 of its 2,636 links dangle here and resolve in the build. Following
     them would report a couple of thousand false failures. What this check is
     for is whether the path we RECORDED is a real entry, and a path mangled by a

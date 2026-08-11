@@ -11,8 +11,8 @@ WHAT IT CATCHES, and the reason it exists. buck-src/BUCK and buck-src/<pin>/BUCK
 are OURS, generated from the reference build, even though they sit next to
 upstream code. The Cider rename skipped the whole buck-src tree, correctly for
 the pin paths inside it and WRONGLY for its 170 references back to first-party
-packages. They kept naming //src/external/darlingserver after that package
-became //src/external/ciderd. buck2 reported the first one only, as an analysis
+packages. They kept naming //pins/darlingserver after that package
+became //pins/ciderd. buck2 reported the first one only, as an analysis
 error four minutes into the endpoint:
 
     Unknown target `darling_config` from package `root//darwin/include`
@@ -43,7 +43,7 @@ file. Reporting those 105 as failures would make the check useless, so it does
 not claim to check what it cannot see.
 
 Verified both ways. Against the tree as the rename left it: 205 occurrences of
-//src/external/darlingserver, 10 of //darwin/include:darling_config and 5 of
+//pins/darlingserver, 10 of //darwin/include:darling_config and 5 of
 //darwin/libsimple:libsimple_darling. Clean now, except two labels ignored by name
 below.
 

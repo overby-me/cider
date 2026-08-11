@@ -208,11 +208,11 @@ def main(argv: list[str]) -> int:
         count += 1
         print("mig_gen(")
         print(f'    name = "{full}",')
-        print(f'    defs = "{defs.removeprefix("src/external/")}",')
+        print(f'    defs = "{defs.removeprefix("pins/")}",')
         # out_base is the directory the OUTPUTS are relative to, not the defs'
         # own directory: consumers include <mach/clock.h>, so the stem has to keep
         # its mach/ prefix.
-        base = defs.removeprefix("src/external/")
+        base = defs.removeprefix("pins/")
         base = base[:base.index(match) + len(match)] if match in base else os.path.dirname(base)
         print(f'    out_base = "{base}",')
         for key, attr in (("user", "user_suffix"), ("header", "header_suffix"),

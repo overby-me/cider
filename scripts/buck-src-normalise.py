@@ -10,7 +10,7 @@ buck2 rejects two kinds of symlink outright, and both occur in the upstream tree
     which reaches back into the repo's SDK symlink farm.
 
 Both are rewritten to point at the same file INSIDE buck-src: the SDK farm's own links
-end in src/external/<pin>/..., which is exactly buck-src/<pin>/....
+end in pins/<pin>/..., which is exactly buck-src/<pin>/....
 
 Run after scripts/buck-src.nu (it invokes this itself); safe to re-run.
 
@@ -39,7 +39,7 @@ def set_repo(root: str) -> None:
 
 # WE RENAMED FIRST-PARTY DIRECTORIES; UPSTREAM DID NOT, and a pin links into the
 # layout upstream has. 2,078 links under buck-src/security/darling/submodules/xnu
-# name src/external/darlingserver/duct-tape/xnu, which is where that tree lives in
+# name pins/darlingserver/duct-tape/xnu, which is where that tree lives in
 # Darling and has not existed here since the Cider rename and the duct-tape to
 # xnu-sys move.
 #
@@ -50,8 +50,8 @@ def set_repo(root: str) -> None:
 #     File not found: root//buck-src/darlingserver/duct-tape/xnu
 # Longest prefix first, so the duct-tape entry wins over the plain one.
 FIRST_PARTY_RENAMES = [
-    ("src/external/darlingserver/duct-tape", "src/external/ciderd/xnu-sys"),
-    ("src/external/darlingserver", "src/external/ciderd"),
+    ("pins/darlingserver/duct-tape", "pins/ciderd/xnu-sys"),
+    ("pins/darlingserver", "pins/ciderd"),
 ]
 
 
@@ -81,12 +81,12 @@ def in_tree_target(link: str, target: str) -> str | None:
         # Inside buck-src but DANGLING: the link names a sibling pin that is not
         # materialized here because it lives in the repo proper. security's
         # darling/submodules/xnu points at ciderd/xnu-sys/xnu that way, and
-        # ciderd is at src/external/ciderd, not a pin. A dangling link is
+        # ciderd is at pins/ciderd, not a pin. A dangling link is
         # not merely unused -- a glob that picks it up fails the whole package load.
         # And the name it uses is UPSTREAM's: this is where the security pin says
         # darlingserver/duct-tape/xnu, so the candidate goes through the rename table
         # too. In the Nix graph derivation these links resolve INSIDE buck-src rather
-        # than to src/external, which is why fixing only the other branch left the
+        # than to pins, which is why fixing only the other branch left the
         # endpoint failing with the re-pointed count still at 103.
         rel = resolved[len(BUCK_SRC) + 1:]
         cand = os.path.join(REPO, rename_first_party(os.path.join("src", "external", rel)))
@@ -111,7 +111,7 @@ def in_tree_target(link: str, target: str) -> str | None:
         resolved = cand
 
     # Follow the chain textually: the repo's SDK farm is itself symlinks into
-    # src/external/<pin>, which is what buck-src holds a copy of.
+    # pins/<pin>, which is what buck-src holds a copy of.
     seen = set()
     cur = resolved
     while os.path.islink(cur) and cur not in seen:
@@ -126,9 +126,9 @@ def in_tree_target(link: str, target: str) -> str | None:
         if os.path.lexists(cand):
             return os.path.relpath(cand, os.path.dirname(link))
         return None
-    if not rel.startswith("src/external/"):
+    if not rel.startswith("pins/"):
         return None
-    inside = os.path.join(BUCK_SRC, rel[len("src/external/"):])
+    inside = os.path.join(BUCK_SRC, rel[len("pins/"):])
     if not os.path.exists(inside):
         return None
     return os.path.relpath(inside, os.path.dirname(link))

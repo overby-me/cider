@@ -9,7 +9,7 @@ and neither the build nor the checks caught it until an hour of compiling had go
   shared projectSrc that resolved inside the same store path; under groups it resolved four
   levels above the CoreServices store path and dangled. 1,194 targets failed.
 
-  Then per-PIN stores staged each submodule as its own store path. src/external/IOKitUser/
+  Then per-PIN stores staged each submodule as its own store path. pins/IOKitUser/
   darling/submodules/xnu is a link to ../../../xnu/. Same shape, same failure, and the pin
   check passed anyway: it compared by NAR hash, and a NAR hash records a symlink TARGET as a
   STRING. Two identical strings that resolve to different places because the root moved look
@@ -20,7 +20,7 @@ every relative symlink inside it must land inside it, or it cannot be staged on 
 
 PINS NEED THE ASSEMBLED TREE, NOT THE REPO, and this script reported a clean 0 for them until
 that was noticed -- which would have been the very failure it exists to prevent. The 147
-`src/external/<pin>` directories are EMPTY MOUNT POINTS here; content is fetched by
+`pins/<pin>` directories are EMPTY MOUNT POINTS here; content is fetched by
 nix/lib/cider-src.nix and only exists in the assembled store path. Walking the repo for them
 walks nothing and finds nothing wrong. So pins mode requires --root and refuses to pass on a
 boundary that held no symlinks at all.
@@ -65,7 +65,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # earlier version of this file guessed at it (frameworks three deep, everything else two) and
 # reported 2,490 escapes across 8 groups where the real rule gives 2,306 across 15. Same
 # conclusion, wrong numbers, and the numbers were quoted in a commit message.
-_UNGROUPED = ("buck-src/", "src/external/", "buck-rust/")
+_UNGROUPED = ("buck-src/", "pins/", "buck-rust/")
 
 
 def group_of(rel: str):
@@ -110,7 +110,7 @@ def report(title, found, walked, total_hint=""):
     print(f"{title}: {len(found)} escaping symlink(s) of {walked} walked{total_hint}")
     if walked == 0:
         print("  REFUSING: no symlink was walked at all, so this proved nothing.")
-        print("  The src/external pin directories are empty mount points in the repo;")
+        print("  The pins pin directories are empty mount points in the repo;")
         print("  point --root at an assembled cider-src instead.")
         return 2
     if not found:
@@ -138,7 +138,7 @@ def main(argv):
 
     if mode == "pins":
         manifest = json.load(open(os.path.join(REPO, "nix", "submodules.json")))
-        pins = [e["path"] for e in manifest if e["path"].startswith("src/external/")]
+        pins = [e["path"] for e in manifest if e["path"].startswith("pins/")]
         pinset = set(pins)
 
         def boundary(rel):

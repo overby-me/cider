@@ -21,8 +21,8 @@ Nothing anywhere says which pins are SUPPOSED to be patched, and that gap has th
   3  A BASENAME COLLISION, which is the one that has already bitten. Patches key on
      baseNameOf, and two different pins here really are both called `xnu`:
 
-         src/external/xnu                       darlinghq/darling-xnu, the GUEST syscall tree
-         src/external/ciderd/xnu-sys/xnu        the same repo, the duct-tape KERNEL subset
+         pins/xnu                       darlinghq/darling-xnu, the GUEST syscall tree
+         pins/ciderd/xnu-sys/xnu        the same repo, the duct-tape KERNEL subset
 
      patches/xnu holds NINE guest syscall patches that touch
      darling/src/libsystem_kernel/emulation only. Without an explicit override the de-vendored

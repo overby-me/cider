@@ -353,11 +353,11 @@ def target_sources(ran: list, trees: dict, staged: dict, producer: dict, data: s
 # and that is 3,225 targets times a few entries. It is computed here, where the map is
 # already in hand, so the lowering reads a small file and never parses the big one.
 #
-# buck-src, src/external and buck-rust are deliberately ungrouped, each for its own reason:
+# buck-src, pins and buck-rust are deliberately ungrouped, each for its own reason:
 # the first two are pins staged wholesale by revision and a group there would collide with
 # those symlinks, and buck-rust is gitignored and comes from the vendor derivation, so a
 # builtins.path at one would fail with "not tracked by Git".
-_UNGROUPED = ("buck-src/", "src/external/", "buck-rust/")
+_UNGROUPED = ("buck-src/", "pins/", "buck-rust/")
 
 
 def group_of(p: str):

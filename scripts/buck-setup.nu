@@ -215,5 +215,5 @@ file_watcher = fs_hash_crawler
     open .buckconfig.local | lines | each {|l| print $"  ($l)" }
 
     print ""
-    print "ready: buck2 build //src/external/ciderd/xnu-sys:ciderd_xnu_sys"
+    print "ready: buck2 build //pins/ciderd/xnu-sys:ciderd_xnu_sys"
 }

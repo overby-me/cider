@@ -180,7 +180,7 @@ common is that the host build passes throughout.
     the WRAPPED clang injecting the same dirs through `NIX_CFLAGS_COMPILE`.
   * **fseventsd needs kernel UAPI headers**, which are not a library and so were in no list.
   * **The lowering symlinked `src/` into the store**, so the pins could not be planted at
-    `src/external/<pin>` and every one of the 1798 lowered targets died on "Permission
+    `pins/<pin>` and every one of the 1798 lowered targets died on "Permission
     denied". One word: the top-level exclusion list had `name != "src"` rewritten to
     `name != "projectSrc"`, which is a Nix binding name and matches no directory.
 

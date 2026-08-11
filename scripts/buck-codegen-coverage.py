@@ -82,7 +82,7 @@ def main(argv: list[str]) -> int:
             if rule != "phony":
                 # NORMALIZED, because the two sides spell the same file differently: a
                 # CUSTOM_COMMAND declares its output relative to the build dir
-                # (src/external/WTF/...), while the compile edge that reads it names the
+                # (pins/WTF/...), while the compile edge that reads it names the
                 # same file absolutely (/build/build/src/external/WTF/...). Comparing them
                 # raw put all but one generated source in the wrong bucket.
                 for i in real.split():

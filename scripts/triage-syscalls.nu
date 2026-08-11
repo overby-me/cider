@@ -49,7 +49,7 @@
 # See: PLAN.md (Task 1.7)
 
 # Known syscall number to name mapping (macOS/XNU BSD syscalls)
-# Source: src/external/xnu/bsd/kern/syscalls.master
+# Source: pins/xnu/bsd/kern/syscalls.master
 # This covers the most commonly-seen unimplemented syscalls.
 def syscall_names [] {
     {

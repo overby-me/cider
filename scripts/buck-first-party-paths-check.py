@@ -29,7 +29,7 @@ THE EXCLUSIONS, both measured rather than assumed:
 
   buck/generated/exports_*.bzl   93 hits, every one pin-root-relative (libcxx's src/any.cpp and
                                  friends). Class 2, owned by buck-pin-paths-check.py.
-  src/external/**                a pin that has not been materialized is absent from disk, so
+  pins/**                a pin that has not been materialized is absent from disk, so
                                  its own BUCK file cannot resolve its own sources.
   out_base = "..."               a mig_gen OUTPUT base, not an input. buck-src/BUCK declares
                                  out_base = "src/firehose" for libdispatch's firehose
@@ -67,7 +67,7 @@ SKIP_DIRS = {".jj", ".git", "buck-out", "target", "outputs", "build", "__pycache
 
 def in_scope(rel: str) -> bool:
     """False for the two path spaces this rule cannot judge. See the module docstring."""
-    if rel.startswith("src/external/"):
+    if rel.startswith("pins/"):
         return False
     return re.match(r"buck/generated/exports_.*\.bzl$", rel) is None
 

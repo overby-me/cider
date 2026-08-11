@@ -82,9 +82,9 @@ def main(argv: list[str]) -> int:
         # The generated file, e.g. .../src/launchd/liblaunch/jobXtraceMig.c
         src = sorted(srcs)[0]
         stem = os.path.basename(src)
-        # `src` is the full generated path (src/external/.../libsyscall/mach/taskXtraceMig.c);
+        # `src` is the full generated path (pins/.../libsyscall/mach/taskXtraceMig.c);
         # the instance is the mig target whose out_base + relative stem lands exactly there.
-        rel = src.removeprefix("src/external/")
+        rel = src.removeprefix("pins/")
         want_stem = stem.removesuffix("XtraceMig.c")
         cands = []
         for t in migs:
@@ -116,7 +116,7 @@ def main(argv: list[str]) -> int:
         # PACKAGE-relative, so the generated path has to be made package-relative first.
         pkg = os.path.relpath(os.path.dirname(t["path"]), REPO)
         if pkg == "buck-src":
-            pkg_rel = src.removeprefix("src/external/")
+            pkg_rel = src.removeprefix("pins/")
         else:
             pkg_rel = src.removeprefix(pkg + "/")
         base = t["out_base"].rstrip("/")

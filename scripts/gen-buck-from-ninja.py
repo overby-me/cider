@@ -137,7 +137,7 @@ def glob_excludes(paths) -> list:
 # path here would simply not resolve ("does not exist as a member of package").
 #
 # cmake/versioner.cmake builds a version-dispatch wrapper for a project out of ONE shared
-# source, src/external/perl/versioner/versioner.c, whoever calls it: `perl` gets one and so
+# source, pins/perl/versioner/versioner.c, whoever calls it: `perl` gets one and so
 # does `python`. perl owns the file, so python's wrapper has to name it by label.
 CROSS_PACKAGE_SRCS = {
     "perl/versioner/versioner.c": "//buck-src/perl:versioner_c",
@@ -145,7 +145,7 @@ CROSS_PACKAGE_SRCS = {
 
 CROSS_PACKAGE_ROOTS = {
     "darwin/libsimple/include": "//darwin/libsimple:libsimple_headers",
-    "src/external/ciderd/include": "//src/external/ciderd:dserver_headers",
+    "pins/ciderd/include": "//pins/ciderd:dserver_headers",
     # launchd's own headers, needed by targets in OTHER packages: xtrace's per-protocol
     # stub for liblaunch's job.defs compiles a generated source whose imports reach
     # launchd's core.h. The root staged there covers src/ and liblaunch/ both.
@@ -165,7 +165,7 @@ CROSS_PACKAGE_ROOTS = {
     # targets landed, so the root has to be declared inside that package.
     "ruby/darling/include/ruby": "//buck-src/ruby:ruby_inc_darling_include_ruby",
     # python's dbm module gets -I<sdk>/usr/include/BerkeleyDB, whose db.h and db_cxx.h are
-    # DANGLING links in the committed SDK farm: they still point at src/external/BerkeleyDB
+    # DANGLING links in the committed SDK farm: they still point at pins/BerkeleyDB
     # from before the darwin/ + linux/ reorg, like dnsinfo.h does (see the note in that
     # package's BUCK). The real headers are in the pin, and berkeley_db already stages the
     # tree with build_unix among its include_subdirs, so the include path maps to that root
@@ -260,21 +260,21 @@ ENV_INCLUDES = {
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include",
     "darwin/framework-include",
     "darwin/framework-private-include",
-    "src/external/lkm/include",
+    "pins/lkm/include",
     "darwin/libDiagnosticMessagesClient/include",
     "darwin/libMobileGestalt/include",
     "darwin/lib/include",
-    "src/external/configd/dnsinfo",
+    "pins/configd/dnsinfo",
     "darwin/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/libxml2",
     # The C++ standard library. It MUST NOT also be emitted per-target: two copies
     # of libcxx/include on one command line break #include_next, because libcxx's
     # stdint.h defers to the next stdint.h on the path and finds the other staged
     # copy of ITSELF instead of the SDK's, leaving uint32_t undefined.
-    "src/external/libcxx/include",
+    "pins/libcxx/include",
 }
 
 # The one member of ENV_INCLUDES a target can lack while still using the environment.
-LIBCXX_INCLUDE = "src/external/libcxx/include"
+LIBCXX_INCLUDE = "pins/libcxx/include"
 
 
 def read_edges():
@@ -403,7 +403,7 @@ def repo_path(p: str):
             # buck-src branch below place it.
             if os.path.islink(cand):
                 tgt = os.path.normpath(os.path.join(os.path.dirname(p), os.readlink(cand)))
-                if tgt.startswith("src/external/"):
+                if tgt.startswith("pins/"):
                     p = tgt
     # Task #87 emptied src/ into darwin/ and linux/, and the reference graph predates that
     # exactly as it predates #68 above. Everything that was still in src/ is named there by its
@@ -418,9 +418,9 @@ def repo_path(p: str):
     #
     # Derived from the tree rather than from a copy of the 52 name mapping, so it cannot drift:
     # if src/<rest> is gone and exactly one of darwin/<rest> or linux/<rest> is there, that is
-    # where it went. src/external is excluded because stage 2 has not run and the pins still
+    # where it went. pins is excluded because stage 2 has not run and the pins still
     # live there; an unmaterialized pin is absent too, and must not be redirected.
-    if p.startswith("src/") and not p.startswith("src/external/") \
+    if p.startswith("src/") and not p.startswith("pins/") \
             and not os.path.lexists(os.path.join(REPO, p)):
         rest = p[len("src/"):]
         for _dest in ("darwin", "linux"):
@@ -428,8 +428,8 @@ def repo_path(p: str):
                 p = f"{_dest}/{rest}"
                 break
 
-    if p.startswith("src/external/"):
-        rel = p[len("src/external/"):]
+    if p.startswith("pins/"):
+        rel = p[len("pins/"):]
         if os.path.exists(os.path.join(REPO, BUCK_SRC, rel)):
             real = deref(os.path.join(BUCK_SRC, rel))
             # ...but NOT when following the link would change what the file IS. pcre ships
@@ -1232,7 +1232,7 @@ def package_of(src_paths) -> str:
     """The BUCK package that owns a target: the one holding its sources."""
     repo_srcs = [q for k, q in src_paths if k == "src"]
     if repo_srcs:
-        depth = 3 if repo_srcs[0].startswith("src/external/") else 2
+        depth = 3 if repo_srcs[0].startswith("pins/") else 2
         return "/".join(repo_srcs[0].split("/")[:depth])
     pin_srcs = [q for k, q in src_paths if k == "buck-src"]
     if pin_srcs and pin_srcs[0].split("/")[0] in migrated_pins():
@@ -1264,7 +1264,7 @@ def dylib_edges(target: str, edges):
             if "/" not in o or not (base.endswith(".dylib") or is_dylib_link):
                 continue
             # A FRAMEWORK binary is named after the target with no lib prefix and no
-            # extension (OpenLDAP builds src/external/OpenLDAP/LDAP), so neither the
+            # extension (OpenLDAP builds pins/OpenLDAP/LDAP), so neither the
             # lib<t>.dylib spelling nor the object-library fallback finds it: LDAP's
             # objects come from libldap_r and liblber, which share no name with it.
             if base in (f"lib{target}.dylib", target) and final is None:
@@ -2023,7 +2023,7 @@ ARCHIVE_ALIASES = {
     # The host tier, ported before cc_static_lib existed (both are cc_library targets
     # whose archive the Rust daemon consumes through XNU_SYS_LIB).
     "libciderd_xnu_sys.a":
-        "//src/external/ciderd/xnu-sys:ciderd_xnu_sys",
+        "//pins/ciderd/xnu-sys:ciderd_xnu_sys",
     "liblibsimple_ciderd.a": "//darwin/libsimple:libsimple_ciderd",
 }
 

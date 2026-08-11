@@ -11,7 +11,7 @@ Quick start (inside `nix develop`, which provides `buck2` + `watchman`):
 
 ```console
 scripts/buck-setup.nu        # pinned sources + the absolute ld64 path
-buck2 build //src/external/ciderd/xnu-sys:ciderd_xnu_sys
+buck2 build //pins/ciderd/xnu-sys:ciderd_xnu_sys
 scripts/buck-test.nu         # regression test for everything ported so far
 ```
 

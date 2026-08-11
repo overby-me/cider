@@ -169,7 +169,7 @@ darwin_dylib(
         "//buck-src:unwind_firstpass",
         "//buck-src:compiler_rt_firstpass",
         "//buck-src:system_pthread_firstpass",
-        "//src/external/libtrace:system_trace_firstpass",
+        "//pins/libtrace:system_trace_firstpass",
     ],
     upward = [
         "//buck-src/objc4:objc_firstpass",

@@ -61,9 +61,9 @@ OUT_OF_SCOPE = {
     "x86_64-apple-darwin20-ranlib":
         "same as x86_64-apple-darwin20-ld: supplied by the Nix-built cctools",
     # BY PATH, because the artifact name is ambiguous and the other one IS built and
-    # installed: the reference builds lipo twice, and only src/external/cctools/misc/lipo
+    # installed: the reference builds lipo twice, and only pins/cctools/misc/lipo
     # is installed. cctools-port's copy is a build-time tool, the same case as ld/ar/ranlib.
-    "src/external/cctools-port/cctools/misc/lipo":
+    "pins/cctools-port/cctools/misc/lipo":
         "the second lipo: only cctools' copy is installed, and cctools-port's is a "
         "build-time tool supplied by the Nix-built cctools like ld, ar and ranlib",
     "libsystem_kernel_static32.a":

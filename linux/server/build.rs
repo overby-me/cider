@@ -18,10 +18,10 @@ fn main() {
     // <repo>/src/external/ciderd. nix/server.nix stages a synthetic tree
     // mirroring these real repo paths, so the same relative paths resolve in a dev
     // `cargo build` and in the nix build.
-    let xnu_sys = manifest.join("../../src/external/ciderd/xnu-sys");
+    let xnu_sys = manifest.join("../../pins/ciderd/xnu-sys");
     let xnu_sys_inc = xnu_sys.join("include");
     let libsimple_inc = manifest.join("../../src/libsimple/include");
-    let fast_context = manifest.join("../../src/external/ciderd/src/fast_context.c");
+    let fast_context = manifest.join("../../pins/ciderd/src/fast_context.c");
 
     // ---- (1) bindgen: the hooks contract + types (source headers only) ----
     let mut builder = bindgen::Builder::default()
@@ -49,8 +49,8 @@ fn main() {
              trees (ciderd/rpc.h and the MIG mach/task.h). Point this at their \
              directories, colon separated. buck2 wires them as target deps, so the usual \
              fix is to build through buck2 (//linux/server:ciderd), or to run \
-             buck2 build //src/external/ciderd:dserver_rpc \
-             //src/external/ciderd/xnu-sys:mig_mach_task and pass their output \
+             buck2 build //pins/ciderd:dserver_rpc \
+             //pins/ciderd/xnu-sys:mig_mach_task and pass their output \
              directories here."
         );
     }
@@ -68,11 +68,11 @@ fn main() {
     builder = builder
         .clang_arg(format!(
             "-I{}",
-            manifest.join("../../src/external/ciderd/include").display()
+            manifest.join("../../pins/ciderd/include").display()
         ))
         // The XNU headers do not parse without xnu-sys's own flags; -fblocks above all,
         // since osfmk/kern/priority_queue.h uses blocks. The buck2 path loads the full set
-        // from src/external/ciderd/xnu-sys/flags.bzl, which the generator writes
+        // from pins/ciderd/xnu-sys/flags.bzl, which the generator writes
         // from the same CMakeLists these come from.
         .clang_arg("-fblocks")
         .clang_arg("-Wno-nullability-completeness")

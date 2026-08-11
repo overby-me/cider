@@ -36,7 +36,13 @@
 #    tree reaches these through ~1900 relative symlinks that only resolve in the nix-assembled
 #    tree, so the Buck2 port declares the header roots it needs directly from the source trees
 #    instead.
-const DEFAULT_PATHS = ["src/external/bootstrap_cmds" "src/external/xnu"]
+const DEFAULT_PATHS = ["pins/bootstrap_cmds" "pins/xnu"]
+
+# THE PIN ROOT, in one place, because the rule below is DIRECTLY UNDER THE PIN ROOT and not
+# a fixed depth. It read `== 3` while the root was src/external (NO-PIN-REWRITE); writing `== 2` for pins/
+# would reseat the same landmine for whoever renames it next. Both copies of the test below
+# derive from this, so they cannot drift apart the way the rename tables once did.
+const PIN_ROOT_DEPTH = 1   # "pins" is one component
 
 def say [msg: string] { print -e $msg }
 
@@ -61,11 +67,11 @@ def main [--all, ...paths: string] {
             let sub = $e.path
             let name = ($sub | path basename)
             # A NESTED PIN GOES TO ITS OWN PATH, never buck-src/<basename>. Basenames are NOT
-            # unique: src/external/ciderd/xnu-sys/xnu ends in xnu just like src/external/xnu,
+            # unique: pins/ciderd/xnu-sys/xnu ends in xnu just like pins/xnu,
             # so both would land in buck-src/xnu and copy over each other. The same collision
             # broke the Nix endpoint through ciderBuck2Graph.nix materializePins, and the fix
-            # here matches: only a pin directly under src/external takes the buck-src route.
-            let dest = (if (($sub | split row "/" | length) == 3) {
+            # here matches: only a pin directly under pins takes the buck-src route.
+            let dest = (if (($sub | split row "/" | length) == ($PIN_ROOT_DEPTH + 1)) {
                 $dest_root | path join $name
             } else {
                 $repo_root | path join $sub
@@ -109,7 +115,7 @@ def main [--all, ...paths: string] {
     for sub in $wanted {
         let name = ($sub | path basename)
         # Same nested-pin rule as the --all branch above.
-        let dest = (if (($sub | split row "/" | length) == 3) {
+        let dest = (if (($sub | split row "/" | length) == ($PIN_ROOT_DEPTH + 1)) {
             $dest_root | path join $name
         } else {
             $repo_root | path join $sub

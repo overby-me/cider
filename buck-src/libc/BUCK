@@ -12267,7 +12267,7 @@ darwin_dylib(
         "//buck-src:system_asl_firstpass",
         "//buck-src/libxpc:xpc_firstpass",
         "//buck-src/corecrypto:corecrypto_firstpass",
-        "//src/external/libtrace:system_trace_firstpass",
+        "//pins/libtrace:system_trace_firstpass",
     ],
     linker_flags = [
         "-Wl,-bind_at_load",

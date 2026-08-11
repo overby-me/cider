@@ -14,7 +14,7 @@ map each include path to the real source file. Result: a compile sees exactly th
 SDK's headers under exactly the SDK's names, with no source tree on the include
 path -- which is the whole point of the port (see plan/buck2-port.md wall #1).
 
-The symlinks resolve to `src/external/<pin>/...`, which for a direct `buck2
+The symlinks resolve to `pins/<pin>/...`, which for a direct `buck2
 build` are materialized under buck-src/<pin>/ (scripts/buck-src.nu), so targets
 are rewritten to that prefix.
 
@@ -54,17 +54,17 @@ def link_target_repo_rel(link_path: str) -> str | None:
 
     The farm has three kinds of link, and one of them defeated hand-rolled chain
     following:
-      * straight into a pinned tree (mach/boolean.h -> src/external/xnu/...),
+      * straight into a pinned tree (mach/boolean.h -> pins/xnu/...),
       * INTRA-SDK (pthread.h -> pthread/pthread.h, itself a link into libpthread),
       * and links whose PARENT DIRECTORY is a link into a pinned tree
         (architecture/i386/desc.h under darwin/basic-headers/architecture ->
-        src/external/architecture). Testing islink() on such a path returns False,
+        pins/architecture). Testing islink() on such a path returns False,
         because the parent cannot be traversed in a working copy where the pins
         are absent.
 
     realpath handles all three: it resolves every component textually and does NOT
     require the result to exist, which is what makes it usable here -- the pinned
-    trees are not at src/external in the working copy at all.
+    trees are not at pins in the working copy at all.
     """
     real = os.path.realpath(link_path)
     repo_rel = os.path.relpath(real, REPO)
@@ -139,16 +139,16 @@ def walk_namespace(ns: str):
 
 
 def to_buck_src(repo_rel: str) -> str | None:
-    """`src/external/xnu/osfmk/mach/boolean.h` -> `xnu/osfmk/mach/boolean.h`.
+    """`pins/xnu/osfmk/mach/boolean.h` -> `xnu/osfmk/mach/boolean.h`.
 
     The returned path is relative to the buck-src package, where the materialized
     pins live. None means "not ours to map": either the file is committed repo
-    content outside src/external, or it is one of the three trees under
-    src/external that are COMMITTED rather than pinned (ciderd, libtrace,
+    content outside pins, or it is one of the three trees under
+    pins that are COMMITTED rather than pinned (ciderd, libtrace,
     libpthread_workqueue), which therefore never appear in buck-src. Both cases
     belong to another buck2 package and need a header root there.
     """
-    prefix = "src/external/"
+    prefix = "pins/"
     if not repo_rel.startswith(prefix):
         return None
     buck_rel = repo_rel[len(prefix):]
@@ -219,11 +219,11 @@ def main(argv: list[str]) -> int:
         entries = []
         moved = split_pins()
         for include_path, repo_rel in walk_namespace(ns):
-            pin = repo_rel.split("/")[2] if repo_rel.startswith("src/external/") else "(repo)"
+            pin = repo_rel.split("/")[2] if repo_rel.startswith("pins/") else "(repo)"
             pins[pin] = pins.get(pin, 0) + 1
             buck_rel = to_buck_src(repo_rel)
             if buck_rel is None:
-                key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("src/external/") else 2])
+                key = "/".join(repo_rel.split("/")[:3 if repo_rel.startswith("pins/") else 2])
                 skipped[key] = skipped.get(key, 0) + 1
                 continue
             entries.append((include_path, pin_value(buck_rel, moved)))
@@ -238,7 +238,7 @@ def main(argv: list[str]) -> int:
         # through -I darwin/framework-include, whose entries are symlinks named
         # after the framework:
         #   framework-include/Foundation -> ...Foundation.framework/Headers
-        #     -> Versions/C/Headers -> src/external/foundation/include/Foundation
+        #     -> Versions/C/Headers -> pins/foundation/include/Foundation
         # so the include path is <Framework>/<rel> and the source is whatever the
         # chain ends at.
         for tree, label in (
@@ -268,7 +268,7 @@ def main(argv: list[str]) -> int:
                         include_path = os.path.normpath(os.path.join(name, sub))
                         fpath = os.path.join(dirpath, f)
                         # A committed framework tree can be a farm of its OWN: every
-                        # SystemConfiguration header is a link into src/external/configd,
+                        # SystemConfiguration header is a link into pins/configd,
                         # which is a pin and therefore lives in buck-src, not at that path
                         # at all. Following it decides the owning package, and skipping
                         # that step produced a map naming 52 files that do not exist --
@@ -382,7 +382,7 @@ def main(argv: list[str]) -> int:
                 if to_buck_src(repo_rel) is not None:
                     continue
                 parts = repo_rel.split("/")
-                pkg = "/".join(parts[:3]) if repo_rel.startswith("src/external/") else "/".join(parts[:2])
+                pkg = "/".join(parts[:3]) if repo_rel.startswith("pins/") else "/".join(parts[:2])
                 if not os.path.isdir(os.path.join(REPO, pkg)):
                     continue
                 rel_in_pkg = os.path.relpath(repo_rel, pkg)
@@ -450,7 +450,7 @@ def main(argv: list[str]) -> int:
 
     if list_pins:
         for pin, count in sorted(pins.items(), key=lambda kv: -kv[1]):
-            print(f"{count:5d}  src/external/{pin}" if pin != "(repo)" else f"{count:5d}  (repo)")
+            print(f"{count:5d}  pins/{pin}" if pin != "(repo)" else f"{count:5d}  (repo)")
         return 0
 
     print("# GENERATED by scripts/gen-sdk-header-roots.py -- do not edit.")
@@ -481,7 +481,7 @@ def main(argv: list[str]) -> int:
 
     if skipped:
         print("# Headers skipped: they live in another buck2 package (committed repo")
-        print("# content, or one of the committed trees under src/external), so they need a")
+        print("# content, or one of the committed trees under pins), so they need a")
         print("# header root declared in the package that owns them:")
         for top, count in sorted(skipped.items()):
             print(f"#   {count:4d} under {top}/")

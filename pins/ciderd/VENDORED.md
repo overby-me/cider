@@ -1,7 +1,7 @@
 # Vendored ciderd
 
 This directory is **vendored source**, not a git submodule. It was previously the
-submodule `src/external/ciderd`; it is now checked in directly so its
+submodule `src/external/ciderd`  <!-- NO-PIN-REWRITE: the path it HAD -->; it is now checked in directly so its
 sources can be edited in-tree without the patch-file indirection.
 
 - Upstream: https://github.com/darlinghq/darlingd.git

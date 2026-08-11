@@ -17,7 +17,7 @@
 import json, re, sys, collections
 
 graph_path, out_path = sys.argv[1], sys.argv[2]
-BASE_ROOT = "src/external/libsystem/libSystem.B.dylib"
+BASE_ROOT = "pins/libsystem/libSystem.B.dylib"
 
 d = json.load(open(graph_path))
 edges = d["edges"]

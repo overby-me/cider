@@ -2,7 +2,7 @@
 """Every escape root must resolve to a real tree, because a missing one is dropped IN SILENCE.
 
 WHY THIS EXISTS, and it is one specific day of lost work. #83 de-vendored
-src/external/ciderd/xnu-sys/xnu: the tree left the repo and became a pin. escapeSrc in
+pins/ciderd/xnu-sys/xnu: the tree left the repo and became a pin. escapeSrc in
 nix/lib/ciderBuck2Lower.nix read every escape root out of srcRaw behind a pathExists guard,
 so the guard simply went false and the carry stopped happening. No warning, no eval error,
 nothing in any diff. The security pin ships
@@ -20,14 +20,14 @@ WHAT MAKES THE CLASS CHECKABLE STATICALLY. escapeRoots is
 
     ["darwin/Developer/Platforms"] ++ map (r: escapeNarrow.${r} or r) nonPinExternal
 
-and nonPinExternal is a readDir of src/external minus the pin names, so every element of it
+and nonPinExternal is a readDir of pins minus the pin names, so every element of it
 exists by construction. The only entries that can point somewhere else are the literal SDK
 root and the VALUES of escapeNarrow, which is exactly how xnu-sys/xnu got out of the repo
 while its key stayed in. So the whole class is a handful of paths and needs no evaluation.
 
 THE HONEST TEST FOR "IS IT IN THE REPO" IS jj file list, NOT os.path.exists. scripts/buck-src.nu
 materializes pins at their manifest paths, so the de-vendored tree is sitting on disk at
-src/external/ciderd/xnu-sys/xnu right now with 2,077 files in it. os.path.exists says yes and
+pins/ciderd/xnu-sys/xnu right now with 2,077 files in it. os.path.exists says yes and
 means nothing: srcRaw under a flake build is a store copy of TRACKED files, which is why the
 guard went false in the first place. Ask jj, which reports 0 tracked files there.
 
@@ -43,11 +43,11 @@ equally dangerous:
   ciderBuck2Lower :1004 per-label group filter  elements come from the same readDir, so they
                                                 exist by construction. The one exception is
                                                 deliberate: groupSplit.shared still names
-                                                src/external/ciderd/xnu-sys/xnu, which is a pin
+                                                pins/ciderd/xnu-sys/xnu, which is a pin
                                                 now, so this guard drops it and the PIN route
                                                 supplies it instead. That dead table entry is a
                                                 known deferred cleanup, not a defect.
-  ciderBuck2Lower :973  src/external readDir    NOT checked. If that directory vanished the
+  ciderBuck2Lower :973  pins readDir    NOT checked. If that directory vanished the
                                                 root list would quietly shrink to the SDK and
                                                 this would still pass. The counts printed below
                                                 are the tell, and the scenario needs the whole
@@ -107,7 +107,7 @@ def fallback_present(lowering):
     caught the bug that prompted all this.
 
     Worth being exact about, since a check credited with catching something it cannot is
-    worse than no check. At the moment the build broke, src/external/ciderd/xnu-sys/xnu was
+    worse than no check. At the moment the build broke, pins/ciderd/xnu-sys/xnu was
     already a manifest entry WITH a hash, so the loop above would have printed PIN STORE and
     exited 0. The defect was not an unresolvable root; it was that escapeSrc never consulted
     the pin, reading only srcRaw behind a pathExists guard.
@@ -145,12 +145,21 @@ def main():
     # what the `or null` fallback in escapeSrc actually looks up.
     pin_stores = {e["path"] for e in manifest if e.get("hash")}
     pin_names = {os.path.basename(e["path"]) for e in manifest
-                 if e["path"].startswith("src/external/")}
+                 if e["path"].startswith("pins/")}
 
+    # THE INDEX IS DERIVED, because it is a path DEPTH and #87 stage 2 changed it. This read
+    # f.split("/")[2] with f.count("/") > 2, which is the position of <name> under the old
+    # src/external/<name>. A textual sweep can rewrite the string src/external to pins and
+    # CANNOT rewrite an array index, so the check went on slicing at component 2 and reported
+    # the CHILDREN of the vendored trees (libtrace's include, libsbuf, xcodescripts, ciderd's
+    # xnu-sys and scripts) as ten escape roots resolving to nothing. It was right to fail:
+    # the population was wrong, not the tree.
+    PIN_ROOT = "pins"
+    depth = len(PIN_ROOT.split("/"))
     tracked = tracked_files()
-    dirs = {f.split("/")[2] for f in tracked
-            if f.startswith("src/external/") and f.count("/") > 2}
-    non_pin_external = sorted("src/external/" + d for d in dirs if d not in pin_names)
+    dirs = {f.split("/")[depth] for f in tracked
+            if f.startswith(PIN_ROOT + "/") and f.count("/") > depth}
+    non_pin_external = sorted(PIN_ROOT + "/" + d for d in dirs if d not in pin_names)
 
     narrow = escape_narrow(a.lowering)
     roots = literal_roots(a.lowering) + [narrow.get(r, r) for r in non_pin_external]

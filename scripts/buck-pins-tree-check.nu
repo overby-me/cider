@@ -4,7 +4,7 @@
 # pinsTree is what made source groups work (#54, #74). It holds all 147 pins MIRRORED -- real
 # directories, one symlink per file, each source symlink re-created with its own target string
 # -- so that a pin's link to a SIBLING pin resolves inside the tree. A per-pin store cannot do
-# that: src/external/IOKitUser/darling/submodules/xnu is a link to ../../../xnu/, and planted as
+# that: pins/IOKitUser/darling/submodules/xnu is a link to ../../../xnu/, and planted as
 # a directory symlink the kernel resolves that against the STORE. Staging pins that way broke
 # the DEFAULT endpoint, and scripts/buck-pin-store-check.nu passed anyway, because it compares
 # by NAR HASH and a NAR hash records a symlink TARGET as a STRING.
@@ -20,7 +20,7 @@
 #   drop the symlink re-creation pass from stageGroupsFor and the sibling links point into a
 #   store instead, which shows up here as a jump from 6 to hundreds;
 #   drop the escape-destination pass and it goes 6 to 17, all of them links leaving
-#   src/external into the SDK or into a non-pin external.
+#   pins into the SDK or into a non-pin external.
 #
 # Usage:
 #   scripts/buck-pins-tree-check.nu                    # build pinsTree, compare against cider-src
@@ -59,7 +59,7 @@ def main [--tree: string = ""] {
     say $"cider-src: ($src)"
 
     let mine = (dangling $tree)
-    let theirs = (dangling $"($src)/src/external")
+    let theirs = (dangling $"($src)/pins")
     say $"  pinsTree:   ($mine.bad) dangling of ($mine.walked) symlinks"
     say $"  assembled:  ($theirs.bad) dangling of ($theirs.walked) symlinks"
 

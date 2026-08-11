@@ -3,7 +3,7 @@
 # cannot run at all now. The 16 glue .c it also lists were replaced by Rust under
 # linux/server/src/xnu (#71) and deleted. Its outputs, xnu-sys/BUCK and
 # buck/generated/xnu_sys_flags.bzl, are committed; this is kept for provenance.
-"""Generate src/external/ciderd/xnu-sys/BUCK from its CMakeLists.txt.
+"""Generate pins/ciderd/xnu-sys/BUCK from its CMakeLists.txt.
 
 xnu-sys is ~135 source paths, 45 MIG definitions and ~120 preprocessor
 defines. Hand-transcribing that is error-prone and would drift on every upstream
@@ -28,7 +28,7 @@ import re
 import sys
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DT = "src/external/ciderd/xnu-sys"
+DT = "pins/ciderd/xnu-sys"
 CMAKELISTS = os.path.join(REPO, DT, "CMakeLists.txt")
 OUT = os.path.join(REPO, DT, "BUCK")
 # The defines and warning flags also go to a loadable file, because a BUCK file cannot be
@@ -77,7 +77,7 @@ PORTED_TO_RUST = [
     "src/thread.c",
 ]
 
-# Inherited from the top-level CMakeLists and src/external/ciderd's, in
+# Inherited from the top-level CMakeLists and pins/ciderd's, in
 # the order the reference build passes them.
 PARENT_DEFINES = [
     "-DDARLING",
@@ -312,8 +312,8 @@ def main(argv: list[str]) -> int:
     for name, _ in HEADER_ROOTS:
         w(f'        ":{name}",')
     w('        "//darwin/libsimple:libsimple_headers",')
-    w('        "//src/external/ciderd:dserver_headers",')
-    w('        "//src/external/ciderd:dserver_rpc",')
+    w('        "//pins/ciderd:dserver_headers",')
+    w('        "//pins/ciderd:dserver_rpc",')
     w('        "//linux/startup:rtsig_header",')
     w("    ],")
     w('    visibility = ["PUBLIC"],')

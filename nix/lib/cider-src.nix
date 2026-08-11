@@ -110,7 +110,7 @@ let
     # fetchSubmodules recurses and resolves the nested repos' relative URLs
     # against the parent (../cider-X.git -> github.com/darlinghq/darling-X).
     # A pin whose content is in git LFS cannot come from an archive tarball either: GitHub
-    # serves the 132-byte POINTER files, not the objects. src/external/swift is the one, and
+    # serves the 132-byte POINTER files, not the objects. pins/swift is the one, and
     # its 44 runtime dylibs were installed into the prefix as those pointers -- text where a
     # Mach-O belongs, which is why all 44 fail to load and nothing else in the sweep does.
     if e.lfs or false
@@ -174,7 +174,7 @@ let
     base = baseNameOf e.path;
     # THE PATCH DIRECTORY IS KEYED BY BASENAME, WHICH IS NOT UNIQUE. Two pins can share a
     # basename and would then silently share a patch set: de-vendoring the duct-tape XNU
-    # subset puts a second xnu at src/external/ciderd/xnu-sys/xnu, whose basename is also
+    # subset puts a second xnu at pins/ciderd/xnu-sys/xnu, whose basename is also
     # "xnu", so it would have patches/xnu applied to it -- and those are the GUEST SYSCALL
     # patches for the OTHER xnu, which touch darling/src/libsystem_kernel/emulation only.
     # An entry can therefore name its own directory. Defaulting to the basename keeps every
@@ -232,7 +232,7 @@ pkgs.runCommand "cider-src"
       unpinnedPaths = map (e: e.path) unpinned;
       pinnedCount = builtins.length pinned;
       totalCount = builtins.length entries;
-      # {"src/external/libdispatch" = <store path>; ...}, so a consumer can name ONE pin
+      # {"pins/libdispatch" = <store path>; ...}, so a consumer can name ONE pin
       # instead of the assembled tree. See pinStore above for why that matters.
       pinPaths = lib.listToAttrs (map (e: lib.nameValuePair e.path (pinStore e)) pinned);
     };

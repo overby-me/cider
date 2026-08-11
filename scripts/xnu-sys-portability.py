@@ -41,7 +41,7 @@ import tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OPAQUE = []
-DT = os.path.join(ROOT, "src/external/ciderd/xnu-sys")
+DT = os.path.join(ROOT, "pins/ciderd/xnu-sys")
 
 # xnu-sys's include roots, in the BUCK file's order (dt_env).
 INCLUDE_ROOTS = [
@@ -92,9 +92,9 @@ def generated_include_roots():
     """
     roots = []
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/ciderd/xnu-sys/__mig_*__/mig_*__gen")))
+        ROOT, "buck-out/v2/art/root/*/pins/ciderd/xnu-sys/__mig_*__/mig_*__gen")))
     roots += sorted(glob.glob(os.path.join(
-        ROOT, "buck-out/v2/art/root/*/src/external/ciderd/__dserver_rpc__/*gen_include")))
+        ROOT, "buck-out/v2/art/root/*/pins/ciderd/__dserver_rpc__/*gen_include")))
     # thread.c reaches linux/startup for rtsig.h, which linux/server/BUCK also lists.
     roots += sorted(glob.glob(os.path.join(
         ROOT, "buck-out/v2/art/root/*/linux/startup/__rtsig_header__/*")))
@@ -105,7 +105,7 @@ def clang_args():
     incs = [f"-I{r}" for r in generated_include_roots()]
     incs += [f"-I{os.path.join(DT, r)}" for r in INCLUDE_ROOTS]
     incs.append(f"-I{os.path.join(ROOT, 'darwin/libsimple/include')}")
-    incs.append(f"-I{os.path.join(ROOT, 'src/external/ciderd/include')}")
+    incs.append(f"-I{os.path.join(ROOT, 'pins/ciderd/include')}")
     return buck_list("XNU_SYS_DEFINES") + buck_list("XNU_SYS_FLAGS") + incs
 
 
@@ -156,7 +156,7 @@ def macros_visible_to(path, args):
 # Where buck2 leaves the compiled glue objects. Present only after a buck2 build; the FFI
 # columns are skipped when they are not there rather than making the whole tool need one.
 OBJDIR = os.path.join(
-    ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/src/external/ciderd"
+    ROOT, "buck-out/v2/art/root/1ef78538d8598cb2/pins/ciderd"
           "/xnu-sys/__dt_objects__/__objs/src")
 
 
@@ -577,7 +577,7 @@ def main():
               f"{len(r['variadic']):>9}{len(r['fn_macros']):>7}{ex:>9}{co:>10}"
               f"{len(r['opaque']):>8}  {note}")
     if not any(r["ffi"] for _, r in rows):
-        print("\n(EXPORTS/CALLSOUT need a buck2 build of //src/external/ciderd"
+        print("\n(EXPORTS/CALLSOUT need a buck2 build of //pins/ciderd"
               "/xnu-sys:dt_objects)")
     bad = [f for f, r in rows if r["dirty"]]
     if bad:

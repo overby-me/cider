@@ -14,11 +14,11 @@ occurrences across 130 files, and the wrong ones are not obvious:
   SPACE, which makes it a CONTEXT line of a unified diff. Rewriting a context line stops the
   patch applying. It is also inert prose in an upstream cmake file, and cmake left in #82.
 
-  src/external/ and buck-src/ are excluded for their CONTENT, because those are the 148 vendored
+  pins/ and buck-src/ are excluded for their CONTENT, because those are the 148 vendored
   upstreams and a pin tree is where a careless rewrite does the most damage. But a BUCK or .bzl
   file is OURS wherever it sits, and excluding those trees wholesale was wrong: the first run
   left 56 labels dangling in buck-src/BUCK, buck-src/ruby/BUCK, buck-src/xnu/BUCK and
-  src/external/ciderd/tools/BUCK, all four of them tracked files of ours that name first-party
+  pins/ciderd/tools/BUCK, all four of them tracked files of ours that name first-party
   targets. buck-labels-check.py caught every one, which is the whole reason it exists. So build
   files are rewritten everywhere and only upstream SOURCE is left alone.
 
@@ -36,8 +36,8 @@ occurrences across 130 files, and the wrong ones are not obvious:
 THE STRUCTURAL PART IS ALREADY SAFE, verified in nix/lib/ciderBuck2Lower.nix before moving
 anything. stageProject symlinks every top-level entry of projectSrc into the staged tree except
 buck-src, buck-out, src and buck-rust; src is excluded so that pins can be planted at
-src/external/<pin>, which needs src/ to be a REAL directory rather than a store symlink. And
-pinStageLines keys on the three-component src/external/<pin> shape. Stage 1 leaves src/external
+pins/<pin>, which needs src/ to be a REAL directory rather than a store symlink. And
+pinStageLines keys on the three-component pins/<pin> shape. Stage 1 leaves pins
 alone, so both survive untouched, and the moved trees travel inside darwin/ and linux/, which
 are already symlinked wholesale exactly as darwin/ is today.
 
@@ -73,7 +73,7 @@ SKIP_DIRS = {".jj", ".git", "buck-out", "buck-src", "buck-rust", "target", "outp
              "result-ducttape-ref", "node_modules", ".direnv"}
 
 # Excluded from REWRITING, for the reasons in the docstring. Not excluded from moving.
-SKIP_REL_PREFIX = ("patches/", "src/external/")
+SKIP_REL_PREFIX = ("patches/", "pins/")
 
 MAX_BYTES = 4_000_000
 

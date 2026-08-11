@@ -62,7 +62,16 @@ SKIP_FILES = {"PLAN.md", MANIFEST, SELF}
 SKIP_REL_PREFIX = ("linux/server/target/",)
 
 # Lines that mention the string but must keep the old spelling.
-FROZEN_LINE = re.compile(r"#\s*cmake target:|buck-registry:|/build/build/|previously the submodule")
+#
+# (NO-PIN-REWRITE) is an explicit opt-out for PROSE THAT DESCRIBES THE PAST. Comments in this
+# repo routinely quote the exact path a failure happened at, and rewriting those turns a true
+# sentence into a false one while looking like a tidy-up. The alternative, guessing from
+# phrasing, is unreliable, so the marker is written by hand on the few lines that need it and
+# is greppable afterwards. Do NOT tag a comment that states the CURRENT rule: those should
+# move, and blanket-tagging a file was tried here and was wrong, because the comments in
+# ciderBuck2Graph.nix are a mix of both kinds.
+FROZEN_LINE = re.compile(
+    r"#\s*cmake target:|buck-registry:|/build/build/|previously the submodule|NO-PIN-REWRITE")
 
 LABEL = re.compile(r"(root)?//" + re.escape(OLD) + r"(?=[/:])")
 PATH = re.compile(r"(?<![\w/.-])" + re.escape(OLD) + r"(?=[/\"'\s:,)\]}]|$)")

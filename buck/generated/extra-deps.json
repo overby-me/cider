@@ -22,13 +22,13 @@
     "//buck-src:fw_Foundation"
   ],
   "kqueue": [
-    "//src/external/ciderd:dserver_headers",
-    "//src/external/ciderd:dserver_rpc"
+    "//pins/ciderd:dserver_headers",
+    "//pins/ciderd:dserver_rpc"
   ],
   "libsyscall": [
     "//buck-src:fw_CoreFoundation",
-    "//src/external/ciderd:dserver_headers",
-    "//src/external/ciderd:dserver_rpc",
+    "//pins/ciderd:dserver_headers",
+    "//pins/ciderd:dserver_rpc",
     ":ksmig_mach_clock",
     ":ksmig_mach_clock_priv",
     ":ksmig_mach_clock_reply",
@@ -76,7 +76,7 @@
     "gen://buck-src:emmig_signal_mach_exc"
   ],
   "libsyscall_dynamic": [
-    "//src/external/ciderd:dserver_rpc",
+    "//pins/ciderd:dserver_rpc",
     "//linux/startup:rtsig_header"
   ],
   "xpc_obj": [
@@ -151,7 +151,7 @@
     "//darwin/frameworks:fw_SearchKit"
   ],
   "emulation_dyld": [
-    "//src/external/ciderd:dserver_headers",
+    "//pins/ciderd:dserver_headers",
     "//darwin/include:cider_config",
     "//linux/startup:rtsig_header",
     ":emulation_included_sources",

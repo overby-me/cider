@@ -28,7 +28,7 @@ The one thing that DOES need real contents is the include closure, which parses
 as its own pass over the real tree.
 
 THE GENERATOR INPUTS ARE NOW COVERED, which is what the skeleton was missing when it was
-reverted. Emptying the C family outside src/external still emptied five files that are
+reverted. Emptying the C family outside pins still emptied five files that are
 compiled into generators this derivation RUNS, and an emptied generator does not fail, it
 writes an empty output. scripts/buck-codegen-closure.py computes the set that must keep real
 contents, 1,743 files of 74,621, and all but five are already covered by _NEVER_EMPTY. Those
@@ -59,7 +59,7 @@ _BUILD_TREES = ("buck/",)
 # file". Emptying the whole tree looked right -- analysis reads no source -- but the graph
 # derivation also MATERIALISES the in-process artifacts, and a staged farm of GENERATED
 # headers can only be materialised by running the generator. Measured: with everything
-# emptied, buck2 fails on root//src/external/ciderd:dserver_rpc, root//buck-src:
+# emptied, buck2 fails on root//pins/ciderd:dserver_rpc, root//buck-src:
 # mig_parser and root//buck-src:shell_cmds_find_getdate, which are the rpc wrapper script,
 # a mig .defs and a yacc grammar.
 #
@@ -77,14 +77,14 @@ _EMPTIABLE = (
 
 # NEVER emptied, whatever the suffix. In the graph derivation these do not come from here
 # at all: the pins are materialised from ciderSrc, the crates from the vendor derivation,
-# and src/external is where the pins are planted. Emptying them in a hand run makes the run
+# and pins is where the pins are planted. Emptying them in a hand run makes the run
 # unrepresentative of the build, which is exactly how a test came back failing on
 # buck-src:mig_parser for a reason that cannot happen in Nix.
-_NEVER_EMPTY = ("buck-src/", "buck-rust/", "src/external/")
+_NEVER_EMPTY = ("buck-src/", "buck-rust/", "pins/")
 
 
 # THE FIVE FILES THE PREFIX LIST ABOVE DOES NOT COVER, and the reason the skeleton was
-# reverted rather than fixed. These are C family and outside src/external, so they were
+# reverted rather than fixed. These are C family and outside pins, so they were
 # emptied, and every one of them is compiled into a GENERATOR that this derivation then RUNS.
 # An emptied rtsig.c does not fail: it compiles, links, runs, and writes an EMPTY header, so
 # the graph comes out quietly wrong and the failure lands somewhere else entirely.

@@ -183,7 +183,7 @@
   manifest = builtins.fromJSON (builtins.readFile ../submodules.json);
   wantedPins =
     if allPins
-    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "src/external/" e.path) manifest)
+    then map (e: e.path) (builtins.filter (e: lib.hasPrefix "pins/" e.path) manifest)
     else pins;
 
   # WHERE A PIN COMES FROM (#54). Its own store path when cider-src offers one, and only
@@ -208,10 +208,10 @@
   # ONE DEFINITION FOR BOTH STAGING SITES, because they were copies and the copies broke.
   # A pin is staged twice: as buck-src/<basename>, which is where buck-src/BUCK expects it,
   # and at its own path, which is where the SDK symlink farm resolves to. Both assumptions
-  # hold ONLY for a pin sitting directly under src/external, and both fail for a nested one:
+  # hold ONLY for a pin sitting directly under pins, and both fail for a nested one:
   #
-  #   buck-src/<basename> IS NOT UNIQUE. src/external/ciderd/xnu-sys/xnu ends in xnu just
-  #   like src/external/xnu, so the nested pin OVERWROTE buck-src/xnu and every consumer of
+  #   buck-src/<basename> IS NOT UNIQUE. pins/ciderd/xnu-sys/xnu ends in xnu just
+  #   like pins/xnu, so the nested pin OVERWROTE buck-src/xnu and every consumer of
   #   the guest xnu tree silently got the duct-tape subset instead. That is what surfaced as
   #   "redeclaration of __dso_handle with a different type" in the Security cone, an error
   #   naming headers that have nothing to do with xnu.
@@ -225,12 +225,17 @@
   # "cannot remove" lines before being stopped.
   pinStageLines = p: let
     parts = lib.splitString "/" p;
-    underSrcExternal =
-      builtins.length parts == 3
-      && builtins.elemAt parts 0 == "src"
-      && builtins.elemAt parts 1 == "external";
+    # DIRECTLY UNDER THE PIN ROOT. Derived from pinRoot rather than written as a number, for
+    # the reason the identical block in ciderBuck2Graph.nix gives: `== 3` was the depth of
+    # pins/<pin>, and hardcoding `== 2` for pins/ only moves the trap along by one
+    # rename. These two copies must agree, and now they agree by construction.
+    pinRoot = "pins";
+    rootParts = lib.splitString "/" pinRoot;
+    underPinRoot =
+      builtins.length parts == builtins.length rootParts + 1
+      && lib.take (builtins.length rootParts) parts == rootParts;
   in
-    (lib.optionalString underSrcExternal ''
+    (lib.optionalString underPinRoot ''
       ln -sfn ${lib.escapeShellArg (pinPath p)} ${lib.escapeShellArg "buck-src/${builtins.baseNameOf p}"}
     '')
     + ''
@@ -247,7 +252,7 @@
 
   # NOT YET. Staging a pin from its own store path breaks 21 relative symlinks that reach OUT
   # of the pin, and it broke the endpoint: AppKit_obj died on IOKit/IOTypes.h, reached through
-  # a staged farm whose link ran into src/external/IOKitUser/darling/submodules/xnu, which is a
+  # a staged farm whose link ran into pins/IOKitUser/darling/submodules/xnu, which is a
   # link to ../../../xnu/ and resolves only when the pins share a root.
   #
   # SCRIPTS/BUCK-PIN-STORE-CHECK.NU PASSED ANYWAY, and that is the lesson. It compares a pin
@@ -260,8 +265,8 @@
   #   14 point at a SIBLING pin (IOKitUser -> IONetworkingFamily, IOStorageFamily, xnu;
   #      JavaScriptCore -> WTF; vim -> ruby; glut and iokitd -> IOKitUser; ...). Laying the
   #      farm out as <farm>/<pin> rather than by sanitised name fixes every one of these,
-  #      because the number of ../ from the link up to src/external is preserved.
-  #    7 leave src/external entirely: 6 from bootstrap_cmds and libnotify into
+  #      because the number of ../ from the link up to pins is preserved.
+  #    7 leave pins entirely: 6 from bootstrap_cmds and libnotify into
   #      darwin/Developer/Platforms/.../usr/include, and security -> ciderd/xnu-sys/
   #      xnu, which is first-party vendored and not a pin at all. Those need rewriting to an
   #      absolute store path, the same treatment #54 needs for group escapes.
@@ -297,7 +302,7 @@
   # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
   #
   # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
-  # can point at a SIBLING pin: src/external/IOKitUser/darling/submodules/xnu is a link to
+  # can point at a SIBLING pin: pins/IOKitUser/darling/submodules/xnu is a link to
   # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
   # the STORE, where there is no sibling. scripts/buck-escape-check.py documents exactly this
   # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
@@ -317,15 +322,15 @@
   # moved. One shared moving input traded for another.
   #
   # The pins are frozen; only the escape destinations dragged the project back in, and they are
-  # few. darwin/Developer/Platforms is the SDK, and the rest are the non-pin src/external
+  # few. darwin/Developer/Platforms is the SDK, and the rest are the non-pin pins
   # directories. Given their own paths, pinsTree moves only when the SDK or those directories do.
   # THE NARROWING APPLIES HERE AND ONLY HERE (#79). nonPinExternal has two consumers and they
   # want different things. This one is the set of escape DESTINATIONS copied into pinsTree, so
   # narrowing it is what stops pinsTree moving on a xnu-sys edit. The other consumer, the
   # per-target `groups` further down, is the set of directories STAGED for every target, and
-  # narrowing that one deleted src/external/ciderd/scripts from the staged tree and broke
+  # narrowing that one deleted pins/ciderd/scripts from the staged tree and broke
   # dserver_rpc with the very error the comment there warns about. Measured before re-narrowing:
-  # of the 2,080 symlinks that resolve into src/external/ciderd, 2,078 land inside
+  # of the 2,080 symlinks that resolve into pins/ciderd, 2,078 land inside
   # xnu-sys/xnu; the other 2 are internal to xnu-sys/pthread, which is in neither tree, so
   # nothing dangles.
   escapeRoots =
@@ -335,7 +340,7 @@
   #
   # This used to read every escape root out of srcRaw, the project source, guarded by
   # pathExists so a missing one was simply skipped. #83 de-vendored
-  # src/external/ciderd/xnu-sys/xnu: it left the repo and became a pin. The guard therefore
+  # pins/ciderd/xnu-sys/xnu: it left the repo and became a pin. The guard therefore
   # went false, the carry was dropped without a word, and the security pin link
   # darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu stayed dangling, so
   # security_codesigning_obj died on "security/mac.h file not found" an hour into the gate.
@@ -390,10 +395,10 @@
   + ''
     # AND THE DESTINATIONS THE PINS ESCAPE TO, or the tree is not self contained and a single
     # directory link to it dangles. Measured before this pass: 17 dangling against 6 in the
-    # assembled tree, and all 11 extra were one class, links leaving src/external altogether.
+    # assembled tree, and all 11 extra were one class, links leaving pins altogether.
     # Eight are bootstrap_cmds/darling/include/{mach,machine,libkern,i386,sys/...} reaching into
     # darwin/Developer/Platforms, and one is security/darling/submodules/xnu pointing at
-    # src/external/ciderd, which is a NON-PIN external and so is in no pin store.
+    # pins/ciderd, which is a NON-PIN external and so is in no pin store.
     #
     # Resolved rather than listed, so a new escape is carried instead of failing a build weeks
     # later. The pre-existing 6 stay dangling on purpose: they dangle in the assembled tree too
@@ -405,15 +410,15 @@
 
     # A pin records the path it was written against, and the Cider rename moved ours. The
     # security pin ships darling/submodules/xnu -> ../../../darlingserver/duct-tape/xnu/,
-    # which resolves to src/external/darlingserver/duct-tape/xnu. Nothing is there any more,
+    # which resolves to pins/darlingserver/duct-tape/xnu. Nothing is there any more,
     # so the lexists test below failed, the carry was skipped IN SILENCE, the link stayed
     # dangling and security_codesigning_obj could not find security/mac.h. The same table
     # buck-src-normalise.py uses, longest prefix first.
     #
     # The DESTINATION keeps the name the dangling link actually points at; only the SOURCE
     # is translated. Rewriting the destination would leave the link dangling all the same.
-    RENAMES = [("src/external/darlingserver/duct-tape", "src/external/ciderd/xnu-sys"),
-               ("src/external/darlingserver",           "src/external/ciderd")]
+    RENAMES = [("pins/darlingserver/duct-tape", "pins/ciderd/xnu-sys"),
+               ("pins/darlingserver",           "pins/ciderd")]
 
     def translate(rel):
         for old, new in RENAMES:
@@ -725,10 +730,10 @@
   # src/libsysmon. So editing a framework should leave every pin target cached, and today it
   # rebuilds all of them.
   #
-  # buck-src/ and src/external/ are deliberately NOT grouped. 98,933 of the 123,343 declared
+  # buck-src/ and pins/ are deliberately NOT grouped. 98,933 of the 123,343 declared
   # files are pins, already staged wholesale from ciderSrc by the pins section below and
-  # keyed by pin revision; grouping them would collide with those symlinks. src/external is
-  # where the pins are PLANTED, so a group there (src/external/ciderd is 1,720 files)
+  # keyed by pin revision; grouping them would collide with those symlinks. pins is
+  # where the pins are PLANTED, so a group there (pins/ciderd is 1,720 files)
   # would fight the same symlink.
   #
   # Three components, not two: darwin/frameworks alone is 17,223 files, so two would leave
@@ -749,7 +754,7 @@
 
   # The grouping RULE itself lives in scripts/buck2-graph-sources.py now, beside the map it
   # is applied to, rather than being reimplemented here over a 588 MB file. That is also
-  # where the three ungrouped prefixes are justified: buck-src and src/external are pins
+  # where the three ungrouped prefixes are justified: buck-src and pins are pins
   # staged wholesale by revision, and buck-rust is gitignored and comes from the vendor
   # derivation, so a builtins.path at one would fail with "not tracked by Git".
 
@@ -801,14 +806,14 @@
   # edits the SDK itself.
   sdkGroup = "darwin/Developer/Platforms";
 
-  # AND THE FOUR src/external DIRECTORIES THAT ARE NOT PINS. The SDK is nothing but links out
+  # AND THE FOUR pins DIRECTORIES THAT ARE NOT PINS. The SDK is nothing but links out
   # of itself, and some of them land here:
   #   .../MacOSX.sdk/usr/include/os/log_private.h
   #     -> ../../../../../../../../../../src/external/libtrace/include/os/log_private.h
-  # src/external is _UNGROUPED in the closure because pins are staged wholesale by revision,
+  # pins is _UNGROUPED in the closure because pins are staged wholesale by revision,
   # and these are in NO pin manifest, so they fall through both mechanisms and nothing stages
   # them. Ran the real staging script into a scratch tree to see it: the link is staged and
-  # correct, src/external/libtrace is absent, and it dangles. 442 src/external plantings in
+  # correct, pins/libtrace is absent, and it dangles. 442 pins plantings in
   # that script, zero of them libtrace.
   #
   # The repo holds real content for exactly these four, because the 147 pins are EMPTY MOUNT
@@ -820,7 +825,7 @@
   #
   # An escape root is only ever READ THROUGH: it exists so a pin's relative `../` link resolves
   # to something. Taking a whole directory is therefore free ONLY while that directory is
-  # frozen, and one of these is not: src/external/ciderd is where xnu-sys lives, which
+  # frozen, and one of these is not: pins/ciderd is where xnu-sys lives, which
   # is edited every increment. gate10 measured the cost of that: a change confined to
   # linux/server and xnu-sys rebuilt 706 GUEST framework objects (AddressBook, AppleAccount,
   # ApplicationServices ...), none of which use xnu-sys. nix-diff named the chain exactly:
@@ -840,7 +845,7 @@
   # MEASURED, both ways, by appending one comment line to xnu-sys/src/xnu_sys_rs_shims.c and
   # evaluating cider-buck2-prefix-min.pinsTree.drvPath either side of it:
   #
-  #   wide root, src/external/ciderd     knklrz6g... -> bdbznvsi...   MOVED
+  #   wide root, pins/ciderd     knklrz6g... -> bdbznvsi...   MOVED
   #   narrow root, the table below              y06vi4ym... -> y06vi4ym...   UNCHANGED
   #
   # The negative control was produced by emptying this table, and it landed on knklrz6g, which
@@ -856,7 +861,7 @@
   # hashes prove the cascade was CUT. They say nothing about whether the result still BUILDS,
   # and the first version of this table was applied to nonPinExternal itself, which fed the
   # staged per-target groups as well as the escape roots. The endpoint then failed on
-  # root//src/external/ciderd:dserver_rpc with
+  # root//pins/ciderd:dserver_rpc with
   #   python3: can't open file .../src/external/ciderd/scripts/generate-rpc-wrappers.py
   # which is verbatim the failure the groups comment further down already warns about, so this
   # reintroduced a fixed bug. A hash that moves the way you predicted is only half the check;
@@ -866,8 +871,8 @@
   # not the only route from a xnu-sys edit to a target. nonPinExternal is ALSO added to the
   # per-target `groups` for every target, groupStore is a builtins.path over the whole directory,
   # and its store path is interpolated into that target's stage script as _g. builtins.path is
-  # content addressed, so editing src/external/ciderd/xnu-sys moves
-  # groupStore "src/external/ciderd", which moves every stage script that names it, which
+  # content addressed, so editing pins/ciderd/xnu-sys moves
+  # groupStore "pins/ciderd", which moves every stage script that names it, which
   # moves every target. Narrowing escapeRoots closed the pinsTree route and left this one open,
   # and it was open before #79 too, so #79 fixed one of two.
   #
@@ -886,21 +891,21 @@
   # out does cut the cascade (the same edit then rebuilds only skeleton, graph and sources, and
   # libsimple stays put) but it STARVES the xnu-sys compiles:
   #   clang: error: no such file or directory:
-  #     src/external/ciderd/xnu-sys/src/xnu_sys_rs_shims.c
-  # because src/external is deliberately outside the per-target union mechanism. The grouping
-  # rule in scripts/buck2-graph-sources.py excludes buck-src and src/external as pins staged
+  #     pins/ciderd/xnu-sys/src/xnu_sys_rs_shims.c
+  # because pins is deliberately outside the per-target union mechanism. The grouping
+  # rule in scripts/buck2-graph-sources.py excludes buck-src and pins as pins staged
   # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
   # SUPPLIER. A blanket cut therefore cannot work; the answer is groupSplit further down, which
   # gives every target the headers and the scripts but hands xnu-sys/src only to the targets
   # that compile it.
   escapeNarrow = {
-    "src/external/ciderd" = "src/external/ciderd/xnu-sys/xnu";
+    "pins/ciderd" = "pins/ciderd/xnu-sys/xnu";
   };
 
   # THE FIX FOR THE 100 PERCENT ROW (#79), and it is CONDITIONAL rather than a blanket cut.
   #
   # Dropping xnu-sys/src from the groups outright does cut the cascade but starves the
-  # compiles, because src/external is outside the per-target union mechanism and the group is
+  # compiles, because pins is outside the per-target union mechanism and the group is
   # the only supplier. The way through is that the two consumers want different sets: EVERY
   # target needs the headers and the generator scripts, but only ciderd OWN targets need
   # xnu-sys/src. Checked before splitting: xnu-sys/src is 20 .c files and NO headers, and
@@ -934,25 +939,25 @@
   # no builder line either in the settle or the probe. That is CA early cutoff visible in the
   # one place it was easy to misread.
   groupSplit = {
-    "src/external/ciderd" = {
+    "pins/ciderd" = {
       shared = [
-        "src/external/ciderd/include"
-        "src/external/ciderd/scripts"
-        "src/external/ciderd/src"
-        "src/external/ciderd/tools"
-        "src/external/ciderd/xnu-sys/defines"
-        "src/external/ciderd/xnu-sys/include"
-        "src/external/ciderd/xnu-sys/internal-include"
-        "src/external/ciderd/xnu-sys/pthread"
-        "src/external/ciderd/xnu-sys/xnu"
+        "pins/ciderd/include"
+        "pins/ciderd/scripts"
+        "pins/ciderd/src"
+        "pins/ciderd/tools"
+        "pins/ciderd/xnu-sys/defines"
+        "pins/ciderd/xnu-sys/include"
+        "pins/ciderd/xnu-sys/internal-include"
+        "pins/ciderd/xnu-sys/pthread"
+        "pins/ciderd/xnu-sys/xnu"
       ];
       # THE DUCT-TAPE PACKAGE, not all of ciderd. The wider prefix also matched
-      # root//src/external/ciderd:dserver_rpc, which compiles none of xnu-sys/src (it
+      # root//pins/ciderd:dserver_rpc, which compiles none of xnu-sys/src (it
       # runs scripts/generate-rpc-wrappers.py) but does regenerate rpc.h, so a xnu-sys edit
       # dragged its whole consumer cone along. That is the 657 above rather than the ~7 an
       # ordinary leaf edit costs.
-      ownerPrefix = "root//src/external/ciderd/xnu-sys";
-      owned = ["src/external/ciderd/xnu-sys/src"];
+      ownerPrefix = "root//pins/ciderd/xnu-sys";
+      owned = ["pins/ciderd/xnu-sys/src"];
     };
   };
 
@@ -968,12 +973,12 @@
     nonPinExternal;
 
   nonPinExternal = let
-    dir = srcRaw + "/src/external";
+    dir = srcRaw + "/pins";
   in
     if !builtins.pathExists dir
     then []
     else
-      map (n: "src/external/" + n)
+      map (n: "pins/" + n)
         (builtins.filter (n: !(builtins.elem n pinNames))
           (builtins.attrNames (lib.filterAttrs (_: t: t == "directory") (builtins.readDir dir))));
 
@@ -989,9 +994,9 @@
     groups = lib.unique (
       (lib.concatMap (e: e.groups or []) entries)
       # THE SDK ONLY FOR A COMPILE, but the non-pin externals for EVERY target. Gating both on
-      # `compiles` was too narrow: root//src/external/ciderd:dserver_rpc is a script_gen,
+      # `compiles` was too narrow: root//pins/ciderd:dserver_rpc is a script_gen,
       # not a compile, and it runs
-      # src/external/ciderd/scripts/generate-rpc-wrappers.py out of one of those four
+      # pins/ciderd/scripts/generate-rpc-wrappers.py out of one of those four
       # directories. It failed with `python3: can't open file ... No such file or directory`,
       # the last root failure of the grouped endpoint. They are four directories, so giving them
       # to every target costs almost nothing; the SDK is bigger and a link or a rust crate has
@@ -1050,13 +1055,13 @@
   # Under #54 a target stages ONLY its groups plus the pins. It deliberately references no
   # shared project path at all -- that is the whole point, since one shared input is what
   # makes every edit rebuild everything. The pins still come from ciderSrc, keyed by pin
-  # revision, and src/external and buck-rust stay REAL directories because the pins are
+  # revision, and pins and buck-rust stay REAL directories because the pins are
   # planted inside them; the comment on stageProject records that losing that cost a whole
   # endpoint build.
   stageProjectFor = label:
     caShellScript "buck2-stage-project-grouped" ''
       ${stageGroupsFor label}
-      mkdir -p buck-rust src/external buck-src
+      mkdir -p buck-rust pins buck-src
       for _c in ${rustVendor}/*/; do
         ln -sfn "$_c" "buck-rust/$(basename "$_c")"
       done
@@ -1094,13 +1099,17 @@
   stageProject = caShellScript "buck2-stage-project" ''
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/${name}"} ${lib.escapeShellArg name}
-      # "src" belongs in this list and cost a whole endpoint build when it fell out of it:
-      # the section below plants the pins at src/external/<pin>, which is only possible if
-      # src/ is a real directory here rather than a symlink into the store. There is no
-      # entry called "projectSrc" -- that was a rename of the "src" exclusion into a Nix
-      # BINDING name, and it silently turned every lowered target into a permission error.
+      # "pins" belongs in this list and cost a whole endpoint build when its predecessor fell
+      # out of it: the section below plants the pins at pins/<pin>, which is only possible if
+      # pins/ is a real directory here rather than a symlink into the store. There is no
+      # entry called "projectSrc" -- that was a rename of the exclusion into a Nix BINDING
+      # name, and it silently turned every lowered target into a permission error.
+      #
+      # THIS LINE SAID "src" UNTIL #87 STAGE 2, and the same failure was available by simply
+      # deleting it instead of renaming it. src/ no longer exists at all, so an entry for it
+      # would be inert rather than protective, which is exactly how this class of bug hides.
       '') (lib.filterAttrs (name: _:
-        name != "buck-src" && name != "buck-out" && name != "src" && name != "buck-rust")
+        name != "buck-src" && name != "buck-out" && name != "pins" && name != "buck-rust")
         (builtins.readDir projectSrc)))}
 
     # buck-rust/ is a REAL directory for the same reason src/ is: its BUCK file is
@@ -1117,16 +1126,16 @@
       ln -sfn "$_c" "buck-rust/$(basename "$_c")"
     done
 
-    # src/ and src/external/ are REAL directories here, not symlinks into the store: the
-    # pins get planted at src/external/<pin> so the SDK's symlink farm resolves, and
+    # src/ and pins/ are REAL directories here, not symlinks into the store: the
+    # pins get planted at pins/<pin> so the SDK's symlink farm resolves, and
     # planting anything inside a store path is a permission error.
-    mkdir -p src/external
+    mkdir -p pins
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/src/${name}"} ${lib.escapeShellArg "src/${name}"}
       '') (lib.filterAttrs (name: _: name != "external") (builtins.readDir (projectSrc + "/src"))))}
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${projectSrc}/src/external/${name}"} ${lib.escapeShellArg "src/external/${name}"}
-      '') (builtins.readDir (projectSrc + "/src/external")))}
+        ln -s ${lib.escapeShellArg "${projectSrc}/pins/${name}"} ${lib.escapeShellArg "pins/${name}"}
+      '') (builtins.readDir (projectSrc + "/pins")))}
     ${lib.optionalString (builtins.pathExists (projectSrc + "/buck-src")) ''
       mkdir -p buck-src
       ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''

@@ -21,8 +21,8 @@ materialized at all is fine and is reported separately, because most of the 148 
 materialized on demand.
 
 THE DESTINATION RULE IS COPIED FROM buck-src.nu AND IS NOT A DETAIL. A pin directly under
-src/external goes to buck-src/<basename>; anything deeper materializes IN PLACE at its own
-path. Basenames are not unique -- src/external/xnu and src/external/ciderd/xnu-sys/xnu both end
+pins goes to buck-src/<basename>; anything deeper materializes IN PLACE at its own
+path. Basenames are not unique -- pins/xnu and pins/ciderd/xnu-sys/xnu both end
 in xnu -- and collapsing them into buck-src/xnu is a collision that has already broken this
 project once through materializePins.
 
@@ -50,10 +50,24 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
+PIN_ROOT = "pins"
+PIN_ROOT_DEPTH = len(PIN_ROOT.split("/"))
+
+
+def directly_under_pin_root(path):
+    """The test is DIRECTLY UNDER THE PIN ROOT, which is not the same thing as a fixed depth.
+
+    It read `== 3` while the root was src/external (NO-PIN-REWRITE), and writing `== 2` for pins/ would just
+    reseat the same landmine one rename later. Expressed against the root, it survives the
+    next move without anyone having to remember this comment.
+    """
+    return len(path.split("/")) == PIN_ROOT_DEPTH + 1
+
+
 def dest_for(path):
     """Where buck-src.nu materializes this entry. Same rule, deliberately duplicated: if the
     two ever disagree, this check is measuring a directory nothing writes."""
-    if len(path.split("/")) == 3:
+    if directly_under_pin_root(path):
         return os.path.join(ROOT, "buck-src", os.path.basename(path))
     return os.path.join(ROOT, path)
 

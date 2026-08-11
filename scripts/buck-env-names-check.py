@@ -96,7 +96,7 @@ READING_DIRS = ["src", "darwin", "linux", "scripts", "nix", "tests", "buck", "to
 
 SKIP_DIRS = {".jj", ".git", "buck-out", "target", "__pycache__", "node_modules",
              "result", "outputs", "build", "buck-rust", "buck-src"}
-SKIP_PREFIX = ("src/external/",)
+SKIP_PREFIX = ("pins/",)
 
 ADVERTISE = [
     re.compile(r"\b((?:CIDER|CIDERD|DARLING|DARLINGSERVER|XTRACE)_[A-Z0-9_]+)\s*="),

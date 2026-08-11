@@ -327,7 +327,7 @@ darwin_binary(
         "//darwin/duct:system_duct_static",
         "//buck-src:pthread_static",
         "//buck-src:macho_static",
-        "//src/external/libtrace:system_trace_static",
+        "//pins/libtrace:system_trace_static",
         "//buck-src:corecrypto_static",
         "//buck-src:libc_static64",
         "//buck-src:compiler_rt_static64",

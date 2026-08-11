@@ -77,7 +77,7 @@ SRC_EXT = (".c", ".h", ".cpp", ".m", ".mm", ".S", ".rs")
 
 def materialized_pins():
     """A PIN MATERIALIZED INSIDE OURS IS STILL UPSTREAM, and after the xnu de-vendoring one
-    of them is. src/external/ciderd/xnu-sys/xnu used to be committed source; it is now a pin
+    of them is. pins/ciderd/xnu-sys/xnu used to be committed source; it is now a pin
     planted at its own path, which lands INSIDE the `src` tree this file treats as ours. It
     is also a NESTED pin, and a nested pin deliberately takes no buck-src alias, so scanning
     buck-src does not reach it either. Both halves were therefore wrong at once: its content

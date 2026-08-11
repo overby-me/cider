@@ -8,9 +8,9 @@
   "//darwin/libsimple:libsimple_cider"
   "//buck-src:migcom"
   "//linux/startup:rtsig_header"
-  "//src/external/ciderd:dserver_rpc"
-  "//src/external/ciderd/xnu-sys:ciderd_xnu_sys"
-  "//src/external/ciderd/tools:dserverdbg"
+  "//pins/ciderd:dserver_rpc"
+  "//pins/ciderd/xnu-sys:ciderd_xnu_sys"
+  "//pins/ciderd/tools:dserverdbg"
   "//linux/server:xnu_sys_lib"
   "//darwin/libsimple:libsimple_cider_dylib"
   "//tests/buck2/firstpass:a"
@@ -31,7 +31,7 @@
   "//buck-src:system_coretls_firstpass"
   "//buck-src:asl_ipc_mig"
   "//darwin/duct:system_duct_firstpass"
-  "//src/external/libtrace:system_trace_firstpass"
+  "//pins/libtrace:system_trace_firstpass"
   "//darwin/libsystem_coreservices:system_coreservices_firstpass"
   # The MINIMAL prefix, not the full one. Same layout minus the GUI frameworks, the
   # private frameworks and the scripting languages, which together are 42 percent of the

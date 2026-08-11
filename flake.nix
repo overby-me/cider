@@ -76,7 +76,7 @@
           inherit pkgs;
           overby = inputs.overby;
         }).buildTarget
-          { target = "//src/external/ciderd/xnu-sys:ciderd_xnu_sys"; };
+          { target = "//pins/ciderd/xnu-sys:ciderd_xnu_sys"; };
 
       # A mid-size probe for the Nix-lowered path: darwin/duct's static archive is 8
       # sources in a 165-line BUCK file, between libsimple (80 lines) and xnu-sys
@@ -430,13 +430,13 @@
             baseSrc = ./.;
           };
         in
-        # Nested at src/external/<pin> because that is where they are staged, so the farm reads
+        # Nested at pins/<pin> because that is where they are staged, so the farm reads
         # like the tree it stands in for. It does NOT fix the escaping links, and the attempt
         # to make it do so is worth recording because it eliminates a whole approach.
         #
         # A LINK FARM CAN NEVER REPAIR A RELATIVE ESCAPE. 14 of the 21 links that reach out of
         # a pin point at a SIBLING pin three levels up, and laying the farm out at
-        # src/external/<pin> puts that sibling exactly where the ../../../ says. It still
+        # pins/<pin> puts that sibling exactly where the ../../../ says. It still
         # dangles, because the kernel resolves .. against the REAL parent directory once it has
         # crossed the farm symlink, not against the path you typed. Measured:
         #   readlink -f <farm>/src/external/IOKitUser/darling/submodules/xnu
@@ -561,7 +561,7 @@
               allPins = true;
               # THE SKELETON (#56), and this is what stops a C edit rebuilding the graph.
               # The dump gets a tree whose C family is emptied outside buck-src, buck-rust and
-              # src/external, keeping the 119 files that feed a generator
+              # pins, keeping the 119 files that feed a generator
               # (scripts/buck-codegen-keep.txt). Editing a .c changes no file NAME, so that
               # tree is byte identical, the dump does not rerun, and about 10 minutes leaves
               # every source edit.
@@ -794,7 +794,7 @@
       # derivations, which `nix flake check` would force. Build it directly with:
       #   nix build '.?submodules=1' \
       #     --expr '(import ./nix/lib/ciderNinja.nix { pkgs = <nixpkgs>; overby = <overby>; }).buildTarget
-      #             { target = "src/external/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
+      #             { target = "pins/xnu/darling/src/libsystem_kernel/libsystem_kernel.dylib"; }'
 
       # ── Flake Templates ──────────────────────────────────────────────
       #

@@ -72,7 +72,7 @@ def main [--scan: string = ""] {
             | get ref
             | uniq
             # A BUCK file names its script RELATIVE TO ITS PACKAGE: ciderd's
-            # BUCK points at src/external/ciderd/scripts/generate-rpc-wrappers.py
+            # BUCK points at pins/ciderd/scripts/generate-rpc-wrappers.py
             # by its package-relative name, which is correct and resolves to a real
             # file. Resolve both ways before calling it missing. (Spelled here as a
             # full path on purpose: a bare one would make this comment its own hit.)
