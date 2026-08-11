@@ -1496,6 +1496,12 @@
       passthru = {
         inherit label outs;
         deps = needs.fromTargets;
+        # THE OTHER HALF OF needsOf, exposed for the same reason `deps` is: #66 is porting
+        # needsOf into scripts/buck-graph-to-specs.py, and the only honest way to check a port
+        # of it is to dump BOTH answers for all 1,474 labels and require them to agree.
+        # Comparing fromTargets alone would leave the farms untested, and they are the half
+        # that fails late and quietly. scripts/buck-needs-check.nu does the comparison.
+        stagedNeeds = needs.fromStaged;
         actionCount = lib.length actions;
 
         # WHAT THE ADAPTER NEEDS TO FEED THIS GROUP THROUGH nix/lib/dyn-actions.nix (#66): the
