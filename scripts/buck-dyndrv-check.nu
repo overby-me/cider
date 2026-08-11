@@ -1,15 +1,17 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the four things #66 depends on?
+# Do dynamic derivations still do the five things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
-# WHY IT EXISTS. #66 replaces ~3,225 evaluator-computed derivations with derivations the
-# generator EMITS, which only works if three properties hold, and all three are properties of
-# NIX rather than of this project. They were verified by hand on 2026-08-11 with Nix 2.35.1,
-# and a Nix upgrade could take any of them away silently: the failure would not look like
-# "dynamic derivations regressed", it would look like the endpoint rebuilding everything, or
-# an hour-long gate dying somewhere far away.
+# WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
+# EMITS, which only works if five properties hold. 1 to 3 are properties of NIX rather than of
+# this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
+# them away silently, and the failure would not look like "dynamic derivations regressed", it
+# would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
+# away. 4 and 5 are properties of nix/lib/dyn-actions.nix, and BOTH were already false when
+# they were first checked: the DAG edge and the whole specDir mode. Neither had a fixture, so
+# neither could have been noticed.
 #
 #   1. builtins.outputOf works end to end.
 #   2. EARLY CUTOFF SURVIVES IT. This is the one that matters. If a consumer bound through
@@ -25,6 +27,9 @@
 #      silently broken until 2026-08-11: inputSrcs went to `nix derivation add` as a full
 #      store path, which it rejects, so no declared source had ever worked. It could not be
 #      caught by watching which builders ran, because the build ORDER was right either way.
+#   5. THE TWO MODES OF dyn-actions.nix AGREE. `actions` serialises specs in the evaluator;
+#      `specDir` reads pre-serialised ones off disk and is the mode that scales. Nothing had
+#      ever BUILT a spec dir until 2026-08-11, so half the API was evaluated and never run.
 #
 # The probe itself, and the one structural constraint that makes it work at all (the inner
 # output must NOT be named "out"), is documented in nix/lib/dyn-drv-probe.nix.
@@ -135,8 +140,27 @@ def main [] {
         }
     }
 
+    # 5. THE TWO MODES AGREE. dyn-actions.nix can be reached two ways: `actions`, which
+    # serialises each spec in the evaluator, and `specDir`, which reads pre-serialised ones off
+    # disk so the evaluator never touches them. specDir is the one that scales and was the one
+    # NOTHING had ever built: until 2026-08-11 no fixture produced a spec directory, so half
+    # the API had been evaluated and never run. A consumer that develops against the convenient
+    # mode and ships the scalable one must get the same derivations, or the difference surfaces
+    # as an unexplained full rebuild.
+    #
+    # The toy asserts on the output PATHS, not the contents: equal contents would not rule out
+    # two different derivations that happen to print the same thing.
+    let sd = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-specdir-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $sd.exit_code != 0 {
+        bad "actions mode and specDir mode disagree, or the spec dir round trip is broken"
+        print -e ($sd.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($sd.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf works, early cutoff survives it, and emitted drvs form a DAG"
+        say "PASS: outputOf, early cutoff, a real DAG, and both modes agreeing"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"

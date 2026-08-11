@@ -203,6 +203,33 @@ json.dump(d,open(p,"w"))' spec.json
     };
 
   producers = lib.listToAttrs (map (n: lib.nameValuePair n (producerOf n)) names);
+
+  # A DERIVATION HOLDING THIS ACTION LIST AS A SPEC DIR, in exactly the layout specDir mode
+  # reads back: one <name>.json per action plus a `names` index.
+  #
+  # WHY IT IS HERE rather than in a consumer: specOf is meant to be the only place that knows
+  # the on-disk derivation format, and a consumer writing that JSON by hand would be a second
+  # place to keep in step. It is also what makes specDir mode TESTABLE at all -- until this
+  # existed, nothing in the repo produced a spec dir, so half the bridge's API had been
+  # evaluated and never built. nix/lib/dyn-actions-specdir-toy.nix round-trips through it.
+  #
+  # IT SERIALISES AT EVAL, so it is for reference, tests, and small action lists. Using it for
+  # a large one hands back exactly the cost specDir mode exists to avoid: a consumer with
+  # thousands of actions should write the same JSON from its own generator, inside a
+  # derivation, and pass that directory instead.
+  mkSpecDir = drvName:
+    lib.throwIf fromDir
+    "dyn-actions: mkSpecDir needs `actions`; in specDir mode you already have one"
+    (pkgs.runCommand drvName {} (''
+        mkdir -p "$out"
+      ''
+      + lib.concatMapStrings (n: ''
+        printf '%s' ${lib.escapeShellArg (specOf (actionOf n))} > "$out"/${lib.escapeShellArg n}.json
+      '')
+      names
+      + ''
+        printf '%s\n' ${lib.escapeShellArg (lib.concatStringsSep "\n" names)} > "$out/names"
+      ''));
 in
   assertOneSource (assertNotOut (assertUnique {
     # The emitted .drv per action, before realisation. Useful for inspection and for tests.
@@ -215,5 +242,5 @@ in
       (n: p: builtins.outputOf p.outPath outputName)
       producers;
 
-    inherit outputName;
+    inherit outputName mkSpecDir;
   }))
