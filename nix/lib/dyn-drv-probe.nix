@@ -58,13 +58,13 @@
   # The derivation the producer emits, as JSON for `nix derivation add`. Its output is called
   # "inner" and NOT "out", for the placeholder reason in the header.
   spec = builtins.toJSON {
-    name = "cider-dyndrv-inner";
+    name = "dyn-drv-probe-inner";
     inherit system;
     builder = "/bin/sh";
     args = ["-c" "echo INNER-RAN > $inner"];
     env = {
       builder = "/bin/sh";
-      name = "cider-dyndrv-inner";
+      name = "dyn-drv-probe-inner";
       inner = builtins.placeholder "inner";
       outputHashAlgo = "sha256";
       outputHashMode = "recursive";
@@ -85,7 +85,7 @@
   # evaluation time, so nothing about the inner build is computed by the evaluator.
   producer = derivation {
     inherit system;
-    name = "cider-dyndrv.drv";
+    name = "dyn-drv-probe.drv";
     builder = "/bin/sh";
     args = [
       "-c"
@@ -108,7 +108,7 @@
   # Binds to an output of a derivation that did not exist during evaluation.
   consumer = derivation {
     inherit system;
-    name = "cider-dyndrv-consumer";
+    name = "dyn-drv-probe-consumer";
     builder = "/bin/sh";
     args = [
       "-c"
