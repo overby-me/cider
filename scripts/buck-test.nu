@@ -305,6 +305,42 @@ def main [flag?: string] {
         say (indent7 ($escroots.stdout + $escroots.stderr | str substring 0..2000))
     }
 
+    # CAN THE BRIDGE STILL BE LIFTED OUT? Same cost as the two above, and no nix either.
+    #
+    # GENERALITY IS THE REQUIREMENT for #66: the buck2-graph to dynamic-derivation bridge is
+    # worth having for other projects whatever it saves here, and this repo is the first
+    # CONSUMER rather than the target. Every file in the reusable half says so in a comment,
+    # and a comment is not a check: a file can say nothing cider-shaped in here and still
+    # import the lowering. This one reads the PATHS instead, which is the property that decides
+    # whether the set can be copied elsewhere and still work.
+    #
+    # It reads files and nothing else, so it cannot hit the busy eval cache during a build.
+    say "== can the bridge still be lifted out of this repo? (no nix) =="
+    let gener = (do -i { ^python3 ./scripts/buck-bridge-generality-check.py --controls } | complete)
+    if $gener.exit_code == 0 {
+        ok "the reusable half references nothing outside itself"
+    } else {
+        bad $"bridge generality check FAILED, exit ($gener.exit_code), see the output below"
+        say (indent7 ($gener.stdout + $gener.stderr | str substring 0..2000))
+    }
+
+    # THE TWO NAME MAPPINGS, which are cheap but DO touch nix, so they are treated like the
+    # staging script above rather than like the file-only checks.
+    #
+    # A label maps to a spec file name and that name maps to a shell variable, in several
+    # implementations across two languages. A mismatch is silent in the worst way: a wrong
+    # variable is never set, expands to empty, and the action copies from nothing and produces
+    # a plausible, wrong result. That is how the bridge once shipped a clean build that
+    # produced nothing.
+    say "== the label to spec-name to shell-variable mappings =="
+    let names = (do -i { ^./scripts/buck-names-check.nu } | complete)
+    if $names.exit_code == 0 {
+        ok "every implementation of both name mappings agrees on every label"
+    } else {
+        bad $"name mapping check FAILED, exit ($names.exit_code), see the output below"
+        say (indent7 ($names.stdout + $names.stderr | str substring 0..2000))
+    }
+
     # THE PATCH WIRING, third of the cheap ones, and the same silent shape a layer along.
     #
     # Patches are applied when patches/<basename or override> HAPPENS TO EXIST, so a renamed
