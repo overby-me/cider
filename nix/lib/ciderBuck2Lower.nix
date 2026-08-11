@@ -692,6 +692,23 @@
 
   # What a target consumes from OUTSIDE itself.
   needsOf = label: let
+    # THE INNER unique IS LOAD BEARING. It looks redundant, since `ins` is used for nothing but
+    # the line below and the outer unique would collapse the duplicates anyway. Folding the two
+    # together, `unique (filter ... (map ownerOf (concatMap ...)))`, was tried and measured
+    # INTERLEAVED so machine load could not explain it:
+    #
+    #   with the inner unique      12.11  11.62  11.85 s
+    #   without it                 19.96  18.91 s
+    #
+    # About 60 percent SLOWER. lib.unique is O(n squared), so what matters is the length of the
+    # list it is handed: the inner pass shrinks the input list first, and dropping it makes the
+    # outer pass run over every input of every action with duplicates intact. One group has 660
+    # inputs and the graph is 27,591 artifacts.
+    #
+    # The output was byte identical either way, verified by hashing the builderScript of all
+    # 1,474 labels, so only the timing distinguished them. needsOf is about 3.3 s of a 12 s
+    # endpoint evaluation and is the largest single remaining chunk; this is not the way to get
+    # it back.
     ins = lib.unique (lib.concatMap (a: a.inputs) targets.${label});
     directOwners = lib.unique (lib.filter (o: o != null) (map ownerOf ins));
     # Anything those farms link to, one level of indirection out.
