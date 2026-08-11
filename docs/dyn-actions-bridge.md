@@ -45,6 +45,10 @@ cannot honestly supply them: the placeholder is a Nix construction and the syste
 whoever is building. `nix/lib/dyn-actions-minimal-spec-toy.nix` is a spec dir written with
 `toJSON` and nothing from the bridge.
 
+AN EMPTY ACTION SET IS FINE in both modes, checked rather than assumed: `actions = []`, an
+empty `names` file, and a `names` file holding only a newline all evaluate to `{}` with no
+error. A consumer whose graph is conditionally empty does not need a special case.
+
 ## Getting values into an action
 
 An emitted action is NOT a `runCommand`. It gets no stdenv: no PATH, no `set -e`, no setup
