@@ -655,6 +655,21 @@
         })
         .check;
 
+      # THE SAME CONE THROUGH specDir, which is the arrangement that scales. actions mode
+      # serialises every spec in the evaluator; specDir reads them off disk, so a generator can
+      # write them without knowing an output path. The difference is one resolver: a dependency
+      # becomes the shell variable the bridge sets rather than an interpolated path.
+      #
+      #   nix build .#cider-buck2-dyn-cone-specdir --no-link -L
+      packages.cider-buck2-dyn-cone-specdir = pkgs:
+        (import ./nix/lib/cider-dyn-cone.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck-src:unwind_static";
+          viaSpecDir = true;
+        })
+        .check;
+
       packages.cider-buck2-dyn-deps = pkgs:
         (import ./nix/lib/cider-dyn-one.nix {
           inherit pkgs;

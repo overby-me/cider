@@ -25,6 +25,19 @@
   # group, two actions in total. The smallest case that is not the empty cone cider-dyn-one
   # already covers.
   label ? "root//buck-rust:proc-macro2",
+  # Reach the same cone through specDir mode instead of `actions` mode.
+  #
+  # THIS IS THE ARRANGEMENT THAT SCALES, and the only one that does. `actions` mode serialises
+  # every spec in the EVALUATOR, which is precisely the cost #66 exists to remove: fine for a
+  # four-group cone, useless at 1,474. specDir reads pre-serialised specs off disk, so the
+  # evaluator's whole job per group is one cheap producer.
+  #
+  # THE DIFFERENCE IS ONE RESOLVER. In `actions` mode a dependency resolves to the emitted
+  # output path, interpolated into the script at eval. A spec read from a FILE cannot have
+  # anything interpolated into it, so the dependency resolves to the SHELL VARIABLE the bridge
+  # sets instead, and the path arrives at build time. That is what makes a generator able to
+  # write these specs without knowing any output path.
+  viaSpecDir ? false,
 }: let
   inherit (pkgs) lib;
 
@@ -61,11 +74,29 @@
     pkgs.llvmPackages.bintools.bintools
   ];
 
+  # MUST MATCH depVar IN dyn-actions.nix, and is written out rather than taken from the bridge
+  # on purpose: a fixture that asks the thing under test what the answer is agrees with it by
+  # construction. It is also needed BEFORE the bridge exists, since the scripts are what the
+  # bridge is built from.
+  depVarOf = name:
+    "DYN_DEP_"
+    + lib.stringAsChars (c:
+      if (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || (c >= "0" && c <= "9")
+      then c
+      else "_")
+    name;
+
   actionFor = l: let
     d = lowered.drvs.${l};
-    # THE SUBSTITUTION THAT MAKES THIS A CONE: a dependency is the emitted output, not the
-    # lowered derivation.
-    script = d.passthru.builderScriptWith (dep: bridge.outputs.${actionName dep});
+    # THE SUBSTITUTION THAT MAKES THIS A CONE. In actions mode a dependency is the emitted
+    # output path, interpolated here. In specDir mode nothing can be interpolated into a spec
+    # read from a file, so it is the shell variable the bridge sets and the path arrives at
+    # build time. Same script otherwise, which is the point: a generator can write this.
+    script =
+      d.passthru.builderScriptWith (dep:
+        if viaSpecDir
+        then "\${" + depVarOf (actionName dep) + "}"
+        else bridge.outputs.${actionName dep});
   in {
     name = actionName l;
     builder = "${pkgs.bash}/bin/bash";
@@ -99,11 +130,25 @@
     ];
   };
 
-  bridge = import ./dyn-actions.nix {
+  authored = import ./dyn-actions.nix {
     inherit pkgs;
     inferSrcs = true;
     actions = map actionFor members;
   };
+
+  # mkSpecDir serialises at EVAL, so it is the reference layout rather than the route a real
+  # generator takes. At four groups that is irrelevant; at 1,474 it would hand back exactly the
+  # cost specDir exists to avoid. What is being tested here is that the SPECS work when read
+  # from a file, not how they got written.
+  bridge =
+    if viaSpecDir
+    then
+      import ./dyn-actions.nix {
+        inherit pkgs;
+        inferSrcs = true;
+        specDir = authored.mkSpecDir "cider-dyn-cone-specs";
+      }
+    else authored;
 in {
   inherit bridge members;
 
