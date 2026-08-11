@@ -87,7 +87,9 @@ builders into a full-graph build.
 `scripts/buck-dyndrv-check.nu` covers eleven properties over ten fixtures and is controlled
 both ways. TEN are asserted; the eleventh, that a substituted output resolves, is reported as a
 NOTE because it is not automated, and its by-hand sequence is in the runner header. Counted
-from the runner rather than from memory: ten `ok` lines and one `note`. Several of those properties were FALSE when first checked and none of them had a
-fixture, so none could have been noticed: the DAG edge, the whole of `specDir` mode, and
-`specDir` plus a DAG. Fixtures must check CONTENT, never path existence, because both of those
+from the runner rather than from memory: ten `ok` lines and one `note`.
+
+Several of those properties were FALSE when first checked and none of them had a fixture, so
+none could have been noticed: the DAG edge, the whole of `specDir` mode, and `specDir` plus a
+DAG. Fixtures must check CONTENT, never path existence, because both of those
 bugs produced clean successful builds with empty results.
