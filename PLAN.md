@@ -362,11 +362,32 @@ THE CACHING WEAKNESS THAT IS LEFT. Everything else caches: CA early cutoff works
 source edit rebuilds the graph and runs ZERO buck2 derivations, no-op rebuilds are about 0.3 s,
 and the 4,159 staged-tree scripts did not move at all in the recorded probe. This one does.
 
-THE CAUSE IS ONE THING, and it is NOT the graph. `graph.json` records action command lines
-rather than their outputs, so it stays byte identical across changes that alter what a build
-produces; the migcom patch left it at `mv46f3p6`. The cascade is that the staging script embeds
-`${projectSrc}`, `projectSrc` is the WHOLE filtered project, so any first-party edit moves that
-path, moves all 94 distinct staging scripts, and moves every group that stages one.
+THE CAUSE IS NOT THE GRAPH. `graph.json` records action command lines rather than their
+outputs, so it stays byte identical across changes that alter what a build produces; the migcom
+patch left it at `mv46f3p6`.
+
+**THE CAUSE STATED HERE WAS THE WRONG CODE PATH, and the correction matters because it changes
+what the fix would even be.** This entry said the cascade is that the staging script embeds
+`${projectSrc}`, the whole filtered project. That is true of `stageProject`,
+`ciderBuck2Lower.nix:1282`, and `stageProject` is the **`sourceGroups` = OFF** path. Read off
+the code rather than the comments:
+
+    flake.nix:399, :510, :835      sourceGroups = true, all three places it is set
+    ciderBuck2Lower.nix:1332       "every endpoint that gets gated has it ON"
+    ciderBuck2Lower.nix:1223       so the endpoint takes stageTextFor: groups + pinStageLines
+    ciderBuck2Lower.nix:547        pinPath = "${pinsTree}/${p}"
+    ciderBuck2Lower.nix:452        pinsTree is assembled from ciderSrc.pinPaths, the per-pin
+                                   stores, whose inputs are FROZEN PINS
+
+So on the path the endpoint actually takes, the whole-project reference is already gone: #54
+narrowed the groups, #74 gave the pins a self-contained mirrored tree, and #79 gave the escape
+destinations their own store paths after an earlier version resolved them against the whole
+project and moved on every edit.
+
+**WHICH MAKES THE MEASUREMENT THE WHOLE TASK, not a preliminary to it.** The wide path still
+exists and is what this entry described; the endpoint does not take it. Whether anything still
+cascades at endpoint scale is genuinely unknown until the probe reports, and if the number comes
+back small the work here is to correct this entry, not to implement anything.
 
 **STEP 0 IS A MEASUREMENT, AND THE TARGET DECIDES WHAT IT MEANS.** Two figures are on record
 and they differ by sixty times, because they answer different questions:
