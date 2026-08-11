@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the thirteen things #66 depends on?
+# Do dynamic derivations still do the fourteen things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if thirteen properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if fourteen properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -305,8 +305,34 @@ def main [] {
         ok "duplicate action names throw, distinct ones evaluate"
     }
 
+    # 14. THE OTHER TWO GUARDS, which had also never been fired. Same class as 13: an
+    # assertion nobody has seen reject anything is not known to reject anything.
+    #
+    #   outputName = "out"   must throw. It is THE constraint the whole design turns on, and
+    #                        it is the one a caller is most likely to try to override.
+    #   neither source       must throw, and so must BOTH, since the guard is an equality on
+    #                        two null tests and one-sided testing would miss half of it.
+    #
+    # AND THE POSITIVE SIDE: a non-out outputName must still be accepted, or the guard is just
+    # rejecting everything. Builds nothing; four evals.
+    let gOut = (do -i { ^nix eval --impure --json --expr "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; actions = []; outputName = \"out\"; }).outputs" } | complete)
+    let gNone = (do -i { ^nix eval --impure --json --expr "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; }).outputs" } | complete)
+    let gBoth = (do -i { ^nix eval --impure --json --expr "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; actions = []; specDir = \"/nix/store\"; }).outputs" } | complete)
+    let gOk = (do -i { ^nix eval --impure --json --expr "(import ./nix/lib/dyn-actions.nix { pkgs = import <nixpkgs> {}; actions = []; outputName = \"thing\"; }).outputName" } | complete)
+    mut gbad = []
+    if $gOut.exit_code == 0 { $gbad = ($gbad | append "outputName=out was ACCEPTED") }
+    if $gNone.exit_code == 0 { $gbad = ($gbad | append "neither actions nor specDir was ACCEPTED") }
+    if $gBoth.exit_code == 0 { $gbad = ($gbad | append "both actions and specDir were ACCEPTED") }
+    if $gOk.exit_code != 0 { $gbad = ($gbad | append "a NON-out outputName was rejected") }
+    if ($gbad | is-not-empty) {
+        bad $"the bridge guards do not hold: ($gbad | str join '; ')"
+        $fails += 1
+    } else {
+        ok "outputName=out throws, a missing or doubled source throws, a normal outputName does not"
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir, an over-long argument, an optional deps.json and unique names"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir, an over-long argument, an optional deps.json, unique names and the argument guards"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"
