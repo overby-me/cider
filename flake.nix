@@ -689,6 +689,19 @@
       # through this arrangement at all.
       #
       #   nix eval --raw .#cider-buck2-dyn-gen-scale
+      # THE EXPENSIVE HALF: does a LARGE cone actually build through the emitted route? ciderd
+      # is 51 groups and 146 actions, a real binary rather than a fixture, and it is the first
+      # thing here big enough for producer count, dependency depth and build load to interact.
+      #
+      #   nix build .#cider-buck2-dyn-gen-big --no-link -L
+      packages.cider-buck2-dyn-gen-big = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//linux/server:ciderd";
+        })
+        .check;
+
       packages.cider-buck2-dyn-gen-scale = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;

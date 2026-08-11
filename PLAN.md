@@ -349,47 +349,40 @@ GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Noth
 reusable half may mention pins, the SDK farm, cider staging or this repo's layout.
 Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
 
-- **A, the bridge, DONE.** `nix/lib/dyn-actions.nix`, plus six fixtures beside it.
-  `scripts/buck-dyndrv-check.nu` asserts **eight** properties and PASSES. Three are properties
-  of Nix; five are of the bridge, and **three of those were false when first checked** (the DAG
-  edge, the whole of `specDir` mode, and specDir-plus-a-DAG). None had a fixture, so none could
-  have been noticed.
-- **B, the adapter, PART DONE.** The lowering reads its action script instead of computing it
-  (gate16 GREEN, prefix byte identical to gate15 across all 5,563 files), and
-  `scripts/buck-graph-to-specs.py` emits the group dependency edges: 1,474 groups, **23,765**
-  edges, no cycle. `scripts/buck-specs-check.py` verifies both, with eight controls that fire.
-- **REAL GROUPS RUN THROUGH THE BRIDGE NOW.** Five fixtures, each diffing an emitted output
-  against the lowered one: `dyn-one` (2 actions, 0 deps), `dyn-deps` (1 link, 103 deps from the
-  lowering), `dyn-cone` and `-deep` (2 and 4 groups, ALL emitted), and `dyn-cone-specdir` (the
-  same 4 read from a spec FILE, dependencies resolved as `DYN_DEP_<name>` shell variables so
-  nothing is interpolated). Both modes emit the SAME output path. The adaptation is three
-  lines: PATH, `set -e`, `out`; plus `inferSrcs` for inputs named inside the script.
-  `builderScriptWith` is the one knob added to the lowering, parameterising the single place a
-  dependency path enters; verified inert (zero builders, same out path).
+- **A, the bridge, DONE and GENERAL.** `nix/lib/dyn-actions.nix` plus nine fixtures beside it.
+  `scripts/buck-dyndrv-check.nu` asserts **ten** properties and PASSES. Three are properties of
+  Nix; the rest are of the bridge, and several were false when first checked (the DAG edge, the
+  whole of `specDir` mode, specDir-plus-a-DAG). None had a fixture, so none could have been
+  noticed. `extraEnv` is asked **per action**, which is the case a consumer actually has; and
+  specDir mode now accepts a spec dir the bridge did NOT write, holding only name, builder and
+  args, with the fixup supplying the system, version, outputs and the output PLACEHOLDER, since
+  none of those is something a generator can know.
+- **B, the adapter, and A and B are CONNECTED.** `scripts/buck_lowering.py` renders the WHOLE
+  builder script and `buck-graph-to-specs.py` writes it, along with `needs.json` and a `dyn/`
+  directory of bridge-shaped specs, inside the graph derivation.
+  **`.#cider-buck2-dyn-gen` builds a real cider cone from those specs with nothing serialised
+  in the evaluator, and `diff -r` against the lowered derivation is clean.** A second cone,
+  `-trees`, covers the staged-tree numbering; `-scale` instantiates all **1,474** producers in
+  ~13 s, against the lowering's own 10.6 s.
+- **THE LOWERING NO LONGER ASSEMBLES A SCRIPT.** It reads the template and supplies five
+  consumer values. All 1,474 labels unchanged, endpoint drvPath identical, rung 2 zero
+  builders. Verified byte for byte by `scripts/buck-script-check.nu`, which reads the
+  generator's own `full.json` out of the store rather than re-rendering, and by
+  `scripts/buck-needs-check.nu`, which reads `passthru.definitionNeeds` rather than `deps` so
+  it cannot compare the python against itself.
 - **THREE FAILURES WORTH THE SPACE, all one shape: a green result over a broken build.** A run
   that passed with `find`/`sed` missing (nativeBuildInputs is only what the lowering ADDS to
   stdenv); the deep cone failing on `llvm-ar`, because **an emitted action runs no setup hooks**
-  and `makeBinPath` follows neither hooks nor propagation (checked: `closePropagation` over 33
-  tools gives 53 packages, still no llvm); and the specDir check reporting OK while its diff
-  never ran, because both modes produced a **byte-identical check derivation**. Look for the
-  artifact, never the exit code.
-- **THE INVARIANCE CHECK IS A TOOL NOW,** `scripts/buck-lowering-invariance-check.nu`. It
-  fingerprints every label's `builderScript` and `stageScript` and compares against a saved
-  baseline, which is the check a green ladder cannot replace: rung 2 builds ONE target, so a
-  change that moves every *other* derivation is invisible to it. It was hand-assembled four
-  times before becoming a script and caught the whitespace hoist that both rungs passed.
-  `--expect-changes` inverts the verdict, so the zero can be trusted.
-- **STILL OPEN: the generator.** What remains is writing the 1,474 specs from a derivation
-  rather than assembling them in Nix per group, which is still the eval cost #66 removes. The
-  spec content is settled; the open part is that `builderScript` is assembled by the lowering
-  at EVAL, so the staging preamble, dep copies and staged-tree restores have to move into the
-  generator alongside the action script it already emits.
-- **THE PRICE IS KNOWN AND FAVOURABLE: ~55s** of build at 1,474 groups (0.037s per producer,
-  quiet, 22 cores) against ~12.95s of evaluation removed, paid once per graph change. It breaks
-  even after four or five evaluations. The first attempt measured 0.57s and 14 MINUTES and
-  argued the opposite; it was taken beside a running gate, so it priced contention and came out
-  convincingly linear. **Never price a parallel thing on a busy machine.**
-
+  and `makeBinPath` follows neither hooks nor propagation; and the specDir check reporting OK
+  while its diff never ran, because both modes produced a **byte-identical check derivation**.
+  Look for the artifact, never the exit code.
+- **THE INVARIANCE CHECK IS A TOOL,** `scripts/buck-lowering-invariance-check.nu`. It
+  fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
+  is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
+  every *other* derivation is invisible to it.
+- **STILL OPEN.** Building 1,474 emitted groups, and whether the prefix comes out identical
+  that way, is unmeasured and is an hour-class build. Whether the bridge REPLACES the lowering
+  or stays a second route is not answered by anything measured yet.
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
 - **D.1** `scripts/oracle.nu <attr>` = `nix build --rebuild` vs cache.nixos.org, JSON
