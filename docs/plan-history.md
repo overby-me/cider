@@ -1059,3 +1059,24 @@ assertion vacuously true.
 STILL OPEN: whether the full-graph diff now goes from 110 differing groups to 0. That run is
 the confirmation and is hour class.
 
+
+
+## What the migcom patch did and did not move (2026-08-11)
+
+A correction, and the mechanism behind it is worth keeping.
+
+I recorded that patching migcom moved the graph, and that the python ports were therefore
+re-checked against a NEW one. Neither is true. `graph.json` stayed at `mv46f3p6` and the specs
+at `qxrxrsic`, the same store paths as before the patch.
+
+**graph.json records the ACTIONS, not their outputs.** It is command lines and declared inputs.
+Patching migcom changes what the mig actions PRODUCE, not what they ARE, so the dump comes out
+byte identical and content addressing collapses it to the same path. Everything derived from it
+is unchanged with it: the specs, `full.json`, `needs.json` and the `dyn/` spec directory.
+
+**What moved is `cider-buck2-sources`,** which contains `buck-src` and therefore the patched
+migcom source. Every lowered derivation stages that source, and every emitted action receives
+the staging script through `CIDER_STAGE`, so both routes rebuilt from there.
+
+So the rebuild was real and necessary, but its cause was the source tree rather than the graph,
+and a re-run of the port checks after it compares against the same graph as before.
