@@ -91,6 +91,42 @@ def group_specs(graph: dict, coarse_pins: bool = True) -> dict:
 
 _SAFE = re.compile(r"^[A-Za-z0-9,._+:@%/-]+$")
 
+# @CLANG@ and friends. The graph is deliberately PORTABLE: buck2-graph-dump.py names the
+# store paths an argv needs instead of baking them in, so one graph can serve any machine,
+# and filling them back in is the consumer's job. The lowering does that with a
+# replaceStrings over every argv at EVAL time, which is per-argv work over 208,515 entries
+# and part of what #66 is removing.
+#
+# So the emitted script keeps the placeholder, as a SHELL VARIABLE the builder expands.
+# Portability is preserved exactly -- the script still names no store path -- and the
+# substitution moves from the evaluator to the shell, where it costs nothing.
+_PLACEHOLDER = re.compile(r"@([A-Z_0-9]+)@")
+
+
+def ph_var(name: str) -> str:
+    return "CIDER_PH_" + name
+
+
+def esc_with_placeholders(s: str) -> str:
+    """Escape one argv element, turning @X@ into an expandable ${CIDER_PH_X}.
+
+    Double quotes, not single, because a single-quoted string does not expand. Everything
+    that is special inside double quotes is escaped, so only the placeholder expands and an
+    argv containing a literal dollar or backtick cannot become a command substitution.
+    """
+    out = []
+    last = 0
+    for m in _PLACEHOLDER.finditer(s):
+        lit = s[last:m.start()]
+        out.append(lit.replace("\\", "\\\\").replace('"', '\\"')
+                   .replace("$", "\\$").replace("`", "\\`"))
+        out.append("${" + ph_var(m.group(1)) + "}")
+        last = m.end()
+    lit = s[last:]
+    out.append(lit.replace("\\", "\\\\").replace('"', '\\"')
+               .replace("$", "\\$").replace("`", "\\`"))
+    return '"' + "".join(out) + '"'
+
 
 def esc(s: str) -> str:
     """Shell-escape one argv element, byte for byte as nixpkgs lib.escapeShellArg does.
@@ -101,6 +137,8 @@ def esc(s: str) -> str:
     from the lowering's on EVERY line while being perfectly valid shell, which is the kind of
     difference that survives testing and then shows up as every derivation moving.
     """
+    if _PLACEHOLDER.search(s):
+        return esc_with_placeholders(s)
     if _SAFE.match(s):
         return s
     return "'" + s.replace("'", r"'\''") + "'"
