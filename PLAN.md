@@ -342,68 +342,19 @@ referenced is completed. Git history holds them.
 
 What follows is only what is still OPEN.
 
-### #95 - migcom stamps the build time into every stub, so 110 groups never cache
+### #95 - migcom stamped the build time into every stub, so 110 groups never cached (DONE)
 
-FOUND BY #66's full-graph comparison, which is the only thing that has ever compared two
-independent builds of the whole port. 1,364 of 1,474 groups came out identical and 110 differed;
-every content difference was the same line:
+migcom wrote the wall clock into every generated stub, so two builds of the same inputs at
+different times produced different bytes, and under content addressing that defeated early
+cutoff for everything downstream of a mig group. Found by #66's full-graph comparison: 1,364 of
+1,474 groups identical, 110 differing, all 110 mig.
 
-    * stub generated Tue Aug 11 18:57:26 2026    against    13:19:33 the same day
+Fixed by `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`. A freshly built
+mig group now reads `stub generated Tue Jan  1 00:00:00 1980`. Guarded by
+`scripts/buck-mig-epoch-check.nu`, which builds ONE mig group instead of the whole graph and is
+in `buck-test.nu`.
 
-Those are the wall-clock times the two routes RAN. It is NOT an emitted-route defect: the
-lowering is non-reproducible here too, and two lowered builds at different times differ the same
-way.
-
-THE CAUSE IS ONE LINE OF UPSTREAM. `buck-src/bootstrap_cmds/migcom.tproj/mig.c:324`
-
-    loc = time((time_t *)0);
-    GenerationDate = ctime(&loc);
-
-and `migcom.tproj/utils.c:67` prints it into every generated stub. migcom ignores
-`SOURCE_DATE_EPOCH`, which is the standard reproducible-builds knob and is already exported by
-stdenv.
-
-WHY IT COSTS SOMETHING RATHER THAN BEING COSMETIC. Under content addressing, a mig group that
-reruns for any reason produces new bytes even when nothing about its inputs changed in a way
-that matters, so early cutoff cannot stop there and everything downstream of it rebuilds. That
-is the property #50 and #55 were built to get.
-
-WHICH COPY: I GOT THIS WRONG FIRST TIME and the check I flagged is what caught it. I recorded
-that `buck-src/bootstrap_cmds` was a COMMITTED tree. It is not: `jj file list` reports ZERO
-tracked files under it, and `buck-src/.gitignore` says outright that these are materialised
-nix-pinned upstream sources, never committed. Editing it would be lost on the next
-materialisation.
-
-There is ONE manifest entry, `pins/bootstrap_cmds`, and `scripts/buck-src.nu` copies that same
-pinned revision into `buck-src/<basename>`. So the pin feeds both locations, which is the
-basename mechanism the pin notes warn about, working as intended here rather than colliding.
-
-SO THE FIX IS A PATCH, not an edit: `patches/bootstrap_cmds/*.patch`. Both consumers apply it,
-`nix/lib/cider-src.nix` and `scripts/buck-src.nu:198`, with `patch -p1` inside the tree.
-
-THE FIX IS THE STANDARD ONE: take the epoch from the environment when it is set.
-
-    loc = time((time_t *)0);
-  becomes
-    const char *sde = getenv("SOURCE_DATE_EPOCH");
-    loc = sde ? (time_t) strtoll(sde, NULL, 10) : time((time_t *)0);
-
-DONE AND VERIFIED ON THE ARTIFACT. `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`
-applies cleanly, the patched file passes `cc -fsyntax-only`, `FORCE=1 scripts/buck-src.nu
-pins/bootstrap_cmds` reports applying it, and a freshly built mig group now reads
-
-    * stub generated Tue Jan  1 00:00:00 1980
-
-which is `SOURCE_DATE_EPOCH` 315532800. Before, it read the wall clock.
-
-GUARDED SO IT NEVER COSTS AN HOUR AGAIN. `scripts/buck-mig-epoch-check.nu` builds ONE mig group
-and reads one line, and is in `buck-test.nu`. Its control runs FIRST and is the half that
-matters: it asserts the `stub generated` line EXISTS before asserting what it says, because a
-migcom that stopped emitting the line, or a renamed output, would otherwise make the date
-assertion vacuously true.
-
-STILL OPEN: whether the full-graph diff now goes from 110 differing groups to 0. That run is
-the confirmation and is hour class.
+Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
 
 ### #66 - get the lowering out of the evaluator
 
