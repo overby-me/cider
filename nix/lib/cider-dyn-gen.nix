@@ -49,19 +49,17 @@
   # emitted action has no stdenv: no setup hooks, no propagation. llvm-ar is the case that
   # proved it, reachable only through the bintools wrapper's setup hook, so the unwrapped
   # package is named here explicitly.
-  stdenvBasics = [
-    pkgs.coreutils
-    pkgs.findutils
-    pkgs.gnused
-    pkgs.gnugrep
-    pkgs.gawk
-    pkgs.gnutar
-    pkgs.gzip
-    pkgs.diffutils
-    pkgs.patch
-    pkgs.bash
-    pkgs.llvmPackages.bintools.bintools
-  ];
+  # WHAT stdenv WOULD HAVE PUT ON PATH, taken from stdenv.initialPath rather than hand-picked.
+  # An emitted action has no stdenv: no setup hooks, no propagation, no initialPath. The list
+  # here used to be written out by hand and was missing xz, which surfaced 900 builders into a
+  # full-graph build as "exec: xz: not found" in an icu action. Hand-picking asks someone to
+  # know the whole of what stdenv supplies; naming initialPath asks nixpkgs.
+  #
+  # bintools.bintools IS STILL EXPLICIT, and separately. llvm-ar lives in the UNWRAPPED package
+  # and reaches PATH only through the wrapper's setup hook, which an emitted action never runs;
+  # lib.makeBinPath follows neither hooks nor propagation. Checked: closePropagation over the
+  # 33 tools gives 53 packages and still no llvm.
+  stdenvBasics = pkgs.stdenv.initialPath ++ [pkgs.llvmPackages.bintools.bintools];
 
   # THE SPEC DIR THE GENERATOR WROTE. No mkSpecDir, no toJSON in the evaluator, no per-group
   # anything: one store path holding all 1,474 specs, and the bridge reads the ones asked for.

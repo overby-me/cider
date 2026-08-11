@@ -55,24 +55,17 @@
 
   # WHAT stdenv WOULD HAVE PUT ON PATH, same list and same reason as cider-dyn-one: passthru
   # tools is only what the lowering ADDS to stdenv, and an emitted action has no stdenv.
-  stdenvBasics = [
-    pkgs.coreutils
-    pkgs.findutils
-    pkgs.gnused
-    pkgs.gnugrep
-    pkgs.gawk
-    pkgs.gnutar
-    pkgs.gzip
-    pkgs.diffutils
-    pkgs.patch
-    pkgs.bash
-    # THE UNWRAPPED BINTOOLS, because the WRAPPER does not expose the prefixed names. Its bin
-    # has ar and ld; llvm-ar lives in the unwrapped package and reaches PATH in an ordinary
-    # build through the wrapper's stdenv SETUP HOOK. An emitted action runs no setup hooks, so
-    # it has to be named. Found by unwind_static failing with llvm-ar: command not found while
-    # all 33 tool bin directories were checked and none contained it.
-    pkgs.llvmPackages.bintools.bintools
-  ];
+  # WHAT stdenv WOULD HAVE PUT ON PATH, taken from stdenv.initialPath rather than hand-picked.
+  # An emitted action has no stdenv: no setup hooks, no propagation, no initialPath. The list
+  # here used to be written out by hand and was missing xz, which surfaced 900 builders into a
+  # full-graph build as "exec: xz: not found" in an icu action. Hand-picking asks someone to
+  # know the whole of what stdenv supplies; naming initialPath asks nixpkgs.
+  #
+  # bintools.bintools IS STILL EXPLICIT, and separately. llvm-ar lives in the UNWRAPPED package
+  # and reaches PATH only through the wrapper's setup hook, which an emitted action never runs;
+  # lib.makeBinPath follows neither hooks nor propagation. Checked: closePropagation over the
+  # 33 tools gives 53 packages and still no llvm.
+  stdenvBasics = pkgs.stdenv.initialPath ++ [pkgs.llvmPackages.bintools.bintools];
 
   # MUST MATCH depVar IN dyn-actions.nix, and is written out rather than taken from the bridge
   # on purpose: a fixture that asks the thing under test what the answer is agrees with it by

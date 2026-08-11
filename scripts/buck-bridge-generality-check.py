@@ -84,6 +84,45 @@ def main(argv: list) -> int:
         print(f"    {f}:{line} names {ref}")
     rc = 0 if not problems else 1
 
+    # AND IS EVERY FIXTURE ACTUALLY RUN? A correct check nobody calls is worth nothing, which
+    # is the lesson that put the staging check into the suite in the first place. The fixtures
+    # here have already caught properties that were FALSE and had no fixture, so one that
+    # exists and is never invoked is the same failure a step earlier.
+    #
+    # THE BRIDGE ITSELF IS NOT A FIXTURE, nor is the fixup: they are what the fixtures test.
+    # REACHABILITY, NOT DIRECT NAMING. A fixture the runner does not name is still exercised
+    # if a fixture it DOES name imports it: dyn-actions-toy.nix is used that way by
+    # dyn-actions-specdir-toy.nix. Checking direct naming alone reports it as dead.
+    runner = os.path.join(ROOT, "scripts", "buck-dyndrv-check.nu")
+    # NOT A FIXTURE, and named rather than pattern-matched. A benign exception recognised by a
+    # pattern is how an unknown one gets swallowed with it.
+    NOT_A_FIXTURE = {
+        # What the fixtures test, rather than a fixture.
+        "dyn-actions.nix",
+        # A MEASUREMENT, not an assertion: it prices one emitted action and takes --argstr n.
+        # There is no pass or fail to run in a suite, and the number is in its header.
+        "dyn-actions-scale-toy.nix",
+    }
+    fixtures = [f for f in files if f.endswith(".nix") and f not in NOT_A_FIXTURE]
+    runner_text = open(runner).read()
+    reached = {f for f in fixtures if f in runner_text}
+    changed = True
+    while changed:
+        changed = False
+        for f in fixtures:
+            if f in reached:
+                continue
+            if any(f in open(os.path.join(LIB, r)).read() for r in reached):
+                reached.add(f)
+                changed = True
+    unrun = [f for f in fixtures if f not in reached]
+    print(f"  fixtures in the set: {len(fixtures)}, unreachable from buck-dyndrv-check.nu: "
+          f"{len(unrun)}")
+    for f in unrun:
+        print(f"    {f}")
+    if unrun:
+        rc = 1
+
     if "--controls" in argv:
         # A CHECK THAT CANNOT FAIL IS WORTH NOTHING. The set is discovered by prefix, so the
         # way to prove the walk works is to shrink the allowed set and watch the internal
@@ -102,6 +141,22 @@ def main(argv: list) -> int:
                     for f in files)
         print(f"  {'FIRES ' if total else 'SILENT'} path references found across the set: {total}")
         if not total:
+            fails += 1
+        # The reachability walk needs its own control: with an empty runner nothing may be
+        # reachable, or the walk is reporting everything reached no matter what it reads.
+        empty_reached = set()
+        ch = True
+        while ch:
+            ch = False
+            for f in fixtures:
+                if f not in empty_reached and any(
+                        f in open(os.path.join(LIB, r)).read() for r in empty_reached):
+                    empty_reached.add(f)
+                    ch = True
+        n = len(fixtures) - len(empty_reached)
+        print(f"  {'FIRES ' if n == len(fixtures) else 'SILENT'} runner naming nothing: "
+              f"{n} of {len(fixtures)} fixture(s) unreachable")
+        if n != len(fixtures):
             fails += 1
         if fails:
             print(f"  {fails} control(s) did not fire, so the zero above is not proven")
