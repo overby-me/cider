@@ -386,11 +386,14 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   `SOURCE_DATE_EPOCH` in its SETUP SCRIPT rather than as a derivation attribute, so it is
   invisible in the lowered derivation env and an emitted action never gets it. The other 57 diff
   lines were the check following dangling symlinks that are IDENTICAL in both trees.
-- **THE ADAPTER CONSUMES THE LOWERING, it does not replace it,** and that is why every eval
-  comparison came out a wash. `cider-dyn-gen.nix` takes `tools`, `stageScript`, `treeScripts`
-  and `deps` from `lowered.drvs.<label>.passthru`, so forcing an emitted producer forces the
-  lowered derivation too. The emitted route is the lowering PLUS the producers. So B today is a
-  VERIFICATION of the bridge against real actions at full scale, not a replacement path.
+- **THE ADAPTER NO LONGER CONSUMES THE LOWERING.** It read `tools`, `stageScript`,
+  `treeScripts` and `deps` from `lowered.drvs.<label>.passthru`, which forces a whole
+  mkDerivation per group; it now reads top-level accessors. Emitted derivations are unmoved,
+  checked against a running build's log. **The claim that this coupling was why the two routes
+  cost the same was WRONG**: from eval statistics, which ignore machine load, decoupling moves
+  thunks -1.3 percent and sets -8 percent while envs and calls go slightly up. A wash. The real
+  reason is that `builtins.outputOf` forces one derivation per action either way. B remains a
+  VERIFICATION of the bridge at full scale, not a replacement path.
 - **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting or
   rebuilding the toolchain list, the staging script and the staged tree scripts, which is a
   chunk of the lowering reimplemented. Nothing measured says what that would cost or save.

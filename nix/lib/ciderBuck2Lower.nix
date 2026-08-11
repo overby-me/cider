@@ -1623,6 +1623,23 @@ in
   # scripts/buck-names-check.nu compares them all on the real 1,474 labels.
   inherit specName depVar;
 
+  # WHAT A CONSUMER NEEDS PER GROUP, WITHOUT FORCING THE LOWERED DERIVATION FOR IT.
+  #
+  # nix/lib/cider-dyn-gen.nix used to read these from drvs.<label>.passthru, and accessing any
+  # attribute of a mkDerivation result forces the derivation itself. So the emitted route was
+  # instantiating BOTH a producer and a lowered derivation per group, which is why three
+  # separate eval comparisons between the two routes came out level: the emitted one was the
+  # lowered one PLUS the producers, never instead of it.
+  #
+  # These are the same values by construction, from the same top-level bindings the per-target
+  # code uses, so a consumer switching to them must see byte-identical emitted derivations.
+  # That is the check, not an argument.
+  toolsAll = targetTools;
+  stageScriptFor = stageProjectFor;
+  treeScriptsFor = label:
+    map (o: stagedTreeScript o (g.stagedTrees or {}).${o}) (needsFor label).trees;
+  depsFor = label: (needsFor label).t;
+
   # The spec dir, so a consumer can reach ${graph.specs}/dyn: the bridge-shaped specs the
   # generator wrote. nix/lib/cider-dyn-gen.nix feeds those to nix/lib/dyn-actions.nix, which is
   # the arrangement #66 is for, with nothing serialised in the evaluator.

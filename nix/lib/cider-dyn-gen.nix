@@ -40,8 +40,8 @@
   # a SET and wires the edges by name.
   coneOf = l:
     map (x: x.key) (lib.genericClosure {
-      startSet = map (d: {key = d;}) lowered.drvs.${l}.passthru.deps;
-      operator = x: map (d: {key = d;}) lowered.drvs.${x.key}.passthru.deps;
+      startSet = map (d: {key = d;}) (lowered.depsFor l);
+      operator = x: map (d: {key = d;}) (lowered.depsFor x.key);
     });
   members = coneOf label ++ [label];
 
@@ -68,11 +68,16 @@
   # Per action, keyed by the SPEC NAME because that is what the bridge asks about.
   byName = lib.listToAttrs (map (l: lib.nameValuePair (specName l) l) members);
 
-  envFor = l: let
-    d = lowered.drvs.${l};
-  in
+  # THROUGH THE TOP-LEVEL ACCESSORS, NOT drvs.<label>.passthru. Reading any attribute of a
+  # mkDerivation result forces the derivation, so the previous version instantiated a LOWERED
+  # derivation for every group as well as a producer: the emitted route was the lowered route
+  # PLUS the producers, which is why three separate eval comparisons came out level.
+  #
+  # Same values, from the same bindings the per-target code uses, so the emitted derivations
+  # must be byte identical. That is checked, not argued.
+  envFor = l:
     {
-      CIDER_PATH = lib.makeBinPath (d.passthru.tools ++ stdenvBasics);
+      CIDER_PATH = lib.makeBinPath (lowered.toolsAll ++ stdenvBasics);
 
       # WHAT stdenv SETS IN ITS SETUP SCRIPT RATHER THAN AS AN ATTRIBUTE, which is why it is
       # invisible in the lowered derivation env and was missed. nixpkgs setup line 593 reads
@@ -83,12 +88,12 @@
       # emitted action has no setup script, so the compiler saw the real date. Everything else
       # in the prefix was already identical.
       SOURCE_DATE_EPOCH = "315532800";
-      CIDER_STAGE = "${d.passthru.stageScript}";
+      CIDER_STAGE = "${lowered.stageScriptFor l}";
       CIDER_DATA = "${lowered.graphData}";
     }
     // lib.listToAttrs (lib.imap0 (i: s:
       lib.nameValuePair ("CIDER_TREE_" + toString i) "${s}")
-    d.passthru.treeScripts)
+    (lowered.treeScriptsFor l))
     # THE PLACEHOLDERS AS ENV RATHER THAN EXPORTS. The lowering exports them because a
     # runCommand had no other way to receive them; an emitted action takes them directly, so
     # the generator leaves that slot empty.
@@ -160,7 +165,10 @@ in {
   # `deps.json` and leaves each spec as a file the producer copies. Whether that matters is a
   # measurement, not an argument, and it is the one asymmetry left after the full-graph eval
   # costs came out a wash.
-  oneProbe = builtins.seq everything.producers.${specName label}.drvPath "one";
+  # RETURNS THE PATH, not a token, because the path is what makes this checkable: a change to
+  # how the adapter obtains its per-group values must leave the emitted derivations where they
+  # were, and comparing the producer drvPath against one from a build log says so.
+  oneProbe = builtins.unsafeDiscardStringContext everything.producers.${specName label}.drvPath;
 
   # nix eval .#cider-buck2-prefix-min --apply ... is awkward for this, so it is an attribute:
   #   nix eval --raw -f ... scaleProbe
