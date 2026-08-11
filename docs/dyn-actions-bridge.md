@@ -65,6 +65,27 @@ Use `depVar` to build the variable name: action names are free-form and shell va
 are not, and a mismatch does not fail. The variable is simply never set, expands to EMPTY, and
 the action runs against nothing and produces a plausible, wrong result.
 
+## What this does and does not move out of the evaluator
+
+IT MOVES THE CONTENT OF A DERIVATION, NOT THE COUNT OF THEM. That distinction was measured
+here three times before it was understood, so it is worth stating plainly.
+
+`builtins.outputOf p.outPath name` needs `p.outPath`, and asking for that instantiates the
+producer. A consumer that binds to every action's output therefore instantiates one derivation
+per action at EVALUATION, exactly as a consumer that built those derivations directly would.
+Nor does binding only to the final action help: its producer's environment names its
+dependencies' outputs, which name theirs, so the evaluator walks the whole graph anyway.
+
+What DOES leave the evaluator is everything the derivation is made OF: the command line, the
+environment, the dependency edges, and any per-action computation behind them. In this repo
+that was the whole builder script and the graph traversal that assembles it, which a generator
+now writes once inside a derivation that already runs. Measured on 1,474 groups, that took the
+consumer's evaluation from 12.0 s to 10.6 s while the derivation count stayed the same.
+
+So the reason to reach for this is not a smaller evaluation by itself. It is that the ACTION
+DATA becomes an artifact: written once, checkable, and shareable between consumers, instead of
+being recomputed by every invocation of every consumer.
+
 ## Limits found by a real consumer, which toys did not reach
 
 **A single argument can be too long to pass.** Linux caps one argv or env string at
