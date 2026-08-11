@@ -124,7 +124,11 @@ def counter-selftest [] {
 
 # What this probe will actually cost, which is not one number. Both source filters exclude
 # scripts/, nix/, docs/ and PLAN.md, so a probe there re-evaluates and rebuilds NOTHING;
-# anything else moves cider-src and drags ld64 and the graph in ahead of the target.
+# anything else moves cider-src.
+#
+# THIS COMMENT USED TO END "and drags ld64 and the graph in ahead of the target". Both halves
+# are now false and the ld64 half was ALREADY false when written: #65 made ld64 the buck2 BUILT
+# linker, and nix/cctools-port.nix, the file the claim pointed at, no longer exists.
 def probe-cost []: string -> string {
     let path = $in
     let free = ["docs/", "PLAN.md"]
@@ -139,7 +143,7 @@ def probe-cost []: string -> string {
     } else if ($filtered | any {|p| $path | str starts-with $p }) {
         "Outside both source filters, so cider-src does not move, but a script or nix file used as a nix INPUT still rebuilds whatever consumes it."
     } else {
-        "This moves cider-src, so ld64 rebuilds. The GRAPH no longer does (#56). MEASURED end to end on one .m file: 6 builders, 17.5 minutes."
+        "This moves cider-src, so cider-buck2-sources and cider-buck2-skeleton rebuild. NOTHING ELSE DOES. Neither the graph (#56) nor ld64 (#65). MEASURED on the ENDPOINT 2026-08-12, one .m file: 2 builders, 1276s, and ZERO of the 1,474 groups."
     }
 }
 

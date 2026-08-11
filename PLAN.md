@@ -356,81 +356,51 @@ in `buck-test.nu`.
 
 Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
 
-### #96 - a first-party source edit still invalidates every group that stages the project
+### #96 - a first-party source edit and the group cascade (ANSWERED 2026-08-12: THERE IS NO CASCADE)
 
-THE CACHING WEAKNESS THAT IS LEFT. Everything else caches: CA early cutoff works, an unrelated
-source edit rebuilds the graph and runs ZERO buck2 derivations, no-op rebuilds are about 0.3 s,
-and the 4,159 staged-tree scripts did not move at all in the recorded probe. This one does.
+**THE PREMISE IN THE OLD TITLE WAS FALSE.** It read "a first-party source edit still
+invalidates every group that stages the project". Measured on the endpoint, it invalidates
+**zero** groups.
 
-THE CAUSE IS NOT THE GRAPH. `graph.json` records action command lines rather than their
-outputs, so it stays byte identical across changes that alter what a build produces; the migcom
-patch left it at `mv46f3p6`.
+**THE MEASUREMENT.** `scripts/buck-quick-check.nu --attr .#cider-buck2-prefix-min --probe
+darwin/frameworks/AVFoundation/constants.m`, which builds the endpoint, appends a nonce comment
+to one first-party source, rebuilds, counts builders that RAN, and reverts:
 
-**THE CAUSE STATED HERE WAS THE WRONG CODE PATH, and the correction matters because it changes
-what the fix would even be.** This entry said the cascade is that the staging script embeds
-`${projectSrc}`, the whole filtered project. That is true of `stageProject`,
-`ciderBuck2Lower.nix:1282`, and `stageProject` is the **`sourceGroups` = OFF** path. Read off
-the code rather than the comments:
+    counter self test           ran=1, so the counter can report non-zero
+    baseline                    ran=1 in 937.5 s   (the endpoint was warm)
+    after editing one .m        ran=2 in 1276.6 s
+                                cider-buck2-skeleton
+                                cider-buck2-sources
+    of the 1,474 groups         ZERO
+    ld64                        did not rebuild
+    graph                       did not rebuild
 
-    flake.nix:399, :510, :835      sourceGroups = true, all three places it is set
-    ciderBuck2Lower.nix:1332       "every endpoint that gets gated has it ON"
-    ciderBuck2Lower.nix:1223       so the endpoint takes stageTextFor: groups + pinStageLines
-    ciderBuck2Lower.nix:547        pinPath = "${pinsTree}/${p}"
-    ciderBuck2Lower.nix:452        pinsTree is assembled from ciderSrc.pinPaths, the per-pin
-                                   stores, whose inputs are FROZEN PINS
+**THE POSITIVE CONTROL IS THE POINT, because a zero needs one.** `cider-buck2-sources`
+rebuilding proves the edit REACHED `projectSrc`. Without that, ran=2 would be indistinguishable
+from a probe that measured nothing, and the file was checked against the source filter
+beforehand for the same reason: `nix/lib/cider-src.nix` excludes only top-level names plus every
+file called `BUCK`, and `darwin/` is kept.
 
-So on the path the endpoint actually takes, the whole-project reference is already gone: #54
-narrowed the groups, #74 gave the pins a self-contained mirrored tree, and #79 gave the escape
-destinations their own store paths after an earlier version resolved them against the whole
-project and moved on every edit.
+**WHAT THE TWO REMAINING BUILDERS ARE.** Not a cascade: `projectSrc` is an input to the graph
+derivation, so when a source changes it must be re-derived. Two derivations and a re-resolution
+is the floor, not a defect.
 
-**WHICH MAKES THE MEASUREMENT THE WHOLE TASK, not a preliminary to it.** The wide path still
-exists and is what this entry described; the endpoint does not take it. Whether anything still
-cascades at endpoint scale is genuinely unknown until the probe reports, and if the number comes
-back small the work here is to correct this entry, not to implement anything.
+**WHAT THIS SUPERSEDES.** The figure on record was "323 compiles and still climbing" from a
+probe predating #54, #74, #79 and #95. It is 2. And the entry's own stated cause was the wrong
+code path: it blamed `stageProject` embedding the whole `projectSrc`, which is the
+`sourceGroups` = OFF path, while every endpoint sets it ON and goes through `stageTextFor` plus
+`pinStageLines`, whose pins resolve through `pinsTree` from frozen per-pin stores. #54 narrowed
+the groups, #74 gave the pins a self-contained mirrored tree, #79 gave the escape destinations
+their own store paths. Those three closed this between them; nothing here needed implementing.
 
-**STEP 0 IS A MEASUREMENT, AND THE TARGET DECIDES WHAT IT MEANS.** Two figures are on record
-and they differ by sixty times, because they answer different questions:
+**TWO STALE CLAIMS THIS KILLED, both now corrected in place.** `nix/lib/cider-src.nix` justified
+excluding BUCK files by "ld64 is built from this tree (nix/cctools-port.nix) ... 26,351 compile
+steps", and `buck-quick-check.nu` predicted "6 builders, 17.5 minutes" with ld64 rebuilding. That
+file no longer exists and #65 made ld64 the buck2-built linker. The BUCK exclusion RULE still
+stands, on the smaller measured reason above.
 
-    5 builders, 97 s      buck-quick-check.nu header, on
-                          darwin/frameworks/AVFoundation/constants.m
-    323 compiles and      ciderBuck2Lower.nix, one first-party source edited on the minimal
-    still climbing        ENDPOINT, with 0 of 4,159 stage-trees and 1 stage-project
-
-Both are right. `buck-quick-check.nu` defaults to `DEFAULT_ATTR = .#cider-buck2-one`, ONE small
-target, so it counts only what that target pulls. The cascade this task is about is the endpoint
-one. **So the probe must be run with `--attr .#cider-buck2-prefix-min`,** or it will report a
-handful of builders and read as "caching is fine" while measuring something else entirely.
-
-THE PROBE EDITS A FIRST-PARTY SOURCE, so it must not run while a build is in flight: `darwin/`
-and `linux/` are on the not-safe list precisely because jj auto-snapshots and what nix builds is
-the working copy. And if a probe is interrupted it leaves its marker line behind, which the next
-build would snapshot; `--revert-only` strips it by tag rather than by whole line, so it recovers
-even after a kill.
-
-Re-take it before any work, since 323 predates #95 and the rest of 2026-08-11: edit one leaf
-source, rebuild the ENDPOINT, count builders that RAN, revert. The probe proves its counter
-first, by building a fresh-nonce derivation that must report exactly 1, and it puts a nonce in
-the marker so probing the same file twice cannot reproduce an already-built tree and report a
-false zero. If the number is genuinely small at endpoint scale, record it and stop.
-
-THE FIX, if the number justifies it: narrow the staged source per staging KEY. The lowering
-already partitions 1,474 groups into 94 staging scripts, so give each key a `projectSrc`
-filtered to the source groups it actually stages. Cheaper variant: split `projectSrc` by
-top-level directory only, five or six sets, far less risk, and already enough to stop a `linux/`
-edit invalidating every `darwin/` group.
-
-THE DANGER IS DOCUMENTED AND HAS BITTEN. #44 is exactly this failure: per-target source
-narrowing DROPPED real compile inputs, and it does not fail at evaluation, it fails as a missing
-include an hour into a build. #69 records a `narrowSources` mechanism that existed and was
-superseded, so read it first. Narrow by source GROUP, the coarse unit that already exists, never
-per target.
-
-THE SAFETY NET EXISTS NOW and did not when #44 bit: `buck-lowering-invariance-check.nu`,
-the endpoint drvPath, and `.#cider-buck2-dyn-gen-all`, which diffs all 1,474 groups against an
-independently built route and would surface a dropped input as a differing group rather than as
-a build failure much later.
-
+**NOTHING TO DO.** Do not implement the fix this entry used to propose. Re-run the probe if the
+staging or source-filter code changes; that is what it is for.
 ### #66 - get the lowering out of the evaluator (DONE 2026-08-11)
 
 BOTH HALVES DONE. A general buck2-graph to dynamic-derivation bridge, worth having for OTHER

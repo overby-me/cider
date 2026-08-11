@@ -49,11 +49,25 @@ let
       # darwin/CoreAudio/BUCK and 56 others -- because darwin/ and src/ are what cmake needs,
       # so the top-level exclusions below cannot reach them. cmake never opens one.
       #
-      # Left in, editing any of them rehashes this tree, and ld64 is built from it
-      # (nix/cctools-port.nix), so a one-line BUCK edit rebuilds ld64 from source: 26,351
-      # compile steps before the thing being tested can even start. That is measurable in
-      # the store, where cider-cmake-src paths carry 46, 60, 61 and 62 BUCK files -- one
-      # rebuild of everything per BUCK edit, all campaign.
+      # Left in, editing any of them rehashes this tree, and everything derived from it moves.
+      #
+      # THE ORIGINAL REASON GIVEN HERE IS DEAD, and saying so matters because it was the whole
+      # justification. It read: ld64 is built from this tree (nix/cctools-port.nix), so a
+      # one-line BUCK edit rebuilds ld64 from source, 26,351 compile steps before the thing
+      # being tested can start. Both halves are gone. nix/cctools-port.nix no longer exists,
+      # and #65 made ld64 the buck2 BUILT linker, so it is a group in the graph like any other
+      # and rebuilds only when ITS sources change.
+      #
+      # THE RULE STILL STANDS, on a measured and much smaller reason. Rehashing this tree
+      # rebuilds cider-buck2-sources and cider-buck2-skeleton, and everything downstream binds
+      # to those. Measured on the ENDPOINT 2026-08-12, editing one .m file:
+      #
+      #     2 builders, cider-buck2-sources and cider-buck2-skeleton, 1276 s
+      #     ZERO of the 1,474 groups, zero ld64, zero graph
+      #
+      # So the cost of a BUCK edit is two derivations and a re-resolution, not a linker rebuild.
+      # That is still worth avoiding for files that change on every commit of this port, which
+      # is what BUCK files do, but do not quote the 26,351 again: it is not what happens.
       #
       # BUCK.tmp.* too: scripts/gen-buck-from-ninja.py writes one next to the file it is
       # rewriting, so a build racing a regenerate would otherwise capture it.
