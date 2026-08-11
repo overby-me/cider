@@ -730,6 +730,11 @@ lives there) -- root-separation is the main pre-upstream item.
 
 ## #66 in detail (2026-08-11)
 
+READ THE ADDENDUM AT THE END OF THIS SECTION FIRST if you want current state. What follows
+below it was written earlier the same day and its counts are of that moment: the property count
+in particular has moved from six to eleven, and the sentence saying so is left as written
+rather than edited, because this file is a record of what was known when.
+
 Moved out of PLAN.md to keep it short. This is the working record: what was measured, what
 turned out false, and the traps that cost time.
 
@@ -931,3 +936,57 @@ tail (the rust vendor loop, pinStageLines across 148 pins) out of the per-label 
 text differed by whitespace alone. Same 94 distinct scripts, every path different, every target
 would rebuild. A green ladder saw nothing wrong with it.
 
+
+
+### #66 addendum, later on 2026-08-11: the generator, and four things measurement corrected
+
+**THE LOWERING NO LONGER ASSEMBLES A BUILDER SCRIPT.** `scripts/buck_lowering.py` renders it and
+`buck-graph-to-specs.py` writes `full.json`, `needs.json` and a `dyn/` directory of bridge-shaped
+specs, all inside the graph derivation. The lowering reads them and supplies the five values only
+a consumer can know. All 1,474 labels unchanged, endpoint drvPath identical, rung 2 zero builders.
+
+**A AND B ARE CONNECTED.** `.#cider-buck2-dyn-gen` builds real cider cones from those specs with
+nothing serialised in the evaluator, `diff -r` clean against the lowered derivation. Cones run to
+ciderd, 51 groups and 146 actions. All 1,474 producers instantiate in about 13 s.
+
+**FOUR THINGS THAT WERE WRONG UNTIL MEASURED.**
+
+- `lib.escapeShellArg` DOES NOT ALWAYS QUOTE. It leaves a string alone when every character is in
+  `[A-Za-z0-9,._+:@%/-]`, and the SLASH is in that class, so ordinary buck-out paths come through
+  bare. A renderer that quoted them looked right and matched nothing.
+- A NIX INDENTED STRING CONTRIBUTES ITS OWN NEWLINE after an interpolation. Two bytes out of
+  5,662, in two places, and only a byte-for-byte comparison against a real script finds them.
+- `CIDER_TREE_<i>` MUST COUNT SCRIPTS EMITTED, not position in `fromStaged`: an entry with no
+  links emits nothing. 730 of 1,474 labels matched anyway, because a group whose staged entries
+  all have links has the two numberings agree. A one-label check would have passed.
+- `builtins.seq` FORCES A LIST TO WHNF AND NOT ITS ELEMENTS. A 5.2 s probe was read as the cost
+  of the read-only path and was not one: the staging script, tree scripts and dependency paths
+  were never evaluated. The honest interleaved figures are 12.0 s for the old assembly, 12.3 s
+  for the template, and 10.6 s once `needs.json` removed `needsOf`.
+
+**`replaceStrings` IS THE WRONG SHAPE AT THIS SIZE.** `full.json` first held finished text with
+`"$VAR"` in it, which meant substituting by scanning every byte against every pattern: 77 MB
+against up to 130 patterns took 28.0 s against the old 12.0 s. It is an alternating template now,
+literal and variable by index parity, joined rather than scanned.
+
+**A CHECK WENT CIRCULAR AND HAD TO BE UNPICKED.** `passthru.deps` now comes from `needs.json`,
+which the python generator wrote, so comparing the python against it would have compared the
+python against itself. `passthru.definitionNeeds` calls `needsOf` and the check reads that.
+Proven by discriminating rather than by reading code: a generator planted to drop each group's
+first dependency makes the lowering fail to evaluate outright, while the needs check passes
+1,474 of 1,474 unmoved.
+
+**AN ARGUMENT CAN BE TOO LONG TO PASS, AND 89 OF 1,474 ARE.** Linux caps ONE argv or env string
+at MAX_ARG_STRLEN, 32 pages, 131,072 bytes. That is not ARG_MAX, the 2 MB total, which was never
+reached. The largest action script here is 5,132,916 bytes and three exceed even the total. BOTH
+halves of the bridge were broken and only one was obvious: the emitted action carried its script
+as a `-c` argument, and the PRODUCER embedded the whole spec in its own command line through a
+printf, so it died before the fixup ever ran. Specs go through a store file in both modes now,
+and an over-long `-c` argument spills to one and becomes `. <path>`. Only a `-c` argument is
+rewritten, because only there is the argument known to BE a shell script. THIS COULD NOT HAVE
+BEEN FOUND ON TOYS: every other fixture script is a few kilobytes.
+
+**GENERALITY IS ENFORCED NOW, NOT ASSERTED.** `scripts/buck-bridge-generality-check.py` requires
+every path a reusable file names to resolve inside the reusable set, which is the condition for
+copying that set into another repo. 13 files, 0 references leaving. The comments saying "nothing
+cider-shaped in here" were never a check.
