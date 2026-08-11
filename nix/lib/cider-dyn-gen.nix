@@ -33,10 +33,16 @@
   # not error: the name would simply not be found, or worse would find another group's spec.
   inherit (lowered) specName;
 
-  coneOf = l: let
-    direct = lowered.drvs.${l}.passthru.deps;
-  in
-    lib.unique (lib.concatMap (d: coneOf d ++ [d]) direct);
+  # MEMOISED, through genericClosure, which dedups as it goes. The obvious recursion,
+  # `unique (concatMap (d: coneOf d ++ [d]) direct)`, revisits every shared dependency once per
+  # path that reaches it, so it is fine on a cone of four and is not something to discover on a
+  # cone of several hundred. ORDER IS NOT PRESERVED and nothing here wants it: dyn-actions takes
+  # a SET and wires the edges by name.
+  coneOf = l:
+    map (x: x.key) (lib.genericClosure {
+      startSet = map (d: {key = d;}) lowered.drvs.${l}.passthru.deps;
+      operator = x: map (d: {key = d;}) lowered.drvs.${x.key}.passthru.deps;
+    });
   members = coneOf label ++ [label];
 
   # WHAT stdenv WOULD HAVE PUT ON PATH. tools is only what the lowering ADDS to stdenv, and an
