@@ -368,11 +368,18 @@ reruns for any reason produces new bytes even when nothing about its inputs chan
 that matters, so early cutoff cannot stop there and everything downstream of it rebuilds. That
 is the property #50 and #55 were built to get.
 
-WHICH COPY, resolved, because there are two and the recorded trap is that pins collide
-silently by basename. `nix/submodules.json` pins `pins/bootstrap_cmds`, but `buck-src/BUCK:50`
-globs `bootstrap_cmds/migcom.tproj/*.h` with `root = "bootstrap_cmds/migcom.tproj"`, so the
-COMMITTED tree at `buck-src/bootstrap_cmds` is what gets compiled. Confirm the pin does not
-overlay it before editing.
+WHICH COPY: I GOT THIS WRONG FIRST TIME and the check I flagged is what caught it. I recorded
+that `buck-src/bootstrap_cmds` was a COMMITTED tree. It is not: `jj file list` reports ZERO
+tracked files under it, and `buck-src/.gitignore` says outright that these are materialised
+nix-pinned upstream sources, never committed. Editing it would be lost on the next
+materialisation.
+
+There is ONE manifest entry, `pins/bootstrap_cmds`, and `scripts/buck-src.nu` copies that same
+pinned revision into `buck-src/<basename>`. So the pin feeds both locations, which is the
+basename mechanism the pin notes warn about, working as intended here rather than colliding.
+
+SO THE FIX IS A PATCH, not an edit: `patches/bootstrap_cmds/*.patch`. Both consumers apply it,
+`nix/lib/cider-src.nix` and `scripts/buck-src.nu:198`, with `patch -p1` inside the tree.
 
 THE FIX IS THE STANDARD ONE: take the epoch from the environment when it is set.
 
