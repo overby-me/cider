@@ -621,6 +621,24 @@
         })
         .check;
 
+      # THE SAME THING ON A GROUP WITH DEPENDENCIES, which is the case that actually exercises
+      # inferSrcs: Security_final is one action with 103 dependency groups, and its script names
+      # every one of their outputs inside the string, so nothing enumerates them in advance.
+      # dyn-one alone proves only that a self-contained group works.
+      #
+      # ITS DEPENDENCIES COME FROM THE LOWERING, not from the bridge. Emitting the whole cone is
+      # the full adapter; this isolates the script, PATH and output-variable adaptation on a
+      # group whose inputs are many and real.
+      #
+      #   nix build .#cider-buck2-dyn-deps --no-link -L
+      packages.cider-buck2-dyn-deps = pkgs:
+        (import ./nix/lib/cider-dyn-one.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+          label = "root//buck-src:Security_final";
+        })
+        .check;
+
       # The SECOND probe, and it exists because libsimple_ciderd cannot fail the way #87 did.
       # It owns its own sources, so a wrong include dir in some OTHER package is invisible to
       # it. This one is the xnu pin package, which reaches ACROSS into first-party header
