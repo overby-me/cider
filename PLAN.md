@@ -740,9 +740,33 @@ obvious suspect, and the core says the fault is in the stub binder instead. It i
 format mismatch: the probe and cider's own WORKING `/bin/bash` have the same load commands,
 `LC_DYLD_INFO_ONLY` plus `LC_MAIN`, neither uses chained fixups.
 
-**NEXT:** find WHICH symbol is being bound when it faults. bash binds lazily too and survives, so
-the difference is the particular import or its binding data, not the mechanism. Disassemble
-`dyld_stub_binder` around +0xF1 and read what it dereferences.
+**ROOT CAUSE FOUND: A PROT_NONE GUARD PAGE SITS INSIDE THE GUEST STACK.** The faulting code is
+not symbol resolution at all, it is the XSAVE buffer setup that runs first: dyld reads
+`_bufferSize32` (0xA88 = 2696, sane, and it matches `rax` in the core), subtracts it from `rsp`,
+and zeroes upward. From the core's PT_LOAD headers, raw:
+
+    0x7FFFFFDE3000-0x7FFFFFDF0000  RW
+    0x7FFFFFDF0000-0x7FFFFFDF1000  flags EMPTY, no R no W no X
+    0x7FFFFFDF1000-0x7FFFFFE00000  RW
+
+`rsp` was 0x7FFFFFDF0700, so only **0x700 = 1792 bytes** lie below it before that guard page,
+while dyld needs 2696. The loop starts at 0x7FFFFFDEFC40, which IS mapped RW, and walks UPWARD
+into the guard. Checking only the first address is what made this look like a mapped-page fault.
+mldr's own log agrees: it reports `stack sp=0x7fffffdf0110`, inside that page range.
+
+**FOUR HYPOTHESES DIED HERE, do not re-chase any of them:** thread-local storage (the binary does
+carry HAS_TLV_DESCRIPTORS and libdyld does export `__tlv_bootstrap`); a fixup-format mismatch (the
+probe and cider's WORKING `/bin/bash` both carry `LC_DYLD_INFO_ONLY` + `LC_MAIN`, neither uses
+chained fixups); a garbage buffer size; and an unmapped destination.
+
+**TWO CORE-READING TRAPS WORTH KEEPING.** `info proc mappings` on a core lists only FILE-BACKED
+mappings, so an anonymous stack absent from it proves NOTHING; use the PT_LOAD program headers.
+And `readelf -l` splits each program header over TWO lines, so a naive regex reports zero PT_LOAD
+for a core that has 186.
+
+**NEXT:** find who creates that guard page and why the initial SP sits above it with under 2 KB of
+room. Candidates are mldr's guest stack setup and the guest pthread main-thread guard. Fixing it
+is a stack-layout change, not a Rust change.
 
 ### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
 
