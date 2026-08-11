@@ -356,6 +356,40 @@ in `buck-test.nu`.
 
 Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
 
+### #96 - a first-party source edit still invalidates every group that stages the project
+
+THE CACHING WEAKNESS THAT IS LEFT. Everything else caches: CA early cutoff works, an unrelated
+source edit rebuilds the graph and runs ZERO buck2 derivations, no-op rebuilds are about 0.3 s,
+and the 4,159 staged-tree scripts did not move at all in the recorded probe. This one does.
+
+THE CAUSE IS ONE THING, and it is NOT the graph. `graph.json` records action command lines
+rather than their outputs, so it stays byte identical across changes that alter what a build
+produces; the migcom patch left it at `mv46f3p6`. The cascade is that the staging script embeds
+`${projectSrc}`, `projectSrc` is the WHOLE filtered project, so any first-party edit moves that
+path, moves all 94 distinct staging scripts, and moves every group that stages one.
+
+**STEP 0 IS A MEASUREMENT.** The recorded figure is 323 compiles and still climbing, but it
+predates #95 and the rest of 2026-08-11 and must be re-taken before any work: edit one leaf
+source, rebuild the minimal endpoint, count builders that RAN, revert. `buck-quick-check.nu`
+has a probe mode that proves its counter first. If the number is small, record it and stop.
+
+THE FIX, if the number justifies it: narrow the staged source per staging KEY. The lowering
+already partitions 1,474 groups into 94 staging scripts, so give each key a `projectSrc`
+filtered to the source groups it actually stages. Cheaper variant: split `projectSrc` by
+top-level directory only, five or six sets, far less risk, and already enough to stop a `linux/`
+edit invalidating every `darwin/` group.
+
+THE DANGER IS DOCUMENTED AND HAS BITTEN. #44 is exactly this failure: per-target source
+narrowing DROPPED real compile inputs, and it does not fail at evaluation, it fails as a missing
+include an hour into a build. #69 records a `narrowSources` mechanism that existed and was
+superseded, so read it first. Narrow by source GROUP, the coarse unit that already exists, never
+per target.
+
+THE SAFETY NET EXISTS NOW and did not when #44 bit: `buck-lowering-invariance-check.nu`,
+the endpoint drvPath, and `.#cider-buck2-dyn-gen-all`, which diffs all 1,474 groups against an
+independently built route and would surface a dropped input as a differing group rather than as
+a build failure much later.
+
 ### #66 - get the lowering out of the evaluator
 
 A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
