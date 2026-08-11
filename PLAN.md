@@ -679,11 +679,19 @@ generator needs to be re-runnable before that happens.
 Re-derive before trusting: `scripts/buck-coverage.py --missing` and
 `scripts/gen-install-from-manifests.py`.
 
-1. **The `all` component.** Sized and started; see "Stage 3" above. Three targets left
-   and each has a known cause: JavaScriptCore (HANGS buck2 with the daemon at 0% CPU,
-   reproducible across a daemon restart -- the real blocker), MachExceptions_xtrace_mig
-   (does not link) and the 9 dev-stub frameworks the coverage metric hides behind their
-   basename collision with the real frameworks.
+1. **The `all` component.** Sized and started; see "Stage 3" above.
+
+   THIS ENTRY IS STALE and was written when three targets were left. What it said, and what
+   is true now:
+
+   - JavaScriptCore, recorded as HANGING buck2 with the daemon at 0% CPU. The hang was
+     found and fixed, a cyclic symlink; the task list has it, and #23 then ran jsc on a
+     script. NOT re-verified here, deliberately: the minimal endpoint's graph does not
+     contain JavaScriptCore at all, so it is no evidence either way.
+   - MachExceptions_xtrace_mig, recorded as not linking. IT LINKS. The current minimal
+     graph carries `MachExceptions_xtrace_mig_obj` AND `_dylib`, counted out of graph.json.
+   - the 9 dev-stub frameworks, recorded as hidden behind a basename collision. Ported, and
+     the coverage metric was taught to see them.
 
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
    everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
