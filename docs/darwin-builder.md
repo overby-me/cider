@@ -429,11 +429,11 @@ nix.settings.builders = [
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DARLING_BUILD_HOOK_DARLING` | `cider` | Path to the cider binary |
-| `DARLING_BUILD_HOOK_PREFIX` | auto | Darling prefix path |
-| `DARLING_BUILD_HOOK_NIX_PROFILE` | `/Users/root/.nix-profile/etc/profile.d/nix.sh` | Nix profile to source inside Darling |
-| `DARLING_BUILD_HOOK_MAX_JOBS` | `4` | Maximum concurrent jobs |
-| `DARLING_BUILD_HOOK_VERBOSE` | `0` | Verbosity level (0=quiet, 1=debug) |
+| `CIDER_BUILD_HOOK_CIDER` | `cider` | Path to the cider binary |
+| `CIDER_BUILD_HOOK_PREFIX` | auto | Darling prefix path |
+| `CIDER_BUILD_HOOK_NIX_PROFILE` | `/Users/root/.nix-profile/etc/profile.d/nix.sh` | Nix profile to source inside Darling |
+| `CIDER_BUILD_HOOK_MAX_JOBS` | `4` | Maximum concurrent jobs |
+| `CIDER_BUILD_HOOK_VERBOSE` | `0` | Verbosity level (0=quiet, 1=debug) |
 | `DPREFIX` | auto | Fallback for prefix path |
 
 ---

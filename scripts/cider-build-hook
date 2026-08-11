@@ -44,20 +44,20 @@ set -euo pipefail
 # ── Configuration ────────────────────────────────────────────────────
 
 # Darling binary (auto-detected or overridden via environment)
-DARLING="${DARLING_BUILD_HOOK_DARLING:-cider}"
+DARLING="${CIDER_BUILD_HOOK_CIDER:-${DARLING_BUILD_HOOK_DARLING:-cider}}"
 
 # Darling prefix (default: whatever cider uses, usually ~/.cider)
-DPREFIX="${DARLING_BUILD_HOOK_PREFIX:-${DPREFIX:-}}"
+DPREFIX="${CIDER_BUILD_HOOK_PREFIX:-${DARLING_BUILD_HOOK_PREFIX:-${DPREFIX:-}}}"
 
 # Nix profile to source inside Darling
-NIX_PROFILE="${DARLING_BUILD_HOOK_NIX_PROFILE:-/Users/root/.nix-profile/etc/profile.d/nix.sh}"
+NIX_PROFILE="${CIDER_BUILD_HOOK_NIX_PROFILE:-${DARLING_BUILD_HOOK_NIX_PROFILE:-/Users/root/.nix-profile/etc/profile.d/nix.sh}}"
 
 # Maximum concurrent jobs (for informational purposes; actual limiting
 # is done by the Nix daemon based on maxJobs in the builders spec)
-MAX_JOBS="${DARLING_BUILD_HOOK_MAX_JOBS:-4}"
+MAX_JOBS="${CIDER_BUILD_HOOK_MAX_JOBS:-${DARLING_BUILD_HOOK_MAX_JOBS:-4}}"
 
 # Verbosity
-VERBOSE="${DARLING_BUILD_HOOK_VERBOSE:-0}"
+VERBOSE="${CIDER_BUILD_HOOK_VERBOSE:-${DARLING_BUILD_HOOK_VERBOSE:-0}}"
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -250,11 +250,12 @@ Subcommands:
   --help               Show this help
 
 Environment variables:
-  DARLING_BUILD_HOOK_DARLING    Path to the cider binary (default: cider)
-  DARLING_BUILD_HOOK_PREFIX     Darling prefix path (default: auto)
-  DARLING_BUILD_HOOK_NIX_PROFILE  Nix profile script inside Darling
-  DARLING_BUILD_HOOK_MAX_JOBS   Max concurrent jobs (default: 4)
-  DARLING_BUILD_HOOK_VERBOSE    Verbosity level (0=quiet, 1=debug)
+  CIDER_BUILD_HOOK_CIDER        Path to the cider binary (default: cider)
+  CIDER_BUILD_HOOK_PREFIX       Darling prefix path (default: auto)
+  CIDER_BUILD_HOOK_NIX_PROFILE  Nix profile script inside Darling
+  CIDER_BUILD_HOOK_MAX_JOBS     Max concurrent jobs (default: 4)
+  CIDER_BUILD_HOOK_VERBOSE      Verbosity level (0=quiet, 1=debug)
+  (every one of these still honours its DARLING_ spelling)
   DPREFIX                       Fallback for Darling prefix path
 
 When invoked by Nix as a build hook (no arguments), the script reads the

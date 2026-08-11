@@ -14,8 +14,10 @@
 # re-running that command once.
 #
 # Env:
-#   DARLING_OUT          override the cider out path (else `nix build`)
-#   DARLING_C2_SETUID    setuid copy location (default /opt/cider-c2/cider)
+#   CIDER_OUT            override the cider out path (else `nix build`)
+#                        (DARLING_OUT is still honoured)
+#   CIDER_C2_SETUID      setuid copy location (default /opt/cider-c2/cider)
+#                        (DARLING_C2_SETUID is still honoured)
 #   DPREFIX              prefix location (default ~/.cider-c2)
 #
 # Usage: scripts/cider-host.sh <cider args...>
@@ -31,17 +33,17 @@
 
 set -uo pipefail
 
-SETUID=${DARLING_C2_SETUID:-/opt/cider-c2/cider}
+SETUID=${CIDER_C2_SETUID:-${DARLING_C2_SETUID:-/opt/cider-c2/cider}}
 export DPREFIX=${DPREFIX:-$HOME/.cider-c2}
 
 repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-OUT=${DARLING_OUT:-}
+OUT=${CIDER_OUT:-${DARLING_OUT:-}}
 if [[ -z "$OUT" ]]; then
   OUT=$(cd "$repo_root" && nix build ".?submodules=1#default" --no-link --print-out-paths 2>/dev/null | tail -1)
 fi
 if [[ -z "$OUT" || ! -x "$OUT/bin/cider" ]]; then
-  echo "[cider-host] cannot resolve the cider build (set DARLING_OUT)" >&2
+  echo "[cider-host] cannot resolve the cider build (set CIDER_OUT)" >&2
   exit 2
 fi
 
