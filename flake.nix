@@ -683,6 +683,19 @@
       # and 42 trees, so it is still seconds to build.
       #
       #   nix build .#cider-buck2-dyn-gen-trees --no-link -L
+      # HOW MUCH DOES THE BRIDGE ROUTE COST AT FULL SCALE, AT EVALUATION? It builds nothing:
+      # forcing a producer drvPath instantiates that derivation in the evaluator, which is the
+      # cheap half of the scale question and the half that decides whether 1,474 groups can go
+      # through this arrangement at all.
+      #
+      #   nix eval --raw .#cider-buck2-dyn-gen-scale
+      packages.cider-buck2-dyn-gen-scale = pkgs:
+        (import ./nix/lib/cider-dyn-gen.nix {
+          inherit pkgs;
+          lowered = pkgs.cider-buck2-prefix-min;
+        })
+        .scaleProbe;
+
       packages.cider-buck2-dyn-gen-trees = pkgs:
         (import ./nix/lib/cider-dyn-gen.nix {
           inherit pkgs;

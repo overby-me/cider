@@ -68,26 +68,28 @@
   # Per action, keyed by the SPEC NAME because that is what the bridge asks about.
   byName = lib.listToAttrs (map (l: lib.nameValuePair (specName l) l) members);
 
+  envFor = l: let
+    d = lowered.drvs.${l};
+  in
+    {
+      CIDER_PATH = lib.makeBinPath (d.passthru.tools ++ stdenvBasics);
+      CIDER_STAGE = "${d.passthru.stageScript}";
+      CIDER_DATA = "${lowered.graphData}";
+    }
+    // lib.listToAttrs (lib.imap0 (i: s:
+      lib.nameValuePair ("CIDER_TREE_" + toString i) "${s}")
+    d.passthru.treeScripts)
+    # THE PLACEHOLDERS AS ENV RATHER THAN EXPORTS. The lowering exports them because a
+    # runCommand had no other way to receive them; an emitted action takes them directly, so
+    # the generator leaves that slot empty.
+    // lowered.placeholderEnv;
+
   extraEnv = name: let
     l = byName.${name} or null;
   in
     if l == null
     then {}
-    else let
-      d = lowered.drvs.${l};
-    in
-      {
-        CIDER_PATH = lib.makeBinPath (d.passthru.tools ++ stdenvBasics);
-        CIDER_STAGE = "${d.passthru.stageScript}";
-        CIDER_DATA = "${lowered.graphData}";
-      }
-      // lib.listToAttrs (lib.imap0 (i: s:
-        lib.nameValuePair ("CIDER_TREE_" + toString i) "${s}")
-      d.passthru.treeScripts)
-      # THE PLACEHOLDERS AS ENV RATHER THAN EXPORTS. The lowering exports them because a
-      # runCommand had no other way to receive them; an emitted action takes them directly, so
-      # the generator leaves that slot empty.
-      // lowered.placeholderEnv;
+    else envFor l;
 
   bridge = import ./dyn-actions.nix {
     inherit pkgs specDir extraEnv;
@@ -95,8 +97,35 @@
     # inferSrcs exists for.
     inferSrcs = true;
   };
+  # EVERY GROUP, for the scale question, and it BUILDS NOTHING. Forcing a producer's drvPath
+  # instantiates that derivation in the evaluator, which is the cost that decides whether this
+  # arrangement can carry 1,474 groups at all. Building them is a separate and much larger
+  # question; this answers the cheap half first.
+  #
+  # extraEnv is asked per action here as everywhere, so this also forces the per-group staging
+  # script, tree scripts and tool paths, which is most of what the lowering pays for too.
+  allNames = lib.attrNames lowered.drvs;
+  everything = import ./dyn-actions.nix {
+    inherit pkgs specDir;
+    inferSrcs = true;
+    extraEnv = name: let
+      l = allByName.${name} or null;
+    in
+      if l == null
+      then {}
+      else envFor l;
+  };
+  allByName = lib.listToAttrs (map (l: lib.nameValuePair (specName l) l) allNames);
 in {
   inherit bridge members specDir;
+
+  # nix eval .#cider-buck2-prefix-min --apply ... is awkward for this, so it is an attribute:
+  #   nix eval --raw -f ... scaleProbe
+  # It returns the number of producers whose derivation was instantiated.
+  scaleProbe = let
+    forced = map (l: builtins.seq everything.producers.${specName l}.drvPath 1) allNames;
+  in
+    toString (lib.foldl' (a: b: a + b) 0 forced);
 
   check = pkgs.runCommand "cider-dyn-gen-check" {} ''
     echo "--- cone of ${toString (lib.length members)}: ${lib.concatStringsSep " " members}"
