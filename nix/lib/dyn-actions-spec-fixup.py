@@ -46,6 +46,31 @@ _UNSAFE = re.compile(r"[^A-Za-z0-9]")
 _STORE_PATH = re.compile(r"/nix/store/[a-z0-9]{32}-[A-Za-z0-9+._?=-]+")
 
 
+# MAX_ARG_STRLEN. Kept a little under 32 pages because the kernel counts the terminating NUL
+# and the pointer, and being exactly at the edge is not worth the argument.
+_MAX_ARG = 120 * 1024
+
+
+def _spill(text: str, name: str):
+    """Put an over-long argument in the store and return its path, or None on failure."""
+    import subprocess
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        f = os.path.join(d, name + ".sh")
+        with open(f, "w") as fh:
+            fh.write(text)
+        # add-path rather than add-file: it is the spelling available on the nix this runs
+        # against, and a regular file goes in as a regular file either way.
+        r = subprocess.run(
+            ["nix", "--extra-experimental-features", "nix-command", "store", "add-path", f],
+            capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"dyn-actions: could not spill a {len(text)} byte argument of {name!r} to the "
+                  f"store: {r.stderr.strip()}", file=sys.stderr)
+            return None
+        return r.stdout.strip()
+
+
 def dep_var(name: str) -> str:
     return "DYN_DEP_" + _UNSAFE.sub("_", name)
 
@@ -142,6 +167,41 @@ def main(argv: list) -> int:
         text = json.dumps(spec.get("args", [])) + json.dumps(spec.get("builder", ""))
         for m in _STORE_PATH.finditer(text):
             spec["inputs"]["srcs"].append(m.group(0))
+
+    # AN ARGUMENT CAN BE TOO LONG TO PASS AT ALL, and this is not a tuning knob: Linux caps a
+    # SINGLE argv or env string at MAX_ARG_STRLEN, 32 pages, 131,072 bytes. It is not ARG_MAX,
+    # which is the 2 MB total and would not have been reached. execve fails with E2BIG and the
+    # builder reports "executing /bin/sh: Argument list too long".
+    #
+    # FOUND BY A REAL CONSUMER, and it could not have been found by a toy: the largest fixture
+    # script here is a few kilobytes, while 89 of one consumer's 1,474 actions are over the
+    # limit and the largest is 5.1 MB. Three exceed even the 2 MB total, so no amount of
+    # trimming elsewhere would have carried them.
+    #
+    # THE SPILL IS TO A STORE FILE, which the producer can do because recursive-nix is already
+    # what it runs `nix derivation add` with. The file becomes a source, so the sandbox has it.
+    #
+    # ONLY A SHELL COMMAND STRING IS REWRITTEN, and that is the whole reason this is safe: an
+    # argument after -c IS a shell script, and sourcing a file containing it is exactly
+    # equivalent. For any other over-long argument there is no rewrite that preserves meaning,
+    # so that is a named error rather than a guess.
+    args = spec.get("args", [])
+    for i, arg in enumerate(args):
+        if not isinstance(arg, str) or len(arg) <= _MAX_ARG:
+            continue
+        if i == 0 or args[i - 1] != "-c":
+            print(f"dyn-actions: argument {i} of {spec.get('name')!r} is {len(arg)} bytes, over "
+                  f"the {_MAX_ARG} byte limit on a single argument, and is not a -c command "
+                  f"string, so there is no equivalent rewrite", file=sys.stderr)
+            return 1
+        # NOT `path`: that name is the SPEC FILE this function writes back at the end, and
+        # reusing it here sent the finished spec to the spilled script instead, which surfaced
+        # as PermissionError on a read-only store file rather than as anything about shadowing.
+        spilled = _spill(arg, spec.get("name", "action"))
+        if spilled is None:
+            return 1
+        args[i] = ". " + spilled
+        spec["inputs"]["srcs"].append(spilled)
 
     # LAST, so it also catches the dependency and inferred paths just added. Everything in srcs
     # is a store path by now: the outer Nix has substituted every placeholder.

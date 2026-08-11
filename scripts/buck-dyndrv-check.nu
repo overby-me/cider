@@ -1,11 +1,11 @@
 #!/usr/bin/env nu
-# Do dynamic derivations still do the ten things #66 depends on?
+# Do dynamic derivations still do the eleven things #66 depends on?
 #
 # NOT IN THE NIX-FREE SET. This one builds, so it is slow by that standard (tens of seconds
 # warm) and belongs in the deliberate-run bucket, not the 27 second pre-flight.
 #
 # WHY IT EXISTS. #66 replaces the evaluator-computed derivations with derivations the generator
-# EMITS, which only works if ten properties hold. 1 to 3 are properties of NIX rather than of
+# EMITS, which only works if eleven properties hold. 1 to 3 are properties of NIX rather than of
 # this project, verified by hand on 2026-08-11 with Nix 2.35.1; a Nix upgrade could take any of
 # them away silently, and the failure would not look like "dynamic derivations regressed", it
 # would look like the endpoint rebuilding everything, or an hour-long gate dying somewhere far
@@ -246,8 +246,25 @@ def main [] {
         ok (open --raw ($mn.stdout | str trim | lines | last) | str trim)
     }
 
+    # 11. AN ACTION WHOSE SCRIPT IS TOO LONG TO PASS AS AN ARGUMENT. Linux caps a single argv
+    # string at MAX_ARG_STRLEN, 131,072 bytes, which is NOT ARG_MAX and is not reached by any
+    # other fixture here: every one of them is a few kilobytes. A real consumer has 89 actions
+    # of 1,474 over it, the largest 5.1 MB, and both halves broke. The producer embedded the
+    # spec in its OWN command line, so it died before the fixup ran; and the emitted action
+    # carried the script as a -c argument. Specs go through a store file now, and an over-long
+    # -c argument spills to one and becomes `. <path>`, which is equivalent for a shell.
+    # The toy asserts the script really is over the limit, or it would test nothing.
+    let ba = (do -i { ^nix build --impure -f ./nix/lib/dyn-actions-bigarg-toy.nix check --no-link --print-out-paths --extra-experimental-features $feats } | complete)
+    if $ba.exit_code != 0 {
+        bad "an action whose script exceeds the per-argument limit does not build"
+        print -e ($ba.stderr | lines | last 10 | str join "\n")
+        $fails += 1
+    } else {
+        ok (open --raw ($ba.stdout | str trim | lines | last) | str trim)
+    }
+
     if $fails == 0 {
-        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv and a foreign spec dir"
+        say "PASS: outputOf, early cutoff, both modes, a DAG in each, inferSrcs, extraEnv, a foreign spec dir and an over-long argument"
         exit 0
     }
     say $"FAIL: ($fails) property\(ies) of dynamic derivations no longer hold"

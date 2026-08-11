@@ -221,10 +221,22 @@
   # that spec is perfectly valid, so the specdir fixture passed while the step it depended on
   # was not running at all. It only surfaced once the step was given `|| exit 1` and an action
   # that actually needed it.
+  # THROUGH A FILE IN BOTH MODES, and the printf this replaced could not carry a large action.
+  # An `args` entry is one argv string, and Linux caps a single one at MAX_ARG_STRLEN, 32 pages,
+  # 131,072 bytes. That is not ARG_MAX, the 2 MB total: a producer well under the total still
+  # dies with "executing /bin/sh: Argument list too long" before the fixup ever runs, because
+  # the spec was embedded in the producer's OWN command line.
+  #
+  # FOUND BY A CONSUMER WITH REAL ACTIONS. 89 of one consumer's 1,474 are over the limit and
+  # the largest is 5.1 MB. Every fixture here except nix/lib/dyn-actions-bigarg-toy.nix has a
+  # script of a few kilobytes, so nothing could have reached it.
+  #
+  # writeText puts the spec in the store and the producer copies it, which is the same shape
+  # specDir mode already had and is why that mode was never affected.
   writeSpec = n:
     if fromDir
     then "cp ${specDir}/${n}.json spec.json && chmod u+w spec.json"
-    else "printf '%s' ${lib.escapeShellArg (specOf (actionOf n))} > spec.json";
+    else "cp ${pkgs.writeText "dyn-action-spec-${n}.json" (specOf (actionOf n))} spec.json && chmod u+w spec.json";
 
   actionOf = n:
     lib.findFirst (a: a.name == n)
@@ -344,8 +356,10 @@
     (pkgs.runCommand drvName {} (''
         mkdir -p "$out"
       ''
+      # SAME REASON AS writeSpec: a printf of the spec puts it in this derivation's argv, and a
+      # single argv string is capped at 131,072 bytes.
       + lib.concatMapStrings (n: ''
-        printf '%s' ${lib.escapeShellArg (specOf (actionOf n))} > "$out"/${lib.escapeShellArg n}.json
+        cp ${pkgs.writeText "dyn-action-spec-${n}.json" (specOf (actionOf n))} "$out"/${lib.escapeShellArg n}.json
       '')
       names
       + ''
