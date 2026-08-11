@@ -11,10 +11,14 @@
 # that list can use it. cider is the first consumer, not the target. See dyn-actions-adapter
 # notes in #66 for the cider side, which is deliberately elsewhere.
 #
-# WHAT IT CANNOT DO YET, up front because it decides whether this is any use to you: an
-# emitted action cannot consume ANOTHER emitted action's output. This handles a SET of
-# independent actions, not a DAG. Measured with nix/lib/dyn-actions-dep-probe.nix, and the
-# cause is the empty `inputs.drvs` in specOf below, where the detail lives.
+# IT DOES A DAG, not just a set: an emitted action CAN consume another emitted action's
+# output. Name the producing action's entry from `outputs` in your args, and DECLARE IT in
+# `inputSrcs`. Both halves are required -- naming it alone gets you a build that runs in the
+# right ORDER and still cannot see the file. Proven by nix/lib/dyn-actions-dep-probe.nix,
+# which prints B-SEES-A with the dependency's contents, and B-BLIND if the declaration is
+# dropped.
+#
+#   { name = "b"; args = ["-c" "... ${a.outputs.a} ..."]; inputSrcs = [a.outputs.a]; }
 #
 # THE CONSTRAINT THAT SHAPES THE WHOLE DESIGN, and it is not a detail:
 #
@@ -127,6 +131,20 @@
       # actions, not a DAG.
       inputs = {
         drvs = {};
+        # FULL PATHS HERE, TURNED INTO BASENAMES AT BUILD TIME by the producer below, and
+        # both halves of that are forced.
+        #
+        # `nix derivation add` wants `<hash>-<name>` relative to the store directory: given a
+        # full path it fails with "contains illegal base-32 character '/'". So inputSrcs could
+        # never have worked as written, and nothing noticed because the toy actions declare
+        # none. Verified by feeding it both forms; only the basename is accepted.
+        #
+        # BUT THE CONVERSION CANNOT HAPPEN HERE. An entry may be another action's output,
+        # which at eval time is a builtins.outputOf PLACEHOLDER; the outer Nix substitutes the
+        # real path only when the producer runs, and it matches the placeholder text exactly.
+        # Taking baseNameOf, or discarding the context, mangles that text so the substitution
+        # never happens and the emitted drv names a path that "is not valid". Measured both
+        # ways 2026-08-11.
         srcs = a.inputSrcs or [];
       };
       outputs.${outputName} = {
@@ -161,8 +179,17 @@
       args = [
         "-c"
         ''
-          export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:$PATH
+          export PATH=${pkgs.nix}/bin:${pkgs.coreutils}/bin:${pkgs.python3}/bin:$PATH
           ${writeSpec n}
+          # inputs.srcs must be store-dir-relative, and it can only be made so HERE: at eval
+          # time an entry may still be an outputOf placeholder that the outer Nix has not
+          # substituted yet. See the srcs comment in specOf.
+          python3 -c 'import json,sys
+p=sys.argv[1]
+d=json.load(open(p))
+s=d.get("inputs",{}).get("srcs",[])
+d["inputs"]["srcs"]=[x.rsplit("/",1)[-1] for x in s]
+json.dump(d,open(p,"w"))' spec.json
           emitted=$(nix --extra-experimental-features \
             "nix-command ca-derivations dynamic-derivations" derivation add < spec.json) \
             || { echo "dyn-actions: derivation add failed for ${n}" >&2; exit 1; }
