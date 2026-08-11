@@ -11,6 +11,11 @@
 # that list can use it. cider is the first consumer, not the target. See dyn-actions-adapter
 # notes in #66 for the cider side, which is deliberately elsewhere.
 #
+# WHAT IT CANNOT DO YET, up front because it decides whether this is any use to you: an
+# emitted action cannot consume ANOTHER emitted action's output. This handles a SET of
+# independent actions, not a DAG. Measured with nix/lib/dyn-actions-dep-probe.nix, and the
+# cause is the empty `inputs.drvs` in specOf below, where the detail lives.
+#
 # THE CONSTRAINT THAT SHAPES THE WHOLE DESIGN, and it is not a detail:
 #
 #   A .drv-named derivation must be a text-hashed CA output with a SINGLE output named "out".
@@ -103,6 +108,23 @@
           outputHashMode = "recursive";
           inherit system;
         };
+      # NO DEPENDENCY ON ANOTHER EMITTED DERIVATION CAN BE EXPRESSED, and this empty attrset
+      # is why. It is the single biggest limitation of this bridge, so it is stated where it
+      # is caused rather than only in the header.
+      #
+      # MEASURED, not assumed: nix/lib/dyn-actions-dep-probe.nix builds two emitted actions
+      # where B names A's output through builtins.outputOf. Both emit, both build, and A is
+      # realised BEFORE B -- and B still reports B-BLIND, because A's output is not in B's
+      # sandbox. Ordering happens for the wrong reason: the PRODUCER of B carries A's outputOf
+      # string in its args, and that string has context, so Nix realises A to compute B's spec.
+      # The emitted B declares nothing.
+      #
+      # The placeholder in B's args is already correct -- builtins.outputOf yields exactly the
+      # downstream placeholder the format wants. What is missing is naming A's EMITTED drv
+      # path here. producerOf currently throws that path away (it copies the drv to its own
+      # output), so closing this means keeping it and letting a dependent producer take the
+      # dependency's producer as an input. Until then this bridge does a SET of independent
+      # actions, not a DAG.
       inputs = {
         drvs = {};
         srcs = a.inputSrcs or [];
