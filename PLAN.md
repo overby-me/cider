@@ -410,7 +410,17 @@ the endpoint drvPath, and `.#cider-buck2-dyn-gen-all`, which diffs all 1,474 gro
 independently built route and would surface a dropped input as a differing group rather than as
 a build failure much later.
 
-### #66 - get the lowering out of the evaluator
+### #66 - get the lowering out of the evaluator (DONE 2026-08-11)
+
+BOTH HALVES ARE DONE. A, the bridge, passes fourteen properties over eleven fixtures and is
+enforced to reference nothing outside itself. B, the adapter, builds the whole 1,474-group graph
+through the emitted route and matches the lowered route on every group. The result to remember
+is in the bullet marked B IS DONE below.
+
+KEEP BOTH ROUTES. The recommendation on record, and the reason is empirical rather than
+aesthetic: the DIFFERENTIAL between the two routes is what found four real defects, including
+two that no single route could expose. A second implementation that agrees is a test; deleting
+it converts a working check into an unverified assumption.
 
 A general buck2-graph to dynamic-derivation bridge, worth having for OTHER projects.
 GENERALITY IS THE REQUIREMENT; cider is the first consumer, not the target. Nothing in the
@@ -448,11 +458,21 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   fingerprints every label's `builderScript` and `stageScript` against a saved baseline, which
   is the check a green ladder cannot replace: rung 2 builds ONE target, so a change that moves
   every *other* derivation is invisible to it.
-- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE, AND REPRODUCES IT.** All 1,474 producers
-  and all 1,474 emitted actions ran with zero build failures. Diffing every group against its
-  lowered counterpart: **1,364 identical, 110 differing, and all 110 are mig groups** with the
-  same single line, `stub generated <wall clock>`. That is #95, a pre-existing
-  non-reproducibility in the port rather than anything the emitted route introduced.
+- **THE FULL GRAPH BUILDS THROUGH THE EMITTED ROUTE AND REPRODUCES IT EXACTLY. B IS DONE.**
+  Final run, 2026-08-11, 4,516 builders and zero nix-level errors, all 1,474 producers and all
+  1,474 emitted actions:
+
+      OK the whole graph emitted, all 1474 group(s) match the lowered route
+
+  **THE CHECK IS KNOWN TO FIRE, which is the only reason that zero is worth anything:** the
+  SAME check on the SAME graph reported `identical 1364, differ 110` one run earlier, and named
+  every differing group. The 110 were all mig groups differing by one line, `stub generated
+  <wall clock>`, which is #95 and is now fixed. So the difference between 110 and 0 is a fix to
+  the port, measured by a check that had just demonstrated it can report a non-zero.
+- **WHAT THAT MAKES #66.** The emitted route is not a proposal, it is a second independent
+  implementation of the whole 1,474-group graph that agrees with the first byte for byte. The
+  differential is what found the four real defects listed below; none was visible from either
+  route alone.
 - **TWO REAL DEFECTS THE FULL-SCALE RUN FOUND FIRST.** `SOURCE_DATE_EPOCH` is set by stdenv's
   SETUP SCRIPT, not as a derivation attribute, so it is invisible when comparing derivations and
   an emitted action never gets it; and the stdenv tool list was hand-picked and missing `xz`,
