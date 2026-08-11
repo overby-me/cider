@@ -635,8 +635,12 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 ## Buck2 port: where it stands
 
 Every in-scope link edge of the reference graph is ported and builds: **1451 of 1451**,
-`buck2 build //...` green over all ~12k targets, `buck-test.nu` **157 of 159**, and every
+`buck2 build //...` green over all ~12k targets, `buck-test.nu` **159 of 161**, and every
 runtime check at 0 or a documented 3. Measured 2026-08-11, not remembered.
+
+It reads 161 rather than 159 because two checks that existed were never invoked by anything,
+`buck-labels-check.py` and `buck-pin-paths-check.py`, and are now wired in. The nine nix-free
+checks together take 27 seconds, so running them before a long build costs nothing.
 
 The denominator is 1451, not the 1452 this line used to claim: #71 ported duct-tape to Rust,
 so `libdarlingserver_duct_tape.a` stopped being a link edge. The floor had been left at 1452,
