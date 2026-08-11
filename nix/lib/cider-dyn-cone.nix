@@ -152,7 +152,21 @@
 in {
   inherit bridge members;
 
-  check = pkgs.runCommand "cider-dyn-cone-check" {nativeBuildInputs = [pkgs.diffutils];} ''
+  # THE MODE IS IN THE NAME, and that is not cosmetic. The check references bridge.outputs,
+  # which is a builtins.outputOf placeholder keyed on the producer NAME, and both modes name
+  # their producers identically. So the two checks were BYTE IDENTICAL derivations: running the
+  # specDir one reused the actions-mode result and its diff never executed, while reporting OK.
+  # A check that another configuration can stand in for is not a check of this one.
+  check = pkgs.runCommand "cider-dyn-cone-check-${
+    if viaSpecDir
+    then "specdir"
+    else "actions"
+  }" {nativeBuildInputs = [pkgs.diffutils];} ''
+    echo "--- mode: ${
+    if viaSpecDir
+    then "specDir"
+    else "actions"
+  }"
     echo "--- cone members: ${toString (lib.length members)}"
     echo "--- lowered: ${lowered.drvs.${label}}"
     echo "--- emitted: ${bridge.outputs.${actionName label}}"
