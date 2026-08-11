@@ -757,7 +757,25 @@ re-running.
                 differs. That is a proof rather than an inspection.
                 SO: Darling-origin, unmodified apart from our rename, and the missing header
                 is UPSTREAM's absence which we inherit rather than something the move lost.
-                The Rust port may proceed on the same footing as getuuid and elfdep.
+
+                **BUT IT IS NOT THE SAME FOOTING AS getuuid AND elfdep, AND THAT IS THE POINT
+                WORTH CARRYING.** Those two are consumed by NOTHING in the buck2 build, which
+                is exactly why porting them was cheap and why a byte-parity harness over a
+                handful of inputs was sufficient proof. wrapgen is LOAD-BEARING:
+
+                  linux/libelfloader/BUCK:15     the target //linux/libelfloader:wrapgen
+                  buck/rules/codegen.bzl:558     the elf_wrapper rule RUNS it at build time
+                  darwin/CoreAudio/BUCK:38       consumer
+                  linux/native/BUCK:74           consumer
+                  buck-src/BUCK:49080            consumer, the generated one
+
+                It writes the Mach-O stub that lets a Darwin program call into a HOST ELF
+                library, and codegen.bzl:563 records that it dlopen()s the real .so AT BUILD
+                TIME. So a port must reproduce its GENERATED OUTPUT exactly, across every
+                library any consumer feeds it, not just behave the same on a few probes. That
+                is a materially bigger job than the two that are done, and it is the reason
+                this stays a deliberate decision rather than something to pick up because the
+                provenance question happens to be answered now.
     xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
     PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
 
