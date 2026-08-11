@@ -1020,7 +1020,7 @@
     })
     (lib.filter (a: lib.hasInfix "_compile " a.identity) g.actions));
 
-  stageGroupsFor = label: let
+  stageGroupsDataFor = label: let
     members = membersOf.${label} or [label];
     entries = map (m: targetGroups.${m} or {}) members;
     groups = lib.unique (
@@ -1041,7 +1041,16 @@
       ++ (builtins.filter (r: builtins.pathExists (srcRaw + ("/" + r))) (nonPinExternalFor label))
     );
     shallow = lib.unique (lib.concatMap (e: e.shallow or []) entries);
-  in ''
+  in {inherit groups shallow;};
+
+  # THE TEXT, as a function of the DATA rather than of the label. Two labels with the same
+  # groups and shallow list produce byte-identical text: every term below is a pure function of
+  # an element of one of those lists. Splitting them is what lets the text be built 94 times
+  # instead of 1,474 without the result changing.
+  stageGroupsTextOf = {
+    groups,
+    shallow,
+  }: ''
     ${lib.concatMapStrings (g: ''
       # A GROUP IS MIRRORED, NOT LINKED. `ln -sfn <groupStore> <g>` is what killed source
       # groups: the group arrives as one symlink to a DIRECTORY, so a relative parent inside
@@ -1090,6 +1099,26 @@
   # revision, and pins and buck-rust stay REAL directories because the pins are
   # planted inside them; the comment on stageProject records that losing that cost a whole
   # endpoint build.
+  # ONE TEXT PER DISTINCT (groups, shallow), not one per label. The per-group body carries a
+  # long comment block, so concatMapStrings over a label's groups is the bulk of the staging
+  # cost: measured, the whole staging reference is ~5.7 s of a ~15 s endpoint evaluation, of
+  # which the derivation is 0.4 s and this text is most of the rest.
+  #
+  # THE DATA IS STILL COMPUTED PER LABEL, and that part (~2 s) is untouched: members, the group
+  # union and its pathExists probes all genuinely depend on the label. Only the FORMATTING is
+  # shared, and it is shared on the data it formats, so it cannot be shared wrongly.
+  #
+  # VERIFY BY STORE PATH, NEVER BY LADDER. Whether this changed anything is decided by
+  # comparing passthru.stageScript across all 1,474 labels; a hoist that looked equally free
+  # moved every one of them by whitespace alone, and a green ladder said nothing.
+  stageDataByLabel = lib.mapAttrs (label: _: stageGroupsDataFor label) targets;
+  stageDataKeyByLabel = lib.mapAttrs (_: d: builtins.toJSON d) stageDataByLabel;
+  stageGroupsTextByKey = builtins.listToAttrs (lib.mapAttrsToList (label: k:
+    lib.nameValuePair k (stageGroupsTextOf stageDataByLabel.${label}))
+  stageDataKeyByLabel);
+
+  stageGroupsFor = label: stageGroupsTextByKey.${stageDataKeyByLabel.${label}};
+
   # THE STAGING SCRIPT TEXT for one label. Split out from the derivation below so the
   # derivation can be shared between labels that produce the same text (#94).
   stageTextFor = label: ''
