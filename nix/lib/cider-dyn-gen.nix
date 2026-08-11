@@ -212,8 +212,12 @@ in {
         same=$((same + 1))
       else
         differ=$((differ + 1))
+        # EVERY NAME, ALWAYS. Printing only the first few bodies is right, since a diff body is
+        # long, but printing only the first few NAMES makes the total unclassifiable: the run
+        # that found 110 differing groups showed five of them, and answering what the other 105
+        # were meant changing this and building again.
+        echo "DIFFERS: $name" >&2
         if [ "$differ" -le 5 ]; then
-          echo "DIFFERS: $name" >&2
           head -20 one.txt >&2
         fi
       fi
