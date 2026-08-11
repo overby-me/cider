@@ -170,7 +170,7 @@ derivation stages its own tree from the pin STORE, and the normaliser only ever 
 stores hold exactly one entry there, the symlink itself.
 **THE FIX CANNOT LIVE IN `pinStore`, and that corrects what this entry said an hour ago.**
 Measured on a copy: put the security pin store next to a tree containing
-`src/external/ciderd/xnu-sys/xnu`, run the normaliser, and the dangling upstream link becomes a
+`pins/ciderd/xnu-sys/xnu`, run the normaliser, and the dangling upstream link becomes a
 real directory of per-file links with `security/mac.h` resolving. It reported
 `expanded 17 symlinked directories, re-pointed 7 symlinks`. So the fix NEEDS the xnu tree
 beside the pin, and a pin store is self-contained: normalising at fetch cannot see it.
@@ -178,7 +178,7 @@ beside the pin, and a pin store is self-contained: normalising at fetch cannot s
 `pinPath p = "${pinsTree}/${p}"`, and `pinsTree` is built from the ASSEMBLED tree precisely
 because per-pin stores are incomplete. But the assembled tree carries the dangling link too,
 since normalisation runs only in `ciderBuck2Graph.nix`. The comment listing the 21 links that
-escape a pin store already spells ours out: seven leave `src/external` entirely, six into
+escape a pin store already spells ours out: seven leave `pins` entirely, six into
 `darwin/Developer`, and **`security -> ciderd/xnu-sys/xnu`, which is first-party vendored and
 not a pin at all**, needing rewriting to an absolute store path, the same treatment #54 needs
 for group escapes. So the fix is to normalise when `pinsTree` is built, not at fetch, and it is
@@ -225,9 +225,9 @@ Only the last row was ever a leak. `nix-diff` named its sole cause: the ciderd G
 STORE interpolated as `_g` into every target stage script, with no dependency edge behind it.
 `rtsig.c` is legitimate, it is a `host_gen` that GENERATES `rtsig.h`. The fix is `groupSplit` in
 `nix/lib/ciderBuck2Lower.nix`: a blanket cut starves the compiles, because
-`buck2-graph-sources.py` keeps `src/external` out of the grouping and the whole-directory group
+`buck2-graph-sources.py` keeps `pins` out of the grouping and the whole-directory group
 is its only supplier, so every target gets the headers and `scripts/` while only labels under
-`root//src/external/ciderd/xnu-sys` also get `xnu-sys/src`.
+`root//pins/ciderd/xnu-sys` also get `xnu-sys/src`.
 
 **A BUCK EDIT IS NOT A FULL REBUILD ANY MORE.** The standing advice was to batch BUCK edits
 because each costs a full rebuild. Measured 2026-08-09 with a control either side:
@@ -470,7 +470,7 @@ flag was wrong.
    | `darwin/libsimple` | 562 | Darling | the lock and log layer xnu-sys sits on; the Rust daemon ALREADY links it as a C archive |
 
    **THERE ARE NO SUBMODULES IN THIS REPO.** No `.gitmodules`, and `git ls-files` tracks
-   `src/external/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
+   `pins/...` directly, so EVERYTHING is plain vendored content. "Bundled" is therefore
    not a decision anyone made about `libm` in particular; it is how the whole tree works. The
    distinction that matters for porting is ORIGIN, not how the content arrived.
 
@@ -739,8 +739,8 @@ an `-f` pattern matches the command line of the shell running it.
 **Host ELF libraries must be on `LD_LIBRARY_PATH` for the LOADER**, not just for wrapgen.
 Without it, loading AppKit kills the process before `main` with no output at all.
 
-**An exclusion list is load-bearing, and a rename can empty it.** The lowering stages `src/`
-and `src/external/` as REAL directories so the pins can be planted in them, so the loop that
+**An exclusion list is load-bearing, and a rename can empty it.** The lowering stages `pins/`
+as a REAL directory so the pins can be planted in it, so the loop that
 symlinks every other top-level entry into the store must skip `src`. That exclusion was
 rewritten to a Nix BINDING name, which matches no directory, and all 1798 lowered targets then
 failed with "Permission denied" 90 minutes into a build.
@@ -805,13 +805,21 @@ tracks below.
 
 ## Architecture
 
-- **Top-level layout (#87 stage 1):** first-party code lives in exactly two directories.
-  `darwin/` is guest side, `linux/` is host side, and `src/` now holds ONLY `src/external`,
-  the 148 vendored pins. Classified by BUCK RULE KIND, not by name: `darwin_dylib` and
-  `darwin_binary` are guest, `cc_binary` and `rust_binary` are host. Stage 2 would move
-  `src/external` to `pins/` and delete `src/`; it is deferred because `buck-src.nu` picks a
-  pin destination from PATH DEPTH. `src/` must keep existing until then, because
-  `stageProject` excludes it so pins can be planted in a real directory.
+- **Top-level layout (#87, both stages):** three top-level trees and no more. `darwin/` is
+  guest side, `linux/` is host side, `pins/` is the 148 vendored upstreams. **`src/` no
+  longer exists.** First-party code is classified by BUCK RULE KIND, not by name:
+  `darwin_dylib` and `darwin_binary` are guest, `cc_binary` and `rust_binary` are host.
+  `stageProject` now excludes `pins` rather than `src`, so pins are still planted into a real
+  directory rather than a store symlink; deleting that exclusion instead of renaming it
+  reproduces a failure that once cost a whole endpoint build.
+  **The destination rule is DIRECTLY UNDER THE PIN ROOT, never a depth number.** Five sites
+  encoded it as `== 3` and all five derive it from one `pinRoot` now, including the back link
+  in `materializePins`, which was a literal `../../` and is silent when wrong: it dangles the
+  SDK farm and surfaces an hour later as a missing header. `buck-pin-rev-check.py` asserts no
+  two pins share a materialization directory, which is the collision the rule exists to stop.
+  **A root move needs three audits, each blind to the next:** file content, which a sweep
+  sees; symlink TARGETS, which no sweep can see and which numbered 4,031 here; and paths
+  assembled from parts or sliced by index, which only reading the code finds.
 - **Call chain (the debugging map):** Darwin binary → Darwin libc → `libsystem_kernel`
   BSD-trap stub → daemon translates to Linux → kernel. Syscalls are implemented only to the
   depth Nix needs, not for general macOS compat.
@@ -824,7 +832,7 @@ tracks below.
   cooperative). RPC codec (`rpc_wire.rs`) is generated from the calls list, 162/162
   byte-identical to C. Wire = SOCK_DGRAM + SO_PASSCRED (sender pid via SCM_CREDENTIALS, used
   for `process_vm_readv` because the guest is in its own PID namespace).
-- **xnu-sys** (`src/external/ciderd/xnu-sys/`, still C): kernel-emulation glue
+- **xnu-sys** (`pins/ciderd/xnu-sys/`, still C): kernel-emulation glue
   that compiles the vendored XNU (osfmk/bsd). Linked into the daemon crate by
   `linux/server/build.rs`: bindgen generates the 36-field `xnu_sys_hooks_t` from source
   headers; static libs (`libciderd_xnu_sys.a`, `liblibsimple_ciderd.a`)
@@ -1146,7 +1154,7 @@ Re-derive before trusting: `scripts/buck-coverage.py --missing` and
    Start with the GUI framework dylibs: they are 362 of the 497 missing edges, and
    everything else in stock sits downstream of them. The 16 linux/native ELF wrappers are
    already done, see below; the rest are Darling's own framework implementations under
-   darwin/frameworks (101) and darwin/private-frameworks (45), plus 314 in src/external which is
+   darwin/frameworks (101) and darwin/private-frameworks (45), plus 314 in pins which is
    mostly python, ruby, perl and their extension modules.
 
    Stage 2 is effectively complete: 1354 of 1359 stock link edges. The five that remain
@@ -1252,7 +1260,7 @@ has been true six times running, each time a check freshly written.
 - **THE ROOT INVALIDATION CAUSE IS THE GRAPH DERIVATION ITSELF (#56), and #50, #53, #54 and
   #55 are all downstream of it.** `ciderBuck2Graph.nix` takes the project as ONE
   `builtins.path` that excludes only plan, docs, nix, scripts and a few dotfiles, so
-  `darwin/`, `src/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
+  `darwin/`, `pins/`, `linux/` and `buck-src/` are all in it. Edit one C file and the graph
   rebuilds (30-47 min of buck2 analysis), its drv moves, and every lowered derivation moves
   with it, because each binds to the graph's DERIVATION rather than to its output. No amount
   of per-target or per-group granularity can matter beneath that. The comment on that filter
@@ -1439,7 +1447,7 @@ has been true six times running, each time a check freshly written.
   `MacTypes.h`. `scripts/buck-escape-check.py` documents this exact case, naming this exact
   file, and I walked into it anyway.
   **So the fix is the session's own result applied to pins: ONE CA `pinsTree` holding all 147
-  pins MIRRORED (real directories, one link per file) at their `src/external/<name>` paths.**
+  pins MIRRORED (real directories, one link per file) at their `pins/<name>` paths.**
   Self contained, so a sibling escape resolves inside it; input is the frozen pins, so it moves
   only on a pin bump, which is the cascade cut per-pin `pinPath` was reaching for.
   `scripts/buck-pin-store-check.nu` passes throughout, because it compares by NAR HASH and a NAR
