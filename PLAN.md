@@ -400,6 +400,24 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   contention; it came out convincingly LINEAR, which is what made it credible. The tell was in
   the data before the re-run: n=4 measured slower than n=16, which only happens if they were
   overlapping. **Never price a parallel thing on a busy machine.**
+- **specDir PLUS A DAG WORKS, which was the last gap in A.** `actions` mode could always
+  express a DAG because the caller is writing Nix; `specDir` could not, since the spec is a
+  file nobody parses. Edges travel in a `deps.json` beside the specs; the bridge puts each
+  dependency's `outputOf` string in the PRODUCER's env and `dyn-actions-spec-fixup.py` writes
+  it into the spec as a source AND a `DYN_DEP_<name>` entry once Nix has substituted the real
+  path. Stripping `deps.json` degrades to a SET **silently, exit zero**, so fixtures check
+  content. A silent failure this uncovered: the fixup was an inline `python3 -c` with no error
+  check, and in specDir mode the spec is `cp`d from the store at mode 444, so it died with
+  PermissionError, the shell carried on, and `derivation add` read the unfixed spec.
+- **B HAS STARTED: the adapter emits the edges.** 1,474 groups, 925 with dependencies, 22,473
+  edges, biggest fan-in 128, **no cycle** -- also the first group-level confirmation that the
+  coarse-pin contraction held, since the dump only ever ran Tarjan at pin level. The generator
+  refuses to emit a cycle. `buck-specs-check.py` checks `deps.json` against the graph AND
+  against buck2's action ORDER, which is an independent property; seven controls, all firing.
+- **EARLY CUTOFF MEASURED ON A REAL CHANGE.** Adding `deps.json` moved the specs store path and
+  **zero** target derivations rebuilt; `cider-buck2-one` is at the identical out path. That is
+  the embed-not-source decision paying off: had the lowering sourced the script from
+  `graph.specs`, all 1,474 would have re-run.
 - **STILL OPEN, and A and B DO NOT YET MEET.** Tested 2026-08-11: `nix derivation add`
   rejects the adapter's `<name>.json` with "Expected JSON object to contain key 'name'".
   `specDir` mode wants a DERIVATION; the adapter writes the action data a derivation would be
