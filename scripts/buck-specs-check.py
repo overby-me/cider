@@ -237,6 +237,25 @@ def check_deps(graph: dict, groups: dict, specdir: str) -> list:
             problems.append(f"{k}: deps.json says {sorted(listed[k])[:4]}, "
                             f"the graph says {sorted(want[k])[:4]}")
 
+    # SUFFICIENCY: could each group's commands actually find what they name? Uses the
+    # label-keyed edges rather than deps.json, because this asks whether the EDGE SET is
+    # complete, not whether the file was written correctly, which is the check above.
+    label_deps = {}
+    for g, actions in groups.items():
+        seen = set()
+        for a in actions:
+            for i in a["inputs"]:
+                pr = producer.get(i)
+                if pr is not None:
+                    pg = group_of(pr["identity"], graph.get("coarsePinOf", {}))
+                    if pg != g:
+                        seen.add(pg)
+        label_deps[g] = seen
+    missing = uncovered_artifacts(groups, label_deps)
+    if missing:
+        problems.append(f"{missing} artifact(s) named in an argv would not be present: not the "
+                        f"group's own output and not a declared dependency's")
+
     # THE ORDER PROPERTY. Every consumed artifact is written before it is read, so every edge
     # points backwards in the action list.
     violations = 0
@@ -250,6 +269,40 @@ def check_deps(graph: dict, groups: dict, specdir: str) -> list:
         problems.append(f"{violations} input(s) are read before they are written, so the "
                         f"action order is not topological and the edge set cannot be trusted")
     return problems
+
+
+BUCKOUT = re.compile(r"(buck-out/[A-Za-z0-9_./+-]+)")
+
+
+def uncovered_artifacts(groups: dict, deps: dict) -> int:
+    """How many artifacts a group's COMMANDS name that its sandbox would not contain.
+
+    THE QUESTION B HAS TO ANSWER. An emitted derivation gets its own outputs, the outputs of
+    its declared dependencies, and its sources -- nothing else. So every buck-out path in an
+    argv must be its own output or a declared dependency's, or the command runs against a file
+    that is not there.
+
+    THE ACTION'S OWN `inputs` ARE DELIBERATELY NOT CONSULTED, and that is the whole point. The
+    first version of this check allowed them, and every argv path is already in `inputs`, so
+    the test short-circuited before ever looking at deps: it returned 0 with the real map AND 0
+    with every edge deleted. A check that cannot fail is worth nothing, and that one could not.
+    With the short-circuit gone: 0 real, 2 with one edge dropped, 61,362 with all dropped.
+    """
+    outs_of = {g: {o for a in acts for o in a["outputs"]} for g, acts in groups.items()}
+    producer = {o: g for g, os_ in outs_of.items() for o in os_}
+    n = 0
+    for g, acts in groups.items():
+        allowed = set(outs_of[g])
+        for d in deps.get(g, []):
+            allowed |= outs_of.get(d, set())
+        for a in acts:
+            for x in a["argv"]:
+                for m in BUCKOUT.finditer(x):
+                    p = m.group(1)
+                    if p in allowed or producer.get(p) is None:
+                        continue
+                    n += 1
+    return n
 
 
 def check_name_mapping() -> list:
@@ -393,6 +446,19 @@ def controls(graph_path: str, specdir: str) -> list:
                 f.write(dorig)
     except OSError as e:
         out.append(f"  [BAD] deps controls could not run: {e}")
+
+    # THE SUFFICIENCY CONTROL, separate because it does not go through deps.json at all: it
+    # works on the label-keyed edge set, so it has to be exercised directly.
+    full = {}
+    outs_of = {g: {o for a in acts for o in a["outputs"]} for g, acts in groups.items()}
+    prod = {o: g for g, os_ in outs_of.items() for o in os_}
+    for g, acts in groups.items():
+        full[g] = {prod[i] for a in acts for i in a["inputs"]
+                   if prod.get(i) is not None and prod[i] != g}
+    base = uncovered_artifacts(groups, full)
+    none_ = uncovered_artifacts(groups, {g: set() for g in groups})
+    out.append(f"  [{'ok ' if base == 0 and none_ > 0 else 'BAD'}] argv coverage: "
+               f"real={base} (want 0), all edges dropped={none_} (want > 0)")
 
     try:
         for label, find, repl in muts:
