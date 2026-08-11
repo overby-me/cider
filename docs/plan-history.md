@@ -897,3 +897,37 @@ much later as a missing file in somebody else's compile. The check is to compare
 stage script store path before and after and require every one to be unchanged, not to run the
 ladder and see green.
 
+### The staging cost, start to finish (2026-08-11)
+
+Four probes, each three warm runs of `nix eval .#cider-buck2-prefix-min.drvPath`. The first two
+were taken on a quiet box, the last two at load ~3.5, so compare WITHIN a pair and not across.
+
+    quiet:  baseline                              15.0 s
+            staging reference removed              9.3 s     staging = ~5.7 s, 38 pct
+            staging DERIVATION memoised           14.6 s     the derivation was 0.4 s
+
+    loaded: derivation memo only            13.08 13.72 14.95
+            + staging TEXT memoised         11.87 12.03 11.83   ~1.3 to 2.0 s
+            + staging bypassed ENTIRELY     11.80 11.44 (15.11 cold)
+
+SO THE REMAINING STAGING COST IS ABOUT 0.3 s, from 5.7. Bypassing it completely now buys
+almost nothing, which is the only fair way to say the work is done rather than quoting a
+before-and-after taken at two different loads.
+
+WHERE IT WENT, and this is the part worth keeping. Building the DERIVATION was never the cost
+(0.4 s). Computing the group and shallow LISTS is not either (~0.3 s, what is left). The cost
+was FORMATTING those lists into shell, because the per-group body carries a thirty-line comment
+block and concatMapStrings ran it across every label's groups: 1,474 labels producing 94
+distinct strings.
+
+THE FIX IS A SPLIT, NOT A CACHE. stageGroupsDataFor stays per label, because members, the group
+union and its pathExists probes genuinely depend on it. stageGroupsTextOf is a function of that
+data alone, and every term in it is a pure function of an element of one of the two lists, so
+two labels with equal data produce byte-identical text and the memo cannot share wrongly.
+
+AND THE ONE THAT DID NOT WORK, which is why the check matters. Hoisting the label-INDEPENDENT
+tail (the rust vendor loop, pinStageLines across 148 pins) out of the per-label text moved ALL
+1,474 staging scripts: a nested indented string gets its own common-indent stripping, so the
+text differed by whitespace alone. Same 94 distinct scripts, every path different, every target
+would rebuild. A green ladder saw nothing wrong with it.
+
