@@ -154,10 +154,20 @@ builders into a full-graph build.
 
 ## Checking it
 
-`scripts/buck-dyndrv-check.nu` covers eleven properties over ten fixtures and is controlled
-both ways. TEN are asserted; the eleventh, that a substituted output resolves, is reported as a
-NOTE because it is not automated, and its by-hand sequence is in the runner header. Counted
-from the runner rather than from memory: ten `ok` lines and one `note`.
+`scripts/buck-dyndrv-check.nu` covers FOURTEEN properties over ELEVEN fixtures and is controlled
+both ways. THIRTEEN are asserted; the remaining one, that a substituted output resolves, is
+reported as a NOTE because it is not automated, and its by-hand sequence is in the runner header.
+
+Counted from the runner rather than from memory, which is the only way these numbers stay true:
+thirteen `ok` call sites, the `note` at the substitution property, and the header's own count of
+fourteen. Fixtures: ten `.nix` files the runner names, plus `dyn-actions-toy.nix`, which it never
+names but reaches through `dyn-actions-specdir-toy.nix`. `dyn-actions.nix` is the bridge itself
+and `dyn-actions-scale-toy.nix` is a MEASUREMENT with no pass or fail, so neither is a fixture.
+
+These numbers were wrong here until 2026-08-12, and the way they went wrong is worth the
+sentence: this paragraph said eleven, ten and ten, and it said them while claiming to have
+counted. Fixtures and properties were added afterwards and the prose was not re-counted. If you
+add one, re-run the count instead of incrementing the number.
 
 Several of those properties were FALSE when first checked and none of them had a fixture, so
 none could have been noticed: the DAG edge, the whole of `specDir` mode, and `specDir` plus a
