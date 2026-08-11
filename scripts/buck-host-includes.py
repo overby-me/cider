@@ -66,8 +66,19 @@ def cmake_target(rule: str) -> str:
 
 def main(argv: list[str]) -> int:
     if not os.path.exists(GRAPH):
-        print(f"no reference graph at {GRAPH}; nothing to check")
-        return 0
+        # NONZERO ON PURPOSE, and it used to be 0. Returning 0 here meant that the day a
+        # store GC collected the reference, this check would print one line and PASS,
+        # verifying nothing, for ever. That is not hypothetical: result-graph-stock, the
+        # sibling symlink beside this one, is ALREADY dangling because its store path was
+        # collected. A check whose input has vanished has not passed, it has stopped
+        # existing, and it has to say so. buck-endpoint-stale.nu already errors out in the
+        # same situation, so this adds no failure mode the suite does not already have.
+        print(f"FAIL: no reference graph at {GRAPH}", file=sys.stderr)
+        print("The frozen reference was garbage collected. NOTHING WAS VERIFIED here.",
+              file=sys.stderr)
+        print("Re-pin it, or delete this check rather than leaving it green and blind.",
+              file=sys.stderr)
+        return 2
 
     needs: dict[str, int] = {}
     dirs: set[str] = set()
