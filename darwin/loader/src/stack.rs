@@ -8,9 +8,23 @@
 use std::os::raw::{c_int, c_void};
 use std::ptr;
 
-/// Guest stack size: min(16 pages, RLIMIT_STACK) (mldr.c:828-839).
+/// Guest stack size: min(default, RLIMIT_STACK) (mldr.c:828-839 used 16 pages).
+///
+/// 8 MB, WHICH IS WHAT macOS GIVES THE MAIN THREAD, and the 16 pages this used to inherit from
+/// upstream mldr.c is 64 KB, which is not enough to start a Rust binary.
+///
+/// MEASURED, not guessed. A Darwin Rust hello-world SIGSEGVs under cider inside
+/// `dyld_stub_binder+0xF1`, which is the XSAVE buffer setup that runs before lazy binding: it
+/// reads `_bufferSize32` (0xA88 = 2696 bytes), subtracts it from rsp, and zeroes upward. From
+/// the core: rsp was 0x7FFFFFDF0700 and the stack base was 0x7FFFFFDF0000, so only 0x700 = 1792
+/// bytes remained, and the loop ran off the bottom into the PROT_NONE page there. Rust std had
+/// already used 0xF900 = 63,744 of the 65,536 bytes before dyld ever got to bind a symbol.
+///
+/// That is why bash survives on the same stack and a Rust binary does not: it is a startup
+/// high-water-mark difference, not anything about the linker, the fixup format or TLS, all of
+/// which were checked and cleared first.
 fn stack_size() -> u64 {
-    let default = 16 * 4096u64;
+    let default = 8 * 1024 * 1024u64;
     let mut rl: libc::rlimit = unsafe { std::mem::zeroed() };
     if unsafe { libc::getrlimit(libc::RLIMIT_STACK, &mut rl) } == 0
         && rl.rlim_cur != libc::RLIM_INFINITY
