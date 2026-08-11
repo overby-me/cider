@@ -366,8 +366,13 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   against a 12.95s floor if the scripts cost nothing at all. So 0.6s, not the ~12s first
   claimed. The ~12.95s that remains is computing 1,474 DERIVATIONS, and that is what A is
   for. Kept for what it enables, not for the 0.6s.
-- **STILL OPEN:** have the endpoint bind through `outputOf` so the evaluator stops computing
-  the derivations at all. That is the step with the real number behind it.
+- **STILL OPEN, and A and B DO NOT YET MEET.** Tested 2026-08-11: `nix derivation add`
+  rejects the adapter's `<name>.json` with "Expected JSON object to contain key 'name'".
+  `specDir` mode wants a DERIVATION; the adapter writes the action data a derivation would be
+  built from. The conversion needs the consumer's store paths (builder, staged tree,
+  toolchain), which neither the graph derivation nor the generator has, so it is a third
+  derivation's job. After that, the endpoint binds through `outputOf` and the evaluator stops
+  computing 1,474 derivations, which is where the ~12.95s actually is.
 - **The readFile trap, because it cost a wrong turn:** reading the 1,474 rendered scripts as
   separate files makes evaluation 32.6s, WORSE than computing them. The specs output is
   deferred (the graph it reads is CA), so its real path is unknown until realised and every

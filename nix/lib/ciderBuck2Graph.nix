@@ -481,10 +481,17 @@
       # Adding an include does change it, which is exactly when consumers should rebuild.
       sources = sourcesDrv;
 
-      # THE PER-GROUP ACTION SPECS (#66). One <name>.json and one <name>.sh per group, plus a
-      # `names` index. The .sh is the action sequence the lowering used to build in the
-      # EVALUATOR by escaping every one of 208,515 argv entries; it now reads this instead.
-      # nix/lib/dyn-actions.nix consumes the .json side in specDir mode.
+      # THE PER-GROUP ACTION SPECS (#66). One <name>.json per group holding its actions, a
+      # `names` index, and scripts.json holding every group's rendered command sequence. The
+      # scripts are what the lowering reads instead of building them in the EVALUATOR by
+      # escaping each of 208,515 argv entries.
+      #
+      # THE .json IS NOT YET IN THE FORMAT nix/lib/dyn-actions.nix WANTS, and an earlier
+      # comment here claimed it was. Tested 2026-08-11: feeding one to `nix derivation add`
+      # fails with "Expected JSON object to contain key 'name'". specDir mode wants a
+      # derivation, and this is the action data a derivation would be built FROM. Converting
+      # requires the consumer's store paths (builder, staged tree, toolchain), which this
+      # derivation does not have, so it is a third derivation's job and is still open.
       specs = specsDrv;
     };
   };

@@ -11,9 +11,16 @@ all, leaves 12.95 s. So the rendering is 2.2 s, NOT the ~12 s this file used to 
 12 s is the cost of computing 1,474 DERIVATIONS, of which the action script is a small part.
 Reading the result back costs about 1.5 s, so the net is 15.1 -> 14.5 s.
 
-That is a small win, and it is kept for what it enables rather than for the 0.6 s: the specs
-are now the artifact nix/lib/dyn-actions.nix consumes, and the remaining ~12.95 s of
-per-derivation computation is what emitting the derivations themselves would remove.
+That is a small win, and it is kept for what it enables rather than for the 0.6 s: the
+remaining ~12.95 s is per-derivation computation, which is what emitting the derivations
+themselves would remove.
+
+WHAT IS NOT DONE, stated plainly because the record claimed otherwise. The <name>.json this
+writes is NOT in the format nix/lib/dyn-actions.nix accepts in specDir mode. Tested
+2026-08-11: `nix derivation add` rejects one with "Expected JSON object to contain key
+'name'". specDir wants a DERIVATION; this writes the action data a derivation would be built
+from. The conversion needs the consumer's store paths -- the builder, the staged tree, the
+toolchain -- which are not knowable here, so it belongs in a derivation that has them.
 
 THE GROUPING IS COPIED FROM ciderBuck2Lower.nix AND MUST STAY IDENTICAL. If the two ever
 disagree, the adapter emits specs for groups the lowering does not have, or misses ones it
