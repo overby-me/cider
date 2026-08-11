@@ -635,8 +635,10 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 ## Buck2 port: where it stands
 
 Every in-scope link edge of the reference graph is ported and builds: **1451 of 1451**,
-`buck2 build //...` green over all ~12k targets, `buck-test.nu` **159 of 161**, and every
-runtime check at 0 or a documented 3. Measured 2026-08-11, not remembered.
+`buck2 build //...` green over all ~12k targets, `buck-test.nu` **159 of 161** on the last
+completed run, and every runtime check at 0 or a documented 3. Measured 2026-08-11, not
+remembered. The host-header check has since been fixed, so the next completed run should read
+160 of 161; that has not been re-measured yet and this line will say so until it has.
 
 It reads 161 rather than 159 because two checks that existed were never invoked by anything,
 `buck-labels-check.py` and `buck-pin-paths-check.py`, and are now wired in. The nine nix-free
@@ -646,11 +648,20 @@ The denominator is 1451, not the 1452 this line used to claim: #71 ported duct-t
 so `libdarlingserver_duct_tape.a` stopped being a link edge. The floor had been left at 1452,
 above the achievable maximum, so that check could not pass at all until b82c9e32.
 
-The two remaining suite failures are known and neither is a build gap. Install **UNMAPPED 5**:
-four pre-existing gaps plus the shellspawn plist, which the Cider rename renamed on disk while
-the frozen reference still names the old one; deliberately not mapped away, since that would
-hide a real divergence. And the host-header check, whose 1,275 is the wrong population, not
-1,275 defects (see the #86 notes).
+One suite failure remains, and it is not a build gap. Install **UNMAPPED 5**: four pre-existing
+gaps plus the shellspawn plist, which the Cider rename renamed on disk while the frozen
+reference still names the old one; deliberately not mapped away, since that would hide a real
+divergence.
+
+The host-header failure is **FIXED** (ec35926e), and it was never 1,275 defects nor a threshold
+worth freezing. `PROJECT_MARKER` in `buck-host-includes.py` had been renamed to
+`cider-cmake-src`, but the reference `build.ninja` is a frozen cmake-era artifact that says
+`darling-cmake-src` 455,547 times and the cider name zero times. The marker matched nothing, so
+the project's own `-I` flags all counted as host includes: 98.7 percent of the population was
+noise. Reading both names gives 26 targets, 24 include dirs, 21 ported, and all 21 already
+declaring `host_headers`, so it is honestly green. Verified it can still fail by removing the
+dep from one entry, which reported exactly that entry. The suite total should therefore read
+160 of 161; that count is arithmetic and has not yet been re-measured on a completed run.
 
 `result-graph-ref` points at the **all** graph and buck-test's thresholds are
 all-component numbers. `scripts/buck-runtime-check.nu` runs the eleven runtime checks in
