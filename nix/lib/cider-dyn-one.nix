@@ -56,6 +56,12 @@
     pkgs.diffutils
     pkgs.patch
     pkgs.bash
+    # THE UNWRAPPED BINTOOLS, because the WRAPPER does not expose the prefixed names. Its bin
+    # has ar and ld; llvm-ar lives in the unwrapped package and reaches PATH in an ordinary
+    # build through the wrapper's stdenv SETUP HOOK. An emitted action runs no setup hooks, so
+    # it has to be named. Found by unwind_static failing with llvm-ar: command not found while
+    # all 33 tool bin directories were checked and none contained it.
+    pkgs.llvmPackages.bintools.bintools
   ];
 
   bridge = import ./dyn-actions.nix {
