@@ -778,3 +778,39 @@ does not exist here. Do not start either one expecting to finish it.
 
 So the honest shape of #76 is: two done with a byte-parity harness, one gone, one portable but
 gated on a provenance question, two blocked on a missing toolchain.
+
+### #92 - read the graph through buck2 structured data, not its rendered output
+
+Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
+
+**THE DEFECT CLASS, and it is not hypothetical.** `buck2 aquery` renders an action command by
+joining the argv with `", "`, and `scripts/buck2-graph-dump.py` splits it back apart. That is
+sound only while no argument contains the separator, which is an ASSUMPTION, and it has been
+wrong: perl's `versions.h` passed the C initializer `"5.18", "5.28",` as ONE argument, it came
+back as TWO, and the lowering died on a ValueError out of the configure script. The host, which
+never round-trips through the rendering, built it correctly the whole time. That asymmetry is
+the signature of this bug class: only the Nix route can see it.
+
+**IT IS ALREADY GUARDED, so this is a robustness task and not an outage.** Two halves:
+
+    buck-argv-roundtrip-check.py            compares unjoin() against `buck2 log what-ran`,
+                                            which carries the real argv as a LIST. It imports
+                                            unjoin from the dumper rather than reimplementing
+                                            it, so it tests the real code path.
+    buck-argv-roundtrip-check.py --static   no build: every BUCK string literal that becomes an
+                                            argv element must not contain the separator. This
+                                            is the half buck-test.nu runs.
+
+Measured when that went in: exactly ONE literal in the tree contains `", "`, perl's VERSIONS,
+and `configure_file` now passes its values through a file, so it is safe by construction.
+
+**TWO TRAPS RECORDED IN THAT CHECK, worth reading before touching this.** It runs buck2 under
+its OWN isolation dir, because `what-ran` lists only actions that actually EXECUTED; against the
+warm daemon everything is cached, nothing runs, and the check reports zero comparable actions
+while looking like it passed. And the dumper's own `--check-against-what-ran` covers only about
+4 percent of the graph inside the Nix graph derivation, the actions owning artifacts buck2 makes
+in-process, which is why it could not have caught the one bug it exists for.
+
+**SO WHAT #92 BUYS** is deleting the assumption rather than testing it: take the argv as
+structured data and the round trip disappears, along with both checks. Nothing measured says
+what it costs. Do not start it while a cheaper task is open.
