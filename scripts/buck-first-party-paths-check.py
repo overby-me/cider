@@ -45,9 +45,20 @@ import sys
 # --root exists for the negative control, which has to run against a tree where the path is
 # genuinely absent. Pointing it at the real repo cannot demonstrate the failing direction
 # without editing a BUCK file, and a control that edits projectSrc cannot run beside a build.
+#
+# The bounds test is not pedantry: a check that raises is a check that FAILS, and a suite
+# reading only the exit code cannot tell a crash from a real finding. Say what is wrong and
+# exit 2, which is the convention the other checks use for cannot-run as against found-a-problem.
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if "--root" in sys.argv:
-    ROOT = os.path.abspath(sys.argv[sys.argv.index("--root") + 1])
+    _i = sys.argv.index("--root") + 1
+    if _i >= len(sys.argv):
+        print("FAIL: --root needs a directory argument", file=sys.stderr)
+        sys.exit(2)
+    ROOT = os.path.abspath(sys.argv[_i])
+    if not os.path.isdir(ROOT):
+        print(f"FAIL: --root {ROOT} is not a directory", file=sys.stderr)
+        sys.exit(2)
 LITERAL = re.compile(r'"((?:src|darwin|linux)/[\w./+-]+)"')
 OUTPUT_ATTR = re.compile(r'\bout_base\s*=\s*"[^"]*"')
 SKIP_DIRS = {".jj", ".git", "buck-out", "target", "outputs", "build", "__pycache__",
