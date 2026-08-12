@@ -211,7 +211,7 @@ of the 33 that do not,
     23 self-contained, NO frozen reference    6,416 lines   port in any order
      3 self-contained, READ result-graph-ref    751 lines   buck-host-includes (DONE, #98),
                                                             buck-lower-srcdeps,
-                                                            buck-move-src-subdir
+                                                            buck-move-src-subdir (DONE, #98)
 
 Those three stream the **131 MB, 362,663-line** `build.ninja`, which is precisely the shape
 nushell is worst at, and they die at the next store GC by their own admission. They go last.
