@@ -5,8 +5,13 @@
 # src/external), so it is the DELTA and not the whole closure, which is 15,600 files.
 #
 # Regenerate, and never edit, with:
-#   cider-codegen-closure <graph.json> <graph-data> --sources <target-sources.json> \
+#   CIDER_EMIT_TARGET_SOURCES=1 cider-graph-sources <graph.json> <graph-data> <outdir>
+#   cider-codegen-closure <graph.json> <graph-data> --sources <outdir>/target-sources.json \
 #     --list | <filter through buck-skeleton may_empty>
+#
+# THE PER-TARGET FILE IS BEHIND AN ENV VAR, not gone. It is 298 MB, so the sources pass skips
+# it unless CIDER_EMIT_TARGET_SOURCES=1 is set, and a note in this file once said the recipe
+# could no longer be followed at all. It can: emitting it takes 12 seconds.
 #
 # WHY IT MUST BE REGENERATED: emptying a generator input does NOT fail. bindgen handed an empty
 # linux/server/wrapper.h wrote nothing, and the graph died 83 rustc errors later in sched.rs on

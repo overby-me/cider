@@ -253,7 +253,16 @@ The keep list it produced IS live: `linux/buildtools/skeleton` reads
 `scripts/buck-codegen-keep.txt` and carries five more paths in `NEVER_EMPTY_FILES`, and emptying
 any of them fails SILENTLY, which is the whole reason the file exists.
 
-**AND ITS REGENERATION RECIPE IS ALREADY BROKEN,** which is the finding that matters here. The
+**CORRECTION, measured 2026-08-12 09:30: THE RECIPE IS NOT BROKEN, it is behind an env var.**
+The sources pass still writes the per-target file as `target-sources.json`, skipped by default
+because it is 298 MB and gated on `CIDER_EMIT_TARGET_SOURCES=1`. Emitting it takes 12 seconds,
+after which `--sources`, `--check` and `--list` all run: 30,776 files of 58,459, and the four
+spot checks pass. The paragraph below was written from the ABSENCE of the file in a store
+output rather than from reading the writer, and it is wrong. What follows is kept because the
+FAILURE MODE it describes is real: passing `target-subsets.json`, whose values are strings,
+would union the characters of a path and print a percentage rather than erroring.
+
+**THE ORIGINAL CLAIM, now corrected:** which is the finding that matters here. The
 header of `buck-codegen-keep.txt` says to regenerate with
 `--sources <target-sources.json>`, and the sources derivation stopped writing any such file when
 #63 replaced per-target file lists with a label to subset index plus per-subset files. Passing

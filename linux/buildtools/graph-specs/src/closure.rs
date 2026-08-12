@@ -25,11 +25,24 @@
 //! of every action in the frontier through it, on the order of a million lookups. A nushell
 //! record is not a hash map, and 100,001 lookups into a 12,001 key record took 51.8 seconds.
 //!
-//! VERIFIED BYTE FOR BYTE against the python in the two modes its inputs allow: the default
-//! report and --targets. --sources cannot be exercised any more and that is a finding rather
-//! than an omission: it wants a per-target file the sources derivation stopped writing when #63
-//! replaced per-target lists with a label to subset index. Passing today's target-subsets.json
-//! would not error, it would union the CHARACTERS of a path and print a percentage.
+//! VERIFIED BYTE FOR BYTE against the python in EVERY mode, including the three that an earlier
+//! write-up said could not be reached. That claim was wrong and this is the correction: the
+//! sources pass DOES still emit the per-target file, as target-sources.json, behind
+//! CIDER_EMIT_TARGET_SOURCES=1, off by default only because it is 298 MB. Emitting it takes 12
+//! seconds and --sources, --check and --list then all run:
+//!   default            3,025 staged trees, 43 generated staged in, 164 of 1,866 targets
+//!   --targets          the same 164 labels, on two different graphs
+//!   --sources --check  30,776 files of 58,459, 52.6 percent, and the four spot checks pass
+//!   --list             all 30,776 paths, identical
+//! CONTROLLED, because a check that cannot fail is worth nothing: drop rtsig.c from the
+//! per-target file and both implementations exit 1 with the same
+//! "MISSING from the closure, and blanking it fails SILENTLY" line.
+//!
+//! ONE DIFFERENCE REMAINS AND IT IS NOT REPRODUCIBLE BY CONSTRUCTION. The top-8 ranking breaks
+//! ties by python's Counter.most_common, which is a STABLE sort over dict insertion order, and
+//! that order is the iteration order of a SET of paths. Two directories tie at one file each
+//! (. and etc) and python prints them in its hash order. This prints them sorted, which is
+//! stable across runs where python's is a property of the process. Every count is identical.
 
 // SHARED: one reader for the farm tables, see src/trees.rs.
 #[path = "trees.rs"]
