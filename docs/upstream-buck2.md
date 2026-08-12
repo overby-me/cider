@@ -1,175 +1,136 @@
-# Two things to upstream to buck2
+# Upstreaming the buck2 Nix integration to the overby.me monorepo
 
-**STATUS: PREPARED, NOT FILED.** Nothing here has been sent anywhere, no issue or pull request
-has been opened against facebook/buck2, and nobody has been contacted. This is the write-up that
-would have to exist first, held to the standard that a maintainer reading it cold can reproduce
-every claim without knowing what Cider is.
+**STATUS: MEASURED AND PREPARED. NOTHING PUSHED, AND THE MONOREPO CHECKOUT WAS ONLY READ.**
+Landing needs one command in a repository this one does not own, so it is the user's to run.
+Everything below is the work that has to exist before that command is safe.
 
-Both findings are about the same thing: **buck2 can build the graph but cannot hand it to you as
-data.** That matters here because the Nix endpoint does not run buck2 at build time. It reads the
-action graph once and replays it as one derivation per target, so every fact buck2 will not state
-in machine-readable form has to be reconstructed by us, and each reconstruction is an assumption
-that can be wrong.
+## Where the integration lives
 
-Measured 2026-08-12 against **buck2 unstable-2026-04-15**, the nixpkgs binary this repo builds
-with. Re-measure before filing: the release is four months old and either of these may have moved.
+`nix/lib/buck2` in the monorepo is **nix-buck2**: a Nix builder for Buck2 projects that parses
+`.buckconfig` and the `BUCK`/`.bzl` Starlark at EVALUATION time and lowers each Buck2 action to
+its own derivation, with no import-from-derivation and no `buck2` binary in the loop. It stands
+on the reusable Starlark interpreter in `nix/lib/skylark`.
 
-The one command behind everything below:
+Cider consumes it through `nix/lib/ciderBuck2.nix`, from five attributes in `flake.nix`, and
+pins the monorepo at `main`, revision `bc895a2d`.
 
-```
-buck2 aquery --output-all-attributes --json 'deps(//darwin/libsimple:libsimple_ciderd)'
-```
+**IT IS PINNED AS `flake = false`, WHICH IS THE FACT THAT MAKES THIS SMALL.** The monorepo is
+consumed as a plain SOURCE TREE and instantiated with Cider's own `pkgs`, so none of its roughly
+30 transitive flake inputs enter this lock. The consequence is worth stating because it removes
+an entire class of risk from the landing below: the 621 commits `main` has taken since this work
+branched, and any nixpkgs bump among them, **cannot reach Cider through this input.** Only the
+files under `nix/lib/buck2` and `nix/lib/skylark` can.
 
-`//darwin/libsimple:libsimple_ciderd` is the small probe target: one C source, one include root,
-one archive action. Four action nodes come back.
+## What has not landed: four commits
 
----
+They are on the monorepo bookmark `nix-lib-buck2`, and `flake.nix:76` in this repo still tells a
+reader to reach them with `--override-input`.
 
-## Finding 1: aquery renders an action command as a string, so the argv cannot be recovered
+| Commit | What it does | Why this port needed it |
+|---|---|---|
+| `feat(nix/lib): Teach buck2 read_root_config, symlinked_dir, copy and ar` | Four missing primitives | A real project configures its toolchain through `read_root_config`, and `symlinked_dir`, `copy` and `ar` are three of the action kinds Cider's graph is made of |
+| `fix(nix/lib): Make skylark iterate where it recursed, so big files parse` | Parser recursion to iteration | Cider's generated `BUCK` files are large enough to overflow the parser |
+| `fix(nix/lib): Materialize a source when it is the target's own output` | `export_file`'s default output IS its source, so no action produces it, and asking which one did failed before it could say why | Every `export_file` Cider uses to hand a file across a package boundary |
+| `fix(nix/lib): Fold the interpreter's loops so real BUCK files do not overflow` | `for` and comprehensions recursed once per ITERATION, and Nix has no tail-call elimination, so a loop was a max-call-depth error rather than a slow evaluation. Now `foldl'`, with a done flag for early exit and forcing of the accumulated list and env | Iterating the SDK header maps (4,178 entries) and one `export_file` per entry of a per-pin list (xnu: 1,252) |
 
-`--output-all-attributes --json` returns `cmd` as a JSON **string**, holding the argv joined with
-`", "` inside square brackets, which is the Rust debug rendering of a list rather than a list:
+**NONE OF THE FOUR IS CIDER-SPECIFIC**, which is the case for landing them rather than carrying
+them. `read_root_config`, `symlinked_dir`, `copy` and `ar` are core Buck2; the loop folding is
+about any project with a generated map; the `export_file` fix is about any cross-package file
+handoff. Cider is the evidence that they are needed, not the reason they exist.
 
-```json
-"cmd": "[clang, -DLIBSIMPLE_LINUX=1, -Ibuck-out/v2/art/root/.../libsimple_ciderd__include, -c, darwin/libsimple/src/lock.c, -o, buck-out/...]"
-```
+## Landing is conflict free, and that is measured rather than assumed
 
-Asking for JSON therefore buys nothing over the plain output: it is the identical rendering
-wrapped in quotes, separator and all. There is no other attribute carrying the argv.
+    jj log -r 'main..nix-lib-buck2'                          4 commits
+    jj log -r 'nix-lib-buck2..main'                          621 commits, all web and wiki work
+    jj log -r 'nix-lib-buck2..main & files("nix/lib/buck2" | "nix/lib/skylark")'
+                                                             NOTHING
 
-**THIS IS LOSSY, AND IT HAS BEEN LOSSY IN PRACTICE, ONCE.** Splitting that string back apart is
-sound only while no single argument contains `", "`. In this port one did: perl's `versions.h`
-generation passed the C initializer
+The branch is 621 behind, which normally means a stale branch is a rebase problem. Here it does
+not: **no commit on `main` since the branch has touched either directory**, so the rebase has
+nothing to conflict with. The eleven changed files (`nix/lib/buck2/{build/lower.nix,
+build/toolchains.nix,lib/actions.nix,lib/analyze.nix,lib/globals.nix,lib/loader.nix,
+lib/serialize.nix}` and `nix/lib/skylark/{eval,lexer,parser,values}.nix`, 451 insertions and 140
+deletions) are the branch's alone.
 
-```
- "5.18", "5.28",
-```
+The procedure, to be run IN THE MONOREPO, by its owner:
 
-as ONE argument, it came back as TWO, and the replayed command died in the consuming script. The
-signature is worth naming because it is what makes this class expensive to find: **buck2 itself
-built it correctly the entire time.** Only the consumer that round-trips through the rendering
-ever saw a different command, so the bug is invisible from inside buck2 and looks like a bug in
-the consumer.
+    jj rebase -b nix-lib-buck2 -d main
+    jj bookmark set main -r nix-lib-buck2
+    jj git push --bookmark main
 
-**THE OTHER ROUTES WERE TRIED AND DO NOT REPLACE IT.**
+Then in this repository: update the `overby` input, and delete the `--override-input` paragraph
+at `flake.nix:76`, which stops being true the moment this lands.
 
-| Route | Why it does not answer |
-|---|---|
-| BXL, `ctx.aquery().all_actions()` | An `ActionQueryNode` exposes `["action", "analysis", "attrs", "rule_type"]`. Its `attrs.cmd` is the same debug string, and `.action` is an opaque handle whose `dir()` is empty. Recorded in `buck/bxl/probe.bxl`, which exists to print exactly this. |
-| `buck2 log what-ran --format json` | Does carry the real argv, as a list, at `.reproducer.details.command`. But the log is per invocation and lists only actions that **executed**. Analysis executes nothing, so using it as the source means compiling the whole graph before you can learn what the graph is, which is the thing the endpoint exists to avoid. |
+## What has to be re-verified, and what was actually verified here
 
-**THE ASK:** in `--output-all-attributes --json`, emit `cmd` as a JSON array of the argv elements,
-or add a second attribute (`argv`) that is one. The information is present, unambiguous, and
-already flows through `what-ran` in list form; only the query rendering discards its structure.
+The last commit's message states "skylark-lib and buck2-build-cpp pass". That was true 621
+`main` commits ago, and those are the monorepo's own checks, so they are the owner's to re-run
+after the rebase.
 
-**PRIOR ART: none found.** No upstream issue found for the command rendering as of 2026-08-12.
+What could be checked from this side, and was:
 
-**WHAT WE DO MEANWHILE**, so this is a robustness request rather than an outage report: the
-dumper splits on `", "` (`unjoin` in `linux/buildtools/graph-specs/src/dump.rs`), and
-`scripts/buck-argv-roundtrip-check.nu` guards the assumption in two halves. One compares the
-recovered argv against `what-ran`'s real list, importing `unjoin` rather than reimplementing it so
-that the check tests the shipping code path. The other, which the test suite runs and which needs
-no build, asserts that no string literal anywhere in the tree that becomes an argv element
-contains the separator. Exactly one ever did, and the rule that produced it now passes its values
-through a file, so that one is safe by construction rather than by vigilance.
+    nix build .#cider-buck2-libsimple --override-input overby <the local branch>
 
----
+That is the real end-to-end consumer test of all four commits: the smallest Buck2 target in this
+port (one C source, one include root, one archive action) taken through the Nix-lowered path,
+which exercises load, rule, provider, glob and three action kinds. Because the input is a source
+tree rather than a flake, this result carries over to the landed state unchanged.
 
-## Finding 2: aquery states no inputs and no outputs for any action
+**RESULT, 2026-08-12 22:50: EXIT 0.** It lowered and built four derivations, and their names are
+the evidence that the four commits are the thing under test rather than something cached around
+them:
 
-The four nodes returned for the probe target carry these attributes, and this is the complete
-list, counted over the nodes that have each:
+    buck2---darwin-libsimple-libsimple_ciderd-symlinked_dir0
+    buck2---darwin-libsimple-libsimple_ciderd-run1
+    buck2---darwin-libsimple-libsimple_ciderd-run2
+    buck2---darwin-libsimple-libsimple_ciderd
 
-```
-kind                                  4
-category                              3
-identifier                            3
-buck.executor_configuration           3
-buck.all_outputs_are_content_based    3
-buck.all_inputs_are_eligible_for_dedupe  3
-cmd                                   2
-executor_preference, always_print_stderr, weight, dep_files, metadata_param,
-no_outputs_cleanup, allow_cache_upload, allow_dep_file_cache_upload,
-buck.all_ineligible_for_dedup_inputs  2
-```
+`symlinked_dir` is one of the four primitives the first commit adds, and the run actions are
+reached through the toolchain the same commit taught to read `read_root_config`. Run with
+`--option substituters ""`, so nothing here was substituted.
 
-There is **no `inputs` field and no `outputs` field at all.** Not empty ones: absent. So aquery
-will tell you an action exists, what kind it is and what it runs, but not one artifact it reads
-or writes.
+This does NOT cover the whole library: it is one small target, and `select()` and `//...`
+discovery are unimplemented upstream anyway. It covers the consumer path this repo depends on.
 
-**THE WORST CASE IS THE ACTION THAT HAS NO COMMAND EITHER.** buck2 performs some actions in
-process, and for those the argv cannot stand in for the inputs, because there is no argv. A staged
-include root comes back complete, as:
+## Appendix: two buck2 limitations that shaped this integration
 
-```json
-{"kind": "symlinkeddir", "category": "symlinked_dir", "identifier": "libsimple_ciderd__include",
- "buck.executor_configuration": "Local + use persistent workers true",
- "buck.all_outputs_are_content_based": "false",
- "buck.all_inputs_are_eligible_for_dedupe": "true"}
-```
+Measured first-hand on 2026-08-12 against buck2 unstable-2026-04-15, the nixpkgs binary this repo
+builds with, using one command:
 
-That is the entire node. A directory of headers that every compile in the target points `-I` at,
-and the query does not name a single file in it, nor the tree it was made from. Nothing computed
-from argvs alone would stage one header, because no argv mentions one.
+    buck2 aquery --output-all-attributes --json 'deps(//darwin/libsimple:libsimple_ciderd)'
 
-**WHAT WE HAD TO BUILD INSTEAD**, which is the measure of the gap:
+These are recorded because they explain why the integration is shaped the way it is, not as a
+plan to file anything.
 
-* `buck2 audit output <path>` per artifact, to learn which action produced a `buck-out` path.
-  That is what separates an action's own outputs from the artifacts it consumes, and no argv
-  makes the distinction.
-* A custom BXL script (`buck/bxl/materialize.bxl`) that walks the configured dep graph, reads our
-  own providers, and ensures the artifacts they carry, because `buck2 build <target>` materializes
-  only the target's default output. An artifact reachable through no subtarget is simply absent
-  otherwise: `darling-config.h`, produced by action id 2 of one target, is the case that proved
-  it, and dropping the provider walk silently lost 18 staged artifacts and 11 farms while the
-  dump still exited 0.
-* Walking the materialized `buck-out` tree on disk afterwards to recover what is in each staged
-  directory, and recording it as a link table beside the graph. The filesystem is the only place
-  that answer exists.
+**`cmd` comes back as a JSON string, not an array.** The argv is joined with `", "` inside
+brackets, which is a debug rendering of a list:
 
-There is a second-order cost worth stating, since it is what convinces a maintainer this is not
-cosmetic: **a hidden input cannot be detected, so the build definition has to be distorted to
-avoid having any.** Guest Rust crates in this port must be a single file, with submodules inlined
-as `mod x { ... }`, because a `mod` in its own file is an input that appears in no argv, in no
-attribute, and in no query output. If it were missed, the action would be replayed without it.
+    "cmd": "[clang, -DLIBSIMPLE_LINUX=1, -Ibuck-out/v2/art/root/.../libsimple_ciderd__include, -c, darwin/libsimple/src/lock.c, -o, buck-out/...]"
 
-**PRIOR ART: this is already reported and got no answer.**
-[facebook/buck2#475](https://github.com/facebook/buck2/issues/475), "`buck2 aquery` doesn't seem
-to list inputs or outputs", opened 2 November 2023, **closed with no maintainer reply, no label
-and no linked change.** The reporter described the fields as empty; on unstable-2026-04-15 they
-are not present at all. So a new report should not restate the question, it should supply what
-that one lacked: a reproducer, the in-process case above, which is strictly worse than the case
-that was reported, and a concrete ask.
+Asking for JSON therefore buys nothing over the plain output, and splitting it back apart is
+sound only while no argument contains the separator. One did: perl's `versions.h` passed the C
+initializer `"5.18", "5.28",` as ONE argument and it came back as TWO. The signature of the class
+is that **buck2 itself built it correctly the whole time**; only a consumer that round-trips
+through the rendering ever saw a different command. `scripts/buck-argv-roundtrip-check.nu` guards
+both halves of that assumption, and one half needs no build.
 
-**THE ASK:** expose each action's declared input and output artifacts in aquery output, including
-for in-process kinds (`symlinked_dir`, `write`, `copy`) where they are the only description of the
-action that can exist. buck2 holds them; the action cannot be scheduled otherwise.
+**No action states its inputs or outputs.** On this release the fields are not empty, they are
+absent. The complete attribute set is `kind`, `category`, `identifier`, `cmd` and executor knobs.
+It is worst for the kinds buck2 performs in process, where there is no argv to fall back on: a
+staged include root, which every compile in the target points `-I` at, comes back as
 
----
+    {"kind": "symlinkeddir", "category": "symlinked_dir", "identifier": "libsimple_ciderd__include",
+     "buck.executor_configuration": "Local + use persistent workers true",
+     "buck.all_outputs_are_content_based": "false",
+     "buck.all_inputs_are_eligible_for_dedupe": "true"}
 
-## Before filing
+and that is the entire node. Nothing computed from argvs alone would stage a single header, which
+is why the endpoint reads the materialized tree from disk and records a link table beside the
+graph, and why `buck2 audit output` is needed to tell an action's own outputs from what it
+consumes. It also has a design consequence in this repo: **a guest Rust crate must be ONE FILE**,
+with submodules inlined, because a `mod` in its own file is an input that appears in no argv and
+in no attribute, and would be silently missing when the action is replayed.
 
-1. **Re-measure on current buck2.** Everything above is unstable-2026-04-15. Both findings must be
-   re-confirmed against the newest release, and the claim "no upstream issue" re-checked.
-2. **Write a reproducer that is not Cider.** A maintainer should not have to clone this. Both
-   findings reproduce on a project of two files:
-
-   ```
-   # BUCK
-   cxx_binary(name = "hello", srcs = ["hello.c"])
-   ```
-   ```
-   buck2 aquery --output-all-attributes --json 'deps(//:hello)'
-   ```
-
-   The compile node shows `cmd` as a string; no node has `inputs` or `outputs`. Finding 2 wants
-   one more line in the reproducer, a rule with a `symlinked_dir` or a `write`, to show the action
-   that has no `cmd` to fall back on.
-3. **File them separately.** They have different asks and different prior art. Finding 1 is a
-   rendering change; finding 2 is a data-model gap with a three-year-old closed issue behind it.
-4. **Lead with the reproducer and the ask, not with the port.** What this repo does with the graph
-   is motivation, and it is unusual enough to be a distraction.
-
-Not a precondition, but worth knowing: buck2's own crates are not vendored here, buck2 arrives as
-a nixpkgs binary, so a patch would mean pinning and building an external Rust workspace against
-the exact binary this repo runs. Reporting is cheap; fixing it ourselves is not.
+For the record, since it was checked: the inputs half is already reported upstream as
+[facebook/buck2#475](https://github.com/facebook/buck2/issues/475), opened 2 November 2023 and
+closed with no maintainer reply. Nothing was filed, and nobody was contacted.
