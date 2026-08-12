@@ -82,6 +82,14 @@ path = "src/prefixcost.rs"
 name = "cider-specs-check"
 path = "src/specscheck.rs"
 
+# THE TENTH BINARY, the Rust rewrite of scripts/buck-fix-link-model.py (#98). It reads the frozen
+# 131 MB build.ninja through src/ninjaref.rs, which is the LIVE SURFACE of the 2,508 line
+# gen-buck-from-ninja.py that several tools imported: the edges, the two registries and the
+# upward-dependency rule. One copy of that, shared, is the point.
+[[bin]]
+name = "cider-fix-link-model"
+path = "src/linkmodel.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

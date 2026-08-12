@@ -64,7 +64,7 @@ What imports it today, measured over `scripts/` rather than assumed:
 
 | library | imported by | what those importers are |
 | --- | --- | --- |
-| `gen-buck-from-ninja.py` | 5 | `gen-install-from-manifests` and `gen-xtrace-mig` (generators), `buck-fix-link-model`, `buck-port`, `regen-dylibs` (tools) |
+| `gen-buck-from-ninja.py` | 3 | `gen-install-from-manifests` (generator), `buck-port`, `regen-dylibs` (tools). `gen-xtrace-mig` and `buck-fix-link-model` are gone: the first is nushell, the second is Rust, and its 182-line live surface now lives ONCE in `graph-specs/src/ninjaref.rs` |
 | `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
 | `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 0, 0, 0 | **RE-MEASURED: none of the three is IMPORTED.** `buck-split-pins` and `regen-dylibs` run all three as SUBPROCESSES (`buck-split-pins.py:482,490,491`, `regen-dylibs.py:133`), so each can be ported and deleted on its own. `buck-fix-loads` is `.nu` already |
 
@@ -73,8 +73,17 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **13 files, 7,205 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **11 files, 6,967 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
+
+**THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
+`linux/buildtools/graph-specs/src/ninjaref.rs`: `read_edges` over the frozen 131 MB
+`build.ninja`, the firstpass and final registries scanned out of every committed BUCK file, and
+`upwards_of`. That is the 182 lines the six importers actually read, in one place, so each
+importer can move on its own instead of waiting on a 2,508-line file. `buck-fix-link-model` is
+the first through it (`cider-fix-link-model`), gated byte for byte in `--check` on the real tree
+and in WRITE mode on a mirror with a mutated dylib block, where the two rewritten trees are
+compared file by file.
 
 `buck-prefix-cost` is the second one to go to **Rust rather than nushell** on shape rather than
 on clock: it is a reachability closure over the action graph held as bitmasks, then a join
