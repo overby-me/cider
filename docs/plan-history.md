@@ -1510,7 +1510,7 @@ has been true six times running, each time a check freshly written.
   action scripts alone, which was a smaller and different change. That probe also
   confirms for the first time what the source filters promise: a `nix/` edit rebuilds nothing.
 - **#69 MEASURED: the declaration gap is a PER-TARGET question, and it is 675 files.**
-  `cider-declaration-gap` (then `scripts/buck-declaration-gap.py`) splits each target's source set into what buck2 SAYS (argv
+  `cider-declaration-gap` (then the python buck-declaration-gap) splits each target's source set into what buck2 SAYS (argv
   tokens, staged-tree link targets) and what the closure pass COMPENSATES for (include roots
   taken wholesale, quoted includes), and verifies that partition against
   `buck2-graph-sources.py` on all 2,339 targets. On the current graph, union 74,620 files:
