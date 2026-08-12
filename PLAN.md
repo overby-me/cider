@@ -900,7 +900,7 @@ increment would have rediscovered all of the below. Read off the tree, not from 
 
 **TWO OF THEM ARE ALREADY PORTED, and well.** `linux/buildtools/BUCK` gives the CANONICAL names
 `getuuid` and `elfdep` to `rust_binary` targets over `getuuid.rs` and `elfdep.rs`; the C survives
-as `getuuid_c` and `elfdep_c` deliberately, because `scripts/buck-hosttools-parity.py` diffs the
+as `getuuid_c` and `elfdep_c` deliberately, because `scripts/buck-hosttools-parity.nu` diffs the
 two on the same inputs and that comparison is only re-runnable while both exist. Provenance was
 checked: both are Darling-origin and GPL (getuuid.c Copyright 2018 Lubos Dolezel, elfdep.c
 2018-2020), so the headers stay and a Cider line sits beside them.

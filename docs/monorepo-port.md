@@ -160,7 +160,30 @@ Verified rather than eyeballed:
 - `buck-test.nu` now calls the `.nu`, the two stale `.py` references were updated, and the Python
   is deleted, so there is one implementation rather than two that can drift.
 
-### Two nushell traps, both paid for in the pilot
+### Three checks ported so far, and the ratio is holding
+
+| check | Python | nushell | what it proved |
+|---|---|---|---|
+| `buck-pin-patches-check` | 121 | 117 | the shape works, three fault classes controlled |
+| `buck-pin-rev-check` | 148 | 145 | the control found a bug the happy path could not |
+| `buck-hosttools-parity` | 114 | 137 | **nushell can do the byte comparisons** |
+
+About 1:1, so the 7,953 self-contained lines are roughly that much nushell. The third grew
+because it carries the binary-handling findings in its header and a small `repr` helper.
+
+**The binary comparison was the part of #98 that looked risky, and it is not.**
+`buck-hosttools-parity` compares two binaries byte for byte: stdout as hex, stderr verbatim, exit
+code. Measured against python `subprocess` on the same three inputs (`610a`, `61`, `00fffe`),
+nushell's `complete` preserves everything: trailing newlines are kept, and stdout that is not
+valid UTF-8 comes back as a `binary` value instead of being lossily decoded. So
+`$r.stdout | into binary` is a faithful `p.stdout`.
+
+Controlled by the discriminating fault its own header names: replace the Rust `getuuid` with
+`elfdep` in a copied buck-out. Both implementations exit 1, both report DIFF on exactly the
+`no args` and `dylib` cases and `ok` on the other eight, and the output is byte identical
+including the `repr`-formatted stderr.
+
+### Nushell traps, all paid for in these three ports
 
 **`get X` on a record without `X` is an ERROR, not null.** Python's `e.get("patches")` defaults to
 None; the direct nushell translation aborts on the first manifest entry that has no override,
@@ -170,6 +193,17 @@ which is most of them. Use `get -o` (or `get X?`).
 original needs `ls -a`. This is the same family as the trap already recorded for this repo, that
 `grep -r` here is ugrep and silently obeys ignore files while `find -type f` skips symlinks: the
 counting primitive is never the innocent part.
+
+**`str substring 0..12` is END-INCLUSIVE and yields thirteen characters** where Python's `[:12]`
+yields twelve. Use `0..<12`. This one is the reason the controls are not optional: it exists only
+in the failure text, the real run was byte identical, and the planted stale-rev control caught it
+on the first try.
+
+**`path exists` is true for a file as well as a directory**, where Python asks `os.path.isdir`.
+Test `path type` explicitly when the Python did.
+
+**`encode hex` is UPPERCASE** and Python's `bytes.hex()` is lowercase. The bytes are identical
+either way, which is exactly why a wrong case would survive review; add `| str downcase`.
 
 ## #99
 
