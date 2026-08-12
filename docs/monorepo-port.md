@@ -444,6 +444,18 @@ other is deliberately frozen with its measurement in the header.
 
 That reframes what is left of #97 and #98. It is not 11,350 lines of work. It is two decisions.
 
+**And the bigger of the two is NOT a nushell port, measured rather than assumed.**
+`gen-install-from-manifests.py` is 972 lines that make 1,289 `target_for` calls, each scanning
+up to five registry tables holding 3,481 keys, on top of parsing 669 `cmake_install.cmake`
+manifests and walking the repo for `BUCK` files. It runs in 3.77 s. The registry lookups alone
+are not what would kill a nushell port (3,481 keys is small enough that the linear record lookup
+stays under a second), but the per-entry work over 2,059 install entries would, and the risk is
+worse than the runtime: its output is 4,336 committed lines of `buck/prefix/BUCK` plus nine
+package files, and it took five separate reference-to-tree mismatches to make it reproduce them
+again. Rewriting that in a language with different string and path semantics, to save one python
+edge, is the wrong trade to make blind. If it moves, it moves to Rust beside the other
+generators, and it moves with the regeneration diff as its gate.
+
 ## #99 step 0: every build-path script is behind a CONTENT-ADDRESSED output
 
 Not started, and now measured: 2,831 lines, listed above. It converges with #92 (reading the
