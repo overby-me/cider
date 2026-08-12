@@ -195,6 +195,7 @@ def read_entries(root: str):
             # is, the entry lands in the prefix under a top-level usr/local, and its
             # symlinks point outside the tree.
             dest = dest.removeprefix(INSTALL_PREFIX + "/").rstrip("/")
+            dest = renamed_dest(dest)
             # The excludes are quoted strings too, so the file list is what comes BEFORE the
             # first REGEX. Splitting there keeps `/Makefile$` from being read as a file.
             head = blob.split(" REGEX ", 1)[0]
@@ -245,7 +246,7 @@ def read_layout(root: str, prefix: str):
             continue
         text = open(os.path.join(dirpath, "cmake_install.cmake")).read()
         for dest in EMPTY_DIR.findall(text):
-            d = dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/")
+            d = renamed_dest(dest.replace("${CMAKE_INSTALL_PREFIX}/", "").rstrip("/"))
             if d and d not in dirs:
                 dirs.append(d)
         for target, dest in CODE_SYMLINK.findall(text):
@@ -253,7 +254,10 @@ def read_layout(root: str, prefix: str):
             # same thing, so the plain one is enough.
             if "DESTDIR" in dest:
                 continue
-            rel = dest.removeprefix(prefix).lstrip("/")
+            # THE LINKS TAKE THE RENAME TOO, and they are a SEPARATE code path from the
+            # file(INSTALL ...) parser: leaving them out left 635 framework version links
+            # spelling libexec/darling while every file beside them said libexec/cider.
+            rel = renamed_dest(dest.removeprefix(prefix).lstrip("/"))
             if rel:
                 links[rel] = target
     return dirs, links
@@ -355,6 +359,18 @@ def registries(gen, binaries: dict) -> list:
     return _REGISTRIES
 
 
+# THE SAME THREE THE COVERAGE CHECK CARRIES, and for the same reason: the reference predates
+# the Cider rename, so it installs an artifact the port builds under a new name. A MAP rather
+# than a refreshed reference, because refreshing would move the denominator and absorb any real
+# regression standing at that moment (see RENAMED in scripts/buck-coverage.nu). Only the
+# coredump has an install entry; the two libsimple archives are link inputs, never installed.
+ARTIFACT_RENAMES = {
+    "darling-coredump": "cider-coredump",
+    "liblibsimple_darling.a": "liblibsimple_cider.a",
+    "liblibsimple_darlingserver.a": "liblibsimple_ciderd.a",
+}
+
+
 def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     """The buck2 target that builds this artifact, by output basename.
 
@@ -366,7 +382,7 @@ def target_for(path: str, gen, binaries: dict, kind: str = "") -> str | None:
     `login` is both system_cmds' program and a private framework, and without the kind the
     executable entry usr/bin/login can resolve to the framework's dylib.
     """
-    base = os.path.basename(path)
+    base = ARTIFACT_RENAMES.get(os.path.basename(path), os.path.basename(path))
     OBJECT_GROUPS = object_groups()
     tables = registries(gen, binaries)
     if kind == "EXECUTABLE":
@@ -452,6 +468,63 @@ def flatten(rel: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel)
 
 
+# THE PREFIX WAS RENAMED AND THE REFERENCE WAS NOT. #78 renamed the project, so the committed
+# buck/prefix/BUCK installs into libexec/cider and calls two files by their Cider names, while
+# the FROZEN manifests still say libexec/darling, bin/darling-coredump and
+# org.darlinghq.shellspawn.plist. Comparing a destination from the reference against a table
+# written the new way therefore missed: EXTRA_DIRS never matched its Certificates.bundle entry,
+# and darling-coredump looked like an artifact nothing builds.
+#
+# ONE TABLE, APPLIED AT THE PARSE, so everything downstream sees the spelling the port uses:
+# the EXTRA_DIRS lookup, the emitted blocks and the symlink resolution all agree, and
+# regenerating reproduces the committed file rather than reverting it to the old names.
+#
+# VERIFIED BY REGENERATING, not by reading: with this in place `--write` reproduces
+# buck/prefix/BUCK byte for byte, which is the only evidence that the rule is COMPLETE rather
+# than merely plausible. Without it the same run rewrites 4,490 destinations back to
+# libexec/darling.
+# TWO INSTALLED FILES CHANGED NAME, not just directory, and a destination DIRECTORY is all
+# renamed_dest ever sees: cmake gives a DESTINATION plus a file list, so the full path only
+# exists once the basename is joined on. Keyed in the ALREADY segment-renamed spelling, because
+# that is the composed path at the one site that applies this.
+FILE_DEST_RENAMES = {
+    "libexec/cider/System/Library/LaunchDaemons/org.darlinghq.shellspawn.plist":
+        "libexec/cider/System/Library/LaunchDaemons/me.overby.cider.shellspawn.plist",
+    "bin/darling-coredump": "bin/cider-coredump",
+}
+
+
+def renamed_dest(dest: str) -> str:
+    """A reference destination in the spelling the port installs under.
+
+    BY PATH SEGMENT, which is the third rule this took and the first that is complete. A leading
+    libexec/darling only left 635 lines in the old spelling, because the prefix holds NESTED
+    copies of the name: libexec/cider/usr/libexec/darling/vchroot and
+    libexec/cider/usr/lib/darling/xtrace-mig/... . Replacing every occurrence of the STRING
+    libexec/darling then still missed usr/lib/darling, which is the same name in a different
+    parent.
+
+    A SEGMENT, NOT A SUBSTRING, because darlinghq and darling-coredump must not move: a
+    component equal to darling becomes cider, and a component merely containing it does not.
+    The two FILES that did change name are FILE_DEST_RENAMES above, applied where the basename
+    is joined on, since what arrives here is only ever a destination directory.
+
+    Measured by regenerating and diffing against the committed buck/prefix/BUCK rather than by
+    reading, which is the only way to know a rule like this is COMPLETE rather than plausible.
+    """
+    return "/".join("cider" if c == "darling" else c for c in dest.split("/"))
+
+
+# A first-party source the Cider rename RENAMED as well as moved. #78 renamed the shellspawn
+# plist to the reverse-DNS name the project uses now; the frozen reference still installs
+# org.darlinghq.shellspawn.plist from src/shellspawn. moved_path finds a directory that moved,
+# not a file that changed name, so this is the one case it cannot derive from the tree.
+SOURCE_RENAMES = {
+    "src/shellspawn/org.darlinghq.shellspawn.plist":
+        "darwin/shellspawn/me.overby.cider.shellspawn.plist",
+}
+
+
 def moved_path(rel: str) -> str:
     """A reference source path, moved to where #87 stage 1 put it.
 
@@ -479,6 +552,8 @@ def moved_path(rel: str) -> str:
     through would answer a different question: absence means "not materialized here", not
     "moved somewhere else".
     """
+    if rel in SOURCE_RENAMES:
+        return SOURCE_RENAMES[rel]
     if not rel.startswith("src/"):
         return rel
     if os.path.lexists(os.path.join(REPO, rel)):
@@ -664,7 +739,8 @@ def main(argv: list[str]) -> int:
         for src in files:
             if src:
                 base = installed_base(dest, src)
-                dest_of[src] = f"{dest}/{base}" if dest else base
+                full = f"{dest}/{base}" if dest else base
+                dest_of[src] = FILE_DEST_RENAMES.get(full, full)
 
     # Every destination anything installs to, so a relative link value can be resolved
     # against the destination directory it lands in.
@@ -733,11 +809,27 @@ def main(argv: list[str]) -> int:
                         continue
                     (exec_files if src in EXEC_SOURCES else sources)[full] = label
                     if needs_export == "buck-src":
+                        # EITHER SPELLING, and NOT through moved_path. buck-src mirrors each
+                        # upstream tree under its bare name, so the hint is the path with the
+                        # containing directory stripped -- and the reference says
+                        # src/external/<x> where the tree says pins/<x>. Stripping only pins/
+                        # left src/external/ in front of all 1,094 buck-src hints.
+                        #
+                        # NOT moved_path, even though it knows that mapping, because it answers
+                        # from DISK and an unmaterialised pin is absent: 4 of the pins are
+                        # checked out here, so a tree-derived hint would change with the working
+                        # copy. The stripping rule needs no tree.
                         hints.setdefault("buck-src", {})[label.split(":", 1)[1]] = \
-                            rel.removeprefix("pins/")
+                            rel.removeprefix("src/external/").removeprefix("pins/")
                     elif needs_export:
+                        # THE MOVED PATH, and file_label's own comment says why one line further
+                        # in: relpath against the NEW package with the OLD path spells a src
+                        # full of ../, so dirserv's three tools came out as
+                        # ../../src/dirserv/dscl instead of dscl. The trap the comment warns
+                        # about, one level up from where it was written.
                         exports.setdefault(needs_export, {})[
-                            label.split(":", 1)[1]] = os.path.relpath(rel, needs_export)
+                            label.split(":", 1)[1]] = os.path.relpath(
+                                moved_path(rel), needs_export)
                     continue
                 t = target_for(src, gen, binaries)
                 if t:
