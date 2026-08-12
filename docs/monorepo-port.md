@@ -99,10 +99,82 @@ not scripts the monorepo runs; they are the provenance of generated files, kept 
 reference graph they read. Carrying them as an archive is not a Python exception at all, and the
 README should say exactly that rather than leaving a reader to wonder why `.py` files are present.
 
-## #98 and #99
+## #98: the checks to nushell. One is ported and controlled; the cost is now measured
 
-Not started. #98 is the checks to nushell; #99 is the build-path graph code to Rust, converging
-with #92 (reading the buck2 graph through buck2's own crates instead of parsing rendered output).
+### The real Python surface is 17,334 lines, not 16,719
+
+Counting only first-party trees (`scripts/`, `nix/`, `buck/`, `tests/`, `darwin/`, `linux/`, and
+the root), and not the vendored CPython under `buck-src/`:
+
+    59 files, 17,334 lines
+      scripts/          54 files  16,719
+      nix/lib/           2 files     383     dyn-actions-spec-fixup.py, component-dag.py
+      tests/src/bin/     1 file      129
+      darwin/            2 files     103
+
+The 615 lines outside `scripts/` are the ones nobody counted, and `nix/lib` is the part that
+matters most: those two files are **product code that nix executes during a build**, not checks.
+A monorepo that refuses Python cannot build at all until they move, so they are not optional and
+they are not #98, they are a prerequisite.
+
+### The four named pilots are not the contained ones
+
+The plan was to pilot on `buck-names-check`, `buck-needs-check`, `buck-script-check` and
+`buck-specs-check`, because each is a `.nu` wrapper over a `.py` core. Collapsing wrapper and
+core is contained only if the core is self-contained, and three of the four are not:
+
+| check | loads |
+|---|---|
+| `buck-names-check.py` | `buck-graph-to-specs.py`, `buck-specs-check.py`, `buck_lowering.py`, `nix/lib/dyn-actions-spec-fixup.py` |
+| `buck-needs-check.py` | `buck_lowering.py` |
+| `buck-script-check.py` | `buck_lowering.py` |
+| `buck-specs-check.py` | nothing |
+
+Across all 46 non-generator checks, 13 load another module and 32 do not:
+
+    32 self-contained checks   7,953 lines   portable one at a time, in any order
+    13 dependent checks        3,428 lines   blocked on their shared cores
+    shared cores                 681 lines   buck_lowering.py 298, nix/lib 383
+
+**`buck-names-check` is worse than merely dependent, it is structurally hostile to this port.**
+Its stated design is to load every implementation and compare them, *"rather than reimplemented
+here: a check that reimplements what it checks tests the check"*. Reimplementing `safe_name` and
+`dep_var` in nushell to keep the check running would make it assert that the nushell copy matches
+nix, which is not what it is for. During the migration it has to compare across BOTH languages,
+and after it several of the five implementations simply stop existing. It should be ported LAST,
+and re-scoped when it is.
+
+### The pilot: `buck-pin-patches-check`, ported, controlled, and the Python retired
+
+Chosen because it is self-contained, costs ten milliseconds, and already had a `--manifest` flag
+for negative control. 121 lines of Python became **117 lines of nushell**, so the ratio is about
+1:1 and the 7,953 self-contained lines should be read as roughly that much nushell.
+
+Verified rather than eyeballed:
+
+- output **byte identical** to the Python on the real manifest (`diff`, not a spot check);
+- **all three fault classes controlled**, each planted in a mutated copy and run through BOTH
+  implementations: a `patches` field naming a missing directory, an orphan patch directory, and a
+  basename collision with the override removed. Same exit code and identical output in every case;
+- `nu-check --debug` passes, which is the monorepo's stated acceptance gate;
+- `buck-test.nu` now calls the `.nu`, the two stale `.py` references were updated, and the Python
+  is deleted, so there is one implementation rather than two that can drift.
+
+### Two nushell traps, both paid for in the pilot
+
+**`get X` on a record without `X` is an ERROR, not null.** Python's `e.get("patches")` defaults to
+None; the direct nushell translation aborts on the first manifest entry that has no override,
+which is most of them. Use `get -o` (or `get X?`).
+
+**`ls` hides dotfiles and `os.listdir` does not.** Any count that has to agree with a Python
+original needs `ls -a`. This is the same family as the trap already recorded for this repo, that
+`grep -r` here is ugrep and silently obeys ignore files while `find -type f` skips symlinks: the
+counting primitive is never the innocent part.
+
+## #99
+
+Not started. #99 is the build-path graph code to Rust, converging with #92 (reading the buck2
+graph through buck2's own crates instead of parsing rendered output).
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.

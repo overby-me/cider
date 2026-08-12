@@ -366,7 +366,7 @@ def main [flag?: string] {
     # both called xnu, and the guest syscall patches would land on the duct-tape kernel subset
     # without the explicit override the manifest now carries.
     say "== the pin patch wiring (no nix either) =="
-    let pinpatch = (do -i { ^python3 ./scripts/buck-pin-patches-check.py } | complete)
+    let pinpatch = (do -i { ^nu ./scripts/buck-pin-patches-check.nu } | complete)
     if $pinpatch.exit_code == 0 {
         ok "every patch set reaches exactly the pin it was written for"
     } else {

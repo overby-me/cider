@@ -44,7 +44,7 @@ Three hours went once on chasing a shell-script fault at rung 3. Rung 1 names th
 minutes, and did exactly that for #87 stage 2.
 
 **RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
-an hour.** `buck-escape-roots-check.py`, `buck-pin-patches-check.py`, `buck-pin-rev-check.py`,
+an hour.** `buck-escape-roots-check.py`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.py`,
 `buck-env-names-check.py`, `buck-first-party-paths-check.py`, `buck-labels-check.py`,
 `buck-pin-paths-check.py`, `buck-host-includes.py`, `buck-coverage.py`.
 

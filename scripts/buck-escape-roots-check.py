@@ -55,7 +55,7 @@ equally dangerous:
   ciderBuck2Lower :1111 :1130  buck-rust, buck-src   not checked, and they do not need it:
                                                 those stage every pin, so losing them fails
                                                 immediately and everywhere rather than silently.
-  cider-src :184 :211   patch application       covered by buck-pin-patches-check.py.
+  cider-src :184 :211   patch application       covered by buck-pin-patches-check.nu.
 
 Exit 0 if every escape root resolves, 1 otherwise.
 """
