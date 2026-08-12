@@ -38,6 +38,21 @@ this repository is currently zero. Everything green today is green because a hum
 promise that the thing builds for someone else; right now nothing but a person at this keyboard
 has ever checked that, and the two breaks above are what that costs.
 
+**WHAT A PERSON AT THIS KEYBOARD HAS NOW CHECKED, 2026-08-12 late.** Both halves passed, together,
+for the first time since the port:
+
+    nix build .#cider-buck2-prefix --option substituters ""    EXIT 0. 7,298 derivations
+                                                               planned, zero staging failures,
+                                                               zero errors. The full endpoint.
+    scripts/buck-test.nu with CIDER_GUEST_PARITY=1             166 passed, 0 failed, including
+                                                               both container gates: xcrun, and
+                                                               PlistBuddy over 48 argument cases
+                                                               and 13 interactive sessions with
+                                                               0 retries.
+
+That is a baseline, not automation. It says the tree is good tonight; it does not say the next
+change will be caught, and only CI could say that.
+
 ---
 
 ## Blockers
