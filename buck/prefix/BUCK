@@ -2498,7 +2498,7 @@ prefix_tree(
         "libexec/cider/private/etc/pam.d/screensaver_la": "//buck-src/openpam:darling_submodules_pam_modules_modules_pam_localauthentication_screensaver_la",
         "libexec/cider/private/etc/pam.d/sshd": "//buck-src:openssh_pam.d_sshd",
         "libexec/cider/private/etc/profile": "//buck-src/bash:profile",
-        "libexec/cider/private/etc/resolv.conf": "//etc:resolv.conf",
+        "libexec/cider/private/etc/resolv.conf": "//darwin/etc:resolv.conf",
         "libexec/cider/private/etc/rtadvd.conf": "//buck-src:network_cmds_rtadvd.tproj_rtadvd.conf",
         "libexec/cider/private/etc/screenrc": "//buck-src/screen:screen_etc_screenrc",
         "libexec/cider/private/etc/ssh/moduli": "//buck-src:openssh_openssh_moduli",

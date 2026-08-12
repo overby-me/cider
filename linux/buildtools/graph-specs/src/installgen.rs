@@ -91,10 +91,18 @@ const FILE_DEST_RENAMES: &[(&str, &str)] = &[
 ];
 
 /// A first-party source the Cider rename RENAMED as well as moved.
-const SOURCE_RENAMES: &[(&str, &str)] = &[(
-    "src/shellspawn/org.darlinghq.shellspawn.plist",
-    "darwin/shellspawn/me.overby.cider.shellspawn.plist",
-)];
+const SOURCE_RENAMES: &[(&str, &str)] = &[
+    (
+        "src/shellspawn/org.darlinghq.shellspawn.plist",
+        "darwin/shellspawn/me.overby.cider.shellspawn.plist",
+    ),
+    // etc/ WAS A TOP LEVEL DIRECTORY HOLDING ONE FILE. It became darwin/etc during the release
+    // prep, because it is guest content and darwin/ is the guest side. Without this entry the
+    // generator resolves the reference path to no package and drops the install entry, which is
+    // the failure srcset.rs describes: the prefix dies on `cp: cannot stat etc/resolv.conf` at
+    // the very last derivation of a 2,333 builder run.
+    ("etc/resolv.conf", "darwin/etc/resolv.conf"),
+];
 
 // ---------------------------------------------------------------- paths
 

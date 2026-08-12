@@ -239,7 +239,7 @@ impl Fs {
     }
 
     /// Project files a staged TSV names, for an action that reads its inputs from a FILE. A
-    /// SOURCE ONLY TARGET IS INVISIBLE EVERYWHERE ELSE: //etc:resolv.conf appears in neither the
+    /// SOURCE ONLY TARGET IS INVISIBLE EVERYWHERE ELSE: //darwin/etc:resolv.conf appears in neither the
     /// argv nor the declared inputs, and the narrowed union dropped it, failing the prefix on
     /// `cp: cannot stat 'etc/resolv.conf'` at the very last derivation of a 2,333 builder run.
     /// Any column that names an existing project file counts, which also covers the two column
