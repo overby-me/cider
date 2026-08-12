@@ -376,11 +376,44 @@ consequence of changing the OUTPUT, not of changing the language.
 building the derivation and diffing its tree against the Python one.** The full-graph diff stays
 as the gate for the first piece that genuinely cannot be byte-identical, not for every piece.
 
-**Start with `buck-skeleton.py`.** 237 lines, the smallest of the seven, it has its OWN CA
-derivation rather than sharing one, and its contract is a tree in and a reduced tree out, so
-"build both and diff" is the complete test with no graph involved.
+### The first piece is LANDED, and the rule held
 
-`buck-src-normalise.py` should NOT be first despite being small: it has no derivation of its own,
+`buck-skeleton.py` is gone. `linux/buildtools/skeleton` is 295 lines of dependency-free Rust,
+built by `nix/skeleton.nix` through `rustPlatform.buildRustPackage`, and
+`nix/lib/ciderBuck2Graph.nix` runs it instead of `python3`.
+
+    before the flip                          /nix/store/cbqpxhq19...-cider-buck2-skeleton
+    after the flip                           /nix/store/cbqpxhq19...-cider-buck2-skeleton
+    after deleting the python                /nix/store/cbqpxhq19...-cider-buck2-skeleton
+
+**Identical, so nothing downstream rebuilt, and the hour-class gate was not needed.** The
+comparison was controlled: the two `.drv` paths DIFFER (`v4dyk8ha` against `0riaqw2l`) and the log
+says `building`, so the derivation really re-ran and really produced the same bytes. An identical
+path with an unchanged drv would have proved nothing.
+
+Equivalence was established before the flip, on the real project rather than a sample: identical
+stderr, **identical NAR hash**, an identical manifest of path, type, mode, size and symlink target
+over 403,374 entries, and a synthetic tree exercising every branch. It is also 15.0s against
+32.7s, which matters on the critical path.
+
+Two things worth carrying forward. **`skeletonSrc` is now exposed as `.#graph-skeleton`**, which
+is what made any of this verifiable: it was a `let` binding with no handle, so there was no way to
+build it alone. And **deleting the Python was free too**, because `projectSrc` filters `scripts/`
+out, so removing the file did not even change the skeletoniser's input.
+
+### What is left of #99, 2,594 lines
+
+     752  buck2-graph-dump.py
+     541  buck-graph-to-specs.py
+     506  buck2-graph-sources.py
+     298  buck_lowering.py
+     275  buck-src-normalise.py
+     222  nix/lib/dyn-actions-spec-fixup.py
+
+Do `buck_lowering` and `buck-graph-to-specs` as a PAIR, since the second imports the first, and
+they are what unblocks three of the #98 checks.
+
+`buck-src-normalise.py` should NOT be next despite being small: it has no derivation of its own,
 so editing it changes a shell fragment embedded in two derivations and re-runs both, and its
 effect is a mutation of a tree inside them rather than a standalone output to diff.
 
