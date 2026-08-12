@@ -114,6 +114,17 @@ def buck-files [] {
   }
 }
 
+# A reference path in the spelling the TREE uses. The reference is frozen and predates #87, so
+# it names a pin src/external/<pin>/...; OUT_OF_SCOPE is written in the current spelling because
+# that is how its reasons read. Without this the second lipo entry never matched, the edge fell
+# through to the by-name bucket, and the suite ceiling of 0 failed on a 1 that was a SPELLING
+# and not a gap. Same class as the install manifests, which said "is in no package" 2,182 times.
+def tree-path [p: string] {
+  if ($p | str starts-with "src/external/") {
+    $"pins/($p | str substring 13..)"
+  } else { $p }
+}
+
 def main [--missing] {
   cd ($env.CURRENT_FILE | path dirname | path join "..")
   let graph = ("result-graph-ref" | path expand | path join "build.ninja")
@@ -233,7 +244,7 @@ def main [--missing] {
         $unclassified = ($unclassified | append $"($base) \(($kind)\)")
       }
       let key = $"($kind)\u{1f}($base)"
-      if ($key in $ambiguous) and (($final_reg | get -o $o) == null) and (($arch_reg | get -o $o) == null) and (not ($o in $OUT_OF_SCOPE)) and (not ($base in $OUT_OF_SCOPE)) {
+      if ($key in $ambiguous) and (($final_reg | get -o $o) == null) and (($arch_reg | get -o $o) == null) and (not ($o in $OUT_OF_SCOPE)) and (not ((tree-path $o) in $OUT_OF_SCOPE)) and (not ($base in $OUT_OF_SCOPE)) {
         $soft = ($soft | append $o)
       }
       break
@@ -252,7 +263,7 @@ def main [--missing] {
     # OUT_OF_SCOPE is written by artifact name, since that is how the reasons read. Keyed by
     # PATH as well as by name: where two artifacts share a name and only one is out of scope, a
     # name-only check would drop both.
-    let skipped = ($items | columns | where {|k| ($k in $OUT_OF_SCOPE) or (($label | get $k) in $OUT_OF_SCOPE) })
+    let skipped = ($items | columns | where {|k| ($k in $OUT_OF_SCOPE) or ((tree-path $k) in $OUT_OF_SCOPE) or (($label | get $k) in $OUT_OF_SCOPE) })
     let kept = ($items | columns | where {|k| not ($k in $skipped) })
     let n = ($kept | length)
     let d = ($kept | where {|k| ($items | get $k) } | length)
