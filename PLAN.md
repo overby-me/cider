@@ -1298,5 +1298,31 @@ while looking like it passed. And the dumper's own `--check-against-what-ran` co
 in-process, which is why it could not have caught the one bug it exists for.
 
 **SO WHAT #92 BUYS** is deleting the assumption rather than testing it: take the argv as
-structured data and the round trip disappears, along with both checks. Nothing measured says
-what it costs. Do not start it while a cheaper task is open.
+structured data and the round trip disappears, along with both checks.
+
+**COSTED 2026-08-12, and the cheap route is CLOSED.** The entry used to end "nothing measured
+says what it costs", so here is the measurement.
+
+    aquery --json does NOT structure the argv. It returns
+      "cmd": "[bash, buck-out/.../getuuid__rustc.sh, rustc, --edition, 2021, ...]"
+    one JSON STRING carrying the same bracketed, comma-space rendering. So the obvious idea,
+    ask aquery for JSON and read a list, buys NOTHING: it is the identical rendering wrapped in
+    quotes, separator and all.
+
+    what-ran --format json DOES carry the real argv, at .reproducer.details.command, which is
+    why buck-argv-roundtrip-check.nu uses it as ground truth. Its constraint is structural:
+    the log is PER INVOCATION and lists only actions that EXECUTED. Demonstrated by accident
+    while measuring this: running it after an aquery returned zero lines, and its stderr said
+    "Showing commands from: buck2 aquery ...". An aquery executes nothing.
+
+    buck2's OWN CRATES are not available here. buck2 is a nixpkgs binary, buck2-unstable
+    2026-04-15, and its source is not in the tree. #97 upstreamed our buck2 INTEGRATION, not
+    buck2 itself. So the title's route means vendoring and version pinning a large external Rust
+    workspace against the exact binary we run.
+
+**THEREFORE, AND THIS IS A RECOMMENDATION NOT A DECISION:** leave it. The assumption is guarded
+by a check the suite runs, exactly one literal in the tree ever carried the separator, and
+configure_file now passes its values through a file so that one is safe BY CONSTRUCTION rather
+than by vigilance. The cheap structured source does not exist, the middle route (drive everything
+through what-ran) requires every action to execute in the dumping invocation, and the titled route
+is a vendoring project. None of that is worth paying to remove a guarded assumption.
