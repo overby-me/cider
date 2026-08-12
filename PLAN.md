@@ -1097,6 +1097,49 @@ getprogname() STRAIGHT THROUGH as the tool to invoke, so staging the two binarie
 xcrun_rs made all five cases differ: one asked for a tool called xcrun_c, the other for xcrun_rs.
 THE NAME IS AN INPUT to this program. Stage each under the real name in its own directory.
 
+### #102b - PlistBuddy: the measurement that had to come before the port
+
+Written 2026-08-12 because the task said "PlistBuddy needs CF bindings before it needs a port",
+and that framing was MINE and it was wrong. The numbers, all from darwin/PlistBuddy/PlistBuddy.c:
+
+    1,278 lines, 1,070 non-comment      24 top-level functions
+    49 DISTINCT CoreFoundation functions in 139 call sites
+    20 CF type and constant names
+    25 distinct libc calls
+    190 lines (17 percent) mention CF at all
+    133 lines (12 percent) actually CALL CF
+    64 lines do manual memory (malloc, free, strdup, strndup, alloca, CFRelease)
+
+**THE HYPOTHESIS WAS THAT THIS IS A CF GLUE PROGRAM, AND IT IS NOT.** I expected a thin command
+layer over CF, which would have made a Rust port pointless: every line would still be an unsafe
+extern on a raw CFTypeRef with manual refcounting, so nothing would be gained. The measurement
+says the reverse. **83 percent of the program never touches CF.** It is string parsing, a command
+loop, type inference, date formatting and a hand-rolled pretty printer, which is precisely the
+code where C is dangerous and Rust is not. getWord is 69 lines, parseValue 141, runCommand 165,
+prettyPrintPlist 119: none of it is CF, all of it is pointer arithmetic over user input.
+
+**SO THE BINDINGS ARE NOT THE PROJECT.** 49 externs over opaque pointer types is about 150 lines
+of mechanical declaration, done once. There is no vendored core-foundation crate in buck-rust and
+none is needed: CF is a C API and the port needs exactly the 49 functions it calls, not a crate
+that models all of it.
+
+**THREE THINGS THAT ARE NOT MECHANICAL, and they are where a port goes quietly wrong:**
+
+    CFSTR is a MACRO, not a function, so there is no symbol to declare. Used once, at
+      PlistBuddy.c:1226. It has to become a created-and-released CFString.
+    CFGregorianDate crosses the FFI BY VALUE, at :784 and :1025. A repr(C) struct whose field
+      layout is wrong produces plausible wrong dates rather than a crash.
+    CFRangeMake is inline, so it is a repr(C) struct built in Rust, not a call.
+
+**WHY BYTE IDENTITY IS REACHABLE:** the plist itself is written by
+CFPropertyListCreateXMLData, which BOTH implementations call. The formatting nobody wants to
+reproduce is delegated to the same code in both. What the port must reproduce by hand is
+prettyPrintPlist, 119 lines, and that is the thing the gate has to hammer.
+
+**CONCLUSION: it makes sense, and it is a multi-increment job rather than an xcrun.** The order is
+FFI declarations, then the pure-logic functions, then the CF-touching ones, then the gate, which
+must run in the container and must compare the WRITTEN PLIST as well as stdout, stderr and rc.
+
 ### #92 - read the graph through buck2 structured data, not its rendered output
 
 Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
