@@ -3,17 +3,31 @@ load("//buck/rules:rust.bzl", "rust_binary")
 
 # wrapgen: writes the Mach-O stub that lets a Darwin program call into a HOST ELF library.
 #
-# Darling reaches host libraries (fuse, X11, the ffmpeg family) through libelfloader, and
-# the guest side of that bridge is a generated stub dylib per host library: cmake's
-# wrap_elf(<name> lib<name>.so) runs this tool over the ELF's dynamic symbol table and emits
-# a Mach-O whose every export forwards through libelfloader. So this is a build-time HOST
-# tool, not something that ships, and hdiutil is the first target in the port to need one --
-# it links fuse.
+# Cider reaches host libraries (fuse, X11, the ffmpeg family) through libelfloader, and the guest
+# side of that bridge is a generated stub dylib per host library: elf_wrapper() in
+# buck/rules/codegen.bzl runs this tool over the ELF dynamic symbol table at BUILD TIME (it
+# dlopen()s the real .so while it runs) and emits a Mach-O whose every export forwards through
+# libelfloader. So this is a build-time HOST tool, not something that ships.
 #
-# A single translation unit against host headers only (elf.h, link.h, dlfcn.h), linked with
-# the C++ driver and -ldl, exactly as the reference does.
-cc_binary(
+# THE RUST ONE IS THE BUILD TOOL (#76). The three consumers name //linux/libelfloader:wrapgen and
+# get this; nothing had to change at those call sites. Gated on generated output rather than on
+# behaviour: all 22 libraries the consumers feed it come out byte identical in the .c, the vars
+# .h, stdout, stderr and exit code, as do five error paths.
+rust_binary(
     name = "wrapgen",
+    crate_root = "wrapgen/wrapgen.rs",
+    deps = ["//buck-rust:libc"],
+    visibility = ["PUBLIC"],
+)
+
+# The C++ original stays beside it as wrapgen_c, the arrangement getuuid_c and elfdep_c already
+# have, and for the same reason: scripts/buck-hosttools-parity.nu needs both binaries present to
+# compare them, so deleting this would delete the check.
+#
+# A single translation unit against host headers only (elf.h, link.h, dlfcn.h), linked with the
+# C++ driver and -ldl, exactly as the reference does.
+cc_binary(
+    name = "wrapgen_c",
     srcs = ["wrapgen/wrapgen.cpp"],
     compiler_flags = [
         "-DDARLING",
@@ -27,16 +41,5 @@ cc_binary(
     ],
     link_cxx = True,
     linker_flags = ["-ldl"],
-    visibility = ["PUBLIC"],
-)
-
-# THE RUST REWRITE (#76), beside the C++ rather than replacing it, the same arrangement
-# getuuid_c and elfdep_c have: the parity harness needs both binaries to compare, and this one
-# is LOAD BEARING (codegen.bzl runs it at build time), so the C++ stays until the generated
-# output has been shown identical across every library the consumers feed it.
-rust_binary(
-    name = "wrapgen_rs",
-    crate_root = "wrapgen/wrapgen.rs",
-    deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],
 )

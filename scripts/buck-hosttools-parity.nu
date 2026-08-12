@@ -71,6 +71,26 @@ def run-one [binary: string, args: list<string>] {
   }
 }
 
+# WRAPGEN IS COMPARED DIFFERENTLY from the other two, because its real output is not stdout: it
+# writes a .c and, only when the library exports data symbols, a vars .h. So this hashes both
+# files as well as stdout, stderr and the exit code, and it records whether the header was
+# written at all, since "absent" against "written" is exactly the kind of difference that would
+# otherwise pass unnoticed.
+def wrapgen-one [binary: string, dir: string, name: string, soname: string, libdirs: string] {
+  mkdir $dir
+  let c = ($dir | path join $"($name).c")
+  let h = ($dir | path join $"($name)_vars.h")
+  let r = (with-env { LD_LIBRARY_PATH: $libdirs } { do -i { ^$binary $soname $c $h } | complete })
+  {
+    out: ($r.stdout | into binary | encode hex | str downcase)
+    err: ($r.stderr | into string)
+    rc: $r.exit_code
+    c: (if ($c | path exists) { open --raw $c | hash sha256 } else { "NO .c WRITTEN" })
+    h: (if ($h | path exists) { open --raw $h | hash sha256 } else { "no vars header" })
+    size: (if ($c | path exists) { (ls $c | get 0.size | into int) } else { 0 })
+  }
+}
+
 def main [--buck-out: string = ""] {
   let b = (if ($buck_out | is-empty) { $DEFAULT_OUT } else { $buck_out })
 
@@ -94,9 +114,14 @@ def main [--buck-out: string = ""] {
     { label: "elf object", args: [$elfobj] }
   ]
 
-  let missing = ($pairs | each {|p| [$p.c, $p.r] } | flatten | where {|f| not ($f | path exists) })
+  let wg_c = ($b | path join "linux/libelfloader/__wrapgen_c__/wrapgen_c")
+  let wg_r = ($b | path join "linux/libelfloader/__wrapgen__/wrapgen")
+
+  let missing = ([...($pairs | each {|p| [$p.c, $p.r] } | flatten), $wg_c, $wg_r]
+    | where {|f| not ($f | path exists) })
   if not ($missing | is-empty) {
-    print "MISSING, build //linux/buildtools:{getuuid,elfdep,getuuid_c,elfdep_c} first:"
+    print "MISSING, build these first:"
+    print "  buck2 build //linux/buildtools:{getuuid,getuuid_c,elfdep,elfdep_c} //linux/libelfloader:{wrapgen,wrapgen_c}"
     for m in $missing { print $"   ($m)" }
     exit 2
   }
@@ -120,6 +145,63 @@ def main [--buck-out: string = ""] {
         if $c.err != $r.err { print $"    stderr C=(py-repr $c.err)\n           R=(py-repr $r.err)" }
       }
     }
+  }
+
+  # === wrapgen ===
+  #
+  # THIS ONE IS LOAD BEARING, unlike getuuid and elfdep: elf_wrapper() in buck/rules/codegen.bzl
+  # runs it at build time and three packages compile the C it writes. So the comparison is over
+  # the GENERATED FILES, and the libraries are real ones the build actually wraps.
+  #
+  # NO no-args CASE HERE, and that is an omission on purpose: the usage line prints argv[0],
+  # which is the path of whichever binary ran, so the two can never be equal there and the
+  # difference would say nothing about the port.
+  #
+  # THE LIBRARIES HAVE TO BE PRESENT for this to discriminate. wrapgen dlopen()s them, so it
+  # needs the same LD_LIBRARY_PATH the rule passes, which is [cider] elf_lib_dirs written by
+  # scripts/buck-setup.nu. If that is empty or the libraries are gone, every case fails
+  # identically and the section would go green having compared two error messages. The size
+  # assertion at the end is what stops that.
+  let cfgline = (if (".buckconfig.local" | path exists) {
+    open .buckconfig.local | lines | where {|l| ($l | str starts-with "elf_lib_dirs") } | get 0?
+  } else { null })
+  let libdirs = (if $cfgline == null { "" } else { $cfgline | split row "=" | skip 1 | str join "=" | str trim })
+
+  let wgroot = (mktemp -d -t "cider-wrapgen-parity.XXXXXX")
+  let wg_cases = [
+    { label: "libX11.so", soname: "libX11.so" }        # big, and exports data symbols: writes the vars header
+    { label: "libGL.so", soname: "libGL.so" }          # the largest at ~538 KB of C, and no data symbols
+    { label: "libavutil.so", soname: "libavutil.so" }  # data symbols too, from a different provider
+    { label: "libfuse.so", soname: "libfuse.so" }      # the small end, and the first consumer the port had
+    { label: "missing library", soname: "nosuchlib.so" }
+    { label: "not an ELF", soname: $notmacho }
+  ]
+  print "=== wrapgen: C against Rust \(generated files, not just stdout\) ==="
+  mut biggest = 0
+  for case in $wg_cases {
+    let n = ($case.label | str replace --all "." "_" | str replace --all " " "_")
+    let c = (wrapgen-one $wg_c ($wgroot | path join $"c_($n)") $n $case.soname $libdirs)
+    let r = (wrapgen-one $wg_r ($wgroot | path join $"r_($n)") $n $case.soname $libdirs)
+    $walked = $walked + 1
+    if $c.size > $biggest { $biggest = $c.size }
+    if ($c.out == $r.out) and ($c.err == $r.err) and ($c.rc == $r.rc) and ($c.c == $r.c) and ($c.h == $r.h) {
+      print $"  ok    ($case.label | fill -a left -w 14) exit=($c.rc) c=($c.size)B (if $c.h == 'no vars header' { 'no vars header' } else { 'vars header written' })"
+    } else {
+      $bad = $bad + 1
+      print $"  DIFF  ($case.label)"
+      if $c.rc != $r.rc { print $"    exit   C=($c.rc) R=($r.rc)" }
+      if $c.c != $r.c { print $"    .c     C=($c.c) R=($r.c)" }
+      if $c.h != $r.h { print $"    vars.h C=($c.h) R=($r.h)" }
+      if $c.out != $r.out { print $"    stdout C=($c.out)\n           R=($r.out)" }
+      if $c.err != $r.err { print $"    stderr C=(py-repr $c.err)\n           R=(py-repr $r.err)" }
+    }
+  }
+  rm -rf $wgroot
+  if $biggest < 10000 {
+    print ""
+    print $"FAIL: wrapgen generated at most ($biggest) bytes of C, so the libraries were not"
+    print "      loadable and only error paths were compared. Run scripts/buck-setup.nu."
+    exit 1
   }
 
   # A harness that compared nothing would print a clean sheet, so say what it walked.

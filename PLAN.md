@@ -909,7 +909,7 @@ this stayed invisible until a binary that uses `@rpath` ran.
 guest needs a Mach-O `ld64` there (route A links on the host instead). rustc reaches for `cc` and
 `/Library/Developer/DarlingCLT/usr/bin/clang` does not exist.
 
-### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
+### #76 - the Darling-origin host tools in Rust (DONE except two that are toolchain-blocked)
 
 Written 2026-08-12 because the task was open in the harness with NO PLAN entry, so the next
 increment would have rediscovered all of the below. Read off the tree, not from memory.
@@ -931,12 +931,17 @@ belonged to the reference CMake build this port replaced. So the `_c` targets co
 each and nothing else, and they can be dropped whenever the comparison stops being worth
 re-running.
 
+**AND UNTIL 2026-08-12 NOTHING INVOKED THE PARITY CHECK EITHER**, which is the same gap #85 found
+in the lowering stage check: a check nobody runs is a file, not a check. `scripts/buck-test.nu`
+now builds the six binaries in one buck2 call and runs it in the wrapgen section, so a divergence
+fails the suite instead of waiting for someone to remember the script exists.
+
 **WHAT IS ACTUALLY LEFT, and it is smaller than the task title suggests:**
 
     bsdln       GONE. Zero files match anywhere in the tree, pins included.
-    wrapgen     linux/libelfloader/wrapgen/, 4 files. It IS a host tool, so unlike the two
-                below it is portable today. PROVENANCE IS NOW RESOLVED (2026-08-12) and it is
-                no longer blocked.
+    wrapgen     DONE 2026-08-12. linux/libelfloader/wrapgen/wrapgen.rs is the build tool now
+                and the C++ is kept beside it as wrapgen_c. Provenance was the last blocker and
+                it is resolved; the record of how is below because the method is reusable.
                 THE PROBLEM WAS that all four files carry no copyright, no licence and no
                 Darling marker, and local history cannot settle it either: jj file annotate
                 attributes every line to the #87 stage 1a move and the log for the path holds
@@ -972,11 +977,25 @@ re-running.
 
                 It writes the Mach-O stub that lets a Darwin program call into a HOST ELF
                 library, and codegen.bzl:563 records that it dlopen()s the real .so AT BUILD
-                TIME. So a port must reproduce its GENERATED OUTPUT exactly, across every
-                library any consumer feeds it, not just behave the same on a few probes. That
-                is a materially bigger job than the two that are done, and it is the reason
-                this stays a deliberate decision rather than something to pick up because the
-                provenance question happens to be answered now.
+                TIME. So the port had to reproduce its GENERATED OUTPUT exactly, across every
+                library any consumer feeds it, not merely behave the same on a few probes.
+
+                SO THE GATE WAS THE WHOLE CORPUS: all 22 libraries the three consumers name,
+                16 from linux/native, 5 from darwin/CoreAudio and fuse from buck-src, compared
+                in the .c, the vars .h, stdout, stderr and exit code. Byte identical in every
+                one, from 3,615 bytes of C for swresample to 538,088 for GL, with 8 of the 22
+                exercising the vars-header path. Five error paths too (no arguments, an
+                unloadable library, a non-ELF, a 32-bit ELF, an executable with no DT_SONAME),
+                plus a control that must fail and does.
+
+                ONE BUG THE GATE CAUGHT THAT READING WOULD NOT HAVE: DT_SONAME is an index INTO
+                the string table, and the C++ still passes it through vaddr_to_offset before
+                adding it to a pointer that already includes the string table offset. The first
+                version read at the wrong offset and every soname came out as rubbish.
+
+                THE ONE DELIBERATE DIFFERENCE, as in getuuid and elfdep: the C++ mmaps and casts
+                structures straight out of the mapping, so a lying offset reads past the end.
+                The Rust reads the file and parses at CHECKED offsets.
     xcrun       darwin/clt/xcrun.c, darwin/xcselect/xcrun.c, darwin/xcselect/xcrun-shim.c
     PlistBuddy  darwin/PlistBuddy/PlistBuddy.c
 
@@ -1007,8 +1026,9 @@ already owns two of the awkward prerequisites, a Mach-O linker (ld64, buck2-buil
 the Darwin SDK. Nobody has costed the rest. Do not start either tool expecting to finish it, but
 do not repeat the claim that the toolchain cannot exist.
 
-So the honest shape of #76 is: two done with a byte-parity harness, one gone, one UNBLOCKED and
-ready (wrapgen, provenance proven by blob identity), and two blocked on a missing toolchain.
+So the honest shape of #76 is: THREE DONE with a byte-parity harness the suite now runs, one gone
+(bsdln: zero files anywhere in the tree, pins included), and two blocked on a missing toolchain. Nothing is left
+that is merely waiting to be picked up.
 
 **THE METHOD IS REUSABLE, and it is cheaper than reading history.** When provenance is in doubt
 for a file that carries no header, do not argue from style or from a squashed log. Compute the

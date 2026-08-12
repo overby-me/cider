@@ -1169,10 +1169,10 @@ def main [flag?: string] {
     check_wrap_table darwin/CoreAudio/BUCK _AUDIO 's/^    ("\([A-Za-z0-9]*\)", "lib[^"]*"),$/\1/p'
 
     say "== wrapgen (the host-ELF bridge generator) =="
-    # The second host tool (task #8), and the one hdiutil is blocked on: cmake's
-    # wrap_elf(<name> lib<name>.so) runs it over a HOST library's dynamic symbol table and emits
-    # a Mach-O stub whose every export forwards through libelfloader. Running it is the
-    # assertion -- it prints its three-argument usage and exits 0 with no arguments.
+    # The second host tool (task #8): elf_wrapper() in buck/rules/codegen.bzl runs it over a HOST
+    # library's dynamic symbol table and emits a Mach-O stub whose every export forwards through
+    # libelfloader. Running it is the assertion -- it prints its three-argument usage and exits 0
+    # with no arguments.
     let wg = (out_of //linux/libelfloader:wrapgen)
     if ((cap [file -bL $wg]) | str contains "ELF 64-bit") { ok "wrapgen is a host ELF binary" } else { bad "wrapgen is not a host ELF binary" }
     let wgusage = (cap2 [$wg])
@@ -1180,6 +1180,31 @@ def main [flag?: string] {
         ok "wrapgen runs and prints usage"
     } else {
         bad "wrapgen did not print its usage"
+    }
+
+    # THE HOST-TOOL PARITY CHECK, RUN FROM HERE (#76).
+    #
+    # wrapgen is Rust now and the C++ it replaced is kept beside it as wrapgen_c, the way
+    # getuuid_c and elfdep_c are kept, PRECISELY so the two can be compared. But
+    # scripts/buck-hosttools-parity.nu was invoked by nothing, which is the same gap #85 found in
+    # the lowering stage check: a check nobody runs is a file, not a check.
+    #
+    # It needs six binaries plus two inputs, so build them in ONE buck2 call rather than letting
+    # the script exit 2 on the first missing path. Exit 2 is still handled: it means the build
+    # did not produce something, which is a failure here, not a skip.
+    out_map [
+        //linux/libelfloader:wrapgen //linux/libelfloader:wrapgen_c
+        //linux/buildtools:getuuid //linux/buildtools:getuuid_c
+        //linux/buildtools:elfdep //linux/buildtools:elfdep_c
+        //darwin/libsimple:libsimple_cider_dylib //linux/startup:rtsig
+    ] | ignore
+    let par = (do -i { ^nu ./scripts/buck-hosttools-parity.nu } | complete)
+    let parlast = (lines_of ($par.stdout | str replace -r '\n+$' '') | last | default "")
+    if $par.exit_code == 0 {
+        ok $"host tools: Rust and C agree byte for byte  \(($parlast | str trim)\)"
+    } else {
+        bad $"host-tool parity FAILED, exit ($par.exit_code)"
+        say (indent7 (($par.stdout + $par.stderr) | str substring 0..2000))
     }
 
     say "== cider-coredump (a HOST tool that reads Mach-O) =="
