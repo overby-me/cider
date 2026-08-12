@@ -2,11 +2,14 @@
 # buck2-graph-dump.py, buck_lowering.py and buck-graph-to-specs.py; the sources pass is
 # still in the tree, off the build path, because two checks load it for read_trees.
 #
-# FOUR BINARIES, one crate, because they share the parts that have to agree byte for byte:
+# SEVEN BINARIES, one crate, because they share the parts that have to agree byte for byte:
 #   cider-graph-dump      asks buck2 for the action graph and writes graph.json
 #   cider-graph-specs     turns that into the per-group spec files and the builder template
 #   cider-graph-sources   works out which project files each group reads
 #   cider-graph-equiv     compares two dumps by MEANING, for #56 and for any dump change
+#   cider-codegen-closure which files must keep their real bytes for the dump to be correct
+#   cider-declaration-gap what buck2 DECLARES against what the sources pass computes
+#   cider-lower-srcdeps   audits the narrowing: what it buys, and where it cannot be trusted
 # See the crate headers for what has to be byte exact and why.
 #
 # BUILT BY NIX RATHER THAN BY BUCK2, and that is a hard constraint: it runs inside the graph

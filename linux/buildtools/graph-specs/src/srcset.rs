@@ -2,9 +2,11 @@
 //!
 //! This is the half of cider-graph-sources that ANSWERS THE QUESTION, split out from the half
 //! that writes files, because two other tools need exactly this answer and a second
-//! implementation of it would be a second thing to keep in step. buck-declaration-gap compares
-//! its own four-way partition against this, and buck-lower-srcdeps audits its completeness;
-//! both used to import the python module for the same reason.
+//! implementation of it would be a second thing to keep in step. cider-declaration-gap compares
+//! its own four-way partition against this, and cider-lower-srcdeps audits its completeness;
+//! both were pythons that imported the python module for the same reason. The auditor keeps its
+//! OWN argv scrapers, deliberately: it reproduces the script it replaced, which predates the
+//! comma joined -Wl, split and the glued -iquote difference, and src/srcdeps.rs says so.
 //!
 //! THE RULE, unchanged from the python and from the binary this came out of:
 //!   project-relative tokens in the target own argvs;

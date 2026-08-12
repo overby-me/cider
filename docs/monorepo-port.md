@@ -73,8 +73,8 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **29 files, 11,350 lines**, down from 54 files at the start of
-this campaign.
+The whole `scripts/` python is **15 files, 8,146 lines** as of 2026-08-12, down from 54 files at
+the start of this campaign and from the 29 the table above was measured on.
 
 So the move is to lift those 8 functions into a small reference-reader module and archive the
 emitter, rather than to port or to drop the file whole. Dropping it whole broke `buck-coverage`,
@@ -222,14 +222,22 @@ Of the 46 non-generator checks: 13 load another module and are blocked on their 
 of the 33 that do not,
 
     23 self-contained, NO frozen reference    6,416 lines   port in any order
-     3 self-contained, READ result-graph-ref    751 lines   buck-host-includes (DONE, #98),
+     3 self-contained, READ result-graph-ref    751 lines   ALL THREE DONE (#98):
+                                                            buck-host-includes,
                                                             buck-lower-srcdeps,
-                                                            buck-move-src-subdir (DONE, #98)
+                                                            buck-move-src-subdir
 
-Those three stream the **131 MB, 362,663-line** `build.ninja`, which is precisely the shape
-nushell is worst at, and they die at the next store GC by their own admission. They go last.
-`buck-host-includes` is done and shows how: push BOTH the line selection AND the token split
+Two of those three stream the **131 MB, 362,663-line** `build.ninja`, which is precisely the
+shape nushell is worst at, and they die at the next store GC by their own admission.
+`buck-host-includes` shows how they were done: push BOTH the line selection AND the token split
 into grep, so 26,198 long lines become 652 tokens before nushell sees any of it.
+`buck-lower-srcdeps` is the odd one out and went to **Rust**, as `cider-lower-srcdeps`, the
+seventh binary of `linux/buildtools/graph-specs`: it reads the 147 MB `graph.json` rather than
+the ninja file, and its hot loop is a hash join between staged-tree link maps and action inputs.
+Gated byte for byte against the python in nine modes on the real graph, including the
+16,838-line `--list`, both no-such-target paths and the usage path. The one mode that is not
+byte identical is a missing data directory: the python has no handling there and dies with a
+traceback, so the Rust prints the same missing table path as a message and keeps exit 1.
 
 ### A HARD LIMIT, MEASURED: a hash join does not go to nushell
 

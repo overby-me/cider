@@ -57,6 +57,14 @@ path = "src/closure.rs"
 name = "cider-declaration-gap"
 path = "src/declgap.rs"
 
+# THE SEVENTH BINARY, the Rust rewrite of scripts/buck-lower-srcdeps.py (#98). It is the AUDIT of
+# the narrowing rather than the rule: it shares the farm table reader and normpath, and keeps its
+# own two argv scrapers on purpose, because it reproduces the python it replaces byte for byte
+# and the shipped rule in src/srcset.rs has moved on since.
+[[bin]]
+name = "cider-lower-srcdeps"
+path = "src/srcdeps.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

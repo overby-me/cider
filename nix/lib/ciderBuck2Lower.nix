@@ -29,7 +29,7 @@
   # made while working on it.
   #
   # This is the coarse half of the fix. The precise version is to give each target only the
-  # sources it reads, and scripts/buck-lower-srcdeps.py computes that set and measures it:
+  # sources it reads, and cider-lower-srcdeps computes that set and measures it:
   # 306,019 project files today for EVERY target, against a median of 4,032 per target, or
   # 1.32%. CoreFoundation_obj, one of the two big header cones, comes to 5,317 files of which
   # 5,088 are headers.

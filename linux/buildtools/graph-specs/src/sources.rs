@@ -5,7 +5,7 @@
 //! Every lowered target used to depend on the whole filtered project, 306,019 files, so a
 //! one-line source edit relowered all of them. With this the median target names about 4,000.
 //!
-//! THE RULE, and scripts/buck-lower-srcdeps.py audits its completeness:
+//! THE RULE, and cider-lower-srcdeps (src/srcdeps.rs) audits its completeness:
 //!   project-relative tokens in the target's own argvs;
 //!   plus every link TARGET of each staged tree it consumes, which is where the header cones
 //!     live, NOT the staging actions' argvs, since those carry no command at all;
