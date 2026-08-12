@@ -44,7 +44,7 @@ Three hours went once on chasing a shell-script fault at rung 3. Rung 1 names th
 minutes, and did exactly that for #87 stage 2.
 
 **RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
-an hour.** `buck-escape-roots-check.py`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.py`,
+an hour.** `buck-escape-roots-check.py`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.nu`,
 `buck-env-names-check.py`, `buck-first-party-paths-check.py`, `buck-labels-check.py`,
 `buck-pin-paths-check.py`, `buck-host-includes.py`, `buck-coverage.py`.
 
@@ -275,7 +275,7 @@ tracks below.
   **The destination rule is DIRECTLY UNDER THE PIN ROOT, never a depth number.** Five sites
   encoded it as `== 3` and all five derive it from one `pinRoot` now, including the back link
   in `materializePins`, which was a literal `../../` and is silent when wrong: it dangles the
-  SDK farm and surfaces an hour later as a missing header. `buck-pin-rev-check.py` asserts no
+  SDK farm and surfaces an hour later as a missing header. `buck-pin-rev-check.nu` asserts no
   two pins share a materialization directory, which is the collision the rule exists to stop.
   **A root move needs three audits, each blind to the next:** file content, which a sweep
   sees; symlink TARGETS, which no sweep can see and which numbered 4,031 here; and paths

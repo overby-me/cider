@@ -379,7 +379,7 @@ def main [flag?: string] {
     # still the PREVIOUS revision, which would have made a bisect build compile the old code
     # and pass. The fix lives in that same script, so this checks the RESULT instead.
     say "== the materialized pin revisions (no nix either) =="
-    let pinrev = (do -i { ^python3 ./scripts/buck-pin-rev-check.py } | complete)
+    let pinrev = (do -i { ^nu ./scripts/buck-pin-rev-check.nu } | complete)
     if $pinrev.exit_code == 0 {
         ok "no materialized pin contradicts the manifest"
     } else {

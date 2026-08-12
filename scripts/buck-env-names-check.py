@@ -60,7 +60,7 @@ every name this reports has to be read in its file before it is believed, and ev
 project actually uses has to be in the list above or the report is fiction of its own.
 
 A check reporting 39 problems of which 38 are noise is a check nobody runs, and this project has
-already been bitten by exactly that: buck-pin-rev-check.py flagged 143 unrelated trees in its
+already been bitten by exactly that: buck-pin-rev-check.nu flagged 143 unrelated trees in its
 first form and its exit code proved nothing about the one defect planted in it.
 
 THIS FILE EXCLUDES ITSELF from the advertising side, and that is not a convenience. Its
