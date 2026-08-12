@@ -567,4 +567,4 @@ in
   # proof: an identical path means the output did not move and nothing downstream rebuilds, and
   # a different one means something did. Attaching it to the derivation changes nothing about
   # what gets built.
-  graph // { inherit skeletonSrc; }
+  graph // { inherit skeletonSrc specsDrv sourcesDrv; }
