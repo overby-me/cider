@@ -623,6 +623,53 @@ cheap treatment: `buck-declaration-gap.py` re-derives the generator's four-way p
 verifies it against `target_sources`, so pointing it at an artifact means giving
 `cider-graph-sources` a debug mode that emits the partition. Decide that before touching it.
 
+### #98 continued: six more checks, and the one measurement that outranks them
+
+`buck-needs-check`, `buck-script-check` and `buck-names-check` are the three pilots the user
+named that could move; `buck-specs-check` is the fourth and stays python for a measured reason
+(shell tokenisation, see its header). Beyond the pilots, `buck-include-closure-check`,
+`buck-argv-roundtrip-check`, `buck-upstream-names-check` and `buck-coverage` are nushell too.
+Every one is byte identical to the python it replaced, in every mode, and every one has a
+control that FIRES identically on both sides.
+
+**NUSHELL LOOKAROUND IS UNSOUND ABOVE ABOUT HALF A MEGABYTE, and this is the most reusable thing
+found in the whole port.**
+
+    $big =~ 'zzq_no_such_token_here(?![A-Za-z0-9_])'
+    400,000 chars   false
+    1,000,000 chars TRUE
+
+The token occurs nowhere. Below the threshold the lookaround is honoured; above it, a pattern
+that cannot match returns true. It cost the first version of the upstream-names port SIX false
+orphans, every one of them our own `_cider_bsd_syscall_entry_trampoline`, which is exactly the
+false-alarm class the trailing boundary exists to prevent. Two independent measurements proved
+the regex wrong rather than the tree: `grep` reports zero standalone occurrences, and the same
+pattern on a 40 character string says false. The fix is `grep`, which has no such limit and
+needs no lookaround at all. Every other `.nu` check was then audited: two use lookaround, both
+per line, both far below the threshold, and both now carry the bound.
+
+**The other recurring nushell cost is that it has no hash set.** Building one 58,506 key record
+with `reduce ... upsert` took 126.99 s of a 163 s run, against 1.58 s for the entire python.
+Membership through `grep -Fx` over a file is one external pass instead of 58,506 interpreter
+operations: 23.4 s.
+
+**`buck-coverage` took the reference parser with it**, about 180 lines of the 2,508 line
+generator library, which is what the split means by "reads the reference but is a LIVE check".
+Measured before porting rather than assumed: `build.ninja` is 131 MB and 362,663 lines, and one
+nushell pass over it is 0.73 s, because it is `parse --regex` PER LINE that is expensive, not
+the loop.
+
+### The install mapping was broken by #87 and is fixed: UNMAPPED 2425 to 5
+
+Not a missing target, and not this work: `pin_of` matched `pins/<pin>/...` only, while the frozen
+install manifests spell the same pin `src/external/<pin>/...`. Nothing was recognised as a pin,
+everything fell through to the package walk, and 2,182 entries reported "is in no package". Both
+spellings are accepted now. The five that remain are three classes of the Cider rename crossing
+the frozen reference, named in the task, and one of them exposes a latent inconsistency worth a
+decision: the committed `buck/prefix/BUCK` says `libexec/cider`, the reference says
+`libexec/darling`, and the generator applies no destination rename, so `--write` today would
+rewrite the prefix back.
+
 ### What the suite caught, which re-reading did not
 
 `scripts/buck-test.nu` ran 159 passed, 4 failed. Two of the four were mine, and both are the
