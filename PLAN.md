@@ -1152,11 +1152,29 @@ The files were in $DPREFIX all along, 1,181 bytes against a 524 byte seed. A con
 symptom; going to look for the file rather than believing the symptom found the cause. That claim
 had already been committed, which is why the retraction is a commit of its own.
 
-**A ONE-OFF SIGFPE IS NOT A PORT BUG, and it is measured rather than assumed.** One case came back
-rc 136, which is SIGFPE, with a core dump and no output, because stdout was block buffered and
-died with the process. Re-run ten times against each binary: 0 of 10 failed, both. The same case
-under interactive input behaves identically in both. This is the flaky guest fault the project has
-seen before, and the way to tell is to run the failing thing again rather than to read the code.
+**THE CONTAINER FAULTS AT STARTUP ABOUT ONCE PER FULL RUN, AND A DIFFERENT CASE EACH TIME.** That
+is the single most useful thing to know before reading a red gate here. Across three full runs of
+61 cases:
+
+    run 1   Set a missing entry   rc 136, SIGFPE, core dumped, no output because stdout was
+                                  block buffered and died with the process. Re-run 10 times
+                                  against EACH binary: 0 of 10 failed.
+    run 2   Copy an entry         identical stdout, rc and written plist; the only difference was
+                                  "[mldr] start-stack mmap at 0x7fffff600000 failed" on stderr,
+                                  on the RUST side
+    run 3   ls alias              the same mldr line, this time on the C side, which died before
+                                  PlistBuddy ran at all: rc 1 and nothing printed
+
+So the loader, not either program. The gate now filters container lines out of stderr (cp: and
+[mldr]) and retries a failing case ONCE. That is safe against exactly this and nothing else: a
+real behavioural difference is deterministic and fails both attempts. The retry count is printed,
+and more than six retries fails the gate, because that would mean the environment is too unstable
+for a green run to mean anything. The clean run needed 0 retries.
+
+**THE HARNESS ALSO FAILED IN A WAY WORTH RECORDING.** One run had ALL 61 cases red while every
+control passed. The cause was an undefined shell function: a helper had been added at the call
+sites but its definition landed in the wrong file, so the files being compared were never
+written. Total failure with healthy controls means the harness, not the program.
 
 **THE ONE DELIBERATE DIVERGENCE IS A CRASH THAT IS NOT REPRODUCED.** `Add "unterminated` makes the
 C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands it to strcasecmp.
