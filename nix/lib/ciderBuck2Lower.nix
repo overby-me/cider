@@ -829,6 +829,14 @@
       # command names, exactly as on the daemon path, so they have to be on PATH here.
       pkgs.rustc
       pkgs.rust-bindgen
+      # THE GUEST RUST TOOLCHAIN (#102), and it is here for a DIFFERENT reason than the two
+      # above. Those are bare command names in the recorded argv, so they need PATH. This one
+      # appears as an ABSOLUTE store path, from [cider] darwin_rustc, so PATH is irrelevant: it
+      # has to be an INPUT or the sandbox simply does not have the file. Without it the two Rust
+      # guest tools die with
+      #   /nix/store/...-cider-darwin-rust-1.95.0/bin/rustc: No such file or directory
+      # which is exactly what happened once B0's stall stopped hiding it.
+      (pkgs.callPackage ../darwinRust.nix { })
     ]
     ++ extraTools
     ++ lib.optional (ld64 != null) ld64;

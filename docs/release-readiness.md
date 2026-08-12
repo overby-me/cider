@@ -101,9 +101,56 @@ percent, and it hid the screensaver behind processes with longer histories. Samp
 `/proc/PID/stat` fields 14 and 15 across an interval instead, which is what produced every number
 above.
 
-**WHAT IS STILL UNKNOWN:** what the daemon is doing with its half percent. Both sides are idle,
-nothing is building, and nothing has started for over twelve minutes. Answering it needs the
-daemon's stack, which needs root.
+### B0 ROOT CAUSE, 2026-08-12 19:47: it is binary-cache querying, and it is invisible
+
+Re-running with `-vv` answered it in one line, repeated eleven hundred times:
+
+    downloading 'https://zed.cachix.org/<hash>.narinfo'...
+
+The daemon is not stuck. It is asking four substituters, one narinfo at a time, whether each
+output already exists:
+
+    substituters     overby-me.cachix.org, nix-community.cachix.org, zed.cachix.org,
+                     cache.nixos.org
+    queries seen     1,116 in the first minutes, about 279 paths times four caches
+    RATE             4 to 5 queries per MINUTE
+
+At that rate a graph with thousands of paths takes hours, and **nix prints nothing about it at
+default verbosity**, which is the entire reason this looked like a freeze. Every earlier
+observation is consistent with it: no builder process, no new derivation, a client blocked on the
+daemon socket, empty socket queues, and a daemon ticking at half a percent because it is waiting
+on the network rather than computing.
+
+**THE PROOF IS A CONTROL, not the log.** Re-run with substituters disabled:
+
+    nix build .#cider-buck2-prefix-min --option substituters ""
+
+It moved IMMEDIATELY: 4,653 log lines in 90 seconds and real compilation
+(`building '...buck2-security_ssl_obj.drv'`). Same tree, same machine, same daemon.
+
+**THE CACHES THEMSELVES ARE FAST, which is what makes this a nix-side problem rather than a
+network one.** curl against all four: 0.06 s, 0.08 s, 0.16 s, 0.59 s total, all HTTP 200. So four
+healthy caches answering in under a second somehow yield four lookups a minute.
+
+**AND MY EARLIER "STARVATION IS RULED OUT" WAS NOT SOUND.** That test watched the build log, which
+only prints on derivation events, over 75 seconds. At four queries a minute the log could not have
+moved whatever the answer was. The observable could not respond to the intervention, so the test
+proved nothing. The substituter finding stands on its own control, above.
+
+**WHAT B0 IS NOT:** not a deadlock, not zombies, not CPU starvation, not the disk. It is a
+throughput problem in substituter querying that presents as a hang.
+
+### What the stall was HIDING: the two guest Rust tools do not build in the endpoint
+
+The moment the build got past it, both failed:
+
+    /nix/store/...-cider-darwin-rust-1.95.0/bin/rustc: No such file or directory
+    buck2 lower: an action of root//darwin/xcselect:xcrun_rs_lib failed
+
+The lowered derivation replays a recorded argv that names the toolchain by ABSOLUTE store path,
+and that path was not among the derivation's inputs, so the sandbox did not have it. Fixed by
+adding it to the lowering's tool set in `nix/lib/ciderBuck2Lower.nix`, beside `pkgs.rustc`, but
+for a different reason: the others are bare command names needing PATH, this one needs to exist.
 
 
 **B1. DONE 2026-08-12 (4f7e30082b64). Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
