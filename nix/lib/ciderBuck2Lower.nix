@@ -1309,13 +1309,18 @@
       ln -sfn "$_c" "buck-rust/$(basename "$_c")"
     done
 
-    # src/ and pins/ are REAL directories here, not symlinks into the store: the
-    # pins get planted at pins/<pin> so the SDK's symlink farm resolves, and
-    # planting anything inside a store path is a permission error.
+    # pins/ is a REAL directory here, not a symlink into the store: the pins get planted at
+    # pins/<pin> so the SDK's symlink farm resolves, and planting anything inside a store path
+    # is a permission error.
+    #
+    # THERE WAS A src/ LOOP HERE AND IT WAS DEAD SINCE #87 STAGE 2, which emptied src/ into
+    # darwin/ and linux/. builtins.readDir on a directory that does not exist is not a no-op,
+    # it is an EVAL ERROR, so the flake default died with
+    #   opening directory '/nix/store/...-cider-buck2-lower-project/src': No such file
+    # This is the second instance of exactly the class the comment above warns about, where a
+    # stale name is inert rather than protective. Found 2026-08-12 by evaluating the default
+    # output, which nothing else does.
     mkdir -p pins
-    ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
-        ln -s ${lib.escapeShellArg "${projectSrc}/src/${name}"} ${lib.escapeShellArg "src/${name}"}
-      '') (lib.filterAttrs (name: _: name != "external") (builtins.readDir (projectSrc + "/src"))))}
     ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: _: ''
         ln -s ${lib.escapeShellArg "${projectSrc}/pins/${name}"} ${lib.escapeShellArg "pins/${name}"}
       '') (builtins.readDir (projectSrc + "/pins")))}
