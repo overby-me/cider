@@ -587,7 +587,7 @@ darwin_binary(
 
 # BEGIN generated: prefix exports
 # GENERATED from the reference build's install entries by
-# scripts/gen-install-from-manifests.py -- review before committing.
+# cider-install-from-manifests -- review before committing.
 
 export_file(
     name = "man_launchctl.1",

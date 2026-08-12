@@ -701,7 +701,7 @@ Order of attack, each stage gated on the one before:
 Two things to hold onto while working the near term. Coverage numbers are always relative
 to the graph in `result-graph-ref`, so state which component a percentage refers to.
 And the reference build is a wasting asset: cider-mig-from-ninja, gen-buck-from-ninja.py
-and gen-install-from-manifests.py all read it, and it disappears when cmake does, so every
+and cider-install-from-manifests all read it, and it disappears when cmake does, so every
 generator needs to be re-runnable before that happens.
 
 ### Stage 1 and stage 2 queue: FINISHED, moved to docs/plan-history.md

@@ -1096,7 +1096,7 @@ a live instruction.
 ### Near-term queue (stage 1, cli)
 
 Re-derive before trusting: `scripts/buck-coverage.nu --missing` and
-`scripts/gen-install-from-manifests.py`.
+`cider-install-from-manifests`.
 
 1. **The `all` component.** Sized and started; see "Stage 3" above.
 
@@ -1680,7 +1680,7 @@ has been true six times running, each time a check freshly written.
   DSERVER_MLDR_PATH=$rt/libexec/cider/usr/libexec/cider/mldr CIDER_NO_LAUNCHD=1
   $rt/bin/cider shell /bin/bash -c 'echo HELLO'`.
 - **Measure before attributing slowness**, and revert a fix whose premise turns out wrong.
-  gen-install-from-manifests.py's eight minutes were a per-entry repo walk, not the
+  cider-install-from-manifests's eight minutes were a per-entry repo walk, not the
   backtracking regex I first blamed.
 
 Guest-nix milestone against a buck2 prefix: materialize it to an `rt` dir, then

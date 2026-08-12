@@ -125,6 +125,13 @@ path = "src/migninja.rs"
 name = "cider-tbd-diff"
 path = "src/tbddiff.rs"
 
+# THE SIXTEENTH BINARY, the Rust rewrite of scripts/gen-install-from-manifests.py (#98), and the
+# last python buck-test.nu ran: the UNMAPPED gate is a live check, which is why this one is
+# ported rather than deleted like the frozen generators beside it.
+[[bin]]
+name = "cider-install-from-manifests"
+path = "src/installgen.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

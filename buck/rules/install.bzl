@@ -5,7 +5,7 @@
 # opaque edge that shells out to `cmake -P cmake_install.cmake`. The real statement is the
 # per-directory cmake_install.cmake files cmake writes at configure time -- 433 entries
 # across 65 destinations for the system component -- and nix/lib/cider-graph.nix now ships
-# them so scripts/gen-install-from-manifests.py can generate these rules from the reference
+# them so cider-install-from-manifests can generate these rules from the reference
 # rather than transcribing 89 install() calls by hand (plan/buck2-port.md, bash milestone).
 #
 # Destinations follow Darling's cmake helpers: libraries and executables under

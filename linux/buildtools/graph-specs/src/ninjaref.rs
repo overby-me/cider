@@ -447,3 +447,64 @@ pub fn upwards_of(
     }
     (labels, missing)
 }
+
+/// Archives the port declares by hand, whose artifact name no rule spells out.
+const ARCHIVE_ALIASES: &[(&str, &str)] = &[
+    ("liblibsimple_cider.a", "//darwin/libsimple:libsimple_cider"),
+    ("libciderd_xnu_sys.a", "//pins/ciderd/xnu-sys:ciderd_xnu_sys"),
+    ("liblibsimple_ciderd.a", "//darwin/libsimple:libsimple_ciderd"),
+];
+
+/// archive artifact name to buck label, for every static library declared.
+///
+/// cc_static_lib\(\s*\n\s*name = "<name>",(?:\s*\n\s*lib_name = "<artifact>",)? and the
+/// artifact defaults to lib<name>.a. Same walk order rule as the two registries above: a
+/// duplicate key is decided by which file is reached first.
+pub fn archive_registry(root: &str) -> HashMap<String, String> {
+    let mut reg: HashMap<String, String> = ARCHIVE_ALIASES
+        .iter()
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    for (pkg, path) in walk_buck_files(root) {
+        let text = match fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(_) => continue,
+        };
+        let b = text.as_bytes();
+        let mut i = 0;
+        while let Some(at) = text[i..].find("cc_static_lib(") {
+            let after = i + at + "cc_static_lib(".len();
+            i = after;
+            let j = match newline_gap(b, after) {
+                Some(j) => j,
+                None => continue,
+            };
+            if !text[j..].starts_with("name = \"") {
+                continue;
+            }
+            let ns = j + "name = \"".len();
+            let ne = name_run(b, ns);
+            if ne >= b.len() || b[ne] != b'"' || ne == ns {
+                continue;
+            }
+            let name = &text[ns..ne];
+            if ne + 1 >= b.len() || b[ne + 1] != b',' {
+                continue;
+            }
+            // The lib_name line is OPTIONAL, and when it is absent the artifact is lib<name>.a.
+            let mut artifact = format!("lib{name}.a");
+            if let Some(k) = newline_gap(b, ne + 2) {
+                if text[k..].starts_with("lib_name = \"") {
+                    let ls = k + "lib_name = \"".len();
+                    if let Some(e) = text[ls..].find('"') {
+                        if e > 0 && ls + e + 1 < b.len() && b[ls + e + 1] == b',' {
+                            artifact = text[ls..ls + e].to_string();
+                        }
+                    }
+                }
+            }
+            reg.insert(artifact, format!("//{pkg}:{name}"));
+        }
+    }
+    reg
+}

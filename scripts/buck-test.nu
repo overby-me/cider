@@ -36,6 +36,19 @@ def bad [msg: string] { print $"  FAIL ($msg)"; "bad\n" | save -a $env.BT_TALLY 
 # stdout only, never failing: the bash version wrote 2>/dev/null and || true on
 # essentially all of these, because an objdump over a missing path must not take
 # the whole suite down mid-section.
+# THE PORTED CHECKS ARE BINARIES now, of linux/buildtools/graph-specs, so the suite has to find
+# one. ONE nix build, and it is an EVAL plus a store lookup rather than the graph derivation this
+# suite deliberately stays away from: .#specs-tool is a small callPackage over one crate.
+def cider_tool [name: string] {
+  let r = (^nix build ".#specs-tool" --no-link --print-out-paths | complete)
+  if $r.exit_code != 0 {
+    print -e $r.stderr
+    return ""
+  }
+  let out = ($r.stdout | lines | where {|l| $l != "" } | first)
+  $out | path join "bin" $name
+}
+
 def cap [argv: list<string>] {
     let r = (do { ^($argv | first) ...($argv | skip 1) } | complete)
     $r.stdout | str replace -r '\n+$' ''
@@ -1069,7 +1082,7 @@ def main [flag?: string] {
     # and python.o is $<TARGET_OBJECTS:python27exe_obj>, a single object out of a group rather
     # than a library or an executable. All three read as "build output with no target" because
     # the resolver only knew how to look for build outputs.
-    let unmapped = (lines_of (cap [python3 scripts/gen-install-from-manifests.py])
+    let unmapped = (lines_of (cap [(cider_tool "cider-install-from-manifests")])
         | each {|l| $l | parse --regex '^ *UNMAPPED: *(?P<v>.*)$' | get v? | get 0? }
         | where {|v| $v != null } | get 0? | default "")
     if (num_or $unmapped 999) <= 0 {

@@ -117,7 +117,7 @@ upstream change for its *intent* and apply that intent to the Rust.
    build is buck2. A change that adds a source file, a define or a link flag must be mirrored
    into the relevant `BUCK` file, or it silently will not take effect. `buck/prefix/BUCK` and
    `buck/generated/` are GENERATED -- regenerate rather than edit
-   (`scripts/gen-install-from-manifests.py`).
+   (`cider-install-from-manifests`).
 4. Verify with the port's own checks rather than by inspection: `scripts/buck-test.nu`,
    `scripts/buck-bash-check.nu`, and for anything on the guest path
    `scripts/buck-runtime-check.nu`.

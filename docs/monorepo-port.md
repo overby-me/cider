@@ -27,7 +27,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-buck-from-ninja.py` | 2,508 | `result-graph-ref/build.ninja` | imported as a LIBRARY by 6 scripts | **split**: 182 live, 2,326 archive |
 | `cider-mig-from-ninja` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
-| `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
+| `cider-install-from-manifests` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **DELETED** (#98): its input went with cmake, so it could not run at all |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **PORTED**, now `gen-prefix-min.nu` (#98) |
@@ -73,7 +73,7 @@ consumed only by things that are themselves archive-or-tool candidates**, so not
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **4 files, 4,370 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **3 files, 3,398 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
@@ -103,7 +103,7 @@ emitter, rather than to port or to drop the file whole. Dropping it whole broke 
 UPDATE, #98: `buck-codegen-coverage` is nushell now and IMPORTS NOTHING. It needed one path
 constant from `gen-buck-from-ninja` and `read_entries` plus `build_rel` from
 `gen-install-from-manifests`, and it carries those itself, the way `buck-coverage.nu` carries its
-180 lines of the reference library. So `gen-install-from-manifests.py` has NO importer left: the
+180 lines of the reference library. So `cider-install-from-manifests` has NO importer left: the
 only live consumer is the `UNMAPPED` gate, which runs it as a SUBPROCESS and reads its output,
 and that is a boundary a rewrite can keep.
 
@@ -482,7 +482,7 @@ mention is not a call. The answer is smaller than the file count suggests:
 | edge | consumer | status |
 | --- | --- | --- |
 | `gen-xnu-sys-traps.py --check` | `xnu-sys-runtime-check.nu:175` | **CUT**, ported to `.nu` (#98) |
-| `gen-install-from-manifests.py` | the `UNMAPPED` gate in `buck-test.nu` | open, 972 lines |
+| `cider-install-from-manifests` | the `UNMAPPED` gate in `buck-test.nu` | open, 972 lines |
 | `buck-specs-check.py` | `buck-specs-check.nu` | **CUT**, ported to **Rust** (#98) |
 
 Everything else is either invoked by hand or imported only by another python file:
@@ -497,7 +497,7 @@ measurement said NUSHELL cannot tokenise 59 MB of script text, and said nothing 
 That reframes what is left of #97 and #98. It is not 11,350 lines of work. It is one decision.
 
 **And the bigger of the two is NOT a nushell port, measured rather than assumed.**
-`gen-install-from-manifests.py` is 972 lines that make 1,289 `target_for` calls, each scanning
+`cider-install-from-manifests` is 972 lines that make 1,289 `target_for` calls, each scanning
 up to five registry tables holding 3,481 keys, on top of parsing 669 `cmake_install.cmake`
 manifests and walking the repo for `BUCK` files. It runs in 3.77 s. The registry lookups alone
 are not what would kill a nushell port (3,481 keys is small enough that the linear record lookup

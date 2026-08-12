@@ -129,7 +129,7 @@ cc_static_lib(
 
 # BEGIN generated: prefix exports
 # GENERATED from the reference build's install entries by
-# scripts/gen-install-from-manifests.py -- review before committing.
+# cider-install-from-manifests -- review before committing.
 
 export_file(
     name = "libsystem_trace_org.puredarwin.os_log.asl",

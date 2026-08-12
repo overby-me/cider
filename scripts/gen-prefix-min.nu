@@ -11,7 +11,7 @@
 #   perl python pyobjc ruby    1,197 actions    4.3%
 #
 # buck/prefix/BUCK is GENERATED from the reference build cmake manifests by
-# scripts/gen-install-from-manifests.py, so it is not edited by hand and neither is its minimal
+# cider-install-from-manifests, so it is not edited by hand and neither is its minimal
 # sibling. This reads it, drops the entries whose target lives in an excluded package, drops the
 # symlinks those entries orphan, and writes buck/prefix-min/BUCK.
 #
@@ -370,7 +370,7 @@ def main [] {
     + "# and can run nix. Parity lives in //buck/prefix:cider_prefix, which is unchanged.\n"
     + $"# Entries dropped from the full prefix: ($dropped).\n")
   $body = ($body | str replace ("# GENERATED from the reference build's cmake_install.cmake manifests by\n"
-    + "# scripts/gen-install-from-manifests.py -- review before committing.\n") $header)
+    + "# cider-install-from-manifests -- review before committing.\n") $header)
 
   # THE PATH python PRINTS, which is os.path.join(scripts/.., ...) and keeps the "/.." in it.
   # Cosmetic, and reproduced anyway: the two outputs are compared line for line.

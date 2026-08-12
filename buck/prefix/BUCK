@@ -1,7 +1,7 @@
 load("//buck/rules:install.bzl", "prefix_tree")
 
 # GENERATED from the reference build's cmake_install.cmake manifests by
-# scripts/gen-install-from-manifests.py -- review before committing.
+# cider-install-from-manifests -- review before committing.
 prefix_tree(
     name = "cider_prefix",
     entries = {
