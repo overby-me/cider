@@ -1022,11 +1022,11 @@ the signature of this bug class: only the Nix route can see it.
 
 **IT IS ALREADY GUARDED, so this is a robustness task and not an outage.** Two halves:
 
-    buck-argv-roundtrip-check.py            compares unjoin() against `buck2 log what-ran`,
+    buck-argv-roundtrip-check.nu            compares unjoin() against `buck2 log what-ran`,
                                             which carries the real argv as a LIST. It imports
                                             unjoin from the dumper rather than reimplementing
                                             it, so it tests the real code path.
-    buck-argv-roundtrip-check.py --static   no build: every BUCK string literal that becomes an
+    buck-argv-roundtrip-check.nu --static   no build: every BUCK string literal that becomes an
                                             argv element must not contain the separator. This
                                             is the half buck-test.nu runs.
 

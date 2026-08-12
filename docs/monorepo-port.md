@@ -537,7 +537,7 @@ it now has three modules whose correctness is a question of matching python exac
 the buck2 RULES run python themselves (`configure_file`'s runner, `generate-rpc-wrappers`,
 `install.bzl`'s interpreter). Only `sourcesDrv`, which never runs buck2, lost it.
 
-`scripts/buck-argv-roundtrip-check.py` used to import the dump for its four-line `unjoin`. It
+`buck-argv-roundtrip-check` used to import the dump for its four-line `unjoin`. It
 carries its own copy now, which is the honest shape: that check compares against what buck2
 ACTUALLY RAN, so it is checking the rule against reality rather than against another
 implementation of the same split.
