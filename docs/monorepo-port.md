@@ -206,6 +206,30 @@ the same thing, and each was taken rather than assumed:
 
 So: parse whole files, and prefilter before any per-item regex.
 
+### Walking a tree for SYMLINKS, and the one check that is not byte-comparable
+
+`buck-escape-check` is the next port and its reconnaissance is done, so it is recorded here rather
+than re-derived. Three ways to find the 2,930 symlinks under `darwin/` and `linux/` were measured
+against Python's 131ms:
+
+    stack walk, one `ls -la` per directory        18.8s   1,841 directory listings
+    `ls -la` over globbed paths                   28.7s   AND WRONG: it expands directory
+                                                          symlinks, 7,265 rows for darwin alone
+    glob, `path type` filter, bulk `ls -laD`     0.48s   correct
+
+So: **`glob` does not descend through symlinked directories**, which matches
+`os.walk(followlinks=False)` exactly, confirmed by both finding the same 2,930; and **`ls -laD`
+bulk-stats a LIST of paths without expanding directory symlinks**, which is what makes reading
+2,930 link targets one call instead of 2,930.
+
+**But this check cannot be verified byte-for-byte, and that is a property of the Python, not of
+the port.** It prints a "first few" sample of six findings in `os.walk` order, which is
+`os.listdir` order, which is readdir order. Nushell's `ls` sorts. Readdir order is stable for an
+unchanged directory but is not a contract, so the honest verification is: identical counts,
+identical per-boundary table, and the identical SET of all findings, with the six-line sample
+documented as sorted instead. Weakening the byte-identical standard silently would be worse than
+saying so, and this is the first check in the pile where it does not apply.
+
 **The whole-tree walk is the other thing that could have sunk this, and it comes down to one
 flag.** `buck-first-party-paths-check` reads every `BUCK`, `.bzl` and `.bxl` in the repo, 194
 files and 205,024 lines, and Python does it in 0.78s. Three nushell versions were measured:
