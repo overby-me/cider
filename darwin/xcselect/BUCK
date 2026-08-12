@@ -6299,7 +6299,9 @@ cc_objects(
 # buck-registry: src/xcselect/xcrun = xcrun
 
 darwin_binary(
-    name = "xcrun",
+    # THE C ORIGINAL, kept as xcrun_c so the parity gate stays re-runnable. The Rust one below
+    # holds the canonical name and is what the prefix installs.
+    name = "xcrun_c",
     objs = [
         # xcrun
         ":xcrun_obj",
@@ -6334,8 +6336,9 @@ darwin_rust_staticlib(
 )
 
 darwin_binary(
-    name = "xcrun_rs",
-    exe_name = "xcrun",
+    # THE INSTALLED xcrun (#102). //darwin/xcselect:xcrun is what buck/prefix/BUCK maps to
+    # /usr/bin/xcrun, so this rename is the whole flip and no install entry changed.
+    name = "xcrun",
     objs = [
         # crt1 FIRST, then the archive: crt1 is what references _main and an archive member is
         # only pulled in to resolve a reference that already exists.

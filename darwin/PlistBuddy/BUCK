@@ -31,7 +31,8 @@ cc_objects(
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
-    name = "PlistBuddy",
+    # THE C ORIGINAL, kept as PlistBuddy_c so the parity gate stays re-runnable.
+    name = "PlistBuddy_c",
     objs = [
         # PlistBuddy
         ":PlistBuddy_obj",
@@ -63,8 +64,8 @@ export_file(
 
 # END generated: prefix exports
 
-# THE RUST PlistBuddy (#102), beside the C one rather than replacing it, the arrangement
-# getuuid_c, elfdep_c, wrapgen_c and xcrun_rs all have: the parity gate needs both binaries.
+# THE RUST PlistBuddy (#102). It holds the canonical name now and the C is kept beside it as
+# PlistBuddy_c, because the parity gate needs both binaries to exist.
 #
 # It is 49 CoreFoundation externs plus a port of the 83 percent of the program that never touches
 # CF. See PLAN.md #102b for the measurement that decided it was worth doing.
@@ -76,8 +77,9 @@ darwin_rust_staticlib(
 )
 
 darwin_binary(
-    name = "PlistBuddy_rs",
-    exe_name = "PlistBuddy",
+    # THE INSTALLED PlistBuddy (#102). buck/prefix/BUCK maps //darwin/PlistBuddy:PlistBuddy to
+    # /usr/libexec/PlistBuddy, so this rename is the flip and no install entry changed.
+    name = "PlistBuddy",
     objs = [
         # crt1 FIRST: it references _main, and an archive member is only pulled in to resolve a
         # reference that already exists.

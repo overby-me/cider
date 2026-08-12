@@ -1207,6 +1207,54 @@ def main [flag?: string] {
         say (indent7 (($par.stdout + $par.stderr) | str substring 0..2000))
     }
 
+    # === GUEST PARITY: the two Mach-O tools that are Rust now (#102) ===
+    #
+    # THESE RUN ONLY WHEN THEIR SOURCES CHANGED, and that is a considered trade rather than
+    # laziness. Each one boots the container and materializes a 600 MB prefix, which is minutes,
+    # and the container faults at startup about once per 61 cases, which is a red run that means
+    # nothing. Against that: xcrun and PlistBuddy are the INSTALLED binaries now, so a regression
+    # ships. Running them exactly when someone touched the ported code is where those two meet.
+    #
+    # THE SKIP IS NOT SILENT. It prints what it looked at and how to force a run, because a check
+    # that quietly does nothing is the failure mode this suite already found once, in the
+    # host-tool parity check that had existed since #98 with nothing invoking it.
+    let guest_paths = ["darwin/xcselect/" "darwin/PlistBuddy/"]
+    let touched = (do -i { ^jj status --no-pager } | complete | get stdout | lines
+        | where {|l| ($l | str starts-with "M ") or ($l | str starts-with "A ") or ($l | str starts-with "D ") }
+        | where {|l| $guest_paths | any {|g| $l | str contains $g } })
+    let forced = ($env.CIDER_GUEST_PARITY? | is-not-empty)
+    if ($touched | is-empty) and (not $forced) {
+        say "== guest parity (xcrun, PlistBuddy): SKIPPED, no source changes =="
+        say $"       looked at ($guest_paths | str join ' and '), 0 modified entries in the working copy"
+        say "       force with CIDER_GUEST_PARITY=1, or run the scripts directly:"
+        say "         scripts/buck-xcrun-parity.sh   scripts/buck-plistbuddy-parity.sh"
+    } else {
+        if $forced {
+            say "== guest parity (xcrun, PlistBuddy): forced by CIDER_GUEST_PARITY =="
+        } else {
+            say $"== guest parity (xcrun, PlistBuddy): ($touched | length) changed entries, so running =="
+            for t in $touched { say $"       ($t)" }
+        }
+        out_map [
+            //darwin/xcselect:xcrun //darwin/xcselect:xcrun_c
+            //darwin/PlistBuddy:PlistBuddy //darwin/PlistBuddy:PlistBuddy_c
+            //buck/prefix:cider_prefix
+        ] | ignore
+        for g in [
+            {name: "xcrun", script: "./scripts/buck-xcrun-parity.sh"}
+            {name: "PlistBuddy", script: "./scripts/buck-plistbuddy-parity.sh"}
+        ] {
+            let r = (do -i { ^bash $g.script } | complete)
+            if $r.exit_code == 0 {
+                let last = (lines_of ($r.stdout | str replace -r '\n+$' '') | last | default "")
+                ok $"guest parity: the Rust ($g.name) matches the C one  \(($last | str trim)\)"
+            } else {
+                bad $"guest parity FAILED for ($g.name), exit ($r.exit_code)"
+                say (indent7 (($r.stdout + $r.stderr) | str substring 0..2000))
+            }
+        }
+    }
+
     say "== cider-coredump (a HOST tool that reads Mach-O) =="
     # The first of the five host tools to land (task #8). It is worth its own check because
     # what it proves is the header slice, not the program: a Linux binary that includes
