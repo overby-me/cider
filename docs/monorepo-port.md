@@ -203,6 +203,19 @@ Verified rather than eyeballed:
 lines should be priced as roughly that much nushell. Several grew because their headers now carry
 the findings below, which is where the next person porting a check will look.
 
+### Two hazards in the remaining pile, both found by running something
+
+**`gen-xtrace-mig` writes by default.** Its `--dry-run` is opt-in and checked halfway down
+`main`, so running it with no arguments to see what it does rewrites four generated files. The
+census column that says "guarded" only means the string `--dry-run` occurs in the file; it does
+not say which way the default falls. Read the argv handling of a WRITER before running it.
+
+**And its output has drifted from what is committed.** That one accidental run changed 84 lines
+and removed 69 across `buck-src/BUCK`, `darwin/launchd/BUCK`, `pins/ciderd/xnu-sys/BUCK` and
+`buck/generated/extra-deps.json`. It is the same shape as the `prefix-min` drift: a generator
+whose committed output no longer matches what it produces. Both are now known; neither has been
+acted on, because regenerating build files is a decision and not a tidy-up.
+
 ### The remaining pile, split by what it depends on
 
 Of the 46 non-generator checks: 13 load another module and are blocked on their shared cores, and
