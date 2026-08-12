@@ -246,7 +246,7 @@ EXCLUDE_LABELS = (
     "//buck-src:openssh_com.openssh.sshd.plist",
     "//buck-src:cups_cups_scheduler_org.cups.cupsd.plist",
     # and cups-lpd, whose Program lives under the usr/libexec/cups tree that
-    # EXCLUDE_DEST now drops. Caught by buck-prefix-consistency.py, not by hand.
+    # EXCLUDE_DEST now drops. Caught by buck-prefix-consistency.nu, not by hand.
     "//buck-src:cups_cups_scheduler_org.cups.cups-lpd.plist",
 )
 
@@ -409,9 +409,10 @@ def main(argv: list[str]) -> int:
     # fails rather than emitting a prefix someone would only find broken at boot -- which the
     # smoke test would not do anyway, since it runs with DARLING_NO_LAUNCHD=1.
     checker = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "buck-prefix-consistency.py")
+                           "buck-prefix-consistency.nu")
     if os.path.exists(checker):
-        r = subprocess.run([sys.executable, checker, "--prefix", "buck/prefix-min/BUCK"],
+        # nu, not sys.executable: the checker is nushell now (#98).
+        r = subprocess.run(["nu", checker, "--prefix", "buck/prefix-min/BUCK"],
                            capture_output=True, text=True)
         if r.returncode != 0:
             print(r.stdout, file=sys.stderr)
