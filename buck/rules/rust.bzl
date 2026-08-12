@@ -26,7 +26,7 @@
 # `transitive` is the whole closure, not just this crate: rustc needs --extern for every
 # crate that appears in the dependency graph, direct or not, and passing them all by name is
 # simpler than reconstructing -L search directories from artifact paths.
-load("//buck/rules:cc.bzl", "CcLibInfo")
+load("//buck/rules:cc.bzl", "CcLibInfo", "CcObjectsInfo")
 load("//buck/rules:inproc.bzl", "InProcInfo")
 
 RustLibInfo = provider(fields = ["crate_name", "rlib", "transitive"])
@@ -279,6 +279,89 @@ bindgen_gen = rule(
         "include_dirs": attrs.list(attrs.dep(), default = []),
         "out": attrs.string(),
         # Headers the entry point pulls in, which never appear on the command line.
+        "srcs": attrs.list(attrs.source(), default = []),
+    },
+)
+
+
+# ---------------------------------------------------------------------------
+# GUEST RUST (#102): a Mach-O STATIC LIBRARY, so the link path the project already has can
+# take it unchanged.
+#
+# WHY A STATICLIB AND NOT AN OBJECT, measured rather than assumed. `--emit=obj` emits only the
+# crate's own code: a std hello leaves 11 Rust symbols undefined, and `-C lto=fat` makes it
+# worse rather than better (14, because the allocator shims join them). `--crate-type staticlib`
+# bundles std into the archive: of the 191 symbols the archive cannot satisfy, ZERO are
+# Rust-mangled. They are libSystem C symbols -- malloc, pthread_*, __NSGetArgv, dispatch_* --
+# which is exactly the set every C guest binary already gets from //buck-src:system_final.
+#
+# SO THERE IS NO -syslibroot AND NO BUILT PREFIX HERE, which is what route A needed. The archive
+# goes into darwin_binary's `objs`, and dylibs arrive the way they always do, as
+# -Wl,-dylib_file,<install_name>:<artifact>. That is also what makes them real buck2 edges.
+#
+# THE ENTRY POINT IS C, NOT RUST. A staticlib has no `main`; the crate must export
+# `#[unsafe(no_mangle)] pub extern "C" fn main(argc, argv) -> c_int` so crt1.10.6 finds it.
+# The consequence is honest and small: Rust's lang_start does not run, so there is no
+# stack-overflow guard page message and no std-installed cleanup. std itself works, because on
+# macOS args come from _NSGetArgv rather than from an init hook.
+#
+# -C embed-bitcode=no because the bitcode is dead weight here (we never LTO across the C
+# boundary) and it breaks host tooling: llvm-nm 21 cannot parse bitcode emitted by rustc's
+# LLVM 22 and fails the whole archive.
+_DARWIN_RUSTC = read_root_config("cider", "darwin_rustc", "")
+_DARWIN_RUST_SYSROOT = read_root_config("cider", "darwin_rust_sysroot", "")
+_DARWIN_RUST_TARGET = read_root_config("cider", "darwin_rust_target", "x86_64-apple-darwin")
+
+def _darwin_rust_staticlib_impl(ctx):
+    if not _DARWIN_RUSTC or not _DARWIN_RUST_SYSROOT:
+        # A missing toolchain must say WHICH half is missing and where it is configured.
+        # Failing in the action instead would surface as a bare "rustc: not found".
+        fail(("darwin_rust_staticlib: %s needs both [cider] darwin_rustc and " +
+              "[cider] darwin_rust_sysroot in .buckconfig.local (rustc=%r sysroot=%r). " +
+              "They must come from the SAME rust release: crate metadata matching is a " +
+              "string compare, so the nixpkgs rustc cannot use the official darwin std.") %
+             (ctx.label.name, _DARWIN_RUSTC, _DARWIN_RUST_SYSROOT))
+    out = ctx.actions.declare_output("lib" + _crate_name(ctx) + ".a")
+    cmd = cmd_args([
+        _DARWIN_RUSTC,
+        "--target",
+        _DARWIN_RUST_TARGET,
+        "--sysroot",
+        _DARWIN_RUST_SYSROOT,
+        "--edition",
+        ctx.attrs.edition,
+        "--crate-name",
+        _crate_name(ctx),
+        "--crate-type",
+        "staticlib",
+        "-C",
+        "embed-bitcode=no",
+        ctx.attrs.crate_root,
+        "-o",
+        out.as_output(),
+    ])
+    for f in ctx.attrs.features:
+        cmd.add("--cfg", 'feature="%s"' % f)
+    cmd.add(ctx.attrs.rustc_flags)
+    cmd.add(cmd_args(hidden = ctx.attrs.srcs))
+    ctx.actions.run(cmd, category = "darwin_rust_staticlib", identifier = ctx.label.name)
+    return [
+        DefaultInfo(default_output = out),
+        # CcObjectsInfo is what darwin_binary's `objs` consumes. An archive in the objects
+        # position is fine for ld64, and it must come AFTER crt1.10.6 so the lazy archive
+        # load has a reference to _main to resolve.
+        CcObjectsInfo(objects = [out]),
+    ]
+
+darwin_rust_staticlib = rule(
+    impl = _darwin_rust_staticlib_impl,
+    attrs = {
+        "crate_name": attrs.string(default = ""),
+        "crate_root": attrs.source(),
+        "edition": attrs.string(default = "2021"),
+        "features": attrs.list(attrs.string(), default = []),
+        "rustc_flags": attrs.list(attrs.string(), default = []),
+        # Modules the crate root pulls in, which never appear on the command line.
         "srcs": attrs.list(attrs.source(), default = []),
     },
 )
