@@ -46,17 +46,16 @@ const NEUTRAL_TOPS = [
     ".git" ".jj" ".direnv" "buck-out" "flake.nix" "flake.lock" "result-graph-ref"
 ]
 
-# Outside those filters but inputs of the endpoint in their own right: the first is passed to
-# the graph derivation as a separate store path, and the last two ARE the derivations, so a
-# comment in them changes the drv text directly. They sit under tops the filters drop, which is
-# exactly why they need naming.
+# Outside those filters but inputs of the endpoint in their own right: these two ARE the
+# derivations, so a comment in them changes the drv text directly. They sit under a top the
+# filters drop, which is exactly why they need naming.
 #
-# buck-src-normalise.py was the fourth entry until #99 made it a nix-built binary. It is NOT
-# listed now, and that is not an omission: linux/ is not a neutral top, so
-# linux/buildtools/src-normalise already classifies as staged. Naming it here would be inert
-# anyway, since the match is on the whole path and an edit names a file inside the crate.
+# TWO SCRIPTS USED TO BE LISTED HERE, buck2-graph-dump.py and buck-src-normalise.py, and both
+# are gone rather than renamed. #99 made them nix-built binaries under linux/buildtools/, and
+# linux/ is not a neutral top, so their crates already classify as staged. Naming a crate
+# directory here would be inert anyway: the match is on the whole path, and an edit names a
+# file inside the crate.
 const OWN_INPUTS = [
-    "scripts/buck2-graph-dump.py"
     "nix/lib/ciderBuck2Graph.nix"
     "nix/lib/ciderBuck2Lower.nix"
 ]

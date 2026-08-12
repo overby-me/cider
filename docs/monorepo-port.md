@@ -502,15 +502,52 @@ interpreted.
 neutral top, so the crate already classifies as staged, and the match is on a whole path, so an
 entry naming the crate directory would never have fired on an edit to a file inside it.
 
-### What is left of #99, 974 lines
+### Sixth piece: `buck2-graph-dump.py` to `cider-graph-dump`
 
-     752  buck2-graph-dump.py
+The big one, 752 lines, and the THIRD BINARY of the graph-specs crate rather than a crate of its
+own, because it shares exactly the parts that have to agree byte for byte: `pyjson` (the graph it
+writes is what the specs binary reads), `pat`, `pypath` and `sha256`.
+
+**What the port had to preserve is not the algorithm, it is the incidental order.** `graph.json`
+is read at EVALUATION by every lowered derivation, so one byte moves all of them:
+
+* `json.dump(..., indent=2, sort_keys=True)` is a THIRD JSON mode. Passing `indent` changes
+  python's item separator from `", "` to `","` plus a newline while the key separator stays
+  `": "`, and an empty container stays on one line. `pyjson::dumps_indent2_sorted`.
+* Which duplicate wins. `producer[o] = i` keeps the LAST action to claim an output, `first_root`
+  keeps the FIRST, and `node_by_identity` is overwritten in dict order. All three are decided by
+  aquery's iteration order, so the JSON is parsed with `preserve_order` and iterated as python
+  did.
+* `portable` sorts placeholders by length with python's STABLE sort, so equal-length paths keep
+  argv order. They are a Vec here, not a map.
+* Kahn with a heap keyed on identity, and the tie break has to be the same tuple.
+* Six regexes, hand written in `pat.rs` rather than pulled in as a crate, because every
+  dependency has to be vendored into the derivation at the front of every build. Thirteen
+  expectations, each printed by `python3 -c "import re; ..."` on the real strings.
+
+**`sha256` moved into its own module** so the dump and the sources pass share one implementation
+instead of a copy. Its test expectations came from `hashlib`, and the first one I wrote by hand
+was WRONG (a 119 byte input, one short of a second padding block) which is exactly the case a
+hand written sha256 gets wrong. Reading the value out of python caught it before it shipped.
+
+**`nix/graph-specs.nix` turns `doCheck` on.** The crate had no tests when it was two binaries;
+it now has three modules whose correctness is a question of matching python exactly.
+
+**`pkgs.python3` STAYS in the graph derivation**, and this one was checked rather than assumed:
+the buck2 RULES run python themselves (`configure_file`'s runner, `generate-rpc-wrappers`,
+`install.bzl`'s interpreter). Only `sourcesDrv`, which never runs buck2, lost it.
+
+`scripts/buck-argv-roundtrip-check.py` used to import the dump for its four-line `unjoin`. It
+carries its own copy now, which is the honest shape: that check compares against what buck2
+ACTUALLY RAN, so it is checking the rule against reality rather than against another
+implementation of the same split.
+
+### What is left of #99, 222 lines
+
      222  nix/lib/dyn-actions-spec-fixup.py
 
-`buck2-graph-dump.py` is the big one and the only remaining piece on the critical path of every
-graph build. `dyn-actions-spec-fixup.py` is small but it runs inside the dynamic-derivation
-mechanism (#91, #93), so its verification is a different shape: not a store path to diff but an
-emitted drv set to compare.
+Small, but it runs inside the dynamic-derivation mechanism (#91, #93), so its verification is a
+different shape: not a store path to diff but an emitted drv set to compare.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.

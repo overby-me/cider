@@ -962,6 +962,19 @@
           targets = [ "//darwin/libsimple:libsimple_ciderd" ];
         }).skeletonSrc;
 
+      # The graph derivation itself, so a change to the DUMP can be verified by comparing store
+      # paths: it is content addressed, so an identical path means a byte identical graph.json
+      # and the whole endpoint below it is untouched.
+      #   nix build .#graph
+      packages.graph =
+        pkgs:
+        # The module RETURNS the graph derivation (with skeletonSrc, specsDrv and sourcesDrv
+        # attached), so there is nothing to select here.
+        import ./nix/lib/ciderBuck2Graph.nix {
+          inherit pkgs;
+          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+        };
+
       # Just the per-group spec files, so a change to the spec generator can be verified by
       # comparing store paths rather than argued about. Content addressed, like the skeleton.
       #   nix build .#graph-specs

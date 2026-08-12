@@ -123,12 +123,11 @@
           # The generators and the check suite. buck2 never opens one: the only path
           # starting with scripts/ in any BUCK file is ciderd's
           # scripts/generate-rpc-wrappers.py, which is relative to ITS package and resolves
-          # to pins/ciderd/scripts/, not here. The one script this
-          # derivation still runs, buck2-graph-dump.py, arrives as its own store path through
-          # Nix path interpolation, so editing it still rebuilds the graph, which is correct
-          # because it changes the output. The normaliser used to be the second one; since #99
-          # it is a nix-built binary from linux/buildtools/src-normalise, and that reaches this
-          # derivation the same way, through the store path of the tool.
+          # to pins/ciderd/scripts/, not here. THIS DERIVATION NOW RUNS NO SCRIPT FROM
+          # scripts/ AT ALL: since #99 the dump and the normaliser are nix-built binaries from
+          # linux/buildtools/, and each reaches the builder through the store path of its tool,
+          # so editing one still rebuilds the graph, which is correct because it changes the
+          # output. python3 is still in nativeBuildInputs, but for the buck2 RULES.
           #
           # Without this, adding a check script rebuilds the whole graph derivation, 40
           # minutes, for a file nothing in the build reads. nix/lib/ciderBuck2Lower.nix
@@ -390,6 +389,11 @@
         pkgs.rust-bindgen
         pkgs.bison
         pkgs.flex
+        # STILL NEEDED after #99 moved the dump to Rust, and NOT because of the dump: the buck2
+        # RULES run python3 themselves (buck/rules/codegen.bzl's configure_file runner and
+        # generate-rpc-wrappers, buck/rules/install.bzl's script interpreter). Checked in the
+        # rules rather than assumed, after dropping this same line from sourcesDrv too early
+        # cost an exit 127.
         pkgs.python3
         pkgs.llvmPackages.bintools
         pkgs.coreutils
@@ -473,7 +477,7 @@
       # artifact and misses the cache everywhere else.
       # One line: inside a Nix indented string a backslash is literal, not an
       # escape, so a continuation would be two backslashes and cut the command.
-      python3 ${../../scripts/buck2-graph-dump.py} nix "$out" ${lib.escapeShellArgs placeholderArgs} ${lib.escapeShellArgs targets}
+      ${specsTool}/bin/cider-graph-dump nix "$out" ${lib.escapeShellArgs placeholderArgs} ${lib.escapeShellArgs targets}
       buck2 --isolation-dir nix kill || true
 
       # Split the two audiences apart. The dump records staged and treelinks paths RELATIVE

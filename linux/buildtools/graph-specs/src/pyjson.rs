@@ -35,6 +35,62 @@ pub fn dumps_sorted(v: &Value) -> String {
     s
 }
 
+/// json.dump(..., indent=2, sort_keys=True), which is how graph.json is written.
+///
+/// A THIRD MODE, not a prettier one. Passing indent changes the separators python uses: the
+/// item separator loses its trailing space (it is "," followed by a newline and the indent)
+/// while the key separator stays ": ". An empty container stays on one line as {} or [].
+/// graph.json is the input of every lowered derivation, so these bytes are the identity of the
+/// whole endpoint.
+pub fn dumps_indent2_sorted(v: &Value) -> String {
+    let mut s = String::new();
+    write_indent(v, &mut s, 0);
+    s
+}
+
+fn write_indent(v: &Value, out: &mut String, level: usize) {
+    match v {
+        Value::Array(a) if !a.is_empty() => {
+            out.push_str("[\n");
+            for (i, x) in a.iter().enumerate() {
+                if i > 0 {
+                    out.push_str(",\n");
+                }
+                pad(out, level + 1);
+                write_indent(x, out, level + 1);
+            }
+            out.push('\n');
+            pad(out, level);
+            out.push(']');
+        }
+        Value::Object(m) if !m.is_empty() => {
+            out.push_str("{\n");
+            let mut keys: Vec<&String> = m.keys().collect();
+            keys.sort();
+            for (i, k) in keys.into_iter().enumerate() {
+                if i > 0 {
+                    out.push_str(",\n");
+                }
+                pad(out, level + 1);
+                write_string(k, out);
+                out.push_str(": ");
+                write_indent(&m[k], out, level + 1);
+            }
+            out.push('\n');
+            pad(out, level);
+            out.push('}');
+        }
+        // Empty containers and every scalar are what the compact writer already emits.
+        other => write_value(other, out, true),
+    }
+}
+
+fn pad(out: &mut String, level: usize) {
+    for _ in 0..level * 2 {
+        out.push(' ');
+    }
+}
+
 fn write_value(v: &Value, out: &mut String, sort: bool) {
     match v {
         Value::Null => out.push_str("null"),

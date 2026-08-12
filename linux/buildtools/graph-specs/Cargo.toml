@@ -30,6 +30,13 @@ path = "src/main.rs"
 name = "cider-graph-sources"
 path = "src/sources.rs"
 
+# THE THIRD BINARY, and the one that PRODUCES what the other two read. It shares pyjson (the
+# python compatible JSON writer), pat, pypath and sha256 with them, which is the whole reason it
+# is a binary of this crate rather than a crate of its own.
+[[bin]]
+name = "cider-graph-dump"
+path = "src/dump.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

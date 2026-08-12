@@ -43,7 +43,6 @@ someone writing it.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import re
@@ -53,12 +52,20 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def load_dumper():
-    path = os.path.join(REPO, "scripts", "buck2-graph-dump.py")
-    spec = importlib.util.spec_from_file_location("dump", path)
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
+def unjoin(cmd: str) -> list[str]:
+    """aquery's rendered `cmd` back into an argv.
+
+    A COPY OF THE RULE, four lines of it, and deliberately so. It used to import the rule from
+    scripts/buck2-graph-dump.py, which since #99 is a Rust binary
+    (linux/buildtools/graph-specs/src/dump.rs) with nothing to import. Copying is the honest
+    shape here anyway: this check exists to catch the day the rendering stops round-tripping,
+    and it compares against what buck2 ACTUALLY RAN, so the comparison is with reality rather
+    than with the other implementation of the split.
+    """
+    inner = cmd.strip()
+    if inner.startswith("[") and inner.endswith("]"):
+        inner = inner[1:-1]
+    return inner.split(", ") if inner else []
 
 
 # Its OWN daemon: what-ran lists only actions that EXECUTED, and against the normal
@@ -123,7 +130,6 @@ def main(argv: list[str]) -> int:
     if "--static" in argv:
         rest = [a for a in argv if not a.startswith("--")]
         return static_scan(rest[0] if rest else REPO)
-    dump = load_dumper()
     targets = [a for a in argv if not a.startswith("--")]
     if not targets:
         # configure_file is the rule that puts free-form VALUES into an argv, so it is where
@@ -164,7 +170,7 @@ def main(argv: list[str]) -> int:
             continue
         target = node.split("target: `", 1)[-1].split("`", 1)[0]
         identity = f"{target} ({at.get('category', '')} {at.get('identifier', '')})"
-        recovered[identity.replace(" )", ")")] = dump.unjoin(cmd)
+        recovered[identity.replace(" )", ")")] = unjoin(cmd)
 
     common = sorted(set(truth) & set(recovered))
     bad = [i for i in common if truth[i] != recovered[i]]
