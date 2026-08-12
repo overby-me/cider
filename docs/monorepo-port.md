@@ -26,7 +26,7 @@ surface turns out to be 7 percent of it rather than all of it.
 |---|---|---|---|---|
 | `gen-buck-from-ninja.py` | 2,508 | `result-graph-ref/build.ninja` | imported as a LIBRARY by 6 scripts | **split**: 182 live, 2,326 archive |
 | `gen-mig-from-ninja.py` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
-| `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **archive** |
+| `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
 | `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **port** |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
