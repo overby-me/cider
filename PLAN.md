@@ -55,7 +55,7 @@ ran, because CA early cutoff removes the rest DURING the build. Judge by builder
 **A BUCK EDIT IS NOT A FULL REBUILD ANY MORE** (#54, #79). The old advice to batch BUCK edits
 is stale; the cascade was cut from 1,558 builders to 44.
 
-**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.py <log>`.
+**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.nu <log>`.
 
 ### cmake is gone (#82), and five generators are FROZEN
 

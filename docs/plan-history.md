@@ -78,7 +78,7 @@ Rung 1 is only cheap against the endpoint that is actually gated: pointed at
 seconds** because it rebuilt that graph first. Naming the wrong endpoint does not fail, it
 just silently costs a graph build. Never start at rung 3.
 
-**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.py <log>`. The endpoint
+**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.nu <log>`. The endpoint
 reproducibly hits a nix-daemon stall where the worker holds max-jobs unreaped children with
 none live and nothing moves again; the cause is unknown and needs root to chase. Recovery is
 `kill -TERM` the CLIENT, never the daemon, then relaunch, which resumes from the store with no
