@@ -171,7 +171,7 @@ def to_buck_src(repo_rel: str) -> str | None:
 # a `header_map` value is an attrs.source(), and a source coerces from a label just as
 # well as from a path. So the SDK stays ONE staged tree with one include order, and only
 # the spelling of the value changes. scripts/buck-split-pins.py maintains this list, and
-# scripts/buck-exports.py gives every label an export_file in the owning pin.
+# cider-exports gives every label an export_file in the owning pin.
 SPLIT_PINS_FILE = os.path.join(REPO, "buck", "generated", "split-pins.txt")
 
 

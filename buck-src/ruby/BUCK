@@ -12,7 +12,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 load("//buck/generated:exports_ruby.bzl", "EXPORTS")
 
 # One export_file per file another package names by label, from the list
-# scripts/buck-exports.py keeps.
+# cider-exports keeps.
 [
     export_file(name = _n, src = _s, visibility = ["PUBLIC"])
     for _n, _s in EXPORTS.items()

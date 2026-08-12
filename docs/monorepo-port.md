@@ -66,14 +66,14 @@ What imports it today, measured over `scripts/` rather than assumed:
 | --- | --- | --- |
 | `gen-buck-from-ninja.py` | 2 | `gen-install-from-manifests` (generator) and `buck-port` (tool). `gen-xtrace-mig`, `buck-fix-link-model` and `regen-dylibs` are gone: the first is nushell, the other two are Rust, and the 182-line live surface they shared now lives ONCE in `graph-specs/src/ninjaref.rs` |
 | `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
-| `gen-sdk-header-roots.py`, `buck-exports.py` | 0, 0 | **RE-MEASURED: neither is IMPORTED.** `buck-split-pins` runs them as SUBPROCESSES (`buck-split-pins.py:482,490`), so each can be ported and deleted on its own. `buck-fix-loads` is `.nu`, and `cider-regen-dylibs` calls it |
+| `gen-sdk-header-roots.py` | 0 | **RE-MEASURED: not IMPORTED.** `buck-split-pins` runs it as a SUBPROCESS (`buck-split-pins.py:482`), so it moves on its own. `buck-exports` is Rust now, `cider-exports`, and `buck-split-pins` resolves it through `nix build .#specs-tool` |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
 consumed only by things that are themselves archive-or-tool candidates**, so nothing that has to
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **10 files, 6,829 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **9 files, 6,548 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
@@ -486,7 +486,7 @@ mention is not a call. The answer is smaller than the file count suggests:
 | `buck-specs-check.py` | `buck-specs-check.nu` | **CUT**, ported to **Rust** (#98) |
 
 Everything else is either invoked by hand or imported only by another python file:
-`buck-split-pins` RUNS `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots` as
+`buck-split-pins` RUNS `cider-exports`, `buck-fix-loads` and `gen-sdk-header-roots` as
 subprocesses rather than importing them, so they are not a cluster and each moves on its own;
 `buck-port` imports `gen-buck-from-ninja`; the two dead graph tools
 pull in `buck2-graph-sources`. **So the monorepo needs python for exactly ONE more edge**, and it

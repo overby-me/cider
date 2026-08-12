@@ -464,7 +464,7 @@ def build_rel(path: str) -> str | None:
 
 
 def flatten(rel: str) -> str:
-    """The same flattening scripts/buck-exports.py and gen-buck-from-ninja.py use."""
+    """The same flattening cider-exports and gen-buck-from-ninja.py use."""
     return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel)
 
 
@@ -583,7 +583,7 @@ def file_label(rel: str):
 
     A source attribute has to name a file of the package that DECLARES it, and buck/prefix
     owns none of these -- so every one of them travels as a LABEL backed by an export_file in
-    its owner. For a pin that is the machinery scripts/buck-exports.py already runs; for the
+    its owner. For a pin that is the machinery cider-exports already runs; for the
     few files outside the pins (launchd's man pages, shellspawn's plist, etc/resolv.conf) the
     export goes in a generated block, since nothing else was minting labels into them.
     """

@@ -25,7 +25,7 @@ in buck-src to replace the glob. Those are reported, not guessed at.
 The SDK header maps stay whole and stay in buck-src/BUCK. A subpackage owns its files, so
 a map cannot name them by PATH any more -- but a `header_map` value is an attrs.source(),
 and a source coerces from a LABEL too. So only the spelling changes, the staged SDK tree
-and its include order are exactly what they were, and scripts/buck-exports.py backs each
+and its include order are exactly what they were, and cider-exports backs each
 label with an export_file in the owning pin.
 
 Usage:
@@ -387,6 +387,22 @@ def run(*cmd: str) -> int:
     return subprocess.run([str(c) for c in cmd], cwd=REPO, check=False).returncode
 
 
+def cider_tool(name: str) -> str:
+    """Where a graph-specs binary is, built by nix rather than assumed on PATH.
+
+    The tools this drives are Rust now (#98), so they live in the store instead of beside this
+    file. Same route scripts/buck-specs-check.nu takes: build the package, then name the binary
+    inside it. With the crate already built this is an eval and a store lookup.
+    """
+    out = subprocess.run(["nix", "build", ".#specs-tool", "--no-link", "--print-out-paths"],
+                         cwd=REPO, capture_output=True, text=True)
+    if out.returncode != 0:
+        sys.stderr.write(out.stderr)
+        raise SystemExit(f"cannot build .#specs-tool, so {name} cannot be run")
+    path = out.stdout.strip().split("\n")[0]
+    return os.path.join(path, "bin", name)
+
+
 def migrate(pins: list[str], dry: bool = False) -> int:
     text = open(BUCK_SRC).read()
     move, stuck = movable(text, set(pins))
@@ -487,7 +503,7 @@ def migrate(pins: list[str], dry: bool = False) -> int:
     run(sdk_gen, "--framework-roots", *NS)
 
     # 4. An export_file for every label that now points into a pin package.
-    run(os.path.join(REPO, "scripts", "buck-exports.py"))
+    run(cider_tool("cider-exports"))
     run(os.path.join(REPO, "scripts", "buck-fix-loads.nu"))
     print("migration written; build and iterate")
     return 0

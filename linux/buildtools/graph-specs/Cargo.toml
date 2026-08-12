@@ -97,6 +97,13 @@ path = "src/linkmodel.rs"
 name = "cider-regen-dylibs"
 path = "src/regendylibs.rs"
 
+# THE TWELFTH BINARY, the Rust rewrite of scripts/buck-exports.py (#98). It joins a flattened-name
+# index over a materialized pin, which can be tens of thousands of files, against every label
+# anything in the tree names, which is the shape that goes to Rust.
+[[bin]]
+name = "cider-exports"
+path = "src/exports.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

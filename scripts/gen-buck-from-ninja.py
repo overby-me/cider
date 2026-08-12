@@ -1168,7 +1168,7 @@ def generate(target: str, edges):
 # IS the switch, one pin at a time, so a pin's blocks land in its own package exactly when
 # that package exists. A subpackage takes OWNERSHIP of its files, so everything outside it
 # (the SDK header maps in buck-src/BUCK, another pin's force-included header) must name
-# those files by LABEL; scripts/buck-exports.py backs every such label with an export_file.
+# those files by LABEL; cider-exports backs every such label with an export_file.
 def migrated_pins() -> set:
     """Pins that already have their own package (scripts/buck-split-pins.py keeps this).
 
