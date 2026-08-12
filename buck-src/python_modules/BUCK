@@ -194,7 +194,7 @@ darwin_binary(
 
 # BEGIN generated: prefix dirs
 # GENERATED from the reference build's install entries by
-# scripts/gen-install-from-manifests.py -- review before committing.
+# cider-install-from-manifests -- review before committing.
 
 prefix_dir(
     name = "prefix_Modules_six_1_12_0_six_1_12_0_six_egg_info",

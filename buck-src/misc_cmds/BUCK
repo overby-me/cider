@@ -5,7 +5,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: prefix dirs
 # GENERATED from the reference build's install entries by
-# scripts/gen-install-from-manifests.py -- review before committing.
+# cider-install-from-manifests -- review before committing.
 
 prefix_dir(
     name = "prefix_calendar_calendars",
