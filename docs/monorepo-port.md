@@ -80,7 +80,29 @@ of that list. Rewriting the generator in nushell moves that list out of Python s
 breaks the scrape, which then reports files as unported that are already Rust. The list needs a
 neutral home (a `.json` or `.bzl` both sides read) as part of that port, not after it.
 
+## The target, read from the target rather than assumed
+
+`/home/overby.me/Work/overby.me2` is the freshest checkout of the monorepo (four exist; this one
+has today's commits). Its `.rules` states the constraints this port has to satisfy:
+
+- **No Python and no POSIX shell.** Scripts are `.nu`, with a `#!/usr/bin/env nu` shebang, or no
+  shebang when a Nix builder sources them.
+- **`nu-check --debug <file>.nu` is the acceptance gate.** Every ported script must pass it.
+- **Exceptions exist but must be argued first.** Two bash files stay bash because their consumer
+  requires it (direnv evaluates `.envrc` as bash; Nix stdenv sources setup hooks as bash). The
+  rule says to state the reason before writing anything in another language.
+- Top-level `nushell/` and `rust/` directories already exist, so both halves of this port have a
+  home. There is no cider or darling directory yet.
+
+That last exception clause is the right frame for the archive pile. The 2,743 archived lines are
+not scripts the monorepo runs; they are the provenance of generated files, kept next to the
+reference graph they read. Carrying them as an archive is not a Python exception at all, and the
+README should say exactly that rather than leaving a reader to wonder why `.py` files are present.
+
 ## #98 and #99
 
 Not started. #98 is the checks to nushell; #99 is the build-path graph code to Rust, converging
 with #92 (reading the buck2 graph through buck2's own crates instead of parsing rendered output).
+
+Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
+user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.
