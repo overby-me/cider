@@ -1,0 +1,27 @@
+# cider-graph-specs: the Rust rewrite of scripts/buck-graph-to-specs.py and its shared half
+# scripts/buck_lowering.py, task #99.
+#
+# BUILT BY NIX, NOT BY BUCK2. It runs inside the graph derivation, which is the tree buck2 was
+# just run on, so buck2 building it would be circular. Same route as nix/skeleton.nix.
+#
+# serde_json WITH preserve_order, and both halves of that are load bearing. The generator reads a
+# 147 MB graph.json and writes JSON whose OBJECT KEY ORDER IS PART OF THE OUTPUT: python dicts
+# are insertion ordered and json.dump writes them in that order, so a serialiser that sorted or
+# reordered keys would produce a correct-looking tree with a different hash, which throws away
+# the content addressing this port depends on. Hand rolling a parser for 147 MB of JSON was the
+# alternative and was rejected: it is exactly the kind of code that is subtly wrong.
+[package]
+name = "cider-graph-specs"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cider-graph-specs"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[profile.release]
+opt-level = 2

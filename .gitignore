@@ -120,3 +120,9 @@ __pycache__/
 # carries the whole of XNU rather than the 1,974 file subset that used to be committed here,
 # and patches/xnu-sys-xnu holds the delta that made the vendored copy differ from upstream.
 /pins/ciderd/xnu-sys/xnu/
+
+# The cargo build directory of the graph-specs tool (#99). NOT a blanket `target/` rule: 83
+# TRACKED paths in this repo contain a /target/ component, all of them upstream, and a blanket
+# rule would quietly untrack every one of them.
+/linux/buildtools/graph-specs/target/
+/linux/buildtools/skeleton/target/
