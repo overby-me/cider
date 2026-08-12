@@ -31,6 +31,15 @@
   allPins ? false,
   # Darling's own ld64, which the link rules invoke by absolute path.
   ld64 ? null,
+  # THE GUEST RUST TOOLCHAIN (#102), and it is REQUIRED rather than optional because the
+  # prefix installs Rust guest binaries now: //darwin/xcselect:xcrun and
+  # //darwin/PlistBuddy:PlistBuddy are darwin_rust_staticlib targets, and that rule fails at
+  # ANALYSIS time when the toolchain is unconfigured. Without this, `buck2 aquery` over the
+  # whole graph dies on cider_prefix and every graph output with it.
+  #
+  # Constructed here rather than threaded through the call sites because there are eight of
+  # them and none of them has an opinion about it.
+  darwinRust ? pkgs.callPackage ../darwinRust.nix { },
   # Feed the dump a SKELETON instead of the project (#56): every C family file outside
   # buck-src, buck-rust and pins emptied, keeping the name and dropping the bytes,
   # except the five that feed a generator this derivation runs. OFF BY DEFAULT and an
@@ -444,6 +453,8 @@
       clang_resource_dir = $(clang -print-resource-dir)
       darwin_cc = ${pkgs.llvmPackages.clang-unwrapped}/bin/clang
       darwin_cxx = ${pkgs.llvmPackages.clang-unwrapped}/bin/clang++
+      darwin_rustc = ${darwinRust}/bin/rustc
+      darwin_rust_sysroot = ${darwinRust}
       elf_lib_dirs = ${elfLibDirs}
       host_include_dirs = ${hostIncludeDirs}
       EOF
