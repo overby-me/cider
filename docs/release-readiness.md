@@ -400,3 +400,47 @@ A lowered derivation names a dependency for which no lowered derivation exists. 
 prefix-min` is unaffected and completes, which is what was verified for B0; the full prefix was
 NOT re-verified today, so this went unseen. It is unknown whether it predates today's work or was
 introduced by it, and that question is the first step rather than a guess.
+
+### RESOLVED 2026-08-12, and it hid a second failure behind it
+
+**The eval failure was a disagreement about pin grouping.** `cider-graph-specs` writes the coarse
+synthetic `root//buck-src:pin-<name>` labels unconditionally, while the lowering defaulted
+`coarsePins = false` and so keyed its derivations by the fine per-pin labels. The two halves
+therefore named different things and a dependency pointed at nothing. Fixed by making
+`coarsePins = true` the default, with a guard that throws and cites the generator lines rather
+than letting a future `false` reproduce a missing-attribute error thousands of lines from its
+cause. The full prefix evaluates again: EXIT 0 in 27 seconds.
+
+**Behind it was a staging failure that only the full prefix could reach**, 412 identical copies of
+
+    ln: failed to create symbolic link 'pins/ciderd/xnu-sys/xnu': Permission denied
+
+cascading into 340 `Cannot build` errors. `pins/ciderd/xnu-sys/xnu` is the one pin that lives
+inside another `pins/` entry, and `.gitignore` excludes it from the source precisely so that it
+arrives from its own store path. The staging linked every top-level `pins/` entry straight into
+the store, so planting the nested pin underneath one of those links was a write into `/nix/store`.
+`prefix-min` never builds the targets that want that pin, which is why it stayed green through
+all of it.
+
+Fixed as a general rule rather than a case for `ciderd`: a top-level `pins/` entry that CONTAINS a
+wanted pin is mirrored with `cp -Rs`, real directories and a symlink per file, and made writable.
+This is the third time this repo has learned that a subtree cannot be staged as a directory
+symlink when something must be planted inside it, after the relative-escape rule and the `src/`
+staging, so the test is written on the wanted-pin set and not on a name.
+
+Verified on the smallest artifact that exercises it, then on the real thing:
+`root//pins/ciderd/xnu-sys:ciderd_xnu_sys` builds EXIT 0 with every `mig_` generator under it,
+and the full prefix run that follows passes 75,000 log lines with zero staging failures.
+
+## Upstreaming to buck2, prepared and not filed
+
+[docs/upstream-buck2.md](upstream-buck2.md) holds two findings written up to the standard a
+maintainer could act on: `aquery` renders an action command as a joined string rather than an
+argv list, and `aquery` states no inputs and no outputs for any action, which is worst for the
+in-process kinds that have no command either. Both were measured first-hand on
+buck2 unstable-2026-04-15 on 2026-08-12.
+
+Nothing has been sent. The document ends with what has to happen before it could be: re-measure
+on current buck2, write a reproducer that is not Cider, and file the two separately, since one is
+a rendering change and the other is a data-model gap with a closed three-year-old issue behind it
+([facebook/buck2#475](https://github.com/facebook/buck2/issues/475), no maintainer reply).
