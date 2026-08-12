@@ -54,7 +54,7 @@ MANIFEST = os.path.join("nix", "submodules.json")
 
 # THIS FILE EXCLUDES ITSELF, and that is not a convenience. Its docstring has to quote the
 # old spelling in order to explain which lines are frozen and why, so a sweep that rewrote it
-# would destroy the explanation of what the sweep does. Same reason buck-env-names-check.py
+# would destroy the explanation of what the sweep does. Same reason buck-env-names-check.nu
 # excludes itself from its own advertising side.
 SELF = os.path.join("scripts", os.path.basename(__file__))
 

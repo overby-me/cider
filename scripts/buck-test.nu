@@ -393,7 +393,7 @@ def main [flag?: string] {
     # syscall investigation at the wrong thing. This is the mirror of the upstream-names check:
     # that one catches a name we orphan, this one a name we never implemented.
     say "== the environment variables we advertise (no nix either) =="
-    let envnames = (do -i { ^python3 ./scripts/buck-env-names-check.py } | complete)
+    let envnames = (do -i { ^nu ./scripts/buck-env-names-check.nu } | complete)
     if $envnames.exit_code == 0 {
         ok "every advertised environment variable is read by something"
     } else {

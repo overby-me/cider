@@ -45,7 +45,7 @@ minutes, and did exactly that for #87 stage 2.
 
 **RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
 an hour.** `buck-escape-roots-check.nu`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.nu`,
-`buck-env-names-check.py`, `buck-first-party-paths-check.nu`, `buck-labels-check.nu`,
+`buck-env-names-check.nu`, `buck-first-party-paths-check.nu`, `buck-labels-check.nu`,
 `buck-pin-paths-check.nu`, `buck-host-includes.py`, `buck-coverage.py`.
 
 **COUNT `^building`, NEVER the "these N derivations will be built" list.** The list overstates

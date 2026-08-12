@@ -140,7 +140,7 @@ def dsh_bash [ctx: record, logfile: string, cmd: string] {
 # This used to set a variable named DARLING_XTRACE, which NOTHING has ever read: not the
 # loader, not the server, not xtrace itself, not upstream. The flag was inert, so a triage run
 # made with --xtrace produced no trace and looked like a syscall that was never reached.
-# scripts/buck-env-names-check.py exists to stop that recurring, and it treats the name written
+# scripts/buck-env-names-check.nu exists to stop that recurring, and it treats the name written
 # as an ASSIGNMENT as the advertisement, which is why this comment names it in prose instead.
 #
 # The tracer is a constructor library. darwin/xtrace/xtracelib.cpp declares xtrace_setup with
