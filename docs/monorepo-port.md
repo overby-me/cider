@@ -401,17 +401,49 @@ is what made any of this verifiable: it was a `let` binding with no handle, so t
 build it alone. And **deleting the Python was free too**, because `projectSrc` filters `scripts/`
 out, so removing the file did not even change the skeletoniser's input.
 
-### What is left of #99, 2,594 lines
+### The second and third pieces are landed too
+
+`buck_lowering.py` (298) and `buck-graph-to-specs.py` (541) are now ONE Rust binary,
+`linux/buildtools/graph-specs`, 946 lines. They were two files because python needed a shared
+importable module; a binary has no import, so the three checks that imported it read the JSON it
+already writes instead.
+
+**Verified at full scale in one shot**, against the real 147 MB `graph.json` already in the
+store, 1,474 groups and 8,704 actions:
+
+    2,955 files out of both, and `diff -rq` reports NOTHING
+    NAR hash identical
+    2.2s against python 6.0s
+
+Controlled by appending one space to one of the 2,955 files, which changes the hash. Then the
+flip: `specsDrv` store path identical before and after, `.drv` paths different, so it really
+re-ran. **Two build-path derivations have now moved with zero downstream cost**, which is the
+step-0 rule holding twice.
+
+Three things had to be exact, and each is a trap for the remaining four:
+
+- **Python's `json.dump` uses `", "` and `": "` separators** where `serde_json` emits `","` and
+  `":"`, and `ensure_ascii` escapes non-ASCII, with a **surrogate pair** above the BMP.
+  `src/pyjson.rs` is that serialiser, and `serde_json` is taken with `preserve_order` because
+  object key order is python dict order and therefore part of the output.
+- **The 60-line shell harness is `include_str!` from `src/harness.sh`**, extracted rather than
+  retyped, because the python's own comment warns that a typo in it is a byte the comparison
+  reports without saying which side is right.
+- **`lib.escapeShellArg` does not always quote.** It leaves a string bare when every character is
+  in `[A-Za-z0-9,._+:@%/-]`, which includes the slash.
+
+**The two python files stay, deliberately.** They are off the build path, which is what #99 is
+about, but `buck-needs-check.py`, `buck-script-check.py` and `buck-names-check.py` still import
+them. Both now carry a banner naming the drift risk and the resolution: delete them, and have
+those three read the generated `needs.json` / `full.json` / `scripts.json`. That is #98 work
+which was blocked on #99 and now is not.
+
+### What is left of #99, 1,755 lines
 
      752  buck2-graph-dump.py
-     541  buck-graph-to-specs.py
      506  buck2-graph-sources.py
-     298  buck_lowering.py
      275  buck-src-normalise.py
      222  nix/lib/dyn-actions-spec-fixup.py
-
-Do `buck_lowering` and `buck-graph-to-specs` as a PAIR, since the second imports the first, and
-they are what unblocks three of the #98 checks.
 
 `buck-src-normalise.py` should NOT be next despite being small: it has no derivation of its own,
 so editing it changes a shell fragment embedded in two derivations and re-runs both, and its
