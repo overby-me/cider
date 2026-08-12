@@ -49,7 +49,7 @@ BUCK_SRC = os.path.join(BUCK_SRC_DIR, "BUCK")
 SPLIT_PINS = os.path.join(REPO, "buck", "generated", "split-pins.txt")
 EXTRA_DEPS = os.path.join(REPO, "buck", "generated", "extra-deps.json")
 SKIP_DIRS = ("buck-out", ".git", ".jj", ".direnv", "build")
-# Namespaces the SDK maps cover, in the order gen-sdk-header-roots.py expects them.
+# Namespaces the SDK maps cover, in the order cider-sdk-header-roots expects them.
 # security_libDER is a namespace like the rest: <sdk>/usr/include/security_libDER links
 # into the security pin, and Security.framework's own SecCertificatePriv.h includes
 # <security_libDER/libDER/libDER.h> through it. Leaving it out meant every target that
@@ -494,7 +494,7 @@ def migrate(pins: list[str], dry: bool = False) -> int:
     print(f"  fixed out_base on {fix_mig_out_base(open(BUCK_SRC).read())} mig target(s)")
 
     # 3. The SDK maps, naming the migrated pins' headers by label.
-    sdk_gen = os.path.join(REPO, "scripts", "gen-sdk-header-roots.py")
+    sdk_gen = cider_tool("cider-sdk-header-roots")
     out = subprocess.run([sdk_gen] + NS, cwd=REPO, capture_output=True, text=True)
     if out.returncode != 0:
         print(out.stderr, file=sys.stderr)

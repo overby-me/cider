@@ -28,7 +28,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-mig-from-ninja.py` | 259 | `result-graph-ref/build.ninja` | nothing | **archive** |
 | `gen-xtrace-mig.py` | 158 | loads `gen-buck-from-ninja` | nothing | **PORTED**, now `gen-xtrace-mig.nu`, and it carries the two helpers it used (#98) |
 | `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
-| `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **port** |
+| `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **PORTED**, now `cider-sdk-header-roots` (#98) |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
 | `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **PORTED**, now `gen-prefix-min.nu` (#98) |
 | `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **PORTED**, now `gen-xnu-sys-traps.nu` (#98) |
@@ -66,14 +66,14 @@ What imports it today, measured over `scripts/` rather than assumed:
 | --- | --- | --- |
 | `gen-buck-from-ninja.py` | 2 | `gen-install-from-manifests` (generator) and `buck-port` (tool). `gen-xtrace-mig`, `buck-fix-link-model` and `regen-dylibs` are gone: the first is nushell, the other two are Rust, and the 182-line live surface they shared now lives ONCE in `graph-specs/src/ninjaref.rs` |
 | `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
-| `gen-sdk-header-roots.py` | 0 | **RE-MEASURED: not IMPORTED.** `buck-split-pins` runs it as a SUBPROCESS (`buck-split-pins.py:482`), so it moves on its own. `buck-exports` is Rust now, `cider-exports`, and `buck-split-pins` resolves it through `nix build .#specs-tool` |
+| (none) | 0 | **RE-MEASURED: neither helper is IMPORTED and both are Rust now.** `buck-split-pins` runs `cider-exports` and `cider-sdk-header-roots` as subprocesses, resolved through `nix build .#specs-tool` |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
 consumed only by things that are themselves archive-or-tool candidates**, so nothing that has to
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **9 files, 6,548 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **8 files, 6,043 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in

@@ -104,6 +104,13 @@ path = "src/regendylibs.rs"
 name = "cider-exports"
 path = "src/exports.rs"
 
+# THE THIRTEENTH BINARY, the Rust rewrite of scripts/gen-sdk-header-roots.py (#98). It is Rust
+# for os.path.realpath: the SDK farm has links whose PARENT is a link into a pin, and only a
+# TEXTUAL resolution that does not require the target to exist can follow those.
+[[bin]]
+name = "cider-sdk-header-roots"
+path = "src/sdkroots.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

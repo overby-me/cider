@@ -56,7 +56,7 @@ cc_header_root(
 # machine,libkern,sys}, a farm of relative symlinks into the repo's SDK tree that
 # only resolves once nix has assembled all 147 pins. The port stages the same
 # namespaces explicitly, from maps generated out of that farm
-# (scripts/gen-sdk-header-roots.py), so the search path holds exactly the SDK
+# (cider-sdk-header-roots), so the search path holds exactly the SDK
 # headers under exactly the SDK names -- and nothing else.
 #
 # Only these FOUR sys/ entries are exposed, matching what bootstrap_cmds'
@@ -162,7 +162,7 @@ export_file(
 # A Darwin compile's include path in the reference build is the whole SDK tree,
 # darwin/Developer/.../MacOSX.sdk/usr/include: ~3200 headers reached through
 # committed relative symlinks into these pinned trees. Staged here as one
-# declared root from the map scripts/gen-sdk-header-roots.py derives from that
+# declared root from the map cider-sdk-header-roots derives from that
 # farm, so the search path holds exactly the SDK, under exactly the SDK's names.
 # ---------------------------------------------------------------------------
 

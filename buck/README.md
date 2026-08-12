@@ -60,7 +60,7 @@ ninja.)
 : Stage one include root. `root` is a package-relative prefix stripped from each
   header's path; `header_map` gives `{include path: header}` explicitly, for
   roots that are not a prefix strip (the Darwin SDK namespaces, whose maps come
-  from `scripts/gen-sdk-header-roots.py`). With no headers it is a pure
+  from `cider-sdk-header-roots`). With no headers it is a pure
   flags-and-deps bundle: `dt_env` carries xnu-sys's 108 defines plus all its
   include roots, so everything that compiles xnu-sys depends on one target.
 

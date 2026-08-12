@@ -7,7 +7,7 @@ load("//buck/generated:sdk_headers.bzl", "SDK_REPO_HEADERS")
 # sys/_posix_availability.h, float.h, ...). Everything else in this tree is a link
 # and is staged by //buck-src:sdk_include.
 #
-# The list is generated (scripts/gen-sdk-header-roots.py) so it cannot drift out
+# The list is generated (cider-sdk-header-roots) so it cannot drift out
 # of sync with what is actually here. This package's paths ARE the include paths,
 # so no mapping is needed.
 cc_header_root(

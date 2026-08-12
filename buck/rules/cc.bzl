@@ -92,7 +92,7 @@ def stage_include_root(ctx, name, root, headers, header_map = {}):
     `header_map` gives the include path for a header explicitly, which is what
     Darwin SDK namespaces need: the SDK's `i386/` is a MERGE of xnu/bsd/i386 and
     xnu/osfmk/i386, and `mach/` keeps subdirectories, so no single prefix-strip
-    reproduces the layout. scripts/gen-sdk-header-roots.py derives these maps
+    reproduces the layout. cider-sdk-header-roots derives these maps
     from the repo's committed SDK symlink farm, which is the authority on it.
     """
     prefix = root + "/" if root else ""
