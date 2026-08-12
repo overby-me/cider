@@ -2,7 +2,7 @@
 
 # DOES A RUST BINARY BUILT FOR DARWIN ACTUALLY RUN INSIDE CIDER? (task #96, route A runtime half)
 #
-# scripts/buck-darwin-rust-build.py proves a Rust source becomes a Mach-O executable. That is
+# scripts/buck-darwin-rust-build.nu proves a Rust source becomes a Mach-O executable. That is
 # NOT the same claim as this one, and #16 is why the difference is worth a separate check: guest
 # nix BUILT fine and then died with SIGILL on startup. Building and running are different
 # questions and this answers the second.

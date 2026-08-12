@@ -740,7 +740,7 @@ live.
 
 ### Darwin Rust: route A builds and RUNS, and dies in dyld lazy binding (harness task #96)
 
-**BUILD: DONE.** `scripts/buck-darwin-rust-build.py` turns a Rust source into a Mach-O x86_64
+**BUILD: DONE.** `scripts/buck-darwin-rust-build.nu` turns a Rust source into a Mach-O x86_64
 executable on Linux using our own ld64. Four things make it work and each was a dead end alone:
 the OFFICIAL rustc rather than the nixpkgs one (both are 1.95.0 at commit 59807616e, but nixpkgs
 appends `(built from a source tarball)` and rustc crate-metadata checking is a STRING COMPARE, so

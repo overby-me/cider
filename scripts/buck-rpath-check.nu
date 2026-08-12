@@ -35,7 +35,7 @@
 #                EXPANSION and not in whether the dylib is loadable at all.
 #
 # THE PROBES ARE PREBUILT, on purpose. Building them needs the OFFICIAL rustc (a 442 MB
-# out-of-tree asset, see scripts/buck-darwin-rust-build.py for why the nixpkgs one cannot work)
+# out-of-tree asset, see scripts/buck-darwin-rust-build.nu for why the nixpkgs one cannot work)
 # and the buck2-built ld64. The two sources are four lines each and the commands are recorded
 # here so anyone can rebuild them:
 #
