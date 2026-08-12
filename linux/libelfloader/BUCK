@@ -1,4 +1,5 @@
 load("//buck/rules:cc.bzl", "cc_binary")
+load("//buck/rules:rust.bzl", "rust_binary")
 
 # wrapgen: writes the Mach-O stub that lets a Darwin program call into a HOST ELF library.
 #
@@ -26,5 +27,16 @@ cc_binary(
     ],
     link_cxx = True,
     linker_flags = ["-ldl"],
+    visibility = ["PUBLIC"],
+)
+
+# THE RUST REWRITE (#76), beside the C++ rather than replacing it, the same arrangement
+# getuuid_c and elfdep_c have: the parity harness needs both binaries to compare, and this one
+# is LOAD BEARING (codegen.bzl runs it at build time), so the C++ stays until the generated
+# output has been shown identical across every library the consumers feed it.
+rust_binary(
+    name = "wrapgen_rs",
+    crate_root = "wrapgen/wrapgen.rs",
+    deps = ["//buck-rust:libc"],
     visibility = ["PUBLIC"],
 )
