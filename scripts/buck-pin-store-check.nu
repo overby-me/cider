@@ -21,9 +21,9 @@
 # two identical strings that resolve to different places because the ROOT moved are identical
 # to it. It passed the change that staged pins from their own store paths, and that change
 # broke 1,194 targets: 21 links reach out of their pin, and one of them is a directory link, so
-# the effect was 143 dangling links. For that question use scripts/buck-escape-check.py:
-#   buck-escape-check.py pins --root <assembled cider-src>   # are they self contained
-#   buck-escape-check.py resolve <staged tree>                 # does it work AS STAGED
+# the effect was 143 dangling links. For that question use scripts/buck-escape-check.nu:
+#   buck-escape-check.nu pins --root <assembled cider-src>   # are they self contained
+#   buck-escape-check.nu resolve <staged tree>                 # does it work AS STAGED
 # THAT "DISPROVEN" IS NO LONGER TRUE, and the correction matters: a subtree of this project
 # indeed has no self contained existence, but ALL THE PINS TOGETHER do. pinsTree (#74) mirrors
 # every pin into one tree -- real directories, one link per file, each source symlink re-created

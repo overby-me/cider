@@ -447,7 +447,7 @@
         # So every one of the 21 needs rewriting to an absolute path, or the pins have to live
         # in one real tree, which is the assembled cider-src they came from.
         #
-        # Check with: scripts/buck-escape-check.py resolve <this farm>
+        # Check with: scripts/buck-escape-check.nu resolve <this farm>
         pkgs.linkFarm "cider-pin-stores" (
           pkgs.lib.mapAttrsToList (path: drv: {
             name = path;
@@ -545,7 +545,7 @@
             # The escapes are concentrated, which is what makes a fix tractable:
             # darwin/Developer/Platforms 2,189, darwin/frameworks/SystemConfiguration 52,
             # darwin/opendirectory_internal/include 24, linux/startup/mldr 16, darwin/libm/include 7,
-            # and ten groups with three or fewer. Run scripts/buck-escape-check.py groups.
+            # and ten groups with three or fewer. Run scripts/buck-escape-check.nu groups.
             #
             # 1,989 of them land in the PINS, so the pins have to become self contained first:
             # they are not, 21 links reach out of their own pin, and rewriting group escapes at

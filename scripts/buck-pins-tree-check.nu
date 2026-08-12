@@ -35,7 +35,7 @@ def say [msg: string] { print -e $msg }
 #
 # The line is: `resolve <path>: 6 dangling of 263806 symlinks`
 def dangling [dir: string] {
-    let out = (do -i { ^python3 scripts/buck-escape-check.py resolve $dir } | complete)
+    let out = (do -i { ^nu scripts/buck-escape-check.nu resolve $dir } | complete)
     let line = ($out.stdout | lines | where {|l| $l =~ 'dangling of' } | first)
     if ($line | is-empty) {
         say $"  no resolve summary for ($dir); output was:"

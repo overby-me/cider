@@ -374,14 +374,14 @@
   # as well, and that endpoint had built green with a matching prefix hash before.
   #
   # scripts/buck-pin-store-check.nu compares the stores by NAR HASH and passes, which is the
-  # trap buck-escape-check.py already documents: a NAR hash records a symlink TARGET as a
+  # trap buck-escape-check.nu already documents: a NAR hash records a symlink TARGET as a
   # STRING, so two identical strings that resolve to different places look identical.
   # ALL PINS IN ONE MIRRORED TREE (#74), which is the only shape that works here.
   #
   # A per-pin store cannot be planted as a directory symlink, because a pin's own relative link
   # can point at a SIBLING pin: pins/IOKitUser/darling/submodules/xnu is a link to
   # ../../../xnu/, and once a traversal crosses the plant link the kernel resolves that against
-  # the STORE, where there is no sibling. scripts/buck-escape-check.py documents exactly this
+  # the STORE, where there is no sibling. scripts/buck-escape-check.nu documents exactly this
   # case, and pointing pinPath at the per-pin stores broke the DEFAULT endpoint on
   # SecItemShimOSX_obj because stageProject uses pinPath too.
   #
@@ -969,7 +969,7 @@
   # policy. libtrace (4) and libpthread_workqueue (2) are escaped into at their root and are
   # vendored, so they stay whole.
   #
-  # Narrowing rather than dropping is deliberate: #74 and buck-escape-check.py record that
+  # Narrowing rather than dropping is deliberate: #74 and buck-escape-check.nu record that
   # getting this tree wrong broke groups, pins and the SDK, and that comparing NAR hashes does
   # NOT catch it, because a symlink target is recorded as a string.
   #
