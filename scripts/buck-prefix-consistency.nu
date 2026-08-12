@@ -15,7 +15,7 @@
 #   fail. **The smoke test cannot catch this**: it runs with CIDER_NO_LAUNCHD=1, so the job
 #   graph is never exercised at all.
 #
-# The symlink half is also enforced in gen-prefix-min.py, which drops orphaned links as it
+# The symlink half is also enforced in gen-prefix-min.nu, which drops orphaned links as it
 # writes. This exists because that only protects the generated minimal prefix, and because a
 # check that can be pointed at any prefix is what turns "I removed something" into a question
 # with an answer.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rank a prefix's install entries by the build cost ONLY THEY pull in.
 
-The minimal prefix is defined by SUBTRACTION: gen-prefix-min.py takes the full prefix and
+The minimal prefix is defined by SUBTRACTION: gen-prefix-min.nu takes the full prefix and
 removes what is on an exclusion list, so anything expensive is included BY DEFAULT and has to
 be noticed one entry at a time. That is how `//buck-src:jsc` survived -- one line,
 `libexec/cider/usr/bin/jsc`, that pulled 1,082 compiles of JavaScriptCore into a prefix
@@ -332,7 +332,7 @@ def main():
         if over:
             print(f"\nFAIL: {len(over)} entry(ies) over budget. Either the prefix needs them "
                   f"(add to EXEMPT, with the reason) or they are dead weight (add to "
-                  f"EXCLUDE_LABELS in scripts/gen-prefix-min.py).")
+                  f"EXCLUDE_LABELS in scripts/gen-prefix-min.nu).")
             sys.exit(1)
         worst = next((r for r in rows if r[3] not in EXEMPT), (0, 0, 0, "none"))
         print(f"PASS: worst non-exempt entry is {worst[3]} at {worst[0]} of {args.budget}")

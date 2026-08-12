@@ -30,7 +30,7 @@ surface turns out to be 7 percent of it rather than all of it.
 | `gen-install-from-manifests.py` | 859 | `result-graph-ref/install-manifests` | `buck-test.nu:1072` (subprocess) | **port**, frozen input but a live check |
 | `gen-sdk-header-roots.py` | 505 | `pins/`, `buck-src/` | `buck-split-pins.py:481` (subprocess) | **port** |
 | `gen-xnu-sys-buck.py` | 457 | `pins/ciderd/xnu-sys/CMakeLists.txt` | by hand; scraped by `xnu-sys-portability.py` | **port** |
-| `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **port** |
+| `gen-prefix-min.py` | 425 | `buck/prefix/BUCK` | by hand, regenerates `buck/prefix-min/BUCK` | **PORTED**, now `gen-prefix-min.nu` (#98) |
 | `gen-xnu-sys-traps.py` | 167 | `pins/ciderd/xnu-sys` | `xnu-sys-runtime-check.nu:175 --check` | **PORTED**, now `gen-xnu-sys-traps.nu` (#98) |
 
 **Archive: 2,743 lines. Port: 2,595 lines.** Roughly half, not all.
