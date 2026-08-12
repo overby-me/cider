@@ -1,4 +1,16 @@
 #!/usr/bin/env python3
+# OFF THE BUILD PATH SINCE #99. nix/lib/ciderBuck2Graph.nix runs cider-graph-sources, the second
+# binary of linux/buildtools/graph-specs, and no derivation reads this file any more. It is kept
+# ONLY because scripts/buck-codegen-closure.py LOADS it, for read_trees, so that its copy of that
+# function cannot drift from this one.
+#
+# THAT IS THE SAME DRIFT RISK AS buck_lowering.py AND IT IS NAMED RATHER THAN LEFT: two
+# implementations of the same source-narrowing now exist, and a change to one that is not made to
+# the other would leave the check verifying the wrong thing while every build used the other. The
+# resolution is to delete this: read_trees is a small function over stagedTrees and the graph data
+# tables, and buck-codegen-closure.py should either carry it or read what the Rust already writes.
+# Until then, ANY EDIT HERE MUST BE MADE IN linux/buildtools/graph-specs/src/sources.rs TOO, and
+# the comparison that proves they agree is in that file header.
 """Which project files each target actually reads, computed against the REAL tree.
 
 This is the ONE part of the graph that depends on source file CONTENTS rather than on the

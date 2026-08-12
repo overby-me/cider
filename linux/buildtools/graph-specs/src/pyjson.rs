@@ -21,11 +21,21 @@ use serde_json::Value;
 
 pub fn dumps(v: &Value) -> String {
     let mut s = String::new();
-    write_value(v, &mut s);
+    write_value(v, &mut s, false);
     s
 }
 
-fn write_value(v: &Value, out: &mut String) {
+/// json.dump(..., sort_keys=True). A DIFFERENT MODE, not a tidier one: the spec generator writes
+/// insertion order and the sources generator writes sorted, because that is what each python
+/// call asks for, and using the wrong one is a silent hash change rather than an error.
+/// Recursive, as python's is.
+pub fn dumps_sorted(v: &Value) -> String {
+    let mut s = String::new();
+    write_value(v, &mut s, true);
+    s
+}
+
+fn write_value(v: &Value, out: &mut String, sort: bool) {
     match v {
         Value::Null => out.push_str("null"),
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
@@ -37,19 +47,23 @@ fn write_value(v: &Value, out: &mut String) {
                 if i > 0 {
                     out.push_str(", ");
                 }
-                write_value(x, out);
+                write_value(x, out, sort);
             }
             out.push(']');
         }
         Value::Object(m) => {
             out.push('{');
-            for (i, (k, x)) in m.iter().enumerate() {
+            let mut keys: Vec<&String> = m.keys().collect();
+            if sort {
+                keys.sort();
+            }
+            for (i, k) in keys.into_iter().enumerate() {
                 if i > 0 {
                     out.push_str(", ");
                 }
                 write_string(k, out);
                 out.push_str(": ");
-                write_value(x, out);
+                write_value(&m[k], out, sort);
             }
             out.push('}');
         }

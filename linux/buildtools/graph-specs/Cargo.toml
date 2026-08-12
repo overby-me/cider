@@ -16,9 +16,19 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
+# TWO BINARIES, ONE CRATE, so src/pyjson.rs is SHARED rather than copied. Both tools have to
+# write python-compatible JSON, and a second copy of that serialiser is exactly the drift risk
+# this port has been careful about everywhere else: the two would diverge and one output would
+# silently stop matching. autobins is off so the set is explicit rather than discovered.
+autobins = false
+
 [[bin]]
 name = "cider-graph-specs"
 path = "src/main.rs"
+
+[[bin]]
+name = "cider-graph-sources"
+path = "src/sources.rs"
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }

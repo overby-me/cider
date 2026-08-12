@@ -547,6 +547,9 @@
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
     nativeBuildInputs = [
+      # STILL PYTHON3, even though the sources generator is Rust now: assembleProject runs
+      # scripts/buck-src-normalise.py, and dropping this made the build die with exit 127 in
+      # patchPhase. That script is the next #99 piece and this line goes with it, not before.
       pkgs.python3
       pkgs.coreutils
       pkgs.findutils
@@ -560,7 +563,13 @@
       runHook preBuild
       ${assembleProject}
       mkdir -p "$out"
-      python3 ${../../scripts/buck2-graph-sources.py} \
+      # RUST, NOT PYTHON, since #99. Second binary of the same crate as the spec generator, so
+      # the python-compatible JSON serialiser is shared rather than copied. Landed only after
+      # the two were run over the REAL graph and the real tree and produced 717 files that
+      # diff -rq reports no difference between, with equal NAR hashes; and after this
+      # derivation was built both ways to the SAME content addressed store path. 8.2s against
+      # 24.8s.
+      ${specsTool}/bin/cider-graph-sources \
         ${graph}/graph.json ${graph.data} "$out"
       runHook postBuild
     '';
