@@ -31,6 +31,9 @@ mod pyjson;
 // expectations checked against hashlib.
 #[path = "sha256.rs"]
 mod sha256;
+// SHARED with the equivalence check and the codegen closure: one reader for the farm tables.
+#[path = "trees.rs"]
+mod trees;
 use sha256::sha256_hex16;
 
 use serde_json::{Map, Value};
@@ -389,43 +392,16 @@ fn main() -> ExitCode {
         Err(e) => return die(format!("cannot parse {graph_path}: {e}")),
     };
 
-    // {staged tree: {link name: link target}} back out of the per farm tables. TWO FORMS,
-    // because the dump writes names only when a target is derivable from its name and falls back
-    // to explicit two columns when it is not. Reading the wrong one would not fail, it would
-    // silently resolve every link to nonsense, so the form is taken from the INDEX.
+    // KEPT WHEN THE TABLE READER MOVED OUT: the three lookups below still borrow it as the
+    // empty default, and the compiler only says "cannot find value empty" fifty lines later.
     let empty = Map::new();
-    let staged_trees = graph.get("stagedTrees").and_then(|v| v.as_object()).unwrap_or(&empty);
-    let mut trees: HashMap<String, Vec<(String, String)>> = HashMap::new();
-    for (path, meta) in staged_trees {
-        let mut links: Vec<(String, String)> = Vec::new();
-        let n = meta.get("n").and_then(|v| v.as_i64()).unwrap_or(0);
-        if n > 0 {
-            let table = meta.get("table").and_then(|v| v.as_str()).unwrap_or("");
-            let text = match fs::read_to_string(format!("{data}/{table}")) {
-                Ok(t) => t,
-                Err(e) => return die(format!("cannot read {data}/{table}: {e}")),
-            };
-            let lines: Vec<&str> = if text.is_empty() { Vec::new() } else { text.split_inclusive('\n').collect() };
-            if let Some(k) = meta.get("k").and_then(|v| v.as_i64()) {
-                let pre = meta.get("prefix").and_then(|v| v.as_str()).unwrap_or("");
-                for line in lines {
-                    let rel = line.strip_suffix('\n').unwrap_or(line);
-                    let ups = "../".repeat((k as usize) + rel.matches('/').count());
-                    links.push((rel.to_string(), format!("{ups}{pre}{rel}")));
-                }
-            } else {
-                for line in lines {
-                    let line = line.strip_suffix('\n').unwrap_or(line);
-                    let (name, target) = match line.find('\t') {
-                        Some(i) => (&line[..i], &line[i + 1..]),
-                        None => (line, ""),
-                    };
-                    links.push((name.to_string(), target.to_string()));
-                }
-            }
-        }
-        trees.insert(path.clone(), links);
-    }
+
+    // The staged farm tables, through the SHARED reader: three binaries of this crate need
+    // exactly this and a copy of a rule whose failure mode is silent is how they drift apart.
+    let trees: HashMap<String, Vec<(String, String)>> = match trees::read_trees(&graph, data) {
+        Ok(v) => v.into_iter().collect(),
+        Err(e) => return die(e),
+    };
 
     let staged = graph.get("staged").and_then(|v| v.as_object()).unwrap_or(&empty);
     let producers = graph.get("producers").and_then(|v| v.as_object()).unwrap_or(&empty);

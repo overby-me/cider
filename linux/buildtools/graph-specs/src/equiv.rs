@@ -36,6 +36,9 @@
 #[allow(dead_code)]
 mod sha256;
 use sha256::sha256;
+// SHARED with the sources pass and the codegen closure.
+#[path = "trees.rs"]
+mod trees;
 
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
@@ -57,45 +60,12 @@ fn load(graph: &str) -> Result<Value, String> {
     serde_json::from_str(&raw).map_err(|e| format!("cannot parse {}: {e}", path.display()))
 }
 
-/// {farm: {link name: link target}}, from either table encoding.
+/// {farm: {link name: link target}}, through the SHARED reader in trees.rs.
 fn links_of(g: &Value, data: &str) -> Result<BTreeMap<String, BTreeMap<String, String>>, String> {
-    let empty = Map::new();
-    let trees = g.get("stagedTrees").and_then(|v| v.as_object()).unwrap_or(&empty);
-    let mut out: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
-    for (path, meta) in trees {
-        let mut links: BTreeMap<String, String> = BTreeMap::new();
-        let n = meta.get("n").and_then(|v| v.as_i64()).unwrap_or(0);
-        if n > 0 {
-            let table = meta.get("table").and_then(|v| v.as_str()).unwrap_or("");
-            let tp = Path::new(data).join(table);
-            if !tp.exists() {
-                return Err(format!("missing table {}", tp.display()));
-            }
-            let text = fs::read_to_string(&tp).map_err(|e| format!("cannot read {}: {e}", tp.display()))?;
-            match meta.get("k").and_then(|v| v.as_i64()) {
-                Some(k) => {
-                    let pre = meta.get("prefix").and_then(|v| v.as_str()).unwrap_or("");
-                    for line in text.split_inclusive('\n') {
-                        let rel = line.strip_suffix('\n').unwrap_or(line);
-                        let ups = "../".repeat(k as usize + rel.matches('/').count());
-                        links.insert(rel.to_string(), format!("{ups}{pre}{rel}"));
-                    }
-                }
-                None => {
-                    for line in text.split_inclusive('\n') {
-                        let line = line.strip_suffix('\n').unwrap_or(line);
-                        let (name, target) = match line.find('\t') {
-                            Some(i) => (&line[..i], &line[i + 1..]),
-                            None => (line, ""),
-                        };
-                        links.insert(name.to_string(), target.to_string());
-                    }
-                }
-            }
-        }
-        out.insert(path.clone(), links);
-    }
-    Ok(out)
+    Ok(trees::read_trees(g, data)?
+        .into_iter()
+        .map(|(path, links)| (path, links.into_iter().collect()))
+        .collect())
 }
 
 /// {path relative to <data>/staged: full sha256 hex} for every staged artifact.
