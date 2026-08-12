@@ -2,7 +2,7 @@
 
 # Every buck2 label we write must name a package directory that exists.
 #
-# Companion to buck-pin-paths-check.py. That one resolves the PATHS we record
+# Companion to buck-pin-paths-check.nu. That one resolves the PATHS we record
 # into upstream pins; this one resolves the LABELS we write between packages.
 # Both are the same failure mode from opposite ends: a plain string naming
 # something that is not there, which nothing checks until buck2 is asked to build

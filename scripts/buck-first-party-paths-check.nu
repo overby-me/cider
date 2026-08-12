@@ -16,7 +16,7 @@
 #      must resolve, and the only class this checks.
 #   2. pin-relative, openssl/src/tools/c_hash. Recorded in buck/generated/exports_<pin>.bzl
 #      against the PIN root, so it does not resolve from the repo root and must not be expected
-#      to. buck-pin-paths-check.py owns this class and resolves it against the right root.
+#      to. buck-pin-paths-check.nu owns this class and resolves it against the right root.
 #   3. FROZEN REFERENCE, a buck-registry: KEY, a "# cmake target: X ->" line. Still spells the
 #      pre-move layout on purpose, because the reference build.ninja is frozen. Comments only,
 #      so quoting is what keeps them out of here.
@@ -29,7 +29,7 @@
 # THE EXCLUSIONS, both measured rather than assumed:
 #
 #   buck/generated/exports_*.bzl   93 hits, every one pin-root-relative (libcxx's src/any.cpp and
-#                                  friends). Class 2, owned by buck-pin-paths-check.py.
+#                                  friends). Class 2, owned by buck-pin-paths-check.nu.
 #   pins/**                        a pin that has not been materialized is absent from disk, so
 #                                  its own BUCK file cannot resolve its own sources.
 #   out_base = "..."               a mig_gen OUTPUT base, not an input. buck-src/BUCK declares
