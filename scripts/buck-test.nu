@@ -297,7 +297,7 @@ def main [flag?: string] {
     # Unlike the stage check this touches NO nix at all, only jj and two file parses, so it
     # cannot hit the busy eval cache and has no reason to be skipped during a build.
     say "== the escape roots (no nix, so this one always runs) =="
-    let escroots = (do -i { ^python3 ./scripts/buck-escape-roots-check.py } | complete)
+    let escroots = (do -i { ^nu ./scripts/buck-escape-roots-check.nu } | complete)
     if $escroots.exit_code == 0 {
         ok "every escape root resolves and the pin fallback is intact"
     } else {
