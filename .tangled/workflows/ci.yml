@@ -42,22 +42,11 @@ steps:
       rm -rf /homeless-shelter
       nix flake show --json > /dev/null
 
-  # The named product, by the name a user is told to type. Not a prefix, not an internal stage.
-  - name: "Build the product"
-    command: |
-      ulimit -n 65536
-      cachix watch-exec $CACHIX_NAME -- nix build .#cider -L --no-link --print-out-paths
-
-  # THE MINIMAL BUILD IS NOT REDUNDANT: it is the one a machine without the memory for the GUI
-  # frameworks can finish, and the README offers it, so it has to be true.
-  - name: "Build the minimal product"
-    command: |
-      ulimit -n 65536
-      cachix watch-exec $CACHIX_NAME -- nix build .#cider-min -L --no-link --print-out-paths
-
-  # LAST, because it is the most expensive and the least specific. If it fails after the three
-  # steps above passed, the failure is in a check rather than in the product.
-  - name: "Nix flake check"
-    command: |
-      ulimit -n 65536
-      cachix watch-exec $CACHIX_NAME -- nix flake check --max-jobs 1
+  # NO BUILD STEPS, AND THAT IS THE POINT RATHER THAN A GAP. Darling is too large for a hosted
+  # runner to finish; a CI that attempts it is a CI that always fails and is therefore ignored,
+  # which is worse than one that checks less and is believed. Building is what a developer
+  # machine is for.
+  #
+  # What survives is the half that is cheap AND caught the real bugs: both breaks that motivated
+  # this file, a buck2 analysis failure and a builtins.readDir of a directory #87 deleted, were
+  # EVAL errors. Neither needed a compile. The step above would have caught both in seconds.

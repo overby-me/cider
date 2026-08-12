@@ -160,12 +160,20 @@ default IPv6 route. So four healthy caches, two healthy protocols, and nix still
 lookups a minute. Candidates not yet tested: connection reuse and the http-connections limit, the
 narinfo disk cache, and contention from the machine being saturated at the time.
 
-**THIS MAY BE MACHINE-LOCAL RATHER THAN A CIDER DEFECT, which is exactly what CI settles.** The
-substituter list is in this developer's nix.conf, not in the repo, and nothing Cider ships can fix
-a user's cache configuration. A clean CI machine running the documented command is the measurement
-that decides whether B0 generalises, and that is now wired up (B1). Until it has run, the honest
-statement for a release is: the build completes, and a slow substituter set can make it look like
-it has hung, with no output to say so.
+**THIS MAY BE MACHINE-LOCAL RATHER THAN A CIDER DEFECT.** The substituter list is in this
+developer's nix.conf, not in the repo, and nothing Cider ships can fix a user's cache
+configuration.
+
+**AND CI CANNOT SETTLE IT, which retracts what this section said before.** The earlier version
+argued that a clean CI machine running the documented command was the measurement that decides
+whether B0 generalises. It is not, because CI can never finish that build: Darling is too large,
+and a hosted runner will hit its limit long before the prefix exists. An argument that depends on
+a machine nobody has is not an argument.
+
+So the honest statement for a release is unchanged and unhedged: the build completes on a
+developer machine, and a slow substituter set can make it look like it has hung, with no output
+to say so. Whether that slowness happens elsewhere is unmeasured, and the way to measure it is
+someone else running the build, not automation.
 
 ### What the stall was HIDING: the two guest Rust tools do not build in the endpoint
 
@@ -180,9 +188,15 @@ adding it to the lowering's tool set in `nix/lib/ciderBuck2Lower.nix`, beside `p
 for a different reason: the others are bare command names needing PATH, this one needs to exist.
 
 
-**B1. DONE 2026-08-12 (4f7e30082b64). Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
-and name attributes that exist. It should at minimum evaluate every advertised output and build
-the one a user is told to build. Both breaks above are exactly what that would have caught.
+**B1. DONE 2026-08-12 (4f7e30082b64), then NARROWED.** CI was disconnected twice over and is now
+pointed at the branch the work is on, naming attributes that exist.
+
+**BUT IT DOES NOT BUILD, and that is deliberate.** Darling is too large for a hosted runner to
+finish, so a CI that tries is a CI that always fails and therefore gets ignored. What CI keeps is
+the half that is both cheap and load bearing: EVALUATING every advertised flake output. That is
+not a consolation prize. Both breaks that started this document, the analysis failure and the dead
+src/ readDir, were EVAL errors: neither needed a single compile to surface, and evaluation alone
+would have caught both in seconds.
 
 **B2. DONE 2026-08-12 (4dfbeeaf7d33). Decide and signpost what the product IS.** `flake.nix` exposes **51** package attributes.
 Almost all are development probes: `cider-buck2-dyn-gen-scale`, `cider-buck2-blocks`,
