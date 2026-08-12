@@ -952,6 +952,16 @@
           src = ./.;
         };
 
+      # The Rust rewrite of scripts/buck-skeleton.py, task #99. Built by nix rather than by
+      # buck2 on purpose: it produces the tree buck2 is run on, so buck2 building it would be
+      # circular.
+      #   nix build .#skeleton
+      packages.skeleton =
+        pkgs:
+        pkgs.callPackage ./nix/skeleton.nix {
+          src = ./.;
+        };
+
       # The Rust guest Mach-O loader (linux/startup/mldr rewrite), task #65.
       #   nix build .#loader
       packages.loader =
