@@ -356,10 +356,11 @@ same change becomes routine.
 
 ---
 
-## Item 5, why the substituter queries are slow: three explanations killed, one left
+## Item 5, why the substituter queries are slow: SOLVED, and it was never narinfo
 
-Investigated 2026-08-12 at the user's request. No answer yet, but the field is much narrower and
-the eliminations are each backed by a measurement rather than an argument.
+Investigated 2026-08-12 at the user's request and ANSWERED the same night; the answer is in the
+last section below. The eliminations that got there are each backed by a measurement rather than
+an argument, and they are kept because three of them are still worth not re-testing.
 
 **RATE LIMITING: REFUTED.** A sample build-trace URL returns a plain `404` in 0.13 s from
 Cloudflare with no `429`, no `Retry-After` and no rate-limit headers of any kind.
@@ -384,9 +385,69 @@ untested: something specific to substituting CONTENT-ADDRESSED outputs, which is
 lowered derivations are (#55), and the narinfo disk cache, which was 40 KB, i.e. empty, so every
 lookup was a network miss and a fresh insert.
 
-**WHY IT IS NOT SETTLED: each attempt costs 15 minutes and my own commits invalidate the graph.**
+**WHY IT WAS NOT SETTLED: each attempt cost 15 minutes and my own commits invalidated the graph.**
 Reaching the query phase needs the graph derivation, which takes 11 minutes 20 seconds to rebuild,
 and any commit touching a non-excluded path forces that rebuild. Two attempts were spent this way.
+
+### SETTLED 2026-08-12 23:35. It is the content-addressed outputs, and they are not narinfo lookups at all
+
+**THE REPRODUCER IS ONE COMMAND, not a build.** `nix path-info .#cider-buck2-prefix` finishes in
+**45.8 s** with `--option substituters ""` and **does not finish in 180 s** without it. Same
+evaluation both times, so the whole difference is querying. That it reproduces on `path-info` is
+what made this affordable; the 15-minute attempts were never necessary.
+
+**WHAT IT IS ACTUALLY ASKING FOR.** Run with `-vvv`, 150 seconds of it is:
+
+    710 downloads started, of 178 distinct derivations           = 4.0 requests per derivation
+    one per configured substituter: cache.nixos.org, overby-me.cachix.org,
+                                    nix-community.cachix.org, zed.cachix.org
+    709 of 709 finished downloads returned HTTP 404
+    narinfo requests: ZERO
+
+Every one is `https://<cache>/build-trace-v2/<drv>/out.doi`. **Resolving a content-addressed
+derivation output is a BUILD TRACE lookup, not a narinfo lookup**, so the whole investigation was
+named after the wrong request. Cider's lowered derivations are all CA (#55), they exist only on
+this machine, and no cache can ever have them, so every request is a 404 by construction.
+
+**AND NOTHING IS REMEMBERED.** `~/.cache/nix/binary-cache-v8.sqlite` has a `BuildTrace` table. It
+had 0 rows before those 709 misses and 0 rows after, same file size, same mtime to the minute. The
+misses are not cached, positively or negatively, so **every invocation repeats the entire storm.**
+
+**THE ARITHMETIC OF THE HANG.** 284 requests per minute, 4 per derivation, 7,298 derivations in
+the full prefix: about 29,000 requests, roughly **100 minutes of pure 404s before the first
+derivation can build**. It is not a wedge, a rate limit or a network fault, and it matches every
+symptom of B0: no output, no CPU, and instant progress the moment substituters are off.
+
+**ONE NUMBER IN THE B0 SECTION ABOVE IS WRONG, AND IT IS NOT THIS ONE.** That section reports
+"1,116 queries in the first minutes, about 279 paths times four caches" and then a rate of "4 to 5
+queries per MINUTE". Those two lines cannot both be right: 1,116 queries in a few minutes IS
+roughly 279 per minute, which is my 284 per minute to within noise. The rate line is the error,
+and the paths-times-caches line is the one that agrees with a direct count. It matters because 4
+to 5 per minute makes the network look broken, and it is not: individual requests are fast, there
+are simply about 29,000 of them.
+
+The one thing genuinely not settled is the request TYPE. B0 was observed as `.narinfo` downloads
+during a build; this measurement is `build-trace-v2/.doi` during a `path-info`, with zero narinfo.
+Both are the same substituter round trip in the same closed loop, and disabling substituters fixes
+both, but a build may well ask for both kinds. Re-measuring that would mean invalidating all 7,298
+derivations to get an unbuilt set to query, which costs the baseline this document just gained, so
+it was NOT done and is not claimed.
+
+**CANDIDATE B, the empty narinfo disk cache, IS REFUTED AS AN EXPLANATION** even though the
+observation was accurate. The 40 KB file is empty because CA build traces are never written to it,
+which is a CONSEQUENCE of the mechanism above rather than a cause. A second reason it could not
+have been the cause: this box runs multi-user nix, so a BUILD's queries are made by the daemon
+against `/root/.cache/nix`, which is not the file that was measured.
+
+**NO BEHAVIOUR CHANGED, per the standing instruction.** The options, for the user to choose:
+
+  * keep passing `--option substituters ""` for endpoint builds, which is what every build in this
+    document already does and costs nothing but a flag;
+  * set it once for these outputs, in `nixConfig` or the module, which is a repo behaviour change
+    and therefore a decision rather than a fix;
+  * report the uncached negative build-trace result upstream to nix. A miss that is never
+    remembered turns one unavoidable lookup into one per invocation forever, and that is the part
+    that looks like a defect rather than a design.
 
 ## A NEW failure found while chasing item 5: the FULL prefix does not evaluate
 
