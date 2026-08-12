@@ -1,6 +1,7 @@
 load("//buck/rules:cc.bzl", "cc_objects")
 load("//buck/rules:darwin.bzl", "darwin_binary")
 load("//buck/rules:files.bzl", "export_file")
+load("//buck/rules:rust.bzl", "darwin_rust_staticlib")
 
 # BEGIN generated: PlistBuddy
 # GENERATED from the reference build.ninja by
@@ -61,3 +62,36 @@ export_file(
 )
 
 # END generated: prefix exports
+
+# THE RUST PlistBuddy (#102), beside the C one rather than replacing it, the arrangement
+# getuuid_c, elfdep_c, wrapgen_c and xcrun_rs all have: the parity gate needs both binaries.
+#
+# It is 49 CoreFoundation externs plus a port of the 83 percent of the program that never touches
+# CF. See PLAN.md #102b for the measurement that decided it was worth doing.
+darwin_rust_staticlib(
+    name = "PlistBuddy_rs_lib",
+    crate_root = "PlistBuddy.rs",
+    srcs = ["cf.rs"],
+    visibility = ["PUBLIC"],
+)
+
+darwin_binary(
+    name = "PlistBuddy_rs",
+    exe_name = "PlistBuddy",
+    objs = [
+        # crt1 FIRST: it references _main, and an archive member is only pulled in to resolve a
+        # reference that already exists.
+        "//buck-src/csu:crt1.10.6_obj2",
+        ":PlistBuddy_rs_lib",
+    ],
+    dylibs = [
+        "//buck-src:system_final",
+        "//buck-src/corefoundation:CoreFoundation_dylib",
+    ],
+    toolchain = "toolchains//:darwin_cc",
+    deps = [
+        "//darwin:sdk_env",
+        "//buck-src:crt1.10.6",
+    ],
+    visibility = ["PUBLIC"],
+)
