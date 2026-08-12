@@ -583,5 +583,42 @@ Nothing on the build path is interpreted any more except the buck2 RULES' own py
 upstream's business and reaches the build through `nativeBuildInputs` rather than through this
 port.
 
+**Proven at real scale, not just on the probe target.** Rebuilding `.#cider-buck2-graph-min` with
+the Rust dump produced `mv46f3p6sbmhaf6558x0rpx2vgsd9lqy-cider-buck2-graph`, a path the store had
+held since **2026-08-11 10:30:08**, when the python wrote it: 8,704 command actions, 12,697
+referenced paths, 3,025 staged trees holding 1,187,666 links, 146,593,816 bytes of NAR. The specs
+below it came out at `qxrxrsicnyc7bfg28m0n20jrza9v2xr7`, registered 19:12 the same day. A content
+addressed path IS the content hash, so this is a byte comparison over the whole artifact.
+
+### #98: the three checks that imported the generators now read what the generators WROTE
+
+Deleting the python left three checks importing files that no longer exist. Each was re-pointed
+at the artifact, which is a better question than the one it used to ask:
+
+| check | was | is |
+| --- | --- | --- |
+| `buck-script-check.py` | re-rendered each script through `buck_lowering` | reads `full.json`, the file the lowering parses |
+| `buck-names-check.py` | loaded four implementations of `safe_name` | asks whether a spec file EXISTS at the name the lowering will look for |
+| `buck-needs-check.py` | recomputed `needsOf` in python | reads `needs.json` |
+
+All three pass on 1,474 labels with their controls firing: the script check is byte identical on
+every label and `full.json` agrees with every `dyn/*.json`; the names check finds every spec file
+and both controls fire on all 1,474; the needs check is identical on all 1,474 with 751 and 1,376
+labels differing under its two controls.
+
+**The join was the trap.** `needs.json` is keyed by SAFE NAME and the nix side by LABEL, and the
+first version compared the two dicts directly: 1,474 absent from each side, which is exactly what
+a total key mismatch looks like. It goes label to safe_name, because safe_name is not invertible.
+
+**Two of the four needs controls are gone and the docstring says so.** They broke a RULE inside
+`needsOf` (the one-level-out indirection through a staged farm's links, the declared
+`input_targets` edges), which needs a second implementation to break; the two that remain break
+the DATA. Restoring them means a debug mode on `cider-graph-specs` that writes a deliberately
+weakened `needs.json`.
+
+`scripts/buck_lowering.py` and `scripts/buck-graph-to-specs.py` are DELETED, 863 lines. What is
+left of the banner-marked class is `scripts/buck2-graph-sources.py`, which two checks
+(`buck-codegen-closure.py`, `buck-declaration-gap.py`) still import.
+
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.

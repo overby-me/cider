@@ -17,18 +17,46 @@ THE PLACEHOLDER EXPORTS ARE TAKEN FROM ONE REAL SCRIPT AND USED FOR ALL, and tha
 assumption being smuggled in: `placeholders` is one attrset for the whole lowering, so if it
 were somehow per label the labels that differ would FAIL here rather than pass quietly.
 
-Usage: buck-script-check.py <graph.json> <specs-dir> <dump.json> [--controls]
+IT JUDGES THE ARTIFACT, NOT A SECOND CALL TO THE SAME CODE. It used to be able to re-render each
+script by importing scripts/buck_lowering.py, and that mode is gone with the python: since #99
+the renderer is Rust (linux/buildtools/graph-specs/src/main.rs) and the only honest question left
+is whether the full.json the graph derivation WROTE matches the lowering.
+
+NOTHING CHECKS scripts.json ANY MORE, and that is deliberate rather than an oversight: the
+lowering stopped reading it, full.json is what it parses, and a check over an artifact no
+consumer reads proves nothing about the build.
+
+Usage: buck-script-check.py <specs-dir> <dump.json> [--controls]
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from buck_lowering import Needs, builder_script, dep_var  # noqa: E402
+# THE THREE PURE RULES THIS NEEDS, copied rather than imported. They came from
+# scripts/buck_lowering.py, which #99 deleted; the source of truth is now
+# linux/buildtools/graph-specs/src/main.rs, and a check cannot import a Rust binary. Each is one
+# expression and each is exercised by the comparison below: get safe_name wrong and every label
+# misses, get dep_var wrong and every dependency substitution misses.
+def safe_name(group: str) -> str:
+    """specName in the lowering, safe_name in the generator. It has to be both, or a dependency
+    resolves to a name nothing set."""
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", group)
+
+
+def dep_var(name: str) -> str:
+    """The bridge variable for one dependency. A shell name is [A-Za-z_][A-Za-z0-9_]* and a group
+    name is free-form, so every other character becomes an underscore, ONE PER CHARACTER."""
+    return "DYN_DEP_" + re.sub(r"[^A-Za-z0-9]", "_", name)
+
+
+def join_parts(parts: list, resolve) -> str:
+    """Even index literal, odd index variable name. The one place that rule is written down."""
+    return "".join(p if i % 2 == 0 else resolve(p) for i, p in enumerate(parts))
 
 
 def from_full(full: dict, name: str, label: str, exports: str) -> str:
@@ -39,7 +67,6 @@ def from_full(full: dict, name: str, label: str, exports: str) -> str:
     agreement would be guaranteed and would say nothing about what the graph derivation actually
     WROTE. A generator that rendered correctly and then wrote the wrong dict key, or truncated,
     or serialised something else, passes the function comparison and fails this one."""
-    from buck_lowering import join_parts
     parts = full[name]
     if not isinstance(parts, list) or len(parts) % 2 == 0:
         raise SystemExit(f"the generator's template for {name} ({label}) is not an odd-length "
@@ -47,30 +74,26 @@ def from_full(full: dict, name: str, label: str, exports: str) -> str:
     return join_parts(parts, lambda v: exports if v == "EXPORTS" else '"$' + v + '"')
 
 
-def render(n: Needs, label: str, group_script: str, exports: str, info: dict, data: str,
-           full_text: bool = False) -> str:
-    """Render, then put the consumer's values where the variables are. Same order the bridge
-    resolves them in: the staging script and the data tree are one value each, the tree scripts
-    are positional in fromStaged order, and the dependencies are keyed by the bridge's own
-    variable name."""
-    t = group_script if full_text else builder_script(n, label, group_script, exports)
-    t = t.replace('"$CIDER_STAGE"', info["g"]).replace('"$CIDER_DATA"', data)
+def render(text: str, info: dict, data: str) -> str:
+    """Put the consumer's values where the variables are. Same order the bridge resolves them in:
+    the staging script and the data tree are one value each, the tree scripts are positional in
+    fromStaged order, and the dependencies are keyed by the bridge's own variable name."""
+    t = text.replace('"$CIDER_STAGE"', info["g"]).replace('"$CIDER_DATA"', data)
     for i, path in enumerate(info["r"]):
         t = t.replace('"$CIDER_TREE_%d"' % i, path)
     for dep, path in zip(info["d"], info["p"]):
-        t = t.replace('"$' + dep_var(Needs.safe_name(dep)) + '"', path)
+        t = t.replace('"$' + dep_var(safe_name(dep)) + '"', path)
     return t
 
 
-def run(n, scripts, dump, exports, mutate=None, full=None):
-    """Returns (identical, [labels that differ]). `mutate` breaks one thing, for the controls."""
+def run(full, dump, exports, mutate=None):
+    """Returns (identical, [labels that differ]). mutate breaks one thing, for the controls."""
     ok, bad = 0, []
     for label, info in dump["drvs"].items():
-        gs = (from_full(full, Needs.safe_name(label), label, exports) if full is not None
-              else scripts[Needs.safe_name(label)])
+        gs = from_full(full, safe_name(label), label, exports)
         if mutate is not None:
             gs, info = mutate(label, gs, info)
-        t = render(n, label, gs, exports, info, dump["data"], full_text=full is not None)
+        t = render(gs, info, dump["data"])
         if hashlib.sha256(t.encode()).hexdigest() == info["h"]:
             ok += 1
         else:
@@ -79,14 +102,19 @@ def run(n, scripts, dump, exports, mutate=None, full=None):
 
 
 def main(argv: list) -> int:
-    if len(argv) < 3:
+    if len(argv) < 2:
         sys.exit(__doc__)
-    graph_path, specs_dir, dump_path = argv[0], argv[1], argv[2]
+    specs_dir, dump_path = argv[0], argv[1]
     controls = "--controls" in argv
 
-    n = Needs(json.load(open(graph_path)))
-    scripts = json.load(open(os.path.join(specs_dir, "scripts.json")))
     dump = json.load(open(dump_path))
+    full_path = os.path.join(specs_dir, "full.json")
+    if not os.path.exists(full_path):
+        # FATAL, not a fallback. The fallback used to be a re-render through the python, and
+        # with that gone a missing full.json means the generator did not write the file the
+        # lowering reads, which is a failure rather than a reason to check something weaker.
+        sys.exit(f"no full.json in {specs_dir}: the generator did not write what the lowering reads")
+    full = json.load(open(full_path))
 
     # The placeholder export block, lifted out of a real script by its own boundaries: it sits
     # between the static harness and this group's action script, both of which are known here.
@@ -98,13 +126,8 @@ def main(argv: list) -> int:
     exports = sample[b:c]
 
     total = len(dump["drvs"])
-    # --from-full judges the ARTIFACT: the full.json the generator wrote, rather than a fresh
-    # call to the same renderer.
-    full = None
-    if "--from-full" in argv:
-        full = json.load(open(os.path.join(specs_dir, "full.json")))
-    ok, bad = run(n, scripts, dump, exports, full=full)
-    what = "the generator's full.json" if full is not None else "the python renderer"
+    ok, bad = run(full, dump, exports)
+    what = "the generator's full.json"
     print(f"== builderScript: {what} against the lowering, {total} labels ==")
     print(f"  byte identical   {ok}")
     print(f"  differ           {len(bad)}")
@@ -121,11 +144,10 @@ def main(argv: list) -> int:
     # skipped over: the EXPORTS slot is empty, because an emitted action gets the placeholders
     # as env, and there is a three line preamble a runCommand would have supplied.
     dyn_dir = os.path.join(specs_dir, "dyn")
-    if full is not None and os.path.isdir(dyn_dir):
-        from buck_lowering import join_parts
+    if os.path.isdir(dyn_dir):
         agree, disagree, missing = 0, [], 0
         for label in dump["drvs"]:
-            name = Needs.safe_name(label)
+            name = safe_name(label)
             path = os.path.join(dyn_dir, name + ".json")
             if not os.path.exists(path):
                 missing += 1
@@ -155,7 +177,7 @@ def main(argv: list) -> int:
         fails = 0
 
         def control(name, mutate):
-            _, b2 = run(n, scripts, dump, exports, mutate, full=full)
+            _, b2 = run(full, dump, exports, mutate)
             print(f"  {'FIRES ' if b2 else 'SILENT'} {name}: {len(b2)} label(s) differ")
             return 0 if b2 else 1
 

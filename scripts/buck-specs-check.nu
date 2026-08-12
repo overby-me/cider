@@ -3,7 +3,7 @@
 #
 # Companion to buck-lowering-stage-check.nu, and it exists for the same reason: the only
 # other thing that exercises this is an hour-long build. The lowering no longer renders a
-# target's command sequence; scripts/buck-graph-to-specs.py does, inside the graph
+# target's command sequence; cider-graph-specs does, inside the graph
 # derivation, and the lowering reads the result. That leaves the SAME rule written twice --
 # how an action identity becomes a group, how an argv element is escaped, when an action must
 # _drain before it runs -- and a disagreement is silent: the endpoint would build a perfectly

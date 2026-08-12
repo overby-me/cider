@@ -18,7 +18,20 @@ CHECKED ON THE REAL LABELS, not on invented strings. A property test over random
 miss that this graph's labels are the ones with the colons, slashes and dots in them, and a
 hand-written table would only ever contain cases someone already thought of.
 
-Usage: buck-names-check.py <graph.json> <from-nix.json> [--controls]
+WHERE THE COPIES LIVE NOW. #99 moved the generator to Rust, so three of the four files this
+used to load are gone: buck-graph-to-specs.py, buck_lowering.py and dyn-actions-spec-fixup.py.
+A check cannot import a Rust binary, so the Rust side is judged THROUGH ITS ARTIFACT, which is
+better evidence anyway: the spec files are NAMED by safe_name, so a generator whose mapping
+disagreed with the lowering writes a file the lowering cannot find, and that is what is tested
+here rather than a function returning the right string.
+
+THE GENERATOR'S dep_var IS COVERED ELSEWHERE, deliberately and not by omission:
+scripts/buck-script-check.py substitutes "$DYN_DEP_<name>" into every rendered script and
+compares the sha256 against the lowering's own builderScript, so a disagreeing dep_var makes
+every label with a dependency differ there. Duplicating it here would cost a read of 1,474 dyn
+specs to learn the same thing.
+
+Usage: buck-names-check.py <specs-dir> <from-nix.json> [--controls]
   The nix side comes from
     nix eval --json .#cider-buck2-prefix-min --apply \\
       'l: builtins.mapAttrs (n: _: { s = l.specName n; d = l.depVar n; }) l.drvs'
@@ -28,9 +41,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "nix", "lib"))
 
 import importlib.util  # noqa: E402
 
@@ -47,39 +57,45 @@ ROOT = os.path.dirname(HERE)
 
 
 def implementations():
-    """Every copy, by the file it lives in. Loaded rather than reimplemented here: a check that
-    reimplements what it checks tests the check."""
-    gen = _load(os.path.join(HERE, "buck-graph-to-specs.py"), "gen")
-    low = _load(os.path.join(HERE, "buck_lowering.py"), "low")
+    """Every remaining copy, by the file it lives in. Loaded rather than reimplemented here: a
+    check that reimplements what it checks tests the check."""
     spc = _load(os.path.join(HERE, "buck-specs-check.py"), "spc")
-    fix = _load(os.path.join(ROOT, "nix", "lib", "dyn-actions-spec-fixup.py"), "fix")
+    chk = _load(os.path.join(HERE, "buck-script-check.py"), "chk")
     return (
         {
-            "buck-graph-to-specs.py safe_name": gen.safe_name,
-            "buck_lowering.py Needs.safe_name": low.Needs.safe_name,
             "buck-specs-check.py safe_name": spc.safe_name,
+            "buck-script-check.py safe_name": chk.safe_name,
         },
         {
-            "buck_lowering.py dep_var": low.dep_var,
-            "dyn-actions-spec-fixup.py dep_var": fix.dep_var,
+            "buck-script-check.py dep_var": chk.dep_var,
         },
     )
-
 
 def main(argv: list) -> int:
     if len(argv) < 2:
         sys.exit(__doc__)
-    graph = json.load(open(argv[0]))
+    specs_dir = argv[0]
     from_nix = json.load(open(argv[1]))
     controls = "--controls" in argv
 
     names, deps = implementations()
     labels = sorted(from_nix)
-    print(f"== name mappings across {len(names) + 1} spec-name and {len(deps) + 1} "
+    print(f"== name mappings across {len(names) + 2} spec-name and {len(deps) + 1} "
           f"variable-name implementations, on {len(labels)} real labels ==")
 
     rc = 0
     bad = {}
+    # THE GENERATOR, THROUGH THE NAMES IT WROTE. Nothing is computed here: the question is
+    # whether a file exists at the name the lowering will look for, which is the whole
+    # contract between the two.
+    missing = [l for l in labels
+               if not os.path.exists(os.path.join(specs_dir, from_nix[l]["s"] + ".json"))]
+    print(f"  {'DIFFERS' if missing else 'agrees '} the generator's spec file names: "
+          f"{len(missing)}")
+    for label in missing[:3]:
+        print(f"      {label}\n        nix wants {from_nix[label]['s']}.json, which is not there")
+    if missing:
+        rc = 1
     for label in labels:
         want_s = from_nix[label]["s"]
         want_d = from_nix[label]["d"]

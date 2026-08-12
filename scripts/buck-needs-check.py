@@ -14,7 +14,20 @@ ORDER IS COMPARED SEPARATELY FROM MEMBERSHIP, and it matters here rather than be
 the dep copies are `cp -a <dep>/. .` in list order, so two groups sharing a path let the LAST
 one win. A set-equal, order-different answer is a real difference and is reported as one.
 
-Usage: buck-needs-check.py <graph.json> <needs-from-nix.json> [--controls]
+IT READS THE ARTIFACT NOW. It used to compute the answer with a python port of needsOf and
+compare that; #99 moved the generator to Rust, so what it compares is the needs.json the graph
+derivation WROTE, which is a better question anyway: the python port was never what the build
+used, and a generator that computes correctly and writes the wrong file passes the function
+comparison and fails this one.
+
+TWO OF THE FOUR CONTROLS ARE GONE WITH IT, and saying which matters. The two that remain break
+the DATA (reverse fromTargets, empty fromStaged) and prove the comparison can fail. The two that
+are gone broke a RULE inside needsOf (drop the one-level-out indirection through a staged farm's
+links, ignore the declared input_targets edges), and there is no second implementation left to
+break them in. Restoring them means giving cider-graph-specs a debug mode that writes a
+deliberately weakened needs.json, which is the same shape the python had; it is not done here.
+
+Usage: buck-needs-check.py <specs-dir> <needs-from-nix.json> [--controls]
   The nix side comes from
     nix eval --json .#cider-buck2-prefix-min --apply \\
       'l: builtins.mapAttrs (n: d: { t = d.passthru.deps; s = d.passthru.stagedNeeds; }) l.drvs'
@@ -23,12 +36,15 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-
-from buck_lowering import Needs, group_of_label, target_of, uniq  # noqa: E402
+def safe_name(group: str) -> str:
+    """specName in the lowering, safe_name in the generator: the key needs.json is written under.
+    Copied rather than imported, like the ones in buck-script-check.py, because the generator is
+    Rust now. scripts/buck-names-check.py is what proves every copy still agrees."""
+    return re.sub(r"[^A-Za-z0-9_.-]", "_", group)
 
 
 def compare(mine: dict, theirs: dict) -> dict:
@@ -75,13 +91,26 @@ def report(res: dict, mine: dict, theirs: dict, total: int) -> int:
 def main(argv: list) -> int:
     if len(argv) < 2:
         sys.exit(__doc__)
-    graph = json.load(open(argv[0]))
+    specs_dir = argv[0]
     theirs = json.load(open(argv[1]))
     controls = "--controls" in argv
 
-    n = Needs(graph)
-    mine = {label: n.of(label) for label in n.targets}
-    print(f"== needsOf: python against the lowering, {len(theirs)} labels from nix ==")
+    # THE FILE THE GENERATOR WROTE. Its extra `trees` key is ignored here rather than dropped:
+    # this check is about fromTargets and fromStaged, and a key it does not read cannot make it
+    # pass or fail.
+    #
+    # KEYED BY SAFE NAME, WHILE THE NIX SIDE IS KEYED BY LABEL, and joining them the wrong way
+    # round is not a subtle failure: the first version of this compared the two dicts directly
+    # and reported 1,474 labels absent from each side, which is what a total key mismatch looks
+    # like. The join goes label -> safe_name because safe_name is not invertible.
+    raw = json.load(open(os.path.join(specs_dir, "needs.json")))
+    mine = {}
+    for label in theirs:
+        v = raw.get(safe_name(label))
+        if v is not None:
+            mine[label] = {"t": v.get("t", []), "s": v.get("s", [])}
+    print(f"== needs: the generator's needs.json against the lowering, {len(theirs)} labels "
+          f"from nix ==")
     rc = report(compare(mine, theirs), mine, theirs, len(theirs))
 
     # CONTROLS, because a comparison of two things that agree proves nothing about whether the
@@ -98,30 +127,24 @@ def main(argv: list) -> int:
             return 0 if bad else 1
 
         fails = 0
-        # The one-level-out indirection through a staged farm's own links. This is the rule the
-        # cheaper exact-match version of the edge set does not have.
-        fails += control("viaLinks dropped",
-                         {l: n.of(l, "vialinks") for l in n.targets})
-        # input_targets: the DECLARED edges, which no argv mentions. Leaving these out is the
-        # mistake that cost an hour-deep coarse build.
-        fails += control("input_targets ignored",
-                         {l: n.of(l, "declared") for l in n.targets})
-        # ownerOf reduced to exact matching, so an input INSIDE a directory output resolves to
-        # nothing.
+        # THE TWO RULE-LEVEL CONTROLS ARE NOT HERE, and the docstring says why: breaking a rule
+        # inside needsOf needs a second implementation, and since #99 there is only the Rust
+        # one. What follows breaks the DATA instead, which still answers the question the
+        # controls exist for: can this comparison fail at all?
         #
-        # THIS ONE DOES NOT FIRE, and that is a measured fact about this graph rather than a
-        # gap in the check, so it is reported and not counted. The prefix walk DOES run: 120 of
-        # 12,135 distinct input paths resolve to a strict prefix, all of them a .c inside a mig
-        # codegen directory. It changes no ANSWER because the group owning that directory is
-        # already reached by another input of the same group. Checked rather than assumed: the
-        # obvious explanation was that input_targets covers the same edges, and dropping BOTH
-        # rules loses exactly what dropping the declared edges alone loses, 597 labels either
-        # way, so the walk is worth 0 edges even with the declared edges gone.
+        # The rules they covered, for whoever restores them through a tool debug mode: the
+        # one-level-out indirection through a staged farm's own links, and the DECLARED
+        # input_targets edges that no argv mentions, which is the omission that cost an
+        # hour-deep coarse build.
         #
-        # KEPT ANYWAY. The port has to match the lowering on graphs other than this one, and a
-        # rule that is redundant today is not the same as a rule that is wrong.
-        control("ownerOf exact only (informational, see the comment)",
-                {l: n.of(l, "exact") for l in n.targets})
+        # A THIRD ONE WAS ALREADY INFORMATIONAL and is worth keeping as a measurement rather
+        # than as code: reducing ownerOf to exact matching did NOT fire on this graph. The
+        # prefix walk does run, 120 of 12,135 distinct input paths resolve to a strict prefix,
+        # all of them a .c inside a mig codegen directory, but it changes no ANSWER because the
+        # group owning that directory is already reached by another input of the same group.
+        # Dropping BOTH that rule and the declared edges loses exactly what dropping the
+        # declared edges alone loses, 597 labels either way.
+        #
         # Order, since the comparison above claims to be order sensitive.
         fails += control("fromTargets reversed",
                          {l: {"t": list(reversed(v["t"])), "s": v["s"]}
@@ -130,7 +153,7 @@ def main(argv: list) -> int:
         fails += control("fromStaged emptied",
                          {l: {"t": v["t"], "s": []} for l, v in mine.items()})
         if fails:
-            print(f"  {fails} of the 4 binding control(s) did not fire, so the agreement "
+            print(f"  {fails} of the 2 binding control(s) did not fire, so the agreement "
                   "above is not proven")
             rc = 1
     return rc

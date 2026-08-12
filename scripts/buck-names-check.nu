@@ -37,6 +37,16 @@ def main [
     exit 1
   }
 
+  # THE SPECS, because the generator's copy of the mapping is now judged through the NAMES IT
+  # WROTE rather than by importing it: since #99 it is Rust, and a check cannot import a binary.
+  let s = (do -i { ^nix build $"($graph_endpoint).specs" --no-link --print-out-paths } | complete)
+  if $s.exit_code != 0 {
+    print "FAIL: could not build the specs"
+    print -e ($s.stderr | lines | last 12 | str join "\n")
+    exit 1
+  }
+  let specs = ($s.stdout | lines | last)
+
   # The NIX side, which is the one the other implementations are checked against: it is what
   # the lowering actually uses to index full.json and to name the dependency variables.
   let expr = "l: builtins.mapAttrs (n: _: { s = l.specName n; d = l.depVar n; }) l.drvs"
@@ -50,7 +60,7 @@ def main [
   $e.stdout | save -f $tmp
 
   # let, not mut: a closure cannot capture a mutable in nushell.
-  let args = ([($graph | first | path join "graph.json") $tmp]
+  let args = ([$specs $tmp]
     | append (if $no_controls { [] } else { ["--controls"] }))
   let r = (do -i { ^python3 ./scripts/buck-names-check.py ...$args } | complete)
   print $r.stdout

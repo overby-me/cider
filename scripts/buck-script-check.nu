@@ -23,7 +23,7 @@ def main [
   --graph-endpoint: string = ".#cider-buck2-graph-min"
   --no-controls
 ] {
-  print "== builderScript: the python renderer against the lowering =="
+  print "== builderScript: the generator's full.json against the lowering =="
 
   let g = (do -i { ^nix build $graph_endpoint --no-link --print-out-paths } | complete)
   if $g.exit_code != 0 {
@@ -68,19 +68,17 @@ def main [
   }
   $e.stdout | save -f $tmp
 
-  # PREFER THE ARTIFACT WHEN IT IS THERE. full.json is what the generator WROTE; without it
-  # the check calls the renderer again, which is the same function on both sides and so cannot
-  # see a generator that renders correctly and then writes the wrong thing. Detected rather
-  # than flagged, so the strongest available check is the one that runs, and it says which.
-  let fromFull = ($specs | path join "full.json" | path exists)
-  if $fromFull {
-    print "  reading the generator's full.json (the artifact)"
-  } else {
-    print "  no full.json in the specs, re-rendering instead (weaker: same function both sides)"
+  # THE ARTIFACT, ALWAYS. full.json is what the generator WROTE, and since #99 there is no
+  # second implementation to re-render with: the renderer is Rust. A missing full.json is now a
+  # FAILURE rather than a reason to run a weaker check, and the python says so itself.
+  if not ($specs | path join "full.json" | path exists) {
+    print "FAIL: the specs hold no full.json, which is the file the lowering reads"
+    exit 1
   }
+  print "  reading the generator's full.json (the artifact)"
   # let, not mut: `do -i { ... }` is a closure and nushell will not capture a mutable.
-  let args = ([($graph | first | path join "graph.json") $specs $tmp]
-    | append (if $fromFull { ["--from-full"] } else { [] })
+  # NO graph.json ARGUMENT ANY MORE: it was there for the re-render path.
+  let args = ([$specs $tmp]
     | append (if $no_controls { [] } else { ["--controls"] }))
   let r = (do -i { ^python3 ./scripts/buck-script-check.py ...$args } | complete)
   print $r.stdout

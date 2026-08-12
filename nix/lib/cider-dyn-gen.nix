@@ -7,7 +7,7 @@
 # fixture proved a cone builds through specDir mode, but its spec dir came from mkSpecDir, which
 # serialises every spec in the EVALUATOR. That is the exact cost #66 exists to remove, so it was
 # a proof about the SHAPE and never about the arrangement. This one reads
-# ${graph.specs}/dyn, written by scripts/buck-graph-to-specs.py inside the graph derivation.
+# ${graph.specs}/dyn, written by cider-graph-specs inside the graph derivation.
 #
 # THE SPECS CONTAIN NO PATH THIS CONSUMER OWNS, which is what lets a generator write them at
 # all. Everything consumer-side arrives through the bridge's extraEnv, per action:
