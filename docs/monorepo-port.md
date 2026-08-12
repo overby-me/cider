@@ -185,6 +185,21 @@ matters most: those two files are **product code that nix executes during a buil
 A monorepo that refuses Python cannot build at all until they move, so they are not optional and
 they are not #98, they are a prerequisite.
 
+**BOTH nix/lib FILES ARE GONE (2026-08-12).** `dyn-actions-spec-fixup.py` went during the
+nushell pass. `component-dag.py` was DELETED rather than ported, on the measurement: it read the
+ninja graph JSON and wrote `components.json` for the per-component nix codegen, and that codegen
+was `nix/lib/cider-components.nix`, which went with nix-ninja in #82. Nothing in the tree reads
+`components.json` or names the script except this document, so it was product code for a product
+that no longer exists.
+
+**WHAT IS LEFT ANYWHERE IN THE TREE IS UPSTREAM OR GUEST CONTENT, not port tooling**, measured
+rather than assumed: `tests/src/bin/runtests.py` is upstream's guest test runner,
+`darwin/xcselect/clt_install.py` is installed INTO the prefix and runs under the guest python,
+`darwin/libm/man3/FIXDATES.py` is upstream libm's man page dater, `tools/generate-xcode-stubs.py`
+arrived with upstream (its first commit is "Add a script to generate minimal stubs for some
+frameworks needed by Xcode"), and `buck-rust/` is the vendored crate tree. None of them is
+something this port runs.
+
 ### The four named pilots are not the contained ones
 
 The plan was to pilot on `buck-names-check`, `buck-needs-check`, `buck-script-check` and
