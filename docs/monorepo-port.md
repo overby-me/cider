@@ -195,7 +195,7 @@ that no longer exists.
 **WHAT IS LEFT ANYWHERE IN THE TREE IS UPSTREAM OR GUEST CONTENT, not port tooling**, measured
 rather than assumed: `tests/src/bin/runtests.py` is upstream's guest test runner,
 `darwin/xcselect/clt_install.py` is installed INTO the prefix and runs under the guest python,
-`darwin/libm/man3/FIXDATES.py` is upstream libm's man page dater, `tools/generate-xcode-stubs.py`
+`darwin/libm/man3/FIXDATES.py` is upstream libm's man page dater, `tools/generate-xcode-stubs.py` (deleted in the release prep, see below)
 arrived with upstream (its first commit is "Add a script to generate minimal stubs for some
 frameworks needed by Xcode"), and `buck-rust/` is the vendored crate tree. None of them is
 something this port runs.

@@ -128,3 +128,12 @@ __pycache__/
 /linux/buildtools/skeleton/target/
 /linux/buildtools/src-normalise/target/
 /nix/lib/dyn-actions-spec-fixup/target/
+
+# Editor state. .vscode/launch.json was TRACKED until the release prep; the build already
+# excludes the directory so an editor cannot invalidate a derivation, and now it cannot be
+# committed either.
+.vscode/
+
+# Scratch output from debugging runs. outputs/out/ held an empty loop.out and a 482 byte
+# strace and was COMMITTED until the release prep.
+/outputs/
