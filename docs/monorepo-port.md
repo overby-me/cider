@@ -160,7 +160,7 @@ Verified rather than eyeballed:
 - `buck-test.nu` now calls the `.nu`, the two stale `.py` references were updated, and the Python
   is deleted, so there is one implementation rather than two that can drift.
 
-### Three checks ported so far, and the ratio is holding
+### Nine checks ported so far, and the ratio is holding
 
 | check | Python | nushell | what it proved |
 |---|---|---|---|
@@ -168,10 +168,43 @@ Verified rather than eyeballed:
 | `buck-pin-rev-check` | 148 | 145 | the control found a bug the happy path could not |
 | `buck-hosttools-parity` | 114 | 137 | **nushell can do the byte comparisons** |
 | `buck-first-party-paths-check` | 117 | 146 | **whole-tree walks need care, and are affordable** |
+| `buck-labels-check` | 158 | 170 | whole-file parse; `Counter.most_common` ordering |
+| `buck-prefix-consistency` | 154 | 157 | a GENERATOR now shells out to a `.nu` and still passes |
+| `buck-bridge-generality-check` | 168 | 168 | its own `--controls` agree in both languages |
+| `buck-escape-roots-check` | 204 | 187 | table parsing out of a `.nix`, and exit-2 blind-read guard |
+| `buck-pin-paths-check` | 212 | 192 | five finding classes, controlled in a minimal jj repo |
 
-About 1:1 (497 Python to 545 nushell over four samples), so the 7,953 self-contained lines are
-roughly that much nushell. The last two grew because their headers now carry the findings below,
-which is where the next person porting a check will look.
+**1,393 Python to 1,419 nushell**, so about 1:1 across nine samples and the 7,953 self-contained
+lines should be priced as roughly that much nushell. Several grew because their headers now carry
+the findings below, which is where the next person porting a check will look.
+
+### The remaining pile, split by what it depends on
+
+Of the 46 non-generator checks: 13 load another module and are blocked on their shared cores, and
+of the 33 that do not,
+
+    23 self-contained, NO frozen reference    6,416 lines   port in any order
+     3 self-contained, READ result-graph-ref    751 lines   buck-host-includes,
+                                                            buck-lower-srcdeps,
+                                                            buck-move-src-subdir
+
+Those three stream the **131 MB, 362,663-line** `build.ninja`, which is precisely the shape
+nushell is worst at, and they die at the next store GC by their own admission. They go last.
+
+### The one performance rule, measured three ways
+
+**Per-invocation overhead dominates; regex itself is fine.** Three independent measurements say
+the same thing, and each was taken rather than assumed:
+
+- one `parse --regex` over the whole 63k-line `buck-src/BUCK` finds all 5,725 labels in **8ms**;
+- per-line regex over 205,024 lines **does not finish in two minutes**, and a `where item =~ ...`
+  prefilter that cuts it to ~700 lines takes the four biggest files from a timeout to **162ms**;
+- `buck-pin-paths-check` ran `parse --regex` once per tracked source file, 25,061 times, for
+  **15.6s**. Reading all 25,061 files takes **733ms**, so reading was never the cost. A
+  `str contains` prefilter, a strict superset of what the regex can match and therefore incapable
+  of changing the answer, took it to **2.3s** with byte-identical output.
+
+So: parse whole files, and prefilter before any per-item regex.
 
 **The whole-tree walk is the other thing that could have sunk this, and it comes down to one
 flag.** `buck-first-party-paths-check` reads every `BUCK`, `.bzl` and `.bxl` in the repo, 194
@@ -229,6 +262,22 @@ Test `path type` explicitly when the Python did.
 
 **`encode hex` is UPPERCASE** and Python's `bytes.hex()` is lowercase. The bytes are identical
 either way, which is exactly why a wrong case would survive review; add `| str downcase`.
+
+**`$'...'` does not take backslash escapes.** A literal paren inside single-quote interpolation is
+a parse error, not a paren. Use the `$"..."` form.
+
+**`Counter.most_common()` is count-descending with ties in INSERTION order**, because Python sorts
+stably. `sort-by n --reverse` inverts the ties and reports the same findings in a different order.
+Sort ascending on `(-count, first-seen index)`.
+
+**Lookbehind works.** `(?<![\w/.])` is accepted, so a Python regex using lookaround does not
+automatically force a rewrite. Measured before relying on it: the plain Rust `regex` crate has no
+lookaround at all, so this is worth a probe rather than an assumption.
+
+**`jj file list` output is lines, not whitespace-separated tokens.** Python's `.split()` shatters
+the six tracked paths here that contain spaces. It happened to give the right answer in
+`buck-escape-roots-check` because a fragment still starts with the root; a path with a space under
+a pin would have made it wrong.
 
 ## #99
 
