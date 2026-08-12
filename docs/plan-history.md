@@ -1251,7 +1251,7 @@ has been true six times running, each time a check freshly written.
   and missed the subdirectory form, which is the same problem (`libcxxabi` reaching for
   `include/atomic_support.h` and `demangle/ItaniumDemangle.h`, `fseventsd.m` for
   `linux/fanotify.h`). The closure in the dump always covered both; only the count was
-  wrong. `scripts/buck-include-closure-check.py` now measures it properly and is verified
+  wrong. `buck-include-closure-check` now measures it properly and is verified
   both ways: 25 against a pre-closure graph, 0 after.
   The narrowing that matters: of 64,903 C-family files, 734 have a quoted `../` include and
   93 are uncovered, but 40 name a file that does not exist (guarded out) and 48 of the
@@ -1516,7 +1516,7 @@ has been true six times running, each time a check freshly written.
   `buck2-graph-sources.py` on all 2,339 targets. On the current graph, union 74,620 files:
   wholesale include roots are **2 directories, 25 files, 2 targets**; quoted includes are
   **675 files over 693 edges, reached by 1,266 targets**.
-  THIS DOES NOT CONTRADICT the 5-then-0 of `buck-include-closure-check.py`, which asks whether
+  THIS DOES NOT CONTRADICT the 5-then-0 of `buck-include-closure-check`, which asks whether
   the UNION misses a file entirely and only for `../` escapes. A header can be declared for
   one target through its staged tree and be quoted-only for another. Both stand.
   WHY THE PORT WORKS ANYWAY: `cc_objects` declares only `srcs`. `finger_obj` lists five `.c`
