@@ -42,6 +42,33 @@ has ever checked that, and the two breaks above are what that costs.
 
 ## Blockers
 
+**B0. The command the README gives a user did not complete.** This is the most user-visible item
+on the page and it was measured today, not recalled.
+
+    started   nix build .#cider-buck2-prefix-min -L --no-link
+    16:40     last log line, after the sources stage:
+              "sources: 58506 distinct project source(s), from 5483827 per-target entries"
+    16:51     no log output for 11 minutes. The nix client had used 12 SECONDS of CPU in 16
+              minutes and had ZERO children; the nix-daemon worker serving it also had zero
+              children; and no compiler, linker or buck2 build process existed anywhere on the
+              machine. The only buck2 processes were three IDLE daemons left over from earlier
+              sessions, at 15, 11 and 10 hours elapsed.
+    16:55     killed.
+
+Not computing, not building, not waiting on a child: wedged. This matches the recorded
+"endpoint builds freeze" entry whose mechanism is UNKNOWN and for which the harness reaper,
+general daemon reaping and CA derivations have already been ruled out.
+
+**WHAT THIS DOES NOT ESTABLISH, and the distinction matters before anyone hunts it.** It was one
+run on a machine that also had three stale buck2 daemons and an unrelated process pinning a core.
+It does not show the freeze is deterministic, nor that it is the same freeze as the recorded one,
+nor that a clean machine would hit it. What it does establish is that nobody can currently promise
+a stranger that the documented command finishes, which is the thing a release is.
+
+**The first move is not a fix, it is a reproduction on a clean machine**, which is also what B1
+buys: CI is a clean machine that runs the documented command every time.
+
+
 **B1. Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
 and name attributes that exist. It should at minimum evaluate every advertised output and build
 the one a user is told to build. Both breaks above are exactly what that would have caught.
