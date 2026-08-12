@@ -137,3 +137,6 @@ __pycache__/
 # Scratch output from debugging runs. outputs/out/ held an empty loop.out and a 482 byte
 # strace and was COMMITTED until the release prep.
 /outputs/
+
+# A 250 byte boot log that was sitting at the repository root.
+/.dfx-boot.log
