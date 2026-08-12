@@ -232,27 +232,70 @@ fn main() {
                 eprintln!("[mldr] (no __mldr_sockpath; skipping checkin)");
             }
 
+            // The host prefix that guest `/` lives under. Computed once here rather than inside
+            // the dylinker branch where it used to sit, because it now feeds TWO things: the
+            // dyld image path below, and the executable_path= handed to the guest.
+            // Priority: __mldr_DYLD_ROOT_PATH (first proc) -> vchroot_path RPC (post-vchroot)
+            // -> derive from guest_path minus the Mac path -> MLDR_ROOT_PATH.
+            let root = special
+                .root_path
+                .clone()
+                .or_else(|| vchroot_root.clone())
+                .or_else(|| {
+                    let mac = guest_argv.first()?;
+                    if mac.starts_with('/') {
+                        guest_path.strip_suffix(mac.as_str()).map(String::from)
+                    } else {
+                        None
+                    }
+                })
+                .or_else(|| std::env::var("MLDR_ROOT_PATH").ok())
+                .unwrap_or_default();
+
+            // apple[0] `executable_path=` MUST BE THE PATH AS THE GUEST SEES IT, not the host
+            // path mldr read the file from. dyld keeps it as sExecPath, hands it back from
+            // getPath(), and then RESOLVES IT: `ImageLoaderMachO::getRPaths` calls
+            // `realpath(this->getPath())` before expanding `@loader_path`, and dyld2's
+            // `@executable_path` branch calls `realpath(sExecPath)`. Those run in the GUEST
+            // namespace, where a host path does not exist, so realpath returns NULL, getRPaths
+            // pushes NOTHING, and every LC_RPATH is silently dropped. Nothing reports it either:
+            // DYLD_PRINT_RPATHS only logs inside the substitution loop, which never runs when
+            // the rpath list came back empty.
+            //
+            // MEASURED, not deduced. The official Darwin rustc could not load
+            // `@rpath/librustc_driver-*.dylib` although the dylib was at /opt/rustc/lib and its
+            // LC_RPATH was `@loader_path/../lib`. Symlinking the host path into the guest
+            // namespace, changing nothing else, turned that into
+            //     RPATH successful expansion of @rpath/librustc_driver-... to:
+            //         /opt/rustc/bin/../lib/librustc_driver-...
+            // and rustc ran. The trigger is exactly whether realpath resolves this string.
+            //
+            // Absolute-path dependencies were never affected, which is why bash and every other
+            // guest worked and this stayed invisible until a binary using @rpath ran.
+            //
+            // Deliberately conservative: rewrite ONLY when the host path really sits under the
+            // root and the remainder is still absolute. Otherwise keep the old string, so a
+            // root that is not this binary's prefix (the first process gets libexec, not the
+            // vchroot) cannot turn a working path into a broken one.
+            let guest_exe_path = {
+                let r = root.trim_end_matches('/');
+                if r.is_empty() {
+                    None
+                } else {
+                    guest_path
+                        .strip_prefix(r)
+                        .filter(|rest| rest.starts_with('/'))
+                        .map(String::from)
+                }
+            }
+            .unwrap_or_else(|| guest_path.clone());
+            dlog!("[mldr] root={root} exe host={guest_path} guest={guest_exe_path}");
+
             // M3b: recursive dyld load (LC_LOAD_DYLINKER); dyld's entry is the real jump target.
-            // root_path priority: __mldr_DYLD_ROOT_PATH (first proc) -> vchroot_path RPC (post-
-            // vchroot) -> derive from guest_path minus the Mac path -> MLDR_ROOT_PATH.
             let mut final_entry = r.entry;
             if macho.header.filetype == 2 {
                 // MH_EXECUTE
                 if let Some(dylinker) = loader::find_dylinker(&data[fat_offset as usize..]) {
-                    let root = special
-                        .root_path
-                        .clone()
-                        .or_else(|| vchroot_root.clone())
-                        .or_else(|| {
-                            let mac = guest_argv.first()?;
-                            if mac.starts_with('/') {
-                                guest_path.strip_suffix(mac.as_str()).map(String::from)
-                            } else {
-                                None
-                            }
-                        })
-                        .or_else(|| std::env::var("MLDR_ROOT_PATH").ok())
-                        .unwrap_or_default();
                     let dyld_path = format!("{root}{dylinker}");
                     dlog!("[mldr] dylinker={dylinker} -> {dyld_path}");
                     match std::fs::read(&dyld_path) {
@@ -300,7 +343,7 @@ fn main() {
                     r.mh,
                     kernfd,
                     elfcalls_addr,
-                    &guest_path,
+                    &guest_exe_path,
                     &guest_argv,
                     &envp,
                 )

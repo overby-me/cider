@@ -838,9 +838,46 @@ not installed). `--emit=obj` therefore closes it end to end:
 9,376 bytes, carrying `__ZN3std2rt10lang_start...` and the `CIDER_RUSTC_GUEST_OK map=` marker
 string. A Darwin rustc running under cider compiled Rust to Darwin object code.
 
-**WHAT IS STILL OPEN, and neither is route B.** `@rpath` / `@loader_path` in cider's dyld, still
-worked around with `DYLD_LIBRARY_PATH`. And no Darwin-native linker in the prefix, so linking an
-executable inside the guest needs a Mach-O `ld64` there (route A links on the host instead).
+### @rpath was never resolved, because mldr handed dyld the HOST path (FIXED)
+
+`dyld: Library not loaded: @rpath/librustc_driver-...dylib`, with the dylib sitting at
+`/opt/rustc/lib` and the binary's `LC_RPATH` reading `@loader_path/../lib`. Nine hypotheses had
+already been killed on this. The tenth was right and cost one grep.
+
+**MECHANISM.** mldr passes `executable_path=` in `apple[]`, and passed `guest_path`, which is the
+path mldr READ THE FILE FROM, i.e. a host path. dyld keeps that as `sExecPath`, returns it from
+`getPath()`, and then RESOLVES it: `ImageLoaderMachO::getRPaths` calls `realpath(this->getPath())`
+before expanding `@loader_path`, and dyld2's `@executable_path` branch calls `realpath(sExecPath)`.
+Those run in the GUEST namespace, where `/tmp/.../prefix/opt/rustc/bin/rustc` does not exist, so
+realpath returns NULL, `getRPaths` pushes nothing, and every LC_RPATH is dropped IN SILENCE.
+
+**Why it looked mysterious for so long.** `DYLD_PRINT_RPATHS` prints nothing, because its only log
+site is inside the substitution loop, which does not run when the rpath list is empty. The absence
+of output reads as "rpaths were not consulted" when it actually means "there were none".
+
+**PROVEN BEFORE IT WAS FIXED.** A symlink making that host path resolvable inside the guest, and
+nothing else, turned the failure into `RPATH successful expansion of @rpath/librustc_driver-... to:
+/opt/rustc/bin/../lib/...` and `rustc 1.95.0`. So the trigger is precisely whether realpath can
+resolve that one string. Two earlier suspects died on the way: `allowAtPaths` (dyld's AMFI stub
+returns `0x3F` and `ALLOW_AT_PATH` is bit 0, so at-paths ARE allowed, and bit 1 being set is also
+why `DYLD_LIBRARY_PATH` worked), and env vars not reaching dyld (`DYLD_PRINT_LIBRARIES` prints).
+
+**FIX in `darwin/loader/src/main.rs`**: the root prefix derivation moved out of the dylinker
+branch, where it already existed for locating dyld, and `executable_path=` is now the host path
+with that root stripped. Deliberately conservative: it rewrites only when the host path really is
+under the root and the remainder is still absolute, so the first process (whose root is libexec,
+not the vchroot) cannot have a working path turned into a broken one.
+
+**VERIFIED with the workaround symlink DELETED**: `@rpath` resolves, `rustc --version` runs, and
+`rustc -O --emit=obj` produces the same 9.2K Mach-O object, all with no `DYLD_LIBRARY_PATH`.
+Guest bash still runs (`Darwin`, and a separate `/bin/echo` exec).
+
+**Absolute-path loads were never affected**, which is why bash and every earlier guest worked and
+this stayed invisible until a binary that uses `@rpath` ran.
+
+**WHAT IS STILL OPEN.** No Darwin-native linker in the prefix, so linking an executable inside the
+guest needs a Mach-O `ld64` there (route A links on the host instead). rustc reaches for `cc` and
+`/Library/Developer/DarlingCLT/usr/bin/clang` does not exist.
 
 ### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
 
