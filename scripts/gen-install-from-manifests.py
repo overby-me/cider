@@ -466,14 +466,27 @@ def moved_path(rel: str) -> str:
     corresponding fallback in gen-buck-from-ninja.repo_path is: if src/<rest> is gone and one of
     darwin/<rest> or linux/<rest> is there, that is where it went.
 
-    pins is excluded because the pins have NOT moved; stage 2 would move them, and an
-    unmaterialized pin is absent from disk too, so redirecting on absence would be wrong there.
+    STAGE 2 HAPPENED, AND THIS USED TO SAY IT HAD NOT. The note here read "pins is excluded
+    because the pins have NOT moved; stage 2 would move them", which was true when stage 1
+    landed and false afterwards: src/external/<pin> is pins/<pin> now. Every source file the
+    reference installs from a pin therefore read as "is in no package", and UNMAPPED stood at
+    2,425 with 2,182 of them exactly that. Nothing was broken in the build, only in the mapping
+    BETWEEN the reference and the tree, which is the same shape as the 14 entries stage 1 left
+    and the reason this function exists at all.
+
+    AN UNMATERIALIZED PIN IS ABSENT FROM DISK TOO, so a src/external path whose pins/ candidate
+    does not exist RETURNS UNCHANGED rather than falling through to darwin or linux. Falling
+    through would answer a different question: absence means "not materialized here", not
+    "moved somewhere else".
     """
-    if not rel.startswith("src/") or rel.startswith("pins/"):
+    if not rel.startswith("src/"):
         return rel
     if os.path.lexists(os.path.join(REPO, rel)):
         return rel
     rest = rel[len("src/"):]
+    if rest.startswith("external/"):
+        cand = "pins/" + rest[len("external/"):]
+        return cand if os.path.lexists(os.path.join(REPO, cand)) else rel
     for dest in ("darwin", "linux"):
         if os.path.lexists(os.path.join(REPO, dest, rest)):
             return f"{dest}/{rest}"
@@ -523,8 +536,16 @@ def pin_of(rel: str):
     NORMALISED: cmake happily installs a path with a `..` in the middle of it (file's man
     page is named .../file/file/../gen/file.1), and buck2 rejects such a source outright.
     The path on disk is the same file either way.
+
+    BOTH SPELLINGS, because the manifests are FROZEN. They come from the reference, which
+    predates #87 and names a pin src/external/<pin>/...; the tree calls the same pin
+    pins/<pin>. Matching only the new spelling meant no manifest path was ever recognised as a
+    pin at all, so 2,182 install entries fell through to the package walk, found nothing under
+    a src/ that no longer exists, and were reported UNMAPPED. The build was never wrong: only
+    the mapping between the frozen reference and the moved tree.
     """
-    m = re.match(r"pins/([^/]+)/(.*)", os.path.normpath(rel))
+    p = os.path.normpath(rel)
+    m = re.match(r"pins/([^/]+)/(.*)", p) or re.match(r"src/external/([^/]+)/(.*)", p)
     return (m.group(1), m.group(2)) if m else (None, None)
 
 
