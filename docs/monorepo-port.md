@@ -58,6 +58,24 @@ Taking the transitive closure of those over the file's 49 top-level definitions 
 functions, 182 lines** of the 2,508. The other ~2,326 lines are ninja-to-BUCK emission that can
 never run again, because the graph it reads cannot be regenerated.
 
+**RE-MEASURED 2026-08-12, AFTER #98: NOT ONE OF ITS IMPORTERS IS A CHECK ANY MORE.** The four
+live checks that used to load it are nushell now and carry the handful of lines they needed.
+What imports it today, measured over `scripts/` rather than assumed:
+
+| library | imported by | what those importers are |
+| --- | --- | --- |
+| `gen-buck-from-ninja.py` | 5 | `gen-install-from-manifests` and `gen-xtrace-mig` (generators), `buck-fix-link-model`, `buck-port`, `regen-dylibs` (tools) |
+| `buck2-graph-sources.py` | 2 | `buck-codegen-closure`, `buck-declaration-gap`, and neither is a check (see above) |
+| `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 1, 1, 2 | all by `buck-split-pins` and `regen-dylibs`, both tools |
+
+That simplifies the decision the split was written for: **the live surface of both libraries is
+consumed only by things that are themselves archive-or-tool candidates**, so nothing that has to
+keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
+for the tools, not a prerequisite for the checks.
+
+The whole `scripts/` python is **29 files, 11,350 lines**, down from 54 files at the start of
+this campaign.
+
 So the move is to lift those 8 functions into a small reference-reader module and archive the
 emitter, rather than to port or to drop the file whole. Dropping it whole broke `buck-coverage`,
 `buck-codegen-coverage.py`, `buck-fix-link-model.py` and the `UNMAPPED` gate in `buck-test.nu`.
