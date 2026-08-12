@@ -65,7 +65,7 @@ What imports it today, measured over `scripts/` rather than assumed:
 | library | imported by | what those importers are |
 | --- | --- | --- |
 | `gen-buck-from-ninja.py` | 5 | `gen-install-from-manifests` and `gen-xtrace-mig` (generators), `buck-fix-link-model`, `buck-port`, `regen-dylibs` (tools) |
-| `buck2-graph-sources.py` | 2 | `buck-codegen-closure` (now Rust), `buck-declaration-gap`, and neither is a check (see above) |
+| `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
 | `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 1, 1, 2 | all by `buck-split-pins` and `regen-dylibs`, both tools |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
@@ -261,7 +261,7 @@ not by a nix file, not by another script. Enumerated over the whole tree rather 
 | `scripts/buck2-graph-sources.py` | the dead generator it imports `read_trees` from |
 
 So `buck-codegen-closure` is a **generator of a committed artifact**, exactly the class #97
-archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes.
+archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes. **Both are Rust now (#98), and porting the second one found that it had been UNRUNNABLE:** it called `target_sources` with four arguments after the generator grew a fifth, so every invocation died with a TypeError. Repaired for the baseline, it FAILS: 11 targets do not match the generator, the largest missing 386 files.
 The keep list it produced IS live: `linux/buildtools/skeleton` reads
 `scripts/buck-codegen-keep.txt` and carries five more paths in `NEVER_EMPTY_FILES`, and emptying
 any of them fails SILENTLY, which is the whole reason the file exists.

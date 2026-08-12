@@ -39,7 +39,7 @@ fn skip_prefix(s: &str) -> bool {
 }
 
 /// Candidate project paths hiding in one argv token.
-fn project_candidates(tok: &str) -> Vec<String> {
+pub fn project_candidates(tok: &str) -> Vec<String> {
     let mut out = Vec::new();
     if tok.is_empty() || skip_prefix(tok) {
         return out;
@@ -69,7 +69,7 @@ fn project_candidates(tok: &str) -> Vec<String> {
     out
 }
 
-fn include_roots(argv: &[String]) -> Vec<String> {
+pub fn include_roots(argv: &[String]) -> Vec<String> {
     let mut out = Vec::new();
     for (i, t) in argv.iter().enumerate() {
         if matches!(t.as_str(), "-I" | "-isystem" | "-F" | "-iquote") {
@@ -88,7 +88,7 @@ fn include_roots(argv: &[String]) -> Vec<String> {
 /// path tests, on the order of ten million lexists. The same candidate recurs constantly across
 /// actions, so a map collapses those to one syscall per DISTINCT path. Safe because nothing
 /// writes to the tree while this runs.
-struct Fs {
+pub struct Fs {
     lex: HashMap<String, bool>,
     dir: HashMap<String, bool>,
     quoted: HashMap<String, Vec<String>>,
@@ -97,7 +97,7 @@ struct Fs {
 }
 
 /// os.path.normpath: purely textual, no symlink resolution, and it strips a trailing slash.
-fn normpath(p: &str) -> String {
+pub fn normpath(p: &str) -> String {
     let absolute = p.starts_with('/');
     let mut out: Vec<&str> = Vec::new();
     for seg in p.split('/') {
@@ -128,7 +128,7 @@ fn normpath(p: &str) -> String {
     }
 }
 
-fn dirname(p: &str) -> &str {
+pub fn dirname(p: &str) -> &str {
     match p.rfind('/') {
         Some(i) => &p[..i],
         None => "",
@@ -140,7 +140,7 @@ const C_FAMILY: &[&str] = &[
 ];
 
 impl Fs {
-    fn new() -> Fs {
+    pub fn new() -> Fs {
         Fs {
             lex: HashMap::new(),
             dir: HashMap::new(),
@@ -150,7 +150,7 @@ impl Fs {
         }
     }
 
-    fn lexists(&mut self, p: &str) -> bool {
+    pub fn lexists(&mut self, p: &str) -> bool {
         if let Some(v) = self.lex.get(p) {
             return *v;
         }
@@ -203,7 +203,7 @@ impl Fs {
     /// a header that is a symlink to a sibling subtree read as absent whenever the staged tree
     /// did not carry the destination, and the header was dropped. Recording the link alone would
     /// stage something pointing at nothing, so record BOTH.
-    fn quoted_includes(&mut self, rel: &str) -> Vec<String> {
+    pub fn quoted_includes(&mut self, rel: &str) -> Vec<String> {
         if let Some(v) = self.quoted.get(rel) {
             return v.clone();
         }
@@ -353,7 +353,7 @@ fn die(msg: String) -> ExitCode {
     ExitCode::FAILURE
 }
 
-fn strs(a: &Value, k: &str) -> Vec<String> {
+pub fn strs(a: &Value, k: &str) -> Vec<String> {
     a.get(k)
         .and_then(|v| v.as_array())
         .map(|v| v.iter().filter_map(|x| x.as_str().map(|s| s.to_string())).collect())

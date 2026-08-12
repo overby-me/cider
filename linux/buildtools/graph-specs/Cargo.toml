@@ -50,6 +50,13 @@ path = "src/equiv.rs"
 name = "cider-codegen-closure"
 path = "src/closure.rs"
 
+# THE SIXTH BINARY, the Rust rewrite of scripts/buck-declaration-gap.py (#98). It calls
+# src/srcset.rs for the truth it checks against, which is the whole point: the python imported
+# the generator for the same reason.
+[[bin]]
+name = "cider-declaration-gap"
+path = "src/declgap.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 
