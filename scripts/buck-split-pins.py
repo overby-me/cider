@@ -488,7 +488,7 @@ def migrate(pins: list[str], dry: bool = False) -> int:
 
     # 4. An export_file for every label that now points into a pin package.
     run(os.path.join(REPO, "scripts", "buck-exports.py"))
-    run(os.path.join(REPO, "scripts", "buck-fix-loads.py"))
+    run(os.path.join(REPO, "scripts", "buck-fix-loads.nu"))
     print("migration written; build and iterate")
     return 0
 

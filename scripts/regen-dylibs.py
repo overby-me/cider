@@ -130,7 +130,7 @@ def main(argv: list[str]) -> int:
             print(f"converged after {pass_no} pass(es)", file=sys.stderr)
             break
         before = after
-    subprocess.run([os.path.join(REPO, "scripts", "buck-fix-loads.py")], cwd=REPO)
+    subprocess.run([os.path.join(REPO, "scripts", "buck-fix-loads.nu")], cwd=REPO)
     return 0
 
 

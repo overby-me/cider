@@ -66,7 +66,7 @@ What imports it today, measured over `scripts/` rather than assumed:
 | --- | --- | --- |
 | `gen-buck-from-ninja.py` | 5 | `gen-install-from-manifests` and `gen-xtrace-mig` (generators), `buck-fix-link-model`, `buck-port`, `regen-dylibs` (tools) |
 | `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
-| `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 1, 1, 2 | all by `buck-split-pins` and `regen-dylibs`, both tools |
+| `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 0, 0, 0 | **RE-MEASURED: none of the three is IMPORTED.** `buck-split-pins` and `regen-dylibs` run all three as SUBPROCESSES (`buck-split-pins.py:482,490,491`, `regen-dylibs.py:133`), so each can be ported and deleted on its own. `buck-fix-loads` is `.nu` already |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
 consumed only by things that are themselves archive-or-tool candidates**, so nothing that has to
@@ -477,8 +477,9 @@ mention is not a call. The answer is smaller than the file count suggests:
 | `buck-specs-check.py` | `buck-specs-check.nu` | **CUT**, ported to **Rust** (#98) |
 
 Everything else is either invoked by hand or imported only by another python file:
-`buck-split-pins` pulls in `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots`;
-`regen-dylibs` pulls in `buck-fix-loads` and `gen-buck-from-ninja`; the two dead graph tools
+`buck-split-pins` RUNS `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots` as
+subprocesses rather than importing them, so they are not a cluster and each moves on its own;
+`regen-dylibs` imports `gen-buck-from-ninja` and runs `buck-fix-loads`; the two dead graph tools
 pull in `buck2-graph-sources`. **So the monorepo needs python for exactly ONE more edge**, and it
 is not a check: it is a generator gate over the frozen reference. `buck-specs-check` was the other
 one and it is Rust now, which is what its measured "stays python" note was always about: the
