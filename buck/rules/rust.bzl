@@ -344,24 +344,18 @@ def _darwin_rust_staticlib_impl(ctx):
         cmd.add("--cfg", 'feature="%s"' % f)
     cmd.add(ctx.attrs.rustc_flags)
 
-    # EVERY MODULE FILE IS NAMED ON THE COMMAND LINE, and it has to be, because of what the Nix
-    # endpoint can see. rustc reads `mod` targets by following them from the crate root, so they
-    # are ordinarily HIDDEN inputs: real dependencies that never appear in the argv. That works
-    # for a direct buck2 build and FAILS in the endpoint, because `buck2 aquery` reports no input
-    # list at all. Measured on this very target: its attributes are kind, category, identifier,
-    # cmd and executor knobs, nothing else, and cf.rs appears in none of them while PlistBuddy.rs
-    # appears because the argv names it.
+    # NO MULTI FILE CRATES HERE, and the reason is recorded because it is not obvious.
+    # rustc finds a `mod` by following it from the crate root, so module files are HIDDEN inputs
+    # that never appear in the argv, and `buck2 aquery` reports NO INPUT LIST AT ALL: the
+    # attributes of an action are kind, category, identifier, cmd and executor knobs. The Nix
+    # endpoint therefore stages what the argv names and nothing else, and a `mod` file simply is
+    # not there, which surfaces as 205 compiler errors that say nothing about staging.
     #
-    # The endpoint therefore stages what the argv names, and PlistBuddy_rs_lib died in the
-    # lowering with "file not found for module cf" and 204 cascading errors, while the
-    # single-file xcrun_rs_lib built clean. That contrast is the proof.
+    # Passing each src as an inert --cfg was tried and does NOT work: the path ends up embedded
+    # inside `cider_module="..."` rather than being an argv token that IS a path.
     #
-    # So each src is also passed as an inert --cfg. rustc accepts an arbitrary cfg name and value,
-    # nothing tests this one, so it changes no code path; what it changes is that the path is now
-    # IN THE ARGV where the dump can see it. A hidden entry is kept as well, so a direct buck2
-    # build still rebuilds correctly when a module changes.
-    for src in ctx.attrs.srcs:
-        cmd.add("--cfg", cmd_args(src, format = 'cider_module="{}"'))
+    # So a guest crate is ONE FILE until the endpoint can be taught about hidden inputs. The hidden
+    # entry below is still correct for a direct buck2 build, where it drives rebuilds properly.
     cmd.add(cmd_args(hidden = ctx.attrs.srcs))
     ctx.actions.run(cmd, category = "darwin_rust_staticlib", identifier = ctx.label.name)
     return [

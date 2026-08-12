@@ -72,7 +72,6 @@ export_file(
 darwin_rust_staticlib(
     name = "PlistBuddy_rs_lib",
     crate_root = "PlistBuddy.rs",
-    srcs = ["cf.rs"],
     visibility = ["PUBLIC"],
 )
 
