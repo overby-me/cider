@@ -39,7 +39,25 @@
       # it, and it was the only consumer of nix/package.nix, nix/xnu-sys.nix,
       # nix/cctools-port.nix and the cider-graph/base/component/Ninja libs. mkForce is still
       # needed because flakelight autoloads ./nix/package.nix by name if it exists.
-      packages.default = inputs.nixpkgs.lib.mkForce (pkgs: pkgs.cider-buck2);
+      # ── WHAT A USER INSTALLS ──────────────────────────────────────────
+      #
+      # THE PRODUCT IS `cider`. Everything else in this file is internal: the graph, the
+      # lowering, the prefixes and the two dozen cider-buck2-dyn-* and -probe-* attributes are
+      # stages and experiments of the build, and a newcomer cannot be expected to tell them
+      # apart. There are 51 package attributes here and exactly two of them are for people.
+      #
+      #   nix build .#cider          the product: bin/cider, bin/ciderd and the prefix
+      #   nix build .#cider-min      the same over the minimal prefix, which is what fits on a
+      #                              machine that cannot build the GUI frameworks
+      #
+      # THE `-buck2` SUFFIX IS A PORT ARTIFACT. It distinguished this from the cmake build,
+      # and #82 deleted cmake, so it now distinguishes nothing. The internal names keep it
+      # because renaming 51 cross-referencing attributes is a change with no user visible
+      # benefit; these two aliases are the user visible half.
+      packages.cider = pkgs: pkgs.cider-buck2;
+      packages.cider-min = pkgs: pkgs.cider-buck2-min;
+
+      packages.default = inputs.nixpkgs.lib.mkForce (pkgs: pkgs.cider);
 
       # ── Nix-lowered Buck2 (plan/buck2-port.md phase 3) ───────────────
       #
@@ -913,6 +931,7 @@
       packages.cider-buck2-min =
         pkgs:
         pkgs.callPackage ./nix/buck2-package.nix {
+          name = "cider-min";
           prefix = "${pkgs.cider-buck2-prefix-min}/cider_prefix_min__prefix";
         };
 

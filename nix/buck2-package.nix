@@ -15,8 +15,13 @@
   # A prefix_tree output -- nix build .#cider-buck2-prefix, then
   # result/cider_prefix__prefix.
   prefix,
+  # TWO PACKAGES CALL THIS, over the full prefix and the minimal one, and until the release
+  # prep both derivations were named "cider-buck2". A user who installed the minimal build saw
+  # the same name in their profile as one who installed the full build, with no way to tell
+  # which they had.
+  name ? "cider",
 }:
-pkgs.runCommand "cider-buck2" {
+pkgs.runCommand name {
   meta = {
     description = "Cider, built by the buck2 port (system component scope)";
     mainProgram = "cider-buck2";
