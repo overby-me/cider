@@ -618,7 +618,35 @@ weakened `needs.json`.
 
 `buck_lowering.py` and `buck-graph-to-specs.py` are DELETED, 863 lines. What is
 left of the banner-marked class is `scripts/buck2-graph-sources.py`, which two checks
-(`buck-codegen-closure.py`, `buck-declaration-gap.py`) still import.
+(`buck-codegen-closure.py`, `buck-declaration-gap.py`) still import. That one is NOT the same
+cheap treatment: `buck-declaration-gap.py` re-derives the generator's four-way partition and
+verifies it against `target_sources`, so pointing it at an artifact means giving
+`cider-graph-sources` a debug mode that emits the partition. Decide that before touching it.
+
+### What the suite caught, which re-reading did not
+
+`scripts/buck-test.nu` ran 159 passed, 4 failed. Two of the four were mine, and both are the
+same class: **a deletion is not done until nothing LOADS the file, and a new file's LOCATION can
+break a property that has nothing to do with its contents.**
+
+* Three LIVE sites in `buck-test.nu` still loaded the deleted normaliser (two `importlib` loads,
+  one grep of `FIRST_PARTY_RENAMES`). They became `scripts/buck-src-normalise-check.nu`, which
+  builds a repo holding one link of every kind, runs the binary and asserts the exact target of
+  each afterwards: eleven expectations, with an EXACT control (seven must be unmet beforehand,
+  the other four being leave-alone cases met by construction, so a floor would have hidden a
+  fixture that stopped exercising a rule).
+* `buck-bridge-generality-check` failed because `nix/lib/dyn-actions.nix` named
+  `../spec-fixup.nix` and `../..`. The bridge is meant to be copyable into another project, and
+  the python fixup never broke that because it LIVED in `nix/lib`. The crate moved to
+  `nix/lib/dyn-actions-spec-fixup/`, the check learned that the set may contain DIRECTORIES (a
+  crate is one) and that a reference INTO an allowed directory is inside, and all fourteen
+  dyn-drv properties still pass at the new path.
+
+The other two failures are NOT from this work, and the argument is input invariance: `install
+UNMAPPED 2425` and `by-name coverage 1` come from scripts that read only BUCK files plus the
+frozen reference, and these commits changed no BUCK file at all (three comment-only edits under
+`buck/`). It is a partial failure rather than a total one, since 1,272 artifacts still map, so
+the index is not empty. Filed as its own task rather than folded in here.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.
