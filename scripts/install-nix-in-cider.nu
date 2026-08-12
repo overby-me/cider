@@ -380,7 +380,7 @@ fi
         say $c $"Verification: ($c.green)($pass) passed($c.reset), ($c.red)($fail) failed($c.reset)"
         if $fail > 0 {
             warn $c "Some checks failed. Nix may be partially functional."
-            warn $c "See PLAN.md for debugging tips."
+            warn $c "See docs/changelog.md for debugging tips."
         }
     } else {
         say $c $"($c.bold)Step 7: Skipping verification($c.reset) \(--no-verify)"

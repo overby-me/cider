@@ -105,7 +105,7 @@ upstream change for its *intent* and apply that intent to the Rust.
 - `darwin/dirserv/`, `darwin/sandbox-exec/` -- first-party additions
 - `buck/`, `buck-src/`, `buck-rust/` -- the buck2 build (the point of this fork)
 - `nix/`, `flake.nix`, `flake.lock` -- the Nix endpoints
-- `scripts/`, `docs/`, `plan/`, `PLAN.md`, `templates/`, `tools/`, `patches/`
+- `scripts/`, `docs/`, `plan/`, `changelog.md`, `templates/`, `tools/`, `patches/`
 
 ## Applying an upstream change
 
@@ -150,6 +150,6 @@ pick, and it produced one false "missing" during this triage.
 ## What "up to date with upstream" means here
 
 Build parity is measured against the **reference cmake build at the fork point**: 151 of 151
-link edges. That number says nothing about the 36 upstream commits since. See PLAN.md, *What
+link edges. That number says nothing about the 36 upstream commits since. See changelog.md, *What
 100 percent does NOT mean*, for the standing exclusions (32-bit, cctools from Nix, runtime
 parity unmeasured past dlopen).

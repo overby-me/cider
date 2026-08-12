@@ -15,7 +15,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.nix-in-cider -L
 #
-# See: PLAN.md (Task 6.1)
+# See: docs/changelog.md (Task 6.1)
 { pkgs, cider, ... }:
 
 let

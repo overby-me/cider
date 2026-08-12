@@ -101,7 +101,7 @@ def candidate-files [] {
     | where {|l| $l != "" } | each {|p| $p | str substring 2.. })
   # IN os.walk ORDER, which is what the report's tie breaking depends on. find interleaves: it
   # descends into a subdirectory the moment it meets one, so scripts/x came out before the root
-  # PLAN.md. os.walk is top-down by DIRECTORY: every file of a directory, then its children. So
+  # docs/changelog.md. os.walk is top-down by DIRECTORY: every file of a directory, then its children. So
   # the directories are listed once, in the same depth-first order, and the files are bucketed
   # into them. Two files with one reference each swapped places without this, which is the only
   # way the report can differ once the counts agree.

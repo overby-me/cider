@@ -37,7 +37,7 @@
 #   ./scripts/cider-build-hook --check
 #   ./scripts/cider-build-hook --help
 #
-# See: PLAN.md (Task 7.4)
+# See: docs/changelog.md (Task 7.4)
 
 set -euo pipefail
 
@@ -277,7 +277,7 @@ Examples:
   #     "/path/to/cider-build-hook x86_64-darwin - 4 1 - - -"
   #   ];
 
-See: PLAN.md (Task 7.4)
+See: docs/changelog.md (Task 7.4)
 EOF
 }
 

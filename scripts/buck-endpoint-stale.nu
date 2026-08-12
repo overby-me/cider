@@ -42,7 +42,7 @@
 # reads. Editing tests/cider-buck2-smoke.nix was reported stale and the prefix derivation
 # did not move at all.
 const NEUTRAL_TOPS = [
-    "plan" "docs" "nix" "scripts" "PLAN.md" "README.md" "CONTRIBUTORS.md"
+    "plan" "docs" "nix" "scripts" "docs/changelog.md" "README.md" "CONTRIBUTORS.md"
     ".git" ".jj" ".direnv" "buck-out" "flake.nix" "flake.lock" "result-graph-ref"
 ]
 

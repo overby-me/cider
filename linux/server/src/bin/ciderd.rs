@@ -8,7 +8,7 @@
 //! relocatable paths: DSERVER_LIBEXEC_PATH, DSERVER_MLDR_PATH, and the init selector
 //! (DSERVER_INIT / DARLING_NO_LAUNCHD). NOT runnable in the nix sandbox (needs root +
 //! CAP_SYS_ADMIN); validated by splicing into a cider runtime. See
-//! PLAN.md (bucket B, the container main).
+//! docs/changelog.md (bucket B, the container main).
 
 use cider::container::{self, Config};
 use cider::handler::Handler;

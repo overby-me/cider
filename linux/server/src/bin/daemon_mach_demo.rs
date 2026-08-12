@@ -5,7 +5,7 @@
 //!
 //! Uses a SEQPACKET socketpair (a genuine connected unix socket, but no filesystem path,
 //! so it works under the nix build sandbox) with the client in a forked child. See
-//! PLAN.md (real-socket serving).
+//! docs/changelog.md (real-socket serving).
 
 use cider::handler::Handler;
 use cider::registry::Registry;

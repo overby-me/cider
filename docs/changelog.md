@@ -1,61 +1,18 @@
-# cider-nix
+# Cider development log
 
-> **Cider Isn't Darwin Emulation, Really.**
+**What this is.** The record of how Cider got here: the per-task entries below say what was
+measured, what was decided and what was rejected, newest first. It is a working document, not a
+narrative, and it exists so nobody re-derives an answer that was already paid for.
 
-cider-nix is a Nix-packaged fork of [Darling](https://github.com/darlinghq/darling)
-(a userspace macOS/Darwin compatibility layer for Linux, "Wine for macOS"). Its host and
-guest runtime have been rewritten in Rust.
+**What this is NOT.** It is not the release changelog. That is [../CHANGELOG.md](../CHANGELOG.md),
+which is short, user-facing and organised by release. This file is for people working ON Cider.
 
-**End goal:** build `aarch64-darwin` nixpkgs derivations on non-Apple ARM Linux, using
-Darling as the Darwin layer, verified bit-for-bit against cache.nixos.org.
-
-**Current campaign:** make `x86_64-darwin` builds work end-to-end against **nixpkgs 26.05**
-(the last release supporting x86_64-darwin: a frozen target and a permanent cache oracle).
-x86_64 is the native-speed test rig; most work (libSystem surface, harness, oracle, daemon)
-is architecture-independent and transfers to ARM.
-
-Tag work: **[ARCH-FREE]** (transfers as-is), **[ARCH-PARAM]** (transfers if parameterized
-now), **[X86-ONLY]** (throwaway, minimize investment).
-
-> This file carries what is currently TRUE. `plan/buck2-port.md` carries what does not
-> belong here: why the port exists and what done means, the constraints learned from the
-> nix-ninja grind, the phase plan and the non-goals. Neither keeps a status log -- the
-> history is the commit that made each change.
+**Two halves.** The rules and traps come first, because they apply to every task and are the part
+worth reading before touching anything. The task history follows, newest first.
 
 ---
 
-
-## Buck2 port: how to work in it
-
-The per-task narrative of how the port got here is in `docs/plan-history.md`, moved out
-verbatim on 2026-08-11. What follows is only what changes what you do next.
-
-**CLIMB THE LADDER FROM THE BOTTOM. Never start at the endpoint.**
-
-1. `scripts/buck-lowering-stage-check.nu` — reads the generated staging script rather than
-   building anything. Seconds warm, about six minutes cold after a `buck2 killall`. It is the
-   only thing that can catch a staging fault at all: a build cannot, because the fault is in
-   the script that lays out the tree the build then reads.
-2. `nix build .#cider-buck2-one` — one real target end to end, about 18 s warm.
-3. `nix build .#cider-buck2-prefix-min` — the gate, roughly an hour. Launch it only from a
-   CLEAN working copy: jj auto-snapshots, so uncommitted edits are what Nix builds.
-
-Three hours went once on chasing a shell-script fault at rung 3. Rung 1 names that class in
-minutes, and did exactly that for #87 stage 2.
-
-**RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
-an hour.** `buck-escape-roots-check.nu`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.nu`,
-`buck-env-names-check.nu`, `buck-first-party-paths-check.nu`, `buck-labels-check.nu`,
-`buck-pin-paths-check.nu`, `buck-host-includes.nu`, `buck-coverage.nu`.
-
-**COUNT `^building`, NEVER the "these N derivations will be built" list.** The list overstates
-the real work by nearly five times: gate12 listed 4,336 derivations and 895 builders actually
-ran, because CA early cutoff removes the rest DURING the build. Judge by builders that ran.
-
-**A BUCK EDIT IS NOT A FULL REBUILD ANY MORE** (#54, #79). The old advice to batch BUCK edits
-is stale; the cascade was cut from 1,558 builders to 44.
-
-**A RUNG 3 BUILD CAN WEDGE, SO WATCH IT:** `scripts/buck-stall-watch.nu <log>`.
+## Rules, traps and standing decisions
 
 ### cmake is gone (#82), and five generators are FROZEN
 
@@ -70,11 +27,13 @@ offers to freeze its threshold, suspect the POPULATION first.
 `result-graph-stock` beside it is ALREADY collected, so this is not hypothetical: a check whose
 input can vanish must fail rather than pass when it does.
 
+
 ### The rename rule (#84, #78)
 
 **Upstream keeps the old name in its paths, patch headers, repo and org; only FIRST-PARTY names
 change.** `__DARLING__` is upstream, 772 times across 188 pin files, and keeps its name.
 `buck-upstream-names-check` holds the upstream names as DATA and must never be swept.
+
 
 ### Moving a path root needs THREE audits, each blind to the next (#87 stage 2)
 
@@ -137,6 +96,7 @@ the last two are the point: move the dylib off the rpath and the run must fail N
 `@rpath/libciderrpath.dylib`, then set `DYLD_LIBRARY_PATH` and the same layout must pass again,
 which is what separates an rpath-expansion failure from an unloadable dylib.
 
+
 ### What 100 percent does NOT mean
 
 - **32-bit is not built and will not be.** `libsyscall_32` and the 74 i386 mig edges. A
@@ -150,6 +110,7 @@ which is what separates an rpath-expansion failure from an unloadable dylib.
   292 of 336 installed dylibs and framework binaries load in the guest, and the 44 that do
   not are the Swift LFS pointers (#39), which are not libraries. Past dlopen is unmeasured.
 
+
 ### Deliberate divergences from the reference
 
 Three, each stated in the code beside the reasoning rather than done quietly:
@@ -161,6 +122,7 @@ Three, each stated in the code beside the reasoning rather than done quietly:
   is `init_sqlite3`, so `import sqlite3` works. Nothing the reference ships is removed.
 - **perl 5.18 Storable** is compiled with `-DVERSION=2.41` to match its own `.pm`, over
   the reference's `2.4`.
+
 
 ### Traps that have each cost at least one increment
 
@@ -215,6 +177,7 @@ rewritten to a Nix BINDING name, which matches no directory, and all 1798 lowere
 failed with "Permission denied" 90 minutes into a build.
 `scripts/buck-lowering-stage-check.nu` reads the generated staging script in seconds instead.
 
+
 ### The meta-lesson: re-test a recorded diagnosis before acting on it
 
 Recorded diagnoses in this file keep turning out to be untested guesses, and most point away
@@ -241,6 +204,7 @@ Corollaries that have each been paid for separately:
   wrong file hid an empty AppKit for hours.
 - **Evidence that looks conclusive often is not.** libpthread bzeros `main_stack` on BOTH
   its success and failure paths, so a blanked value proves only that the function ran.
+
 
 ### Where the narratives went
 
@@ -351,100 +315,6 @@ referenced is completed. Git history holds them.
 
 What follows is only what is still OPEN.
 
-### #95 - migcom stamped the build time into every stub, so 110 groups never cached (DONE)
-
-migcom wrote the wall clock into every generated stub, so two builds of the same inputs at
-different times produced different bytes, and under content addressing that defeated early
-cutoff for everything downstream of a mig group. Found by #66's full-graph comparison: 1,364 of
-1,474 groups identical, 110 differing, all 110 mig.
-
-Fixed by `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`. A freshly built
-mig group now reads `stub generated Tue Jan  1 00:00:00 1980`. Guarded by
-`scripts/buck-mig-epoch-check.nu`, which builds ONE mig group instead of the whole graph and is
-in `buck-test.nu`.
-
-Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
-
-### #96 - a first-party source edit and the group cascade (ANSWERED 2026-08-12: THERE IS NO CASCADE)
-
-**THE PREMISE IN THE OLD TITLE WAS FALSE.** It read "a first-party source edit still
-invalidates every group that stages the project". Measured on the endpoint, it invalidates
-**zero** groups.
-
-**THE MEASUREMENT.** `scripts/buck-quick-check.nu --attr .#cider-buck2-prefix-min --probe
-darwin/frameworks/AVFoundation/constants.m`, which builds the endpoint, appends a nonce comment
-to one first-party source, rebuilds, counts builders that RAN, and reverts:
-
-    counter self test           ran=1, so the counter can report non-zero
-    baseline                    ran=1 in 937.5 s   (the endpoint was warm)
-    after editing one .m        ran=2 in 1276.6 s
-                                cider-buck2-skeleton
-                                cider-buck2-sources
-    of the 1,474 groups         ZERO
-    ld64                        did not rebuild
-    graph                       did not rebuild
-
-**THE POSITIVE CONTROL IS THE POINT, because a zero needs one.** `cider-buck2-sources`
-rebuilding proves the edit REACHED `projectSrc`. Without that, ran=2 would be indistinguishable
-from a probe that measured nothing, and the file was checked against the source filter
-beforehand for the same reason: `nix/lib/cider-src.nix` excludes only top-level names plus every
-file called `BUCK`, and `darwin/` is kept.
-
-**WHAT THE TWO REMAINING BUILDERS ARE.** Not a cascade: `projectSrc` is an input to the graph
-derivation, so when a source changes it must be re-derived. Two derivations and a re-resolution
-is the floor, not a defect.
-
-**WHAT THIS SUPERSEDES.** The figure on record was "323 compiles and still climbing" from a
-probe predating #54, #74, #79 and #95. It is 2. And the entry's own stated cause was the wrong
-code path: it blamed `stageProject` embedding the whole `projectSrc`, which is the
-`sourceGroups` = OFF path, while every endpoint sets it ON and goes through `stageTextFor` plus
-`pinStageLines`, whose pins resolve through `pinsTree` from frozen per-pin stores. #54 narrowed
-the groups, #74 gave the pins a self-contained mirrored tree, #79 gave the escape destinations
-their own store paths. Those three closed this between them; nothing here needed implementing.
-
-**TWO STALE CLAIMS THIS KILLED, both now corrected in place.** `nix/lib/cider-src.nix` justified
-excluding BUCK files by "ld64 is built from this tree (nix/cctools-port.nix) ... 26,351 compile
-steps", and `buck-quick-check.nu` predicted "6 builders, 17.5 minutes" with ld64 rebuilding. That
-file no longer exists and #65 made ld64 the buck2-built linker. The BUCK exclusion RULE still
-stands, on the smaller measured reason above.
-
-**NOTHING TO DO.** Do not implement the fix this entry used to propose. Re-run the probe if the
-staging or source-filter code changes; that is what it is for.
-### #66 - get the lowering out of the evaluator (DONE 2026-08-11)
-
-BOTH HALVES DONE. A general buck2-graph to dynamic-derivation bridge, worth having for OTHER
-projects; cider is the first CONSUMER, not the target.
-
-**THE RESULT.** The whole 1,474-group graph builds through the emitted route and reproduces the
-lowered route exactly. Final run: 4,516 builders, zero nix-level errors, all 1,474 producers and
-all 1,474 emitted actions, and the per-group comparison reads
-
-    OK the whole graph emitted, all 1474 group(s) match the lowered route
-
-**WHY THAT ZERO IS EVIDENCE.** The same check on the same graph reported `identical 1364, differ
-110` one run earlier and named every differing group. So it had just demonstrated it can report
-a non-zero, and 110 to 0 is the #95 migcom fix landing. A zero from a check nobody has seen fail
-would have been worth nothing.
-
-**KEEP BOTH ROUTES**, for an empirical reason rather than an aesthetic one: the DIFFERENTIAL
-between them found four real defects, two of which neither route could expose alone. A second
-implementation that agrees is a test; deleting it converts a working check into an unverified
-assumption.
-
-- **A, the bridge.** `nix/lib/dyn-actions.nix`, fourteen properties over eleven fixtures via
-  `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.nu` ENFORCES that the
-  reusable half references nothing outside itself, which is the requirement rather than a
-  nicety. Usage, constraints and the limits a real consumer found: `docs/dyn-actions-bridge.md`.
-- **B, the adapter.** `cider-graph-specs` renders the builder script and
-  `cider-graph-specs` writes it plus `needs.json` and a `dyn/` spec dir inside the graph
-  derivation. The lowering no longer assembles a script; it reads the template.
-- **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting the
-  toolchain list, the staging script and the staged tree scripts. Measured sizes: 1 toolchain
-  set shared by all 1,474, 94 distinct staging scripts, 3,013 staged tree scripts. Nothing
-  measured says what that would cost or save.
-
-Full detail, every measurement and the corrected claims: docs/plan-history.md, "#66 in detail"
-and the 2026-08-12 heading.
 
 ### D — Correctness oracle (the keystone remaining) [ARCH-FREE]
 "It built" → "it built **correctly**." The project's core value proposition.
@@ -456,6 +326,7 @@ and the 2026-08-12 heading.
   miscompile). **A codegen-class divergence is stop-the-line** — the shim is lying to the
   compiler (math, memory layout, or a syscall result) and everything above is suspect.
 
+
 ### M1 tail (Phase C.3–C.4b) [ARCH-FREE]
 - Drive the official `pkgs.hello` **derivation** through guest nix (not hand-run
   configure/make). `scripts/build-pkg-bypass.nu <attr>` generalizes to any nixpkgs
@@ -464,6 +335,7 @@ and the 2026-08-12 heading.
   daemon), filed to the Stall notes below. (The old `config.status` here-doc pipe hang was
   the checkout lifetime-pipe fd leak → pipe-page starvation, now FIXED; reverify if it
   recurs.)
+
 
 ### E — Climb the package ladder [ARCH-FREE]
 - **E.1** dependency-weighted 26.05 x86_64-darwin target list (CLI-only; GUI *runtime* out
@@ -474,6 +346,7 @@ and the 2026-08-12 heading.
   large C++ package (`llvm`); stretch: `swiftc` (stresses libdispatch/CF).
 - **Exit (campaign):** the full Tier-1..3 matrix green with oracle, on a frozen 26.05 pin,
   in CI, reproducibly from a clean prefix.
+
 
 ### F — ARM readiness (prep only, do not start the port) [ARCH-PARAM]
 - **F.1** salvage-assess the three `feature/arm-support*` branches → `PLAN.md`.
@@ -486,6 +359,7 @@ and the 2026-08-12 heading.
 - **F.4** document the QEMU aarch64 dev recipe (share `/nix/store` via virtiofs; never run
   ciderd under qemu-user — signal/TLS fidelity).
 
+
 ### CI + remote builder (built in Campaign 1, unvalidated — needs rework)
 Machinery exists but was **never validated end-to-end on a live prefix** and predates the
 Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
@@ -495,6 +369,7 @@ Rust rewrite / launchd-bypass / 26.05 pin / submodule removal:
   `nix.buildMachines`), `scripts/cider-build-hook`, VM tests. Design (host
   `nix.buildMachines` → sshd in Darling → guest nix-daemon, shared store avoids SSH copy) is
   the north star but unexercised — and conflicts with one-command-per-container.
+
 
 ### Performance (measure during E; acceptable-if-slow for CI)
 Baseline: spawn ~11–12× native (~28 ms/proc), compute ~7.6×. Spawn tax: ~22 ms (78%) = the
@@ -512,6 +387,7 @@ P2 epoll re-arm memoize.
 - Already optimal (don't touch): BSD syscall dispatch (table-driven to Linux),
   `__ulock_wait/wake`→`futex(2)`, `vchroot_expand` path translation, cached
   `mach_task_self`/`mach_host_self`, getpwuid via glibc NSS.
+
 
 ### Watch-items (reopen on demand)
 
@@ -535,6 +411,7 @@ to "still crash on trivial cases as recently as Nix 2.34.x", which is the versio
   (recvmmsg loop) into an internal queue so it never backs up.
 - **SIGFPE exec-fidelity flake (#44):** intermittent signal-8 in guest build/test binaries —
   retryable (nix build ×4), not a real error nor a Rust regression.
+
 
 ### Upstream adoption
 Fork point `f39a29489` (2026-03); upstream idle on core as of 2026-07-19. Adopt only when a
@@ -704,6 +581,7 @@ And the reference build is a wasting asset: gen-mig-from-ninja.py, gen-buck-from
 and cider-install-from-manifests all read it, and it disappears when cmake does, so every
 generator needs to be re-runnable before that happens.
 
+
 ### Stage 1 and stage 2 queue: FINISHED, moved to docs/plan-history.md
 
 634 lines lived here, 45 percent of this file, and every numbered item in them is a
@@ -718,25 +596,6 @@ measurements, which are real and were expensive to take.
 THE OPEN TASKS ARE #97, #98, #99, #76 AND #92. #96 is DONE (both routes). Nothing else in this
 file is a queue.
 
-### #97 to #99: porting buck2 into the overby.me monorepo, which takes no Python
-
-**#99 IS DONE as of 2026-08-12.** All 2,244 lines of build-path Python are Rust: the graph dump,
-the spec lowering, the source closure, the skeletoniser, the buck-src normaliser and the
-dynamic-derivation spec fixup. Each flip was verified by rebuilding the content addressed
-artifact it feeds and comparing STORE PATHS, which for a CA output is a byte comparison: the
-graph, the specs, the sources and the skeleton all came out identical. Nothing on the build path
-is interpreted now except the buck2 rules' own python, which is upstream's.
-
-**See `docs/monorepo-port.md`**, which carries the measurements. The headline from #97: the eight
-`gen-*.py` scripts are 5,338 lines, and the premise that the whole class is dead-end reference
-reading is WRONG FOR HALF OF IT. Four are live generators over live inputs, and the biggest file
-is not a tool at all but a LIBRARY that four live checks import, of which they use 7 percent
-(8 functions, 182 lines of 2,508). Archive 2,743 lines, port 2,595.
-
-The measurement trap worth keeping: grepping for a generator's name finds 2,899 hits for
-`gen-buck-from-ninja.py`, and nearly all are `# GENERATED by scripts/X` headers in the files it
-WROTE. A provenance header is not a call site, and counting it as one makes every generator look
-live.
 
 ### Darwin Rust: route A builds and RUNS, and dies in dyld lazy binding (harness task #96)
 
@@ -806,6 +665,7 @@ SIGSEGV became
 exit 0, `std::env::consts::OS` reporting macos. bash survived the same stack only because its
 startup high-water mark is lower.
 
+
 ### Route B: the official Darwin rustc under cider (DONE, it compiles Rust in the guest)
 
 The rustc component is fetched and installed into the guest at `/opt/rustc` (442 MB). Running it
@@ -868,6 +728,7 @@ not installed). `--emit=obj` therefore closes it end to end:
 9,376 bytes, carrying `__ZN3std2rt10lang_start...` and the `CIDER_RUSTC_GUEST_OK map=` marker
 string. A Darwin rustc running under cider compiled Rust to Darwin object code.
 
+
 ### @rpath was never resolved, because mldr handed dyld the HOST path (FIXED)
 
 `dyld: Library not loaded: @rpath/librustc_driver-...dylib`, with the dylib sitting at
@@ -908,6 +769,376 @@ this stayed invisible until a binary that uses `@rpath` ran.
 **WHAT IS STILL OPEN.** No Darwin-native linker in the prefix, so linking an executable inside the
 guest needs a Mach-O `ld64` there (route A links on the host instead). rustc reaches for `cc` and
 `/Library/Developer/DarlingCLT/usr/bin/clang` does not exist.
+
+
+---
+
+## Task history, newest first
+
+### #102 - GUEST Rust: buck2 can build Mach-O Rust binaries now
+
+The user asked for this on 2026-08-12 after #76 left xcrun and PlistBuddy described as blocked.
+That description was too strong: #96 route A had ALREADY cross-compiled a full std Rust program
+and run it in cider. What was missing was never the ability, it was the plumbing, and this entry
+is what closed it.
+
+**THE DESIGN TURNED ON THE CRATE TYPE, and it was measured rather than argued.**
+
+    --emit=obj             a std hello leaves 11 Rust symbols undefined
+    --emit=obj -C lto=fat  WORSE, 14, because the allocator shims join them
+    --crate-type staticlib of the 191 symbols the archive cannot satisfy, ZERO are Rust-mangled
+
+The 191 are libSystem C symbols, malloc and pthread_ and __NSGetArgv and dispatch_, which is
+exactly what //buck-src:system_final already gives every C guest binary. So the archive drops
+into darwin_binary as an ordinary `objs` entry and NOTHING about the link path changes: no
+-syslibroot, no dependency on a built prefix, and dylibs arrive as
+-Wl,-dylib_file,<install_name>:<artifact> the way they always do.
+
+**THE ENTRY POINT IS C.** A staticlib has no main, so a guest Rust tool exports
+`#[unsafe(no_mangle)] pub extern "C" fn main(argc, argv)` and crt1.10.6 finds it. Rust lang_start
+does NOT run: no stack-overflow guard message, no std-installed cleanup. std itself works, and
+darwin/rustprobe is written to prove it rather than assume it, because on macOS args come from
+_NSGetArgv rather than an init hook: the probe asserts std::env::args matches the argc crt1 was
+given, and prints through std::io.
+
+    cider-rust-probe argc=1 env_args=1
+    PASS: a Rust binary built for Darwin RAN inside cider
+
+**THE TOOLCHAIN IS PINNED, nix/darwinRust.nix.** nixpkgs cannot supply it and the refusal is not
+about Rust: asking the pinned rev for a linux-to-darwin cross set dies at
+x86_64-apple-darwin-cctools-1010.6, because Apple SDK pieces cannot be redistributed to non-Apple
+hosts. Rust's own prebuilt darwin std can be, so this fetches the official rustc AND the official
+rust-std with checksums. Both halves must come from the same release: crate metadata matching is
+a STRING COMPARE, and the nixpkgs rustc appends "built from a source tarball" to an otherwise
+identical 1.95.0/59807616e, which is E0514. Re-measured 2026-08-12, it still reproduces. Two
+tarballs, not three: a sysroot holding ONLY the darwin target produces the same 17,694,176 byte
+archive, so the host std would be 40 MB of nothing.
+
+**WHAT IS DONE AND WHAT IS NOT.** xcrun is ported and gated inside the container, five cases
+identical in stdout, stderr and rc, reaching both branches (as xcrun the tool is NULLed; as cc it
+is passed through). PlistBuddy is NOT started and is a different size of job: 1,277 lines with
+193 CoreFoundation call sites, so it needs CF bindings before it needs a port.
+
+**A TRAP WORTH KEEPING, because it cost a red gate that looked like a broken port.** xcrun passes
+getprogname() STRAIGHT THROUGH as the tool to invoke, so staging the two binaries as xcrun_c and
+xcrun_rs made all five cases differ: one asked for a tool called xcrun_c, the other for xcrun_rs.
+THE NAME IS AN INPUT to this program. Stage each under the real name in its own directory.
+
+
+### #102b - PlistBuddy: the measurement that had to come before the port
+
+Written 2026-08-12 because the task said "PlistBuddy needs CF bindings before it needs a port",
+and that framing was MINE and it was wrong. The numbers, all from darwin/PlistBuddy/PlistBuddy.c:
+
+    1,278 lines, 1,070 non-comment      24 top-level functions
+    49 DISTINCT CoreFoundation functions in 139 call sites
+    20 CF type and constant names
+    25 distinct libc calls
+    190 lines (17 percent) mention CF at all
+    133 lines (12 percent) actually CALL CF
+    64 lines do manual memory (malloc, free, strdup, strndup, alloca, CFRelease)
+
+**THE HYPOTHESIS WAS THAT THIS IS A CF GLUE PROGRAM, AND IT IS NOT.** I expected a thin command
+layer over CF, which would have made a Rust port pointless: every line would still be an unsafe
+extern on a raw CFTypeRef with manual refcounting, so nothing would be gained. The measurement
+says the reverse. **83 percent of the program never touches CF.** It is string parsing, a command
+loop, type inference, date formatting and a hand-rolled pretty printer, which is precisely the
+code where C is dangerous and Rust is not. getWord is 69 lines, parseValue 141, runCommand 165,
+prettyPrintPlist 119: none of it is CF, all of it is pointer arithmetic over user input.
+
+**SO THE BINDINGS ARE NOT THE PROJECT.** 49 externs over opaque pointer types is about 150 lines
+of mechanical declaration, done once. There is no vendored core-foundation crate in buck-rust and
+none is needed: CF is a C API and the port needs exactly the 49 functions it calls, not a crate
+that models all of it.
+
+**THREE THINGS THAT ARE NOT MECHANICAL, and they are where a port goes quietly wrong:**
+
+    CFSTR is a MACRO, not a function, so there is no symbol to declare. Used once, at
+      PlistBuddy.c:1226. It has to become a created-and-released CFString.
+    CFGregorianDate crosses the FFI BY VALUE, at :784 and :1025. A repr(C) struct whose field
+      layout is wrong produces plausible wrong dates rather than a crash.
+    CFRangeMake is inline, so it is a repr(C) struct built in Rust, not a call.
+
+**WHY BYTE IDENTITY IS REACHABLE:** the plist itself is written by
+CFPropertyListCreateXMLData, which BOTH implementations call. The formatting nobody wants to
+reproduce is delegated to the same code in both. What the port must reproduce by hand is
+prettyPrintPlist, 119 lines, and that is the thing the gate has to hammer.
+
+**CONCLUSION: it makes sense, and it is a multi-increment job rather than an xcrun.** The order is
+FFI declarations, then the pure-logic functions, then the CF-touching ones, then the gate, which
+must run in the container and must compare the WRITTEN PLIST as well as stdout, stderr and rc.
+
+**DONE 2026-08-12, and the gate is 48 argument cases plus 13 interactive sessions, all identical.**
+Two things are worth carrying out of it, and both are about the GATE rather than the port.
+
+**THE WRITABLE LAYER IS NOT WHERE THE SEED WAS WRITTEN, and getting that wrong invented a project
+bug that does not exist.** The guest root is a union: DSERVER_LIBEXEC_PATH is the read-only base,
+DPREFIX is the writable layer. Reads come from the base, writes land in the prefix. The first gate
+compared the base, saw every written plist byte identical to the seed across twenty mutating
+cases, and concluded that CFURLWriteDataAndPropertiesToResource does nothing under cider. FALSE.
+The files were in $DPREFIX all along, 1,181 bytes against a 524 byte seed. A control caught the
+symptom; going to look for the file rather than believing the symptom found the cause. That claim
+had already been committed, which is why the retraction is a commit of its own.
+
+**THE CONTAINER FAULTS AT STARTUP ABOUT ONCE PER FULL RUN, AND A DIFFERENT CASE EACH TIME.** That
+is the single most useful thing to know before reading a red gate here. Across three full runs of
+61 cases:
+
+    run 1   Set a missing entry   rc 136, SIGFPE, core dumped, no output because stdout was
+                                  block buffered and died with the process. Re-run 10 times
+                                  against EACH binary: 0 of 10 failed.
+    run 2   Copy an entry         identical stdout, rc and written plist; the only difference was
+                                  "[mldr] start-stack mmap at 0x7fffff600000 failed" on stderr,
+                                  on the RUST side
+    run 3   ls alias              the same mldr line, this time on the C side, which died before
+                                  PlistBuddy ran at all: rc 1 and nothing printed
+
+So the loader, not either program. The gate now filters container lines out of stderr (cp: and
+[mldr]) and retries a failing case ONCE. That is safe against exactly this and nothing else: a
+real behavioural difference is deterministic and fails both attempts. The retry count is printed,
+and more than six retries fails the gate, because that would mean the environment is too unstable
+for a green run to mean anything. The clean run needed 0 retries.
+
+**THE HARNESS ALSO FAILED IN A WAY WORTH RECORDING.** One run had ALL 61 cases red while every
+control passed. The cause was an undefined shell function: a helper had been added at the call
+sites but its definition landed in the wrong file, so the files being compared were never
+written. Total failure with healthy controls means the harness, not the program.
+
+**THE FLIP LANDED 2026-08-12: the Rust xcrun and PlistBuddy ARE the installed binaries now.** It
+is a RENAME, not an install-entry edit, which is what makes it safe: buck/prefix/BUCK and
+buck/prefix-min/BUCK map /usr/bin/xcrun and /usr/libexec/PlistBuddy to the canonical target names,
+so handing those names to the Rust targets and moving the C ones to xcrun_c and PlistBuddy_c
+flipped both prefixes without touching a generated block, and the buck-registry pragmas stayed
+correct because they name whichever target produces the reference artifact. Both gates were
+re-run AGAINST THE RENAMED TARGETS, because a rename that swapped the wrong pair would still
+build.
+
+**THE GATES LIVE IN scripts/ NOW** (buck-xcrun-parity.sh, buck-plistbuddy-parity.sh) and run from
+the suite ONLY when darwin/xcselect or darwin/PlistBuddy is modified in the working copy, or when
+CIDER_GUEST_PARITY is set. Each boots the container and materializes a 600 MB prefix, and the
+container faults about once per 61 cases, so running them every time buys a slow suite and an
+occasional meaningless red; but these are the INSTALLED binaries now, so a regression ships. The
+SKIP prints what it looked at, that it found zero modified entries, and how to force a run, which
+is the difference between a considered skip and the silent nothing #85 found.
+
+**THE ONE DELIBERATE DIVERGENCE IS A CRASH THAT IS NOT REPRODUCED.** `Add "unterminated` makes the
+C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands it to strcasecmp.
+The port prints the message once and abandons the command, and the gate ASSERTS that difference
+rather than skipping the case.
+
+
+### #101 - dockur/macos: read it, and NOTHING transfers. Here is why, with the lines
+
+The user asked 2026-08-12 whether github.com/dockur/macos holds anything useful. Read at commit
+state of 2026-08-11 (master, MIT, 21.4k stars, "MacOS inside a Docker container"). The answer is
+a clear negative, and a negative is worth writing down because it saves the next person the hour.
+
+**THE EXECUTION MODELS ARE OPPOSITES, and that is not a detail, it is the whole result.** That
+project VIRTUALISES: `Dockerfile:22` is `COPY --from=qemux/qemu:7.45 / /`, it needs `/dev/kvm`
+and `/dev/net/tun` (`readme.md:57`), and it boots a REAL Apple kernel under OpenCore on emulated
+hardware. Cider TRANSLATES: no Apple kernel, no VM, no virtio, Mach-O binaries running directly
+on the Linux kernel through our own dyld, libSystem and duct-tape. Nearly everything in that
+repository exists to service a hypervisor boundary that Cider does not have.
+
+**1. HOW IT GETS APPLE BITS: live, per request, and impossible to pin.** This was the most
+promising angle and it is the one that fails hardest. `src/install.sh` talks to Apple's internet
+recovery service directly:
+
+    install.sh:87-89   GETs https://osrecovery.apple.com/ with -A "InternetRecovery/1.0" purely
+                       to scrape a session cookie out of the verbose headers
+    install.sh:101-110 POSTs board id, serial and two random 64 character nonces to
+                       osrecovery.apple.com/InstallationPayload/RecoveryImage
+    install.sh:137-139 the reply carries a CDN URL plus an EXPIRING asset token
+    install.sh:153-156 fetches from oscdn.apple.com with Cookie: AssetToken=...
+
+**AND THE ONLY VERIFICATION IS A LENGTH MATCH.** `install.sh:152` HEADs the CDN for a size and
+`install.sh:60` errors when the downloaded byte count differs. There is no checksum and no
+signature anywhere in the file; the remaining checks are that the result is a valid disk image
+and that it exposes boot.efi (`install.sh:243`). That is a sensible best effort for something
+that cannot be hashed, and it is the opposite of what we need. Our fetches are content addressed:
+nix/darwinRust.nix pins two tarballs by sha256 and the build fails if a byte moves. NOTHING TO
+TAKE HERE.
+
+**2. THE LEGAL POSTURE IS THE STRONGEST REASON THIS CANNOT BE BORROWED, and they state it
+themselves.** `readme.md:333`: "by installing Apple's macOS, you must accept their end-user
+license agreement, which does not permit installation on non-official hardware. So only run this
+container on hardware sold by Apple, as any other use will be a violation of their terms and
+conditions." Repeated at `readme.md:344`. Their model pushes the EULA onto the user and ships no
+Apple code themselves. Cider never installs macOS at all, which is precisely why the translation
+approach exists, so we neither inherit that constraint nor may we adopt their acquisition path
+for SDKs or frameworks. The project also ships `macserial` (`Dockerfile:16`, from OpenCorePkg) to
+generate Apple serial numbers, which is a direction we have no reason to go.
+
+**3. NETWORKING, SHARING AND DISPLAY ARE NOT EVEN IN THIS REPOSITORY.** The readme advertises
+"NAT, user-mode, macvlan, and macvtap networking" (`readme.md:26`) and a browser view on port
+8006, but `src/boot.sh` contains no netdev, no 9p, no samba and no display option: grep finds only
+OVMF paths and one `virtio-blk-pci` for the boot disk (`boot.sh:531`). All of it is inherited from
+the qemux/qemu base image. Those layers exist BECAUSE there is a guest kernel to bridge to. A
+Cider process shares the host filesystem and network directly through our syscall translation, so
+there is no equivalent seam to borrow.
+
+**4. THEY DO NOT VERIFY A BOOT AT ALL.** This was the angle I expected to yield something, since
+proving a boot worked is a problem we share. `.github/workflows/test.yml` calls `check.yml`, and
+that job is shellcheck plus a hadolint Dockerfile lint plus a JSON and YAML validator. There is no
+runtime job, no boot test, nothing that starts the container. Cider is well ahead here: we boot
+the container and run real programs in scripts/buck-bash-check.nu, buck-appkit-check.nu,
+buck-jsc-check.nu, and since #102 the two guest parity gates.
+
+**THE ONE THING WORTH CREDITING, and we already do it.** Third party fetches are pinned by full
+commit sha rather than by branch: `Dockerfile:27` is
+`VERSION_OSX_KVM="326053dd61f49375d5dfb28ee715d38b04b5cd8e"` for raw.githubusercontent content,
+which makes that content effectively addressed by hash. Our nix inputs and submodule pins already
+work this way, so it is agreement rather than a lesson.
+
+**CONCLUSION: do not vendor from it, do not depend on it, and do not start anything off the back
+of it.** The only lasting value is this entry, so nobody re-reads the repository hoping the SDK
+acquisition problem was solved over there. It was not; it was made someone else's problem.
+
+
+### #97 to #99: porting buck2 into the overby.me monorepo, which takes no Python
+
+**#99 IS DONE as of 2026-08-12.** All 2,244 lines of build-path Python are Rust: the graph dump,
+the spec lowering, the source closure, the skeletoniser, the buck-src normaliser and the
+dynamic-derivation spec fixup. Each flip was verified by rebuilding the content addressed
+artifact it feeds and comparing STORE PATHS, which for a CA output is a byte comparison: the
+graph, the specs, the sources and the skeleton all came out identical. Nothing on the build path
+is interpreted now except the buck2 rules' own python, which is upstream's.
+
+**See `docs/monorepo-port.md`**, which carries the measurements. The headline from #97: the eight
+`gen-*.py` scripts are 5,338 lines, and the premise that the whole class is dead-end reference
+reading is WRONG FOR HALF OF IT. Four are live generators over live inputs, and the biggest file
+is not a tool at all but a LIBRARY that four live checks import, of which they use 7 percent
+(8 functions, 182 lines of 2,508). Archive 2,743 lines, port 2,595.
+
+The measurement trap worth keeping: grepping for a generator's name finds 2,899 hits for
+`gen-buck-from-ninja.py`, and nearly all are `# GENERATED by scripts/X` headers in the files it
+WROTE. A provenance header is not a call site, and counting it as one makes every generator look
+live.
+
+
+### #96 - a first-party source edit and the group cascade (ANSWERED 2026-08-12: THERE IS NO CASCADE)
+
+**THE PREMISE IN THE OLD TITLE WAS FALSE.** It read "a first-party source edit still
+invalidates every group that stages the project". Measured on the endpoint, it invalidates
+**zero** groups.
+
+**THE MEASUREMENT.** `scripts/buck-quick-check.nu --attr .#cider-buck2-prefix-min --probe
+darwin/frameworks/AVFoundation/constants.m`, which builds the endpoint, appends a nonce comment
+to one first-party source, rebuilds, counts builders that RAN, and reverts:
+
+    counter self test           ran=1, so the counter can report non-zero
+    baseline                    ran=1 in 937.5 s   (the endpoint was warm)
+    after editing one .m        ran=2 in 1276.6 s
+                                cider-buck2-skeleton
+                                cider-buck2-sources
+    of the 1,474 groups         ZERO
+    ld64                        did not rebuild
+    graph                       did not rebuild
+
+**THE POSITIVE CONTROL IS THE POINT, because a zero needs one.** `cider-buck2-sources`
+rebuilding proves the edit REACHED `projectSrc`. Without that, ran=2 would be indistinguishable
+from a probe that measured nothing, and the file was checked against the source filter
+beforehand for the same reason: `nix/lib/cider-src.nix` excludes only top-level names plus every
+file called `BUCK`, and `darwin/` is kept.
+
+**WHAT THE TWO REMAINING BUILDERS ARE.** Not a cascade: `projectSrc` is an input to the graph
+derivation, so when a source changes it must be re-derived. Two derivations and a re-resolution
+is the floor, not a defect.
+
+**WHAT THIS SUPERSEDES.** The figure on record was "323 compiles and still climbing" from a
+probe predating #54, #74, #79 and #95. It is 2. And the entry's own stated cause was the wrong
+code path: it blamed `stageProject` embedding the whole `projectSrc`, which is the
+`sourceGroups` = OFF path, while every endpoint sets it ON and goes through `stageTextFor` plus
+`pinStageLines`, whose pins resolve through `pinsTree` from frozen per-pin stores. #54 narrowed
+the groups, #74 gave the pins a self-contained mirrored tree, #79 gave the escape destinations
+their own store paths. Those three closed this between them; nothing here needed implementing.
+
+**TWO STALE CLAIMS THIS KILLED, both now corrected in place.** `nix/lib/cider-src.nix` justified
+excluding BUCK files by "ld64 is built from this tree (nix/cctools-port.nix) ... 26,351 compile
+steps", and `buck-quick-check.nu` predicted "6 builders, 17.5 minutes" with ld64 rebuilding. That
+file no longer exists and #65 made ld64 the buck2-built linker. The BUCK exclusion RULE still
+stands, on the smaller measured reason above.
+
+**NOTHING TO DO.** Do not implement the fix this entry used to propose. Re-run the probe if the
+staging or source-filter code changes; that is what it is for.
+
+### #95 - migcom stamped the build time into every stub, so 110 groups never cached (DONE)
+
+migcom wrote the wall clock into every generated stub, so two builds of the same inputs at
+different times produced different bytes, and under content addressing that defeated early
+cutoff for everything downstream of a mig group. Found by #66's full-graph comparison: 1,364 of
+1,474 groups identical, 110 differing, all 110 mig.
+
+Fixed by `patches/bootstrap_cmds/0001-migcom-honour-source-date-epoch.patch`. A freshly built
+mig group now reads `stub generated Tue Jan  1 00:00:00 1980`. Guarded by
+`scripts/buck-mig-epoch-check.nu`, which builds ONE mig group instead of the whole graph and is
+in `buck-test.nu`.
+
+Full detail, including the copy I got wrong first: docs/plan-history.md, "#95 in detail".
+
+
+### #92 - read the graph through buck2 structured data, not its rendered output
+
+Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
+
+**THE DEFECT CLASS, and it is not hypothetical.** `buck2 aquery` renders an action command by
+joining the argv with `", "`, and `cider-graph-dump` splits it back apart. That is
+sound only while no argument contains the separator, which is an ASSUMPTION, and it has been
+wrong: perl's `versions.h` passed the C initializer `"5.18", "5.28",` as ONE argument, it came
+back as TWO, and the lowering died on a ValueError out of the configure script. The host, which
+never round-trips through the rendering, built it correctly the whole time. That asymmetry is
+the signature of this bug class: only the Nix route can see it.
+
+**IT IS ALREADY GUARDED, so this is a robustness task and not an outage.** Two halves:
+
+    buck-argv-roundtrip-check.nu            compares unjoin() against `buck2 log what-ran`,
+                                            which carries the real argv as a LIST. It imports
+                                            unjoin from the dumper rather than reimplementing
+                                            it, so it tests the real code path.
+    buck-argv-roundtrip-check.nu --static   no build: every BUCK string literal that becomes an
+                                            argv element must not contain the separator. This
+                                            is the half buck-test.nu runs.
+
+Measured when that went in: exactly ONE literal in the tree contains `", "`, perl's VERSIONS,
+and `configure_file` now passes its values through a file, so it is safe by construction.
+
+**TWO TRAPS RECORDED IN THAT CHECK, worth reading before touching this.** It runs buck2 under
+its OWN isolation dir, because `what-ran` lists only actions that actually EXECUTED; against the
+warm daemon everything is cached, nothing runs, and the check reports zero comparable actions
+while looking like it passed. And the dumper's own `--check-against-what-ran` covers only about
+4 percent of the graph inside the Nix graph derivation, the actions owning artifacts buck2 makes
+in-process, which is why it could not have caught the one bug it exists for.
+
+**SO WHAT #92 BUYS** is deleting the assumption rather than testing it: take the argv as
+structured data and the round trip disappears, along with both checks.
+
+**COSTED 2026-08-12, and the cheap route is CLOSED.** The entry used to end "nothing measured
+says what it costs", so here is the measurement.
+
+    aquery --json does NOT structure the argv. It returns
+      "cmd": "[bash, buck-out/.../getuuid__rustc.sh, rustc, --edition, 2021, ...]"
+    one JSON STRING carrying the same bracketed, comma-space rendering. So the obvious idea,
+    ask aquery for JSON and read a list, buys NOTHING: it is the identical rendering wrapped in
+    quotes, separator and all.
+
+    what-ran --format json DOES carry the real argv, at .reproducer.details.command, which is
+    why buck-argv-roundtrip-check.nu uses it as ground truth. Its constraint is structural:
+    the log is PER INVOCATION and lists only actions that EXECUTED. Demonstrated by accident
+    while measuring this: running it after an aquery returned zero lines, and its stderr said
+    "Showing commands from: buck2 aquery ...". An aquery executes nothing.
+
+    buck2's OWN CRATES are not available here. buck2 is a nixpkgs binary, buck2-unstable
+    2026-04-15, and its source is not in the tree. #97 upstreamed our buck2 INTEGRATION, not
+    buck2 itself. So the title's route means vendoring and version pinning a large external Rust
+    workspace against the exact binary we run.
+
+**THEREFORE, AND THIS IS A RECOMMENDATION NOT A DECISION:** leave it. The assumption is guarded
+by a check the suite runs, exactly one literal in the tree ever carried the separator, and
+configure_file now passes its values through a file so that one is safe BY CONSTRUCTION rather
+than by vigilance. The cheap structured source does not exist, the middle route (drive everything
+through what-ran) requires every action to execute in the dumping invocation, and the titled route
+is a vendoring project. None of that is worth paying to remove a guarded assumption.
+
 
 ### #76 - the Darling-origin host tools in Rust (DONE except two that are toolchain-blocked)
 
@@ -1048,281 +1279,39 @@ contents API reports for the upstream path. Identical means unmodified, full sto
 differs, reverse the known local transformation and hash again: if that reproduces the upstream
 blob, the delta is fully explained and nothing is hiding in it.
 
-### #102 - GUEST Rust: buck2 can build Mach-O Rust binaries now
 
-The user asked for this on 2026-08-12 after #76 left xcrun and PlistBuddy described as blocked.
-That description was too strong: #96 route A had ALREADY cross-compiled a full std Rust program
-and run it in cider. What was missing was never the ability, it was the plumbing, and this entry
-is what closed it.
+### #66 - get the lowering out of the evaluator (DONE 2026-08-11)
 
-**THE DESIGN TURNED ON THE CRATE TYPE, and it was measured rather than argued.**
+BOTH HALVES DONE. A general buck2-graph to dynamic-derivation bridge, worth having for OTHER
+projects; cider is the first CONSUMER, not the target.
 
-    --emit=obj             a std hello leaves 11 Rust symbols undefined
-    --emit=obj -C lto=fat  WORSE, 14, because the allocator shims join them
-    --crate-type staticlib of the 191 symbols the archive cannot satisfy, ZERO are Rust-mangled
+**THE RESULT.** The whole 1,474-group graph builds through the emitted route and reproduces the
+lowered route exactly. Final run: 4,516 builders, zero nix-level errors, all 1,474 producers and
+all 1,474 emitted actions, and the per-group comparison reads
 
-The 191 are libSystem C symbols, malloc and pthread_ and __NSGetArgv and dispatch_, which is
-exactly what //buck-src:system_final already gives every C guest binary. So the archive drops
-into darwin_binary as an ordinary `objs` entry and NOTHING about the link path changes: no
--syslibroot, no dependency on a built prefix, and dylibs arrive as
--Wl,-dylib_file,<install_name>:<artifact> the way they always do.
+    OK the whole graph emitted, all 1474 group(s) match the lowered route
 
-**THE ENTRY POINT IS C.** A staticlib has no main, so a guest Rust tool exports
-`#[unsafe(no_mangle)] pub extern "C" fn main(argc, argv)` and crt1.10.6 finds it. Rust lang_start
-does NOT run: no stack-overflow guard message, no std-installed cleanup. std itself works, and
-darwin/rustprobe is written to prove it rather than assume it, because on macOS args come from
-_NSGetArgv rather than an init hook: the probe asserts std::env::args matches the argc crt1 was
-given, and prints through std::io.
+**WHY THAT ZERO IS EVIDENCE.** The same check on the same graph reported `identical 1364, differ
+110` one run earlier and named every differing group. So it had just demonstrated it can report
+a non-zero, and 110 to 0 is the #95 migcom fix landing. A zero from a check nobody has seen fail
+would have been worth nothing.
 
-    cider-rust-probe argc=1 env_args=1
-    PASS: a Rust binary built for Darwin RAN inside cider
+**KEEP BOTH ROUTES**, for an empirical reason rather than an aesthetic one: the DIFFERENTIAL
+between them found four real defects, two of which neither route could expose alone. A second
+implementation that agrees is a test; deleting it converts a working check into an unverified
+assumption.
 
-**THE TOOLCHAIN IS PINNED, nix/darwinRust.nix.** nixpkgs cannot supply it and the refusal is not
-about Rust: asking the pinned rev for a linux-to-darwin cross set dies at
-x86_64-apple-darwin-cctools-1010.6, because Apple SDK pieces cannot be redistributed to non-Apple
-hosts. Rust's own prebuilt darwin std can be, so this fetches the official rustc AND the official
-rust-std with checksums. Both halves must come from the same release: crate metadata matching is
-a STRING COMPARE, and the nixpkgs rustc appends "built from a source tarball" to an otherwise
-identical 1.95.0/59807616e, which is E0514. Re-measured 2026-08-12, it still reproduces. Two
-tarballs, not three: a sysroot holding ONLY the darwin target produces the same 17,694,176 byte
-archive, so the host std would be 40 MB of nothing.
+- **A, the bridge.** `nix/lib/dyn-actions.nix`, fourteen properties over eleven fixtures via
+  `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.nu` ENFORCES that the
+  reusable half references nothing outside itself, which is the requirement rather than a
+  nicety. Usage, constraints and the limits a real consumer found: `docs/dyn-actions-bridge.md`.
+- **B, the adapter.** `cider-graph-specs` renders the builder script and
+  `cider-graph-specs` writes it plus `needs.json` and a `dyn/` spec dir inside the graph
+  derivation. The lowering no longer assembles a script; it reads the template.
+- **STILL OPEN, and it is the user's call.** Making the adapter standalone means emitting the
+  toolchain list, the staging script and the staged tree scripts. Measured sizes: 1 toolchain
+  set shared by all 1,474, 94 distinct staging scripts, 3,013 staged tree scripts. Nothing
+  measured says what that would cost or save.
 
-**WHAT IS DONE AND WHAT IS NOT.** xcrun is ported and gated inside the container, five cases
-identical in stdout, stderr and rc, reaching both branches (as xcrun the tool is NULLed; as cc it
-is passed through). PlistBuddy is NOT started and is a different size of job: 1,277 lines with
-193 CoreFoundation call sites, so it needs CF bindings before it needs a port.
-
-**A TRAP WORTH KEEPING, because it cost a red gate that looked like a broken port.** xcrun passes
-getprogname() STRAIGHT THROUGH as the tool to invoke, so staging the two binaries as xcrun_c and
-xcrun_rs made all five cases differ: one asked for a tool called xcrun_c, the other for xcrun_rs.
-THE NAME IS AN INPUT to this program. Stage each under the real name in its own directory.
-
-### #102b - PlistBuddy: the measurement that had to come before the port
-
-Written 2026-08-12 because the task said "PlistBuddy needs CF bindings before it needs a port",
-and that framing was MINE and it was wrong. The numbers, all from darwin/PlistBuddy/PlistBuddy.c:
-
-    1,278 lines, 1,070 non-comment      24 top-level functions
-    49 DISTINCT CoreFoundation functions in 139 call sites
-    20 CF type and constant names
-    25 distinct libc calls
-    190 lines (17 percent) mention CF at all
-    133 lines (12 percent) actually CALL CF
-    64 lines do manual memory (malloc, free, strdup, strndup, alloca, CFRelease)
-
-**THE HYPOTHESIS WAS THAT THIS IS A CF GLUE PROGRAM, AND IT IS NOT.** I expected a thin command
-layer over CF, which would have made a Rust port pointless: every line would still be an unsafe
-extern on a raw CFTypeRef with manual refcounting, so nothing would be gained. The measurement
-says the reverse. **83 percent of the program never touches CF.** It is string parsing, a command
-loop, type inference, date formatting and a hand-rolled pretty printer, which is precisely the
-code where C is dangerous and Rust is not. getWord is 69 lines, parseValue 141, runCommand 165,
-prettyPrintPlist 119: none of it is CF, all of it is pointer arithmetic over user input.
-
-**SO THE BINDINGS ARE NOT THE PROJECT.** 49 externs over opaque pointer types is about 150 lines
-of mechanical declaration, done once. There is no vendored core-foundation crate in buck-rust and
-none is needed: CF is a C API and the port needs exactly the 49 functions it calls, not a crate
-that models all of it.
-
-**THREE THINGS THAT ARE NOT MECHANICAL, and they are where a port goes quietly wrong:**
-
-    CFSTR is a MACRO, not a function, so there is no symbol to declare. Used once, at
-      PlistBuddy.c:1226. It has to become a created-and-released CFString.
-    CFGregorianDate crosses the FFI BY VALUE, at :784 and :1025. A repr(C) struct whose field
-      layout is wrong produces plausible wrong dates rather than a crash.
-    CFRangeMake is inline, so it is a repr(C) struct built in Rust, not a call.
-
-**WHY BYTE IDENTITY IS REACHABLE:** the plist itself is written by
-CFPropertyListCreateXMLData, which BOTH implementations call. The formatting nobody wants to
-reproduce is delegated to the same code in both. What the port must reproduce by hand is
-prettyPrintPlist, 119 lines, and that is the thing the gate has to hammer.
-
-**CONCLUSION: it makes sense, and it is a multi-increment job rather than an xcrun.** The order is
-FFI declarations, then the pure-logic functions, then the CF-touching ones, then the gate, which
-must run in the container and must compare the WRITTEN PLIST as well as stdout, stderr and rc.
-
-**DONE 2026-08-12, and the gate is 48 argument cases plus 13 interactive sessions, all identical.**
-Two things are worth carrying out of it, and both are about the GATE rather than the port.
-
-**THE WRITABLE LAYER IS NOT WHERE THE SEED WAS WRITTEN, and getting that wrong invented a project
-bug that does not exist.** The guest root is a union: DSERVER_LIBEXEC_PATH is the read-only base,
-DPREFIX is the writable layer. Reads come from the base, writes land in the prefix. The first gate
-compared the base, saw every written plist byte identical to the seed across twenty mutating
-cases, and concluded that CFURLWriteDataAndPropertiesToResource does nothing under cider. FALSE.
-The files were in $DPREFIX all along, 1,181 bytes against a 524 byte seed. A control caught the
-symptom; going to look for the file rather than believing the symptom found the cause. That claim
-had already been committed, which is why the retraction is a commit of its own.
-
-**THE CONTAINER FAULTS AT STARTUP ABOUT ONCE PER FULL RUN, AND A DIFFERENT CASE EACH TIME.** That
-is the single most useful thing to know before reading a red gate here. Across three full runs of
-61 cases:
-
-    run 1   Set a missing entry   rc 136, SIGFPE, core dumped, no output because stdout was
-                                  block buffered and died with the process. Re-run 10 times
-                                  against EACH binary: 0 of 10 failed.
-    run 2   Copy an entry         identical stdout, rc and written plist; the only difference was
-                                  "[mldr] start-stack mmap at 0x7fffff600000 failed" on stderr,
-                                  on the RUST side
-    run 3   ls alias              the same mldr line, this time on the C side, which died before
-                                  PlistBuddy ran at all: rc 1 and nothing printed
-
-So the loader, not either program. The gate now filters container lines out of stderr (cp: and
-[mldr]) and retries a failing case ONCE. That is safe against exactly this and nothing else: a
-real behavioural difference is deterministic and fails both attempts. The retry count is printed,
-and more than six retries fails the gate, because that would mean the environment is too unstable
-for a green run to mean anything. The clean run needed 0 retries.
-
-**THE HARNESS ALSO FAILED IN A WAY WORTH RECORDING.** One run had ALL 61 cases red while every
-control passed. The cause was an undefined shell function: a helper had been added at the call
-sites but its definition landed in the wrong file, so the files being compared were never
-written. Total failure with healthy controls means the harness, not the program.
-
-**THE FLIP LANDED 2026-08-12: the Rust xcrun and PlistBuddy ARE the installed binaries now.** It
-is a RENAME, not an install-entry edit, which is what makes it safe: buck/prefix/BUCK and
-buck/prefix-min/BUCK map /usr/bin/xcrun and /usr/libexec/PlistBuddy to the canonical target names,
-so handing those names to the Rust targets and moving the C ones to xcrun_c and PlistBuddy_c
-flipped both prefixes without touching a generated block, and the buck-registry pragmas stayed
-correct because they name whichever target produces the reference artifact. Both gates were
-re-run AGAINST THE RENAMED TARGETS, because a rename that swapped the wrong pair would still
-build.
-
-**THE GATES LIVE IN scripts/ NOW** (buck-xcrun-parity.sh, buck-plistbuddy-parity.sh) and run from
-the suite ONLY when darwin/xcselect or darwin/PlistBuddy is modified in the working copy, or when
-CIDER_GUEST_PARITY is set. Each boots the container and materializes a 600 MB prefix, and the
-container faults about once per 61 cases, so running them every time buys a slow suite and an
-occasional meaningless red; but these are the INSTALLED binaries now, so a regression ships. The
-SKIP prints what it looked at, that it found zero modified entries, and how to force a run, which
-is the difference between a considered skip and the silent nothing #85 found.
-
-**THE ONE DELIBERATE DIVERGENCE IS A CRASH THAT IS NOT REPRODUCED.** `Add "unterminated` makes the
-C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands it to strcasecmp.
-The port prints the message once and abandons the command, and the gate ASSERTS that difference
-rather than skipping the case.
-
-### #101 - dockur/macos: read it, and NOTHING transfers. Here is why, with the lines
-
-The user asked 2026-08-12 whether github.com/dockur/macos holds anything useful. Read at commit
-state of 2026-08-11 (master, MIT, 21.4k stars, "MacOS inside a Docker container"). The answer is
-a clear negative, and a negative is worth writing down because it saves the next person the hour.
-
-**THE EXECUTION MODELS ARE OPPOSITES, and that is not a detail, it is the whole result.** That
-project VIRTUALISES: `Dockerfile:22` is `COPY --from=qemux/qemu:7.45 / /`, it needs `/dev/kvm`
-and `/dev/net/tun` (`readme.md:57`), and it boots a REAL Apple kernel under OpenCore on emulated
-hardware. Cider TRANSLATES: no Apple kernel, no VM, no virtio, Mach-O binaries running directly
-on the Linux kernel through our own dyld, libSystem and duct-tape. Nearly everything in that
-repository exists to service a hypervisor boundary that Cider does not have.
-
-**1. HOW IT GETS APPLE BITS: live, per request, and impossible to pin.** This was the most
-promising angle and it is the one that fails hardest. `src/install.sh` talks to Apple's internet
-recovery service directly:
-
-    install.sh:87-89   GETs https://osrecovery.apple.com/ with -A "InternetRecovery/1.0" purely
-                       to scrape a session cookie out of the verbose headers
-    install.sh:101-110 POSTs board id, serial and two random 64 character nonces to
-                       osrecovery.apple.com/InstallationPayload/RecoveryImage
-    install.sh:137-139 the reply carries a CDN URL plus an EXPIRING asset token
-    install.sh:153-156 fetches from oscdn.apple.com with Cookie: AssetToken=...
-
-**AND THE ONLY VERIFICATION IS A LENGTH MATCH.** `install.sh:152` HEADs the CDN for a size and
-`install.sh:60` errors when the downloaded byte count differs. There is no checksum and no
-signature anywhere in the file; the remaining checks are that the result is a valid disk image
-and that it exposes boot.efi (`install.sh:243`). That is a sensible best effort for something
-that cannot be hashed, and it is the opposite of what we need. Our fetches are content addressed:
-nix/darwinRust.nix pins two tarballs by sha256 and the build fails if a byte moves. NOTHING TO
-TAKE HERE.
-
-**2. THE LEGAL POSTURE IS THE STRONGEST REASON THIS CANNOT BE BORROWED, and they state it
-themselves.** `readme.md:333`: "by installing Apple's macOS, you must accept their end-user
-license agreement, which does not permit installation on non-official hardware. So only run this
-container on hardware sold by Apple, as any other use will be a violation of their terms and
-conditions." Repeated at `readme.md:344`. Their model pushes the EULA onto the user and ships no
-Apple code themselves. Cider never installs macOS at all, which is precisely why the translation
-approach exists, so we neither inherit that constraint nor may we adopt their acquisition path
-for SDKs or frameworks. The project also ships `macserial` (`Dockerfile:16`, from OpenCorePkg) to
-generate Apple serial numbers, which is a direction we have no reason to go.
-
-**3. NETWORKING, SHARING AND DISPLAY ARE NOT EVEN IN THIS REPOSITORY.** The readme advertises
-"NAT, user-mode, macvlan, and macvtap networking" (`readme.md:26`) and a browser view on port
-8006, but `src/boot.sh` contains no netdev, no 9p, no samba and no display option: grep finds only
-OVMF paths and one `virtio-blk-pci` for the boot disk (`boot.sh:531`). All of it is inherited from
-the qemux/qemu base image. Those layers exist BECAUSE there is a guest kernel to bridge to. A
-Cider process shares the host filesystem and network directly through our syscall translation, so
-there is no equivalent seam to borrow.
-
-**4. THEY DO NOT VERIFY A BOOT AT ALL.** This was the angle I expected to yield something, since
-proving a boot worked is a problem we share. `.github/workflows/test.yml` calls `check.yml`, and
-that job is shellcheck plus a hadolint Dockerfile lint plus a JSON and YAML validator. There is no
-runtime job, no boot test, nothing that starts the container. Cider is well ahead here: we boot
-the container and run real programs in scripts/buck-bash-check.nu, buck-appkit-check.nu,
-buck-jsc-check.nu, and since #102 the two guest parity gates.
-
-**THE ONE THING WORTH CREDITING, and we already do it.** Third party fetches are pinned by full
-commit sha rather than by branch: `Dockerfile:27` is
-`VERSION_OSX_KVM="326053dd61f49375d5dfb28ee715d38b04b5cd8e"` for raw.githubusercontent content,
-which makes that content effectively addressed by hash. Our nix inputs and submodule pins already
-work this way, so it is agreement rather than a lesson.
-
-**CONCLUSION: do not vendor from it, do not depend on it, and do not start anything off the back
-of it.** The only lasting value is this entry, so nobody re-reads the repository hoping the SDK
-acquisition problem was solved over there. It was not; it was made someone else's problem.
-
-### #92 - read the graph through buck2 structured data, not its rendered output
-
-Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
-
-**THE DEFECT CLASS, and it is not hypothetical.** `buck2 aquery` renders an action command by
-joining the argv with `", "`, and `cider-graph-dump` splits it back apart. That is
-sound only while no argument contains the separator, which is an ASSUMPTION, and it has been
-wrong: perl's `versions.h` passed the C initializer `"5.18", "5.28",` as ONE argument, it came
-back as TWO, and the lowering died on a ValueError out of the configure script. The host, which
-never round-trips through the rendering, built it correctly the whole time. That asymmetry is
-the signature of this bug class: only the Nix route can see it.
-
-**IT IS ALREADY GUARDED, so this is a robustness task and not an outage.** Two halves:
-
-    buck-argv-roundtrip-check.nu            compares unjoin() against `buck2 log what-ran`,
-                                            which carries the real argv as a LIST. It imports
-                                            unjoin from the dumper rather than reimplementing
-                                            it, so it tests the real code path.
-    buck-argv-roundtrip-check.nu --static   no build: every BUCK string literal that becomes an
-                                            argv element must not contain the separator. This
-                                            is the half buck-test.nu runs.
-
-Measured when that went in: exactly ONE literal in the tree contains `", "`, perl's VERSIONS,
-and `configure_file` now passes its values through a file, so it is safe by construction.
-
-**TWO TRAPS RECORDED IN THAT CHECK, worth reading before touching this.** It runs buck2 under
-its OWN isolation dir, because `what-ran` lists only actions that actually EXECUTED; against the
-warm daemon everything is cached, nothing runs, and the check reports zero comparable actions
-while looking like it passed. And the dumper's own `--check-against-what-ran` covers only about
-4 percent of the graph inside the Nix graph derivation, the actions owning artifacts buck2 makes
-in-process, which is why it could not have caught the one bug it exists for.
-
-**SO WHAT #92 BUYS** is deleting the assumption rather than testing it: take the argv as
-structured data and the round trip disappears, along with both checks.
-
-**COSTED 2026-08-12, and the cheap route is CLOSED.** The entry used to end "nothing measured
-says what it costs", so here is the measurement.
-
-    aquery --json does NOT structure the argv. It returns
-      "cmd": "[bash, buck-out/.../getuuid__rustc.sh, rustc, --edition, 2021, ...]"
-    one JSON STRING carrying the same bracketed, comma-space rendering. So the obvious idea,
-    ask aquery for JSON and read a list, buys NOTHING: it is the identical rendering wrapped in
-    quotes, separator and all.
-
-    what-ran --format json DOES carry the real argv, at .reproducer.details.command, which is
-    why buck-argv-roundtrip-check.nu uses it as ground truth. Its constraint is structural:
-    the log is PER INVOCATION and lists only actions that EXECUTED. Demonstrated by accident
-    while measuring this: running it after an aquery returned zero lines, and its stderr said
-    "Showing commands from: buck2 aquery ...". An aquery executes nothing.
-
-    buck2's OWN CRATES are not available here. buck2 is a nixpkgs binary, buck2-unstable
-    2026-04-15, and its source is not in the tree. #97 upstreamed our buck2 INTEGRATION, not
-    buck2 itself. So the title's route means vendoring and version pinning a large external Rust
-    workspace against the exact binary we run.
-
-**THEREFORE, AND THIS IS A RECOMMENDATION NOT A DECISION:** leave it. The assumption is guarded
-by a check the suite runs, exactly one literal in the tree ever carried the separator, and
-configure_file now passes its values through a file so that one is safe BY CONSTRUCTION rather
-than by vigilance. The cheap structured source does not exist, the middle route (drive everything
-through what-ran) requires every action to execute in the dumping invocation, and the titled route
-is a vendoring project. None of that is worth paying to remove a guarded assumption.
+Full detail, every measurement and the corrected claims: docs/plan-history.md, "#66 in detail"
+and the 2026-08-12 heading.

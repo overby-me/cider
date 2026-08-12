@@ -75,13 +75,13 @@
           # Without this, editing any generator relowers all 259 derivations, and this port
           # is largely a matter of editing generators.
           "scripts"
-          # Documentation and editor/tool state. PLAN.md is the one that matters: it is
+          # Documentation and editor/tool state. docs/changelog.md is the one that matters: it is
           # 137K, it is edited in essentially every increment of this port, and until now
           # every one of those edits relowered all 259 derivations. Nothing reads any of
-          # these -- the only mentions of PLAN.md across every BUCK and .bzl in the tree
+          # these -- the only mentions of docs/changelog.md across every BUCK and .bzl in the tree
           # are comments pointing a reader at it, there is no BUCK package at the repo
           # root, and a buck2 glob cannot escape its own package.
-          "PLAN.md"
+          "docs/changelog.md"
           "README.md"
           "CONTRIBUTORS.md"
           "LICENSE"
@@ -844,7 +844,7 @@
   # path from 306,019 files to about 131,048 and left it SHARED, so it cut no cascade. It was
   # measured inert for the shipping endpoint, identical drvPath with the flag either way,
   # because prefix-min sets sourceGroups and never reads this. The evidence it did produce is
-  # kept in PLAN.md rather than here.
+  # kept in docs/changelog.md rather than here.
   projectSrc = src;
 
   # ---- per-component source groups (#54) ----------------------------------

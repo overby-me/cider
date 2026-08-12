@@ -13,7 +13,7 @@ sources can be edited in-tree without the patch-file indirection.
   (opt-in via a `.enable-writable-nix` marker in the prefix). Was
   `patches/ciderd/0001-optional-writable-nix-overlay.patch`.
 - `src/message.cpp` — cache the daemon's own `ucred` (pid/uid/gid) instead of
-  calling getpid/getuid/getgid per message; see `PLAN.md`. Was
+  calling getpid/getuid/getgid per message; see `docs/changelog.md`. Was
   `patches/ciderd/0002-cache-ciderd-own-credentials.patch`.
 
 ## Re-syncing with upstream

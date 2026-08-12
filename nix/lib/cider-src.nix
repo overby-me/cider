@@ -78,7 +78,7 @@ let
         "flake.nix"
         "flake.lock"
         "docs"
-        "PLAN.md"
+        "docs/changelog.md"
         "README.md"
         "CONTRIBUTORS.md"
         ".git"

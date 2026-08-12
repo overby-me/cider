@@ -14,7 +14,7 @@
  *                [-n <profile-name>] [-D <key>=<value>]...
  *                <command> [args...]
  *
- * See: PLAN.md (Task 2.1)
+ * See: docs/changelog.md (Task 2.1)
  */
 
 #include <unistd.h>

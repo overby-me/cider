@@ -20,8 +20,8 @@
  *
  * Exit code 0 = all tests passed, nonzero = failure.
  *
- * See: PLAN.md (Task 1.4)
- *      PLAN.md (Blocker B4)
+ * See: docs/changelog.md (Task 1.4)
+ *      docs/changelog.md (Blocker B4)
  */
 
 #include <stdio.h>

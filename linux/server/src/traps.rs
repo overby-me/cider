@@ -5,7 +5,7 @@
 //! are GUEST addresses (the trap copies results out via the write_memory hook). The
 //! traps act on the CURRENT task/thread (per the running microthread), so a handler
 //! calling them must run on a microthread bound to the guest's task via the registry.
-//! Mirrors generate-rpc-wrappers.py's DSERVER_XNU_SYS_DECLS. See PLAN.md.
+//! Mirrors generate-rpc-wrappers.py's DSERVER_XNU_SYS_DECLS. See docs/changelog.md.
 
 use crate::bindings::xnu_sys_task_t;
 

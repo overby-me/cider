@@ -5,7 +5,7 @@
 //! a microthread bound to the guest's task via the registry. These are the first real
 //! Mach calls on the way to mach_msg (they take no message, so they need no copyin/
 //! copyout and never block). Mirrors call.cpp's TaskSelfTrap/... handlers. See
-//! PLAN.md (bucket A, mach IPC core).
+//! docs/changelog.md (bucket A, mach IPC core).
 
 // Declared here in an `extern "C"` block until xnu-sys became Rust (#71); imported directly
 // now (#75), because the linker matched those by name and rustc never compared them against

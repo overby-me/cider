@@ -950,7 +950,7 @@
       # ── Off git submodules: nix-pinned source tree ───────────────────
       #
       # Darling's 147 vendored trees, assembled from fetchFromGitHub pins in
-      # nix/submodules.json instead of git submodules (see PLAN.md
+      # nix/submodules.json instead of git submodules (see docs/changelog.md
       # and nix/lib/cider-src.nix). Build WITHOUT ?submodules=1 -- cider-src
       # overlays every pinned submodule onto this flake's own tree and applies
       # patches/<name>/. Partial until every hash is filled
@@ -1078,7 +1078,7 @@
       # Initialise a new project with:
       #   nix flake init -t github:nixie-dev/cider-nix#cider-builder
       #
-      # See: docs/darwin-builder.md, PLAN.md (Task 7.7)
+      # See: docs/darwin-builder.md, docs/changelog.md (Task 7.7)
       templates.cider-builder = {
         path = ./templates/cider-builder;
         description = "NixOS configuration with a Darling-based x86_64-darwin remote builder";
@@ -1111,7 +1111,7 @@
       #   nix build .#checks.x86_64-linux.nix-in-cider -L
       #   nix build .#checks.x86_64-linux.cider-builder -L
       #
-      # See: PLAN.md (Tasks 6.1, 6.2, 7.5)
+      # See: docs/changelog.md (Tasks 6.1, 6.2, 7.5)
       checks = pkgs:
         let
           # The buck2 MINIMAL build: it is the gate that actually finishes on this

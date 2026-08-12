@@ -25,7 +25,7 @@
 #   DPREFIX           Override the default Darling prefix (~/.cider)
 #   CIDER_NIX_VERBOSE Set to 1 for debug output (DARLING_NIX_VERBOSE still honoured)
 #
-# See: PLAN.md (Task 3.4)
+# See: docs/changelog.md (Task 3.4)
 
 set -euo pipefail
 

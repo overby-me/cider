@@ -429,7 +429,7 @@ def main [flag?: string] {
 
     # THESE TWO EXIST, ARE CREDITED WITH SAVING AN HOUR EACH, AND NOTHING RAN THEM. Measured
     # 2026-08-11: neither buck-labels-check.nu nor buck-pin-paths-check.nu appeared anywhere in
-    # this file, and a whole-tree search found no other caller either, only prose in PLAN.md
+    # this file, and a whole-tree search found no other caller either, only prose in docs/changelog.md
     # and mentions inside other scripts. That is the exact shape #85 was opened for, a check
     # that exists and never runs, and it had quietly come back for two of them.
     #

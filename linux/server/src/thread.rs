@@ -3,7 +3,7 @@
 //! guest thread, it brackets the interrupt with interrupt_enter/interrupt_exit, and the
 //! daemon tells XNU the thread has entered/left its sigexc state. Mirrors the
 //! xnu_sys_thread_sigexc_* calls in call.cpp's InterruptEnter/InterruptExit + thread.cpp.
-//! See PLAN.md (bucket B.4).
+//! See docs/changelog.md (bucket B.4).
 
 use crate::bindings::xnu_sys_thread_t;
 

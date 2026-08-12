@@ -572,7 +572,7 @@ cider shell bash -lc 'nix-build ...' 2>&1 | grep -i "unimplemented\|STUB"
 ./scripts/triage-syscalls.nu --output /tmp/triage.md
 
 # Check the known triage table
-cat PLAN.md
+cat changelog.md
 ```
 
 If you discover a new unimplemented syscall, please
@@ -699,13 +699,13 @@ See [Performance Tuning](#performance-tuning) above. The most common causes are:
 | **cider-build-hook** | Alternative to SSH — invokes `cider shell` directly |
 | **ciderBuilderModule.nix** | NixOS module that wires everything together declaratively |
 
-For more technical details, see [PLAN.md](../PLAN.md).
+For more technical details, see [changelog.md](../changelog.md).
 
 ---
 
 ## Further Reading
 
-- [Project plan](../PLAN.md) — development plan, known blockers and the syscall triage table
+- [Project plan](../changelog.md) — development plan, known blockers and the syscall triage table
 - [Darling documentation](https://docs.darlinghq.org/) — upstream Darling docs
 - [Nix remote builders](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html) — Nix manual on distributed builds
 - [Blog: Nix All The Way Down](https://ersei.net/en/blog/nix-all-the-way-down) — early exploration of Nix-in-Darling

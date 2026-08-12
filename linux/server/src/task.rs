@@ -2,7 +2,7 @@
 //! take an explicit `xnu_sys_task_t*` (unlike the mach traps, which act on the current
 //! task). A handler gets the task pointer from `sched::current_task()` -- the task its
 //! microthread is bound to -- and passes it here. Mirrors the `process->_dtapeTask`
-//! calls in call.cpp. See PLAN.md (bucket A).
+//! calls in call.cpp. See docs/changelog.md (bucket A).
 
 use crate::bindings::{xnu_sys_semaphore_t, xnu_sys_task_t};
 

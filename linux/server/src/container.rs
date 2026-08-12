@@ -8,11 +8,11 @@
 //! mapped-root inside a user namespace) plus CAP_SYS_ADMIN for unshare/mount/clone. It
 //! CANNOT run in the nix build sandbox and is not exercised by a flake-check demo; it is
 //! validated by splicing the daemon into a real cider runtime (the run recipe in
-//! PLAN.md) and launching it through the cider launcher. Deferred vs the C++
+//! docs/changelog.md) and launching it through the cider launcher. Deferred vs the C++
 //! for now (all best-effort prefix work, orthogonal to the namespace/mount/clone core):
 //! setupUserHome, ciderPreInit, fixPermissions, and rlimit bumps. The writable-/nix
 //! overlay (for guest Nix / M1) IS ported (`mount_nix_overlay`). See
-//! PLAN.md (bucket B, the container main).
+//! docs/changelog.md (bucket B, the container main).
 
 use std::ffi::CString;
 use std::io;

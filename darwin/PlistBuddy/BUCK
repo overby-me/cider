@@ -68,7 +68,7 @@ export_file(
 # PlistBuddy_c, because the parity gate needs both binaries to exist.
 #
 # It is 49 CoreFoundation externs plus a port of the 83 percent of the program that never touches
-# CF. See PLAN.md #102b for the measurement that decided it was worth doing.
+# CF. See docs/changelog.md #102b for the measurement that decided it was worth doing.
 darwin_rust_staticlib(
     name = "PlistBuddy_rs_lib",
     crate_root = "PlistBuddy.rs",

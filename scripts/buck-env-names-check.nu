@@ -96,7 +96,7 @@ const NAMESPACES = ["CIDER" "DARLING" "XTRACE"]
 # Where we talk to people or drive the build. darwin/ and linux/ are deliberately absent:
 # a C macro is not an advertisement, and those trees are where the macros live.
 const ADVERTISING_DIRS = ["scripts" "tests" "docs" "nix" "etc" "tools" "plan"]
-const ADVERTISING_FILES = ["PLAN.md" "README.md" "flake.nix"]
+const ADVERTISING_FILES = ["docs/changelog.md" "README.md" "flake.nix"]
 
 # Everything first-party, for the read side. Pins are excluded: they are upstream, they cannot
 # implement a name we invented, and walking them costs far more than the check is worth.

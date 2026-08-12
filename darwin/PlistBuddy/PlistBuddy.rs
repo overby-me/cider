@@ -20,7 +20,7 @@ along with Darling.  If not, see <http://www.gnu.org/licenses/>.
 
 //! PlistBuddy, ported from PlistBuddy.c (#102).
 //!
-//! WHY THIS IS A PORT WORTH MAKING, from the measurement in PLAN.md rather than from taste: only
+//! WHY THIS IS A PORT WORTH MAKING, from the measurement in docs/changelog.md rather than from taste: only
 //! 17 percent of the C touches CoreFoundation. The other 83 percent is string parsing, a command
 //! loop, type inference and a hand-rolled pretty printer, over user input, with 64 lines of
 //! malloc, free, strdup, strndup and alloca. That is the part this rewrite makes safe. The CF

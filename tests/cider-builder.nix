@@ -13,7 +13,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.cider-builder -L
 #
-# See: PLAN.md
+# See: docs/changelog.md
 { pkgs, cider, ciderBuilderModule, ... }:
 
 let

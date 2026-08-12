@@ -7,7 +7,7 @@
 // logs once and returns NULL/0 (which the caller treats as failure).
 //
 // Generated from the undefined nw_ symbols of libaws-c-io; see
-// PLAN.md. NOT a real Network implementation.
+// docs/changelog.md. NOT a real Network implementation.
 #include <stdio.h>
 #include <stddef.h>
 

@@ -26,7 +26,7 @@
 #
 #   nix build nixpkgs#hello --system x86_64-darwin
 #
-# See: PLAN.md
+# See: docs/changelog.md
 {
   config,
   lib,

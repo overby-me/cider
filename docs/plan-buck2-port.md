@@ -60,7 +60,7 @@ risk register were removed once they described finished work, along with the wri
 of the coverage blind spot, the install rules, the four boot failures and the endpoint
 milestone: each of those is the commit that made the change.
 
-What is still true and current lives in the root `PLAN.md`. The two things below are
+What is still true and current lives in the root `changelog.md`. The two things below are
 kept here because they are neither current status nor finished history.
 
 ## Profiling the evaluation: 152s of CPU down to 9s
@@ -102,8 +102,8 @@ lowered target derivation**, a comment included. For an endpoint whose whole pur
 other people do not rebuild what they did not touch, that was its most expensive bug.
 
 Half fixed since. `nix/lib/ciderBuck2Lower.nix` filters the lowering source, so plan/,
-docs/, nix/, scripts/, the VM tests, PLAN.md and the other documentation no longer relower
-anything -- which matters because editing generators and PLAN.md is most of what this port
+docs/, nix/, scripts/, the VM tests, changelog.md and the other documentation no longer relower
+anything -- which matters because editing generators and changelog.md is most of what this port
 consists of. The precise fix is still open and is task #11: depend on the SOURCES THE
 ACTIONS NAME, which the graph already records per action, rather than on a filtered
 whole-project path.

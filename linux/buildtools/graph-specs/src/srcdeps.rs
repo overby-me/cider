@@ -43,7 +43,7 @@ use std::process::ExitCode;
 // The lowering own exclusion list, so "coarse" here is the CURRENT baseline rather than the
 // unfiltered repo. Keep in step with nix/lib/ciderBuck2Lower.nix.
 const COARSE_EXCLUDE: &[&str] = &[
-    "plan", "docs", "nix", "scripts", "PLAN.md", "README.md", "CONTRIBUTORS.md",
+    "plan", "docs", "nix", "scripts", "docs/changelog.md", "README.md", "CONTRIBUTORS.md",
     "LICENSE", ".vscode", ".claude", ".tangled", ".gdbinit", ".dfx-boot.log",
     ".git", ".jj", ".direnv", "buck-out", "result-graph-ref", "flake.nix", "flake.lock",
 ];

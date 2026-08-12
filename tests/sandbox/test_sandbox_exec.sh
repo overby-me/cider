@@ -6,7 +6,7 @@
 #
 # Expected: all tests pass (exit 0).
 #
-# See: PLAN.md (Task 2.1)
+# See: docs/changelog.md (Task 2.1)
 
 set -u
 

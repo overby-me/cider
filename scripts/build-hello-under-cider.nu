@@ -6,7 +6,7 @@
 # fix (patches/xnu/0006) to get GNU hello's ./configure past its dup2 check.
 #
 # It runs the whole ./configure && make && ./hello in ONE `cider shell`
-# session (rootless cannot re-join a container; see PLAN.md), staging
+# session (rootless cannot re-join a container; see docs/changelog.md), staging
 # the bootstrap-tools, the apple-sdk and the hello tarball through Darling's
 # host-root mount (/Volumes/SystemRoot), building in the writable container
 # $HOME with a writable TMPDIR, and forcing CONFIG_SHELL to the bootstrap bash

@@ -44,7 +44,7 @@
 # iterating on the lowering itself pays it every single time, and nothing else does.
 #
 # --probe is only quick for a path both source filters exclude (scripts/, nix/, docs/,
-# PLAN.md), and probing those tests nothing about the cascade for the same reason they are
+# docs/changelog.md), and probing those tests nothing about the cascade for the same reason they are
 # cheap. A probe anywhere else moves cider-src, which USED to mean ld64 (about 26 min) and
 # the graph (about 18 min) rebuilt before the target was reached. Both are gone now: #56 took
 # the project out of the graph inputs, and #65 replaced the external ld64 with the buck2 built
@@ -123,7 +123,7 @@ def counter-selftest [] {
 }
 
 # What this probe will actually cost, which is not one number. Both source filters exclude
-# scripts/, nix/, docs/ and PLAN.md, so a probe there re-evaluates and rebuilds NOTHING;
+# scripts/, nix/, docs/ and docs/changelog.md, so a probe there re-evaluates and rebuilds NOTHING;
 # anything else moves cider-src.
 #
 # THIS COMMENT USED TO END "and drags ld64 and the graph in ahead of the target". Both halves
@@ -131,7 +131,7 @@ def counter-selftest [] {
 # linker, and nix/cctools-port.nix, the file the claim pointed at, no longer exists.
 def probe-cost []: string -> string {
     let path = $in
-    let free = ["docs/", "PLAN.md"]
+    let free = ["docs/", "docs/changelog.md"]
     # scripts/ and nix/ are excluded from the SOURCE FILTERS, so they do not move cider-src,
     # but that is not the same as free: several are nix path INPUTS, referenced as
     # ${../../scripts/<name>}, so editing one moves the derivation that uses it. Measured:

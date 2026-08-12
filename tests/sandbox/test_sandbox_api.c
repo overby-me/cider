@@ -12,7 +12,7 @@
  *
  * Expected: all tests pass (exit 0).
  *
- * See: PLAN.md (Tasks 2.2, 2.3)
+ * See: docs/changelog.md (Tasks 2.2, 2.3)
  */
 
 #include <stdio.h>

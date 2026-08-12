@@ -115,12 +115,32 @@ scripts/    42 checks and the developer loop, in nushell
 `buck-src/` and `buck-rust/` hold about 260,000 and 3,000 files respectively and are almost
 entirely gitignored; only their generated `BUCK` files are committed.
 
+### Building without Nix, which is how you should iterate
+
+**Nix is the packaging, not the build.** The build is Buck2, and you can drive it directly. A
+Nix-built prefix takes an hour; a Buck2 rebuild after editing one file takes seconds, and this is
+the loop to use while working.
+
+```
+nix develop                 # the toolchain only: clang, rustc, buck2, nushell
+scripts/buck-setup.nu       # writes .buckconfig.local with the store paths of those tools
+buck2 build //...           # or a single target, which is the point
+```
+
+`scripts/buck-setup.nu` is what connects the two: it resolves the compiler, the guest toolchain,
+the host library directories that `wrapgen` dlopens, and the guest Rust toolchain, and writes
+them into a machine-local `.buckconfig.local` that is gitignored. Rerun it after a nixpkgs bump
+moves any of those store paths.
+
+You still need Nix to GET the toolchain, and to produce an installable package. You do not need
+it to compile, link, or run the checks.
+
 Run the checks with:
 
 ```
 scripts/buck-test.nu
 ```
 
-[PLAN.md](PLAN.md) is the working record: what is being done, what was measured, and what was
+[docs/changelog.md](docs/changelog.md) is the working record: what is being done, what was measured, and what was
 tried and rejected. [docs/release-readiness.md](docs/release-readiness.md) is what stands between
 this and a first release.

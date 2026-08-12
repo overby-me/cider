@@ -29,7 +29,7 @@
 #   "# cmake target:" and "buck-registry:"    the FROZEN REFERENCE path space
 #   "previously the submodule"                VENDORED.md sentences about the PAST
 #   "/build/build/"                           the cmake BINARY DIR path space
-#   PLAN.md                                   34 hits mixing current layout with past failures;
+#   docs/changelog.md                                   34 hits mixing current layout with past failures;
 #                                             only a reader can tell which is which
 #
 # PORTED FROM PYTHON (#98), byte identical in dry run over the whole tracked tree.
@@ -53,7 +53,7 @@ const MANIFEST = "nix/submodules.json"
 # spelling in order to explain which lines are frozen and why, so a sweep that rewrote it would
 # destroy the explanation of what the sweep does.
 const SELF = "scripts/buck-move-pins.nu"
-const SKIP_FILES = ["PLAN.md" "nix/submodules.json" "scripts/buck-move-pins.nu"]
+const SKIP_FILES = ["docs/changelog.md" "nix/submodules.json" "scripts/buck-move-pins.nu"]
 const SKIP_REL_PREFIX = ["linux/server/target/"]
 
 # Lines that mention the string but must keep the old spelling.
@@ -215,7 +215,7 @@ def main [--apply, --dry-run (-n)] {
   }
   if not $apply {
     say ""
-    say "DRY RUN. Nothing was written. PLAN.md and the manifest text are excluded; pass --apply to write."
+    say "DRY RUN. Nothing was written. docs/changelog.md and the manifest text are excluded; pass --apply to write."
   }
   exit 0
 }

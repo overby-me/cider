@@ -2,7 +2,7 @@
 //! run on its OWN task (its own XNU state), not the shared kernel task. A microthread
 //! spawned via `spawn_on` is bound to the guest's task, so sched::current_task()
 //! inside its handler returns that task -- the routing mechanism. See
-//! PLAN.md (Stage 4).
+//! docs/changelog.md (Stage 4).
 
 use crate::bindings::*;
 use crate::sched::{self, Microthread, TaskCtx};

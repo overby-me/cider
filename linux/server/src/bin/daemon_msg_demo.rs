@@ -5,7 +5,7 @@
 //! through XNU's ipc_mqueue, and copies the received message OUT to the client
 //! (copyoutmsg -> write_memory -> process_vm_writev(client)). Both copies cross the
 //! process boundary, exactly as the real daemon does. The round trip is proven by the
-//! message id surviving. See PLAN.md (handler breadth over the socket).
+//! message id surviving. See docs/changelog.md (handler breadth over the socket).
 
 use cider::handler::Handler;
 use cider::mach;

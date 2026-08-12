@@ -4,7 +4,7 @@
 //! fresh microthread per call. Composes persistent threads (park/wake) with the
 //! generated dispatch: the loop waits for a call, dispatches it, posts the reply, then
 //! parks for the next; a per-thread stack counter proves the SAME thread served them
-//! all. See PLAN.md (bucket B.2).
+//! all. See docs/changelog.md (bucket B.2).
 
 use cider::mach;
 use cider::registry::Registry;

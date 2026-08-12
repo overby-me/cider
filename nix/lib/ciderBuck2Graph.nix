@@ -123,10 +123,10 @@
           "plan"
           "docs"
           "nix"
-          # The prose. A PLAN.md edit cost a 30 minute graph rebuild and a full relowering
+          # The prose. A docs/changelog.md edit cost a 30 minute graph rebuild and a full relowering
           # before this line: the lowering had already been taught to ignore it
           # (d8af37a70), the graph had not.
-          "PLAN.md"
+          "docs/changelog.md"
           "README.md"
           "CONTRIBUTORS.md"
           # The generators and the check suite. buck2 never opens one: the only path

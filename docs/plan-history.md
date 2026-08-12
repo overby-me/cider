@@ -1,19 +1,19 @@
-# PLAN.md history: per-task post-mortems, archived 2026-08-11
+# changelog.md history: per-task post-mortems, archived 2026-08-11
 
-Moved out of PLAN.md verbatim so that file can be navigated. NOTHING HERE IS DELETED and
+Moved out of changelog.md verbatim so that file can be navigated. NOTHING HERE IS DELETED and
 nothing is summarised: several of the fixes made on 2026-08-11 came out of post-mortems
-written weeks earlier, so the detail is the point. What PLAN.md keeps is status,
+written weeks earlier, so the detail is the point. What changelog.md keeps is status,
 architecture, the invariants, the open queue and the harness traps; what moved here is the
 per-task narrative of how each one was reached.
 
-The durable RULES that were embedded in these narratives were hoisted back into PLAN.md
+The durable RULES that were embedded in these narratives were hoisted back into changelog.md
 rather than left only here, so this file is provenance rather than something to consult
 before working.
 
 
 ---
 
-## Archived from PLAN.md lines 28 to 634
+## Archived from changelog.md lines 28 to 634
 
 ## Buck2 port: the order to work in
 
@@ -626,7 +626,7 @@ ordinary revision bump in c99441f1, verified on both bisect targets plus rungs 1
 
 ---
 
-## Archived from PLAN.md lines 1759 to 1858
+## Archived from changelog.md lines 1759 to 1858
 
 ## Grouped build: eval speed (done) vs incremental rebuild (open) — task #80
 
@@ -736,7 +736,7 @@ below it was written earlier the same day and its counts are of that moment: the
 in particular has moved from six to eleven, and the sentence saying so is left as written
 rather than edited, because this file is a record of what was known when.
 
-Moved out of PLAN.md to keep it short. This is the working record: what was measured, what
+Moved out of changelog.md to keep it short. This is the working record: what was measured, what
 turned out false, and the traps that cost time.
 
 ### #66 — get the lowering out of the evaluator
@@ -995,7 +995,7 @@ cider-shaped in here" were never a check.
 
 ## #95 in detail (2026-08-11)
 
-Moved out of PLAN.md to keep it short.
+Moved out of changelog.md to keep it short.
 
 ### #95 - migcom stamps the build time into every stub, so 110 groups never cache
 
@@ -1082,9 +1082,9 @@ the staging script through `CIDER_STAGE`, so both routes rebuilt from there.
 So the rebuild was real and necessary, but its cause was the source tree rather than the graph,
 and a re-run of the port checks after it compares against the same graph as before.
 
-## The stage 1 and stage 2 queue, moved out of PLAN.md 2026-08-12
+## The stage 1 and stage 2 queue, moved out of changelog.md 2026-08-12
 
-MOVED RATHER THAN DELETED, and it is 634 lines, which was 45 percent of PLAN.md. Every
+MOVED RATHER THAN DELETED, and it is 634 lines, which was 45 percent of changelog.md. Every
 numbered item in it is a finished task: the stock switch and the GUI frameworks (#18 to
 #22), the nine unported cli edges (#21), the host tools (#8), the NixOS VM (#10, #12), the
 daemon growth traps (#48), the relative escape findings (#74, #79, now guarded by
@@ -1167,7 +1167,7 @@ has been true six times running, each time a check freshly written.
   the BUILD tree only -- `buck/ src/ darwin/ linux/ tests/ etc/ misc/ patches/
   templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. (`cmake/` was in this
   list until #82 removed cmake; it no longer exists.) `scripts/`, `nix/`,
-  `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
+  `docs/`, `plan/`, `changelog.md` and `flake.nix` are NOT in it, with three exceptions that
   are their own inputs: `buck2-graph-dump.py`, `buck-src-normalise.py`,
   and `nix/lib/ciderBuck2{Graph,Lower}.nix`, which ARE the derivations.
   `scripts/buck-endpoint-stale.nu` answers this in a second, and it now takes the rule from
@@ -1727,7 +1727,7 @@ currently un-tracked.
 
 The task #80 grouped-build eval-speed analysis moved to `docs/plan-history.md`.
 
-## #66 full entry as it stood when the task closed, moved out of PLAN.md 2026-08-12
+## #66 full entry as it stood when the task closed, moved out of changelog.md 2026-08-12
 
 The PLAN entry is now a summary. This is what it said in full, kept for the measurements
 and for the two claims it records as WRONG, which are the useful part.

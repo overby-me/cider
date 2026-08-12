@@ -5,7 +5,7 @@
 //! microthread bound to the client's task (created once, parked between calls and woken
 //! by the socket loop), which dispatches each through the shared Handler and posts the
 //! reply. This composes checkin/checkout + the doWork loop + real-socket serving +
-//! cross-process memory + the mach engine into one session. See PLAN.md.
+//! cross-process memory + the mach engine into one session. See docs/changelog.md.
 
 use cider::handler::Handler;
 use cider::mach;

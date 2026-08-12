@@ -15,7 +15,7 @@
 //! Every op returns an `int` errno (0 == success) and writes the u32 retval through a
 //! pointer -- the same `retvalPointer` (a stable per-thread slot) the C++
 //! `Call::<name>::processCall` passes; see the handler wiring in `handler.rs`. See
-//! PLAN.md (the psynch bucket).
+//! docs/changelog.md (the psynch bucket).
 
 // Declared here in an `extern "C"` block until xnu-sys became Rust (#71); imported directly
 // now (#75). All nine are the thin forwarding wrappers in xnu_sys_psynch, which supply

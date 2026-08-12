@@ -5,7 +5,7 @@
 //! latest event), and the daemon pushes a `notification` message when a watched event
 //! (e.g. the target's death -> NOTE_EXIT) occurs. Raw SEQPACKET framing (one struct per
 //! message, no length prefix), matching ciderd's MessageQueue. Mirrors
-//! DarlingServer::Kqchan::Process (kqchan.cpp). See PLAN.md (bucket B.8).
+//! DarlingServer::Kqchan::Process (kqchan.cpp). See docs/changelog.md (bucket B.8).
 
 use crate::bindings::xnu_sys_task_t;
 use crate::sched;

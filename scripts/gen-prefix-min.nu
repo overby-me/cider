@@ -32,7 +32,7 @@ const EXCLUDE_PKGS = [
     "//buck-src/ruby"
     # zsh's 35 loadable modules. Removing the zsh BINARY by label left these installed at
     # usr/lib/zsh/5.7.1/zsh/*.so, orphaned: nothing can load them. This is also the omission
-    # PLAN.md recorded from the start, that the prose claimed the scripting languages were
+    # docs/changelog.md recorded from the start, that the prose claimed the scripting languages were
     # excluded while the list omitted //buck-src/zsh. Closed at the package level.
     "//buck-src/zsh"
 ]

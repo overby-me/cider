@@ -7,7 +7,7 @@
 //! (copyinmsg -> read_memory hook), XNU routes it through the port's ipc_mqueue, and
 //! the receive copies it OUT to the guest buffer (copyoutmsg -> write_memory hook). The
 //! guest task carries the demo's own pid, so both copies target our own memory. The
-//! round trip is proven by the message id surviving. See PLAN.md.
+//! round trip is proven by the message id surviving. See docs/changelog.md.
 
 use cider::mach;
 use cider::registry::Registry;

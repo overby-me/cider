@@ -2,7 +2,7 @@
 //!
 //! Boundary (frozen): the C xnu-sys (XNU emulation) is consumed via the xnu_sys_*
 //! API + the xnu_sys_hooks vtable; everything above it is safe-ish Rust. See
-//! PLAN.md. Proven so far (spikes): the link + xnu_sys_init
+//! docs/changelog.md. Proven so far (spikes): the link + xnu_sys_init
 //! (Stage 0), both microthread suspend/resume paths across the FFI (Stage 3), and
 //! the byte-identical RPC wire codec (Stage 1). This library is the Stage 4
 //! foundation: a reusable, static-mut-free microthread scheduler + hook layer

@@ -2,7 +2,7 @@
 //
 // Security is the largest cone the port builds that had never executed: 38 static archives
 // and 5 dylibs, and a 9.3MB framework binary. Its exported-symbols list is what pulls the
-// archive members in at link time (see the security_exp note in PLAN.md), so "it links" and
+// archive members in at link time (see the security_exp note in docs/changelog.md), so "it links" and
 // "its code runs" are further apart here than anywhere else in the tree.
 //
 // Everything is self-contained: a known digest, and a certificate embedded below as DER so

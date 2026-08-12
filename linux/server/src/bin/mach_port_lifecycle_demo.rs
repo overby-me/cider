@@ -3,7 +3,7 @@
 //! copied out via the write_memory hook), destroy it with mach_port_mod_refs(-1), then
 //! confirm the name is gone (mach_port_type now returns KERN_INVALID_NAME). The guest
 //! task carries the demo's own pid so the type copyout lands in a local. See
-//! PLAN.md (bucket A, mach IPC core).
+//! docs/changelog.md (bucket A, mach IPC core).
 
 use cider::mach;
 use cider::registry::Registry;

@@ -40,7 +40,7 @@
 # flag argument is rejected by the nushell parser with exit 1 where bash printed its
 # own message and exited 2.
 #
-# See: PLAN.md (Task 4.1)
+# See: docs/changelog.md (Task 4.1)
 
 def colours [] {
     if (is-terminal --stdout) {
@@ -148,7 +148,7 @@ def level1_echo_to_out [ctx: record] {
         print "    \u{2022} 'Bad file descriptor' / ENOEXEC: sandbox-exec stub issue (Phase 2)"
         print "    \u{2022} 'sandbox profile' write fail: check /tmp is writable inside prefix"
         print "    \u{2022} Builder hangs: posix_spawn with POSIX_SPAWN_SETEXEC broken"
-        print "    \u{2022} 'Unimplemented syscall': check PLAN.md"
+        print "    \u{2022} 'Unimplemented syscall': check docs/changelog.md"
         print ""
         print "  Manual reproduction:"
         print $"    cider shell bash -lc 'nix-build -vvvv --no-out-link --expr \"($expr)\"'"
@@ -596,7 +596,7 @@ def main [
         log_ $c "Phase 4.1 is complete! Next steps:"
         log_ $c "  \u{2022} Phase 4.2: Test bash in build sandboxes (more complex scripts)"
         log_ $c "  \u{2022} Phase 4.5: Build a C program with Darwin stdenv"
-        log_ $c "  \u{2022} See: PLAN.md"
+        log_ $c "  \u{2022} See: docs/changelog.md"
         exit 0
     }
 }

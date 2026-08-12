@@ -2,9 +2,9 @@
 # gnix-hello.sh -- runs INSIDE one cider shell session (rootless one-shot).
 # Guest `nix build` compiles GNU hello FROM SOURCE via the darwin stdenv and runs
 # it: the *official* campaign M1 (vs the toolchain M1 in build-hello-under-cider.nu).
-# See PLAN.md. Everything below is solved; the build currently reaches
+# See docs/changelog.md. Everything below is solved; the build currently reaches
 # hello's configure and trips the ciderd fork/exec concurrency bug at the
-# first clang call (PLAN.md).
+# first clang call (docs/changelog.md).
 #
 # Requires (set up on the HOST before `cider shell sh <this>`):
 #   - <prefix>/.enable-writable-nix   (ciderd overlays a writable native /nix)
@@ -58,7 +58,7 @@ echo "=BUILD="
 [ -e "$HELLO_DRV" ] || { echo "NO_HELLO_DRV"; exit 1; }
 # Retry: guest build/test binaries occasionally take a transient signal (e.g.
 # SIGFPE in an autoconf mbrtowc/locale probe) -- a cider execution-fidelity
-# flake, not a real build error (PLAN.md, task #44). nix builds are
+# flake, not a real build error (docs/changelog.md, task #44). nix builds are
 # atomic, so a fresh attempt re-runs configure and usually passes.
 brc=1
 for attempt in 1 2 3 4; do

@@ -10,7 +10,7 @@
 #
 # This stub operates on the Darling prefix's /etc/passwd file, NOT the host's.
 #
-# See: PLAN.md (Task 5.1)
+# See: docs/changelog.md (Task 5.1)
 
 set -eu
 

@@ -8,7 +8,7 @@
 # Usage:
 #   nix build .#checks.x86_64-linux.cider-smoke -L
 #
-# See: PLAN.md (Task 6.6)
+# See: docs/changelog.md (Task 6.6)
 { pkgs, cider, ... }:
 
 let

@@ -4,7 +4,7 @@
 //! composes the port machinery with the task_write_memory hook: the XNU trap's copyout
 //! runs copyoutmap -> xnu_sys_hooks->task_write_memory -> process_vm_writev (memory.c).
 //! The demo's guest task carries the demo's OWN pid, so that copyout lands in a local.
-//! See PLAN.md (bucket A, mach IPC core).
+//! See docs/changelog.md (bucket A, mach IPC core).
 
 use cider::mach;
 use cider::registry::Registry;

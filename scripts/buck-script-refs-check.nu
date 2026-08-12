@@ -24,7 +24,7 @@ def say [msg: string] { print -e $msg }
 # per-pin BUCK files are generated from one template, so a stale name there is one fix, and
 # including them makes every run walk 49 files to say the same thing four dozen times.
 const DEFAULT_GLOBS = [
-    "PLAN.md"
+    "docs/changelog.md"
     "flake.nix"
     ".gitignore"
     "plan/**/*.md"
