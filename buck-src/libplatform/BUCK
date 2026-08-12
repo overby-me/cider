@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: platform_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py platform_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) platform_obj   -- review before committing.
 # cmake target: platform_obj  ->  src/external/libplatform/platform_obj
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/libplatform/os/resolver
@@ -94,7 +94,7 @@ cc_objects(
 
 # BEGIN generated: platform dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs platform   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs platform   -- review before committing.
 # Links 3 cmake object library/ies, 3 flag groups in total.
 
 darwin_dylib(
@@ -157,7 +157,7 @@ darwin_dylib(
 
 # BEGIN generated: platform_64bit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py platform_64bit   -- review before committing.
+# gen-buck-from-ninja (deleted) platform_64bit   -- review before committing.
 # cmake target: platform_64bit  ->  src/external/libplatform/platform_64bit
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/libplatform/os/resolver
@@ -211,7 +211,7 @@ cc_objects(
 
 # BEGIN generated: platform_32bit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py platform_32bit   -- review before committing.
+# gen-buck-from-ninja (deleted) platform_32bit   -- review before committing.
 # cmake target: platform_32bit  ->  src/external/libplatform/platform_32bit
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/libplatform/os/resolver
@@ -259,7 +259,7 @@ cc_objects(
 
 # BEGIN generated: platform_static64
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py platform_static64   -- review before committing.
+# gen-buck-from-ninja (deleted) platform_static64   -- review before committing.
 # cmake target: platform_static64  ->  src/external/libplatform/libplatform_static64.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/libplatform/os/resolver

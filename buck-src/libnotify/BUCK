@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_notify_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_notify_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_notify_obj   -- review before committing.
 # cmake target: system_notify_obj  ->  src/external/libnotify/system_notify_obj
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/libnotify/notify_ipcUser.c
@@ -54,7 +54,7 @@ cc_objects(
 
 # BEGIN generated: notifyutil
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py notifyutil   -- review before committing.
+# gen-buck-from-ninja (deleted) notifyutil   -- review before committing.
 # cmake target: notifyutil  ->  src/external/libnotify/notifyutil
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/libnotify
@@ -92,7 +92,7 @@ cc_objects(
 
 # BEGIN generated: notifyd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py notifyd   -- review before committing.
+# gen-buck-from-ninja (deleted) notifyd   -- review before committing.
 # cmake target: notifyd  ->  src/external/libnotify/notifyd/notifyd
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/libnotify/notifyd/notifyServer.c

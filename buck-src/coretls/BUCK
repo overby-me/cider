@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_coretls_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_coretls_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_coretls_obj   -- review before committing.
 # cmake target: system_coretls_obj  ->  src/external/coretls/system_coretls_obj
 
 cc_header_root(
@@ -75,7 +75,7 @@ cc_objects(
 
 # BEGIN generated: coretls
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py coretls   -- review before committing.
+# gen-buck-from-ninja (deleted) coretls   -- review before committing.
 # cmake target: coretls  ->  src/external/coretls/libcoretls.dylib
 
 cc_header_root(
@@ -122,7 +122,7 @@ load("//buck/generated:exports_coretls.bzl", "EXPORTS")
 
 # BEGIN generated: coretls_cfhelpers_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py coretls_cfhelpers_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) coretls_cfhelpers_obj   -- review before committing.
 # cmake target: coretls_cfhelpers_obj  ->  src/external/coretls/coretls_cfhelpers_obj
 
 cc_header_root(
@@ -160,7 +160,7 @@ cc_objects(
 
 # BEGIN generated: coretls_cfhelpers_obj dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs coretls_cfhelpers_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs coretls_cfhelpers_obj   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

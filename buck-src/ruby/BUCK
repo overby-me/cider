@@ -28,7 +28,7 @@ load("//buck/generated:exports_ruby.bzl", "EXPORTS")
 # files. Nothing broke only because xxd resolves ruby at runtime through dlopen and never
 # actually opens one of these headers -- a hole that would have surfaced as a missing
 # header in whatever target needed them next. CROSS_PACKAGE_ROOTS in
-# scripts/gen-buck-from-ninja.py maps the include path to this label.
+# gen-buck-from-ninja (deleted) maps the include path to this label.
 cc_header_root(
     name = "ruby_inc_darling_include_ruby",
     headers = glob([
@@ -42,7 +42,7 @@ cc_header_root(
 
 # BEGIN generated: Ruby
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Ruby   -- review before committing.
+# gen-buck-from-ninja (deleted) Ruby   -- review before committing.
 # cmake target: Ruby  ->  src/external/ruby/Ruby
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -218,7 +218,7 @@ cc_objects(
 
 # BEGIN generated: Ruby dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Ruby   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Ruby   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   Security_x86_64
@@ -253,7 +253,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_encdb
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_encdb   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_encdb   -- review before committing.
 # cmake target: ruby_encdb  ->  ruby_encdb
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -354,7 +354,7 @@ cc_objects(
 
 # BEGIN generated: ruby_encdb dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_encdb   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_encdb   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -387,7 +387,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_big5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_big5   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_big5   -- review before committing.
 # cmake target: ruby_big5  ->  ruby_big5
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -488,7 +488,7 @@ cc_objects(
 
 # BEGIN generated: ruby_big5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_big5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_big5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -521,7 +521,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_cp949
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_cp949   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_cp949   -- review before committing.
 # cmake target: ruby_cp949  ->  ruby_cp949
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -622,7 +622,7 @@ cc_objects(
 
 # BEGIN generated: ruby_cp949 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_cp949   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_cp949   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -655,7 +655,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emacs_mule
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emacs_mule   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emacs_mule   -- review before committing.
 # cmake target: ruby_emacs_mule  ->  ruby_emacs_mule
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -756,7 +756,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emacs_mule dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emacs_mule   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emacs_mule   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -789,7 +789,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_euc_jp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_euc_jp   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_euc_jp   -- review before committing.
 # cmake target: ruby_euc_jp  ->  ruby_euc_jp
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -890,7 +890,7 @@ cc_objects(
 
 # BEGIN generated: ruby_euc_jp dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_euc_jp   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_euc_jp   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -923,7 +923,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_euc_kr
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_euc_kr   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_euc_kr   -- review before committing.
 # cmake target: ruby_euc_kr  ->  ruby_euc_kr
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1024,7 +1024,7 @@ cc_objects(
 
 # BEGIN generated: ruby_euc_kr dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_euc_kr   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_euc_kr   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1057,7 +1057,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_euc_tw
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_euc_tw   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_euc_tw   -- review before committing.
 # cmake target: ruby_euc_tw  ->  ruby_euc_tw
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1158,7 +1158,7 @@ cc_objects(
 
 # BEGIN generated: ruby_euc_tw dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_euc_tw   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_euc_tw   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1191,7 +1191,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_gb2312
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_gb2312   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_gb2312   -- review before committing.
 # cmake target: ruby_gb2312  ->  ruby_gb2312
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1292,7 +1292,7 @@ cc_objects(
 
 # BEGIN generated: ruby_gb2312 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_gb2312   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_gb2312   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1325,7 +1325,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_gb18030
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_gb18030   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_gb18030   -- review before committing.
 # cmake target: ruby_gb18030  ->  ruby_gb18030
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1426,7 +1426,7 @@ cc_objects(
 
 # BEGIN generated: ruby_gb18030 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_gb18030   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_gb18030   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1459,7 +1459,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_gbk
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_gbk   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_gbk   -- review before committing.
 # cmake target: ruby_gbk  ->  ruby_gbk
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1560,7 +1560,7 @@ cc_objects(
 
 # BEGIN generated: ruby_gbk dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_gbk   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_gbk   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1593,7 +1593,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_1   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_1   -- review before committing.
 # cmake target: ruby_iso_8859_1  ->  ruby_iso_8859_1
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1694,7 +1694,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_1 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_1   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_1   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1727,7 +1727,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_2   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_2   -- review before committing.
 # cmake target: ruby_iso_8859_2  ->  ruby_iso_8859_2
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1828,7 +1828,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1861,7 +1861,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_3
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_3   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_3   -- review before committing.
 # cmake target: ruby_iso_8859_3  ->  ruby_iso_8859_3
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -1962,7 +1962,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_3 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_3   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_3   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1995,7 +1995,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_4
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_4   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_4   -- review before committing.
 # cmake target: ruby_iso_8859_4  ->  ruby_iso_8859_4
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2096,7 +2096,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_4 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_4   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_4   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2129,7 +2129,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_5   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_5   -- review before committing.
 # cmake target: ruby_iso_8859_5  ->  ruby_iso_8859_5
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2230,7 +2230,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2263,7 +2263,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_6
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_6   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_6   -- review before committing.
 # cmake target: ruby_iso_8859_6  ->  ruby_iso_8859_6
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2364,7 +2364,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_6 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_6   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_6   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2397,7 +2397,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_7
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_7   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_7   -- review before committing.
 # cmake target: ruby_iso_8859_7  ->  ruby_iso_8859_7
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2498,7 +2498,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_7 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_7   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_7   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2531,7 +2531,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_8
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_8   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_8   -- review before committing.
 # cmake target: ruby_iso_8859_8  ->  ruby_iso_8859_8
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2632,7 +2632,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_8 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_8   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_8   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2665,7 +2665,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_9
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_9   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_9   -- review before committing.
 # cmake target: ruby_iso_8859_9  ->  ruby_iso_8859_9
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2766,7 +2766,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_9 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_9   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_9   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2799,7 +2799,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_10
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_10   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_10   -- review before committing.
 # cmake target: ruby_iso_8859_10  ->  ruby_iso_8859_10
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -2900,7 +2900,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_10 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_10   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_10   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2933,7 +2933,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_11
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_11   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_11   -- review before committing.
 # cmake target: ruby_iso_8859_11  ->  ruby_iso_8859_11
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3034,7 +3034,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_11 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_11   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_11   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3067,7 +3067,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_13
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_13   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_13   -- review before committing.
 # cmake target: ruby_iso_8859_13  ->  ruby_iso_8859_13
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3168,7 +3168,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_13 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_13   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_13   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3201,7 +3201,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_14
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_14   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_14   -- review before committing.
 # cmake target: ruby_iso_8859_14  ->  ruby_iso_8859_14
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3302,7 +3302,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_14 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_14   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_14   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3335,7 +3335,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_15
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_15   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_15   -- review before committing.
 # cmake target: ruby_iso_8859_15  ->  ruby_iso_8859_15
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3436,7 +3436,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_15 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_15   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_15   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3469,7 +3469,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso_8859_16
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso_8859_16   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso_8859_16   -- review before committing.
 # cmake target: ruby_iso_8859_16  ->  ruby_iso_8859_16
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3570,7 +3570,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso_8859_16 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso_8859_16   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso_8859_16   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3603,7 +3603,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_koi8_r
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_koi8_r   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_koi8_r   -- review before committing.
 # cmake target: ruby_koi8_r  ->  ruby_koi8_r
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3704,7 +3704,7 @@ cc_objects(
 
 # BEGIN generated: ruby_koi8_r dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_koi8_r   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_koi8_r   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3737,7 +3737,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_koi8_u
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_koi8_u   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_koi8_u   -- review before committing.
 # cmake target: ruby_koi8_u  ->  ruby_koi8_u
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3838,7 +3838,7 @@ cc_objects(
 
 # BEGIN generated: ruby_koi8_u dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_koi8_u   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_koi8_u   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3871,7 +3871,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_shift_jis
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_shift_jis   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_shift_jis   -- review before committing.
 # cmake target: ruby_shift_jis  ->  ruby_shift_jis
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -3972,7 +3972,7 @@ cc_objects(
 
 # BEGIN generated: ruby_shift_jis dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_shift_jis   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_shift_jis   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4005,7 +4005,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf_16be
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf_16be   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf_16be   -- review before committing.
 # cmake target: ruby_utf_16be  ->  ruby_utf_16be
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4106,7 +4106,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf_16be dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf_16be   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf_16be   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4139,7 +4139,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf_16le
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf_16le   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf_16le   -- review before committing.
 # cmake target: ruby_utf_16le  ->  ruby_utf_16le
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4240,7 +4240,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf_16le dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf_16le   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf_16le   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4273,7 +4273,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf_32be
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf_32be   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf_32be   -- review before committing.
 # cmake target: ruby_utf_32be  ->  ruby_utf_32be
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4374,7 +4374,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf_32be dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf_32be   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf_32be   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4407,7 +4407,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf_32le
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf_32le   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf_32le   -- review before committing.
 # cmake target: ruby_utf_32le  ->  ruby_utf_32le
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4508,7 +4508,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf_32le dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf_32le   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf_32le   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4541,7 +4541,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_windows_31j
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_windows_31j   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_windows_31j   -- review before committing.
 # cmake target: ruby_windows_31j  ->  ruby_windows_31j
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4642,7 +4642,7 @@ cc_objects(
 
 # BEGIN generated: ruby_windows_31j dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_windows_31j   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_windows_31j   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4675,7 +4675,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_windows_1251
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_windows_1251   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_windows_1251   -- review before committing.
 # cmake target: ruby_windows_1251  ->  ruby_windows_1251
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc
@@ -4776,7 +4776,7 @@ cc_objects(
 
 # BEGIN generated: ruby_windows_1251 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_windows_1251   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_windows_1251   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4809,7 +4809,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_transdb
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_transdb   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_transdb   -- review before committing.
 # cmake target: ruby_transdb  ->  ruby_transdb
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -4912,7 +4912,7 @@ cc_objects(
 
 # BEGIN generated: ruby_transdb dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_transdb   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_transdb   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4945,7 +4945,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_big5-trans
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_big5-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_big5-trans   -- review before committing.
 # cmake target: ruby_big5-trans  ->  ruby_big5-trans
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5048,7 +5048,7 @@ cc_objects(
 
 # BEGIN generated: ruby_big5-trans dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_big5-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_big5-trans   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5081,7 +5081,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_chinese
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_chinese   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_chinese   -- review before committing.
 # cmake target: ruby_chinese  ->  ruby_chinese
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5184,7 +5184,7 @@ cc_objects(
 
 # BEGIN generated: ruby_chinese dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_chinese   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_chinese   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5217,7 +5217,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emoji
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emoji   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emoji   -- review before committing.
 # cmake target: ruby_emoji  ->  ruby_emoji
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5320,7 +5320,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emoji dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emoji   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emoji   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5353,7 +5353,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emoji_iso2022_kddi
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emoji_iso2022_kddi   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emoji_iso2022_kddi   -- review before committing.
 # cmake target: ruby_emoji_iso2022_kddi  ->  ruby_emoji_iso2022_kddi
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5456,7 +5456,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emoji_iso2022_kddi dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emoji_iso2022_kddi   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emoji_iso2022_kddi   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5489,7 +5489,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emoji_sjis_docomo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emoji_sjis_docomo   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emoji_sjis_docomo   -- review before committing.
 # cmake target: ruby_emoji_sjis_docomo  ->  ruby_emoji_sjis_docomo
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5592,7 +5592,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emoji_sjis_docomo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emoji_sjis_docomo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emoji_sjis_docomo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5625,7 +5625,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emoji_sjis_kddi
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emoji_sjis_kddi   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emoji_sjis_kddi   -- review before committing.
 # cmake target: ruby_emoji_sjis_kddi  ->  ruby_emoji_sjis_kddi
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5728,7 +5728,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emoji_sjis_kddi dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emoji_sjis_kddi   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emoji_sjis_kddi   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5761,7 +5761,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_emoji_sjis_softbank
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_emoji_sjis_softbank   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_emoji_sjis_softbank   -- review before committing.
 # cmake target: ruby_emoji_sjis_softbank  ->  ruby_emoji_sjis_softbank
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -5864,7 +5864,7 @@ cc_objects(
 
 # BEGIN generated: ruby_emoji_sjis_softbank dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_emoji_sjis_softbank   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_emoji_sjis_softbank   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5897,7 +5897,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_escape
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_escape   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_escape   -- review before committing.
 # cmake target: ruby_escape  ->  ruby_escape
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6000,7 +6000,7 @@ cc_objects(
 
 # BEGIN generated: ruby_escape dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_escape   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_escape   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6033,7 +6033,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_gb18030-trans
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_gb18030-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_gb18030-trans   -- review before committing.
 # cmake target: ruby_gb18030-trans  ->  ruby_gb18030-trans
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6136,7 +6136,7 @@ cc_objects(
 
 # BEGIN generated: ruby_gb18030-trans dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_gb18030-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_gb18030-trans   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6169,7 +6169,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_gbk-trans
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_gbk-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_gbk-trans   -- review before committing.
 # cmake target: ruby_gbk-trans  ->  ruby_gbk-trans
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6272,7 +6272,7 @@ cc_objects(
 
 # BEGIN generated: ruby_gbk-trans dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_gbk-trans   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_gbk-trans   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6305,7 +6305,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_iso2022
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_iso2022   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_iso2022   -- review before committing.
 # cmake target: ruby_iso2022  ->  ruby_iso2022
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6408,7 +6408,7 @@ cc_objects(
 
 # BEGIN generated: ruby_iso2022 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_iso2022   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_iso2022   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6441,7 +6441,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_japanese
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_japanese   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_japanese   -- review before committing.
 # cmake target: ruby_japanese  ->  ruby_japanese
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6544,7 +6544,7 @@ cc_objects(
 
 # BEGIN generated: ruby_japanese dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_japanese   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_japanese   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6577,7 +6577,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_japanese_euc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_japanese_euc   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_japanese_euc   -- review before committing.
 # cmake target: ruby_japanese_euc  ->  ruby_japanese_euc
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6680,7 +6680,7 @@ cc_objects(
 
 # BEGIN generated: ruby_japanese_euc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_japanese_euc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_japanese_euc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6713,7 +6713,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_japanese_sjis
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_japanese_sjis   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_japanese_sjis   -- review before committing.
 # cmake target: ruby_japanese_sjis  ->  ruby_japanese_sjis
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6816,7 +6816,7 @@ cc_objects(
 
 # BEGIN generated: ruby_japanese_sjis dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_japanese_sjis   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_japanese_sjis   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6849,7 +6849,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_korean
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_korean   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_korean   -- review before committing.
 # cmake target: ruby_korean  ->  ruby_korean
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -6952,7 +6952,7 @@ cc_objects(
 
 # BEGIN generated: ruby_korean dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_korean   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_korean   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -6985,7 +6985,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_single_byte
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_single_byte   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_single_byte   -- review before committing.
 # cmake target: ruby_single_byte  ->  ruby_single_byte
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -7088,7 +7088,7 @@ cc_objects(
 
 # BEGIN generated: ruby_single_byte dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_single_byte   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_single_byte   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7121,7 +7121,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf8_mac
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf8_mac   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf8_mac   -- review before committing.
 # cmake target: ruby_utf8_mac  ->  ruby_utf8_mac
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -7224,7 +7224,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf8_mac dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf8_mac   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf8_mac   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7257,7 +7257,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_utf_16_32
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_utf_16_32   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_utf_16_32   -- review before committing.
 # cmake target: ruby_utf_16_32  ->  ruby_utf_16_32
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ruby/gen/enc/trans
@@ -7360,7 +7360,7 @@ cc_objects(
 
 # BEGIN generated: ruby_utf_16_32 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_utf_16_32   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_utf_16_32   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7393,7 +7393,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_bigdecimal
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_bigdecimal   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_bigdecimal   -- review before committing.
 # cmake target: ruby_bigdecimal  ->  ruby_bigdecimal
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -7491,7 +7491,7 @@ cc_objects(
 
 # BEGIN generated: ruby_bigdecimal dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_bigdecimal   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_bigdecimal   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7524,7 +7524,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_util   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_util   -- review before committing.
 # cmake target: ruby_util  ->  ruby_util
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -7624,7 +7624,7 @@ cc_objects(
 
 # BEGIN generated: ruby_util dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_util   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_util   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7657,7 +7657,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_continuation
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_continuation   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_continuation   -- review before committing.
 # cmake target: ruby_continuation  ->  ruby_continuation
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -7755,7 +7755,7 @@ cc_objects(
 
 # BEGIN generated: ruby_continuation dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_continuation   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_continuation   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7788,7 +7788,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_coverage
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_coverage   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_coverage   -- review before committing.
 # cmake target: ruby_coverage  ->  ruby_coverage
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -7886,7 +7886,7 @@ cc_objects(
 
 # BEGIN generated: ruby_coverage dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_coverage   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_coverage   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -7919,7 +7919,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_date_core
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_date_core   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_date_core   -- review before committing.
 # cmake target: ruby_date_core  ->  ruby_date_core
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8020,7 +8020,7 @@ cc_objects(
 
 # BEGIN generated: ruby_date_core dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_date_core   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_date_core   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8053,7 +8053,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_dbm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_dbm   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_dbm   -- review before committing.
 # cmake target: ruby_dbm  ->  ruby_dbm
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8151,7 +8151,7 @@ cc_objects(
 
 # BEGIN generated: ruby_dbm dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_dbm   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_dbm   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8184,7 +8184,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_digest
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_digest   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_digest   -- review before committing.
 # cmake target: ruby_digest  ->  ruby_digest
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8282,7 +8282,7 @@ cc_objects(
 
 # BEGIN generated: ruby_digest dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_digest   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_digest   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8315,7 +8315,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_bubblebabble
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_bubblebabble   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_bubblebabble   -- review before committing.
 # cmake target: ruby_bubblebabble  ->  ruby_bubblebabble
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8413,7 +8413,7 @@ cc_objects(
 
 # BEGIN generated: ruby_bubblebabble dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_bubblebabble   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_bubblebabble   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8446,7 +8446,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_md5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_md5   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_md5   -- review before committing.
 # cmake target: ruby_md5  ->  ruby_md5
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8548,7 +8548,7 @@ cc_objects(
 
 # BEGIN generated: ruby_md5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_md5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_md5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8583,7 +8583,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_rmd160
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_rmd160   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_rmd160   -- review before committing.
 # cmake target: ruby_rmd160  ->  ruby_rmd160
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8685,7 +8685,7 @@ cc_objects(
 
 # BEGIN generated: ruby_rmd160 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_rmd160   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_rmd160   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8720,7 +8720,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_sha1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_sha1   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_sha1   -- review before committing.
 # cmake target: ruby_sha1  ->  ruby_sha1
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8822,7 +8822,7 @@ cc_objects(
 
 # BEGIN generated: ruby_sha1 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_sha1   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_sha1   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8857,7 +8857,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_sha2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_sha2   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_sha2   -- review before committing.
 # cmake target: ruby_sha2  ->  ruby_sha2
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -8959,7 +8959,7 @@ cc_objects(
 
 # BEGIN generated: ruby_sha2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_sha2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_sha2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -8994,7 +8994,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_etc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_etc   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_etc   -- review before committing.
 # cmake target: ruby_etc  ->  ruby_etc
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9092,7 +9092,7 @@ cc_objects(
 
 # BEGIN generated: ruby_etc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_etc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_etc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9125,7 +9125,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_fcntl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_fcntl   -- review before committing.
 # cmake target: ruby_fcntl  ->  ruby_fcntl
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9223,7 +9223,7 @@ cc_objects(
 
 # BEGIN generated: ruby_fcntl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_fcntl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9256,7 +9256,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_fiber
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_fiber   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_fiber   -- review before committing.
 # cmake target: ruby_fiber  ->  ruby_fiber
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9354,7 +9354,7 @@ cc_objects(
 
 # BEGIN generated: ruby_fiber dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_fiber   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_fiber   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9387,7 +9387,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_fiddle
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_fiddle   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_fiddle   -- review before committing.
 # cmake target: ruby_fiddle  ->  ruby_fiddle
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9490,7 +9490,7 @@ cc_objects(
 
 # BEGIN generated: ruby_fiddle dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_fiddle   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_fiddle   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   libffi.dylib
@@ -9525,7 +9525,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_console
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_console   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_console   -- review before committing.
 # cmake target: ruby_console  ->  ruby_console
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9623,7 +9623,7 @@ cc_objects(
 
 # BEGIN generated: ruby_console dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_console   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_console   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9656,7 +9656,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_nonblock
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_nonblock   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_nonblock   -- review before committing.
 # cmake target: ruby_nonblock  ->  ruby_nonblock
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9754,7 +9754,7 @@ cc_objects(
 
 # BEGIN generated: ruby_nonblock dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_nonblock   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_nonblock   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9787,7 +9787,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_wait
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_wait   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_wait   -- review before committing.
 # cmake target: ruby_wait  ->  ruby_wait
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -9885,7 +9885,7 @@ cc_objects(
 
 # BEGIN generated: ruby_wait dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_wait   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_wait   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -9918,7 +9918,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_generator
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_generator   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_generator   -- review before committing.
 # cmake target: ruby_generator  ->  ruby_generator
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10016,7 +10016,7 @@ cc_objects(
 
 # BEGIN generated: ruby_generator dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_generator   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_generator   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10049,7 +10049,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_parser
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_parser   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_parser   -- review before committing.
 # cmake target: ruby_parser  ->  ruby_parser
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10147,7 +10147,7 @@ cc_objects(
 
 # BEGIN generated: ruby_parser dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_parser   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_parser   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10180,7 +10180,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_nkf
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_nkf   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_nkf   -- review before committing.
 # cmake target: ruby_nkf  ->  ruby_nkf
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10278,7 +10278,7 @@ cc_objects(
 
 # BEGIN generated: ruby_nkf dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_nkf   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_nkf   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10311,7 +10311,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_objspace
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_objspace   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_objspace   -- review before committing.
 # cmake target: ruby_objspace  ->  ruby_objspace
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10411,7 +10411,7 @@ cc_objects(
 
 # BEGIN generated: ruby_objspace dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_objspace   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_objspace   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10444,7 +10444,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_openssl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_openssl   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_openssl   -- review before committing.
 # cmake target: ruby_openssl  ->  ruby_openssl
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10573,7 +10573,7 @@ cc_objects(
 
 # BEGIN generated: ruby_openssl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_openssl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_openssl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10608,7 +10608,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_pathname
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_pathname   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_pathname   -- review before committing.
 # cmake target: ruby_pathname  ->  ruby_pathname
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10706,7 +10706,7 @@ cc_objects(
 
 # BEGIN generated: ruby_pathname dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_pathname   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_pathname   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10739,7 +10739,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_psych
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_psych   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_psych   -- review before committing.
 # cmake target: ruby_psych  ->  ruby_psych
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10853,7 +10853,7 @@ cc_objects(
 
 # BEGIN generated: ruby_psych dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_psych   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_psych   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -10886,7 +10886,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_pty
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_pty   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_pty   -- review before committing.
 # cmake target: ruby_pty  ->  ruby_pty
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -10984,7 +10984,7 @@ cc_objects(
 
 # BEGIN generated: ruby_pty dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_pty   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_pty   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11017,7 +11017,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_cparse
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_cparse   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_cparse   -- review before committing.
 # cmake target: ruby_cparse  ->  ruby_cparse
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11115,7 +11115,7 @@ cc_objects(
 
 # BEGIN generated: ruby_cparse dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_cparse   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_cparse   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11148,7 +11148,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_sizeof
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_sizeof   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_sizeof   -- review before committing.
 # cmake target: ruby_sizeof  ->  ruby_sizeof
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11247,7 +11247,7 @@ cc_objects(
 
 # BEGIN generated: ruby_sizeof dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_sizeof   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_sizeof   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11280,7 +11280,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_readline
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_readline   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_readline   -- review before committing.
 # cmake target: ruby_readline  ->  ruby_readline
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11378,7 +11378,7 @@ cc_objects(
 
 # BEGIN generated: ruby_readline dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_readline   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_readline   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11412,7 +11412,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_ripper
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_ripper   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_ripper   -- review before committing.
 # cmake target: ruby_ripper  ->  ruby_ripper
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11510,7 +11510,7 @@ cc_objects(
 
 # BEGIN generated: ruby_ripper dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_ripper   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_ripper   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11543,7 +11543,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_sdbm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_sdbm   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_sdbm   -- review before committing.
 # cmake target: ruby_sdbm  ->  ruby_sdbm
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11642,7 +11642,7 @@ cc_objects(
 
 # BEGIN generated: ruby_sdbm dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_sdbm   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_sdbm   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11675,7 +11675,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_socket
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_socket   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_socket   -- review before committing.
 # cmake target: ruby_socket  ->  ruby_socket
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11787,7 +11787,7 @@ cc_objects(
 
 # BEGIN generated: ruby_socket dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_socket   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_socket   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11820,7 +11820,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_stringio
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_stringio   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_stringio   -- review before committing.
 # cmake target: ruby_stringio  ->  ruby_stringio
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -11918,7 +11918,7 @@ cc_objects(
 
 # BEGIN generated: ruby_stringio dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_stringio   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_stringio   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -11951,7 +11951,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_strscan
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_strscan   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_strscan   -- review before committing.
 # cmake target: ruby_strscan  ->  ruby_strscan
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -12049,7 +12049,7 @@ cc_objects(
 
 # BEGIN generated: ruby_strscan dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_strscan   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_strscan   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -12082,7 +12082,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_syslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_syslog   -- review before committing.
 # cmake target: ruby_syslog  ->  ruby_syslog
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -12180,7 +12180,7 @@ cc_objects(
 
 # BEGIN generated: ruby_syslog dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_syslog   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -12213,7 +12213,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby_zlib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby_zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby_zlib   -- review before committing.
 # cmake target: ruby_zlib  ->  ruby_zlib
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -12312,7 +12312,7 @@ cc_objects(
 
 # BEGIN generated: ruby_zlib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ruby_zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ruby_zlib   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -12346,7 +12346,7 @@ darwin_dylib(
 
 # BEGIN generated: ruby
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ruby   -- review before committing.
+# gen-buck-from-ninja (deleted) ruby   -- review before committing.
 # cmake target: ruby  ->  src/external/ruby/ruby
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -12437,7 +12437,7 @@ cc_objects(
 
 # BEGIN generated: ruby binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ruby   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ruby   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(

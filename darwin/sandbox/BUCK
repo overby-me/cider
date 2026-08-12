@@ -23,7 +23,7 @@ cc_header_root(
 
 # BEGIN generated: system_sandbox_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_sandbox_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_sandbox_obj   -- review before committing.
 # cmake target: system_sandbox_obj  ->  src/sandbox/system_sandbox_obj
 
 cc_objects(
@@ -44,7 +44,7 @@ cc_objects(
 
 # BEGIN generated: system_sandbox dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_sandbox   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_sandbox   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

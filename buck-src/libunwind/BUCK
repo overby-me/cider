@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: unwind_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py unwind_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) unwind_obj   -- review before committing.
 # cmake target: unwind_obj  ->  src/external/libunwind/unwind_obj
 # 9 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -109,7 +109,7 @@ cc_objects(
 
 # BEGIN generated: unwind_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py unwind_static   -- review before committing.
+# gen-buck-from-ninja (deleted) unwind_static   -- review before committing.
 # cmake target: unwind_static  ->  src/external/libunwind/libunwind_static.a
 # 9 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

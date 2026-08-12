@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: edit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py edit   -- review before committing.
+# gen-buck-from-ninja (deleted) edit   -- review before committing.
 # cmake target: edit  ->  src/external/libedit/libedit.3.dylib
 
 cc_header_root(

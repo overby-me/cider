@@ -41,7 +41,7 @@ configure_file(
 
 # BEGIN generated: Python
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Python   -- review before committing.
+# gen-buck-from-ninja (deleted) Python   -- review before committing.
 # cmake target: Python  ->  src/external/python/2.7/Python-2.7.16/Python
 # 113 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -270,7 +270,7 @@ cc_objects(
 
 # BEGIN generated: Python dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Python   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Python   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/Python = Python_dylib
 
@@ -298,7 +298,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_zlib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_zlib   -- review before committing.
 # cmake target: py27_zlib  ->  py27_zlib
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -359,7 +359,7 @@ cc_objects(
 
 # BEGIN generated: py27_zlib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_zlib   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/zlib.so = py27_zlib_dylib
 
@@ -394,7 +394,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_unicodedata
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_unicodedata   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_unicodedata   -- review before committing.
 # cmake target: py27_unicodedata  ->  py27_unicodedata
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -455,7 +455,7 @@ cc_objects(
 
 # BEGIN generated: py27_unicodedata dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_unicodedata   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_unicodedata   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/unicodedata.so = py27_unicodedata_dylib
 
@@ -489,7 +489,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_time
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_time   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_time   -- review before committing.
 # cmake target: py27_time  ->  py27_time
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -550,7 +550,7 @@ cc_objects(
 
 # BEGIN generated: py27_time dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_time   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_time   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/time.so = py27_time_dylib
 
@@ -584,7 +584,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_termios
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_termios   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_termios   -- review before committing.
 # cmake target: py27_termios  ->  py27_termios
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -645,7 +645,7 @@ cc_objects(
 
 # BEGIN generated: py27_termios dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_termios   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_termios   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/termios.so = py27_termios_dylib
 
@@ -679,7 +679,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_syslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_syslog   -- review before committing.
 # cmake target: py27_syslog  ->  py27_syslog
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -740,7 +740,7 @@ cc_objects(
 
 # BEGIN generated: py27_syslog dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_syslog   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/syslog.so = py27_syslog_dylib
 
@@ -774,7 +774,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_strop
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_strop   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_strop   -- review before committing.
 # cmake target: py27_strop  ->  py27_strop
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -835,7 +835,7 @@ cc_objects(
 
 # BEGIN generated: py27_strop dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_strop   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_strop   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/strop.so = py27_strop_dylib
 
@@ -869,7 +869,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_select
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_select   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_select   -- review before committing.
 # cmake target: py27_select  ->  py27_select
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -930,7 +930,7 @@ cc_objects(
 
 # BEGIN generated: py27_select dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_select   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_select   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/select.so = py27_select_dylib
 
@@ -964,7 +964,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_resource
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_resource   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_resource   -- review before committing.
 # cmake target: py27_resource  ->  py27_resource
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1025,7 +1025,7 @@ cc_objects(
 
 # BEGIN generated: py27_resource dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_resource   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_resource   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/resource.so = py27_resource_dylib
 
@@ -1059,7 +1059,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_readline
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_readline   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_readline   -- review before committing.
 # cmake target: py27_readline  ->  py27_readline
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1120,7 +1120,7 @@ cc_objects(
 
 # BEGIN generated: py27_readline dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_readline   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_readline   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/readline.so = py27_readline_dylib
 
@@ -1156,7 +1156,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_pyexpat
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_pyexpat   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_pyexpat   -- review before committing.
 # cmake target: py27_pyexpat  ->  py27_pyexpat
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1217,7 +1217,7 @@ cc_objects(
 
 # BEGIN generated: py27_pyexpat dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_pyexpat   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_pyexpat   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/pyexpat.so = py27_pyexpat_dylib
 
@@ -1252,7 +1252,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_parser
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_parser   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_parser   -- review before committing.
 # cmake target: py27_parser  ->  py27_parser
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1313,7 +1313,7 @@ cc_objects(
 
 # BEGIN generated: py27_parser dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_parser   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_parser   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/parser.so = py27_parser_dylib
 
@@ -1347,7 +1347,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_operator
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_operator   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_operator   -- review before committing.
 # cmake target: py27_operator  ->  py27_operator
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1408,7 +1408,7 @@ cc_objects(
 
 # BEGIN generated: py27_operator dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_operator   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_operator   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/operator.so = py27_operator_dylib
 
@@ -1442,7 +1442,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_mmap
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_mmap   -- review before committing.
 # cmake target: py27_mmap  ->  py27_mmap
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1503,7 +1503,7 @@ cc_objects(
 
 # BEGIN generated: py27_mmap dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_mmap   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/mmap.so = py27_mmap_dylib
 
@@ -1537,7 +1537,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_math
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_math   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_math   -- review before committing.
 # cmake target: py27_math  ->  py27_math
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1599,7 +1599,7 @@ cc_objects(
 
 # BEGIN generated: py27_math dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_math   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_math   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/math.so = py27_math_dylib
 
@@ -1633,7 +1633,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_itertools
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_itertools   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_itertools   -- review before committing.
 # cmake target: py27_itertools  ->  py27_itertools
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1694,7 +1694,7 @@ cc_objects(
 
 # BEGIN generated: py27_itertools dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_itertools   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_itertools   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/itertools.so = py27_itertools_dylib
 
@@ -1728,7 +1728,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_imageop
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_imageop   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_imageop   -- review before committing.
 # cmake target: py27_imageop  ->  py27_imageop
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1789,7 +1789,7 @@ cc_objects(
 
 # BEGIN generated: py27_imageop dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_imageop   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_imageop   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/imageop.so = py27_imageop_dylib
 
@@ -1823,7 +1823,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_grp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_grp   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_grp   -- review before committing.
 # cmake target: py27_grp  ->  py27_grp
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1884,7 +1884,7 @@ cc_objects(
 
 # BEGIN generated: py27_grp dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_grp   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_grp   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/grp.so = py27_grp_dylib
 
@@ -1918,7 +1918,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_future_builtins
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_future_builtins   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_future_builtins   -- review before committing.
 # cmake target: py27_future_builtins  ->  py27_future_builtins
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -1979,7 +1979,7 @@ cc_objects(
 
 # BEGIN generated: py27_future_builtins dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_future_builtins   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_future_builtins   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/future_builtins.so = py27_future_builtins_dylib
 
@@ -2013,7 +2013,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_fcntl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_fcntl   -- review before committing.
 # cmake target: py27_fcntl  ->  py27_fcntl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2074,7 +2074,7 @@ cc_objects(
 
 # BEGIN generated: py27_fcntl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_fcntl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/fcntl.so = py27_fcntl_dylib
 
@@ -2108,7 +2108,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_dl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_dl   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_dl   -- review before committing.
 # cmake target: py27_dl  ->  py27_dl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2169,7 +2169,7 @@ cc_objects(
 
 # BEGIN generated: py27_dl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_dl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_dl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/dl.so = py27_dl_dylib
 
@@ -2203,7 +2203,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_crypt
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_crypt   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_crypt   -- review before committing.
 # cmake target: py27_crypt  ->  py27_crypt
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2264,7 +2264,7 @@ cc_objects(
 
 # BEGIN generated: py27_crypt dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_crypt   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_crypt   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/crypt.so = py27_crypt_dylib
 
@@ -2298,7 +2298,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_cmath
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_cmath   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_cmath   -- review before committing.
 # cmake target: py27_cmath  ->  py27_cmath
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2360,7 +2360,7 @@ cc_objects(
 
 # BEGIN generated: py27_cmath dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_cmath   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_cmath   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/cmath.so = py27_cmath_dylib
 
@@ -2394,7 +2394,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_cStringIO
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_cStringIO   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_cStringIO   -- review before committing.
 # cmake target: py27_cStringIO  ->  py27_cStringIO
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2455,7 +2455,7 @@ cc_objects(
 
 # BEGIN generated: py27_cStringIO dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_cStringIO   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_cStringIO   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/cStringIO.so = py27_cStringIO_dylib
 
@@ -2489,7 +2489,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_cPickle
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_cPickle   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_cPickle   -- review before committing.
 # cmake target: py27_cPickle  ->  py27_cPickle
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2550,7 +2550,7 @@ cc_objects(
 
 # BEGIN generated: py27_cPickle dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_cPickle   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_cPickle   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/cPickle.so = py27_cPickle_dylib
 
@@ -2584,7 +2584,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_bz2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_bz2   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_bz2   -- review before committing.
 # cmake target: py27_bz2  ->  py27_bz2
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2645,7 +2645,7 @@ cc_objects(
 
 # BEGIN generated: py27_bz2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_bz2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_bz2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/bz2.so = py27_bz2_dylib
 
@@ -2680,7 +2680,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_bsddb185
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_bsddb185   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_bsddb185   -- review before committing.
 # cmake target: py27_bsddb185  ->  py27_bsddb185
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2741,7 +2741,7 @@ cc_objects(
 
 # BEGIN generated: py27_bsddb185 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_bsddb185   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_bsddb185   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/bsddb185.so = py27_bsddb185_dylib
 
@@ -2775,7 +2775,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_binascii
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_binascii   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_binascii   -- review before committing.
 # cmake target: py27_binascii  ->  py27_binascii
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2836,7 +2836,7 @@ cc_objects(
 
 # BEGIN generated: py27_binascii dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_binascii   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_binascii   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/binascii.so = py27_binascii_dylib
 
@@ -2870,7 +2870,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_audioop
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_audioop   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_audioop   -- review before committing.
 # cmake target: py27_audioop  ->  py27_audioop
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -2931,7 +2931,7 @@ cc_objects(
 
 # BEGIN generated: py27_audioop dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_audioop   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_audioop   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/audioop.so = py27_audioop_dylib
 
@@ -2965,7 +2965,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_array
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_array   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_array   -- review before committing.
 # cmake target: py27_array  ->  py27_array
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3026,7 +3026,7 @@ cc_objects(
 
 # BEGIN generated: py27_array dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_array   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_array   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/array.so = py27_array_dylib
 
@@ -3060,7 +3060,7 @@ darwin_dylib(
 
 # BEGIN generated: python27exe
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py python27exe   -- review before committing.
+# gen-buck-from-ninja (deleted) python27exe   -- review before committing.
 # cmake target: python27exe  ->  python27exe
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3119,7 +3119,7 @@ cc_objects(
 
 # BEGIN generated: python27exe binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries python27exe   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries python27exe   -- review before committing.
 # Links 2 cmake object library/ies, 3 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/python2.7 = python27exe
 
@@ -3149,7 +3149,7 @@ darwin_binary(
 
 # BEGIN generated: python27exe_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py python27exe_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) python27exe_obj   -- review before committing.
 # cmake target: python27exe_obj  ->  src/external/python/2.7/Python-2.7.16/python27exe_obj
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3208,7 +3208,7 @@ cc_objects(
 
 # BEGIN generated: py27__bisect
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__bisect   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__bisect   -- review before committing.
 # cmake target: py27__bisect  ->  py27__bisect
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3269,7 +3269,7 @@ cc_objects(
 
 # BEGIN generated: py27__bisect dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__bisect   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__bisect   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_bisect.so = py27__bisect_dylib
 
@@ -3303,7 +3303,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__collections
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__collections   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__collections   -- review before committing.
 # cmake target: py27__collections  ->  py27__collections
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3364,7 +3364,7 @@ cc_objects(
 
 # BEGIN generated: py27__collections dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__collections   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__collections   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_collections.so = py27__collections_dylib
 
@@ -3398,7 +3398,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__csv
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__csv   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__csv   -- review before committing.
 # cmake target: py27__csv  ->  py27__csv
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3459,7 +3459,7 @@ cc_objects(
 
 # BEGIN generated: py27__csv dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__csv   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__csv   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_csv.so = py27__csv_dylib
 
@@ -3493,7 +3493,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__ctypes
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__ctypes   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__ctypes   -- review before committing.
 # cmake target: py27__ctypes  ->  py27__ctypes
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3560,7 +3560,7 @@ cc_objects(
 
 # BEGIN generated: py27__ctypes dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__ctypes   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__ctypes   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_ctypes.so = py27__ctypes_dylib
 
@@ -3595,7 +3595,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__ctypes_test
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__ctypes_test   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__ctypes_test   -- review before committing.
 # cmake target: py27__ctypes_test  ->  py27__ctypes_test
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3656,7 +3656,7 @@ cc_objects(
 
 # BEGIN generated: py27__ctypes_test dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__ctypes_test   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__ctypes_test   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_ctypes_test.so = py27__ctypes_test_dylib
 
@@ -3766,7 +3766,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__curses_panel
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__curses_panel   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__curses_panel   -- review before committing.
 # cmake target: py27__curses_panel  ->  py27__curses_panel
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3827,7 +3827,7 @@ cc_objects(
 
 # BEGIN generated: py27__curses_panel dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__curses_panel   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__curses_panel   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_curses_panel.so = py27__curses_panel_dylib
 
@@ -3863,7 +3863,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__elementtree
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__elementtree   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__elementtree   -- review before committing.
 # cmake target: py27__elementtree  ->  py27__elementtree
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -3925,7 +3925,7 @@ cc_objects(
 
 # BEGIN generated: py27__elementtree dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__elementtree   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__elementtree   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_elementtree.so = py27__elementtree_dylib
 
@@ -3959,7 +3959,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__functools
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__functools   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__functools   -- review before committing.
 # cmake target: py27__functools  ->  py27__functools
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4020,7 +4020,7 @@ cc_objects(
 
 # BEGIN generated: py27__functools dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__functools   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__functools   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_functools.so = py27__functools_dylib
 
@@ -4054,7 +4054,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__hashlib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__hashlib   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__hashlib   -- review before committing.
 # cmake target: py27__hashlib  ->  py27__hashlib
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4115,7 +4115,7 @@ cc_objects(
 
 # BEGIN generated: py27__hashlib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__hashlib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__hashlib   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_hashlib.so = py27__hashlib_dylib
 
@@ -4151,7 +4151,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__heapq
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__heapq   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__heapq   -- review before committing.
 # cmake target: py27__heapq  ->  py27__heapq
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4212,7 +4212,7 @@ cc_objects(
 
 # BEGIN generated: py27__heapq dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__heapq   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__heapq   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_heapq.so = py27__heapq_dylib
 
@@ -4246,7 +4246,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__hotshot
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__hotshot   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__hotshot   -- review before committing.
 # cmake target: py27__hotshot  ->  py27__hotshot
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4307,7 +4307,7 @@ cc_objects(
 
 # BEGIN generated: py27__hotshot dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__hotshot   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__hotshot   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_hotshot.so = py27__hotshot_dylib
 
@@ -4341,7 +4341,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__io
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__io   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__io   -- review before committing.
 # cmake target: py27__io  ->  py27__io
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4408,7 +4408,7 @@ cc_objects(
 
 # BEGIN generated: py27__io dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__io   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__io   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_io.so = py27__io_dylib
 
@@ -4442,7 +4442,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__json
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__json   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__json   -- review before committing.
 # cmake target: py27__json  ->  py27__json
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4503,7 +4503,7 @@ cc_objects(
 
 # BEGIN generated: py27__json dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__json   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__json   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_json.so = py27__json_dylib
 
@@ -4537,7 +4537,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__locale
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__locale   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__locale   -- review before committing.
 # cmake target: py27__locale  ->  py27__locale
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4598,7 +4598,7 @@ cc_objects(
 
 # BEGIN generated: py27__locale dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__locale   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__locale   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_locale.so = py27__locale_dylib
 
@@ -4633,7 +4633,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__lsprof
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__lsprof   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__lsprof   -- review before committing.
 # cmake target: py27__lsprof  ->  py27__lsprof
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4695,7 +4695,7 @@ cc_objects(
 
 # BEGIN generated: py27__lsprof dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__lsprof   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__lsprof   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_lsprof.so = py27__lsprof_dylib
 
@@ -4729,7 +4729,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__multiprocessing
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__multiprocessing   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__multiprocessing   -- review before committing.
 # cmake target: py27__multiprocessing  ->  py27__multiprocessing
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4792,7 +4792,7 @@ cc_objects(
 
 # BEGIN generated: py27__multiprocessing dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__multiprocessing   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__multiprocessing   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_multiprocessing.so = py27__multiprocessing_dylib
 
@@ -4826,7 +4826,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__random
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__random   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__random   -- review before committing.
 # cmake target: py27__random  ->  py27__random
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4887,7 +4887,7 @@ cc_objects(
 
 # BEGIN generated: py27__random dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__random   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__random   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_random.so = py27__random_dylib
 
@@ -4921,7 +4921,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__scproxy
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__scproxy   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__scproxy   -- review before committing.
 # cmake target: py27__scproxy  ->  py27__scproxy
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -4985,7 +4985,7 @@ cc_objects(
 
 # BEGIN generated: py27__scproxy dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__scproxy   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__scproxy   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_scproxy.so = py27__scproxy_dylib
 
@@ -5020,7 +5020,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__socket
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__socket   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__socket   -- review before committing.
 # cmake target: py27__socket  ->  py27__socket
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5082,7 +5082,7 @@ cc_objects(
 
 # BEGIN generated: py27__socket dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__socket   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__socket   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_socket.so = py27__socket_dylib
 
@@ -5116,7 +5116,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__sqlite
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__sqlite   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__sqlite   -- review before committing.
 # cmake target: py27__sqlite  ->  py27__sqlite
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5186,7 +5186,7 @@ cc_objects(
 
 # BEGIN generated: py27__sqlite dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__sqlite   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__sqlite   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_sqlite.so = py27__sqlite_dylib
 
@@ -5221,7 +5221,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__ssl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__ssl   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__ssl   -- review before committing.
 # cmake target: py27__ssl  ->  py27__ssl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5282,7 +5282,7 @@ cc_objects(
 
 # BEGIN generated: py27__ssl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__ssl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__ssl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_ssl.so = py27__ssl_dylib
 
@@ -5318,7 +5318,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__struct
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__struct   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__struct   -- review before committing.
 # cmake target: py27__struct  ->  py27__struct
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5379,7 +5379,7 @@ cc_objects(
 
 # BEGIN generated: py27__struct dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__struct   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__struct   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_struct.so = py27__struct_dylib
 
@@ -5413,7 +5413,7 @@ darwin_dylib(
 
 # BEGIN generated: py27__testcapi
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27__testcapi   -- review before committing.
+# gen-buck-from-ninja (deleted) py27__testcapi   -- review before committing.
 # cmake target: py27__testcapi  ->  py27__testcapi
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5474,7 +5474,7 @@ cc_objects(
 
 # BEGIN generated: py27__testcapi dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27__testcapi   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27__testcapi   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/_testcapi.so = py27__testcapi_dylib
 
@@ -5508,7 +5508,7 @@ darwin_dylib(
 
 # BEGIN generated: py27_dbm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_dbm   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_dbm   -- review before committing.
 # cmake target: py27_dbm  ->  py27_dbm
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5572,7 +5572,7 @@ cc_objects(
 
 # BEGIN generated: py27_dbm dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_dbm   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_dbm   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/dbm.so = py27_dbm_dylib
 
@@ -5622,7 +5622,7 @@ prefix_dir(
 
 # BEGIN generated: py27_datetime
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py27_datetime   -- review before committing.
+# gen-buck-from-ninja (deleted) py27_datetime   -- review before committing.
 # cmake target: py27_datetime  ->  py27_datetime
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -5684,7 +5684,7 @@ cc_objects(
 
 # BEGIN generated: py27_datetime dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py27_datetime   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py27_datetime   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/datetime.so = py27_datetime_dylib
 

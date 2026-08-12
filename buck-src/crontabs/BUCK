@@ -9,7 +9,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: newsyslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py newsyslog   -- review before committing.
+# gen-buck-from-ninja (deleted) newsyslog   -- review before committing.
 # cmake target: newsyslog  ->  src/external/crontabs/newsyslog/newsyslog
 
 cc_objects(
@@ -31,7 +31,7 @@ cc_objects(
 
 # BEGIN generated: periodic-wrapper
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py periodic-wrapper   -- review before committing.
+# gen-buck-from-ninja (deleted) periodic-wrapper   -- review before committing.
 # cmake target: periodic-wrapper  ->  src/external/crontabs/periodic/periodic-wrapper
 
 cc_objects(

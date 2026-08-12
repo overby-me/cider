@@ -6,7 +6,7 @@
     "Hand-added dependencies merged into GENERATED target blocks by",
     "because --write replaces a block wholesale and would drop them.",
     "depending on a framework it never declared.",
-    "scripts/gen-buck-from-ninja.py. They live here rather than inside the block,",
+    "gen-buck-from-ninja (deleted). They live here rather than inside the block,",
     "target name the ones it actually includes, so a target cannot silently start"
   ],
   "system_asl_obj": [

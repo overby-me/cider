@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_blocks_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_blocks_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_blocks_obj   -- review before committing.
 # cmake target: system_blocks_obj  ->  src/external/libclosure/system_blocks_obj
 # 3 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -59,7 +59,7 @@ cc_objects(
 
 # BEGIN generated: system_blocks_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_blocks_static   -- review before committing.
+# gen-buck-from-ninja (deleted) system_blocks_static   -- review before committing.
 # cmake target: system_blocks_static  ->  src/external/libclosure/libsystem_blocks_static.a
 # 3 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

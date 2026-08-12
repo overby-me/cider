@@ -24,7 +24,7 @@ cc_header_root(
 
 # BEGIN generated: system_m_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_m_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_m_obj   -- review before committing.
 # cmake target: system_m_obj  ->  src/libm/system_m_obj
 # 118 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -213,7 +213,7 @@ cc_objects(
 
 # BEGIN generated: system_m dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_m   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_m   -- review before committing.
 # Links 2 cmake object library/ies, 4 flag groups in total.
 
 darwin_dylib(
@@ -266,7 +266,7 @@ darwin_dylib(
 
 # BEGIN generated: system_m_extra
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_m_extra   -- review before committing.
+# gen-buck-from-ninja (deleted) system_m_extra   -- review before committing.
 # cmake target: system_m_extra  ->  src/libm/system_m_extra
 # 6 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -349,7 +349,7 @@ cc_objects(
 
 # BEGIN generated: system_m_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_m_static   -- review before committing.
+# gen-buck-from-ninja (deleted) system_m_static   -- review before committing.
 # cmake target: system_m_static  ->  src/libm/libsystem_m_static.a
 # 118 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -538,7 +538,7 @@ cc_objects(
 
 # BEGIN generated: libsystem_m_static.a archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives libsystem_m_static.a   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives libsystem_m_static.a   -- review before committing.
 # Archives 2 cmake object library/ies, 4 flag groups.
 
 cc_static_lib(

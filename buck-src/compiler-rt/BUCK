@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: compiler_rt_64bit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py compiler_rt_64bit   -- review before committing.
+# gen-buck-from-ninja (deleted) compiler_rt_64bit   -- review before committing.
 # cmake target: compiler_rt_64bit  ->  src/external/compiler-rt/lib/builtins/compiler_rt_64bit
 # 141 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -186,7 +186,7 @@ cc_objects(
 
 # BEGIN generated: compiler_rt_32bit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py compiler_rt_32bit   -- review before committing.
+# gen-buck-from-ninja (deleted) compiler_rt_32bit   -- review before committing.
 # cmake target: compiler_rt_32bit  ->  src/external/compiler-rt/lib/builtins/compiler_rt_32bit
 
 cc_objects(

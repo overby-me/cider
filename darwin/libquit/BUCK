@@ -16,7 +16,7 @@ cc_header_root(
 
 # BEGIN generated: quit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py quit   -- review before committing.
+# gen-buck-from-ninja (deleted) quit   -- review before committing.
 # cmake target: quit  ->  src/libquit/libquit.dylib
 
 cc_header_root(
@@ -47,7 +47,7 @@ cc_objects(
 
 # BEGIN generated: quit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs quit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs quit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

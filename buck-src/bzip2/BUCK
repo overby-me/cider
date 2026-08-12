@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: bz2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bz2   -- review before committing.
+# gen-buck-from-ninja (deleted) bz2   -- review before committing.
 # cmake target: bz2  ->  src/external/bzip2/libbz2.1.0.dylib
 
 cc_objects(
@@ -61,7 +61,7 @@ darwin_dylib(
 
 # BEGIN generated: bz264
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bz264   -- review before committing.
+# gen-buck-from-ninja (deleted) bz264   -- review before committing.
 # cmake target: bz264  ->  src/external/bzip2/bz264
 
 cc_objects(
@@ -84,7 +84,7 @@ cc_objects(
 
 # BEGIN generated: bzip2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bzip2   -- review before committing.
+# gen-buck-from-ninja (deleted) bzip2   -- review before committing.
 # cmake target: bzip2  ->  src/external/bzip2/bzip2
 
 cc_objects(

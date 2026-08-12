@@ -24,7 +24,7 @@ stdout_gen(
 
 # BEGIN generated: icucore
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py icucore   -- review before committing.
+# gen-buck-from-ninja (deleted) icucore   -- review before committing.
 # cmake target: icucore  ->  src/external/icu/icuSources/libicucore.A.dylib
 
 cc_header_root(

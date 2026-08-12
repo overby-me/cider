@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: libressl_2_8_3_libcompat
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libressl_2_8_3_libcompat   -- review before committing.
+# gen-buck-from-ninja (deleted) libressl_2_8_3_libcompat   -- review before committing.
 # cmake target: libressl_2_8_3_libcompat  ->  src/external/libressl-2.8.3/liblibressl_2_8_3_libcompat.a
 # 5 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -117,7 +117,7 @@ cc_objects(
 
 # BEGIN generated: tls18
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tls18   -- review before committing.
+# gen-buck-from-ninja (deleted) tls18   -- review before committing.
 # cmake target: tls18  ->  tls18
 
 cc_header_root(
@@ -197,7 +197,7 @@ cc_objects(
 
 # BEGIN generated: crypto44
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crypto44   -- review before committing.
+# gen-buck-from-ninja (deleted) crypto44   -- review before committing.
 # cmake target: crypto44  ->  crypto44
 
 cc_header_root(
@@ -850,7 +850,7 @@ cc_objects(
 
 # BEGIN generated: crypto44_64
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crypto44_64   -- review before committing.
+# gen-buck-from-ninja (deleted) crypto44_64   -- review before committing.
 # cmake target: crypto44_64  ->  src/external/libressl-2.8.3/crypto44_64
 
 cc_header_root(
@@ -918,7 +918,7 @@ cc_objects(
 
 # BEGIN generated: ssl46
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ssl46   -- review before committing.
+# gen-buck-from-ninja (deleted) ssl46   -- review before committing.
 # cmake target: ssl46  ->  ssl46
 
 cc_header_root(
@@ -1025,7 +1025,7 @@ cc_objects(
 
 # BEGIN generated: openssl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py openssl   -- review before committing.
+# gen-buck-from-ninja (deleted) openssl   -- review before committing.
 # cmake target: openssl  ->  src/external/libressl-2.8.3/openssl
 
 cc_header_root(
@@ -1152,7 +1152,7 @@ load("//buck/generated:exports_libressl-2.8.3.bzl", "EXPORTS")
 
 # BEGIN generated: libressl_2_8_3_libcompat archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives libressl_2_8_3_libcompat   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives libressl_2_8_3_libcompat   -- review before committing.
 # Archives 1 cmake object library/ies, 2 flag groups.
 
 cc_static_lib(

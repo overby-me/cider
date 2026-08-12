@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary")
 
 # BEGIN generated: sw_vers
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py sw_vers   -- review before committing.
+# gen-buck-from-ninja (deleted) sw_vers   -- review before committing.
 # cmake target: sw_vers  ->  src/tools/sw_vers
 
 cc_objects(
@@ -25,7 +25,7 @@ cc_objects(
 
 # BEGIN generated: sw_vers binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries sw_vers   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries sw_vers   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -51,7 +51,7 @@ darwin_binary(
 
 # BEGIN generated: codesign
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py codesign   -- review before committing.
+# gen-buck-from-ninja (deleted) codesign   -- review before committing.
 # cmake target: codesign  ->  src/tools/codesign
 
 cc_objects(
@@ -72,7 +72,7 @@ cc_objects(
 
 # BEGIN generated: codesign binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries codesign   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries codesign   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -97,7 +97,7 @@ darwin_binary(
 
 # BEGIN generated: dsmemberutil
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py dsmemberutil   -- review before committing.
+# gen-buck-from-ninja (deleted) dsmemberutil   -- review before committing.
 # cmake target: dsmemberutil  ->  src/tools/dsmemberutil
 
 cc_objects(
@@ -118,7 +118,7 @@ cc_objects(
 
 # BEGIN generated: dsmemberutil binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries dsmemberutil   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries dsmemberutil   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -143,7 +143,7 @@ darwin_binary(
 
 # BEGIN generated: softwareupdate
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py softwareupdate   -- review before committing.
+# gen-buck-from-ninja (deleted) softwareupdate   -- review before committing.
 # cmake target: softwareupdate  ->  src/tools/softwareupdate
 
 cc_objects(
@@ -164,7 +164,7 @@ cc_objects(
 
 # BEGIN generated: softwareupdate binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries softwareupdate   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries softwareupdate   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -189,7 +189,7 @@ darwin_binary(
 
 # BEGIN generated: spctl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py spctl   -- review before committing.
+# gen-buck-from-ninja (deleted) spctl   -- review before committing.
 # cmake target: spctl  ->  src/tools/spctl
 
 cc_objects(
@@ -210,7 +210,7 @@ cc_objects(
 
 # BEGIN generated: spctl binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries spctl   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries spctl   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -235,7 +235,7 @@ darwin_binary(
 
 # BEGIN generated: sudo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py sudo   -- review before committing.
+# gen-buck-from-ninja (deleted) sudo   -- review before committing.
 # cmake target: sudo  ->  src/tools/sudo
 
 cc_objects(
@@ -256,7 +256,7 @@ cc_objects(
 
 # BEGIN generated: sudo binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries sudo   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries sudo   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -281,7 +281,7 @@ darwin_binary(
 
 # BEGIN generated: open
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py open   -- review before committing.
+# gen-buck-from-ninja (deleted) open   -- review before committing.
 # cmake target: open  ->  src/tools/open
 
 cc_objects(
@@ -314,7 +314,7 @@ cc_objects(
 
 # BEGIN generated: open binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries open   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries open   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/tools/open = open
 

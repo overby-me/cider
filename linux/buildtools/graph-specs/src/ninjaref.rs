@@ -1,4 +1,4 @@
-//! THE LIVE SURFACE OF scripts/gen-buck-from-ninja.py, and nothing else.
+//! THE LIVE SURFACE OF gen-buck-from-ninja (deleted), and nothing else.
 //!
 //! That file is 2,508 lines, of which about 182 are read by other tools: the reference build
 //! edges, the two registries that say which dylibs are already declared in BUCK files, and the

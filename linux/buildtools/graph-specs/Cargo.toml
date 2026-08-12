@@ -90,13 +90,6 @@ path = "src/specscheck.rs"
 name = "cider-fix-link-model"
 path = "src/linkmodel.rs"
 
-# THE ELEVENTH BINARY, the Rust rewrite of scripts/regen-dylibs.py (#98). It is a DRIVER around
-# the generator, and it is Rust because its member list comes from read_edges over the frozen
-# build.ninja, which is src/ninjaref.rs.
-[[bin]]
-name = "cider-regen-dylibs"
-path = "src/regendylibs.rs"
-
 # THE TWELFTH BINARY, the Rust rewrite of scripts/buck-exports.py (#98). It joins a flattened-name
 # index over a materialized pin, which can be tens of thousands of files, against every label
 # anything in the tree names, which is the shape that goes to Rust.
@@ -110,13 +103,6 @@ path = "src/exports.rs"
 [[bin]]
 name = "cider-sdk-header-roots"
 path = "src/sdkroots.rs"
-
-# THE FOURTEENTH BINARY, the Rust rewrite of scripts/gen-mig-from-ninja.py (#98). A FROZEN
-# generator that reads the reference build.ninja, and it shares src/pyshlex.rs with the specs
-# check because both have to tokenise a shell command the way python shlex does.
-[[bin]]
-name = "cider-mig-from-ninja"
-path = "src/migninja.rs"
 
 # THE FIFTEENTH BINARY, the Rust rewrite of scripts/tbd-diff.py (#98). The real Apple SDK is not
 # realised in this store, so it is gated on a FIXTURE SDK that exercises every branch of the two

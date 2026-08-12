@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_asl_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_asl_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_asl_obj   -- review before committing.
 # cmake target: system_asl_obj  ->  src/external/syslog/libsystem_asl.tproj/system_asl_obj
 
 cc_header_root(
@@ -56,7 +56,7 @@ cc_objects(
 
 # BEGIN generated: aslcommon
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py aslcommon   -- review before committing.
+# gen-buck-from-ninja (deleted) aslcommon   -- review before committing.
 # cmake target: aslcommon  ->  src/external/syslog/aslcommon/aslcommon
 
 cc_header_root(
@@ -87,7 +87,7 @@ cc_objects(
 
 # BEGIN generated: syslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) syslog   -- review before committing.
 # cmake target: syslog  ->  src/external/syslog/util.tproj/syslog
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/syslog/aslcommon
@@ -133,7 +133,7 @@ cc_objects(
 
 # BEGIN generated: aslmanager
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py aslmanager   -- review before committing.
+# gen-buck-from-ninja (deleted) aslmanager   -- review before committing.
 # cmake target: aslmanager  ->  src/external/syslog/aslmanager.tproj/aslmanager
 
 cc_header_root(
@@ -174,7 +174,7 @@ cc_objects(
 
 # BEGIN generated: syslogd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py syslogd   -- review before committing.
+# gen-buck-from-ninja (deleted) syslogd   -- review before committing.
 # cmake target: syslogd  ->  src/external/syslog/syslogd.tproj/syslogd
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/syslog/aslcommon
@@ -228,7 +228,7 @@ cc_objects(
 
 # BEGIN generated: asl_ipc_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py asl_ipc_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) asl_ipc_xtrace_mig   -- review before committing.
 # cmake target: asl_ipc_xtrace_mig  ->  src/external/syslog/libasl_ipc_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/syslog/aslcommon/asl_ipcXtraceMig.c

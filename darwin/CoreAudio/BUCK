@@ -18,7 +18,7 @@ _AUDIO = [
     ("pulse", "libpulse.so"),
 ]
 
-# What this package produces, for the registry in scripts/gen-buck-from-ninja.py: it is a
+# What this package produces, for the registry in gen-buck-from-ninja (deleted): it is a
 # text scan for a literal name/dylib_name pair and the comprehensions below write neither.
 # Same reason linux/native carries these; buck-test.nu fails if the list and _AUDIO disagree.
 #
@@ -96,7 +96,7 @@ load("//buck/generated:sdk_framework_src_CoreAudio.bzl", FRAMEWORKS = "FRAMEWORK
 
 # BEGIN generated: CoreAudio
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreAudio   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreAudio   -- review before committing.
 # cmake target: CoreAudio  ->  src/CoreAudio/CoreAudio/CoreAudio
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -141,7 +141,7 @@ cc_objects(
 
 # BEGIN generated: CoreAudio dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreAudio   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreAudio   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/CoreAudio/CoreAudio/CoreAudio = CoreAudio_dylib
 
@@ -170,7 +170,7 @@ darwin_dylib(
 
 # BEGIN generated: AudioToolbox
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AudioToolbox   -- review before committing.
+# gen-buck-from-ninja (deleted) AudioToolbox   -- review before committing.
 # cmake target: AudioToolbox  ->  src/CoreAudio/AudioToolbox/AudioToolbox
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -243,7 +243,7 @@ cc_objects(
 
 # BEGIN generated: AudioToolbox dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AudioToolbox   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AudioToolbox   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/CoreAudio/AudioToolbox/AudioToolbox = AudioToolbox_dylib
 
@@ -278,7 +278,7 @@ darwin_dylib(
 
 # BEGIN generated: AudioUnit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AudioUnit   -- review before committing.
+# gen-buck-from-ninja (deleted) AudioUnit   -- review before committing.
 # cmake target: AudioUnit  ->  src/CoreAudio/AudioToolbox/AudioUnit
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -331,7 +331,7 @@ cc_objects(
 
 # BEGIN generated: AudioUnit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AudioUnit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AudioUnit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/CoreAudio/AudioToolbox/AudioUnit = AudioUnit_dylib
 
@@ -357,7 +357,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreAudioComponent
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreAudioComponent   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreAudioComponent   -- review before committing.
 # cmake target: CoreAudioComponent  ->  CoreAudioComponent
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -447,7 +447,7 @@ cc_objects(
 
 # BEGIN generated: CoreAudioComponent dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreAudioComponent   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreAudioComponent   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/CoreAudio/CoreAudioComponent/CoreAudio = CoreAudioComponent_dylib
 
@@ -480,7 +480,7 @@ darwin_dylib(
 
 # BEGIN generated: AFAVFormatComponent
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AFAVFormatComponent   -- review before committing.
+# gen-buck-from-ninja (deleted) AFAVFormatComponent   -- review before committing.
 # cmake target: AFAVFormatComponent  ->  AFAVFormatComponent
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -555,7 +555,7 @@ cc_objects(
 
 # BEGIN generated: AFAVFormatComponent dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AFAVFormatComponent   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AFAVFormatComponent   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/CoreAudio/AFAVFormatComponent/AFAVFormat = AFAVFormatComponent_dylib
 
@@ -588,7 +588,7 @@ darwin_dylib(
 
 # BEGIN generated: afconvert
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py afconvert   -- review before committing.
+# gen-buck-from-ninja (deleted) afconvert   -- review before committing.
 # cmake target: afconvert  ->  src/CoreAudio/AudioFileTools/afconvert
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -659,7 +659,7 @@ cc_objects(
 
 # BEGIN generated: afconvert binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries afconvert   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries afconvert   -- review before committing.
 # Links 2 cmake object library/ies, 3 flag groups in total.
 # buck-registry: src/CoreAudio/AudioFileTools/afconvert = afconvert
 
@@ -691,7 +691,7 @@ darwin_binary(
 
 # BEGIN generated: AudioFileTools_util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AudioFileTools_util   -- review before committing.
+# gen-buck-from-ninja (deleted) AudioFileTools_util   -- review before committing.
 # cmake target: AudioFileTools_util  ->  src/CoreAudio/AudioFileTools/AudioFileTools_util
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -786,7 +786,7 @@ cc_objects(
 
 # BEGIN generated: afinfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py afinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) afinfo   -- review before committing.
 # cmake target: afinfo  ->  src/CoreAudio/AudioFileTools/afinfo
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -852,7 +852,7 @@ cc_objects(
 
 # BEGIN generated: afinfo binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries afinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries afinfo   -- review before committing.
 # Links 2 cmake object library/ies, 3 flag groups in total.
 # buck-registry: src/CoreAudio/AudioFileTools/afinfo = afinfo
 
@@ -884,7 +884,7 @@ darwin_binary(
 
 # BEGIN generated: afplay
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py afplay   -- review before committing.
+# gen-buck-from-ninja (deleted) afplay   -- review before committing.
 # cmake target: afplay  ->  src/CoreAudio/AudioFileTools/afplay
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -951,7 +951,7 @@ cc_objects(
 
 # BEGIN generated: afplay binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries afplay   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries afplay   -- review before committing.
 # Links 2 cmake object library/ies, 3 flag groups in total.
 # buck-registry: src/CoreAudio/AudioFileTools/afplay = afplay
 
@@ -983,7 +983,7 @@ darwin_binary(
 
 # BEGIN generated: afrecord
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py afrecord   -- review before committing.
+# gen-buck-from-ninja (deleted) afrecord   -- review before committing.
 # cmake target: afrecord  ->  src/CoreAudio/AudioFileTools/afrecord
 # TODO these include dirs are GENERATED (codegen output):
 #   nix/store/l37km01vkn7y9xd6ycqkqgkh8b658bfs-pulseaudio-17.0-dev/include
@@ -1054,7 +1054,7 @@ cc_objects(
 
 # BEGIN generated: afrecord binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries afrecord   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries afrecord   -- review before committing.
 # Links 2 cmake object library/ies, 3 flag groups in total.
 # buck-registry: src/CoreAudio/AudioFileTools/afrecord = afrecord
 

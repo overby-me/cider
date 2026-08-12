@@ -69,7 +69,7 @@ let
       # That is still worth avoiding for files that change on every commit of this port, which
       # is what BUCK files do, but do not quote the 26,351 again: it is not what happens.
       #
-      # BUCK.tmp.* too: scripts/gen-buck-from-ninja.py writes one next to the file it is
+      # BUCK.tmp.* too: gen-buck-from-ninja (deleted) writes one next to the file it is
       # rewriting, so a build racing a regenerate would otherwise capture it.
       base != "BUCK"
       && !(lib.hasPrefix "BUCK.tmp" base)

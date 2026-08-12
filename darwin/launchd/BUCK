@@ -41,7 +41,7 @@ cc_header_root(
 
 # BEGIN generated: launch_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py launch_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) launch_obj   -- review before committing.
 # cmake target: launch_obj  ->  src/launchd/liblaunch/launch_obj
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/launchd/liblaunch/helperServer.c
@@ -132,7 +132,7 @@ mig_gen(
 
 # BEGIN generated: launch dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs launch   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs launch   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -177,7 +177,7 @@ darwin_dylib(
 
 # BEGIN generated: launchproxy
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py launchproxy   -- review before committing.
+# gen-buck-from-ninja (deleted) launchproxy   -- review before committing.
 # cmake target: launchproxy  ->  src/launchd/support/launchproxy
 # TODO these headers are FORCE-INCLUDED (-include) but could not be
 # resolved to a file in this tree; the sources need them:
@@ -236,7 +236,7 @@ cc_objects(
 
 # BEGIN generated: launchproxy binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries launchproxy   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries launchproxy   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a
@@ -263,7 +263,7 @@ darwin_binary(
 
 # BEGIN generated: launchctl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py launchctl   -- review before committing.
+# gen-buck-from-ninja (deleted) launchctl   -- review before committing.
 # cmake target: launchctl  ->  src/launchd/support/launchctl
 # TODO these headers are FORCE-INCLUDED (-include) but could not be
 # resolved to a file in this tree; the sources need them:
@@ -339,7 +339,7 @@ cc_objects(
 
 # BEGIN generated: launchd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py launchd   -- review before committing.
+# gen-buck-from-ninja (deleted) launchd   -- review before committing.
 # cmake target: launchd  ->  src/launchd/src/launchd
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/launchd/src/helperUser.c
@@ -531,7 +531,7 @@ mig_gen(
 
 # BEGIN generated: launchctl binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries launchctl   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries launchctl   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a
@@ -560,7 +560,7 @@ darwin_binary(
 
 # BEGIN generated: launchd binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries launchd   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries launchd   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a

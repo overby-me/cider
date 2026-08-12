@@ -55,7 +55,7 @@ const EXTRA_DEPS = "buck/generated/extra-deps.json"
 # reported 1,275 of 1,298 ported targets "missing" a dep they did not need -- 98.7 percent of
 # the population was noise and the check was permanently red. Corrected it is 26 targets, of
 # which 21 are ported and all 21 declare it. Same class as SRC_STORE_RE in
-# gen-buck-from-ninja.py: a rename cannot reach a frozen artifact, so the READER takes both.
+# gen-buck-from-ninja (deleted): a rename cannot reach a frozen artifact, so the READER takes both.
 const PROJECT_MARKERS = ["-cider-cmake-src" "-darling-cmake-src"]
 
 # The toolchain's own resource root, which the port supplies as clang_resource_dir rather

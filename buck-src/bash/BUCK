@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: bash_glob
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bash_glob   -- review before committing.
+# gen-buck-from-ninja (deleted) bash_glob   -- review before committing.
 # cmake target: bash_glob  ->  src/external/bash/libbash_glob.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/bash
@@ -86,7 +86,7 @@ cc_objects(
 
 # BEGIN generated: bash_intl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bash_intl   -- review before committing.
+# gen-buck-from-ninja (deleted) bash_intl   -- review before committing.
 # cmake target: bash_intl  ->  src/external/bash/libbash_intl.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/bash
@@ -179,7 +179,7 @@ cc_objects(
 
 # BEGIN generated: bash_readline
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bash_readline   -- review before committing.
+# gen-buck-from-ninja (deleted) bash_readline   -- review before committing.
 # cmake target: bash_readline  ->  src/external/bash/libbash_readline.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/bash
@@ -285,7 +285,7 @@ cc_objects(
 
 # BEGIN generated: bash_sh
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bash_sh   -- review before committing.
+# gen-buck-from-ninja (deleted) bash_sh   -- review before committing.
 # cmake target: bash_sh  ->  src/external/bash/libbash_sh.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/bash
@@ -391,7 +391,7 @@ cc_objects(
 
 # BEGIN generated: bash
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bash   -- review before committing.
+# gen-buck-from-ninja (deleted) bash   -- review before committing.
 # cmake target: bash  ->  src/external/bash/bash
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/bash/y.tab.c

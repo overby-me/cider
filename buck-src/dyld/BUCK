@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_dyld_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_dyld_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_dyld_obj   -- review before committing.
 # cmake target: system_dyld_obj  ->  src/external/dyld/system_dyld_obj
 # 28 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -145,7 +145,7 @@ cc_objects(
 
 # BEGIN generated: system_loader
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_loader   -- review before committing.
+# gen-buck-from-ninja (deleted) system_loader   -- review before committing.
 # cmake target: system_loader  ->  system_loader
 # 36 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -293,7 +293,7 @@ cc_objects(
 
 # BEGIN generated: dyld binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries dyld   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries dyld   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(

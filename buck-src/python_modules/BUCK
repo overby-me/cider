@@ -11,7 +11,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: _xattr_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py _xattr_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) _xattr_py27   -- review before committing.
 # cmake target: _xattr_py27  ->  src/external/python_modules/Modules/xattr-0.6.4/xattr-0.6.4/lib_xattr_py27.dylib
 
 cc_objects(
@@ -35,7 +35,7 @@ cc_objects(
 
 # BEGIN generated: _xattr_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs _xattr_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs _xattr_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python_modules/Modules/xattr-0.6.4/xattr-0.6.4/lib_xattr_py27.dylib = _xattr_py27_dylib
 
@@ -65,7 +65,7 @@ darwin_dylib(
 
 # BEGIN generated: py2app_bundletemplate
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py2app_bundletemplate   -- review before committing.
+# gen-buck-from-ninja (deleted) py2app_bundletemplate   -- review before committing.
 # cmake target: py2app_bundletemplate  ->  src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/libpy2app_bundletemplate.dylib
 
 cc_objects(
@@ -96,7 +96,7 @@ cc_objects(
 
 # BEGIN generated: py2app_bundletemplate dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs py2app_bundletemplate   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs py2app_bundletemplate   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/libpy2app_bundletemplate.dylib = py2app_bundletemplate_dylib
 
@@ -127,7 +127,7 @@ darwin_dylib(
 
 # BEGIN generated: py2app_apptemplate
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py py2app_apptemplate   -- review before committing.
+# gen-buck-from-ninja (deleted) py2app_apptemplate   -- review before committing.
 # cmake target: py2app_apptemplate  ->  src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app_apptemplate
 
 cc_objects(
@@ -168,7 +168,7 @@ cc_objects(
 
 # BEGIN generated: py2app_apptemplate binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries py2app_apptemplate   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries py2app_apptemplate   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/python_modules/Modules/py2app-0.7.3/py2app-0.7.3-noprebuilt/py2app_apptemplate = py2app_apptemplate
 

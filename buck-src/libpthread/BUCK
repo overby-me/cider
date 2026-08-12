@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_pthread_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_pthread_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_pthread_obj   -- review before committing.
 # cmake target: system_pthread_obj  ->  src/external/libpthread/src/system_pthread_obj
 # 13 sources in 7 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -298,7 +298,7 @@ cc_objects(
 
 # BEGIN generated: pthread_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pthread_static   -- review before committing.
+# gen-buck-from-ninja (deleted) pthread_static   -- review before committing.
 # cmake target: pthread_static  ->  src/external/libpthread/src/libpthread_static.a
 # 12 sources in 7 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: removefile
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py removefile   -- review before committing.
+# gen-buck-from-ninja (deleted) removefile   -- review before committing.
 # cmake target: removefile  ->  src/external/removefile/libremovefile.dylib
 
 cc_header_root(

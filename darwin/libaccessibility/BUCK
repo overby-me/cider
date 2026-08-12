@@ -21,7 +21,7 @@ cc_header_root(
 
 # BEGIN generated: Accessibility
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Accessibility   -- review before committing.
+# gen-buck-from-ninja (deleted) Accessibility   -- review before committing.
 # cmake target: Accessibility  ->  src/libaccessibility/libAccessibility.dylib
 
 cc_objects(
@@ -56,7 +56,7 @@ cc_objects(
 
 # BEGIN generated: Accessibility dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Accessibility   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Accessibility   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/libaccessibility/libAccessibility.dylib = Accessibility_dylib
 

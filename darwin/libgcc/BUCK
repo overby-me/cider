@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: gcc_s
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gcc_s   -- review before committing.
+# gen-buck-from-ninja (deleted) gcc_s   -- review before committing.
 # cmake target: gcc_s  ->  src/libgcc/libgcc_s.1.dylib
 
 cc_objects(
@@ -27,7 +27,7 @@ cc_objects(
 
 # BEGIN generated: gcc_s dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs gcc_s   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs gcc_s   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

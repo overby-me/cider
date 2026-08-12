@@ -8,7 +8,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: stdcxx
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py stdcxx   -- review before committing.
+# gen-buck-from-ninja (deleted) stdcxx   -- review before committing.
 # cmake target: stdcxx  ->  stdcxx
 # 65 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -143,7 +143,7 @@ cc_objects(
 
 # BEGIN generated: stdcxx dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs stdcxx   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs stdcxx   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/libstdcxx/libstdc++.6.dylib = stdcxx_dylib
 

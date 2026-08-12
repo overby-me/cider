@@ -2,7 +2,7 @@ load("//buck/rules:cc.bzl", "cc_header_root", "cc_objects", "cc_static_lib")
 
 # BEGIN generated: MobileKeyBag
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MobileKeyBag   -- review before committing.
+# gen-buck-from-ninja (deleted) MobileKeyBag   -- review before committing.
 # cmake target: MobileKeyBag  ->  src/MobileKeyBag/libMobileKeyBag.a
 
 cc_header_root(
@@ -32,7 +32,7 @@ cc_objects(
 
 # BEGIN generated: MobileKeyBag archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives MobileKeyBag   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives MobileKeyBag   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(

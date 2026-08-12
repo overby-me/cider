@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary")
 
 # BEGIN generated: vchroot
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py vchroot   -- review before committing.
+# gen-buck-from-ninja (deleted) vchroot   -- review before committing.
 # cmake target: vchroot  ->  src/vchroot/vchroot
 
 cc_objects(
@@ -24,7 +24,7 @@ cc_objects(
 
 # BEGIN generated: vchroot binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries vchroot   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries vchroot   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a

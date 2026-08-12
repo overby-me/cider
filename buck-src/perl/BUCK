@@ -23,7 +23,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 # built by appending ` "<v>",` per version, which is why it carries a trailing comma.
 # versioner.c and its template, which python's wrapper needs too. cmake/versioner.cmake
 # builds every project's version-dispatch wrapper out of this ONE source, so the files are
-# perl's and python's dependency; CROSS_PACKAGE_SRCS in gen-buck-from-ninja.py maps the
+# perl's and python's dependency; CROSS_PACKAGE_SRCS in gen-buck-from-ninja (deleted) maps the
 # source path to the label, and python's own configure_file names the template.
 export_file(
     name = "versioner_c",
@@ -53,7 +53,7 @@ configure_file(
 
 # BEGIN generated: libperl5.18
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libperl5.18   -- review before committing.
+# gen-buck-from-ninja (deleted) libperl5.18   -- review before committing.
 # cmake target: libperl5.18  ->  libperl5.18
 # 38 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -173,7 +173,7 @@ cc_objects(
 
 # BEGIN generated: libperl5.18 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs libperl5.18   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs libperl5.18   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/perl/5.18/libperl.dylib = libperl5.18_dylib
 
@@ -201,7 +201,7 @@ darwin_dylib(
 
 # BEGIN generated: libperl5.28
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libperl5.28   -- review before committing.
+# gen-buck-from-ninja (deleted) libperl5.28   -- review before committing.
 # cmake target: libperl5.28  ->  libperl5.28
 # 41 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -324,7 +324,7 @@ cc_objects(
 
 # BEGIN generated: libperl5.28 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs libperl5.28   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs libperl5.28   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/perl/5.28/libperl.dylib = libperl5.28_dylib
 
@@ -352,7 +352,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_arybase_arybase
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_arybase_arybase   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_arybase_arybase   -- review before committing.
 # cmake target: perl5.18_arybase_arybase  ->  perl5.18_arybase_arybase
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -400,7 +400,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_arybase_arybase dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_arybase_arybase   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_arybase_arybase   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -434,7 +434,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_attributes_attributes
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_attributes_attributes   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_attributes_attributes   -- review before committing.
 # cmake target: perl5.18_attributes_attributes  ->  perl5.18_attributes_attributes
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -482,7 +482,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_attributes_attributes dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_attributes_attributes   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_attributes_attributes   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -516,7 +516,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_B_B
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_B_B   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_B_B   -- review before committing.
 # cmake target: perl5.18_B_B  ->  perl5.18_B_B
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -564,7 +564,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_B_B dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_B_B   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_B_B   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -598,7 +598,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Compress_Raw_Bzip2_Bzip2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Compress_Raw_Bzip2_Bzip2   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Compress_Raw_Bzip2_Bzip2   -- review before committing.
 # cmake target: perl5.18_Compress_Raw_Bzip2_Bzip2  ->  perl5.18_Compress_Raw_Bzip2_Bzip2
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -647,7 +647,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Compress_Raw_Bzip2_Bzip2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Compress_Raw_Bzip2_Bzip2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Compress_Raw_Bzip2_Bzip2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -683,7 +683,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Compress_Raw_Zlib_Zlib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Compress_Raw_Zlib_Zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Compress_Raw_Zlib_Zlib   -- review before committing.
 # cmake target: perl5.18_Compress_Raw_Zlib_Zlib  ->  perl5.18_Compress_Raw_Zlib_Zlib
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -734,7 +734,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Compress_Raw_Zlib_Zlib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Compress_Raw_Zlib_Zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Compress_Raw_Zlib_Zlib   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -770,7 +770,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Cwd_Cwd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Cwd_Cwd   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Cwd_Cwd   -- review before committing.
 # cmake target: perl5.18_Cwd_Cwd  ->  perl5.18_Cwd_Cwd
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -818,7 +818,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Cwd_Cwd dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Cwd_Cwd   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Cwd_Cwd   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -852,7 +852,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Data_Dumper_Dumper
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Data_Dumper_Dumper   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Data_Dumper_Dumper   -- review before committing.
 # cmake target: perl5.18_Data_Dumper_Dumper  ->  perl5.18_Data_Dumper_Dumper
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -900,7 +900,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Data_Dumper_Dumper dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Data_Dumper_Dumper   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Data_Dumper_Dumper   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -934,7 +934,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_DB_File_DB_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_DB_File_DB_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_DB_File_DB_File   -- review before committing.
 # cmake target: perl5.18_DB_File_DB_File  ->  perl5.18_DB_File_DB_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -986,7 +986,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_DB_File_DB_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_DB_File_DB_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_DB_File_DB_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1020,7 +1020,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Devel_Peek_Peek
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Devel_Peek_Peek   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Devel_Peek_Peek   -- review before committing.
 # cmake target: perl5.18_Devel_Peek_Peek  ->  perl5.18_Devel_Peek_Peek
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1068,7 +1068,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Devel_Peek_Peek dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Devel_Peek_Peek   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Devel_Peek_Peek   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1102,7 +1102,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Devel_PPPort_PPPort
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Devel_PPPort_PPPort   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Devel_PPPort_PPPort   -- review before committing.
 # cmake target: perl5.18_Devel_PPPort_PPPort  ->  perl5.18_Devel_PPPort_PPPort
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1152,7 +1152,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Devel_PPPort_PPPort dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Devel_PPPort_PPPort   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Devel_PPPort_PPPort   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1186,7 +1186,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Digest_MD5_MD5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Digest_MD5_MD5   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Digest_MD5_MD5   -- review before committing.
 # cmake target: perl5.18_Digest_MD5_MD5  ->  perl5.18_Digest_MD5_MD5
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1235,7 +1235,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Digest_MD5_MD5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Digest_MD5_MD5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Digest_MD5_MD5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1269,7 +1269,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Digest_SHA_SHA
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Digest_SHA_SHA   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Digest_SHA_SHA   -- review before committing.
 # cmake target: perl5.18_Digest_SHA_SHA  ->  perl5.18_Digest_SHA_SHA
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1318,7 +1318,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Digest_SHA_SHA dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Digest_SHA_SHA   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Digest_SHA_SHA   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1352,7 +1352,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_Encode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_Encode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_Encode   -- review before committing.
 # cmake target: perl5.18_Encode_Encode  ->  perl5.18_Encode_Encode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1414,7 +1414,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_Encode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_Encode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_Encode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1448,7 +1448,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_Byte_Byte
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_Byte_Byte   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_Byte_Byte   -- review before committing.
 # cmake target: perl5.18_Encode_Byte_Byte  ->  perl5.18_Encode_Byte_Byte
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1509,7 +1509,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_Byte_Byte dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_Byte_Byte   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_Byte_Byte   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1543,7 +1543,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_CN_CN
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_CN_CN   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_CN_CN   -- review before committing.
 # cmake target: perl5.18_Encode_CN_CN  ->  perl5.18_Encode_CN_CN
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1609,7 +1609,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_CN_CN dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_CN_CN   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_CN_CN   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1643,7 +1643,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_EBCDIC_EBCDIC
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_EBCDIC_EBCDIC   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_EBCDIC_EBCDIC   -- review before committing.
 # cmake target: perl5.18_Encode_EBCDIC_EBCDIC  ->  perl5.18_Encode_EBCDIC_EBCDIC
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1704,7 +1704,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_EBCDIC_EBCDIC dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_EBCDIC_EBCDIC   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_EBCDIC_EBCDIC   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1738,7 +1738,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_JP_JP
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_JP_JP   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_JP_JP   -- review before committing.
 # cmake target: perl5.18_Encode_JP_JP  ->  perl5.18_Encode_JP_JP
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1804,7 +1804,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_JP_JP dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_JP_JP   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_JP_JP   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1838,7 +1838,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_KR_KR
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_KR_KR   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_KR_KR   -- review before committing.
 # cmake target: perl5.18_Encode_KR_KR  ->  perl5.18_Encode_KR_KR
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1903,7 +1903,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_KR_KR dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_KR_KR   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_KR_KR   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -1937,7 +1937,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_Symbol_Symbol
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_Symbol_Symbol   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_Symbol_Symbol   -- review before committing.
 # cmake target: perl5.18_Encode_Symbol_Symbol  ->  perl5.18_Encode_Symbol_Symbol
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -1998,7 +1998,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_Symbol_Symbol dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_Symbol_Symbol   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_Symbol_Symbol   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2032,7 +2032,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_TW_TW
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_TW_TW   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_TW_TW   -- review before committing.
 # cmake target: perl5.18_Encode_TW_TW  ->  perl5.18_Encode_TW_TW
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2096,7 +2096,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_TW_TW dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_TW_TW   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_TW_TW   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2130,7 +2130,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Encode_Unicode_Unicode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Encode_Unicode_Unicode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Encode_Unicode_Unicode   -- review before committing.
 # cmake target: perl5.18_Encode_Unicode_Unicode  ->  perl5.18_Encode_Unicode_Unicode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2190,7 +2190,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Encode_Unicode_Unicode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Encode_Unicode_Unicode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Encode_Unicode_Unicode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2224,7 +2224,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Fcntl_Fcntl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Fcntl_Fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Fcntl_Fcntl   -- review before committing.
 # cmake target: perl5.18_Fcntl_Fcntl  ->  perl5.18_Fcntl_Fcntl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2272,7 +2272,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Fcntl_Fcntl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Fcntl_Fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Fcntl_Fcntl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2306,7 +2306,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_File_DosGlob_DosGlob
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_File_DosGlob_DosGlob   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_File_DosGlob_DosGlob   -- review before committing.
 # cmake target: perl5.18_File_DosGlob_DosGlob  ->  perl5.18_File_DosGlob_DosGlob
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2354,7 +2354,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_File_DosGlob_DosGlob dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_File_DosGlob_DosGlob   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_File_DosGlob_DosGlob   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2388,7 +2388,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_File_Glob_Glob
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_File_Glob_Glob   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_File_Glob_Glob   -- review before committing.
 # cmake target: perl5.18_File_Glob_Glob  ->  perl5.18_File_Glob_Glob
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2437,7 +2437,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_File_Glob_Glob dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_File_Glob_Glob   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_File_Glob_Glob   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2471,7 +2471,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Filter_Util_Call_Call
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Filter_Util_Call_Call   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Filter_Util_Call_Call   -- review before committing.
 # cmake target: perl5.18_Filter_Util_Call_Call  ->  perl5.18_Filter_Util_Call_Call
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2519,7 +2519,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Filter_Util_Call_Call dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Filter_Util_Call_Call   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Filter_Util_Call_Call   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2553,7 +2553,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Hash_Util_Util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Hash_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Hash_Util_Util   -- review before committing.
 # cmake target: perl5.18_Hash_Util_Util  ->  perl5.18_Hash_Util_Util
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2602,7 +2602,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Hash_Util_Util dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Hash_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Hash_Util_Util   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2636,7 +2636,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Hash_Util_FieldHash_FieldHash
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Hash_Util_FieldHash_FieldHash   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Hash_Util_FieldHash_FieldHash   -- review before committing.
 # cmake target: perl5.18_Hash_Util_FieldHash_FieldHash  ->  perl5.18_Hash_Util_FieldHash_FieldHash
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2684,7 +2684,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Hash_Util_FieldHash_FieldHash dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Hash_Util_FieldHash_FieldHash   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Hash_Util_FieldHash_FieldHash   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2718,7 +2718,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_I18N_Langinfo_Langinfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_I18N_Langinfo_Langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_I18N_Langinfo_Langinfo   -- review before committing.
 # cmake target: perl5.18_I18N_Langinfo_Langinfo  ->  perl5.18_I18N_Langinfo_Langinfo
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2766,7 +2766,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_I18N_Langinfo_Langinfo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_I18N_Langinfo_Langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_I18N_Langinfo_Langinfo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2800,7 +2800,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_IO_IO
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_IO_IO   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_IO_IO   -- review before committing.
 # cmake target: perl5.18_IO_IO  ->  perl5.18_IO_IO
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2849,7 +2849,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_IO_IO dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_IO_IO   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_IO_IO   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2883,7 +2883,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_IPC_SysV_SysV
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_IPC_SysV_SysV   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_IPC_SysV_SysV   -- review before committing.
 # cmake target: perl5.18_IPC_SysV_SysV  ->  perl5.18_IPC_SysV_SysV
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -2931,7 +2931,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_IPC_SysV_SysV dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_IPC_SysV_SysV   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_IPC_SysV_SysV   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -2965,7 +2965,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_List_Util_Util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_List_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_List_Util_Util   -- review before committing.
 # cmake target: perl5.18_List_Util_Util  ->  perl5.18_List_Util_Util
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3014,7 +3014,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_List_Util_Util dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_List_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_List_Util_Util   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3048,7 +3048,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Math_BigInt_FastCalc_FastCalc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Math_BigInt_FastCalc_FastCalc   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Math_BigInt_FastCalc_FastCalc   -- review before committing.
 # cmake target: perl5.18_Math_BigInt_FastCalc_FastCalc  ->  perl5.18_Math_BigInt_FastCalc_FastCalc
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3096,7 +3096,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Math_BigInt_FastCalc_FastCalc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Math_BigInt_FastCalc_FastCalc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Math_BigInt_FastCalc_FastCalc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3130,7 +3130,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_MIME_Base64_Base64
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_MIME_Base64_Base64   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_MIME_Base64_Base64   -- review before committing.
 # cmake target: perl5.18_MIME_Base64_Base64  ->  perl5.18_MIME_Base64_Base64
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3178,7 +3178,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_MIME_Base64_Base64 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_MIME_Base64_Base64   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_MIME_Base64_Base64   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3212,7 +3212,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_mro_mro
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_mro_mro   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_mro_mro   -- review before committing.
 # cmake target: perl5.18_mro_mro  ->  perl5.18_mro_mro
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3260,7 +3260,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_mro_mro dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_mro_mro   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_mro_mro   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3294,7 +3294,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_NDBM_File_NDBM_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_NDBM_File_NDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_NDBM_File_NDBM_File   -- review before committing.
 # cmake target: perl5.18_NDBM_File_NDBM_File  ->  perl5.18_NDBM_File_NDBM_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3342,7 +3342,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_NDBM_File_NDBM_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_NDBM_File_NDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_NDBM_File_NDBM_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3376,7 +3376,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Opcode_Opcode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Opcode_Opcode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Opcode_Opcode   -- review before committing.
 # cmake target: perl5.18_Opcode_Opcode  ->  perl5.18_Opcode_Opcode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3424,7 +3424,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Opcode_Opcode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Opcode_Opcode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Opcode_Opcode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3458,7 +3458,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_PerlIO_encoding_encoding
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_PerlIO_encoding_encoding   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_PerlIO_encoding_encoding   -- review before committing.
 # cmake target: perl5.18_PerlIO_encoding_encoding  ->  perl5.18_PerlIO_encoding_encoding
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3506,7 +3506,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_PerlIO_encoding_encoding dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_PerlIO_encoding_encoding   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_PerlIO_encoding_encoding   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3540,7 +3540,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_PerlIO_mmap_mmap
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_PerlIO_mmap_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_PerlIO_mmap_mmap   -- review before committing.
 # cmake target: perl5.18_PerlIO_mmap_mmap  ->  perl5.18_PerlIO_mmap_mmap
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3588,7 +3588,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_PerlIO_mmap_mmap dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_PerlIO_mmap_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_PerlIO_mmap_mmap   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3622,7 +3622,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_PerlIO_scalar_scalar
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_PerlIO_scalar_scalar   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_PerlIO_scalar_scalar   -- review before committing.
 # cmake target: perl5.18_PerlIO_scalar_scalar  ->  perl5.18_PerlIO_scalar_scalar
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3670,7 +3670,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_PerlIO_scalar_scalar dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_PerlIO_scalar_scalar   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_PerlIO_scalar_scalar   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3704,7 +3704,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_PerlIO_via_via
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_PerlIO_via_via   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_PerlIO_via_via   -- review before committing.
 # cmake target: perl5.18_PerlIO_via_via  ->  perl5.18_PerlIO_via_via
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3752,7 +3752,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_PerlIO_via_via dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_PerlIO_via_via   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_PerlIO_via_via   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3786,7 +3786,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_POSIX_POSIX
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_POSIX_POSIX   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_POSIX_POSIX   -- review before committing.
 # cmake target: perl5.18_POSIX_POSIX  ->  perl5.18_POSIX_POSIX
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3834,7 +3834,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_POSIX_POSIX dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_POSIX_POSIX   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_POSIX_POSIX   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3868,7 +3868,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_re_re
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_re_re   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_re_re   -- review before committing.
 # cmake target: perl5.18_re_re  ->  perl5.18_re_re
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -3921,7 +3921,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_re_re dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_re_re   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_re_re   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -3955,7 +3955,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_SDBM_File_SDBM_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_SDBM_File_SDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_SDBM_File_SDBM_File   -- review before committing.
 # cmake target: perl5.18_SDBM_File_SDBM_File  ->  perl5.18_SDBM_File_SDBM_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4003,7 +4003,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_SDBM_File_SDBM_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_SDBM_File_SDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_SDBM_File_SDBM_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4038,7 +4038,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Socket_Socket
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Socket_Socket   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Socket_Socket   -- review before committing.
 # cmake target: perl5.18_Socket_Socket  ->  perl5.18_Socket_Socket
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4086,7 +4086,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Socket_Socket dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Socket_Socket   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Socket_Socket   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4120,7 +4120,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Storable_Storable
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Storable_Storable   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Storable_Storable   -- review before committing.
 # cmake target: perl5.18_Storable_Storable  ->  perl5.18_Storable_Storable
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4170,7 +4170,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Storable_Storable dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Storable_Storable   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Storable_Storable   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/perl/5.18/Storable.bundle = perl5.18_Storable_Storable_dylib
 
@@ -4215,7 +4215,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Sys_Hostname_Hostname
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Sys_Hostname_Hostname   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Sys_Hostname_Hostname   -- review before committing.
 # cmake target: perl5.18_Sys_Hostname_Hostname  ->  perl5.18_Sys_Hostname_Hostname
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4263,7 +4263,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Sys_Hostname_Hostname dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Sys_Hostname_Hostname   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Sys_Hostname_Hostname   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4297,7 +4297,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Sys_Syslog_Syslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Sys_Syslog_Syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Sys_Syslog_Syslog   -- review before committing.
 # cmake target: perl5.18_Sys_Syslog_Syslog  ->  perl5.18_Sys_Syslog_Syslog
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4345,7 +4345,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Sys_Syslog_Syslog dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Sys_Syslog_Syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Sys_Syslog_Syslog   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4379,7 +4379,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Text_Soundex_Soundex
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Text_Soundex_Soundex   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Text_Soundex_Soundex   -- review before committing.
 # cmake target: perl5.18_Text_Soundex_Soundex  ->  perl5.18_Text_Soundex_Soundex
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4427,7 +4427,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Text_Soundex_Soundex dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Text_Soundex_Soundex   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Text_Soundex_Soundex   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4461,7 +4461,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_threads_threads
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_threads_threads   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_threads_threads   -- review before committing.
 # cmake target: perl5.18_threads_threads  ->  perl5.18_threads_threads
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4509,7 +4509,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_threads_threads dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_threads_threads   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_threads_threads   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4543,7 +4543,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_threads_shared_shared
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_threads_shared_shared   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_threads_shared_shared   -- review before committing.
 # cmake target: perl5.18_threads_shared_shared  ->  perl5.18_threads_shared_shared
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4591,7 +4591,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_threads_shared_shared dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_threads_shared_shared   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_threads_shared_shared   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4625,7 +4625,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Tie_Hash_NamedCapture_NamedCapture
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
 # cmake target: perl5.18_Tie_Hash_NamedCapture_NamedCapture  ->  perl5.18_Tie_Hash_NamedCapture_NamedCapture
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4673,7 +4673,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Tie_Hash_NamedCapture_NamedCapture dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4707,7 +4707,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Time_HiRes_HiRes
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Time_HiRes_HiRes   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Time_HiRes_HiRes   -- review before committing.
 # cmake target: perl5.18_Time_HiRes_HiRes  ->  perl5.18_Time_HiRes_HiRes
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4761,7 +4761,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Time_HiRes_HiRes dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Time_HiRes_HiRes   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Time_HiRes_HiRes   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4795,7 +4795,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Time_Piece_Piece
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Time_Piece_Piece   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Time_Piece_Piece   -- review before committing.
 # cmake target: perl5.18_Time_Piece_Piece  ->  perl5.18_Time_Piece_Piece
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4843,7 +4843,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Time_Piece_Piece dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Time_Piece_Piece   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Time_Piece_Piece   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4877,7 +4877,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Unicode_Collate_Collate
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Unicode_Collate_Collate   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Unicode_Collate_Collate   -- review before committing.
 # cmake target: perl5.18_Unicode_Collate_Collate  ->  perl5.18_Unicode_Collate_Collate
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -4925,7 +4925,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Unicode_Collate_Collate dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Unicode_Collate_Collate   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Unicode_Collate_Collate   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -4959,7 +4959,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_Unicode_Normalize_Normalize
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_Unicode_Normalize_Normalize   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_Unicode_Normalize_Normalize   -- review before committing.
 # cmake target: perl5.18_Unicode_Normalize_Normalize  ->  perl5.18_Unicode_Normalize_Normalize
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5007,7 +5007,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_Unicode_Normalize_Normalize dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.18_Unicode_Normalize_Normalize   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.18_Unicode_Normalize_Normalize   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5041,7 +5041,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_arybase_arybase
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_arybase_arybase   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_arybase_arybase   -- review before committing.
 # cmake target: perl5.28_arybase_arybase  ->  perl5.28_arybase_arybase
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5089,7 +5089,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_arybase_arybase dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_arybase_arybase   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_arybase_arybase   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5123,7 +5123,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_attributes_attributes
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_attributes_attributes   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_attributes_attributes   -- review before committing.
 # cmake target: perl5.28_attributes_attributes  ->  perl5.28_attributes_attributes
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5171,7 +5171,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_attributes_attributes dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_attributes_attributes   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_attributes_attributes   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5205,7 +5205,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_B_B
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_B_B   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_B_B   -- review before committing.
 # cmake target: perl5.28_B_B  ->  perl5.28_B_B
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5253,7 +5253,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_B_B dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_B_B   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_B_B   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5287,7 +5287,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Compress_Raw_Bzip2_Bzip2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Compress_Raw_Bzip2_Bzip2   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Compress_Raw_Bzip2_Bzip2   -- review before committing.
 # cmake target: perl5.28_Compress_Raw_Bzip2_Bzip2  ->  perl5.28_Compress_Raw_Bzip2_Bzip2
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5336,7 +5336,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Compress_Raw_Bzip2_Bzip2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Compress_Raw_Bzip2_Bzip2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Compress_Raw_Bzip2_Bzip2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5372,7 +5372,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Compress_Raw_Zlib_Zlib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Compress_Raw_Zlib_Zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Compress_Raw_Zlib_Zlib   -- review before committing.
 # cmake target: perl5.28_Compress_Raw_Zlib_Zlib  ->  perl5.28_Compress_Raw_Zlib_Zlib
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5423,7 +5423,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Compress_Raw_Zlib_Zlib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Compress_Raw_Zlib_Zlib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Compress_Raw_Zlib_Zlib   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5459,7 +5459,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Cwd_Cwd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Cwd_Cwd   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Cwd_Cwd   -- review before committing.
 # cmake target: perl5.28_Cwd_Cwd  ->  perl5.28_Cwd_Cwd
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5509,7 +5509,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Cwd_Cwd dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Cwd_Cwd   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Cwd_Cwd   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5543,7 +5543,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Data_Dumper_Dumper
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Data_Dumper_Dumper   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Data_Dumper_Dumper   -- review before committing.
 # cmake target: perl5.28_Data_Dumper_Dumper  ->  perl5.28_Data_Dumper_Dumper
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5591,7 +5591,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Data_Dumper_Dumper dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Data_Dumper_Dumper   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Data_Dumper_Dumper   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5625,7 +5625,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_DB_File_DB_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_DB_File_DB_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_DB_File_DB_File   -- review before committing.
 # cmake target: perl5.28_DB_File_DB_File  ->  perl5.28_DB_File_DB_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5677,7 +5677,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_DB_File_DB_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_DB_File_DB_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_DB_File_DB_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5711,7 +5711,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Devel_Peek_Peek
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Devel_Peek_Peek   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Devel_Peek_Peek   -- review before committing.
 # cmake target: perl5.28_Devel_Peek_Peek  ->  perl5.28_Devel_Peek_Peek
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5759,7 +5759,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Devel_Peek_Peek dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Devel_Peek_Peek   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Devel_Peek_Peek   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5793,7 +5793,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Devel_PPPort_PPPort
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Devel_PPPort_PPPort   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Devel_PPPort_PPPort   -- review before committing.
 # cmake target: perl5.28_Devel_PPPort_PPPort  ->  perl5.28_Devel_PPPort_PPPort
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5843,7 +5843,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Devel_PPPort_PPPort dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Devel_PPPort_PPPort   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Devel_PPPort_PPPort   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5877,7 +5877,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Digest_MD5_MD5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Digest_MD5_MD5   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Digest_MD5_MD5   -- review before committing.
 # cmake target: perl5.28_Digest_MD5_MD5  ->  perl5.28_Digest_MD5_MD5
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -5926,7 +5926,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Digest_MD5_MD5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Digest_MD5_MD5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Digest_MD5_MD5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -5960,7 +5960,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Digest_SHA_SHA
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Digest_SHA_SHA   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Digest_SHA_SHA   -- review before committing.
 # cmake target: perl5.28_Digest_SHA_SHA  ->  perl5.28_Digest_SHA_SHA
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6008,7 +6008,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Digest_SHA_SHA dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Digest_SHA_SHA   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Digest_SHA_SHA   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6042,7 +6042,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_Byte_Byte
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_Byte_Byte   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_Byte_Byte   -- review before committing.
 # cmake target: perl5.28_Encode_Byte_Byte  ->  perl5.28_Encode_Byte_Byte
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6103,7 +6103,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_Byte_Byte dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_Byte_Byte   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_Byte_Byte   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6137,7 +6137,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_Encode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_Encode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_Encode   -- review before committing.
 # cmake target: perl5.28_Encode_Encode  ->  perl5.28_Encode_Encode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6199,7 +6199,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_Encode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_Encode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_Encode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6233,7 +6233,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_CN_CN
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_CN_CN   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_CN_CN   -- review before committing.
 # cmake target: perl5.28_Encode_CN_CN  ->  perl5.28_Encode_CN_CN
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6299,7 +6299,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_CN_CN dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_CN_CN   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_CN_CN   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6333,7 +6333,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_EBCDIC_EBCDIC
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_EBCDIC_EBCDIC   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_EBCDIC_EBCDIC   -- review before committing.
 # cmake target: perl5.28_Encode_EBCDIC_EBCDIC  ->  perl5.28_Encode_EBCDIC_EBCDIC
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6394,7 +6394,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_EBCDIC_EBCDIC dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_EBCDIC_EBCDIC   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_EBCDIC_EBCDIC   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6428,7 +6428,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_JP_JP
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_JP_JP   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_JP_JP   -- review before committing.
 # cmake target: perl5.28_Encode_JP_JP  ->  perl5.28_Encode_JP_JP
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6495,7 +6495,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_JP_JP dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_JP_JP   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_JP_JP   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6529,7 +6529,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_KR_KR
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_KR_KR   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_KR_KR   -- review before committing.
 # cmake target: perl5.28_Encode_KR_KR  ->  perl5.28_Encode_KR_KR
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6594,7 +6594,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_KR_KR dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_KR_KR   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_KR_KR   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6628,7 +6628,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_Symbol_Symbol
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_Symbol_Symbol   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_Symbol_Symbol   -- review before committing.
 # cmake target: perl5.28_Encode_Symbol_Symbol  ->  perl5.28_Encode_Symbol_Symbol
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6689,7 +6689,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_Symbol_Symbol dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_Symbol_Symbol   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_Symbol_Symbol   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6723,7 +6723,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_TW_TW
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_TW_TW   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_TW_TW   -- review before committing.
 # cmake target: perl5.28_Encode_TW_TW  ->  perl5.28_Encode_TW_TW
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6787,7 +6787,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_TW_TW dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_TW_TW   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_TW_TW   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6821,7 +6821,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Encode_Unicode_Unicode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Encode_Unicode_Unicode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Encode_Unicode_Unicode   -- review before committing.
 # cmake target: perl5.28_Encode_Unicode_Unicode  ->  perl5.28_Encode_Unicode_Unicode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6881,7 +6881,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Encode_Unicode_Unicode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Encode_Unicode_Unicode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Encode_Unicode_Unicode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6915,7 +6915,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Fcntl_Fcntl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Fcntl_Fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Fcntl_Fcntl   -- review before committing.
 # cmake target: perl5.28_Fcntl_Fcntl  ->  perl5.28_Fcntl_Fcntl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -6963,7 +6963,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Fcntl_Fcntl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Fcntl_Fcntl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Fcntl_Fcntl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -6997,7 +6997,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_File_DosGlob_DosGlob
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_File_DosGlob_DosGlob   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_File_DosGlob_DosGlob   -- review before committing.
 # cmake target: perl5.28_File_DosGlob_DosGlob  ->  perl5.28_File_DosGlob_DosGlob
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7045,7 +7045,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_File_DosGlob_DosGlob dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_File_DosGlob_DosGlob   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_File_DosGlob_DosGlob   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7079,7 +7079,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_File_Glob_Glob
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_File_Glob_Glob   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_File_Glob_Glob   -- review before committing.
 # cmake target: perl5.28_File_Glob_Glob  ->  perl5.28_File_Glob_Glob
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7128,7 +7128,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_File_Glob_Glob dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_File_Glob_Glob   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_File_Glob_Glob   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7162,7 +7162,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Filter_Util_Call_Call
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Filter_Util_Call_Call   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Filter_Util_Call_Call   -- review before committing.
 # cmake target: perl5.28_Filter_Util_Call_Call  ->  perl5.28_Filter_Util_Call_Call
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7210,7 +7210,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Filter_Util_Call_Call dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Filter_Util_Call_Call   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Filter_Util_Call_Call   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7244,7 +7244,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Hash_Util_FieldHash_FieldHash
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Hash_Util_FieldHash_FieldHash   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Hash_Util_FieldHash_FieldHash   -- review before committing.
 # cmake target: perl5.28_Hash_Util_FieldHash_FieldHash  ->  perl5.28_Hash_Util_FieldHash_FieldHash
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7292,7 +7292,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Hash_Util_FieldHash_FieldHash dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Hash_Util_FieldHash_FieldHash   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Hash_Util_FieldHash_FieldHash   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7326,7 +7326,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Hash_Util_Util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Hash_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Hash_Util_Util   -- review before committing.
 # cmake target: perl5.28_Hash_Util_Util  ->  perl5.28_Hash_Util_Util
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7375,7 +7375,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Hash_Util_Util dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Hash_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Hash_Util_Util   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7409,7 +7409,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_I18N_Langinfo_Langinfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_I18N_Langinfo_Langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_I18N_Langinfo_Langinfo   -- review before committing.
 # cmake target: perl5.28_I18N_Langinfo_Langinfo  ->  perl5.28_I18N_Langinfo_Langinfo
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7457,7 +7457,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_I18N_Langinfo_Langinfo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_I18N_Langinfo_Langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_I18N_Langinfo_Langinfo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7491,7 +7491,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_IO_IO
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_IO_IO   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_IO_IO   -- review before committing.
 # cmake target: perl5.28_IO_IO  ->  perl5.28_IO_IO
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7540,7 +7540,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_IO_IO dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_IO_IO   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_IO_IO   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7574,7 +7574,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_IPC_SysV_SysV
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_IPC_SysV_SysV   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_IPC_SysV_SysV   -- review before committing.
 # cmake target: perl5.28_IPC_SysV_SysV  ->  perl5.28_IPC_SysV_SysV
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7622,7 +7622,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_IPC_SysV_SysV dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_IPC_SysV_SysV   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_IPC_SysV_SysV   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7656,7 +7656,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_List_Util_Util
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_List_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_List_Util_Util   -- review before committing.
 # cmake target: perl5.28_List_Util_Util  ->  perl5.28_List_Util_Util
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7705,7 +7705,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_List_Util_Util dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_List_Util_Util   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_List_Util_Util   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7739,7 +7739,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Math_BigInt_FastCalc_FastCalc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Math_BigInt_FastCalc_FastCalc   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Math_BigInt_FastCalc_FastCalc   -- review before committing.
 # cmake target: perl5.28_Math_BigInt_FastCalc_FastCalc  ->  perl5.28_Math_BigInt_FastCalc_FastCalc
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7787,7 +7787,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Math_BigInt_FastCalc_FastCalc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Math_BigInt_FastCalc_FastCalc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Math_BigInt_FastCalc_FastCalc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7821,7 +7821,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_MIME_Base64_Base64
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_MIME_Base64_Base64   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_MIME_Base64_Base64   -- review before committing.
 # cmake target: perl5.28_MIME_Base64_Base64  ->  perl5.28_MIME_Base64_Base64
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7869,7 +7869,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_MIME_Base64_Base64 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_MIME_Base64_Base64   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_MIME_Base64_Base64   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7903,7 +7903,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_mro_mro
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_mro_mro   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_mro_mro   -- review before committing.
 # cmake target: perl5.28_mro_mro  ->  perl5.28_mro_mro
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -7951,7 +7951,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_mro_mro dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_mro_mro   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_mro_mro   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -7985,7 +7985,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_NDBM_File_NDBM_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_NDBM_File_NDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_NDBM_File_NDBM_File   -- review before committing.
 # cmake target: perl5.28_NDBM_File_NDBM_File  ->  perl5.28_NDBM_File_NDBM_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8033,7 +8033,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_NDBM_File_NDBM_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_NDBM_File_NDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_NDBM_File_NDBM_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8067,7 +8067,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Opcode_Opcode
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Opcode_Opcode   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Opcode_Opcode   -- review before committing.
 # cmake target: perl5.28_Opcode_Opcode  ->  perl5.28_Opcode_Opcode
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8115,7 +8115,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Opcode_Opcode dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Opcode_Opcode   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Opcode_Opcode   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8149,7 +8149,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_PerlIO_encoding_encoding
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_PerlIO_encoding_encoding   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_PerlIO_encoding_encoding   -- review before committing.
 # cmake target: perl5.28_PerlIO_encoding_encoding  ->  perl5.28_PerlIO_encoding_encoding
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8197,7 +8197,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_PerlIO_encoding_encoding dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_PerlIO_encoding_encoding   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_PerlIO_encoding_encoding   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8231,7 +8231,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_PerlIO_mmap_mmap
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_PerlIO_mmap_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_PerlIO_mmap_mmap   -- review before committing.
 # cmake target: perl5.28_PerlIO_mmap_mmap  ->  perl5.28_PerlIO_mmap_mmap
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8279,7 +8279,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_PerlIO_mmap_mmap dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_PerlIO_mmap_mmap   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_PerlIO_mmap_mmap   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8313,7 +8313,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_PerlIO_scalar_scalar
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_PerlIO_scalar_scalar   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_PerlIO_scalar_scalar   -- review before committing.
 # cmake target: perl5.28_PerlIO_scalar_scalar  ->  perl5.28_PerlIO_scalar_scalar
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8361,7 +8361,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_PerlIO_scalar_scalar dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_PerlIO_scalar_scalar   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_PerlIO_scalar_scalar   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8395,7 +8395,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_PerlIO_via_via
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_PerlIO_via_via   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_PerlIO_via_via   -- review before committing.
 # cmake target: perl5.28_PerlIO_via_via  ->  perl5.28_PerlIO_via_via
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8443,7 +8443,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_PerlIO_via_via dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_PerlIO_via_via   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_PerlIO_via_via   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8477,7 +8477,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_POSIX_POSIX
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_POSIX_POSIX   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_POSIX_POSIX   -- review before committing.
 # cmake target: perl5.28_POSIX_POSIX  ->  perl5.28_POSIX_POSIX
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8525,7 +8525,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_POSIX_POSIX dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_POSIX_POSIX   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_POSIX_POSIX   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8559,7 +8559,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_re_re
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_re_re   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_re_re   -- review before committing.
 # cmake target: perl5.28_re_re  ->  perl5.28_re_re
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8612,7 +8612,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_re_re dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_re_re   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_re_re   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8646,7 +8646,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_SDBM_File_SDBM_File
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_SDBM_File_SDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_SDBM_File_SDBM_File   -- review before committing.
 # cmake target: perl5.28_SDBM_File_SDBM_File  ->  perl5.28_SDBM_File_SDBM_File
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8698,7 +8698,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_SDBM_File_SDBM_File dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_SDBM_File_SDBM_File   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_SDBM_File_SDBM_File   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8732,7 +8732,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Socket_Socket
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Socket_Socket   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Socket_Socket   -- review before committing.
 # cmake target: perl5.28_Socket_Socket  ->  perl5.28_Socket_Socket
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8780,7 +8780,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Socket_Socket dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Socket_Socket   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Socket_Socket   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8814,7 +8814,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Storable_Storable
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Storable_Storable   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Storable_Storable   -- review before committing.
 # cmake target: perl5.28_Storable_Storable  ->  perl5.28_Storable_Storable
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8862,7 +8862,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Storable_Storable dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Storable_Storable   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Storable_Storable   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8896,7 +8896,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Sys_Hostname_Hostname
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Sys_Hostname_Hostname   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Sys_Hostname_Hostname   -- review before committing.
 # cmake target: perl5.28_Sys_Hostname_Hostname  ->  perl5.28_Sys_Hostname_Hostname
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -8944,7 +8944,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Sys_Hostname_Hostname dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Sys_Hostname_Hostname   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Sys_Hostname_Hostname   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -8978,7 +8978,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Sys_Syslog_Syslog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Sys_Syslog_Syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Sys_Syslog_Syslog   -- review before committing.
 # cmake target: perl5.28_Sys_Syslog_Syslog  ->  perl5.28_Sys_Syslog_Syslog
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9026,7 +9026,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Sys_Syslog_Syslog dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Sys_Syslog_Syslog   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Sys_Syslog_Syslog   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9060,7 +9060,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_threads_threads
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_threads_threads   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_threads_threads   -- review before committing.
 # cmake target: perl5.28_threads_threads  ->  perl5.28_threads_threads
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9108,7 +9108,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_threads_threads dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_threads_threads   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_threads_threads   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9142,7 +9142,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_threads_shared_shared
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_threads_shared_shared   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_threads_shared_shared   -- review before committing.
 # cmake target: perl5.28_threads_shared_shared  ->  perl5.28_threads_shared_shared
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9190,7 +9190,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_threads_shared_shared dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_threads_shared_shared   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_threads_shared_shared   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9224,7 +9224,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Tie_Hash_NamedCapture_NamedCapture
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
 # cmake target: perl5.28_Tie_Hash_NamedCapture_NamedCapture  ->  perl5.28_Tie_Hash_NamedCapture_NamedCapture
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9272,7 +9272,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Tie_Hash_NamedCapture_NamedCapture dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Tie_Hash_NamedCapture_NamedCapture   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9306,7 +9306,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Time_HiRes_HiRes
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Time_HiRes_HiRes   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Time_HiRes_HiRes   -- review before committing.
 # cmake target: perl5.28_Time_HiRes_HiRes  ->  perl5.28_Time_HiRes_HiRes
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9367,7 +9367,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Time_HiRes_HiRes dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Time_HiRes_HiRes   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Time_HiRes_HiRes   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9401,7 +9401,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Time_Piece_Piece
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Time_Piece_Piece   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Time_Piece_Piece   -- review before committing.
 # cmake target: perl5.28_Time_Piece_Piece  ->  perl5.28_Time_Piece_Piece
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9449,7 +9449,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Time_Piece_Piece dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Time_Piece_Piece   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Time_Piece_Piece   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9483,7 +9483,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Unicode_Collate_Collate
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Unicode_Collate_Collate   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Unicode_Collate_Collate   -- review before committing.
 # cmake target: perl5.28_Unicode_Collate_Collate  ->  perl5.28_Unicode_Collate_Collate
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9531,7 +9531,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Unicode_Collate_Collate dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Unicode_Collate_Collate   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Unicode_Collate_Collate   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9565,7 +9565,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.28_Unicode_Normalize_Normalize
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28_Unicode_Normalize_Normalize   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28_Unicode_Normalize_Normalize   -- review before committing.
 # cmake target: perl5.28_Unicode_Normalize_Normalize  ->  perl5.28_Unicode_Normalize_Normalize
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9613,7 +9613,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28_Unicode_Normalize_Normalize dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs perl5.28_Unicode_Normalize_Normalize   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs perl5.28_Unicode_Normalize_Normalize   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final link passes these file-bearing flags whose file is
 # not a source of this package:
@@ -9647,7 +9647,7 @@ darwin_dylib(
 
 # BEGIN generated: perl5.18_libsdbm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18_libsdbm   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18_libsdbm   -- review before committing.
 # cmake target: perl5.18_libsdbm  ->  src/external/perl/5.18/libperl5.18_libsdbm.a
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9697,7 +9697,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18_libsdbm archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives perl5.18_libsdbm   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives perl5.18_libsdbm   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(
@@ -9714,7 +9714,7 @@ cc_static_lib(
 
 # BEGIN generated: perl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl   -- review before committing.
+# gen-buck-from-ninja (deleted) perl   -- review before committing.
 # cmake target: perl  ->  src/external/perl/perl
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9752,7 +9752,7 @@ cc_objects(
 
 # BEGIN generated: perl binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries perl   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries perl   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -9778,7 +9778,7 @@ darwin_binary(
 
 # BEGIN generated: perl5.18
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.18   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.18   -- review before committing.
 # cmake target: perl5.18  ->  src/external/perl/5.18/perl5.18
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9823,7 +9823,7 @@ cc_objects(
 
 # BEGIN generated: perl5.18 binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries perl5.18   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries perl5.18   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -9849,7 +9849,7 @@ darwin_binary(
 
 # BEGIN generated: perl5.28
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py perl5.28   -- review before committing.
+# gen-buck-from-ninja (deleted) perl5.28   -- review before committing.
 # cmake target: perl5.28  ->  src/external/perl/5.28/perl5.28
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/perl
@@ -9894,7 +9894,7 @@ cc_objects(
 
 # BEGIN generated: perl5.28 binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries perl5.28   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries perl5.28   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -9920,7 +9920,7 @@ darwin_binary(
 
 # BEGIN generated: python
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py python   -- review before committing.
+# gen-buck-from-ninja (deleted) python   -- review before committing.
 # cmake target: python  ->  src/external/python/2.7/Python-2.7.16/python
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/python/2.7/Python-2.7.16
@@ -9962,7 +9962,7 @@ cc_objects(
 
 # BEGIN generated: python binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries python   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries python   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/external/python/2.7/Python-2.7.16/python = python
 

@@ -10,7 +10,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: pyobjc_core_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_core_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_core_py27   -- review before committing.
 # cmake target: pyobjc_core_py27  ->  src/external/pyobjc/pyobjc/pyobjc-core-2.5.1/libpyobjc_core_py27.dylib
 
 cc_header_root(
@@ -128,7 +128,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_core_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_core_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_core_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-core-2.5.1/libpyobjc_core_py27.dylib = pyobjc_core_py27_dylib
 
@@ -163,7 +163,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_AddressBook_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_AddressBook_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_AddressBook_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_AddressBook_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-AddressBook-2.5.1/libpyobjc_AddressBook_extra_module_py27.dylib
 
 cc_header_root(
@@ -227,7 +227,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_AddressBook_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_AddressBook_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_AddressBook_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-AddressBook-2.5.1/libpyobjc_AddressBook_extra_module_py27.dylib = pyobjc_AddressBook_extra_module_py27_dylib
 
@@ -258,7 +258,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CFNetwork_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CFNetwork_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CFNetwork_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_CFNetwork_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CFNetwork-2.5.1/libpyobjc_CFNetwork_extra_module_py27.dylib
 
 cc_header_root(
@@ -321,7 +321,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CFNetwork_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CFNetwork_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CFNetwork_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CFNetwork-2.5.1/libpyobjc_CFNetwork_extra_module_py27.dylib = pyobjc_CFNetwork_extra_module_py27_dylib
 
@@ -352,7 +352,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_cf_inlines_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_cf_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_cf_inlines_py27   -- review before committing.
 # cmake target: pyobjc_cf_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_inlines_py27.dylib
 
 cc_header_root(
@@ -415,7 +415,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_cf_inlines_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_cf_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_cf_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_inlines_py27.dylib = pyobjc_cf_inlines_py27_dylib
 
@@ -446,7 +446,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_cf_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_cf_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_cf_py27   -- review before committing.
 # cmake target: pyobjc_cf_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_py27.dylib
 
 cc_header_root(
@@ -509,7 +509,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_cf_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_cf_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_cf_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_cf_py27.dylib = pyobjc_cf_py27_dylib
 
@@ -540,7 +540,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_foundation_inlines_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_foundation_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_foundation_inlines_py27   -- review before committing.
 # cmake target: pyobjc_foundation_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_inlines_py27.dylib
 
 cc_header_root(
@@ -603,7 +603,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_foundation_inlines_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_foundation_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_foundation_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_inlines_py27.dylib = pyobjc_foundation_inlines_py27_dylib
 
@@ -634,7 +634,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_foundation_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_foundation_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_foundation_py27   -- review before committing.
 # cmake target: pyobjc_foundation_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_py27.dylib
 
 cc_header_root(
@@ -697,7 +697,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_foundation_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_foundation_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_foundation_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_foundation_py27.dylib = pyobjc_foundation_py27_dylib
 
@@ -728,7 +728,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_appkit_inlines_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_appkit_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_appkit_inlines_py27   -- review before committing.
 # cmake target: pyobjc_appkit_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_inlines_py27.dylib
 
 cc_header_root(
@@ -791,7 +791,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_appkit_inlines_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_appkit_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_inlines_py27.dylib = pyobjc_appkit_inlines_py27_dylib
 
@@ -822,7 +822,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_appkit_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_appkit_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_appkit_py27   -- review before committing.
 # cmake target: pyobjc_appkit_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_py27.dylib
 
 cc_header_root(
@@ -887,7 +887,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_appkit_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_appkit_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_appkit_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Cocoa-2.5.1/libpyobjc_appkit_py27.dylib = pyobjc_appkit_py27_dylib
 
@@ -918,7 +918,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreLocation_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreLocation_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreLocation_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_CoreLocation_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CoreLocation-2.5.1/libpyobjc_CoreLocation_extra_module_py27.dylib
 
 cc_header_root(
@@ -982,7 +982,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreLocation_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreLocation_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreLocation_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CoreLocation-2.5.1/libpyobjc_CoreLocation_extra_module_py27.dylib = pyobjc_CoreLocation_extra_module_py27_dylib
 
@@ -1013,7 +1013,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreText_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreText_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreText_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_CoreText_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-CoreText-2.5.1/libpyobjc_CoreText_extra_module_py27.dylib
 
 cc_header_root(
@@ -1076,7 +1076,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreText_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreText_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreText_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-CoreText-2.5.1/libpyobjc_CoreText_extra_module_py27.dylib = pyobjc_CoreText_extra_module_py27_dylib
 
@@ -1107,7 +1107,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_FSEvents_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_FSEvents_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_FSEvents_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_FSEvents_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-FSEvents-2.5.1/libpyobjc_FSEvents_extra_module_py27.dylib
 
 cc_header_root(
@@ -1170,7 +1170,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_FSEvents_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_FSEvents_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_FSEvents_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-FSEvents-2.5.1/libpyobjc_FSEvents_extra_module_py27.dylib = pyobjc_FSEvents_extra_module_py27_dylib
 
@@ -1200,7 +1200,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_InputMethodKit_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_InputMethodKit_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-InputMethodKit-2.5.1/libpyobjc_InputMethodKit_extra_module_py27.dylib
 
 cc_header_root(
@@ -1264,7 +1264,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_InputMethodKit_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_InputMethodKit_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-InputMethodKit-2.5.1/libpyobjc_InputMethodKit_extra_module_py27.dylib = pyobjc_InputMethodKit_extra_module_py27_dylib
 
@@ -1295,7 +1295,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreVideo_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreVideo_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreVideo_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_CoreVideo_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreVideo_extra_module_py27.dylib
 
 cc_header_root(
@@ -1359,7 +1359,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreVideo_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreVideo_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreVideo_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreVideo_extra_module_py27.dylib = pyobjc_CoreVideo_extra_module_py27_dylib
 
@@ -1389,7 +1389,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreGraphics_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_CoreGraphics_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_extra_module_py27.dylib
 
 cc_header_root(
@@ -1452,7 +1452,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreGraphics_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreGraphics_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_extra_module_py27.dylib = pyobjc_CoreGraphics_extra_module_py27_dylib
 
@@ -1483,7 +1483,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreGraphics_inlines_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreGraphics_inlines_py27   -- review before committing.
 # cmake target: pyobjc_CoreGraphics_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_inlines_py27.dylib
 
 cc_header_root(
@@ -1546,7 +1546,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreGraphics_inlines_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreGraphics_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_inlines_py27.dylib = pyobjc_CoreGraphics_inlines_py27_dylib
 
@@ -1576,7 +1576,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreGraphics_callbacks_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
 # cmake target: pyobjc_CoreGraphics_callbacks_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_callbacks_py27.dylib
 
 cc_header_root(
@@ -1639,7 +1639,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreGraphics_callbacks_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreGraphics_callbacks_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_callbacks_py27.dylib = pyobjc_CoreGraphics_callbacks_py27_dylib
 
@@ -1669,7 +1669,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreGraphics_doubleindirect_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
 # cmake target: pyobjc_CoreGraphics_doubleindirect_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_doubleindirect_py27.dylib
 
 cc_header_root(
@@ -1732,7 +1732,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreGraphics_doubleindirect_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreGraphics_doubleindirect_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_doubleindirect_py27.dylib = pyobjc_CoreGraphics_doubleindirect_py27_dylib
 
@@ -1762,7 +1762,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_CoreGraphics_sortandmap_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
 # cmake target: pyobjc_CoreGraphics_sortandmap_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_sortandmap_py27.dylib
 
 cc_header_root(
@@ -1825,7 +1825,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_CoreGraphics_sortandmap_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_CoreGraphics_sortandmap_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-Quartz-2.5.1/libpyobjc_CoreGraphics_sortandmap_py27.dylib = pyobjc_CoreGraphics_sortandmap_py27_dylib
 
@@ -1855,7 +1855,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_ScreenSaver_inlines_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_ScreenSaver_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_ScreenSaver_inlines_py27   -- review before committing.
 # cmake target: pyobjc_ScreenSaver_inlines_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-ScreenSaver-2.5.1/libpyobjc_ScreenSaver_inlines_py27.dylib
 
 cc_header_root(
@@ -1919,7 +1919,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_ScreenSaver_inlines_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_ScreenSaver_inlines_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_ScreenSaver_inlines_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-ScreenSaver-2.5.1/libpyobjc_ScreenSaver_inlines_py27.dylib = pyobjc_ScreenSaver_inlines_py27_dylib
 
@@ -1950,7 +1950,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_ScriptingBridge_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_ScriptingBridge_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/libpyobjc_ScriptingBridge_extra_module_py27.dylib
 
 cc_header_root(
@@ -2014,7 +2014,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_ScriptingBridge_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_ScriptingBridge_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-ScriptingBridge-2.5.1/libpyobjc_ScriptingBridge_extra_module_py27.dylib = pyobjc_ScriptingBridge_extra_module_py27_dylib
 
@@ -2045,7 +2045,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_SyncServices_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_SyncServices_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_SyncServices_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_SyncServices_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-SyncServices-2.5.1/libpyobjc_SyncServices_extra_module_py27.dylib
 
 cc_header_root(
@@ -2109,7 +2109,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_SyncServices_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_SyncServices_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_SyncServices_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-SyncServices-2.5.1/libpyobjc_SyncServices_extra_module_py27.dylib = pyobjc_SyncServices_extra_module_py27_dylib
 
@@ -2140,7 +2140,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_SystemConfiguration_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_SystemConfiguration_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/libpyobjc_SystemConfiguration_extra_module_py27.dylib
 
 cc_header_root(
@@ -2204,7 +2204,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_SystemConfiguration_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_SystemConfiguration_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-SystemConfiguration-2.5.1/libpyobjc_SystemConfiguration_extra_module_py27.dylib = pyobjc_SystemConfiguration_extra_module_py27_dylib
 
@@ -2234,7 +2234,7 @@ darwin_dylib(
 
 # BEGIN generated: pyobjc_WebKit_extra_module_py27
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pyobjc_WebKit_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) pyobjc_WebKit_extra_module_py27   -- review before committing.
 # cmake target: pyobjc_WebKit_extra_module_py27  ->  src/external/pyobjc/pyobjc/pyobjc-framework-WebKit-2.5.1/libpyobjc_WebKit_extra_module_py27.dylib
 
 cc_header_root(
@@ -2298,7 +2298,7 @@ cc_objects(
 
 # BEGIN generated: pyobjc_WebKit_extra_module_py27 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pyobjc_WebKit_extra_module_py27   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pyobjc_WebKit_extra_module_py27   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/external/pyobjc/pyobjc/pyobjc-framework-WebKit-2.5.1/libpyobjc_WebKit_extra_module_py27.dylib = pyobjc_WebKit_extra_module_py27_dylib
 

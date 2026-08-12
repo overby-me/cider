@@ -19,7 +19,7 @@ cc_header_root(
 
 # BEGIN generated: compression
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py compression   -- review before committing.
+# gen-buck-from-ninja (deleted) compression   -- review before committing.
 # cmake target: compression  ->  src/libcompression/libcompression.dylib
 
 cc_objects(
@@ -42,7 +42,7 @@ cc_objects(
 
 # BEGIN generated: compression dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs compression   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs compression   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

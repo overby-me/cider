@@ -7,7 +7,7 @@ load("//buck/rules:cc.bzl", "cc_objects")
 
 # BEGIN generated: crt1.10.6
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crt1.10.6   -- review before committing.
+# gen-buck-from-ninja (deleted) crt1.10.6   -- review before committing.
 # cmake target: crt1.10.6  ->  src/external/csu/libcrt1.10.6.a
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -48,7 +48,7 @@ cc_objects(
 
 # BEGIN generated: bundle1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bundle1   -- review before committing.
+# gen-buck-from-ninja (deleted) bundle1   -- review before committing.
 # cmake target: bundle1  ->  src/external/csu/libbundle1.a
 
 cc_objects(
@@ -69,7 +69,7 @@ cc_objects(
 
 # BEGIN generated: crt0
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crt0   -- review before committing.
+# gen-buck-from-ninja (deleted) crt0   -- review before committing.
 # cmake target: crt0  ->  src/external/csu/libcrt0.a
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -110,7 +110,7 @@ cc_objects(
 
 # BEGIN generated: crt1.10.5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crt1.10.5   -- review before committing.
+# gen-buck-from-ninja (deleted) crt1.10.5   -- review before committing.
 # cmake target: crt1.10.5  ->  src/external/csu/libcrt1.10.5.a
 # 3 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -152,7 +152,7 @@ cc_objects(
 
 # BEGIN generated: crt1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py crt1   -- review before committing.
+# gen-buck-from-ninja (deleted) crt1   -- review before committing.
 # cmake target: crt1  ->  src/external/csu/libcrt1.a
 # 3 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -194,7 +194,7 @@ cc_objects(
 
 # BEGIN generated: dylib1.10.5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py dylib1.10.5   -- review before committing.
+# gen-buck-from-ninja (deleted) dylib1.10.5   -- review before committing.
 # cmake target: dylib1.10.5  ->  src/external/csu/libdylib1.10.5.a
 
 cc_objects(
@@ -215,7 +215,7 @@ cc_objects(
 
 # BEGIN generated: dylib1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py dylib1   -- review before committing.
+# gen-buck-from-ninja (deleted) dylib1   -- review before committing.
 # cmake target: dylib1  ->  src/external/csu/libdylib1.a
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -256,7 +256,7 @@ cc_objects(
 
 # BEGIN generated: lazydylib1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lazydylib1   -- review before committing.
+# gen-buck-from-ninja (deleted) lazydylib1   -- review before committing.
 # cmake target: lazydylib1  ->  src/external/csu/liblazydylib1.a
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

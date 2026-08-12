@@ -31,7 +31,7 @@ load("//buck/generated:exports_misc_cmds.bzl", "EXPORTS")
 
 # BEGIN generated: cal
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py cal   -- review before committing.
+# gen-buck-from-ninja (deleted) cal   -- review before committing.
 # cmake target: cal  ->  src/external/misc_cmds/cal
 
 cc_header_root(
@@ -65,7 +65,7 @@ cc_objects(
 
 # BEGIN generated: cal binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries cal   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries cal   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -91,7 +91,7 @@ darwin_binary(
 
 # BEGIN generated: calendar
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py calendar   -- review before committing.
+# gen-buck-from-ninja (deleted) calendar   -- review before committing.
 # cmake target: calendar  ->  src/external/misc_cmds/calendar
 
 cc_header_root(
@@ -127,7 +127,7 @@ cc_objects(
 
 # BEGIN generated: calendar binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries calendar   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries calendar   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -152,7 +152,7 @@ darwin_binary(
 
 # BEGIN generated: leave
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py leave   -- review before committing.
+# gen-buck-from-ninja (deleted) leave   -- review before committing.
 # cmake target: leave  ->  src/external/misc_cmds/leave
 
 cc_objects(
@@ -177,7 +177,7 @@ cc_objects(
 
 # BEGIN generated: leave binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries leave   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries leave   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -202,7 +202,7 @@ darwin_binary(
 
 # BEGIN generated: ncal
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ncal   -- review before committing.
+# gen-buck-from-ninja (deleted) ncal   -- review before committing.
 # cmake target: ncal  ->  src/external/misc_cmds/ncal
 
 cc_header_root(
@@ -236,7 +236,7 @@ cc_objects(
 
 # BEGIN generated: ncal binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ncal   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ncal   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -262,7 +262,7 @@ darwin_binary(
 
 # BEGIN generated: tsort
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tsort   -- review before committing.
+# gen-buck-from-ninja (deleted) tsort   -- review before committing.
 # cmake target: tsort  ->  src/external/misc_cmds/tsort
 
 cc_objects(
@@ -286,7 +286,7 @@ cc_objects(
 
 # BEGIN generated: tsort binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries tsort   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries tsort   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -311,7 +311,7 @@ darwin_binary(
 
 # BEGIN generated: units
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py units   -- review before committing.
+# gen-buck-from-ninja (deleted) units   -- review before committing.
 # cmake target: units  ->  src/external/misc_cmds/units
 
 cc_header_root(
@@ -343,7 +343,7 @@ cc_objects(
 
 # BEGIN generated: units binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries units   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries units   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(

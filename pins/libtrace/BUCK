@@ -22,7 +22,7 @@ cc_header_root(
 
 # BEGIN generated: system_trace_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_trace_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_trace_obj   -- review before committing.
 # cmake target: system_trace_obj  ->  src/external/libtrace/system_trace_obj
 
 cc_header_root(
@@ -63,7 +63,7 @@ cc_objects(
 
 # BEGIN generated: system_trace dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_trace   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_trace   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -112,7 +112,7 @@ darwin_dylib(
 
 # BEGIN generated: libsystem_trace_static.a archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives libsystem_trace_static.a   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives libsystem_trace_static.a   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(

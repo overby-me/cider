@@ -20,7 +20,7 @@ cc_header_root(
 
 # BEGIN generated: acm archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives acm   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives acm   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(
@@ -37,7 +37,7 @@ cc_static_lib(
 
 # BEGIN generated: acm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py acm   -- review before committing.
+# gen-buck-from-ninja (deleted) acm   -- review before committing.
 # cmake target: acm  ->  src/libacm/libacm.a
 
 cc_header_root(

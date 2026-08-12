@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: system_dnssd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_dnssd   -- review before committing.
+# gen-buck-from-ninja (deleted) system_dnssd   -- review before committing.
 # cmake target: system_dnssd  ->  src/lib/system/dnssd/libsystem_dnssd.dylib
 
 cc_header_root(
@@ -46,7 +46,7 @@ darwin_dylib(
 
 # BEGIN generated: system_dnssd dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_dnssd   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_dnssd   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

@@ -31,7 +31,7 @@ load("//buck/generated:exports_file.bzl", "EXPORTS")
 
 # BEGIN generated: magic
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py magic   -- review before committing.
+# gen-buck-from-ninja (deleted) magic   -- review before committing.
 # cmake target: magic  ->  src/external/file/file/libmagic.a
 
 cc_header_root(
@@ -84,7 +84,7 @@ cc_objects(
 
 # BEGIN generated: magic archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives magic   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives magic   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(
@@ -101,7 +101,7 @@ cc_static_lib(
 
 # BEGIN generated: file
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py file   -- review before committing.
+# gen-buck-from-ninja (deleted) file   -- review before committing.
 # cmake target: file  ->  src/external/file/file/file
 
 cc_header_root(
@@ -135,7 +135,7 @@ cc_objects(
 
 # BEGIN generated: file binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries file   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries file   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(

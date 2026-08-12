@@ -218,7 +218,11 @@ def main [--dry-run] {
   (($extra | to json --indent 2) + "\n") | save -f $EXTRA_DEPS
   say $"wired ($wired | length) xtrace stubs; ($unmatched | length) unmatched"
   for u in $unmatched { say $"  UNMATCHED ($u.lib): ($u.src)" }
-  say ("now run: scripts/gen-buck-from-ninja.py --write " + ($wired | get lib | str join " "))
+  # WHAT USED TO FOLLOW was "now run gen-buck-from-ninja --write <libs>". That generator is
+  # deleted (#98): it read the frozen cmake reference, which cannot be regenerated, so it could
+  # only ever reproduce blocks that are already committed. The wiring above is written; the
+  # affected blocks are maintained by hand now.
+  say ("wired into extra-deps: " + ($wired | get lib | str join " "))
   exit 0
 }
 

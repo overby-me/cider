@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: objc_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py objc_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) objc_obj   -- review before committing.
 # cmake target: objc_obj  ->  src/external/objc4/runtime/objc_obj
 # 43 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -130,7 +130,7 @@ cc_objects(
 
 # BEGIN generated: objc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs objc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs objc   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_dylib(
@@ -194,7 +194,7 @@ darwin_dylib(
 
 # BEGIN generated: objc-trampolines
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py objc-trampolines   -- review before committing.
+# gen-buck-from-ninja (deleted) objc-trampolines   -- review before committing.
 # cmake target: objc-trampolines  ->  src/external/objc4/runtime/libobjc-trampolines.dylib
 # 5 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

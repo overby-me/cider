@@ -10,7 +10,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: zsh
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zsh   -- review before committing.
+# gen-buck-from-ninja (deleted) zsh   -- review before committing.
 # cmake target: zsh  ->  src/external/zsh/zsh
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -131,7 +131,7 @@ prefix_dir(
 
 # BEGIN generated: zmod_zutil
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zutil   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zutil   -- review before committing.
 # cmake target: zmod_zutil  ->  zmod_zutil
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -204,7 +204,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zutil dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zutil   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zutil   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -234,7 +234,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_complist
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_complist   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_complist   -- review before committing.
 # cmake target: zmod_complist  ->  zmod_complist
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -303,7 +303,7 @@ cc_objects(
 
 # BEGIN generated: zmod_complist dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_complist   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_complist   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -333,7 +333,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_attr
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_attr   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_attr   -- review before committing.
 # cmake target: zmod_attr  ->  zmod_attr
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -406,7 +406,7 @@ cc_objects(
 
 # BEGIN generated: zmod_attr dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_attr   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_attr   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -436,7 +436,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_cap
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_cap   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_cap   -- review before committing.
 # cmake target: zmod_cap  ->  zmod_cap
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -509,7 +509,7 @@ cc_objects(
 
 # BEGIN generated: zmod_cap dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_cap   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_cap   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -539,7 +539,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_clone
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_clone   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_clone   -- review before committing.
 # cmake target: zmod_clone  ->  zmod_clone
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -612,7 +612,7 @@ cc_objects(
 
 # BEGIN generated: zmod_clone dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_clone   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_clone   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -642,7 +642,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_compctl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_compctl   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_compctl   -- review before committing.
 # cmake target: zmod_compctl  ->  zmod_compctl
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -711,7 +711,7 @@ cc_objects(
 
 # BEGIN generated: zmod_compctl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_compctl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_compctl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -741,7 +741,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_complete
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_complete   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_complete   -- review before committing.
 # cmake target: zmod_complete  ->  zmod_complete
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -813,7 +813,7 @@ cc_objects(
 
 # BEGIN generated: zmod_complete dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_complete   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_complete   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -843,7 +843,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_curses
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_curses   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_curses   -- review before committing.
 # cmake target: zmod_curses  ->  zmod_curses
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -916,7 +916,7 @@ cc_objects(
 
 # BEGIN generated: zmod_curses dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_curses   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_curses   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -946,7 +946,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_datetime
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_datetime   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_datetime   -- review before committing.
 # cmake target: zmod_datetime  ->  zmod_datetime
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1019,7 +1019,7 @@ cc_objects(
 
 # BEGIN generated: zmod_datetime dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_datetime   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_datetime   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 # buck-registry: src/external/zsh/datetime.so = zmod_datetime_dylib
@@ -1050,7 +1050,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_deltochar
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_deltochar   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_deltochar   -- review before committing.
 # cmake target: zmod_deltochar  ->  zmod_deltochar
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1119,7 +1119,7 @@ cc_objects(
 
 # BEGIN generated: zmod_deltochar dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_deltochar   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_deltochar   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1149,7 +1149,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_example
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_example   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_example   -- review before committing.
 # cmake target: zmod_example  ->  zmod_example
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1222,7 +1222,7 @@ cc_objects(
 
 # BEGIN generated: zmod_example dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_example   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_example   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1252,7 +1252,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_files
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_files   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_files   -- review before committing.
 # cmake target: zmod_files  ->  zmod_files
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1325,7 +1325,7 @@ cc_objects(
 
 # BEGIN generated: zmod_files dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_files   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_files   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1355,7 +1355,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_langinfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_langinfo   -- review before committing.
 # cmake target: zmod_langinfo  ->  zmod_langinfo
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1428,7 +1428,7 @@ cc_objects(
 
 # BEGIN generated: zmod_langinfo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_langinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_langinfo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1458,7 +1458,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_mapfile
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_mapfile   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_mapfile   -- review before committing.
 # cmake target: zmod_mapfile  ->  zmod_mapfile
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1531,7 +1531,7 @@ cc_objects(
 
 # BEGIN generated: zmod_mapfile dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_mapfile   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_mapfile   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1561,7 +1561,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_mathfunc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_mathfunc   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_mathfunc   -- review before committing.
 # cmake target: zmod_mathfunc  ->  zmod_mathfunc
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1634,7 +1634,7 @@ cc_objects(
 
 # BEGIN generated: zmod_mathfunc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_mathfunc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_mathfunc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1664,7 +1664,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_nearcolor
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_nearcolor   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_nearcolor   -- review before committing.
 # cmake target: zmod_nearcolor  ->  zmod_nearcolor
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1737,7 +1737,7 @@ cc_objects(
 
 # BEGIN generated: zmod_nearcolor dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_nearcolor   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_nearcolor   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1767,7 +1767,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_newuser
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_newuser   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_newuser   -- review before committing.
 # cmake target: zmod_newuser  ->  zmod_newuser
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1840,7 +1840,7 @@ cc_objects(
 
 # BEGIN generated: zmod_newuser dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_newuser   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_newuser   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1870,7 +1870,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_param_private
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_param_private   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_param_private   -- review before committing.
 # cmake target: zmod_param_private  ->  zmod_param_private
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1943,7 +1943,7 @@ cc_objects(
 
 # BEGIN generated: zmod_param_private dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_param_private   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_param_private   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1973,7 +1973,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_parameter
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_parameter   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_parameter   -- review before committing.
 # cmake target: zmod_parameter  ->  zmod_parameter
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2046,7 +2046,7 @@ cc_objects(
 
 # BEGIN generated: zmod_parameter dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_parameter   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_parameter   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2076,7 +2076,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_regex
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_regex   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_regex   -- review before committing.
 # cmake target: zmod_regex  ->  zmod_regex
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2149,7 +2149,7 @@ cc_objects(
 
 # BEGIN generated: zmod_regex dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_regex   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_regex   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2179,7 +2179,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_rlimits
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_rlimits   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_rlimits   -- review before committing.
 # cmake target: zmod_rlimits  ->  zmod_rlimits
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2256,7 +2256,7 @@ cc_objects(
 
 # BEGIN generated: zmod_rlimits dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_rlimits   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_rlimits   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2286,7 +2286,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_sched
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_sched   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_sched   -- review before committing.
 # cmake target: zmod_sched  ->  zmod_sched
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2363,7 +2363,7 @@ cc_objects(
 
 # BEGIN generated: zmod_sched dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_sched   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_sched   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2393,7 +2393,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_socket
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_socket   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_socket   -- review before committing.
 # cmake target: zmod_socket  ->  zmod_socket
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2466,7 +2466,7 @@ cc_objects(
 
 # BEGIN generated: zmod_socket dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_socket   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_socket   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2496,7 +2496,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_stat
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_stat   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_stat   -- review before committing.
 # cmake target: zmod_stat  ->  zmod_stat
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2569,7 +2569,7 @@ cc_objects(
 
 # BEGIN generated: zmod_stat dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_stat   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_stat   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2599,7 +2599,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_system
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_system   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_system   -- review before committing.
 # cmake target: zmod_system  ->  zmod_system
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2673,7 +2673,7 @@ cc_objects(
 
 # BEGIN generated: zmod_system dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_system   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_system   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2703,7 +2703,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_tcp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_tcp   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_tcp   -- review before committing.
 # cmake target: zmod_tcp  ->  zmod_tcp
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2776,7 +2776,7 @@ cc_objects(
 
 # BEGIN generated: zmod_tcp dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_tcp   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_tcp   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2806,7 +2806,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_termcap
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_termcap   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_termcap   -- review before committing.
 # cmake target: zmod_termcap  ->  zmod_termcap
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2879,7 +2879,7 @@ cc_objects(
 
 # BEGIN generated: zmod_termcap dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_termcap   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_termcap   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2909,7 +2909,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_terminfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_terminfo   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_terminfo   -- review before committing.
 # cmake target: zmod_terminfo  ->  zmod_terminfo
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -2982,7 +2982,7 @@ cc_objects(
 
 # BEGIN generated: zmod_terminfo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_terminfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_terminfo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3012,7 +3012,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zftp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zftp   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zftp   -- review before committing.
 # cmake target: zmod_zftp  ->  zmod_zftp
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3085,7 +3085,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zftp dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zftp   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zftp   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3115,7 +3115,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zle
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zle   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zle   -- review before committing.
 # cmake target: zmod_zle  ->  zmod_zle
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3197,7 +3197,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zle dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zle   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zle   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3227,7 +3227,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zleparameter
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zleparameter   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zleparameter   -- review before committing.
 # cmake target: zmod_zleparameter  ->  zmod_zleparameter
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3296,7 +3296,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zleparameter dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zleparameter   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zleparameter   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3326,7 +3326,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zprof
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zprof   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zprof   -- review before committing.
 # cmake target: zmod_zprof  ->  zmod_zprof
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3399,7 +3399,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zprof dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zprof   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zprof   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3429,7 +3429,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zpty
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zpty   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zpty   -- review before committing.
 # cmake target: zmod_zpty  ->  zmod_zpty
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3502,7 +3502,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zpty dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zpty   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zpty   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3532,7 +3532,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_zselect
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_zselect   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_zselect   -- review before committing.
 # cmake target: zmod_zselect  ->  zmod_zselect
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3605,7 +3605,7 @@ cc_objects(
 
 # BEGIN generated: zmod_zselect dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_zselect   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_zselect   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3635,7 +3635,7 @@ darwin_dylib(
 
 # BEGIN generated: zmod_computil
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py zmod_computil   -- review before committing.
+# gen-buck-from-ninja (deleted) zmod_computil   -- review before committing.
 # cmake target: zmod_computil  ->  zmod_computil
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -3704,7 +3704,7 @@ cc_objects(
 
 # BEGIN generated: zmod_computil dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs zmod_computil   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs zmod_computil   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

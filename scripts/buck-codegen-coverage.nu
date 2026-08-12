@@ -52,7 +52,7 @@ const HEADER_SUFFIXES = [".h" ".hpp" ".hh" ".inc" ".def" ".defs" ".modulemap" ".
 # what made the first version of this number meaningless.
 const CMAKE_TARGETS = ["CMakeFiles/uninstall" "CMakeFiles/xcproj_symlinks"]
 
-# The reference graph. gen-buck-from-ninja.py holds the same constant, and this check used to
+# The reference graph. gen-buck-from-ninja (deleted) holds the same constant, and this check used to
 # import that whole file to read it.
 const GRAPH_LINK = "result-graph-ref"
 

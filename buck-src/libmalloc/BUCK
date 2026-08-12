@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_malloc_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_malloc_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_malloc_obj   -- review before committing.
 # cmake target: system_malloc_obj  ->  src/external/libmalloc/system_malloc_obj
 # 19 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

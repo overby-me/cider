@@ -21,7 +21,7 @@ cc_header_root(
 
 # BEGIN generated: DiagnosticMessagesClient
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DiagnosticMessagesClient   -- review before committing.
+# gen-buck-from-ninja (deleted) DiagnosticMessagesClient   -- review before committing.
 # cmake target: DiagnosticMessagesClient  ->  src/libDiagnosticMessagesClient/libDiagnosticMessagesClient.dylib
 
 cc_objects(
@@ -44,7 +44,7 @@ cc_objects(
 
 # BEGIN generated: DiagnosticMessagesClient dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DiagnosticMessagesClient   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DiagnosticMessagesClient   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

@@ -31,7 +31,7 @@ load("//buck/generated:exports_openpam.bzl", "EXPORTS")
 
 # BEGIN generated: pam.2
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam.2   -- review before committing.
+# gen-buck-from-ninja (deleted) pam.2   -- review before committing.
 # cmake target: pam.2  ->  src/external/openpam/libpam.2.dylib
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -120,7 +120,7 @@ cc_objects(
 
 # BEGIN generated: pam.2 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam.2   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam.2   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -143,7 +143,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_deny
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_deny   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_deny   -- review before committing.
 # cmake target: pam_deny  ->  pam_deny
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -191,7 +191,7 @@ cc_objects(
 
 # BEGIN generated: pam_deny dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_deny   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_deny   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -214,7 +214,7 @@ darwin_dylib(
 
 # BEGIN generated: pam.1
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam.1   -- review before committing.
+# gen-buck-from-ninja (deleted) pam.1   -- review before committing.
 # cmake target: pam.1  ->  src/external/openpam/libpam.1.dylib
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -262,7 +262,7 @@ cc_objects(
 
 # BEGIN generated: pam.1 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam.1   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam.1   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -285,7 +285,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_akm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_akm   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_akm   -- review before committing.
 # cmake target: pam_akm  ->  pam_akm
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -342,7 +342,7 @@ cc_objects(
 
 # BEGIN generated: pam_akm dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_akm   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_akm   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -367,7 +367,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_env
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_env   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_env   -- review before committing.
 # cmake target: pam_env  ->  pam_env
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -423,7 +423,7 @@ cc_objects(
 
 # BEGIN generated: pam_env dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_env   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_env   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -447,7 +447,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_group
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_group   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_group   -- review before committing.
 # cmake target: pam_group  ->  pam_group
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -503,7 +503,7 @@ cc_objects(
 
 # BEGIN generated: pam_group dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_group   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_group   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -527,7 +527,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_krb5
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_krb5   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_krb5   -- review before committing.
 # cmake target: pam_krb5  ->  pam_krb5
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -590,7 +590,7 @@ cc_objects(
 
 # BEGIN generated: pam_launchd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_launchd   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_launchd   -- review before committing.
 # cmake target: pam_launchd  ->  pam_launchd
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -646,7 +646,7 @@ cc_objects(
 
 # BEGIN generated: pam_launchd dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_launchd   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_launchd   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   Security_x86_64
@@ -673,7 +673,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_localauthentication
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_localauthentication   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_localauthentication   -- review before committing.
 # cmake target: pam_localauthentication  ->  pam_localauthentication
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -731,7 +731,7 @@ cc_objects(
 
 # BEGIN generated: pam_localauthentication dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_localauthentication   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_localauthentication   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   Security_x86_64
@@ -761,7 +761,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_mount
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_mount   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_mount   -- review before committing.
 # cmake target: pam_mount  ->  pam_mount
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -824,7 +824,7 @@ cc_objects(
 
 # BEGIN generated: pam_nologin
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_nologin   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_nologin   -- review before committing.
 # cmake target: pam_nologin  ->  pam_nologin
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -880,7 +880,7 @@ cc_objects(
 
 # BEGIN generated: pam_nologin dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_nologin   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_nologin   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -904,7 +904,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_ntlm
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_ntlm   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_ntlm   -- review before committing.
 # cmake target: pam_ntlm  ->  pam_ntlm
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -967,7 +967,7 @@ cc_objects(
 
 # BEGIN generated: pam_opendirectory
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_opendirectory   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_opendirectory   -- review before committing.
 # cmake target: pam_opendirectory  ->  pam_opendirectory
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1037,7 +1037,7 @@ cc_objects(
 
 # BEGIN generated: pam_permit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_permit   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_permit   -- review before committing.
 # cmake target: pam_permit  ->  pam_permit
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1085,7 +1085,7 @@ cc_objects(
 
 # BEGIN generated: pam_permit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_permit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_permit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1108,7 +1108,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_rootok
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_rootok   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_rootok   -- review before committing.
 # cmake target: pam_rootok  ->  pam_rootok
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1164,7 +1164,7 @@ cc_objects(
 
 # BEGIN generated: pam_rootok dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_rootok   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_rootok   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1188,7 +1188,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_sacl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_sacl   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_sacl   -- review before committing.
 # cmake target: pam_sacl  ->  pam_sacl
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1244,7 +1244,7 @@ cc_objects(
 
 # BEGIN generated: pam_sacl dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_sacl   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_sacl   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1268,7 +1268,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_self
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_self   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_self   -- review before committing.
 # cmake target: pam_self  ->  pam_self
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1324,7 +1324,7 @@ cc_objects(
 
 # BEGIN generated: pam_self dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_self   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_self   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1348,7 +1348,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_smartcard
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_smartcard   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_smartcard   -- review before committing.
 # cmake target: pam_smartcard  ->  pam_smartcard
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1414,7 +1414,7 @@ cc_objects(
 
 # BEGIN generated: pam_tid
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_tid   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_tid   -- review before committing.
 # cmake target: pam_tid  ->  pam_tid
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1475,7 +1475,7 @@ cc_objects(
 
 # BEGIN generated: pam_tid dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_tid   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_tid   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   OpenDirectory
@@ -1507,7 +1507,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_uwtmp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pam_uwtmp   -- review before committing.
+# gen-buck-from-ninja (deleted) pam_uwtmp   -- review before committing.
 # cmake target: pam_uwtmp  ->  pam_uwtmp
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -1563,7 +1563,7 @@ cc_objects(
 
 # BEGIN generated: pam_uwtmp dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_uwtmp   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_uwtmp   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1587,7 +1587,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_mount dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_mount   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_mount   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1617,7 +1617,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_krb5 dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_krb5   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_krb5   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1646,7 +1646,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_ntlm dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_ntlm   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_ntlm   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1675,7 +1675,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_opendirectory dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_opendirectory   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_opendirectory   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1705,7 +1705,7 @@ darwin_dylib(
 
 # BEGIN generated: pam_smartcard dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pam_smartcard   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pam_smartcard   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # TODO the final pass also links these siblings, not ported yet:
 #   Security_x86_64

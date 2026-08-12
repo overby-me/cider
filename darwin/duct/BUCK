@@ -21,7 +21,7 @@ cc_header_root(
 
 # BEGIN generated: system_duct_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_duct_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) system_duct_obj   -- review before committing.
 # cmake target: system_duct_obj  ->  src/duct/src/system_duct_obj
 
 cc_header_root(
@@ -70,7 +70,7 @@ export_file(
 
 # BEGIN generated: system_duct dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_duct   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_duct   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -115,7 +115,7 @@ darwin_dylib(
 
 # BEGIN generated: system_duct_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_duct_static   -- review before committing.
+# gen-buck-from-ninja (deleted) system_duct_static   -- review before committing.
 # cmake target: system_duct_static  ->  src/duct/src/libsystem_duct_static.a
 
 cc_objects(
@@ -149,7 +149,7 @@ cc_objects(
 
 # BEGIN generated: libsystem_duct_static.a archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives libsystem_duct_static.a   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives libsystem_duct_static.a   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(

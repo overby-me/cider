@@ -17,7 +17,7 @@ cc_header_root(
 
 # BEGIN generated: opendirectory_internal
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py opendirectory_internal   -- review before committing.
+# gen-buck-from-ninja (deleted) opendirectory_internal   -- review before committing.
 # cmake target: opendirectory_internal  ->  src/opendirectory_internal/libopendirectory_internal.a
 
 cc_objects(
@@ -40,7 +40,7 @@ cc_objects(
 
 # BEGIN generated: opendirectory_internal archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives opendirectory_internal   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives opendirectory_internal   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(

@@ -19,7 +19,7 @@ prefix_dir(
 
 # BEGIN generated: libgroff
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libgroff   -- review before committing.
+# gen-buck-from-ninja (deleted) libgroff   -- review before committing.
 # cmake target: libgroff  ->  libgroff
 # 47 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -143,7 +143,7 @@ cc_objects(
 
 # BEGIN generated: libgroff archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives libgroff   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives libgroff   -- review before committing.
 # Archives 1 cmake object library/ies, 2 flag groups.
 
 cc_static_lib(
@@ -161,7 +161,7 @@ cc_static_lib(
 
 # BEGIN generated: groff_driver
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py groff_driver   -- review before committing.
+# gen-buck-from-ninja (deleted) groff_driver   -- review before committing.
 # cmake target: groff_driver  ->  groff_driver
 
 cc_header_root(
@@ -210,7 +210,7 @@ cc_objects(
 
 # BEGIN generated: groff_bib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py groff_bib   -- review before committing.
+# gen-buck-from-ninja (deleted) groff_bib   -- review before committing.
 # cmake target: groff_bib  ->  groff_bib
 # 5 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -292,7 +292,7 @@ cc_objects(
 
 # BEGIN generated: addftinfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py addftinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) addftinfo   -- review before committing.
 # cmake target: addftinfo  ->  src/external/groff/groff/src/utils/addftinfo/addftinfo
 
 cc_header_root(
@@ -341,7 +341,7 @@ cc_objects(
 
 # BEGIN generated: addftinfo binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries addftinfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries addftinfo   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -367,7 +367,7 @@ darwin_binary(
 
 # BEGIN generated: eqn
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py eqn   -- review before committing.
+# gen-buck-from-ninja (deleted) eqn   -- review before committing.
 # cmake target: eqn  ->  src/external/groff/groff/src/preproc/eqn/eqn
 
 cc_header_root(
@@ -429,7 +429,7 @@ cc_objects(
 
 # BEGIN generated: eqn binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries eqn   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries eqn   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -455,7 +455,7 @@ darwin_binary(
 
 # BEGIN generated: grn
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grn   -- review before committing.
+# gen-buck-from-ninja (deleted) grn   -- review before committing.
 # cmake target: grn  ->  src/external/groff/groff/src/preproc/grn/grn
 
 cc_header_root(
@@ -506,7 +506,7 @@ cc_objects(
 
 # BEGIN generated: grn binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grn   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grn   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -532,7 +532,7 @@ darwin_binary(
 
 # BEGIN generated: grodvi
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grodvi   -- review before committing.
+# gen-buck-from-ninja (deleted) grodvi   -- review before committing.
 # cmake target: grodvi  ->  src/external/groff/groff/src/devices/grodvi/grodvi
 
 cc_header_root(
@@ -580,7 +580,7 @@ cc_objects(
 
 # BEGIN generated: grodvi binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grodvi   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grodvi   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -607,7 +607,7 @@ darwin_binary(
 
 # BEGIN generated: groff
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py groff   -- review before committing.
+# gen-buck-from-ninja (deleted) groff   -- review before committing.
 # cmake target: groff  ->  src/external/groff/groff/src/libs/libgroff/libgroff.a
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -686,7 +686,7 @@ cc_objects(
 
 # BEGIN generated: groff binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries groff   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries groff   -- review before committing.
 # Links 1 cmake object library/ies, 3 flag groups in total.
 
 darwin_binary(
@@ -713,7 +713,7 @@ darwin_binary(
 
 # BEGIN generated: grolbp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grolbp   -- review before committing.
+# gen-buck-from-ninja (deleted) grolbp   -- review before committing.
 # cmake target: grolbp  ->  src/external/groff/groff/src/devices/grolbp/grolbp
 
 cc_header_root(
@@ -761,7 +761,7 @@ cc_objects(
 
 # BEGIN generated: grolbp binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grolbp   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grolbp   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -788,7 +788,7 @@ darwin_binary(
 
 # BEGIN generated: grolj4
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grolj4   -- review before committing.
+# gen-buck-from-ninja (deleted) grolj4   -- review before committing.
 # cmake target: grolj4  ->  src/external/groff/groff/src/devices/grolj4/grolj4
 
 cc_header_root(
@@ -836,7 +836,7 @@ cc_objects(
 
 # BEGIN generated: grolj4 binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grolj4   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grolj4   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -863,7 +863,7 @@ darwin_binary(
 
 # BEGIN generated: grops
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grops   -- review before committing.
+# gen-buck-from-ninja (deleted) grops   -- review before committing.
 # cmake target: grops  ->  src/external/groff/groff/src/devices/grops/grops
 
 cc_header_root(
@@ -912,7 +912,7 @@ cc_objects(
 
 # BEGIN generated: grops binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grops   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grops   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -939,7 +939,7 @@ darwin_binary(
 
 # BEGIN generated: grotty
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py grotty   -- review before committing.
+# gen-buck-from-ninja (deleted) grotty   -- review before committing.
 # cmake target: grotty  ->  src/external/groff/groff/src/devices/grotty/grotty
 
 cc_header_root(
@@ -987,7 +987,7 @@ cc_objects(
 
 # BEGIN generated: grotty binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries grotty   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries grotty   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1014,7 +1014,7 @@ darwin_binary(
 
 # BEGIN generated: hpftodit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py hpftodit   -- review before committing.
+# gen-buck-from-ninja (deleted) hpftodit   -- review before committing.
 # cmake target: hpftodit  ->  src/external/groff/groff/src/utils/hpftodit/hpftodit
 
 cc_header_root(
@@ -1063,7 +1063,7 @@ cc_objects(
 
 # BEGIN generated: hpftodit binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries hpftodit   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries hpftodit   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1089,7 +1089,7 @@ darwin_binary(
 
 # BEGIN generated: indxbib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py indxbib   -- review before committing.
+# gen-buck-from-ninja (deleted) indxbib   -- review before committing.
 # cmake target: indxbib  ->  src/external/groff/groff/src/utils/indxbib/indxbib
 # 2 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -1168,7 +1168,7 @@ cc_objects(
 
 # BEGIN generated: indxbib binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries indxbib   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries indxbib   -- review before committing.
 # Links 1 cmake object library/ies, 3 flag groups in total.
 
 darwin_binary(
@@ -1196,7 +1196,7 @@ darwin_binary(
 
 # BEGIN generated: lkbib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lkbib   -- review before committing.
+# gen-buck-from-ninja (deleted) lkbib   -- review before committing.
 # cmake target: lkbib  ->  src/external/groff/groff/src/utils/lkbib/lkbib
 
 cc_header_root(
@@ -1244,7 +1244,7 @@ cc_objects(
 
 # BEGIN generated: lkbib binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lkbib   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lkbib   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1271,7 +1271,7 @@ darwin_binary(
 
 # BEGIN generated: lookbib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lookbib   -- review before committing.
+# gen-buck-from-ninja (deleted) lookbib   -- review before committing.
 # cmake target: lookbib  ->  src/external/groff/groff/src/utils/lookbib/lookbib
 
 cc_header_root(
@@ -1319,7 +1319,7 @@ cc_objects(
 
 # BEGIN generated: lookbib binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lookbib   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lookbib   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1346,7 +1346,7 @@ darwin_binary(
 
 # BEGIN generated: pfbtops
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pfbtops   -- review before committing.
+# gen-buck-from-ninja (deleted) pfbtops   -- review before committing.
 # cmake target: pfbtops  ->  src/external/groff/groff/src/utils/pfbtops/pfbtops
 
 cc_header_root(
@@ -1395,7 +1395,7 @@ cc_objects(
 
 # BEGIN generated: pfbtops binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pfbtops   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pfbtops   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1421,7 +1421,7 @@ darwin_binary(
 
 # BEGIN generated: pic
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pic   -- review before committing.
+# gen-buck-from-ninja (deleted) pic   -- review before committing.
 # cmake target: pic  ->  src/external/groff/groff/src/preproc/pic/pic
 
 cc_header_root(
@@ -1475,7 +1475,7 @@ cc_objects(
 
 # BEGIN generated: pic binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pic   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pic   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1501,7 +1501,7 @@ darwin_binary(
 
 # BEGIN generated: refer
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py refer   -- review before committing.
+# gen-buck-from-ninja (deleted) refer   -- review before committing.
 # cmake target: refer  ->  src/external/groff/groff/src/preproc/refer/refer
 
 cc_header_root(
@@ -1553,7 +1553,7 @@ cc_objects(
 
 # BEGIN generated: refer binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries refer   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries refer   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1580,7 +1580,7 @@ darwin_binary(
 
 # BEGIN generated: soelim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py soelim   -- review before committing.
+# gen-buck-from-ninja (deleted) soelim   -- review before committing.
 # cmake target: soelim  ->  src/external/groff/groff/src/preproc/soelim/soelim
 
 cc_header_root(
@@ -1628,7 +1628,7 @@ cc_objects(
 
 # BEGIN generated: soelim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries soelim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries soelim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1654,7 +1654,7 @@ darwin_binary(
 
 # BEGIN generated: tbl
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tbl   -- review before committing.
+# gen-buck-from-ninja (deleted) tbl   -- review before committing.
 # cmake target: tbl  ->  src/external/groff/groff/src/preproc/tbl/tbl
 
 cc_header_root(
@@ -1703,7 +1703,7 @@ cc_objects(
 
 # BEGIN generated: tbl binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries tbl   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries tbl   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1729,7 +1729,7 @@ darwin_binary(
 
 # BEGIN generated: tfmtodit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tfmtodit   -- review before committing.
+# gen-buck-from-ninja (deleted) tfmtodit   -- review before committing.
 # cmake target: tfmtodit  ->  src/external/groff/groff/src/utils/tfmtodit/tfmtodit
 
 cc_header_root(
@@ -1777,7 +1777,7 @@ cc_objects(
 
 # BEGIN generated: tfmtodit binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries tfmtodit   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries tfmtodit   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1803,7 +1803,7 @@ darwin_binary(
 
 # BEGIN generated: troff
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py troff   -- review before committing.
+# gen-buck-from-ninja (deleted) troff   -- review before committing.
 # cmake target: troff  ->  src/external/groff/groff/src/roff/troff/troff
 
 cc_header_root(
@@ -1859,7 +1859,7 @@ cc_objects(
 
 # BEGIN generated: troff binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries troff   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries troff   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1885,7 +1885,7 @@ darwin_binary(
 
 # BEGIN generated: post-grohtml
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py post-grohtml   -- review before committing.
+# gen-buck-from-ninja (deleted) post-grohtml   -- review before committing.
 # cmake target: post-grohtml  ->  src/external/groff/groff/src/devices/grohtml/post-grohtml
 
 cc_header_root(
@@ -1936,7 +1936,7 @@ cc_objects(
 
 # BEGIN generated: post-grohtml binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries post-grohtml   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries post-grohtml   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -1963,7 +1963,7 @@ darwin_binary(
 
 # BEGIN generated: pre-grohtml
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pre-grohtml   -- review before committing.
+# gen-buck-from-ninja (deleted) pre-grohtml   -- review before committing.
 # cmake target: pre-grohtml  ->  src/external/groff/groff/src/preproc/html/pre-grohtml
 
 cc_header_root(
@@ -2012,7 +2012,7 @@ cc_objects(
 
 # BEGIN generated: pre-grohtml binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pre-grohtml   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pre-grohtml   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -2038,7 +2038,7 @@ darwin_binary(
 
 # BEGIN generated: groff_driver archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives groff_driver   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives groff_driver   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(
@@ -2055,7 +2055,7 @@ cc_static_lib(
 
 # BEGIN generated: groff_bib archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives groff_bib   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives groff_bib   -- review before committing.
 # Archives 1 cmake object library/ies, 2 flag groups.
 
 cc_static_lib(

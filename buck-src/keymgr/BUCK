@@ -7,7 +7,7 @@ load("//buck/rules:cc.bzl", "cc_objects")
 
 # BEGIN generated: keymgr_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py keymgr_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) keymgr_obj   -- review before committing.
 # cmake target: keymgr_obj  ->  src/external/keymgr/keymgr_obj
 
 cc_objects(
@@ -30,7 +30,7 @@ cc_objects(
 
 # BEGIN generated: keymgr_static
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py keymgr_static   -- review before committing.
+# gen-buck-from-ninja (deleted) keymgr_static   -- review before committing.
 # cmake target: keymgr_static  ->  src/external/keymgr/libkeymgr_static.a
 
 cc_objects(

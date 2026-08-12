@@ -1,10 +1,9 @@
 //! shlex.split, POSIX, ported state by state from shlex.read_token.
 //!
-//! SHARED, because two binaries of this crate need the SAME tokeniser and a second copy of it is
-//! the drift this crate keeps refusing: cider-specs-check compares shell WORDS and stands or
-//! falls on it, and cider-mig-from-ninja splits a reference COMMAND whose defines carry spaces
-//! inside quotes (-DEMULATED_VERSION="Darwin Kernel Version 23.4.0"), where a whitespace split
-//! turns one flag into five broken ones.
+//! SPLIT OUT of cider-specs-check, which compares shell WORDS and stands or falls on this. It
+//! had a second user, mig-from-ninja (deleted), until that tool went with the frozen generators it
+//! belonged to; the split stays because the tokeniser is the part of the check that is worth
+//! being able to point at on its own.
 //!
 //! ADJACENCY AND THE ESCAPE RULE ARE THE POINT. a"b"c is ONE word, and a backslash inside double
 //! quotes is LITERAL unless it escapes a quote or a backslash. Both are where a rewrite goes

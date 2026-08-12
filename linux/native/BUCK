@@ -38,7 +38,7 @@ _NATIVE = [
     ("GLU", "libGLU.so", "/System/Library/Frameworks/OpenGL.framework/Versions/A/Libraries"),
 ]
 
-# What this package produces, for the registry in scripts/gen-buck-from-ninja.py. That
+# What this package produces, for the registry in gen-buck-from-ninja (deleted). That
 # registry is a text scan for a literal `name = ... dylib_name = ...` pair, and the three
 # comprehensions below write neither, so without these lines all sixteen read as UNPORTED
 # in scripts/buck-coverage.py -- which is how they sat in the missing list while being

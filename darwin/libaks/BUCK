@@ -20,7 +20,7 @@ cc_header_root(
 
 # BEGIN generated: aks archive
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --archives aks   -- review before committing.
+# gen-buck-from-ninja (deleted) --archives aks   -- review before committing.
 # Archives 1 cmake object library/ies, 1 flag groups.
 
 cc_static_lib(
@@ -37,7 +37,7 @@ cc_static_lib(
 
 # BEGIN generated: aks
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py aks   -- review before committing.
+# gen-buck-from-ninja (deleted) aks   -- review before committing.
 # cmake target: aks  ->  src/libaks/libaks.a
 
 cc_header_root(

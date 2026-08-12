@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: system_configuration
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_configuration   -- review before committing.
+# gen-buck-from-ninja (deleted) system_configuration   -- review before committing.
 # cmake target: system_configuration  ->  src/external/configd/libsystem_configuration.dylib
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here

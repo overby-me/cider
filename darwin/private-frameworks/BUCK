@@ -21,7 +21,7 @@ load("//buck/generated:sdk_framework_private_darwin_private_frameworks.bzl", FRA
 
 # BEGIN generated: AppleFSCompression
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AppleFSCompression   -- review before committing.
+# gen-buck-from-ninja (deleted) AppleFSCompression   -- review before committing.
 # cmake target: AppleFSCompression  ->  src/private-frameworks/AppleFSCompression/AppleFSCompression
 
 cc_objects(
@@ -46,7 +46,7 @@ cc_objects(
 
 # BEGIN generated: AppleFSCompression dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AppleFSCompression   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AppleFSCompression   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -82,7 +82,7 @@ export_file(
 
 # BEGIN generated: coresymbolicationd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py coresymbolicationd   -- review before committing.
+# gen-buck-from-ninja (deleted) coresymbolicationd   -- review before committing.
 # cmake target: coresymbolicationd  ->  src/private-frameworks/CoreSymbolication/coresymbolicationd
 
 cc_objects(
@@ -103,7 +103,7 @@ cc_objects(
 
 # BEGIN generated: coresymbolicationd binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries coresymbolicationd   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries coresymbolicationd   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -128,7 +128,7 @@ darwin_binary(
 
 # BEGIN generated: login
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py login   -- review before committing.
+# gen-buck-from-ninja (deleted) login   -- review before committing.
 # cmake target: login  ->  src/external/system_cmds/login.tproj/login
 
 cc_header_root(
@@ -161,7 +161,7 @@ cc_objects(
 
 # BEGIN generated: AppleAccount
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AppleAccount   -- review before committing.
+# gen-buck-from-ninja (deleted) AppleAccount   -- review before committing.
 # cmake target: AppleAccount  ->  src/private-frameworks/AppleAccount/AppleAccount
 
 cc_objects(
@@ -428,7 +428,7 @@ cc_objects(
 
 # BEGIN generated: AppleAccount dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AppleAccount   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AppleAccount   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -455,7 +455,7 @@ darwin_dylib(
 
 # BEGIN generated: AppleSystemInfo
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AppleSystemInfo   -- review before committing.
+# gen-buck-from-ninja (deleted) AppleSystemInfo   -- review before committing.
 # cmake target: AppleSystemInfo  ->  src/private-frameworks/AppleSystemInfo/AppleSystemInfo
 
 cc_objects(
@@ -484,7 +484,7 @@ cc_objects(
 
 # BEGIN generated: AppleSystemInfo dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AppleSystemInfo   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AppleSystemInfo   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -509,7 +509,7 @@ darwin_dylib(
 
 # BEGIN generated: AuthKit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AuthKit   -- review before committing.
+# gen-buck-from-ninja (deleted) AuthKit   -- review before committing.
 # cmake target: AuthKit  ->  src/private-frameworks/AuthKit/AuthKit
 
 cc_objects(
@@ -569,7 +569,7 @@ cc_objects(
 
 # BEGIN generated: AuthKit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AuthKit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AuthKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -595,7 +595,7 @@ darwin_dylib(
 
 # BEGIN generated: ConfigurationProfiles
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ConfigurationProfiles   -- review before committing.
+# gen-buck-from-ninja (deleted) ConfigurationProfiles   -- review before committing.
 # cmake target: ConfigurationProfiles  ->  src/private-frameworks/ConfigurationProfiles/ConfigurationProfiles
 
 cc_objects(
@@ -642,7 +642,7 @@ cc_objects(
 
 # BEGIN generated: ConfigurationProfiles dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ConfigurationProfiles   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ConfigurationProfiles   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -668,7 +668,7 @@ darwin_dylib(
 
 # BEGIN generated: CrashReporterSupport
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CrashReporterSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) CrashReporterSupport   -- review before committing.
 # cmake target: CrashReporterSupport  ->  src/private-frameworks/CrashReporterSupport/CrashReporterSupport
 
 cc_objects(
@@ -701,7 +701,7 @@ cc_objects(
 
 # BEGIN generated: CrashReporterSupport dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CrashReporterSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CrashReporterSupport   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -727,7 +727,7 @@ darwin_dylib(
 
 # BEGIN generated: MobileAsset
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MobileAsset   -- review before committing.
+# gen-buck-from-ninja (deleted) MobileAsset   -- review before committing.
 # cmake target: MobileAsset  ->  src/private-frameworks/MobileAsset/MobileAsset
 
 cc_objects(
@@ -771,7 +771,7 @@ cc_objects(
 
 # BEGIN generated: MobileAsset dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs MobileAsset   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs MobileAsset   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -797,7 +797,7 @@ darwin_dylib(
 
 # BEGIN generated: ProtocolBuffer
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ProtocolBuffer   -- review before committing.
+# gen-buck-from-ninja (deleted) ProtocolBuffer   -- review before committing.
 # cmake target: ProtocolBuffer  ->  src/private-frameworks/ProtocolBuffer/ProtocolBuffer
 
 cc_objects(
@@ -843,7 +843,7 @@ cc_objects(
 
 # BEGIN generated: ProtocolBuffer dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ProtocolBuffer   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ProtocolBuffer   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -869,7 +869,7 @@ darwin_dylib(
 
 # BEGIN generated: TrustedPeers
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py TrustedPeers   -- review before committing.
+# gen-buck-from-ninja (deleted) TrustedPeers   -- review before committing.
 # cmake target: TrustedPeers  ->  src/private-frameworks/TrustedPeers/TrustedPeers
 
 cc_objects(
@@ -940,7 +940,7 @@ cc_objects(
 
 # BEGIN generated: TrustedPeers dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs TrustedPeers   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs TrustedPeers   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -966,7 +966,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreSymbolication
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreSymbolication   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreSymbolication   -- review before committing.
 # cmake target: CoreSymbolication  ->  src/private-frameworks/CoreSymbolication/CoreSymbolication
 
 cc_objects(
@@ -991,7 +991,7 @@ cc_objects(
 
 # BEGIN generated: CoreSymbolication dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreSymbolication   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreSymbolication   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1015,7 +1015,7 @@ darwin_dylib(
 
 # BEGIN generated: login dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs login   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs login   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1041,7 +1041,7 @@ darwin_dylib(
 
 # BEGIN generated: AppleSauce
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AppleSauce   -- review before committing.
+# gen-buck-from-ninja (deleted) AppleSauce   -- review before committing.
 # cmake target: AppleSauce  ->  src/private-frameworks/AppleSauce/AppleSauce
 
 cc_objects(
@@ -1065,7 +1065,7 @@ cc_objects(
 
 # BEGIN generated: AppleSauce dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AppleSauce   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AppleSauce   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1092,7 +1092,7 @@ darwin_dylib(
 
 # BEGIN generated: AssertionServices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AssertionServices   -- review before committing.
+# gen-buck-from-ninja (deleted) AssertionServices   -- review before committing.
 # cmake target: AssertionServices  ->  src/private-frameworks/AssertionServices/AssertionServices
 
 cc_objects(
@@ -1134,7 +1134,7 @@ cc_objects(
 
 # BEGIN generated: AssertionServices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AssertionServices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AssertionServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1162,7 +1162,7 @@ darwin_dylib(
 
 # BEGIN generated: AssetCacheServices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AssetCacheServices   -- review before committing.
+# gen-buck-from-ninja (deleted) AssetCacheServices   -- review before committing.
 # cmake target: AssetCacheServices  ->  src/private-frameworks/AssetCacheServices/AssetCacheServices
 
 cc_objects(
@@ -1199,7 +1199,7 @@ cc_objects(
 
 # BEGIN generated: AssetCacheServices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AssetCacheServices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AssetCacheServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1227,7 +1227,7 @@ darwin_dylib(
 
 # BEGIN generated: AssistantServices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AssistantServices   -- review before committing.
+# gen-buck-from-ninja (deleted) AssistantServices   -- review before committing.
 # cmake target: AssistantServices  ->  src/private-frameworks/AssistantServices/AssistantServices
 
 cc_objects(
@@ -1507,7 +1507,7 @@ cc_objects(
 
 # BEGIN generated: AssistantServices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AssistantServices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AssistantServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1535,7 +1535,7 @@ darwin_dylib(
 
 # BEGIN generated: AuthKitUI
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py AuthKitUI   -- review before committing.
+# gen-buck-from-ninja (deleted) AuthKitUI   -- review before committing.
 # cmake target: AuthKitUI  ->  src/private-frameworks/AuthKitUI/AuthKitUI
 
 cc_objects(
@@ -1661,7 +1661,7 @@ cc_objects(
 
 # BEGIN generated: AuthKitUI dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs AuthKitUI   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs AuthKitUI   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1689,7 +1689,7 @@ darwin_dylib(
 
 # BEGIN generated: Bom
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Bom   -- review before committing.
+# gen-buck-from-ninja (deleted) Bom   -- review before committing.
 # cmake target: Bom  ->  src/private-frameworks/Bom/Bom
 
 cc_objects(
@@ -1713,7 +1713,7 @@ cc_objects(
 
 # BEGIN generated: Bom dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Bom   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Bom   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1739,7 +1739,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreAnalytics
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreAnalytics   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreAnalytics   -- review before committing.
 # cmake target: CoreAnalytics  ->  src/private-frameworks/CoreAnalytics/CoreAnalytics
 
 cc_objects(
@@ -1774,7 +1774,7 @@ cc_objects(
 
 # BEGIN generated: CoreAnalytics dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreAnalytics   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreAnalytics   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -1804,7 +1804,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreSimulator
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreSimulator   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreSimulator   -- review before committing.
 # cmake target: CoreSimulator  ->  src/private-frameworks/CoreSimulator/CoreSimulator
 
 cc_objects(
@@ -1899,7 +1899,7 @@ cc_objects(
 
 # BEGIN generated: CoreSimulator dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreSimulator   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreSimulator   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/private-frameworks/CoreSimulator/CoreSimulator = CoreSimulator_dylib
 
@@ -1929,7 +1929,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreUI
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreUI   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreUI   -- review before committing.
 # cmake target: CoreUI  ->  src/private-frameworks/CoreUI/CoreUI
 
 cc_objects(
@@ -2108,7 +2108,7 @@ cc_objects(
 
 # BEGIN generated: CoreUI dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreUI   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreUI   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2136,7 +2136,7 @@ darwin_dylib(
 
 # BEGIN generated: CoreUtils
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreUtils   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreUtils   -- review before committing.
 # cmake target: CoreUtils  ->  src/private-frameworks/CoreUtils/CoreUtils
 
 cc_objects(
@@ -2298,7 +2298,7 @@ cc_objects(
 
 # BEGIN generated: CoreUtils dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreUtils   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreUtils   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2326,7 +2326,7 @@ darwin_dylib(
 
 # BEGIN generated: DataDetectors
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DataDetectors   -- review before committing.
+# gen-buck-from-ninja (deleted) DataDetectors   -- review before committing.
 # cmake target: DataDetectors  ->  src/private-frameworks/DataDetectors/DataDetectors
 
 cc_objects(
@@ -2409,7 +2409,7 @@ cc_objects(
 
 # BEGIN generated: DataDetectors dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DataDetectors   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DataDetectors   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2437,7 +2437,7 @@ darwin_dylib(
 
 # BEGIN generated: DataDetectorsCore
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DataDetectorsCore   -- review before committing.
+# gen-buck-from-ninja (deleted) DataDetectorsCore   -- review before committing.
 # cmake target: DataDetectorsCore  ->  src/private-frameworks/DataDetectorsCore/DataDetectorsCore
 
 cc_objects(
@@ -2513,7 +2513,7 @@ cc_objects(
 
 # BEGIN generated: DataDetectorsCore dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DataDetectorsCore   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DataDetectorsCore   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2541,7 +2541,7 @@ darwin_dylib(
 
 # BEGIN generated: DataDetectorsNaturalLanguage
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DataDetectorsNaturalLanguage   -- review before committing.
+# gen-buck-from-ninja (deleted) DataDetectorsNaturalLanguage   -- review before committing.
 # cmake target: DataDetectorsNaturalLanguage  ->  src/private-frameworks/DataDetectorsNaturalLanguage/DataDetectorsNaturalLanguage
 
 cc_objects(
@@ -2596,7 +2596,7 @@ cc_objects(
 
 # BEGIN generated: DataDetectorsNaturalLanguage dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DataDetectorsNaturalLanguage   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DataDetectorsNaturalLanguage   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2624,7 +2624,7 @@ darwin_dylib(
 
 # BEGIN generated: DebugSymbols
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DebugSymbols   -- review before committing.
+# gen-buck-from-ninja (deleted) DebugSymbols   -- review before committing.
 # cmake target: DebugSymbols  ->  src/private-frameworks/DebugSymbols/DebugSymbols
 
 cc_header_root(
@@ -2658,7 +2658,7 @@ cc_objects(
 
 # BEGIN generated: DebugSymbols dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DebugSymbols   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DebugSymbols   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2685,7 +2685,7 @@ darwin_dylib(
 
 # BEGIN generated: DeviceLink
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DeviceLink   -- review before committing.
+# gen-buck-from-ninja (deleted) DeviceLink   -- review before committing.
 # cmake target: DeviceLink  ->  src/private-frameworks/DeviceLink/DeviceLink
 
 cc_header_root(
@@ -2716,7 +2716,7 @@ cc_objects(
 
 # BEGIN generated: DeviceLink dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DeviceLink   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DeviceLink   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2742,7 +2742,7 @@ darwin_dylib(
 
 # BEGIN generated: DiskImages
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DiskImages   -- review before committing.
+# gen-buck-from-ninja (deleted) DiskImages   -- review before committing.
 # cmake target: DiskImages  ->  src/private-frameworks/DiskImages/DiskImages
 
 cc_objects(
@@ -2770,7 +2770,7 @@ cc_objects(
 
 # BEGIN generated: DiskImages dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DiskImages   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DiskImages   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2796,7 +2796,7 @@ darwin_dylib(
 
 # BEGIN generated: DiskManagement
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DiskManagement   -- review before committing.
+# gen-buck-from-ninja (deleted) DiskManagement   -- review before committing.
 # cmake target: DiskManagement  ->  src/private-frameworks/DiskManagement/DiskManagement
 
 cc_objects(
@@ -2849,7 +2849,7 @@ cc_objects(
 
 # BEGIN generated: DiskManagement dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs DiskManagement   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs DiskManagement   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -2877,7 +2877,7 @@ darwin_dylib(
 
 # BEGIN generated: Espresso
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Espresso   -- review before committing.
+# gen-buck-from-ninja (deleted) Espresso   -- review before committing.
 # cmake target: Espresso  ->  src/private-frameworks/Espresso/Espresso
 
 cc_objects(
@@ -2983,7 +2983,7 @@ cc_objects(
 
 # BEGIN generated: Espresso dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Espresso   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Espresso   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3011,7 +3011,7 @@ darwin_dylib(
 
 # BEGIN generated: IOPlatformPluginFamily
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py IOPlatformPluginFamily   -- review before committing.
+# gen-buck-from-ninja (deleted) IOPlatformPluginFamily   -- review before committing.
 # cmake target: IOPlatformPluginFamily  ->  src/private-frameworks/IOPlatformPluginFamily/IOPlatformPluginFamily
 
 cc_objects(
@@ -3034,7 +3034,7 @@ cc_objects(
 
 # BEGIN generated: IOPlatformPluginFamily dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs IOPlatformPluginFamily   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs IOPlatformPluginFamily   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3060,7 +3060,7 @@ darwin_dylib(
 
 # BEGIN generated: InternationalSupport
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py InternationalSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) InternationalSupport   -- review before committing.
 # cmake target: InternationalSupport  ->  src/private-frameworks/InternationalSupport/InternationalSupport
 
 cc_objects(
@@ -3094,7 +3094,7 @@ cc_objects(
 
 # BEGIN generated: InternationalSupport dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs InternationalSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs InternationalSupport   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3122,7 +3122,7 @@ darwin_dylib(
 
 # BEGIN generated: LoggingSupport
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py LoggingSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) LoggingSupport   -- review before committing.
 # cmake target: LoggingSupport  ->  src/private-frameworks/LoggingSupport/LoggingSupport
 
 cc_objects(
@@ -3211,7 +3211,7 @@ cc_objects(
 
 # BEGIN generated: LoggingSupport dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs LoggingSupport   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs LoggingSupport   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3239,7 +3239,7 @@ darwin_dylib(
 
 # BEGIN generated: MobileDevice
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MobileDevice   -- review before committing.
+# gen-buck-from-ninja (deleted) MobileDevice   -- review before committing.
 # cmake target: MobileDevice  ->  src/private-frameworks/MobileDevice/MobileDevice
 
 cc_objects(
@@ -3275,7 +3275,7 @@ cc_objects(
 
 # BEGIN generated: MobileDevice dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs MobileDevice   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs MobileDevice   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3303,7 +3303,7 @@ darwin_dylib(
 
 # BEGIN generated: NetworkStatistics
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py NetworkStatistics   -- review before committing.
+# gen-buck-from-ninja (deleted) NetworkStatistics   -- review before committing.
 # cmake target: NetworkStatistics  ->  src/private-frameworks/NetworkStatistics/NetworkStatistics
 
 cc_objects(
@@ -3348,7 +3348,7 @@ cc_objects(
 
 # BEGIN generated: NetworkStatistics dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs NetworkStatistics   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs NetworkStatistics   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3376,7 +3376,7 @@ darwin_dylib(
 
 # BEGIN generated: PackageKit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py PackageKit   -- review before committing.
+# gen-buck-from-ninja (deleted) PackageKit   -- review before committing.
 # cmake target: PackageKit  ->  src/private-frameworks/PackageKit/PackageKit
 
 cc_objects(
@@ -3532,7 +3532,7 @@ cc_objects(
 
 # BEGIN generated: PackageKit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs PackageKit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs PackageKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3567,7 +3567,7 @@ darwin_dylib(
 
 # BEGIN generated: PerformanceAnalysis
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py PerformanceAnalysis   -- review before committing.
+# gen-buck-from-ninja (deleted) PerformanceAnalysis   -- review before committing.
 # cmake target: PerformanceAnalysis  ->  src/private-frameworks/PerformanceAnalysis/PerformanceAnalysis
 
 cc_objects(
@@ -3653,7 +3653,7 @@ cc_objects(
 
 # BEGIN generated: PerformanceAnalysis dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs PerformanceAnalysis   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs PerformanceAnalysis   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3681,7 +3681,7 @@ darwin_dylib(
 
 # BEGIN generated: PlugInKit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py PlugInKit   -- review before committing.
+# gen-buck-from-ninja (deleted) PlugInKit   -- review before committing.
 # cmake target: PlugInKit  ->  src/private-frameworks/PlugInKit/PlugInKit
 
 cc_objects(
@@ -3728,7 +3728,7 @@ cc_objects(
 
 # BEGIN generated: PlugInKit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs PlugInKit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs PlugInKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3756,7 +3756,7 @@ darwin_dylib(
 
 # BEGIN generated: PowerLog
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py PowerLog   -- review before committing.
+# gen-buck-from-ninja (deleted) PowerLog   -- review before committing.
 # cmake target: PowerLog  ->  src/private-frameworks/PowerLog/PowerLog
 
 cc_objects(
@@ -3797,7 +3797,7 @@ cc_objects(
 
 # BEGIN generated: PowerLog dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs PowerLog   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs PowerLog   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3825,7 +3825,7 @@ darwin_dylib(
 
 # BEGIN generated: ServerInformation
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ServerInformation   -- review before committing.
+# gen-buck-from-ninja (deleted) ServerInformation   -- review before committing.
 # cmake target: ServerInformation  ->  src/private-frameworks/ServerInformation/ServerInformation
 
 cc_objects(
@@ -3858,7 +3858,7 @@ cc_objects(
 
 # BEGIN generated: ServerInformation dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ServerInformation   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ServerInformation   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3886,7 +3886,7 @@ darwin_dylib(
 
 # BEGIN generated: ShazamCore
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ShazamCore   -- review before committing.
+# gen-buck-from-ninja (deleted) ShazamCore   -- review before committing.
 # cmake target: ShazamCore  ->  src/private-frameworks/ShazamCore/ShazamCore
 
 cc_objects(
@@ -3943,7 +3943,7 @@ cc_objects(
 
 # BEGIN generated: ShazamCore dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ShazamCore   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ShazamCore   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -3971,7 +3971,7 @@ darwin_dylib(
 
 # BEGIN generated: ShazamEvents
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ShazamEvents   -- review before committing.
+# gen-buck-from-ninja (deleted) ShazamEvents   -- review before committing.
 # cmake target: ShazamEvents  ->  src/private-frameworks/ShazamEvents/ShazamEvents
 
 cc_objects(
@@ -4009,7 +4009,7 @@ cc_objects(
 
 # BEGIN generated: ShazamEvents dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ShazamEvents   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ShazamEvents   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4037,7 +4037,7 @@ darwin_dylib(
 
 # BEGIN generated: ShazamInsights
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ShazamInsights   -- review before committing.
+# gen-buck-from-ninja (deleted) ShazamInsights   -- review before committing.
 # cmake target: ShazamInsights  ->  src/private-frameworks/ShazamInsights/ShazamInsights
 
 cc_objects(
@@ -4100,7 +4100,7 @@ cc_objects(
 
 # BEGIN generated: ShazamInsights dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ShazamInsights   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ShazamInsights   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4129,7 +4129,7 @@ darwin_dylib(
 
 # BEGIN generated: ShazamKitUI
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ShazamKitUI   -- review before committing.
+# gen-buck-from-ninja (deleted) ShazamKitUI   -- review before committing.
 # cmake target: ShazamKitUI  ->  src/private-frameworks/ShazamKitUI/ShazamKitUI
 
 cc_objects(
@@ -4181,7 +4181,7 @@ cc_objects(
 
 # BEGIN generated: ShazamKitUI dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ShazamKitUI   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ShazamKitUI   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4210,7 +4210,7 @@ darwin_dylib(
 
 # BEGIN generated: SkyLight
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SkyLight   -- review before committing.
+# gen-buck-from-ninja (deleted) SkyLight   -- review before committing.
 # cmake target: SkyLight  ->  src/private-frameworks/SkyLight/SkyLight
 
 cc_objects(
@@ -4255,7 +4255,7 @@ cc_objects(
 
 # BEGIN generated: SkyLight dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SkyLight   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SkyLight   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4283,7 +4283,7 @@ darwin_dylib(
 
 # BEGIN generated: Spotlight
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Spotlight   -- review before committing.
+# gen-buck-from-ninja (deleted) Spotlight   -- review before committing.
 # cmake target: Spotlight  ->  src/private-frameworks/Spotlight/Spotlight
 
 cc_objects(
@@ -4366,7 +4366,7 @@ cc_objects(
 
 # BEGIN generated: Spotlight dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs Spotlight   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs Spotlight   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4394,7 +4394,7 @@ darwin_dylib(
 
 # BEGIN generated: SpotlightDaemon
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SpotlightDaemon   -- review before committing.
+# gen-buck-from-ninja (deleted) SpotlightDaemon   -- review before committing.
 # cmake target: SpotlightDaemon  ->  src/private-frameworks/SpotlightDaemon/SpotlightDaemon
 
 cc_objects(
@@ -4449,7 +4449,7 @@ cc_objects(
 
 # BEGIN generated: SpotlightDaemon dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SpotlightDaemon   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SpotlightDaemon   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4477,7 +4477,7 @@ darwin_dylib(
 
 # BEGIN generated: SpotlightIndex
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SpotlightIndex   -- review before committing.
+# gen-buck-from-ninja (deleted) SpotlightIndex   -- review before committing.
 # cmake target: SpotlightIndex  ->  src/private-frameworks/SpotlightIndex/SpotlightIndex
 
 cc_objects(
@@ -4509,7 +4509,7 @@ cc_objects(
 
 # BEGIN generated: SpotlightIndex dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SpotlightIndex   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SpotlightIndex   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4537,7 +4537,7 @@ darwin_dylib(
 
 # BEGIN generated: SpotlightReceiver
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SpotlightReceiver   -- review before committing.
+# gen-buck-from-ninja (deleted) SpotlightReceiver   -- review before committing.
 # cmake target: SpotlightReceiver  ->  src/private-frameworks/SpotlightReceiver/SpotlightReceiver
 
 cc_objects(
@@ -4570,7 +4570,7 @@ cc_objects(
 
 # BEGIN generated: SpotlightReceiver dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SpotlightReceiver   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SpotlightReceiver   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4598,7 +4598,7 @@ darwin_dylib(
 
 # BEGIN generated: SpotlightServerKit
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SpotlightServerKit   -- review before committing.
+# gen-buck-from-ninja (deleted) SpotlightServerKit   -- review before committing.
 # cmake target: SpotlightServerKit  ->  src/private-frameworks/SpotlightServerKit/SpotlightServerKit
 
 cc_objects(
@@ -4641,7 +4641,7 @@ cc_objects(
 
 # BEGIN generated: SpotlightServerKit dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SpotlightServerKit   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SpotlightServerKit   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4669,7 +4669,7 @@ darwin_dylib(
 
 # BEGIN generated: SpotlightServices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SpotlightServices   -- review before committing.
+# gen-buck-from-ninja (deleted) SpotlightServices   -- review before committing.
 # cmake target: SpotlightServices  ->  src/private-frameworks/SpotlightServices/SpotlightServices
 
 cc_objects(
@@ -4786,7 +4786,7 @@ cc_objects(
 
 # BEGIN generated: SpotlightServices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs SpotlightServices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs SpotlightServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4814,7 +4814,7 @@ darwin_dylib(
 
 # BEGIN generated: StreamingZip
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py StreamingZip   -- review before committing.
+# gen-buck-from-ninja (deleted) StreamingZip   -- review before committing.
 # cmake target: StreamingZip  ->  src/private-frameworks/StreamingZip/StreamingZip
 
 cc_objects(
@@ -4851,7 +4851,7 @@ cc_objects(
 
 # BEGIN generated: StreamingZip dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs StreamingZip   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs StreamingZip   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4879,7 +4879,7 @@ darwin_dylib(
 
 # BEGIN generated: TCC
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py TCC   -- review before committing.
+# gen-buck-from-ninja (deleted) TCC   -- review before committing.
 # cmake target: TCC  ->  src/private-frameworks/TCC/TCC
 
 cc_objects(
@@ -4923,7 +4923,7 @@ cc_objects(
 
 # BEGIN generated: TCC dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs TCC   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs TCC   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4951,7 +4951,7 @@ darwin_dylib(
 
 # BEGIN generated: UIFoundation
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py UIFoundation   -- review before committing.
+# gen-buck-from-ninja (deleted) UIFoundation   -- review before committing.
 # cmake target: UIFoundation  ->  src/private-frameworks/UIFoundation/UIFoundation
 
 cc_objects(
@@ -5093,7 +5093,7 @@ cc_objects(
 
 # BEGIN generated: UIFoundation dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs UIFoundation   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs UIFoundation   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5121,7 +5121,7 @@ darwin_dylib(
 
 # BEGIN generated: ViewBridge
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ViewBridge   -- review before committing.
+# gen-buck-from-ninja (deleted) ViewBridge   -- review before committing.
 # cmake target: ViewBridge  ->  src/private-frameworks/ViewBridge/ViewBridge
 
 cc_objects(
@@ -5234,7 +5234,7 @@ cc_objects(
 
 # BEGIN generated: ViewBridge dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs ViewBridge   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs ViewBridge   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5262,7 +5262,7 @@ darwin_dylib(
 
 # BEGIN generated: kperf
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py kperf   -- review before committing.
+# gen-buck-from-ninja (deleted) kperf   -- review before committing.
 # cmake target: kperf  ->  src/private-frameworks/kperf/kperf
 
 cc_objects(
@@ -5285,7 +5285,7 @@ cc_objects(
 
 # BEGIN generated: kperf dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs kperf   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs kperf   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -5311,7 +5311,7 @@ darwin_dylib(
 
 # BEGIN generated: IconServices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py IconServices   -- review before committing.
+# gen-buck-from-ninja (deleted) IconServices   -- review before committing.
 # cmake target: IconServices  ->  src/private-frameworks/IconServices/IconServices
 
 cc_objects(
@@ -5493,7 +5493,7 @@ cc_objects(
 
 # BEGIN generated: IconServices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs IconServices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs IconServices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/private-frameworks/IconServices/IconServices = IconServices_dylib
 

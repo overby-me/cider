@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: libsyscall
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libsyscall   -- review before committing.
+# gen-buck-from-ninja (deleted) libsyscall   -- review before committing.
 # cmake target: libsyscall  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall
 # 562 sources in 5 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -1037,7 +1037,7 @@ cc_objects(
 
 # BEGIN generated: libsyscall_dynamic
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libsyscall_dynamic   -- review before committing.
+# gen-buck-from-ninja (deleted) libsyscall_dynamic   -- review before committing.
 # cmake target: libsyscall_dynamic  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libsyscall_dynamic
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/ciderd/include
@@ -1156,7 +1156,7 @@ cc_objects(
 
 # BEGIN generated: emulation
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py emulation   -- review before committing.
+# gen-buck-from-ninja (deleted) emulation   -- review before committing.
 # cmake target: emulation  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation
 # 295 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -1567,7 +1567,7 @@ cc_objects(
 
 # BEGIN generated: emulation_dyld
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py emulation_dyld   -- review before committing.
+# gen-buck-from-ninja (deleted) emulation_dyld   -- review before committing.
 # cmake target: emulation_dyld  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/emulation_dyld
 # 295 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -1947,7 +1947,7 @@ cc_objects(
 
 # BEGIN generated: clock_priv_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clock_priv_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) clock_priv_xtrace_mig   -- review before committing.
 # cmake target: clock_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_priv_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_privXtraceMig.c
@@ -2065,7 +2065,7 @@ cc_objects(
 
 # BEGIN generated: clock_reply_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clock_reply_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) clock_reply_xtrace_mig   -- review before committing.
 # cmake target: clock_reply_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_reply_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clock_replyXtraceMig.c
@@ -2183,7 +2183,7 @@ cc_objects(
 
 # BEGIN generated: clock_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clock_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) clock_xtrace_mig   -- review before committing.
 # cmake target: clock_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libclock_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/clockXtraceMig.c
@@ -2301,7 +2301,7 @@ cc_objects(
 
 # BEGIN generated: exc_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py exc_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) exc_xtrace_mig   -- review before committing.
 # cmake target: exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libexc_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/excXtraceMig.c
@@ -2354,7 +2354,7 @@ cc_objects(
 
 # BEGIN generated: host_priv_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py host_priv_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) host_priv_xtrace_mig   -- review before committing.
 # cmake target: host_priv_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_priv_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_privXtraceMig.c
@@ -2472,7 +2472,7 @@ cc_objects(
 
 # BEGIN generated: host_security_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py host_security_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) host_security_xtrace_mig   -- review before committing.
 # cmake target: host_security_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libhost_security_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/host_securityXtraceMig.c
@@ -2590,7 +2590,7 @@ cc_objects(
 
 # BEGIN generated: lock_set_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lock_set_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) lock_set_xtrace_mig   -- review before committing.
 # cmake target: lock_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/liblock_set_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/lock_setXtraceMig.c
@@ -2708,7 +2708,7 @@ cc_objects(
 
 # BEGIN generated: mach_exc_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mach_exc_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) mach_exc_xtrace_mig   -- review before committing.
 # cmake target: mach_exc_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/emulation/libmach_exc_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/emulation/src/other/signal/mach_excXtraceMig.c
@@ -2761,7 +2761,7 @@ cc_objects(
 
 # BEGIN generated: mach_host_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mach_host_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) mach_host_xtrace_mig   -- review before committing.
 # cmake target: mach_host_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_host_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_hostXtraceMig.c
@@ -2879,7 +2879,7 @@ cc_objects(
 
 # BEGIN generated: mach_port_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mach_port_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) mach_port_xtrace_mig   -- review before committing.
 # cmake target: mach_port_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_port_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_portXtraceMig.c
@@ -2997,7 +2997,7 @@ cc_objects(
 
 # BEGIN generated: mach_vm_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mach_vm_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) mach_vm_xtrace_mig   -- review before committing.
 # cmake target: mach_vm_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_vm_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_vmXtraceMig.c
@@ -3115,7 +3115,7 @@ cc_objects(
 
 # BEGIN generated: mach_voucher_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mach_voucher_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) mach_voucher_xtrace_mig   -- review before committing.
 # cmake target: mach_voucher_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmach_voucher_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/mach_voucherXtraceMig.c
@@ -3233,7 +3233,7 @@ cc_objects(
 
 # BEGIN generated: memory_entry_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py memory_entry_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) memory_entry_xtrace_mig   -- review before committing.
 # cmake target: memory_entry_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libmemory_entry_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/memory_entryXtraceMig.c
@@ -3351,7 +3351,7 @@ cc_objects(
 
 # BEGIN generated: netname_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py netname_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) netname_xtrace_mig   -- review before committing.
 # cmake target: netname_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libnetname_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/servers/netnameXtraceMig.c
@@ -3469,7 +3469,7 @@ cc_objects(
 
 # BEGIN generated: processor_set_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py processor_set_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) processor_set_xtrace_mig   -- review before committing.
 # cmake target: processor_set_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_set_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processor_setXtraceMig.c
@@ -3587,7 +3587,7 @@ cc_objects(
 
 # BEGIN generated: processor_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py processor_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) processor_xtrace_mig   -- review before committing.
 # cmake target: processor_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libprocessor_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/processorXtraceMig.c
@@ -3705,7 +3705,7 @@ cc_objects(
 
 # BEGIN generated: task_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py task_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) task_xtrace_mig   -- review before committing.
 # cmake target: task_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libtask_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/taskXtraceMig.c
@@ -3823,7 +3823,7 @@ cc_objects(
 
 # BEGIN generated: thread_act_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py thread_act_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) thread_act_xtrace_mig   -- review before committing.
 # cmake target: thread_act_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libthread_act_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/thread_actXtraceMig.c
@@ -3941,7 +3941,7 @@ cc_objects(
 
 # BEGIN generated: vm_map_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py vm_map_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) vm_map_xtrace_mig   -- review before committing.
 # cmake target: vm_map_xtrace_mig  ->  src/external/xnu/darling/src/libsystem_kernel/libsyscall/libvm_map_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/xnu/darling/src/libsystem_kernel/libsyscall/mach/vm_mapXtraceMig.c
@@ -4099,7 +4099,7 @@ load("//buck/generated:exports_xnu.bzl", "EXPORTS")
 
 # BEGIN generated: kxld dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs kxld   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs kxld   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4123,7 +4123,7 @@ darwin_dylib(
 
 # BEGIN generated: libkxld
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libkxld   -- review before committing.
+# gen-buck-from-ninja (deleted) libkxld   -- review before committing.
 # cmake target: libkxld  ->  libkxld
 
 cc_objects(
@@ -4164,7 +4164,7 @@ cc_objects(
 
 # BEGIN generated: libkxld dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs libkxld   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs libkxld   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -4188,7 +4188,7 @@ darwin_dylib(
 
 # BEGIN generated: system_kernel dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_kernel   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_kernel   -- review before committing.
 # Links 4 cmake object library/ies, 9 flag groups in total.
 # Object libraries whose sources are compiled elsewhere in this port, so they
 # contribute no target here: libsyscall_64

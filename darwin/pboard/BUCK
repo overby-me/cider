@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_binary")
 
 # BEGIN generated: pbcopy
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pbcopy   -- review before committing.
+# gen-buck-from-ninja (deleted) pbcopy   -- review before committing.
 # cmake target: pbcopy  ->  src/pboard/pbcopy
 
 cc_objects(
@@ -49,7 +49,7 @@ cc_objects(
 
 # BEGIN generated: pbcopy binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pbcopy   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pbcopy   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/pboard/pbcopy = pbcopy
 
@@ -78,7 +78,7 @@ darwin_binary(
 
 # BEGIN generated: pbpaste
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pbpaste   -- review before committing.
+# gen-buck-from-ninja (deleted) pbpaste   -- review before committing.
 # cmake target: pbpaste  ->  src/pboard/pbpaste
 
 cc_objects(
@@ -109,7 +109,7 @@ cc_objects(
 
 # BEGIN generated: pbpaste binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pbpaste   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pbpaste   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/pboard/pbpaste = pbpaste
 

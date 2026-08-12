@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: libcache_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libcache_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) libcache_obj   -- review before committing.
 # cmake target: libcache_obj  ->  src/libcache/libcache_obj
 
 cc_header_root(
@@ -32,7 +32,7 @@ cc_objects(
 
 # BEGIN generated: libcache dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs libcache   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs libcache   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

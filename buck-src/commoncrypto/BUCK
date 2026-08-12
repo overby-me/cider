@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: commonCrypto_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py commonCrypto_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) commonCrypto_obj   -- review before committing.
 # cmake target: commonCrypto_obj  ->  src/external/commoncrypto/commonCrypto_obj
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -110,7 +110,7 @@ cc_objects(
 
 # BEGIN generated: commonCrypto dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs commonCrypto   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs commonCrypto   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

@@ -19,7 +19,7 @@ cc_header_root(
 
 # BEGIN generated: system_coreservices
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_coreservices   -- review before committing.
+# gen-buck-from-ninja (deleted) system_coreservices   -- review before committing.
 # cmake target: system_coreservices  ->  src/libsystem_coreservices/libsystem_coreservices.dylib
 
 cc_header_root(
@@ -65,7 +65,7 @@ darwin_dylib(
 
 # BEGIN generated: system_coreservices dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_coreservices   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_coreservices   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

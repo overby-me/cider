@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: cxx_obj dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs cxx_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs cxx_obj   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_dylib(

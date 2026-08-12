@@ -20,7 +20,7 @@ cc_header_root(
 
 # BEGIN generated: pmenergy
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pmenergy   -- review before committing.
+# gen-buck-from-ninja (deleted) pmenergy   -- review before committing.
 # cmake target: pmenergy  ->  src/libpmenergy/libpmenergy.dylib
 
 cc_objects(
@@ -48,7 +48,7 @@ cc_objects(
 
 # BEGIN generated: pmenergy dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pmenergy   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pmenergy   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -72,7 +72,7 @@ darwin_dylib(
 
 # BEGIN generated: pmsample
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pmsample   -- review before committing.
+# gen-buck-from-ninja (deleted) pmsample   -- review before committing.
 # cmake target: pmsample  ->  src/libpmenergy/libpmsample.dylib
 
 cc_objects(
@@ -100,7 +100,7 @@ cc_objects(
 
 # BEGIN generated: pmsample dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs pmsample   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs pmsample   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

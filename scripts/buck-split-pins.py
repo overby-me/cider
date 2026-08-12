@@ -7,7 +7,7 @@ phase 3) parses a whole file into Nix values to reach any target in it: buck-src
 Pins are also the unit a reader thinks in.
 
 This MOVES blocks, it does not regenerate them. Regenerating would be the obvious way to
-place a block in its pin's package -- gen-buck-from-ninja.py already knows how -- but the
+place a block in its pin's package -- gen-buck-from-ninja (deleted) already knows how -- but the
 committed tree is not a fixpoint of the generator: 216 of its 367 blocks were written by
 older versions of it, and re-deriving them all at once mixes the split with dozens of
 unrelated changes (libc's include roots, for one, come back merged in a way that does not
@@ -185,7 +185,7 @@ def orphan_roots(text: str, pins: set):
 
 
 def export_target_name(rel_in_pkg: str) -> str:
-    """Same flattening as gen-buck-from-ninja.py and buck-exports.py."""
+    """Same flattening as gen-buck-from-ninja (deleted) and buck-exports.py."""
     return re.sub(r"[^A-Za-z0-9_.+-]+", "_", rel_in_pkg)
 
 
@@ -377,7 +377,7 @@ def write_split_pins(pins: set) -> None:
     with open(SPLIT_PINS, "w") as fh:
         fh.write("# Pins that have their own package, buck-src/<pin>/BUCK.\n")
         fh.write("# THIS FILE IS THE SWITCH: the SDK maps name a listed pin's headers by\n")
-        fh.write("# label instead of by path, and gen-buck-from-ninja.py writes a listed\n")
+        fh.write("# label instead of by path, and gen-buck-from-ninja (deleted) writes a listed\n")
         fh.write("# pin's blocks into its own package. scripts/buck-split-pins.py keeps it.\n")
         for pin in sorted(pins):
             fh.write(pin + "\n")

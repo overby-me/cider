@@ -19,7 +19,7 @@ cc_header_root(
 
 # BEGIN generated: MobileGestalt
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MobileGestalt   -- review before committing.
+# gen-buck-from-ninja (deleted) MobileGestalt   -- review before committing.
 # cmake target: MobileGestalt  ->  src/libMobileGestalt/libMobileGestalt.dylib
 
 cc_objects(
@@ -45,7 +45,7 @@ cc_objects(
 
 # BEGIN generated: MobileGestalt dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs MobileGestalt   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs MobileGestalt   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

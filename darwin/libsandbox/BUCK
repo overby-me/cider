@@ -3,7 +3,7 @@ load("//buck/rules:darwin.bzl", "darwin_dylib")
 
 # BEGIN generated: sandbox_not_system
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py sandbox_not_system   -- review before committing.
+# gen-buck-from-ninja (deleted) sandbox_not_system   -- review before committing.
 # cmake target: sandbox_not_system  ->  sandbox_not_system
 
 cc_objects(
@@ -26,7 +26,7 @@ cc_objects(
 
 # BEGIN generated: sandbox_not_system dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs sandbox_not_system   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs sandbox_not_system   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

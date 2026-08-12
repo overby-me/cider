@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: xpc_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xpc_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) xpc_obj   -- review before committing.
 # cmake target: xpc_obj  ->  src/external/libxpc/xpc_obj
 
 cc_header_root(
@@ -129,7 +129,7 @@ cc_objects(
 
 # BEGIN generated: xpc dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs xpc   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs xpc   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

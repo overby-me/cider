@@ -16,7 +16,7 @@ load("//buck/rules:cc.bzl", "cc_binary", "cc_objects")
 
 # BEGIN generated: bsdln
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bsdln   -- review before committing.
+# gen-buck-from-ninja (deleted) bsdln   -- review before committing.
 # cmake target: bsdln  ->  src/bsdln/bsdln
 
 cc_objects(
@@ -33,7 +33,7 @@ cc_objects(
 
 # BEGIN generated: bsdln binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries bsdln   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries bsdln   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 # buck-registry: src/bsdln/bsdln = bsdln
 

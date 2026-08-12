@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: tcsh
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tcsh   -- review before committing.
+# gen-buck-from-ninja (deleted) tcsh   -- review before committing.
 # cmake target: tcsh  ->  src/external/tcsh/tcsh
 
 cc_header_root(

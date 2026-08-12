@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: bsm.0
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bsm.0   -- review before committing.
+# gen-buck-from-ninja (deleted) bsm.0   -- review before committing.
 # cmake target: bsm.0  ->  src/external/bsm/libbsm.0.dylib
 
 cc_header_root(

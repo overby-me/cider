@@ -27,7 +27,7 @@ export_file(
 
 # BEGIN generated: xtracelib
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xtracelib   -- review before committing.
+# gen-buck-from-ninja (deleted) xtracelib   -- review before committing.
 # cmake target: xtracelib  ->  xtracelib
 # 10 sources in 2 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.
@@ -105,7 +105,7 @@ cc_objects(
 
 # BEGIN generated: xtracelib dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs xtracelib   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs xtracelib   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_dylib(

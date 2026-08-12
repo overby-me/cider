@@ -10,7 +10,7 @@ load("//buck/rules:install.bzl", "prefix_dir")
 
 # BEGIN generated: ncurses
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ncurses   -- review before committing.
+# gen-buck-from-ninja (deleted) ncurses   -- review before committing.
 # cmake target: ncurses  ->  src/external/ncurses/ncurses/ncurses/libncurses.5.4.dylib
 
 cc_header_root(
@@ -237,7 +237,7 @@ darwin_dylib(
 
 # BEGIN generated: clear
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clear   -- review before committing.
+# gen-buck-from-ninja (deleted) clear   -- review before committing.
 # cmake target: clear  ->  src/external/ncurses/clear
 
 cc_header_root(
@@ -294,7 +294,7 @@ cc_objects(
 
 # BEGIN generated: nc_dump_entry
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py nc_dump_entry   -- review before committing.
+# gen-buck-from-ninja (deleted) nc_dump_entry   -- review before committing.
 # cmake target: nc_dump_entry  ->  src/external/ncurses/nc_dump_entry
 
 cc_header_root(
@@ -351,7 +351,7 @@ cc_objects(
 
 # BEGIN generated: infocmp
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py infocmp   -- review before committing.
+# gen-buck-from-ninja (deleted) infocmp   -- review before committing.
 # cmake target: infocmp  ->  src/external/ncurses/infocmp
 
 cc_header_root(
@@ -408,7 +408,7 @@ cc_objects(
 
 # BEGIN generated: tic
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tic   -- review before committing.
+# gen-buck-from-ninja (deleted) tic   -- review before committing.
 # cmake target: tic  ->  src/external/ncurses/tic
 
 cc_header_root(
@@ -465,7 +465,7 @@ cc_objects(
 
 # BEGIN generated: toe
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py toe   -- review before committing.
+# gen-buck-from-ninja (deleted) toe   -- review before committing.
 # cmake target: toe  ->  src/external/ncurses/toe
 
 cc_header_root(
@@ -522,7 +522,7 @@ cc_objects(
 
 # BEGIN generated: tput
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tput   -- review before committing.
+# gen-buck-from-ninja (deleted) tput   -- review before committing.
 # cmake target: tput  ->  src/external/ncurses/tput
 
 cc_header_root(
@@ -579,7 +579,7 @@ cc_objects(
 
 # BEGIN generated: tset
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py tset   -- review before committing.
+# gen-buck-from-ninja (deleted) tset   -- review before committing.
 # cmake target: tset  ->  src/external/ncurses/tset
 
 cc_header_root(
@@ -636,7 +636,7 @@ cc_objects(
 
 # BEGIN generated: form
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py form   -- review before committing.
+# gen-buck-from-ninja (deleted) form   -- review before committing.
 # cmake target: form  ->  src/external/ncurses/ncurses/form/libform.5.4.dylib
 
 cc_header_root(
@@ -741,7 +741,7 @@ cc_objects(
 
 # BEGIN generated: menu
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py menu   -- review before committing.
+# gen-buck-from-ninja (deleted) menu   -- review before committing.
 # cmake target: menu  ->  src/external/ncurses/ncurses/menu/libmenu.5.4.dylib
 
 cc_header_root(
@@ -825,7 +825,7 @@ cc_objects(
 
 # BEGIN generated: panel
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py panel   -- review before committing.
+# gen-buck-from-ninja (deleted) panel   -- review before committing.
 # cmake target: panel  ->  src/external/ncurses/ncurses/panel/libpanel.5.4.dylib
 
 cc_header_root(

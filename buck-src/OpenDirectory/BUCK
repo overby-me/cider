@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: opendirectoryd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py opendirectoryd   -- review before committing.
+# gen-buck-from-ninja (deleted) opendirectoryd   -- review before committing.
 # cmake target: opendirectoryd  ->  src/external/OpenDirectory/opendirectoryd/opendirectoryd
 
 cc_header_root(
@@ -37,7 +37,7 @@ cc_objects(
 
 # BEGIN generated: memberd
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py memberd   -- review before committing.
+# gen-buck-from-ninja (deleted) memberd   -- review before committing.
 # cmake target: memberd  ->  src/external/OpenDirectory/memberd-21.1/memberd
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/OpenDirectory/memberd-21.1/memberdServer.c
@@ -98,7 +98,7 @@ cc_objects(
 
 # BEGIN generated: memberd_xtrace_mig
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py memberd_xtrace_mig   -- review before committing.
+# gen-buck-from-ninja (deleted) memberd_xtrace_mig   -- review before committing.
 # cmake target: memberd_xtrace_mig  ->  src/external/OpenDirectory/memberd-21.1/libmemberd_xtrace_mig.dylib
 # TODO these sources are GENERATED; wire a codegen target for each:
 #   src/external/OpenDirectory/memberd-21.1/memberdXtraceMig.c

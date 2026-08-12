@@ -9,7 +9,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: CoreFoundation_obj dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs CoreFoundation_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs CoreFoundation_obj   -- review before committing.
 # Links 1 cmake object library/ies, 3 flag groups in total.
 
 darwin_dylib(
@@ -75,7 +75,7 @@ load("//buck/generated:exports_corefoundation.bzl", "EXPORTS")
 
 # BEGIN generated: CoreFoundation_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CoreFoundation_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) CoreFoundation_obj   -- review before committing.
 # cmake target: CoreFoundation_obj  ->  src/external/corefoundation/CoreFoundation_obj
 # 129 sources in 3 flag groups: cmake gives individual
 # files their own defines and -include shims, and those decide symbol aliasing.

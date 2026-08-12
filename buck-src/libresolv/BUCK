@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: resolv-darwin_obj
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py resolv-darwin_obj   -- review before committing.
+# gen-buck-from-ninja (deleted) resolv-darwin_obj   -- review before committing.
 # cmake target: resolv-darwin_obj  ->  src/external/libresolv/resolv-darwin_obj
 # TODO these include dirs are GENERATED (codegen output):
 #   src/external/external/libdispatch

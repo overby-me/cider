@@ -8,7 +8,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: info-rpc
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py info-rpc   -- review before committing.
+# gen-buck-from-ninja (deleted) info-rpc   -- review before committing.
 # cmake target: info-rpc  ->  src/external/Libinfo/rpc.subproj/info-rpc
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here
@@ -97,7 +97,7 @@ cc_objects(
 
 # BEGIN generated: darling-resolver
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py darling-resolver   -- review before committing.
+# gen-buck-from-ninja (deleted) darling-resolver   -- review before committing.
 # cmake target: darling-resolver  ->  src/external/Libinfo/darling-resolver/darling-resolver
 
 # Sibling include dirs, staged as ONE tree with -I into each: headers here

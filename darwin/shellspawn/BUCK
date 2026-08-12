@@ -4,7 +4,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: shellspawn
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py shellspawn   -- review before committing.
+# gen-buck-from-ninja (deleted) shellspawn   -- review before committing.
 # cmake target: shellspawn  ->  src/shellspawn/shellspawn
 
 cc_objects(
@@ -27,7 +27,7 @@ cc_objects(
 
 # BEGIN generated: shellspawn binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries shellspawn   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries shellspawn   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # TODO it also links these libraries, not ported yet:
 #   libcrt1.10.6.a

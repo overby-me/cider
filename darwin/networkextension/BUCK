@@ -20,7 +20,7 @@ cc_header_root(
 
 # BEGIN generated: system_networkextension
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py system_networkextension   -- review before committing.
+# gen-buck-from-ninja (deleted) system_networkextension   -- review before committing.
 # cmake target: system_networkextension  ->  src/networkextension/libsystem_networkextension.dylib
 
 cc_header_root(
@@ -65,7 +65,7 @@ darwin_dylib(
 
 # BEGIN generated: system_networkextension dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs system_networkextension   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs system_networkextension   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(

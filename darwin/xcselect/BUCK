@@ -20,7 +20,7 @@ cc_header_root(
 
 # BEGIN generated: ranlib_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ranlib_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ranlib_shim   -- review before committing.
 # cmake target: ranlib_shim  ->  ranlib_shim
 
 cc_header_root(
@@ -53,7 +53,7 @@ cc_objects(
 
 # BEGIN generated: xcselect
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcselect   -- review before committing.
+# gen-buck-from-ninja (deleted) xcselect   -- review before committing.
 # cmake target: xcselect  ->  src/xcselect/libxcselect.dylib
 
 cc_header_root(
@@ -86,7 +86,7 @@ cc_objects(
 
 # BEGIN generated: xcselect dylibs
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --dylibs xcselect   -- review before committing.
+# gen-buck-from-ninja (deleted) --dylibs xcselect   -- review before committing.
 # Links 1 cmake object library/ies, 1 flag groups in total.
 
 darwin_dylib(
@@ -111,7 +111,7 @@ darwin_dylib(
 
 # BEGIN generated: BuildStrings_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py BuildStrings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) BuildStrings_shim   -- review before committing.
 # cmake target: BuildStrings_shim  ->  BuildStrings_shim
 
 cc_header_root(
@@ -144,7 +144,7 @@ cc_objects(
 
 # BEGIN generated: CpMac_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py CpMac_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) CpMac_shim   -- review before committing.
 # cmake target: CpMac_shim  ->  CpMac_shim
 
 cc_header_root(
@@ -177,7 +177,7 @@ cc_objects(
 
 # BEGIN generated: DeRez_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py DeRez_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) DeRez_shim   -- review before committing.
 # cmake target: DeRez_shim  ->  DeRez_shim
 
 cc_header_root(
@@ -210,7 +210,7 @@ cc_objects(
 
 # BEGIN generated: GetFileInfo_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py GetFileInfo_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) GetFileInfo_shim   -- review before committing.
 # cmake target: GetFileInfo_shim  ->  GetFileInfo_shim
 
 cc_header_root(
@@ -243,7 +243,7 @@ cc_objects(
 
 # BEGIN generated: MergePef_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MergePef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) MergePef_shim   -- review before committing.
 # cmake target: MergePef_shim  ->  MergePef_shim
 
 cc_header_root(
@@ -276,7 +276,7 @@ cc_objects(
 
 # BEGIN generated: MvMac_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py MvMac_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) MvMac_shim   -- review before committing.
 # cmake target: MvMac_shim  ->  MvMac_shim
 
 cc_header_root(
@@ -309,7 +309,7 @@ cc_objects(
 
 # BEGIN generated: ResMerger_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ResMerger_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ResMerger_shim   -- review before committing.
 # cmake target: ResMerger_shim  ->  ResMerger_shim
 
 cc_header_root(
@@ -342,7 +342,7 @@ cc_objects(
 
 # BEGIN generated: RezDet_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py RezDet_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) RezDet_shim   -- review before committing.
 # cmake target: RezDet_shim  ->  RezDet_shim
 
 cc_header_root(
@@ -375,7 +375,7 @@ cc_objects(
 
 # BEGIN generated: RezWack_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py RezWack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) RezWack_shim   -- review before committing.
 # cmake target: RezWack_shim  ->  RezWack_shim
 
 cc_header_root(
@@ -408,7 +408,7 @@ cc_objects(
 
 # BEGIN generated: Rez_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py Rez_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) Rez_shim   -- review before committing.
 # cmake target: Rez_shim  ->  Rez_shim
 
 cc_header_root(
@@ -441,7 +441,7 @@ cc_objects(
 
 # BEGIN generated: SetFile_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SetFile_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) SetFile_shim   -- review before committing.
 # cmake target: SetFile_shim  ->  SetFile_shim
 
 cc_header_root(
@@ -474,7 +474,7 @@ cc_objects(
 
 # BEGIN generated: SplitForks_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py SplitForks_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) SplitForks_shim   -- review before committing.
 # cmake target: SplitForks_shim  ->  SplitForks_shim
 
 cc_header_root(
@@ -507,7 +507,7 @@ cc_objects(
 
 # BEGIN generated: UnRezWack_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py UnRezWack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) UnRezWack_shim   -- review before committing.
 # cmake target: UnRezWack_shim  ->  UnRezWack_shim
 
 cc_header_root(
@@ -540,7 +540,7 @@ cc_objects(
 
 # BEGIN generated: agvtool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py agvtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) agvtool_shim   -- review before committing.
 # cmake target: agvtool_shim  ->  agvtool_shim
 
 cc_header_root(
@@ -573,7 +573,7 @@ cc_objects(
 
 # BEGIN generated: ar_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ar_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ar_shim   -- review before committing.
 # cmake target: ar_shim  ->  ar_shim
 
 cc_header_root(
@@ -606,7 +606,7 @@ cc_objects(
 
 # BEGIN generated: as_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py as_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) as_shim   -- review before committing.
 # cmake target: as_shim  ->  as_shim
 
 cc_header_root(
@@ -639,7 +639,7 @@ cc_objects(
 
 # BEGIN generated: asa_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py asa_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) asa_shim   -- review before committing.
 # cmake target: asa_shim  ->  asa_shim
 
 cc_header_root(
@@ -672,7 +672,7 @@ cc_objects(
 
 # BEGIN generated: bison_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py bison_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) bison_shim   -- review before committing.
 # cmake target: bison_shim  ->  bison_shim
 
 cc_header_root(
@@ -705,7 +705,7 @@ cc_objects(
 
 # BEGIN generated: clang++_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clang++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) clang++_shim   -- review before committing.
 # cmake target: clang++_shim  ->  clang++_shim
 
 cc_header_root(
@@ -738,7 +738,7 @@ cc_objects(
 
 # BEGIN generated: clang_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py clang_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) clang_shim   -- review before committing.
 # cmake target: clang_shim  ->  clang_shim
 
 cc_header_root(
@@ -771,7 +771,7 @@ cc_objects(
 
 # BEGIN generated: cpp_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py cpp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) cpp_shim   -- review before committing.
 # cmake target: cpp_shim  ->  cpp_shim
 
 cc_header_root(
@@ -804,7 +804,7 @@ cc_objects(
 
 # BEGIN generated: ctags_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ctags_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ctags_shim   -- review before committing.
 # cmake target: ctags_shim  ->  ctags_shim
 
 cc_header_root(
@@ -837,7 +837,7 @@ cc_objects(
 
 # BEGIN generated: desdp_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py desdp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) desdp_shim   -- review before committing.
 # cmake target: desdp_shim  ->  desdp_shim
 
 cc_header_root(
@@ -870,7 +870,7 @@ cc_objects(
 
 # BEGIN generated: dsymutil_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py dsymutil_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) dsymutil_shim   -- review before committing.
 # cmake target: dsymutil_shim  ->  dsymutil_shim
 
 cc_header_root(
@@ -903,7 +903,7 @@ cc_objects(
 
 # BEGIN generated: dwarfdump_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py dwarfdump_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) dwarfdump_shim   -- review before committing.
 # cmake target: dwarfdump_shim  ->  dwarfdump_shim
 
 cc_header_root(
@@ -936,7 +936,7 @@ cc_objects(
 
 # BEGIN generated: flex++_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py flex++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) flex++_shim   -- review before committing.
 # cmake target: flex++_shim  ->  flex++_shim
 
 cc_header_root(
@@ -969,7 +969,7 @@ cc_objects(
 
 # BEGIN generated: flex_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py flex_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) flex_shim   -- review before committing.
 # cmake target: flex_shim  ->  flex_shim
 
 cc_header_root(
@@ -1002,7 +1002,7 @@ cc_objects(
 
 # BEGIN generated: g++_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py g++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) g++_shim   -- review before committing.
 # cmake target: g++_shim  ->  g++_shim
 
 cc_header_root(
@@ -1035,7 +1035,7 @@ cc_objects(
 
 # BEGIN generated: gatherheaderdoc_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gatherheaderdoc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gatherheaderdoc_shim   -- review before committing.
 # cmake target: gatherheaderdoc_shim  ->  gatherheaderdoc_shim
 
 cc_header_root(
@@ -1068,7 +1068,7 @@ cc_objects(
 
 # BEGIN generated: gcc_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gcc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gcc_shim   -- review before committing.
 # cmake target: gcc_shim  ->  gcc_shim
 
 cc_header_root(
@@ -1101,7 +1101,7 @@ cc_objects(
 
 # BEGIN generated: gcov_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gcov_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gcov_shim   -- review before committing.
 # cmake target: gcov_shim  ->  gcov_shim
 
 cc_header_root(
@@ -1134,7 +1134,7 @@ cc_objects(
 
 # BEGIN generated: genstrings_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py genstrings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) genstrings_shim   -- review before committing.
 # cmake target: genstrings_shim  ->  genstrings_shim
 
 cc_header_root(
@@ -1167,7 +1167,7 @@ cc_objects(
 
 # BEGIN generated: git-cvsserver_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git-cvsserver_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git-cvsserver_shim   -- review before committing.
 # cmake target: git-cvsserver_shim  ->  git-cvsserver_shim
 
 cc_header_root(
@@ -1200,7 +1200,7 @@ cc_objects(
 
 # BEGIN generated: git-receive-pack_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git-receive-pack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git-receive-pack_shim   -- review before committing.
 # cmake target: git-receive-pack_shim  ->  git-receive-pack_shim
 
 cc_header_root(
@@ -1233,7 +1233,7 @@ cc_objects(
 
 # BEGIN generated: git-shell_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git-shell_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git-shell_shim   -- review before committing.
 # cmake target: git-shell_shim  ->  git-shell_shim
 
 cc_header_root(
@@ -1266,7 +1266,7 @@ cc_objects(
 
 # BEGIN generated: git-upload-archive_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git-upload-archive_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git-upload-archive_shim   -- review before committing.
 # cmake target: git-upload-archive_shim  ->  git-upload-archive_shim
 
 cc_header_root(
@@ -1299,7 +1299,7 @@ cc_objects(
 
 # BEGIN generated: git-upload-pack_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git-upload-pack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git-upload-pack_shim   -- review before committing.
 # cmake target: git-upload-pack_shim  ->  git-upload-pack_shim
 
 cc_header_root(
@@ -1332,7 +1332,7 @@ cc_objects(
 
 # BEGIN generated: git_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py git_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) git_shim   -- review before committing.
 # cmake target: git_shim  ->  git_shim
 
 cc_header_root(
@@ -1365,7 +1365,7 @@ cc_objects(
 
 # BEGIN generated: gm4_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gm4_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gm4_shim   -- review before committing.
 # cmake target: gm4_shim  ->  gm4_shim
 
 cc_header_root(
@@ -1398,7 +1398,7 @@ cc_objects(
 
 # BEGIN generated: gnumake_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gnumake_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gnumake_shim   -- review before committing.
 # cmake target: gnumake_shim  ->  gnumake_shim
 
 cc_header_root(
@@ -1431,7 +1431,7 @@ cc_objects(
 
 # BEGIN generated: gperf_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py gperf_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) gperf_shim   -- review before committing.
 # cmake target: gperf_shim  ->  gperf_shim
 
 cc_header_root(
@@ -1464,7 +1464,7 @@ cc_objects(
 
 # BEGIN generated: hdxml2manxml_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py hdxml2manxml_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) hdxml2manxml_shim   -- review before committing.
 # cmake target: hdxml2manxml_shim  ->  hdxml2manxml_shim
 
 cc_header_root(
@@ -1497,7 +1497,7 @@ cc_objects(
 
 # BEGIN generated: headerdoc2html_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py headerdoc2html_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) headerdoc2html_shim   -- review before committing.
 # cmake target: headerdoc2html_shim  ->  headerdoc2html_shim
 
 cc_header_root(
@@ -1530,7 +1530,7 @@ cc_objects(
 
 # BEGIN generated: ibtool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ibtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ibtool_shim   -- review before committing.
 # cmake target: ibtool_shim  ->  ibtool_shim
 
 cc_header_root(
@@ -1563,7 +1563,7 @@ cc_objects(
 
 # BEGIN generated: ictool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ictool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ictool_shim   -- review before committing.
 # cmake target: ictool_shim  ->  ictool_shim
 
 cc_header_root(
@@ -1596,7 +1596,7 @@ cc_objects(
 
 # BEGIN generated: indent_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py indent_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) indent_shim   -- review before committing.
 # cmake target: indent_shim  ->  indent_shim
 
 cc_header_root(
@@ -1629,7 +1629,7 @@ cc_objects(
 
 # BEGIN generated: instruments_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py instruments_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) instruments_shim   -- review before committing.
 # cmake target: instruments_shim  ->  instruments_shim
 
 cc_header_root(
@@ -1662,7 +1662,7 @@ cc_objects(
 
 # BEGIN generated: iprofiler_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py iprofiler_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) iprofiler_shim   -- review before committing.
 # cmake target: iprofiler_shim  ->  iprofiler_shim
 
 cc_header_root(
@@ -1695,7 +1695,7 @@ cc_objects(
 
 # BEGIN generated: ld_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ld_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ld_shim   -- review before committing.
 # cmake target: ld_shim  ->  ld_shim
 
 cc_header_root(
@@ -1728,7 +1728,7 @@ cc_objects(
 
 # BEGIN generated: lex_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lex_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) lex_shim   -- review before committing.
 # cmake target: lex_shim  ->  lex_shim
 
 cc_header_root(
@@ -1761,7 +1761,7 @@ cc_objects(
 
 # BEGIN generated: lldb_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lldb_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) lldb_shim   -- review before committing.
 # cmake target: lldb_shim  ->  lldb_shim
 
 cc_header_root(
@@ -1794,7 +1794,7 @@ cc_objects(
 
 # BEGIN generated: llvm-g++_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py llvm-g++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) llvm-g++_shim   -- review before committing.
 # cmake target: llvm-g++_shim  ->  llvm-g++_shim
 
 cc_header_root(
@@ -1827,7 +1827,7 @@ cc_objects(
 
 # BEGIN generated: llvm-gcc_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py llvm-gcc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) llvm-gcc_shim   -- review before committing.
 # cmake target: llvm-gcc_shim  ->  llvm-gcc_shim
 
 cc_header_root(
@@ -1860,7 +1860,7 @@ cc_objects(
 
 # BEGIN generated: lorder_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lorder_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) lorder_shim   -- review before committing.
 # cmake target: lorder_shim  ->  lorder_shim
 
 cc_header_root(
@@ -1893,7 +1893,7 @@ cc_objects(
 
 # BEGIN generated: m4_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py m4_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) m4_shim   -- review before committing.
 # cmake target: m4_shim  ->  m4_shim
 
 cc_header_root(
@@ -1926,7 +1926,7 @@ cc_objects(
 
 # BEGIN generated: make_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py make_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) make_shim   -- review before committing.
 # cmake target: make_shim  ->  make_shim
 
 cc_header_root(
@@ -1959,7 +1959,7 @@ cc_objects(
 
 # BEGIN generated: mig_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mig_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) mig_shim   -- review before committing.
 # cmake target: mig_shim  ->  mig_shim
 
 cc_header_root(
@@ -1992,7 +1992,7 @@ cc_objects(
 
 # BEGIN generated: mkdep_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py mkdep_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) mkdep_shim   -- review before committing.
 # cmake target: mkdep_shim  ->  mkdep_shim
 
 cc_header_root(
@@ -2025,7 +2025,7 @@ cc_objects(
 
 # BEGIN generated: nasm_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py nasm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) nasm_shim   -- review before committing.
 # cmake target: nasm_shim  ->  nasm_shim
 
 cc_header_root(
@@ -2058,7 +2058,7 @@ cc_objects(
 
 # BEGIN generated: ndisasm_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ndisasm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ndisasm_shim   -- review before committing.
 # cmake target: ndisasm_shim  ->  ndisasm_shim
 
 cc_header_root(
@@ -2091,7 +2091,7 @@ cc_objects(
 
 # BEGIN generated: nmedit_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py nmedit_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) nmedit_shim   -- review before committing.
 # cmake target: nmedit_shim  ->  nmedit_shim
 
 cc_header_root(
@@ -2124,7 +2124,7 @@ cc_objects(
 
 # BEGIN generated: objdump_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py objdump_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) objdump_shim   -- review before committing.
 # cmake target: objdump_shim  ->  objdump_shim
 
 cc_header_root(
@@ -2157,7 +2157,7 @@ cc_objects(
 
 # BEGIN generated: opendiff_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py opendiff_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) opendiff_shim   -- review before committing.
 # cmake target: opendiff_shim  ->  opendiff_shim
 
 cc_header_root(
@@ -2190,7 +2190,7 @@ cc_objects(
 
 # BEGIN generated: rebase_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py rebase_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) rebase_shim   -- review before committing.
 # cmake target: rebase_shim  ->  rebase_shim
 
 cc_header_root(
@@ -2223,7 +2223,7 @@ cc_objects(
 
 # BEGIN generated: resolveLinks_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py resolveLinks_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) resolveLinks_shim   -- review before committing.
 # cmake target: resolveLinks_shim  ->  resolveLinks_shim
 
 cc_header_root(
@@ -2256,7 +2256,7 @@ cc_objects(
 
 # BEGIN generated: rpcgen_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py rpcgen_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) rpcgen_shim   -- review before committing.
 # cmake target: rpcgen_shim  ->  rpcgen_shim
 
 cc_header_root(
@@ -2289,7 +2289,7 @@ cc_objects(
 
 # BEGIN generated: sdef_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py sdef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) sdef_shim   -- review before committing.
 # cmake target: sdef_shim  ->  sdef_shim
 
 cc_header_root(
@@ -2322,7 +2322,7 @@ cc_objects(
 
 # BEGIN generated: sdp_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py sdp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) sdp_shim   -- review before committing.
 # cmake target: sdp_shim  ->  sdp_shim
 
 cc_header_root(
@@ -2355,7 +2355,7 @@ cc_objects(
 
 # BEGIN generated: svn_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svn_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svn_shim   -- review before committing.
 # cmake target: svn_shim  ->  svn_shim
 
 cc_header_root(
@@ -2388,7 +2388,7 @@ cc_objects(
 
 # BEGIN generated: svnadmin_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svnadmin_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svnadmin_shim   -- review before committing.
 # cmake target: svnadmin_shim  ->  svnadmin_shim
 
 cc_header_root(
@@ -2421,7 +2421,7 @@ cc_objects(
 
 # BEGIN generated: svndumpfilter_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svndumpfilter_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svndumpfilter_shim   -- review before committing.
 # cmake target: svndumpfilter_shim  ->  svndumpfilter_shim
 
 cc_header_root(
@@ -2454,7 +2454,7 @@ cc_objects(
 
 # BEGIN generated: svnlook_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svnlook_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svnlook_shim   -- review before committing.
 # cmake target: svnlook_shim  ->  svnlook_shim
 
 cc_header_root(
@@ -2487,7 +2487,7 @@ cc_objects(
 
 # BEGIN generated: svnserve_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svnserve_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svnserve_shim   -- review before committing.
 # cmake target: svnserve_shim  ->  svnserve_shim
 
 cc_header_root(
@@ -2520,7 +2520,7 @@ cc_objects(
 
 # BEGIN generated: svnsync_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svnsync_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svnsync_shim   -- review before committing.
 # cmake target: svnsync_shim  ->  svnsync_shim
 
 cc_header_root(
@@ -2553,7 +2553,7 @@ cc_objects(
 
 # BEGIN generated: svnversion_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py svnversion_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) svnversion_shim   -- review before committing.
 # cmake target: svnversion_shim  ->  svnversion_shim
 
 cc_header_root(
@@ -2586,7 +2586,7 @@ cc_objects(
 
 # BEGIN generated: swift_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py swift_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) swift_shim   -- review before committing.
 # cmake target: swift_shim  ->  swift_shim
 
 cc_header_root(
@@ -2619,7 +2619,7 @@ cc_objects(
 
 # BEGIN generated: swiftc_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py swiftc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) swiftc_shim   -- review before committing.
 # cmake target: swiftc_shim  ->  swiftc_shim
 
 cc_header_root(
@@ -2652,7 +2652,7 @@ cc_objects(
 
 # BEGIN generated: unifdef_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py unifdef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) unifdef_shim   -- review before committing.
 # cmake target: unifdef_shim  ->  unifdef_shim
 
 cc_header_root(
@@ -2685,7 +2685,7 @@ cc_objects(
 
 # BEGIN generated: unifdefall_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py unifdefall_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) unifdefall_shim   -- review before committing.
 # cmake target: unifdefall_shim  ->  unifdefall_shim
 
 cc_header_root(
@@ -2718,7 +2718,7 @@ cc_objects(
 
 # BEGIN generated: xcodebuild_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcodebuild_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) xcodebuild_shim   -- review before committing.
 # cmake target: xcodebuild_shim  ->  xcodebuild_shim
 
 cc_header_root(
@@ -2751,7 +2751,7 @@ cc_objects(
 
 # BEGIN generated: xcscontrol_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcscontrol_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) xcscontrol_shim   -- review before committing.
 # cmake target: xcscontrol_shim  ->  xcscontrol_shim
 
 cc_header_root(
@@ -2784,7 +2784,7 @@ cc_objects(
 
 # BEGIN generated: xcsdiagnose_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcsdiagnose_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) xcsdiagnose_shim   -- review before committing.
 # cmake target: xcsdiagnose_shim  ->  xcsdiagnose_shim
 
 cc_header_root(
@@ -2817,7 +2817,7 @@ cc_objects(
 
 # BEGIN generated: xed_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xed_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) xed_shim   -- review before committing.
 # cmake target: xed_shim  ->  xed_shim
 
 cc_header_root(
@@ -2850,7 +2850,7 @@ cc_objects(
 
 # BEGIN generated: xml2man_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xml2man_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) xml2man_shim   -- review before committing.
 # cmake target: xml2man_shim  ->  xml2man_shim
 
 cc_header_root(
@@ -2883,7 +2883,7 @@ cc_objects(
 
 # BEGIN generated: yacc_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py yacc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) yacc_shim   -- review before committing.
 # cmake target: yacc_shim  ->  yacc_shim
 
 cc_header_root(
@@ -2916,7 +2916,7 @@ cc_objects(
 
 # BEGIN generated: clang_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries clang_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries clang_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -2944,7 +2944,7 @@ darwin_binary(
 
 # BEGIN generated: BuildStrings_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries BuildStrings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries BuildStrings_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -2972,7 +2972,7 @@ darwin_binary(
 
 # BEGIN generated: CpMac_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries CpMac_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries CpMac_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3000,7 +3000,7 @@ darwin_binary(
 
 # BEGIN generated: DeRez_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries DeRez_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries DeRez_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3028,7 +3028,7 @@ darwin_binary(
 
 # BEGIN generated: GetFileInfo_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries GetFileInfo_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries GetFileInfo_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3056,7 +3056,7 @@ darwin_binary(
 
 # BEGIN generated: MergePef_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries MergePef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries MergePef_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3084,7 +3084,7 @@ darwin_binary(
 
 # BEGIN generated: MvMac_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries MvMac_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries MvMac_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3112,7 +3112,7 @@ darwin_binary(
 
 # BEGIN generated: ResMerger_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ResMerger_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ResMerger_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3140,7 +3140,7 @@ darwin_binary(
 
 # BEGIN generated: RezDet_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries RezDet_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries RezDet_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3168,7 +3168,7 @@ darwin_binary(
 
 # BEGIN generated: RezWack_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries RezWack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries RezWack_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3196,7 +3196,7 @@ darwin_binary(
 
 # BEGIN generated: Rez_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries Rez_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries Rez_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3224,7 +3224,7 @@ darwin_binary(
 
 # BEGIN generated: SetFile_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries SetFile_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries SetFile_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3252,7 +3252,7 @@ darwin_binary(
 
 # BEGIN generated: SplitForks_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries SplitForks_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries SplitForks_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3280,7 +3280,7 @@ darwin_binary(
 
 # BEGIN generated: UnRezWack_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries UnRezWack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries UnRezWack_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3308,7 +3308,7 @@ darwin_binary(
 
 # BEGIN generated: agvtool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries agvtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries agvtool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3336,7 +3336,7 @@ darwin_binary(
 
 # BEGIN generated: ar_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ar_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ar_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3364,7 +3364,7 @@ darwin_binary(
 
 # BEGIN generated: as_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries as_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries as_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3392,7 +3392,7 @@ darwin_binary(
 
 # BEGIN generated: asa_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries asa_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries asa_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3420,7 +3420,7 @@ darwin_binary(
 
 # BEGIN generated: bison_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries bison_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries bison_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3448,7 +3448,7 @@ darwin_binary(
 
 # BEGIN generated: clang++_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries clang++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries clang++_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3476,7 +3476,7 @@ darwin_binary(
 
 # BEGIN generated: cpp_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries cpp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries cpp_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3504,7 +3504,7 @@ darwin_binary(
 
 # BEGIN generated: ctags_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ctags_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ctags_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3532,7 +3532,7 @@ darwin_binary(
 
 # BEGIN generated: desdp_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries desdp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries desdp_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3560,7 +3560,7 @@ darwin_binary(
 
 # BEGIN generated: dsymutil_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries dsymutil_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries dsymutil_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3588,7 +3588,7 @@ darwin_binary(
 
 # BEGIN generated: dwarfdump_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries dwarfdump_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries dwarfdump_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3616,7 +3616,7 @@ darwin_binary(
 
 # BEGIN generated: flex++_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries flex++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries flex++_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3644,7 +3644,7 @@ darwin_binary(
 
 # BEGIN generated: flex_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries flex_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries flex_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3672,7 +3672,7 @@ darwin_binary(
 
 # BEGIN generated: g++_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries g++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries g++_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3700,7 +3700,7 @@ darwin_binary(
 
 # BEGIN generated: gatherheaderdoc_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gatherheaderdoc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gatherheaderdoc_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3728,7 +3728,7 @@ darwin_binary(
 
 # BEGIN generated: gcc_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gcc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gcc_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3756,7 +3756,7 @@ darwin_binary(
 
 # BEGIN generated: gcov_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gcov_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gcov_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3784,7 +3784,7 @@ darwin_binary(
 
 # BEGIN generated: genstrings_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries genstrings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries genstrings_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3812,7 +3812,7 @@ darwin_binary(
 
 # BEGIN generated: git-cvsserver_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git-cvsserver_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git-cvsserver_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3840,7 +3840,7 @@ darwin_binary(
 
 # BEGIN generated: git-receive-pack_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git-receive-pack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git-receive-pack_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3868,7 +3868,7 @@ darwin_binary(
 
 # BEGIN generated: git-shell_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git-shell_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git-shell_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3896,7 +3896,7 @@ darwin_binary(
 
 # BEGIN generated: git-upload-archive_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git-upload-archive_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git-upload-archive_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3924,7 +3924,7 @@ darwin_binary(
 
 # BEGIN generated: git-upload-pack_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git-upload-pack_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git-upload-pack_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3952,7 +3952,7 @@ darwin_binary(
 
 # BEGIN generated: git_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries git_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries git_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -3980,7 +3980,7 @@ darwin_binary(
 
 # BEGIN generated: gm4_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gm4_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gm4_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4008,7 +4008,7 @@ darwin_binary(
 
 # BEGIN generated: gnumake_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gnumake_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gnumake_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4036,7 +4036,7 @@ darwin_binary(
 
 # BEGIN generated: gperf_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries gperf_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries gperf_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4064,7 +4064,7 @@ darwin_binary(
 
 # BEGIN generated: hdxml2manxml_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries hdxml2manxml_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries hdxml2manxml_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4092,7 +4092,7 @@ darwin_binary(
 
 # BEGIN generated: headerdoc2html_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries headerdoc2html_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries headerdoc2html_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4120,7 +4120,7 @@ darwin_binary(
 
 # BEGIN generated: ibtool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ibtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ibtool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4148,7 +4148,7 @@ darwin_binary(
 
 # BEGIN generated: ictool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ictool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ictool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4176,7 +4176,7 @@ darwin_binary(
 
 # BEGIN generated: indent_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries indent_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries indent_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4204,7 +4204,7 @@ darwin_binary(
 
 # BEGIN generated: instruments_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries instruments_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries instruments_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4232,7 +4232,7 @@ darwin_binary(
 
 # BEGIN generated: iprofiler_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries iprofiler_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries iprofiler_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4260,7 +4260,7 @@ darwin_binary(
 
 # BEGIN generated: ld_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ld_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ld_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4288,7 +4288,7 @@ darwin_binary(
 
 # BEGIN generated: lex_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lex_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lex_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4316,7 +4316,7 @@ darwin_binary(
 
 # BEGIN generated: lldb_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lldb_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lldb_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4344,7 +4344,7 @@ darwin_binary(
 
 # BEGIN generated: llvm-g++_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries llvm-g++_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries llvm-g++_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4372,7 +4372,7 @@ darwin_binary(
 
 # BEGIN generated: llvm-gcc_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries llvm-gcc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries llvm-gcc_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4400,7 +4400,7 @@ darwin_binary(
 
 # BEGIN generated: lorder_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lorder_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lorder_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4428,7 +4428,7 @@ darwin_binary(
 
 # BEGIN generated: m4_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries m4_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries m4_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4456,7 +4456,7 @@ darwin_binary(
 
 # BEGIN generated: make_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries make_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries make_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4484,7 +4484,7 @@ darwin_binary(
 
 # BEGIN generated: mig_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries mig_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries mig_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4512,7 +4512,7 @@ darwin_binary(
 
 # BEGIN generated: mkdep_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries mkdep_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries mkdep_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4540,7 +4540,7 @@ darwin_binary(
 
 # BEGIN generated: nasm_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries nasm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries nasm_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4568,7 +4568,7 @@ darwin_binary(
 
 # BEGIN generated: ndisasm_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ndisasm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ndisasm_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4596,7 +4596,7 @@ darwin_binary(
 
 # BEGIN generated: nmedit_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries nmedit_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries nmedit_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4624,7 +4624,7 @@ darwin_binary(
 
 # BEGIN generated: objdump_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries objdump_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries objdump_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4652,7 +4652,7 @@ darwin_binary(
 
 # BEGIN generated: opendiff_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries opendiff_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries opendiff_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4680,7 +4680,7 @@ darwin_binary(
 
 # BEGIN generated: ranlib_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ranlib_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ranlib_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4708,7 +4708,7 @@ darwin_binary(
 
 # BEGIN generated: rebase_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries rebase_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries rebase_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4736,7 +4736,7 @@ darwin_binary(
 
 # BEGIN generated: resolveLinks_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries resolveLinks_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries resolveLinks_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4764,7 +4764,7 @@ darwin_binary(
 
 # BEGIN generated: rpcgen_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries rpcgen_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries rpcgen_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4792,7 +4792,7 @@ darwin_binary(
 
 # BEGIN generated: sdef_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries sdef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries sdef_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4820,7 +4820,7 @@ darwin_binary(
 
 # BEGIN generated: sdp_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries sdp_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries sdp_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4848,7 +4848,7 @@ darwin_binary(
 
 # BEGIN generated: svn_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svn_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svn_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4876,7 +4876,7 @@ darwin_binary(
 
 # BEGIN generated: svnadmin_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svnadmin_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svnadmin_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4904,7 +4904,7 @@ darwin_binary(
 
 # BEGIN generated: svndumpfilter_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svndumpfilter_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svndumpfilter_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4932,7 +4932,7 @@ darwin_binary(
 
 # BEGIN generated: svnlook_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svnlook_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svnlook_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4960,7 +4960,7 @@ darwin_binary(
 
 # BEGIN generated: svnserve_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svnserve_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svnserve_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -4988,7 +4988,7 @@ darwin_binary(
 
 # BEGIN generated: svnsync_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svnsync_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svnsync_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5016,7 +5016,7 @@ darwin_binary(
 
 # BEGIN generated: svnversion_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries svnversion_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries svnversion_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5044,7 +5044,7 @@ darwin_binary(
 
 # BEGIN generated: swift_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries swift_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries swift_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5072,7 +5072,7 @@ darwin_binary(
 
 # BEGIN generated: swiftc_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries swiftc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries swiftc_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5100,7 +5100,7 @@ darwin_binary(
 
 # BEGIN generated: unifdef_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries unifdef_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries unifdef_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5128,7 +5128,7 @@ darwin_binary(
 
 # BEGIN generated: unifdefall_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries unifdefall_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries unifdefall_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5156,7 +5156,7 @@ darwin_binary(
 
 # BEGIN generated: xcodebuild_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xcodebuild_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xcodebuild_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5184,7 +5184,7 @@ darwin_binary(
 
 # BEGIN generated: xcscontrol_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xcscontrol_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xcscontrol_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5212,7 +5212,7 @@ darwin_binary(
 
 # BEGIN generated: xcsdiagnose_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xcsdiagnose_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xcsdiagnose_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5240,7 +5240,7 @@ darwin_binary(
 
 # BEGIN generated: xed_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xed_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xed_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5268,7 +5268,7 @@ darwin_binary(
 
 # BEGIN generated: xml2man_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xml2man_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xml2man_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5296,7 +5296,7 @@ darwin_binary(
 
 # BEGIN generated: yacc_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries yacc_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries yacc_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5324,7 +5324,7 @@ darwin_binary(
 
 # BEGIN generated: xcode-select
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcode-select   -- review before committing.
+# gen-buck-from-ninja (deleted) xcode-select   -- review before committing.
 # cmake target: xcode-select  ->  src/xcselect/xcode-select
 
 cc_header_root(
@@ -5355,7 +5355,7 @@ cc_objects(
 
 # BEGIN generated: xcode-select binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xcode-select   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xcode-select   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
@@ -5394,7 +5394,7 @@ export_file(
 
 # BEGIN generated: cmpdylib_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py cmpdylib_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) cmpdylib_shim   -- review before committing.
 # cmake target: cmpdylib_shim  ->  cmpdylib_shim
 
 cc_header_root(
@@ -5427,7 +5427,7 @@ cc_objects(
 
 # BEGIN generated: cmpdylib_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries cmpdylib_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries cmpdylib_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/cmpdylib = cmpdylib_shim
 
@@ -5456,7 +5456,7 @@ darwin_binary(
 
 # BEGIN generated: codesign_allocate_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py codesign_allocate_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) codesign_allocate_shim   -- review before committing.
 # cmake target: codesign_allocate_shim  ->  codesign_allocate_shim
 
 cc_header_root(
@@ -5489,7 +5489,7 @@ cc_objects(
 
 # BEGIN generated: codesign_allocate_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries codesign_allocate_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries codesign_allocate_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/codesign_allocate = codesign_allocate_shim
 
@@ -5518,7 +5518,7 @@ darwin_binary(
 
 # BEGIN generated: ctf_insert_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py ctf_insert_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) ctf_insert_shim   -- review before committing.
 # cmake target: ctf_insert_shim  ->  ctf_insert_shim
 
 cc_header_root(
@@ -5551,7 +5551,7 @@ cc_objects(
 
 # BEGIN generated: ctf_insert_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries ctf_insert_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries ctf_insert_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/ctf_insert = ctf_insert_shim
 
@@ -5580,7 +5580,7 @@ darwin_binary(
 
 # BEGIN generated: install_name_tool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py install_name_tool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) install_name_tool_shim   -- review before committing.
 # cmake target: install_name_tool_shim  ->  install_name_tool_shim
 
 cc_header_root(
@@ -5613,7 +5613,7 @@ cc_objects(
 
 # BEGIN generated: install_name_tool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries install_name_tool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries install_name_tool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/install_name_tool = install_name_tool_shim
 
@@ -5642,7 +5642,7 @@ darwin_binary(
 
 # BEGIN generated: libtool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py libtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) libtool_shim   -- review before committing.
 # cmake target: libtool_shim  ->  libtool_shim
 
 cc_header_root(
@@ -5675,7 +5675,7 @@ cc_objects(
 
 # BEGIN generated: libtool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries libtool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries libtool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/libtool = libtool_shim
 
@@ -5704,7 +5704,7 @@ darwin_binary(
 
 # BEGIN generated: lipo_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py lipo_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) lipo_shim   -- review before committing.
 # cmake target: lipo_shim  ->  lipo_shim
 
 cc_header_root(
@@ -5737,7 +5737,7 @@ cc_objects(
 
 # BEGIN generated: lipo_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries lipo_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries lipo_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/lipo = lipo_shim
 
@@ -5766,7 +5766,7 @@ darwin_binary(
 
 # BEGIN generated: nm_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py nm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) nm_shim   -- review before committing.
 # cmake target: nm_shim  ->  nm_shim
 
 cc_header_root(
@@ -5799,7 +5799,7 @@ cc_objects(
 
 # BEGIN generated: nm_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries nm_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries nm_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/nm = nm_shim
 
@@ -5828,7 +5828,7 @@ darwin_binary(
 
 # BEGIN generated: otool_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py otool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) otool_shim   -- review before committing.
 # cmake target: otool_shim  ->  otool_shim
 
 cc_header_root(
@@ -5861,7 +5861,7 @@ cc_objects(
 
 # BEGIN generated: otool_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries otool_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries otool_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/otool = otool_shim
 
@@ -5890,7 +5890,7 @@ darwin_binary(
 
 # BEGIN generated: pagestuff_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py pagestuff_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) pagestuff_shim   -- review before committing.
 # cmake target: pagestuff_shim  ->  pagestuff_shim
 
 cc_header_root(
@@ -5923,7 +5923,7 @@ cc_objects(
 
 # BEGIN generated: pagestuff_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries pagestuff_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries pagestuff_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/pagestuff = pagestuff_shim
 
@@ -5952,7 +5952,7 @@ darwin_binary(
 
 # BEGIN generated: redo_prebinding_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py redo_prebinding_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) redo_prebinding_shim   -- review before committing.
 # cmake target: redo_prebinding_shim  ->  redo_prebinding_shim
 
 cc_header_root(
@@ -5985,7 +5985,7 @@ cc_objects(
 
 # BEGIN generated: redo_prebinding_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries redo_prebinding_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries redo_prebinding_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/redo_prebinding = redo_prebinding_shim
 
@@ -6014,7 +6014,7 @@ darwin_binary(
 
 # BEGIN generated: segedit_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py segedit_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) segedit_shim   -- review before committing.
 # cmake target: segedit_shim  ->  segedit_shim
 
 cc_header_root(
@@ -6047,7 +6047,7 @@ cc_objects(
 
 # BEGIN generated: segedit_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries segedit_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries segedit_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/segedit = segedit_shim
 
@@ -6076,7 +6076,7 @@ darwin_binary(
 
 # BEGIN generated: size_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py size_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) size_shim   -- review before committing.
 # cmake target: size_shim  ->  size_shim
 
 cc_header_root(
@@ -6109,7 +6109,7 @@ cc_objects(
 
 # BEGIN generated: size_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries size_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries size_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/size = size_shim
 
@@ -6138,7 +6138,7 @@ darwin_binary(
 
 # BEGIN generated: strings_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py strings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) strings_shim   -- review before committing.
 # cmake target: strings_shim  ->  strings_shim
 
 cc_header_root(
@@ -6171,7 +6171,7 @@ cc_objects(
 
 # BEGIN generated: strings_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries strings_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries strings_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/strings = strings_shim
 
@@ -6200,7 +6200,7 @@ darwin_binary(
 
 # BEGIN generated: strip_shim
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py strip_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) strip_shim   -- review before committing.
 # cmake target: strip_shim  ->  strip_shim
 
 cc_header_root(
@@ -6233,7 +6233,7 @@ cc_objects(
 
 # BEGIN generated: strip_shim binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries strip_shim   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries strip_shim   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/strip = strip_shim
 
@@ -6262,7 +6262,7 @@ darwin_binary(
 
 # BEGIN generated: xcrun
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xcrun   -- review before committing.
+# gen-buck-from-ninja (deleted) xcrun   -- review before committing.
 # cmake target: xcrun  ->  src/xcselect/xcrun
 
 cc_header_root(
@@ -6293,7 +6293,7 @@ cc_objects(
 
 # BEGIN generated: xcrun binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xcrun   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xcrun   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 # buck-registry: src/xcselect/xcrun = xcrun
 

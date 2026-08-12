@@ -4,7 +4,7 @@ load("//buck/rules:files.bzl", "export_file")
 
 # BEGIN generated: xip_extract_cpio
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py xip_extract_cpio   -- review before committing.
+# gen-buck-from-ninja (deleted) xip_extract_cpio   -- review before committing.
 # cmake target: xip_extract_cpio  ->  src/unxip/xip_extract_cpio
 
 cc_objects(
@@ -27,7 +27,7 @@ cc_objects(
 
 # BEGIN generated: xip_extract_cpio binary
 # GENERATED from the reference build.ninja by
-# scripts/gen-buck-from-ninja.py --binaries xip_extract_cpio   -- review before committing.
+# gen-buck-from-ninja (deleted) --binaries xip_extract_cpio   -- review before committing.
 # Links 1 cmake object library/ies, 2 flag groups in total.
 
 darwin_binary(
