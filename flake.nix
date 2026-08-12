@@ -952,6 +952,16 @@
           src = ./.;
         };
 
+      # Just the skeletonised source tree, so a change to the skeletoniser can be verified by
+      # comparing store paths rather than argued about. It is content addressed.
+      #   nix build .#graph-skeleton
+      packages.graph-skeleton =
+        pkgs:
+        (import ./nix/lib/ciderBuck2Graph.nix {
+          inherit pkgs;
+          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+        }).skeletonSrc;
+
       # The Rust rewrite of scripts/buck-skeleton.py, task #99. Built by nix rather than by
       # buck2 on purpose: it produces the tree buck2 is run on, so buck2 building it would be
       # circular.

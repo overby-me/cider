@@ -91,7 +91,7 @@
   # projectSrc` below, and the same false claim survived in scripts/buck2-graph-sources.py
   # until it was corrected. It matters because it understates the cost of a source edit by an
   # entire graph build, about 18m34s, which is the number the scheduling decisions here get
-  # made against. scripts/buck-skeleton.py is now five files short of correct rather than
+  # made against. linux/buildtools/skeleton is now five files short of correct rather than
   # conceptually wrong (#56), but adopting it is still an open change.
   projectSrc = builtins.path {
       name = "cider-buck2-project";
@@ -147,7 +147,7 @@
 
   # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
   # file emptied except those under buck-src, buck-rust and pins and the five that
-  # feed a generator this dump RUNS. scripts/buck-skeleton.py holds the rules and
+  # feed a generator this dump RUNS. linux/buildtools/skeleton holds the rules and
   # scripts/buck-codegen-closure.py is what computed the five.
   #
   # CONTENT ADDRESSED, and that is the whole mechanism rather than a detail: editing a .c
@@ -161,13 +161,19 @@
   #
   # The pins are NOT skeletonised, because they never come through here: assembleProject
   # materialises them from ciderSrc after this tree is unpacked.
+  # RUST, NOT PYTHON, since #99. Built by nix rather than by buck2, which would be circular:
+  # this tool produces the tree buck2 is then run on. The switch was landed only after the two
+  # implementations were shown to produce a BYTE IDENTICAL tree over the real project, 403,375
+  # entries, equal NAR hashes, and this derivation was built both ways to the SAME content
+  # addressed store path. It is also 15.0s against 32.7s, which is on the critical path.
+  skeletonTool = pkgs.callPackage ../skeleton.nix { inherit src; };
+
   skeletonSrc = pkgs.runCommand "cider-buck2-skeleton" {
     __contentAddressed = true;
     outputHashMode = "recursive";
     outputHashAlgo = "sha256";
-    nativeBuildInputs = [ pkgs.python3 ];
   } ''
-    python3 ${../../scripts/buck-skeleton.py} ${projectSrc} $out \
+    ${skeletonTool}/bin/cider-skeleton ${projectSrc} $out \
       --keep ${../../scripts/buck-codegen-keep.txt}
   '';
 
@@ -352,13 +358,13 @@
     # somewhere far away. A mechanism whose failure mode is silence is worse than the cost
     # it was removing.
     #
-    # scripts/buck-skeleton.py is kept: the idea is sound for the ANALYSIS half, and it is
+    # the skeletoniser is kept: the idea is sound for the ANALYSIS half, and it is
     # verified to load the identical target graph. What it needs first is the codegen input
     # closure, so that exactly the files this derivation compiles keep their contents.
     #
     # THAT CLOSURE NOW EXISTS (#56, scripts/buck-codegen-closure.py): 1,743 files of 74,621
     # must keep real contents, and all but FIVE were already covered, the five being
-    # rtsig.c, wrapgen.cpp and three libsimple files. buck-skeleton.py keeps them. Pass
+    # rtsig.c, wrapgen.cpp and three libsimple files. cider-skeleton keeps them. Pass
     # skeleton = true to try it, which is what packages.cider-buck2-graph-skeleton does.
     # It stays OFF here until the graph it produces is shown equivalent by
     # scripts/buck-graph-equiv.py, because a wrong skeleton fails SILENTLY.
@@ -556,4 +562,9 @@
     '';
   };
 in
-  graph
+  # skeletonSrc is exposed so a change to the skeletoniser can be VERIFIED rather than argued.
+  # It is content addressed, so building it before and after and comparing the STORE PATH is a
+  # proof: an identical path means the output did not move and nothing downstream rebuilds, and
+  # a different one means something did. Attaching it to the derivation changes nothing about
+  # what gets built.
+  graph // { inherit skeletonSrc; }

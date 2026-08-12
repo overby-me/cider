@@ -3,7 +3,7 @@
 
 THE BLOCKER THIS REMOVES. The graph derivation takes the whole project, so editing any C file
 rebuilds it, currently about 18m34s, before anything else can start. The obvious fix is to feed
-it a SKELETON (scripts/buck-skeleton.py: build files verbatim, every other file present but
+it a SKELETON (linux/buildtools/skeleton: build files verbatim, every other file present but
 empty), and that was tried and REVERTED, for a good reason recorded in
 nix/lib/ciderBuck2Graph.nix: the dump does not only analyse. It materialises in-process
 artifacts, and a staged farm of GENERATED headers is produced by RUNNING a generator that this
