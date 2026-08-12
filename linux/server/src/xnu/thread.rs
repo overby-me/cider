@@ -214,24 +214,70 @@ pub unsafe extern "C" fn xnu_sys_thread_create(
 
 /// `queue_enter(&task->threads, thread, thread_t, task_threads)`: append to the circular list
 /// through the thread's own `task_threads` link.
+///
+/// THE LINK STORES THE ELEMENT POINTER, NOT THE ADDRESS OF THE LINK FIELD, and that is the
+/// entire contract of an XNU element queue rather than a style choice. The readers are C, in
+/// the xnu-sys pin, and they cast the stored `queue_entry_t` STRAIGHT to `thread_t`:
+///
+///     queue_iterate(head, elt, type, field)
+///         for (elt = (type) queue_first(head);           // = head->next, cast to thread_t
+///              !queue_end(head, (queue_entry_t) elt);
+///              elt = (type) queue_next(&elt->field))     // = elt->task_threads.next
+///
+/// so `head->next` and every `->task_threads.next` must BE the thread. Storing
+/// `&thread->task_threads` instead compiles, and leaves a list that is self consistent as long
+/// as only this file walks it, which is why it survived: the two functions here agreed with
+/// each other. The C does not agree. It reads `thread_id` at `(thread + 0x6b8) + 0x818` and
+/// takes the next link from `(thread + 0x6b8) + 0x6b8`, both off the end of the record, and
+/// task_findtid then SIGSEGVs on the first zero it walks into.
+///
+/// Nothing hit it until task #96, because task_findtid is reached only from the contended
+/// branch of _psynch_mutexwait: a guest has to hand the kernel an owner tid hint that
+/// disagrees with what the kernel knows. Guest bash never contends a pthread mutex that way.
+/// The Darwin rustc does it within seconds of starting a real compile, and killed the daemon.
 #[inline]
 unsafe fn queue_enter_threads(task: task_t, thread: thread_t) {
     let head = &mut (*task).threads as *mut bindings::queue_head_t;
     let prev = (*head).prev;
-    (*thread).task_threads.next = head as *mut _;
     (*thread).task_threads.prev = prev;
-    (*(prev as *mut bindings::queue_entry)).next = &mut (*thread).task_threads as *mut _ as *mut _;
-    (*head).prev = &mut (*thread).task_threads as *mut _ as *mut _;
+    (*thread).task_threads.next = head as *mut _;
+    if prev == head as *mut _ {
+        (*head).next = thread as *mut _;
+    } else {
+        // prev holds an ELEMENT pointer, so this is the previous thread's own link.
+        (*(prev as *mut bindings::thread)).task_threads.next = thread as *mut _;
+    }
+    (*head).prev = thread as *mut _;
 }
 
 /// `queue_remove(&task->threads, thread, thread_t, task_threads)`.
+///
+/// Same element-pointer contract as [`queue_enter_threads`]. The head cases are not optional
+/// either: when the removed thread is the first or the last, the neighbour to patch IS the
+/// head, and it is a bare `queue_head_t` with no surrounding `struct thread`, so it must be
+/// written directly rather than through a `task_threads` offset. Clearing the removed
+/// thread's own links is upstream's, and it turns a later use-after-remove into a null
+/// dereference instead of a walk through freed memory.
 #[inline]
 unsafe fn queue_remove_threads(task: task_t, thread: thread_t) {
+    let head = &mut (*task).threads as *mut bindings::queue_head_t;
     let next = (*thread).task_threads.next;
     let prev = (*thread).task_threads.prev;
-    (*(prev as *mut bindings::queue_entry)).next = next;
-    (*(next as *mut bindings::queue_entry)).prev = prev;
-    let _ = task;
+
+    if next == head as *mut _ {
+        (*head).prev = prev;
+    } else {
+        (*(next as *mut bindings::thread)).task_threads.prev = prev;
+    }
+
+    if prev == head as *mut _ {
+        (*head).next = next;
+    } else {
+        (*(prev as *mut bindings::thread)).task_threads.next = next;
+    }
+
+    (*thread).task_threads.next = ptr::null_mut();
+    (*thread).task_threads.prev = ptr::null_mut();
 }
 
 #[no_mangle]

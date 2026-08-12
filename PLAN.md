@@ -776,7 +776,7 @@ SIGSEGV became
 exit 0, `std::env::consts::OS` reporting macos. bash survived the same stack only because its
 startup high-water mark is lower.
 
-### Route B: the official Darwin rustc under cider (STARTED, two blockers, both measured)
+### Route B: the official Darwin rustc under cider (DONE, it compiles Rust in the guest)
 
 The rustc component is fetched and installed into the guest at `/opt/rustc` (442 MB). Running it
 fails in two stages, in this order:
@@ -791,9 +791,56 @@ finding.
 **2. Foundation.framework is absent from prefix-min.** Of rustc's five non-libSystem deps,
 `libobjc`, `libc++`, `libz` and `libiconv` are all present and only Foundation is missing.
 
-**So route B needs the FULL prefix**, `//buck/prefix:cider_prefix`, which is a large buck2 build
-and materially bigger than anything else here. Deliberately NOT started: that is an hour-class
-job and a user call. Everything short of it is done and reproducible.
+**So route B needed the FULL prefix**, `//buck/prefix:cider_prefix`. Built: 23,409 commands, 0
+failures, and Foundation.framework is in the artifact. With that prefix and the `@rpath` bypass:
+
+    rustc 1.95.0 (59807616e 2026-04-14)
+
+**3. THEN A REAL COMPILE KILLED THE DAEMON, AND IT WAS OUR BUG.** `rustc -O hello.rs` (HashMap,
+an iterator sum, `println!`) got `semaphore_timedwait failed (internally): -111` in the guest and
+`ciderd: FATAL host signal 11, fault addr 0x818` on the host. Diagnosed from the daemon crash
+backtrace plus the core, not from the symptom:
+
+    task_findtid+0xd6           <- SIGSEGV, mov 0x818(%rax) with rax = 0
+    _psynch_mutexwait+0x351
+    Handler::psynch_mutexwait
+    rpc_wire::dispatch / process_one_call / run_dowork_loop / body_trampoline
+
+The offsets are unsymbolised in the log (release build, no DWARF); `nm -S --numeric-sort` plus a
+nearest-symbol-below lookup recovers every frame, and `objdump` at the exact offset names the
+faulting instruction instead of leaving a choice of three dereferences.
+
+**ROOT CAUSE: our `queue_enter_threads` stored the address of the link FIELD where XNU's
+`queue_enter` stores the ELEMENT pointer.** `linux/server/src/xnu/thread.rs`. XNU element queues
+put the `thread_t` itself in `head->next` and in each `task_threads.next`, because `queue_iterate`
+casts the stored `queue_entry_t` straight to `thread_t`. Our two helpers agreed with each OTHER,
+so the list looked consistent and nothing in Rust ever noticed; the C reader did not agree, read
+`thread_id` at `(thread + 0x6b8) + 0x818`, and walked a next link taken from the middle of the
+record. Same file also lacked `queue_enter`/`queue_remove`'s head cases and the link clearing.
+
+Proven from the core rather than argued: under the field reading every link resolves to a real
+thread of the crashing task with sane tids (7, 13, 11) and `->task` equal to the task being
+walked; under the element reading every one of them is zero or garbage. That is the whole
+diagnosis in one measurement.
+
+**Why nothing caught it before.** `task_findtid` is reachable only from the contended branch of
+`_psynch_mutexwait`, where a guest hands the kernel an owner tid hint that disagrees with what
+the kernel knows. Guest bash never does that. rustc does it seconds into a real compile.
+
+**VERIFIED, on the artifact.** After the fix the same command runs rustc to completion and only
+fails in the LINKER, which is a prefix content gap and not a daemon defect: rustc calls `cc`, and
+`/Library/Developer/DarlingCLT/usr/bin/clang` does not exist (the Command Line Tools package is
+not installed). `--emit=obj` therefore closes it end to end:
+
+    RUSTC_EXIT=0
+    hello.o: Mach-O 64-bit x86_64 object, flags:<|SUBSECTIONS_VIA_SYMBOLS>
+
+9,376 bytes, carrying `__ZN3std2rt10lang_start...` and the `CIDER_RUSTC_GUEST_OK map=` marker
+string. A Darwin rustc running under cider compiled Rust to Darwin object code.
+
+**WHAT IS STILL OPEN, and neither is route B.** `@rpath` / `@loader_path` in cider's dyld, still
+worked around with `DYLD_LIBRARY_PATH`. And no Darwin-native linker in the prefix, so linking an
+executable inside the guest needs a Mach-O `ld64` there (route A links on the host instead).
 
 ### #76 - the Darling-origin host tools in Rust (MOSTLY DONE, and this entry did not exist)
 
