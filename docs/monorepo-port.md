@@ -303,10 +303,55 @@ the six tracked paths here that contain spaces. It happened to give the right an
 `buck-escape-roots-check` because a fragment still starts with the root; a path with a space under
 a pin would have made it wrong.
 
+## #98 is DONE for everything nushell can reach, and the rest is gated on #99
+
+Eleven checks are ported. Classifying all 43 remaining `.py` by **what it takes to run one**,
+which is the same question as what it takes to VERIFY a port of it:
+
+    14 scripts   3,428 lines   load another module        blocked on their shared cores
+     8 scripts   5,339 lines   generators                 #97, mostly archive
+     8 scripts   1,895 lines   need arguments             a store path, a graph dump or an SDK
+     5 scripts     988 lines   run clean with no args     but FOUR are tree-mutating TOOLS
+     7 scripts   2,900 lines   run, non-zero              mixed
+     1 script      323 lines   needs a 4-minute refresh   buck-upstream-names-check
+
+**The eleven ported were the entire set that both ran standalone AND was a check.** That is why
+they went quickly and why the next one will not: everything left needs a nix build to verify, or
+a shared core ported first, or mutates the tree so that "run both and diff the output" is not the
+test any more.
+
+### The blocker is a measured fact, not a judgement call
+
+`nix/lib/ciderBuck2Graph.nix:528-530` COPIES `buck-graph-to-specs.py` and `buck_lowering.py` into
+the graph derivation and runs `python3` on them **inside a nix build**. Six more do the same. So
+they are #99, Rust, and not #98, nushell:
+
+     752  buck2-graph-dump.py                nix/lib/ciderBuck2Graph.nix:460
+     541  buck-graph-to-specs.py             nix/lib/ciderBuck2Graph.nix:528
+     506  buck2-graph-sources.py             nix/lib/ciderBuck2Graph.nix:553
+     298  buck_lowering.py                   nix/lib/ciderBuck2Graph.nix:529
+     275  buck-src-normalise.py              nix/lib/ciderBuck2Graph.nix:208
+     237  buck-skeleton.py                   nix/lib/ciderBuck2Graph.nix:170
+     222  nix/lib/dyn-actions-spec-fixup.py  nix/lib/dyn-actions.nix:283
+    ----
+    2,831 lines on the build path
+
+The task estimated ~2,244, so **#99 is about a quarter bigger than planned**. Two names that
+looked like build-path entries are not: `pkgs.py` is this measurement's own regex matching
+`pkgs.python3`, and the `generate-rpc-wrappers.py` line is prose about a past failure. Both were
+checked by reading the line rather than trusted from the grep.
+
+**And #99 gates three of the four checks the task named as #98 pilots.** `buck-needs-check`,
+`buck-script-check` and `buck-names-check` all import `buck_lowering`. Porting that core to
+nushell to unblock them would put nushell on the nix build path, which is the opposite of the
+decision the split records. So the order is: **#99 first, then those three, then
+`buck-names-check` last and re-scoped.**
+
 ## #99
 
-Not started. #99 is the build-path graph code to Rust, converging with #92 (reading the buck2
-graph through buck2's own crates instead of parsing rendered output).
+Not started, and now measured: 2,831 lines, listed above. It converges with #92 (reading the
+buck2 graph through buck2's own crates instead of parsing rendered output), and because it
+changes graph derivation inputs it lands behind the full-graph diff.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.
