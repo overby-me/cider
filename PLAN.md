@@ -423,7 +423,7 @@ implementation that agrees is a test; deleting it converts a working check into 
 assumption.
 
 - **A, the bridge.** `nix/lib/dyn-actions.nix`, fourteen properties over eleven fixtures via
-  `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.py` ENFORCES that the
+  `scripts/buck-dyndrv-check.nu`. `scripts/buck-bridge-generality-check.nu` ENFORCES that the
   reusable half references nothing outside itself, which is the requirement rather than a
   nicety. Usage, constraints and the limits a real consumer found: `docs/dyn-actions-bridge.md`.
 - **B, the adapter.** `scripts/buck_lowering.py` renders the builder script and

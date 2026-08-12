@@ -316,7 +316,7 @@ def main [flag?: string] {
     #
     # It reads files and nothing else, so it cannot hit the busy eval cache during a build.
     say "== can the bridge still be lifted out of this repo? (no nix) =="
-    let gener = (do -i { ^python3 ./scripts/buck-bridge-generality-check.py --controls } | complete)
+    let gener = (do -i { ^nu ./scripts/buck-bridge-generality-check.nu --controls } | complete)
     if $gener.exit_code == 0 {
         ok "the reusable half references nothing outside itself"
     } else {
