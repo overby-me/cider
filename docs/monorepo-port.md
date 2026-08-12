@@ -457,21 +457,60 @@ once its generator was Rust, and it died with exit 127 in `patchPhase`: `assembl
 runs `buck-src-normalise.py`, a different #99 piece that is still Python. Restored with a comment
 saying the line goes when that piece does.
 
-### What is left of #99, 1,249 lines
+### Fifth piece: `buck-src-normalise.py` to `linux/buildtools/src-normalise`
+
+**Everything this tool decides is LEXICAL, and that is the whole difficulty of the port.** It
+reasons about links that do NOT resolve: dangling inside `buck-src`, escaping the cell, naming a
+first-party tree that has since been renamed. `std::fs::canonicalize` answers none of those
+questions, it fails on them. So `src/pypath.rs` reimplements the four `os.path` functions Rust
+does not have (`dirname`, `join`, `normpath`, `relpath`) on strings, exactly as the Python made
+them, and every expectation in its unit test was read out of `python3` rather than reasoned
+about. `nix/src-normalise.nix` sets `doCheck = true`, unlike the other two tools, because those
+tests are the reason to trust the module.
+
+**Verified two ways, both against the Python preserved out of the parent commit** (`jj file show
+-r @- scripts/buck-src-normalise.py`, since the port deletes it).
+
+*Real data.* Four pin stores chosen because between them they hold every case the tool has:
+corefoundation (a `.` component), libnotify (a link escaping the cell into the SDK farm),
+security, JavaScriptCore (the `DerivedSources` cyclic dir link). Two identical copies, 594 dirs,
+10,244 files and 453 symlinks each. Both implementations re-pointed **101** links, expanded **17**
+symlinked directories, left the one cycle alone with a byte-identical message, and `diff -rq
+--no-dereference` over the two results reports **nothing**. 0.14s against 0.19s.
+
+*Branch coverage.* Those pins do not reach the rename table, because the 2,077 links that need it
+live in a nested submodule the pin store does not carry. A synthetic repo covers what they miss
+with **11 expectations naming the exact target of every link**: `FIRST_PARTY_RENAMES`, the pre-#87
+`src/external` re-rooting, the SDK farm chain, the `darwin/` fallback, the `BUCK` skip inside an
+expanded directory, and the three cases that must be left alone. Both implementations pass all 11
+and produce identical trees. **The control is what makes that mean anything**: the same
+expectations fail 9 of 12 on a tree nothing has normalised.
+
+*End to end.* `.#graph-sources` rebuilt against the recorded baseline: output
+`nfp5fvf3rmn1n4wij32klx21vj7mv97n`, **identical**, from a `.drv` that differs (`1wqjq8n7` before,
+`sdxx4c69` after, resolving to `y0lm0bdd`). The graph derivation ran too, which is the part that
+matters: buck2 loaded its packages over the tree the RUST tool normalised, and a wrong
+normalisation is not a subtle difference there, it is `File not found: root//buck-src/...` or
+`File name too long`.
+
+**`pkgs.python3` is out of `sourcesDrv` now**, which is the one line the previous section said
+would go with this piece. That derivation runs two nix-built binaries and coreutils, and nothing
+interpreted.
+
+`scripts/buck-src.nu` calls the binary from the devShell, which declares it for that call.
+`buck-endpoint-stale.nu` LOSES its entry rather than gaining a renamed one: `linux/` is not a
+neutral top, so the crate already classifies as staged, and the match is on a whole path, so an
+entry naming the crate directory would never have fired on an edit to a file inside it.
+
+### What is left of #99, 974 lines
 
      752  buck2-graph-dump.py
-     275  buck-src-normalise.py
      222  nix/lib/dyn-actions-spec-fixup.py
 
-**`buck-src-normalise.py` is verifiable after all**, which supersedes the earlier note that it has
-no derivation of its own. It is inlined into `assembleProject`, which `sourcesDrv` and `graph`
-both embed, so flipping it and rebuilding `.#graph-sources` against
-`nfp5fvf3rmn1n4wij32klx21vj7mv97n` is an end-to-end proof. It is also the smallest piece left and
-the one holding `pkgs.python3` in that derivation.
-
-`buck-src-normalise.py` should NOT be next despite being small: it has no derivation of its own,
-so editing it changes a shell fragment embedded in two derivations and re-runs both, and its
-effect is a mutation of a tree inside them rather than a standalone output to diff.
+`buck2-graph-dump.py` is the big one and the only remaining piece on the critical path of every
+graph build. `dyn-actions-spec-fixup.py` is small but it runs inside the dynamic-derivation
+mechanism (#91, #93), so its verification is a different shape: not a store path to diff but an
+emitted drv set to compare.
 
 Nothing has been written into the monorepo yet. Which checkout and which bookmark to land on is a
 user call, and four checkouts of the same remote is exactly the situation where guessing is wrong.
