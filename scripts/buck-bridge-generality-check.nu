@@ -18,8 +18,13 @@
 # Usage: buck-bridge-generality-check.nu [--controls]
 #
 # PORTED FROM PYTHON, byte identical with and without --controls. ONE THING WORTH KNOWING FOR THE
-# NEXT PORT: the path regex uses a LOOKBEHIND, `(?<![\w/.])`, and nushell accepts it. The plain
-# Rust regex crate has no lookaround at all, so this was measured rather than assumed before the
+# NEXT PORT, AND A LIMIT MEASURED LATER: the path regex uses a LOOKBEHIND, `(?<![\w/.])`, and
+# nushell accepts it. IT IS ONLY SOUND ON SMALL INPUTS. Measured 2026-08-12 while porting
+# buck-upstream-names-check: `$big =~ 'zzq_no_such_token_here(?![A-Za-z0-9_])'` is false at
+# 400,000 characters and TRUE at 1,000,000, on a string where the token does not occur at all.
+# This check matches PER LINE over nix/lib files, hundreds of characters, so it is far below the
+# threshold and is correct; do not lift the pattern onto a whole-file or whole-tree string.
+# The plain Rust regex crate has no lookaround at all, so this was measured rather than assumed
 # port was written: `parse --regex` matched ./a/b.nix and correctly refused x./c/d.
 
 const LIB_SUB = ["nix" "lib"]
