@@ -19,6 +19,13 @@
 #   scripts/buck-specs-check.nu                       # against .#cider-buck2-graph-min
 #   scripts/buck-specs-check.nu --endpoint .#other    # against another graph
 #   scripts/buck-specs-check.nu --controls            # and prove the check can fail
+#
+# THIS ONE KEEPS ITS PYTHON CORE, ALONE AMONG THE FOUR PILOTS, and the reason is measured rather
+# than a preference: the check compares shell WORDS, so it stands or falls on tokenising 59 MB
+# of script text, and a character loop in nushell runs at about 25 KB/s and gets EIGHT TIMES
+# WORSE per byte at 4.9 MB than at 6.5 KB. The numbers and the alternative that was rejected are
+# in the head of scripts/buck-specs-check.py, together with the --dump-canon gate that would
+# prove a future attempt.
 
 def main [
   --endpoint: string = ".#cider-buck2-graph-min"

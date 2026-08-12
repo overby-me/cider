@@ -25,9 +25,28 @@ fire: one mutation did not apply to the group it was tried on, and one deleted a
 the sequence comparison cannot see by construction. Both were harness bugs rather than good
 news, which is the whole reason the controls are part of the check and not a one-off.
 
+THIS ONE STAYS PYTHON, AND THE REASON IS MEASURED (#98). The other three pilots moved to
+nushell; this one cannot, because its verdict rests entirely on tokenising shell words, and a
+character loop is the only way to do that in nushell. Measured on the real scripts.json, which
+holds 59,107,957 bytes of script text over 1,474 groups:
+
+    6,530 byte script       0.03 s
+    4,942,865 byte script   200.57 s
+
+That is about 25 KB/s and it is SUPERLINEAR, roughly eight times worse per byte at the larger
+size, because `$cur = $cur + $c` copies the accumulator on every character. The whole dump would
+be over an hour against 22 s for this file. A regex tokeniser would be fast but is the wrong
+trade here: adjacency (a"b"c is ONE word) and mixed quoting inside a word are exactly where a
+tokeniser goes silently wrong, and this check exists to compare WORDS.
+
+--dump-canon is the gate for whoever tries again: it prints one line per group with the sha256
+of its canonical form, so a new tokeniser can be compared on all 1,474 scripts rather than on a
+sample. It is what proved the three ported checks and what would prove this one.
+
 Usage:
   scripts/buck-specs-check.py <graph.json> <specsdir>              # check
   scripts/buck-specs-check.py <graph.json> <specsdir> --controls   # and prove it can fail
+  scripts/buck-specs-check.py <graph.json> <specsdir> --dump-canon # the port gate
 """
 from __future__ import annotations
 
@@ -495,10 +514,41 @@ def controls(graph_path: str, specdir: str) -> list:
     return out
 
 
+def dump_canon(graph_path: str, specdir: str) -> int:
+    """One line per group: its name and the sha256 of its CANONICAL form.
+
+    THE PORT GATE. buck-specs-check compares WORDS rather than text, so its verdict rests
+    entirely on the tokeniser, and a nushell reimplementation of shlex.split that is subtly
+    different would agree on the summary while comparing something else. Hashing the canonical
+    sequence of every group makes the two implementations comparable exactly where it matters,
+    on all 1,474 scripts rather than on a sample.
+    """
+    import hashlib
+    with open(graph_path) as f:
+        graph = json.load(f)
+    coarse = graph.get("coarsePinOf", {})
+    groups = {}
+    for a in graph["actions"]:
+        groups.setdefault(group_of(a["identity"], coarse), []).append(a)
+    for group in sorted(groups):
+        try:
+            text = read_script(specdir, group)
+        except KeyError:
+            print(f"{safe_name(group)}\tNOSCRIPT")
+            continue
+        seq = canon_script(text)
+        blob = "".join(e[0] + "\t" + "\x1f".join(e[1] if len(e) > 1 else ()) + "\n" for e in seq)
+        print(f"{safe_name(group)}\t{hashlib.sha256(blob.encode()).hexdigest()}")
+    return 0
+
+
 def main(argv: list) -> int:
     if len(argv) < 2:
         sys.exit(__doc__)
     graph_path, specdir = argv[0], argv[1]
+
+    if "--dump-canon" in argv[2:]:
+        return dump_canon(graph_path, specdir)
 
     if "--controls" in argv[2:]:
         # WRITES TO THE SPEC DIR, so it refuses to touch a store path. The specs normally live
