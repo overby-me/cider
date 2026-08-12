@@ -990,7 +990,7 @@ def main [flag?: string] {
     # "^by-name". Two of the three were recomputing an answer already in hand.
     #
     # THE SAVING IS ABOUT 10 SECONDS, NOT MINUTES, and the first version of this comment said
-    # minutes because I had confused this script with buck-upstream-names-check.py. MEASURED on
+    # minutes because I had confused this script with buck-upstream-names-check. MEASURED on
     # an idle box: buck-coverage.py is 6 s, 5 s, 4 s across three runs, while the upstream-names
     # check runs for over 110 s. Worth doing, and worth not overselling: if the suite is ever
     # actually slow, this is not where the time is.

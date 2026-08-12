@@ -74,7 +74,7 @@ input can vanish must fail rather than pass when it does.
 
 **Upstream keeps the old name in its paths, patch headers, repo and org; only FIRST-PARTY names
 change.** `__DARLING__` is upstream, 772 times across 188 pin files, and keeps its name.
-`buck-upstream-names-check.py` holds the upstream names as DATA and must never be swept.
+`buck-upstream-names-check` holds the upstream names as DATA and must never be swept.
 
 ### Moving a path root needs THREE audits, each blind to the next (#87 stage 2)
 

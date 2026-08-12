@@ -13,7 +13,7 @@
 # and conclude the tracer was broken or that the syscall was never reached. The failure is silent
 # and it points the investigation the wrong way, which is the expensive kind.
 #
-# This is the mirror image of buck-upstream-names-check.py. That one catches a rename that
+# This is the mirror image of buck-upstream-names-check.nu. That one catches a rename that
 # ORPHANS a name upstream still uses. This one catches a name WE advertise that nothing
 # implements. Both are about the same underlying mistake, a name whose two ends do not meet.
 #
