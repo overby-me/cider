@@ -167,9 +167,34 @@ Verified rather than eyeballed:
 | `buck-pin-patches-check` | 121 | 117 | the shape works, three fault classes controlled |
 | `buck-pin-rev-check` | 148 | 145 | the control found a bug the happy path could not |
 | `buck-hosttools-parity` | 114 | 137 | **nushell can do the byte comparisons** |
+| `buck-first-party-paths-check` | 117 | 146 | **whole-tree walks need care, and are affordable** |
 
-About 1:1, so the 7,953 self-contained lines are roughly that much nushell. The third grew
-because it carries the binary-handling findings in its header and a small `repr` helper.
+About 1:1 (497 Python to 545 nushell over four samples), so the 7,953 self-contained lines are
+roughly that much nushell. The last two grew because their headers now carry the findings below,
+which is where the next person porting a check will look.
+
+**The whole-tree walk is the other thing that could have sunk this, and it comes down to one
+flag.** `buck-first-party-paths-check` reads every `BUCK`, `.bzl` and `.bxl` in the repo, 194
+files and 205,024 lines, and Python does it in 0.78s. Three nushell versions were measured:
+
+    glob "**/*" then filter by extension        did not finish in two minutes
+    glob the 3 patterns, no --exclude           35s   (11.5s per pattern, each re-walks all)
+    glob the 3 patterns, with --exclude          2.9s
+
+So **`glob --exclude` PRUNES THE WALK** rather than filtering results, which is the opposite of
+what a post-filter does, and it is the difference between 35s and 3s. Reach for it before
+reaching for a hand-rolled walk; a hand-rolled pruning walk was also written and measured at
+7.6s, slower than the pruned glob.
+
+The second half of that cost is per-line regex. Running the substitution and the parse on all
+205,024 lines does not finish either; a cheap `where item =~ '"(src|darwin|linux)/'` prefilter
+takes the expensive work down to about 700 lines, and the four biggest build files go from a
+timeout to 162ms. Python's `re.finditer` over whole-file text has no equivalent problem, so this
+is a shape change the port has to make deliberately rather than a translation.
+
+Scope was preserved exactly, which for this check is the point: its four identically-spelled path
+spaces are unchanged, and the control proves the exclusions still hold (an `exports_*.bzl` hit and
+a `pins/` hit are both ignored, an `out_base` is blanked, and only the stale path is reported).
 
 **The binary comparison was the part of #98 that looked risky, and it is not.**
 `buck-hosttools-parity` compares two binaries byte for byte: stdout as hex, stderr verbatim, exit

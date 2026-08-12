@@ -406,7 +406,7 @@ def main [flag?: string] {
     # strings behind in pin BUCK files and gate11 died an HOUR later with 118 errors that all
     # named base.h, memory.h and string.h, none of them naming the path that was wrong.
     say "== the first-party paths we quote in build files (no nix either) =="
-    let fpaths = (do -i { ^python3 ./scripts/buck-first-party-paths-check.py } | complete)
+    let fpaths = (do -i { ^nu ./scripts/buck-first-party-paths-check.nu } | complete)
     if $fpaths.exit_code == 0 {
         ok "every quoted first-party path resolves"
     } else {
