@@ -68,6 +68,43 @@ a stranger that the documented command finishes, which is the thing a release is
 **The first move is not a fix, it is a reproduction on a clean machine**, which is also what B1
 buys: CI is a clean machine that runs the documented command every time.
 
+### B0 reproduced 2026-08-12 19:22, with the evidence the first observation lacked
+
+Same command, same stall point: immediately after `cider-buck2-sources` completes. What the
+instrument caught, which the 16:55 observation did not:
+
+    client 3239272   wchan unix_stream_read_generic, blocked on
+                     /nix/var/nix/daemon-socket/socket. 3 CPU ticks in 45 s, so 0.07 percent.
+                     Its 17 threads are Boehm GC markers parked in futex_do_wait: the
+                     evaluator is idle, not thinking.
+    daemon 3239326   about 0.5 percent, steady: 22 ticks in 60 s, 41 in 90 s, 44 in 75 s.
+                     ZERO children. Root owned, so its wchan and io are unreadable without
+                     privilege, which is the one hole left in this picture.
+    the build graph  NOTHING started since. /nix/var/log/nix/drvs shows
+                     cider-buck2-sources.drv.bz2 at 19:22:41 as the newest, and a .bz2 there
+                     means that derivation FINISHED. No builder process exists on the machine.
+    competition      none. One client, one worker, no other nix process, any user.
+
+**THE RECORDED "unreaped zombies" HYPOTHESIS IS REFUTED for this case.** There ARE zombies on
+the box and they are `sd_espeak-ng`, `sd_festival`, `sd_voxin` and five more: speech-dispatcher
+modules under one unrelated parent. None belongs to nix or to a builder.
+
+**STARVATION WAS THE OBVIOUS ANSWER AND IT IS WRONG, which is why it was tested rather than
+assumed.** The machine was saturated: `xscreensaver` at **1993 percent CPU**, roughly 20 of 22
+cores, load 22.10. SIGSTOP on it dropped load to 9.15 within 75 seconds and freed the cores; the
+daemon tick rate did not change and the log did not advance. It was resumed afterwards. So the
+machine being busy is a real and separate problem, not this one.
+
+**A METHOD ERROR THAT COST TWO WRONG CONCLUSIONS IN ONE SESSION.** `ps -o pcpu` reports a
+LIFETIME AVERAGE, not current usage. It made an idle daemon look like it was working at 12.3
+percent, and it hid the screensaver behind processes with longer histories. Sample
+`/proc/PID/stat` fields 14 and 15 across an interval instead, which is what produced every number
+above.
+
+**WHAT IS STILL UNKNOWN:** what the daemon is doing with its half percent. Both sides are idle,
+nothing is building, and nothing has started for over twelve minutes. Answering it needs the
+daemon's stack, which needs root.
+
 
 **B1. DONE 2026-08-12 (4f7e30082b64). Reconnect CI to reality.** Point it at the branch the work is on (or land the work on main),
 and name attributes that exist. It should at minimum evaluate every advertised output and build
