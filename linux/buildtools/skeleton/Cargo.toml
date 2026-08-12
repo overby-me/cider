@@ -1,0 +1,23 @@
+# cider-skeleton: the first build-path script moved off Python (#99).
+#
+# BUILT BY NIX, NOT BY BUCK2, and that is a hard constraint rather than a preference: this tool
+# produces the tree that buck2 is then run on, so building it with buck2 would be circular. It
+# follows nix/launcher.nix and nix/loader.nix, which already use rustPlatform.buildRustPackage.
+#
+# STD ONLY, NO DEPENDENCIES, so Cargo.lock holds one package and nothing has to be vendored into
+# the build. That matters here more than usual: this is on the critical path of every build, and
+# a dependency tree would put a fetch between an edit and the first compile.
+[package]
+name = "cider-skeleton"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "cider-skeleton"
+path = "src/main.rs"
+
+[profile.release]
+# The tool is IO bound: 15s wall for 403,375 entries, of which 12.7s is sys. Optimising for
+# size keeps the build cheap without touching the number that matters.
+opt-level = 2
