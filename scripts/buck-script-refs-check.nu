@@ -103,9 +103,22 @@ def main [--scan: string = ""] {
         say $"   plus ($named | length) check\(s) named by ($driver)"
     }
 
-    if ($bad | is-empty) and ($missing_checks | is-empty) {
-        say "PASS: every scripts/<name> written down still exists"
+    # AND IT HAS TO BE RUNNABLE, not merely present. buck-test.nu invokes several checks as
+    # ./scripts/<name>.nu, and a file without the executable bit fails there with
+    # "Command not found ... refers to a file that is not executable", which reads like a
+    # missing script rather than a missing mode. EIGHTEEN of them were in that state after the
+    # python ports, and the suite died on the first one it reached.
+    let not_exec = (^find scripts -name "*.nu" ! -perm -u+x | complete | get stdout | lines
+        | where {|l| $l != "" } | sort)
+
+    if ($bad | is-empty) and ($missing_checks | is-empty) and ($not_exec | is-empty) {
+        say "PASS: every scripts/<name> written down still exists and is executable"
         exit 0
+    }
+    if ($not_exec | is-not-empty) {
+        say $"FAIL: ($not_exec | length) nushell script\(s) are not executable, so a caller that"
+        say "      runs them by path gets a confusing not-found error:"
+        for f in $not_exec { say $"  ($f)" }
     }
     for m in $missing_checks {
         say $"FAIL: ($driver) runs ($m), and neither scripts/($m).nu nor .sh is there"
