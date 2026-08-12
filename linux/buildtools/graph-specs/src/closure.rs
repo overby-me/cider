@@ -20,7 +20,7 @@
 //!   cider-codegen-closure ... --targets   # print the target labels
 //!   cider-codegen-closure ... --check     # run the four spot checks, exit 1 on failure
 //!
-//! THE RUST REWRITE of scripts/buck-codegen-closure.py (#98), and it is Rust for the reason the
+//! THE RUST REWRITE of the python buck-codegen-closure (#98), and it is Rust for the reason the
 //! measurement gave: it builds a producer map over every action output and then chases the argv
 //! of every action in the frontier through it, on the order of a million lookups. A nushell
 //! record is not a hash map, and 100,001 lookups into a 12,001 key record took 51.8 seconds.

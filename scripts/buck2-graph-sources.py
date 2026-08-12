@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # OFF THE BUILD PATH SINCE #99. nix/lib/ciderBuck2Graph.nix runs cider-graph-sources, the second
 # binary of linux/buildtools/graph-specs, and no derivation reads this file any more. It is kept
-# ONLY because scripts/buck-codegen-closure.py LOADS it, for read_trees, so that its copy of that
+# ONLY because cider-codegen-closure LOADS it, for read_trees, so that its copy of that
 # function cannot drift from this one.
 #
 # THAT IS THE SAME DRIFT RISK AS buck_lowering.py AND IT IS NAMED RATHER THAN LEFT: two
@@ -458,7 +458,7 @@ def main(argv: list) -> int:
         fh.write("\n")
     # 357 MB THAT NOTHING AUTOMATED READS, and nix has to hash it and copy it into the store on
     # every run. The lowering reads target-groups.json (1.5 MB); the only references to this
-    # file are comments plus an optional --sources flag on scripts/buck-codegen-closure.py,
+    # file are comments plus an optional --sources flag on cider-codegen-closure,
     # which a person runs by hand. Measured: the script's own phases are 19 s of a 53 s
     # derivation, so the rest is nix moving data, and this file is 87 percent of the output.
     #
