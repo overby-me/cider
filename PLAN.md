@@ -45,7 +45,7 @@ minutes, and did exactly that for #87 stage 2.
 
 **RUN THE NIX-FREE SET FIRST. Nine checks, 27 seconds together, and several have each saved
 an hour.** `buck-escape-roots-check.py`, `buck-pin-patches-check.nu`, `buck-pin-rev-check.nu`,
-`buck-env-names-check.py`, `buck-first-party-paths-check.nu`, `buck-labels-check.py`,
+`buck-env-names-check.py`, `buck-first-party-paths-check.nu`, `buck-labels-check.nu`,
 `buck-pin-paths-check.py`, `buck-host-includes.py`, `buck-coverage.py`.
 
 **COUNT `^building`, NEVER the "these N derivations will be built" list.** The list overstates
@@ -101,7 +101,7 @@ remembered and not deduced: the host-header fix took it from 159 to 160, and the
 prediction was confirmed by running the suite rather than by assuming.
 
 It reads 161 rather than 159 because two checks that existed were never invoked by anything,
-`buck-labels-check.py` and `buck-pin-paths-check.py`, and are now wired in. The nine nix-free
+`buck-labels-check.nu` and `buck-pin-paths-check.py`, and are now wired in. The nine nix-free
 checks together take 27 seconds, so running them before a long build costs nothing.
 
 The denominator is 1451, not the 1452 this line used to claim: #71 ported duct-tape to Rust,

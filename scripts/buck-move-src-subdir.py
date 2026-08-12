@@ -19,7 +19,7 @@ occurrences across 130 files, and the wrong ones are not obvious:
   file is OURS wherever it sits, and excluding those trees wholesale was wrong: the first run
   left 56 labels dangling in buck-src/BUCK, buck-src/ruby/BUCK, buck-src/xnu/BUCK and
   pins/ciderd/tools/BUCK, all four of them tracked files of ours that name first-party
-  targets. buck-labels-check.py caught every one, which is the whole reason it exists. So build
+  targets. buck-labels-check.nu caught every one, which is the whole reason it exists. So build
   files are rewritten everywhere and only upstream SOURCE is left alone.
 
   Longest name first. The lib, libm, libsimple and libelfloader directories all share a prefix,

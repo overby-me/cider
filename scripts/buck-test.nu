@@ -415,7 +415,7 @@ def main [flag?: string] {
     }
 
     # THESE TWO EXIST, ARE CREDITED WITH SAVING AN HOUR EACH, AND NOTHING RAN THEM. Measured
-    # 2026-08-11: neither buck-labels-check.py nor buck-pin-paths-check.py appeared anywhere in
+    # 2026-08-11: neither buck-labels-check.nu nor buck-pin-paths-check.py appeared anywhere in
     # this file, and a whole-tree search found no other caller either, only prose in PLAN.md
     # and mentions inside other scripts. That is the exact shape #85 was opened for, a check
     # that exists and never runs, and it had quietly come back for two of them.
@@ -425,7 +425,7 @@ def main [flag?: string] {
     # labels, load() symbols and read_root_config sections, and pin paths resolves 8,333 paths
     # recorded into pins across the exports tables, the three sdk maps and the fetch manifest.
     say "== the labels and the pin paths (no nix either, about a second each) =="
-    let labels = (do -i { ^python3 ./scripts/buck-labels-check.py } | complete)
+    let labels = (do -i { ^nu ./scripts/buck-labels-check.nu } | complete)
     if $labels.exit_code == 0 {
         ok "every label resolves and every config section is cider"
     } else {
