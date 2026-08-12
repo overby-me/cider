@@ -406,7 +406,7 @@ fn tarjan_cyclic(pe: &BTreeMap<String, BTreeSet<String>>) -> HashSet<String> {
 ///
 /// THE PROBLEM: aquery does not hand these back in a stable order. Two dumps of an unchanged
 /// tree produced graph.json files of exactly the same size, 307,041,054 bytes, that
-/// scripts/buck-graph-equiv.py called the same graph on every dimension, and which still
+/// cider-graph-equiv called the same graph on every dimension, and which still
 /// differed at byte 49 because the action list started with a different action. The lowering
 /// reads graph.json at EVALUATION, so a byte difference moves every lowered derivation.
 ///

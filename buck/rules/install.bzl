@@ -162,7 +162,7 @@ def _prefix_tree_impl(ctx):
     #
     # NOT A SECOND `write`, and that was measured rather than assumed. Writing the same text a
     # second time with with_inputs set worked, but it INSERTS AN ACTION, and the lowering keys
-    # on action ids: scripts/buck-graph-equiv.py reported every action identical and every
+    # on action ids: the graph equivalence check reported every action identical and every
     # staged artifact identical, with only the prefix target ids renumbered (build.sh 1 to 2,
     # the prefix 2 to 3), which is enough to move the derivation and rebuild the endpoint for
     # no gain. Attaching the artifacts directly adds no action at all.

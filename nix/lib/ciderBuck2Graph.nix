@@ -35,7 +35,7 @@
   # buck-src, buck-rust and pins emptied, keeping the name and dropping the bytes,
   # except the five that feed a generator this derivation runs. OFF BY DEFAULT and an
   # EXPERIMENT until the resulting graph is shown equivalent to the one the project produces;
-  # see packages.cider-buck2-graph-skeleton and scripts/buck-graph-equiv.py.
+  # see packages.cider-buck2-graph-skeleton and cider-graph-equiv (nix build .#specs-tool).
   skeleton ? false,
   targets,
 }: let
@@ -376,7 +376,7 @@
     # rtsig.c, wrapgen.cpp and three libsimple files. cider-skeleton keeps them. Pass
     # skeleton = true to try it, which is what packages.cider-buck2-graph-skeleton does.
     # It stays OFF here until the graph it produces is shown equivalent by
-    # scripts/buck-graph-equiv.py, because a wrong skeleton fails SILENTLY.
+    # cider-graph-equiv, because a wrong skeleton fails SILENTLY.
     src = if skeleton then skeletonSrc else projectSrc;
 
     nativeBuildInputs =

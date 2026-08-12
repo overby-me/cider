@@ -16,7 +16,7 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
-# TWO BINARIES, ONE CRATE, so src/pyjson.rs is SHARED rather than copied. Both tools have to
+# FOUR BINARIES, ONE CRATE, so src/pyjson.rs and src/sha256.rs are SHARED rather than copied. Both tools have to
 # write python-compatible JSON, and a second copy of that serialiser is exactly the drift risk
 # this port has been careful about everywhere else: the two would diverge and one output would
 # silently stop matching. autobins is off so the set is explicit rather than discovered.
@@ -36,6 +36,13 @@ path = "src/sources.rs"
 [[bin]]
 name = "cider-graph-dump"
 path = "src/dump.rs"
+
+# THE FOURTH BINARY, the Rust rewrite of scripts/buck-graph-equiv.py (#98). It is in this crate
+# because it reads the same graph.json and shares sha256 with the dump and the sources pass; a
+# crate of its own would mean a second copy of that hash.
+[[bin]]
+name = "cider-graph-equiv"
+path = "src/equiv.rs"
 
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }

@@ -166,7 +166,7 @@
       # skeleton does NOT fail loudly: an emptied generator input compiles, links, runs and
       # writes an empty output, so the dump comes out quietly wrong. The check is
       #
-      #   scripts/buck-graph-equiv.py <project-graph> <project-data> <skeleton-graph> <data>
+      #   cider-graph-equiv <project-graph> <project-data> <skeleton-graph> <data>   (nix build .#specs-tool)
       #
       # which compares by MEANING (every action with its argv, env, inputs and outputs; every
       # staged artifact by content hash; every farm by reconstructed links) rather than byte
@@ -571,7 +571,7 @@
               #   out   8rsv2w3c71rg5iacmw8h205g4lxbq05f-cider-buck2-graph
               #   data  4pybgzfvbrrfkkg1pqkhzcx09a33bdyj-cider-buck2-graph-data
               # See packages.cider-buck2-graph-min, which exists to make that comparison
-              # honest, and scripts/buck-graph-equiv.py for the by-meaning check if the two
+              # honest, and cider-graph-equiv for the by-meaning check if the two
               # ever stop collapsing.
               skeleton = true;
               targets = import ./nix/lib/buck2-targets-min.nix;
