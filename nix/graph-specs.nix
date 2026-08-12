@@ -1,5 +1,6 @@
-# cider-graph-specs: the Rust rewrite of scripts/buck2-graph-dump.py, scripts/buck_lowering.py,
-# scripts/buck-graph-to-specs.py and scripts/buck2-graph-sources.py, task #99.
+# cider-graph-specs: the Rust rewrite of four python generators. #99 deleted three of them,
+# buck2-graph-dump.py, buck_lowering.py and buck-graph-to-specs.py; buck2-graph-sources.py is
+# still in the tree, off the build path, because two checks load it for read_trees.
 #
 # THREE BINARIES, one crate, because they share the parts that have to agree byte for byte:
 #   cider-graph-dump      asks buck2 for the action graph and writes graph.json

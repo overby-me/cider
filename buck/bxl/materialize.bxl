@@ -1,6 +1,6 @@
 # Materialize the artifacts the Nix endpoint has to carry as DATA.
 #
-# The graph dump (scripts/buck2-graph-dump.py) reads every command from aquery, at analysis
+# The graph dump (linux/buildtools/graph-specs/src/dump.rs) reads every command from aquery, at analysis
 # time, so nothing has to be compiled to learn what the build would run. But some artifacts
 # are not produced by a command at all -- buck2 makes them in-process (a staged include
 # root, a generated header) -- and no recorded argv can recreate them. Those have to be

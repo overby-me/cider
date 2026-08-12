@@ -1,7 +1,7 @@
 //! The lowering and the spec generator, in Rust: what a group NEEDS, the script that builds it,
 //! and the per-group spec files the bridge reads. Task #99.
 //!
-//! This is scripts/buck_lowering.py and scripts/buck-graph-to-specs.py in one binary. They were
+//! This is linux/buildtools/graph-specs and linux/buildtools/graph-specs in one binary. They were
 //! two files because python needed an importable module shared between the generator and three
 //! checks; a binary has no import, so the checks read the JSON it already writes instead, which
 //! is the same data by a shorter route.
@@ -16,7 +16,7 @@
 //! serialiser and the harness comment below for why the shell block is a file rather than a
 //! literal.
 //!
-//! VERIFIED against scripts/buck-graph-to-specs.py over the REAL 147 MB graph, 1,474 groups and
+//! VERIFIED against linux/buildtools/graph-specs over the REAL 147 MB graph, 1,474 groups and
 //! 2,955 output files, byte for byte.
 
 mod pyjson;

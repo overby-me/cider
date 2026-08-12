@@ -1,5 +1,5 @@
-//! Make the materialized pins crawlable by buck2. The Rust rewrite of
-//! scripts/buck-src-normalise.py, task #99.
+//! Make the materialized pins crawlable by buck2. The Rust rewrite of the python normaliser
+//! (buck-src-normalise.py, deleted by #99).
 //!
 //! buck2 rejects two kinds of symlink outright, and both occur in the upstream trees:
 //!

@@ -165,7 +165,7 @@ point and is deliberately not kept here, because it went on growing: an argv-spl
 common is that the host build passes throughout.
 
   * **A cyclic symlink wrecked the tree.** `expand_dir_links` in
-    `scripts/buck-src-normalise.py` followed JavaScriptCore's
+    `buck-src-normalise.py` followed JavaScriptCore's
     `DerivedSources/JavaScriptCore/JavaScriptCore -> ../..` into the tree it was creating:
     13 directories became 1147 at 266 levels deep, `except OSError` swallowed the
     ENAMETOOLONG, and buck2 then died crawling the wreckage. Invisible on the host, whose

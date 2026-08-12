@@ -469,7 +469,7 @@ about. `nix/src-normalise.nix` sets `doCheck = true`, unlike the other two tools
 tests are the reason to trust the module.
 
 **Verified two ways, both against the Python preserved out of the parent commit** (`jj file show
--r @- scripts/buck-src-normalise.py`, since the port deletes it).
+-r @- buck-src-normalise.py`, since the port deletes it).
 
 *Real data.* Four pin stores chosen because between them they hold every case the tool has:
 corefoundation (a `.` component), libnotify (a link escaping the cell into the SDK farm),
@@ -616,7 +616,7 @@ a total key mismatch looks like. It goes label to safe_name, because safe_name i
 the DATA. Restoring them means a debug mode on `cider-graph-specs` that writes a deliberately
 weakened `needs.json`.
 
-`scripts/buck_lowering.py` and `scripts/buck-graph-to-specs.py` are DELETED, 863 lines. What is
+`buck_lowering.py` and `buck-graph-to-specs.py` are DELETED, 863 lines. What is
 left of the banner-marked class is `scripts/buck2-graph-sources.py`, which two checks
 (`buck-codegen-closure.py`, `buck-declaration-gap.py`) still import.
 

@@ -1,5 +1,5 @@
 //! Assemble the port's action graph from what buck2 can be asked, for the Nix endpoint. The
-//! Rust rewrite of scripts/buck2-graph-dump.py, task #99.
+//! Rust rewrite of the python graph dump (buck2-graph-dump.py, deleted by #99).
 //!
 //! Run INSIDE nix/lib/ciderBuck2Graph.nix, right after a build, with the project root as the
 //! working directory. Three buck2 interfaces are needed because no single one answers

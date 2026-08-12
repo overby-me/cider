@@ -36,6 +36,10 @@ const NIX_PATH = '(?<![\w/.])(?<ref>\.{1,2}/[\w./-]+)'
 const NOT_A_FIXTURE = [
   # What the fixtures test, rather than a fixture.
   "dyn-actions.nix"
+  # The fixup TOOL, which the bridge runs and every fixture therefore exercises. It was a
+  # python file here until #99 made it a Rust crate; the .nix beside the crate builds it and
+  # asserts nothing, so it is not a fixture either.
+  "dyn-actions-spec-fixup.nix"
   # A MEASUREMENT, not an assertion: it prices one emitted action and takes --argstr n.
   # There is no pass or fail to run in a suite, and the number is in its header.
   "dyn-actions-scale-toy.nix"
@@ -45,6 +49,20 @@ def reusable-files [lib: string] {
   ls -a $lib | where type == file | get name | each {|p| $p | path basename }
     | where {|f| ($f | str starts-with $REUSABLE_PREFIX) and (($f | str ends-with ".nix") or ($f | str ends-with ".py")) }
     | sort
+}
+
+# WHAT A REFERENCE MAY NAME: the reusable files, PLUS any directory in nix/lib carrying the
+# prefix. The directory half is not a loophole. #99 turned the spec fixup from a python file in
+# nix/lib into a Rust crate, and a crate is a DIRECTORY; keeping it inside the set is exactly the
+# property being checked, since copying nix/lib/dyn-* into another project has to bring the
+# bridge whole. Excluding directories would have forced the crate to live outside the set, which
+# is the reference this check exists to catch.
+#
+# DIRECTORIES ARE NOT READ, only named: they hold no nix paths to follow.
+def reusable-names [lib: string, files: list<string>] {
+  let dirs = (ls -a $lib | where type == dir | get name | each {|p| $p | path basename }
+    | where {|d| $d | str starts-with $REUSABLE_PREFIX })
+  $files | append $dirs | sort
 }
 
 # Comments blanked, keeping line numbers. The check is about references in CODE: a header
@@ -72,8 +90,13 @@ def check-refs [lib: string, files: list<string>, allowed: list<string>] {
       for m in ($row.item | parse --regex $NIX_PATH) {
         # Resolve relative to nix/lib, then ask whether it is one of ours.
         let target = ($lib | path join $m.ref | path expand --no-symlink)
-        let base = ($target | path basename)
-        let inside = (($target | path dirname) == $lib) and ($base in $allowed)
+        # THE FIRST COMPONENT UNDER nix/lib, not the basename, so a path INTO an allowed
+        # directory counts as inside: the fixup crate is named as dyn-actions-spec-fixup/ and its
+        # Cargo.lock is named separately. Anything not under nix/lib at all fails the prefix test
+        # and is a violation, which is the case this check is for.
+        let rel = (try { $target | path relative-to $lib } catch { "" })
+        let head = (if ($rel | is-empty) { "" } else { $rel | path split | first })
+        let inside = ($head in $allowed)
         if not $inside {
           $problems = ($problems | append { file: $f, line: ($row.index + 1), ref: $m.ref })
         }
@@ -90,7 +113,7 @@ def main [--controls] {
 
   print $"== can the bridge be lifted out? ($files | length) reusable file\(s\) in nix/lib =="
   for f in $files { print $"    ($f)" }
-  let problems = (check-refs $lib $files $files)
+  let problems = (check-refs $lib $files (reusable-names $lib $files))
   print $"  references leaving the set: ($problems | length)"
   for p in ($problems | first 10) { print $"    ($p.file):($p.line) names ($p.ref)" }
   mut rc = (if ($problems | is-empty) { 0 } else { 1 })

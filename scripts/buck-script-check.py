@@ -18,7 +18,7 @@ assumption being smuggled in: `placeholders` is one attrset for the whole loweri
 were somehow per label the labels that differ would FAIL here rather than pass quietly.
 
 IT JUDGES THE ARTIFACT, NOT A SECOND CALL TO THE SAME CODE. It used to be able to re-render each
-script by importing scripts/buck_lowering.py, and that mode is gone with the python: since #99
+script by importing the python renderer, and that mode is gone with it: since #99
 the renderer is Rust (linux/buildtools/graph-specs/src/main.rs) and the only honest question left
 is whether the full.json the graph derivation WROTE matches the lowering.
 
@@ -38,7 +38,7 @@ import sys
 
 
 # THE THREE PURE RULES THIS NEEDS, copied rather than imported. They came from
-# scripts/buck_lowering.py, which #99 deleted; the source of truth is now
+# buck_lowering.py, which #99 deleted; the source of truth is now
 # linux/buildtools/graph-specs/src/main.rs, and a check cannot import a Rust binary. Each is one
 # expression and each is exercised by the comparison below: get safe_name wrong and every label
 # misses, get dep_var wrong and every dependency substitution misses.

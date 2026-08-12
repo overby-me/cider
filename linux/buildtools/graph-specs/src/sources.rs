@@ -277,7 +277,7 @@ impl Fs {
     }
 }
 
-/// Where scripts/buck2-graph-dump.py parked a staged artifact. Same rule as the dump:
+/// Where linux/buildtools/graph-specs/src/dump.rs parked a staged artifact. Same rule as the dump:
 /// re.sub(r"[^A-Za-z0-9_.-]+", "_", path), which collapses RUNS to a single underscore.
 fn staged_name(path: &str) -> String {
     let mut out = String::new();

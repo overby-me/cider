@@ -1,4 +1,5 @@
-# cider-skeleton: the Rust rewrite of scripts/buck-skeleton.py, task #99.
+# cider-skeleton: the Rust rewrite of the python skeletoniser (buck-skeleton.py, deleted by
+# #99).
 #
 # It reduces the project to what the graph derivation actually reads, which is the thing that
 # stops editing one .c file rerunning a 30-to-47 minute graph build. See the crate header for

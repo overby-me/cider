@@ -56,7 +56,7 @@ def unjoin(cmd: str) -> list[str]:
     """aquery's rendered `cmd` back into an argv.
 
     A COPY OF THE RULE, four lines of it, and deliberately so. It used to import the rule from
-    scripts/buck2-graph-dump.py, which since #99 is a Rust binary
+    linux/buildtools/graph-specs/src/dump.rs, which since #99 is a Rust binary
     (linux/buildtools/graph-specs/src/dump.rs) with nothing to import. Copying is the honest
     shape here anyway: this check exists to catch the day the rendering stops round-tripping,
     and it compares against what buck2 ACTUALLY RAN, so the comparison is with reality rather

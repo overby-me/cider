@@ -1004,7 +1004,7 @@
           src = ./.;
         };
 
-      # The Rust rewrite of scripts/buck-skeleton.py, task #99. Built by nix rather than by
+      # The Rust rewrite of linux/buildtools/skeleton, task #99. Built by nix rather than by
       # buck2 on purpose: it produces the tree buck2 is run on, so buck2 building it would be
       # circular.
       #   nix build .#skeleton
@@ -1019,11 +1019,9 @@
       #   nix build .#spec-fixup
       packages.spec-fixup =
         pkgs:
-        pkgs.callPackage ./nix/spec-fixup.nix {
-          src = ./.;
-        };
+        pkgs.callPackage ./nix/lib/dyn-actions-spec-fixup.nix { };
 
-      # The Rust rewrite of scripts/buck-src-normalise.py, task #99. Built by nix for the same
+      # The Rust rewrite of linux/buildtools/src-normalise, task #99. Built by nix for the same
       # reason as the other two: it prepares the tree buck2 crawls, so buck2 cannot build it.
       #   nix build .#src-normalise
       packages.src-normalise =

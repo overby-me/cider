@@ -1,4 +1,5 @@
-# cider-src-normalise: the Rust rewrite of scripts/buck-src-normalise.py, task #99.
+# cider-src-normalise: the Rust rewrite of the python normaliser (buck-src-normalise.py,
+# deleted by #99).
 #
 # It re-points the two kinds of symlink buck2 refuses (a "." component, a target that leaves the
 # cell) at the same file inside buck-src, and expands a symlinked DIRECTORY into a real one of

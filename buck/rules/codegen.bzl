@@ -442,7 +442,7 @@ def _configure_file_impl(ctx):
 
     # The values travel in a FILE, not as KEY=VALUE arguments, and that is not cosmetic.
     # aquery renders an action's command by joining its argv with ", ", and
-    # scripts/buck2-graph-dump.py has to split that back apart, which is only sound while no
+    # linux/buildtools/graph-specs/src/dump.rs has to split that back apart, which is only sound while no
     # argument contains the separator. perl's versions.h breaks it: VERSIONS is the C
     # initializer ` "5.18", "5.28",`, so the one argument came back as two and the Nix
     # lowering died on

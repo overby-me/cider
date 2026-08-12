@@ -39,7 +39,7 @@ that moves it. What it hid: `escapeSrc` read every escape root out of `srcRaw` b
 carry was dropped IN SILENCE, leaving the security pin link to `duct-tape/xnu` dangling until
 `security_codesigning_obj` died on a missing `security/mac.h` an hour into a later gate. Fixed
 in `d51dfbc7` by falling back to the pin store, and now proven by that same target building
-green. `scripts/buck-escape-roots-check.py` guards the class, and the suite calls it.
+green. `scripts/buck-escape-roots-check.nu` guards the class, and the suite calls it.
 
 The general rule, since this will recur: **moving a tree from the repo into a pin changes its
 CATEGORY, and every `pathExists` guard that named it silently stops contributing.** Note that
@@ -101,8 +101,8 @@ stop working entirely once a store GC collects `result-graph-ref`; `gen-xnu-sys-
 `xnu-sys/CMakeLists.txt` and so cannot run at all. Everything they produced is committed.
 
 **RUN THESE TWO BEFORE ANY LONG BUILD. One second together, and each already saved an hour.**
-`scripts/buck-pin-paths-check.py` resolves all 8,332 paths we record INTO a pin;
-`scripts/buck-labels-check.py` resolves all 24,944 labels, `load()` files and symbols, and
+`scripts/buck-pin-paths-check.nu` resolves all 8,332 paths we record INTO a pin;
+`scripts/buck-labels-check.nu` resolves all 24,944 labels, `load()` files and symbols, and
 config sections. Both verified BOTH ways against real damage.
 
 They exist because the Cider rename broke eight things no compiler could see, five of which
@@ -762,7 +762,7 @@ reusable half may mention pins, the SDK farm, cider staging or this repo's layou
   and the mismatch expands to EMPTY rather than failing. Likewise `"$${x}"` is a Nix escape
   for a literal `${` -- concatenate instead. Both bugs produced clean successful builds with
   empty results, so fixtures must check CONTENT, never path existence.
-- **B. THE ADAPTER, done.** `scripts/buck-graph-to-specs.py` groups the actions the way the
+- **B. THE ADAPTER, done.** `buck-graph-to-specs.py` groups the actions the way the
   lowering does and renders each group's command sequence, inside the graph derivation.
   `ciderBuck2Lower.nix` reads the result; `escArgCache`, `escArg`, `fill`, `ownOutputs` and
   `readsSibling` are gone from it. Checked by `scripts/buck-specs-check.nu`, which
@@ -940,7 +940,7 @@ would rebuild. A green ladder saw nothing wrong with it.
 
 ### #66 addendum, later on 2026-08-11: the generator, and four things measurement corrected
 
-**THE LOWERING NO LONGER ASSEMBLES A BUILDER SCRIPT.** `scripts/buck_lowering.py` renders it and
+**THE LOWERING NO LONGER ASSEMBLES A BUILDER SCRIPT.** `buck_lowering.py` renders it and
 `buck-graph-to-specs.py` writes `full.json`, `needs.json` and a `dyn/` directory of bridge-shaped
 specs, all inside the graph derivation. The lowering reads them and supplies the five values only
 a consumer can know. All 1,474 labels unchanged, endpoint drvPath identical, rung 2 zero builders.
@@ -986,7 +986,7 @@ and an over-long `-c` argument spills to one and becomes `. <path>`. Only a `-c`
 rewritten, because only there is the argument known to BE a shell script. THIS COULD NOT HAVE
 BEEN FOUND ON TOYS: every other fixture script is a few kilobytes.
 
-**GENERALITY IS ENFORCED NOW, NOT ASSERTED.** `scripts/buck-bridge-generality-check.py` requires
+**GENERALITY IS ENFORCED NOW, NOT ASSERTED.** `scripts/buck-bridge-generality-check.nu` requires
 every path a reusable file names to resolve inside the reusable set, which is the condition for
 copying that set into another repo. 13 files, 0 references leaving. The comments saying "nothing
 cider-shaped in here" were never a check.
@@ -1167,7 +1167,7 @@ has been true six times running, each time a check freshly written.
   templates/ tools/ buck-src/ buck-rust/` plus the root dotfiles. (`cmake/` was in this
   list until #82 removed cmake; it no longer exists.) `scripts/`, `nix/`,
   `docs/`, `plan/`, `PLAN.md` and `flake.nix` are NOT in it, with three exceptions that
-  are their own inputs: `scripts/buck2-graph-dump.py`, `scripts/buck-src-normalise.py`,
+  are their own inputs: `buck2-graph-dump.py`, `buck-src-normalise.py`,
   and `nix/lib/ciderBuck2{Graph,Lower}.nix`, which ARE the derivations.
   `scripts/buck-endpoint-stale.nu` answers this in a second, and it now takes the rule from
   the two filters rather than from a listing of the result: both drop `tests/**/*.nix`, so
@@ -1310,7 +1310,7 @@ has been true six times running, each time a check freshly written.
   One root so the web resolves, one shared input so the daemon does not blow up (147 distinct
   paths per staging script is what took it to 4.9 GB and stalled it), and an output addressed
   by the subset so an unchanged target collapses to the same path.
-  `scripts/buck-escape-check.py` is what measures all of this: `groups`, `pins --root
+  `scripts/buck-escape-check.nu` is what measures all of this: `groups`, `pins --root
   <assembled>`, `resolve <dir>`, and it refuses to pass when it walked no symlinks.
   **THE LAYOUT THAT SUBSET DERIVATION HAS TO REPRODUCE IS NOW KNOWN, and it is cheaper than a
   copy: REAL DIRECTORIES PLUS ONE SYMLINK PER FILE.** What broke the link farm was that a GROUP
@@ -1404,7 +1404,7 @@ has been true six times running, each time a check freshly written.
   was that link. In the assembled tree it resolves (23 entries); planted as
   `ln -s <pinStore> src/external/IOKitUser` the kernel takes `../../../xnu` against the STORE,
   so it dangles. THE SAME MECHANISM as the group-directory link that failed 1,194 targets on
-  `MacTypes.h`. `scripts/buck-escape-check.py` documents this exact case, naming this exact
+  `MacTypes.h`. `scripts/buck-escape-check.nu` documents this exact case, naming this exact
   file, and I walked into it anyway.
   **So the fix is the session's own result applied to pins: ONE CA `pinsTree` holding all 147
   pins MIRRORED (real directories, one link per file) at their `pins/<name>` paths.**
@@ -1756,7 +1756,7 @@ Full detail, measurements and traps: docs/plan-history.md, "#66 in detail".
   specDir mode now accepts a spec dir the bridge did NOT write, holding only name, builder and
   args, with the fixup supplying the system, version, outputs and the output PLACEHOLDER, since
   none of those is something a generator can know.
-- **B, the adapter, and A and B are CONNECTED.** `scripts/buck_lowering.py` renders the WHOLE
+- **B, the adapter, and A and B are CONNECTED.** `buck_lowering.py` renders the WHOLE
   builder script and `buck-graph-to-specs.py` writes it, along with `needs.json` and a `dyn/`
   directory of bridge-shaped specs, inside the graph derivation.
   **`.#cider-buck2-dyn-gen` builds a real cider cone from those specs with nothing serialised

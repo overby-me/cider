@@ -181,7 +181,7 @@ def _quoted_includes(rel: str) -> list:
 
 
 def _staged_file(data: str, path: str) -> str:
-    """Where scripts/buck2-graph-dump.py parked a staged artifact. Same rule as the dump."""
+    """Where linux/buildtools/graph-specs/src/dump.rs parked a staged artifact. Same rule as the dump."""
     return os.path.join(data, "staged", re.sub(r"[^A-Za-z0-9_.-]+", "_", path))
 
 

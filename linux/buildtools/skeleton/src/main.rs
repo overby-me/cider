@@ -25,7 +25,7 @@
 //!   cider-skeleton <src> <out> [--keep <file of paths to never empty>]
 //!
 //! ====================================================================================
-//! PORTED FROM scripts/buck-skeleton.py (#99), and it is the FIRST build-path script to move
+//! PORTED FROM linux/buildtools/skeleton (#99), and it is the FIRST build-path script to move
 //! off Python. Verified byte-for-byte against it: same tree, same file contents, same symlink
 //! TARGET STRINGS, same modes, same stderr summary, same exit codes.
 //!

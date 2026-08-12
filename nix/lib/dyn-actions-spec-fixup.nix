@@ -7,18 +7,24 @@
 #
 # BUILT BY NIX RATHER THAN BY BUCK2, like the other #99 tools.
 #
+# IT LIVES IN nix/lib, NOT IN linux/buildtools WITH THE OTHER #99 TOOLS, and the reason is a
+# checked property rather than taste: scripts/buck-bridge-generality-check.nu requires every path
+# a reusable bridge file names to land INSIDE the reusable set, which is what makes the set
+# copyable into another project. Building this from linux/buildtools put two references outside
+# it (../spec-fixup.nix and ../..) and the check failed, correctly. The crate sits beside this
+# file as dyn-actions-spec-fixup/, so the whole bridge is still one directory.
+#
 #   nix build .#spec-fixup
 {
   lib,
   rustPlatform,
-  src,
 }:
 rustPlatform.buildRustPackage {
   pname = "cider-spec-fixup";
   version = "0.0.0";
 
-  src = src + "/linux/buildtools/spec-fixup";
-  cargoLock.lockFile = src + "/linux/buildtools/spec-fixup/Cargo.lock";
+  src = ./dyn-actions-spec-fixup;
+  cargoLock.lockFile = ./dyn-actions-spec-fixup/Cargo.lock;
 
   # The two patterns it reimplements are a shell-variable name mangling and a store path scanner,
   # and both expectations were printed by python's re rather than reasoned about.
