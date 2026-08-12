@@ -998,6 +998,12 @@
       # The Rust rewrite of buck_lowering.py and buck-graph-to-specs.py, task #99. Built by nix
       # rather than by buck2: it runs inside the graph derivation, so buck2 would be circular.
       #   nix build .#specs-tool
+      # The guest Rust toolchain (#102): official rustc plus the official darwin standard
+      # library, so a Mach-O Rust binary stops depending on a directory somebody unpacked in
+      # /tmp. scripts/buck-setup.nu writes its store path into .buckconfig.local.
+      #   nix build .#darwin-rust
+      packages.darwin-rust = pkgs: pkgs.callPackage ./nix/darwinRust.nix { };
+
       packages.specs-tool =
         pkgs:
         pkgs.callPackage ./nix/graph-specs.nix {
