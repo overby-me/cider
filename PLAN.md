@@ -1140,6 +1140,29 @@ prettyPrintPlist, 119 lines, and that is the thing the gate has to hammer.
 FFI declarations, then the pure-logic functions, then the CF-touching ones, then the gate, which
 must run in the container and must compare the WRITTEN PLIST as well as stdout, stderr and rc.
 
+**DONE 2026-08-12, and the gate is 48 argument cases plus 13 interactive sessions, all identical.**
+Two things are worth carrying out of it, and both are about the GATE rather than the port.
+
+**THE WRITABLE LAYER IS NOT WHERE THE SEED WAS WRITTEN, and getting that wrong invented a project
+bug that does not exist.** The guest root is a union: DSERVER_LIBEXEC_PATH is the read-only base,
+DPREFIX is the writable layer. Reads come from the base, writes land in the prefix. The first gate
+compared the base, saw every written plist byte identical to the seed across twenty mutating
+cases, and concluded that CFURLWriteDataAndPropertiesToResource does nothing under cider. FALSE.
+The files were in $DPREFIX all along, 1,181 bytes against a 524 byte seed. A control caught the
+symptom; going to look for the file rather than believing the symptom found the cause. That claim
+had already been committed, which is why the retraction is a commit of its own.
+
+**A ONE-OFF SIGFPE IS NOT A PORT BUG, and it is measured rather than assumed.** One case came back
+rc 136, which is SIGFPE, with a core dump and no output, because stdout was block buffered and
+died with the process. Re-run ten times against each binary: 0 of 10 failed, both. The same case
+under interactive input behaves identically in both. This is the flaky guest fault the project has
+seen before, and the way to tell is to run the failing thing again rather than to read the code.
+
+**THE ONE DELIBERATE DIVERGENCE IS A CRASH THAT IS NOT REPRODUCED.** `Add "unterminated` makes the
+C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands it to strcasecmp.
+The port prints the message once and abandons the command, and the gate ASSERTS that difference
+rather than skipping the case.
+
 ### #92 - read the graph through buck2 structured data, not its rendered output
 
 Written 2026-08-12 for the same reason as #76: the task was open with no entry describing it.
