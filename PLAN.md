@@ -1176,6 +1176,23 @@ control passed. The cause was an undefined shell function: a helper had been add
 sites but its definition landed in the wrong file, so the files being compared were never
 written. Total failure with healthy controls means the harness, not the program.
 
+**THE FLIP LANDED 2026-08-12: the Rust xcrun and PlistBuddy ARE the installed binaries now.** It
+is a RENAME, not an install-entry edit, which is what makes it safe: buck/prefix/BUCK and
+buck/prefix-min/BUCK map /usr/bin/xcrun and /usr/libexec/PlistBuddy to the canonical target names,
+so handing those names to the Rust targets and moving the C ones to xcrun_c and PlistBuddy_c
+flipped both prefixes without touching a generated block, and the buck-registry pragmas stayed
+correct because they name whichever target produces the reference artifact. Both gates were
+re-run AGAINST THE RENAMED TARGETS, because a rename that swapped the wrong pair would still
+build.
+
+**THE GATES LIVE IN scripts/ NOW** (buck-xcrun-parity.sh, buck-plistbuddy-parity.sh) and run from
+the suite ONLY when darwin/xcselect or darwin/PlistBuddy is modified in the working copy, or when
+CIDER_GUEST_PARITY is set. Each boots the container and materializes a 600 MB prefix, and the
+container faults about once per 61 cases, so running them every time buys a slow suite and an
+occasional meaningless red; but these are the INSTALLED binaries now, so a regression ships. The
+SKIP prints what it looked at, that it found zero modified entries, and how to force a run, which
+is the difference between a considered skip and the silent nothing #85 found.
+
 **THE ONE DELIBERATE DIVERGENCE IS A CRASH THAT IS NOT REPRODUCED.** `Add "unterminated` makes the
 C dereference NULL: getWord returns NULL, nothing checks it, and parseType hands it to strcasecmp.
 The port prints the message once and abandons the command, and the gate ASSERTS that difference
