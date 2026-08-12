@@ -18,15 +18,19 @@
 #
 # BUILDS NOTHING beyond the graph and its specs. A couple of minutes.
 
+# EXPORTED, so scripts/buck-names-check.nu can IMPORT these two rather than keep a third copy.
+# That check exists to prove every copy of the two mappings agrees, and the cheapest way to make
+# a copy agree is not to have one.
+#
 # THE THREE PURE RULES, copied rather than imported: the renderer is Rust since #99
 # (linux/buildtools/graph-specs/src/main.rs) and a check cannot import a binary. Each is
 # exercised by the comparison below, so a wrong one does not sit unnoticed: get safe-name wrong
 # and every label misses, get dep-var wrong and every dependency substitution misses.
-def safe-name [group: string] {
+export def safe-name [group: string] {
   $group | str replace --all --regex '[^A-Za-z0-9_.-]' "_"
 }
 
-def dep-var [name: string] {
+export def dep-var [name: string] {
   $"DYN_DEP_($name | str replace --all --regex '[^A-Za-z0-9]' '_')"
 }
 
