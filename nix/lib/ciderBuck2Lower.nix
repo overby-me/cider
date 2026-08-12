@@ -43,10 +43,22 @@
   # Naming files is only safe because every include root is a staged tree whose contents that
   # map records exactly: 236,528 staged against 32 pointing into the project, and those 32
   # are two directories holding 26 files between them, which have to be taken wholesale.
-  # Merge each buck-src pin's targets into ONE derivation (#53). OFF so the default path
-  # stays byte-comparable against the prefix that is already built and verified; the
-  # reasoning and the measurements are at groupOf below.
-  coarsePins ? false,
+  # Merge each buck-src pin's targets into ONE derivation (#53).
+  #
+  # ON BY DEFAULT SINCE 2026-08-12, and `false` is no longer a configuration that can work.
+  # This defaulted to false so the default path stayed byte-comparable against an already
+  # verified prefix, and that rationale died when the lowering moved into the generator (#66,
+  # #99): cider-graph-specs calls group_of(..., true) at ALL FOUR call sites, main.rs lines
+  # 215, 317, 647 and 769, with no way to ask for anything else. So needs.json ALWAYS names
+  # synthetic root//buck-src:pin-<name> groups, while a lowering with coarsePins = false keys
+  # `targets` by real labels and never creates them.
+  #
+  # THE TWO SIDES THEN DISAGREE SILENTLY UNTIL EVALUATION DIES:
+  #   error: attribute '"root//buck-src:pin-bootstrap_cmds"' missing
+  # which is what .#cider-buck2-prefix did, while .#cider-buck2-prefix-min was fine purely
+  # because it happens to set coarsePins = true itself. The full prefix simply never had the
+  # line, and nothing noticed because nothing had built it since the generator changed.
+  coarsePins ? true,
   # Stage each target from the SOURCE GROUPS it reads instead of one shared tree (#54). OFF
   # so the default path stays byte-comparable; the rule is in graph-specs/src/srcset.rs.
   sourceGroups ? false,
@@ -81,9 +93,17 @@
           # these -- the only mentions of docs/changelog.md across every BUCK and .bzl in the tree
           # are comments pointing a reader at it, there is no BUCK package at the repo
           # root, and a buck2 glob cannot escape its own package.
-          "docs/changelog.md"
+          # NOT "docs/changelog.md": this list holds TOP LEVEL names, matched against the first
+          # path component, so a name with a slash in it can never match anything. It got that
+          # way when a mechanical PLAN.md to docs/changelog.md sweep rewrote the entry, and it
+          # was inert rather than harmful only because "docs" above already covers it. The same
+          # sweep left CONTRIBUTORS.md pointing at a file that has since been deleted. Both are
+          # gone now, which is the treatment a stale exclusion deserves: this file already
+          # warns, at the src/ staging, that a name for something that no longer exists is
+          # inert rather than protective, and that is exactly how a class of bug hides.
           "README.md"
-          "CONTRIBUTORS.md"
+          "VERSION"
+          "CHANGELOG.md"
           "LICENSE"
           ".vscode"
           ".claude"
@@ -575,7 +595,21 @@
   # read before they are written, across all 27,591 actions and 27,619 artifacts, while the
   # same walk over the reversed list finds 112,213. lib.groupBy keeps the order of elements
   # within a group, so every group stays topological and the #52 concurrency stays correct.
-  groupOfLabel = label: let
+  # A GUARD RATHER THAN A COMMENT, because the failure mode above is a missing attribute
+  # thousands of lines from the cause. If someone reintroduces coarsePins = false, they get told
+  # why it cannot work instead of an attribute error naming a label they never wrote.
+  coarsePinsOk =
+    if coarsePins
+    then true
+    else throw ("ciderBuck2Lower: coarsePins = false is not supported. cider-graph-specs writes "
+      + "needs.json with coarse pin groups unconditionally (group_of(..., true) at main.rs:215, "
+      + ":317, :647, :769), so the lowering must fold the same way or it will look for a "
+      + "derivation named root//buck-src:pin-<name> that it never created. Teach the generator "
+      + "a flag first if this configuration is wanted again.");
+
+  groupOfLabel = label:
+    assert coarsePinsOk;
+    let
     pin =
       if coarsePins
       then (g.coarsePinOf or {}).${label} or null
