@@ -1,5 +1,6 @@
 //! Which PROJECT FILES each target reads, so a lowered derivation can take a subset instead of
-//! the whole tree. The Rust rewrite of scripts/buck2-graph-sources.py, task #99.
+//! the whole tree. The Rust rewrite of the python buck2-graph-sources, task #99, which is
+//! deleted now that both tools that imported it are Rust as well.
 //!
 //! Every lowered target used to depend on the whole filtered project, 306,019 files, so a
 //! one-line source edit relowered all of them. With this the median target names about 4,000.

@@ -48,7 +48,7 @@
   # reasoning and the measurements are at groupOf below.
   coarsePins ? false,
   # Stage each target from the SOURCE GROUPS it reads instead of one shared tree (#54). OFF
-  # so the default path stays byte-comparable; the rule is in buck2-graph-sources.py.
+  # so the default path stays byte-comparable; the rule is in graph-specs/src/srcset.rs.
   sourceGroups ? false,
   srcRaw ? ../..,
   src ?
@@ -883,7 +883,7 @@
         (builtins.readFile "${graph.sources}/target-groups.json"))
     else {};
 
-  # The grouping RULE itself lives in scripts/buck2-graph-sources.py now, beside the map it
+  # The grouping RULE itself lives in graph-specs/src/srcset.rs now, beside the map it
   # is applied to, rather than being reimplemented here over a 588 MB file. That is also
   # where the three ungrouped prefixes are justified: buck-src and pins are pins
   # staged wholesale by revision, and buck-rust is gitignored and comes from the vendor
@@ -1024,7 +1024,7 @@
   #   clang: error: no such file or directory:
   #     pins/ciderd/xnu-sys/src/xnu_sys_rs_shims.c
   # because pins is deliberately outside the per-target union mechanism. The grouping
-  # rule in scripts/buck2-graph-sources.py excludes buck-src and pins as pins staged
+  # rule in graph-specs/src/srcset.rs excludes buck-src and pins as pins staged
   # wholesale by revision, so for these four directories the WHOLE-DIRECTORY GROUP IS THE ONLY
   # SUPPLIER. A blanket cut therefore cannot work; the answer is groupSplit further down, which
   # gives every target the headers and the scripts but hands xnu-sys/src only to the targets

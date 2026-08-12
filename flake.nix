@@ -985,7 +985,7 @@
           targets = [ "//darwin/libsimple:libsimple_ciderd" ];
         }).specsDrv;
 
-      # Just the source closure, so a change to buck2-graph-sources.py can be verified by
+      # Just the source closure, so a change to cider-graph-sources can be verified by
       # comparing store paths rather than argued about. Content addressed, like the others.
       #   nix build .#graph-sources
       packages.graph-sources =

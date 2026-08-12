@@ -251,7 +251,7 @@ misread.
 
 **#69 CLOSED as superseded by #54, verification finished on the way.** The narrowed endpoint had
 never been run to completion; doing so found ONE defect:
-`scripts/buck2-graph-sources.py` recorded only the CRATE ROOT for a `rust_library`, so of 77,709
+the python buck2-graph-sources recorded only the CRATE ROOT for a `rust_library`, so of 77,709
 recorded sources the whole server crate contributed one file and it died with
 `error[E0583]: file not found for module`. rustc argv names `lib.rs` and finds the rest through
 `mod`, which an `#include` scanner cannot see. The generator now takes a rustc crate directory

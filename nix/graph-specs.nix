@@ -1,5 +1,5 @@
 # cider-graph-specs: the Rust rewrite of four python generators. #99 deleted three of them,
-# buck2-graph-dump.py, buck_lowering.py and buck-graph-to-specs.py; buck2-graph-sources.py is
+# buck2-graph-dump.py, buck_lowering.py and buck-graph-to-specs.py; the sources pass is
 # still in the tree, off the build path, because two checks load it for read_trees.
 #
 # FOUR BINARIES, one crate, because they share the parts that have to agree byte for byte:

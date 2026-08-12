@@ -71,7 +71,7 @@
 # 2,930 target reads into one call. `resolve` cannot use any of this, because it MUST descend
 # through symlinked directories, so it keeps the hand walk and the realpath cycle guard.
 
-# EXACTLY the rule in scripts/buck2-graph-sources.py, copied rather than approximated. An
+# EXACTLY the rule in linux/buildtools/graph-specs/src/srcset.rs, copied rather than approximated. An
 # earlier version of this file guessed at it (frameworks three deep, everything else two) and
 # reported 2,490 escapes across 8 groups where the real rule gives 2,306 across 15. Same
 # conclusion, wrong numbers, and the numbers were quoted in a commit message.

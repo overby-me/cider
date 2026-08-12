@@ -258,7 +258,7 @@ not by a nix file, not by another script. Enumerated over the whole tree rather 
 | `nix/lib/ciderBuck2Graph.nix` | a COMMENT citing the numbers it produced |
 | `linux/buildtools/skeleton/src/main.rs` | a COMMENT on where `NEVER_EMPTY_FILES` came from |
 | `scripts/buck-codegen-keep.txt` | its GENERATED OUTPUT, committed, 132 lines |
-| `scripts/buck2-graph-sources.py` | the dead generator it imports `read_trees` from |
+| the python buck2-graph-sources | the dead generator it imports `read_trees` from |
 
 So `buck-codegen-closure` is a **generator of a committed artifact**, exactly the class #97
 archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes. **Both are Rust now (#98), and porting the second one found that it had been UNRUNNABLE:** it called `target_sources` with four arguments after the generator grew a fifth, so every invocation died with a TypeError. Repaired for the baseline, it FAILS: 11 targets do not match the generator, the largest missing 386 files.
@@ -748,7 +748,7 @@ the DATA. Restoring them means a debug mode on `cider-graph-specs` that writes a
 weakened `needs.json`.
 
 `buck_lowering.py` and `buck-graph-to-specs.py` are DELETED, 863 lines. What is
-left of the banner-marked class is `scripts/buck2-graph-sources.py`, which two checks
+left of the banner-marked class is the python buck2-graph-sources, which two checks
 (`buck-codegen-closure.py`, `buck-declaration-gap.py`) still import. That one is NOT the same
 cheap treatment: `buck-declaration-gap.py` re-derives the generator's four-way partition and
 verifies it against `target_sources`, so pointing it at an artifact means giving

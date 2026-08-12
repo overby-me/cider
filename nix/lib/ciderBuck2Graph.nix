@@ -88,7 +88,7 @@
   #
   # This used to say buck2 gets a SKELETON instead. It does not, and there is no skeleton
   # derivation in this file: the attempt was reverted, for the reason recorded at `src =
-  # projectSrc` below, and the same false claim survived in scripts/buck2-graph-sources.py
+  # projectSrc` below, and the same false claim survived in the sources pass
   # until it was corrected. It matters because it understates the cost of a source edit by an
   # entire graph build, about 18m34s, which is the number the scheduling decisions here get
   # made against. linux/buildtools/skeleton is now five files short of correct rather than
