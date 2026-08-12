@@ -972,6 +972,16 @@
           targets = [ "//darwin/libsimple:libsimple_ciderd" ];
         }).specsDrv;
 
+      # Just the source closure, so a change to buck2-graph-sources.py can be verified by
+      # comparing store paths rather than argued about. Content addressed, like the others.
+      #   nix build .#graph-sources
+      packages.graph-sources =
+        pkgs:
+        (import ./nix/lib/ciderBuck2Graph.nix {
+          inherit pkgs;
+          targets = [ "//darwin/libsimple:libsimple_ciderd" ];
+        }).sourcesDrv;
+
       # The Rust rewrite of buck_lowering.py and buck-graph-to-specs.py, task #99. Built by nix
       # rather than by buck2: it runs inside the graph derivation, so buck2 would be circular.
       #   nix build .#specs-tool
