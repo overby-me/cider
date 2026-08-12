@@ -90,6 +90,13 @@ path = "src/specscheck.rs"
 name = "cider-fix-link-model"
 path = "src/linkmodel.rs"
 
+# THE ELEVENTH BINARY, the Rust rewrite of scripts/regen-dylibs.py (#98). It is a DRIVER around
+# the generator, and it is Rust because its member list comes from read_edges over the frozen
+# build.ninja, which is src/ninjaref.rs.
+[[bin]]
+name = "cider-regen-dylibs"
+path = "src/regendylibs.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 

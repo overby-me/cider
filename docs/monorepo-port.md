@@ -64,16 +64,16 @@ What imports it today, measured over `scripts/` rather than assumed:
 
 | library | imported by | what those importers are |
 | --- | --- | --- |
-| `gen-buck-from-ninja.py` | 3 | `gen-install-from-manifests` (generator), `buck-port`, `regen-dylibs` (tools). `gen-xtrace-mig` and `buck-fix-link-model` are gone: the first is nushell, the second is Rust, and its 182-line live surface now lives ONCE in `graph-specs/src/ninjaref.rs` |
+| `gen-buck-from-ninja.py` | 2 | `gen-install-from-manifests` (generator) and `buck-port` (tool). `gen-xtrace-mig`, `buck-fix-link-model` and `regen-dylibs` are gone: the first is nushell, the other two are Rust, and the 182-line live surface they shared now lives ONCE in `graph-specs/src/ninjaref.rs` |
 | `buck2-graph-sources.py` | 0 | both importers are Rust now: `cider-codegen-closure` and `cider-declaration-gap` |
-| `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 0, 0, 0 | **RE-MEASURED: none of the three is IMPORTED.** `buck-split-pins` and `regen-dylibs` run all three as SUBPROCESSES (`buck-split-pins.py:482,490,491`, `regen-dylibs.py:133`), so each can be ported and deleted on its own. `buck-fix-loads` is `.nu` already |
+| `gen-sdk-header-roots.py`, `buck-exports.py` | 0, 0 | **RE-MEASURED: neither is IMPORTED.** `buck-split-pins` runs them as SUBPROCESSES (`buck-split-pins.py:482,490`), so each can be ported and deleted on its own. `buck-fix-loads` is `.nu`, and `cider-regen-dylibs` calls it |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
 consumed only by things that are themselves archive-or-tool candidates**, so nothing that has to
 keep working in the monorepo depends on either file. The 182-line extraction is now a convenience
 for the tools, not a prerequisite for the checks.
 
-The whole `scripts/` python is **11 files, 6,967 lines** as of 2026-08-12, down from 54 files at
+The whole `scripts/` python is **10 files, 6,829 lines** as of 2026-08-12, down from 54 files at
 the start of this campaign and from the 29 the table above was measured on.
 
 **THE LIVE SURFACE OF `gen-buck-from-ninja.py` IS RUST NOW**, in
@@ -488,7 +488,7 @@ mention is not a call. The answer is smaller than the file count suggests:
 Everything else is either invoked by hand or imported only by another python file:
 `buck-split-pins` RUNS `buck-exports`, `buck-fix-loads` and `gen-sdk-header-roots` as
 subprocesses rather than importing them, so they are not a cluster and each moves on its own;
-`regen-dylibs` imports `gen-buck-from-ninja` and runs `buck-fix-loads`; the two dead graph tools
+`buck-port` imports `gen-buck-from-ninja`; the two dead graph tools
 pull in `buck2-graph-sources`. **So the monorepo needs python for exactly ONE more edge**, and it
 is not a check: it is a generator gate over the frozen reference. `buck-specs-check` was the other
 one and it is Rust now, which is what its measured "stays python" note was always about: the
