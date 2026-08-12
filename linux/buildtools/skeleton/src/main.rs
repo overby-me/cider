@@ -96,7 +96,7 @@ const NEVER_EMPTY: &[&str] = &["buck-src/", "buck-rust/", "pins/"];
 /// emptied rtsig.c does not fail: it compiles, links, runs, and writes an EMPTY header, so the
 /// graph comes out quietly wrong and the failure lands somewhere else entirely.
 ///
-/// NOT A GUESS AND NOT A HAND LIST. scripts/buck-codegen-closure.py computes which files must
+/// NOT A GUESS AND NOT A HAND LIST. cider-codegen-closure computes which files must
 /// keep real contents and says 1,743 of 74,621. Intersecting that with may_empty leaves exactly
 /// these five; the other 1,738 are already covered by NEVER_EMPTY.
 const NEVER_EMPTY_FILES: &[&str] = &[

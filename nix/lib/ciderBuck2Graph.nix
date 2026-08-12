@@ -149,7 +149,7 @@
   # THE SKELETON (#56), used only when `skeleton` is set. The same tree with every C family
   # file emptied except those under buck-src, buck-rust and pins and the five that
   # feed a generator this dump RUNS. linux/buildtools/skeleton holds the rules and
-  # scripts/buck-codegen-closure.py is what computed the five.
+  # cider-codegen-closure is what computed the five.
   #
   # CONTENT ADDRESSED, and that is the whole mechanism rather than a detail: editing a .c
   # changes no file NAME, so this output is byte identical, the graph derivation behind it
@@ -371,7 +371,7 @@
     # verified to load the identical target graph. What it needs first is the codegen input
     # closure, so that exactly the files this derivation compiles keep their contents.
     #
-    # THAT CLOSURE NOW EXISTS (#56, scripts/buck-codegen-closure.py): 1,743 files of 74,621
+    # THAT CLOSURE NOW EXISTS (#56, cider-codegen-closure): 1,743 files of 74,621
     # must keep real contents, and all but FIVE were already covered, the five being
     # rtsig.c, wrapgen.cpp and three libsimple files. cider-skeleton keeps them. Pass
     # skeleton = true to try it, which is what packages.cider-buck2-graph-skeleton does.

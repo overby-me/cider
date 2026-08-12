@@ -65,7 +65,7 @@ What imports it today, measured over `scripts/` rather than assumed:
 | library | imported by | what those importers are |
 | --- | --- | --- |
 | `gen-buck-from-ninja.py` | 5 | `gen-install-from-manifests` and `gen-xtrace-mig` (generators), `buck-fix-link-model`, `buck-port`, `regen-dylibs` (tools) |
-| `buck2-graph-sources.py` | 2 | `buck-codegen-closure`, `buck-declaration-gap`, and neither is a check (see above) |
+| `buck2-graph-sources.py` | 2 | `buck-codegen-closure` (now Rust), `buck-declaration-gap`, and neither is a check (see above) |
 | `gen-sdk-header-roots.py`, `buck-exports.py`, `buck-fix-loads.py` | 1, 1, 2 | all by `buck-split-pins` and `regen-dylibs`, both tools |
 
 That simplifies the decision the split was written for: **the live surface of both libraries is
@@ -220,7 +220,7 @@ into grep, so 26,198 long lines become 652 tokens before nushell sees any of it.
 
 ### A HARD LIMIT, MEASURED: a hash join does not go to nushell
 
-`buck-codegen-closure.py` and `buck-declaration-gap.py` are the two checks that read the dumped
+`buck-codegen-closure.py` and `buck-declaration-gap.py` were the two tools that read the dumped
 `graph.json` rather than the reference. They are not more of the same, and the reason is a
 measurement rather than a preference:
 
@@ -247,7 +247,7 @@ not by a nix file, not by another script. Enumerated over the whole tree rather 
 | `scripts/buck-codegen-keep.txt` | its GENERATED OUTPUT, committed, 132 lines |
 | `scripts/buck2-graph-sources.py` | the dead generator it imports `read_trees` from |
 
-So `buck-codegen-closure.py` is a **generator of a committed artifact**, exactly the class #97
+So `buck-codegen-closure` is a **generator of a committed artifact**, exactly the class #97
 archives, and `buck-declaration-gap.py` is a one-shot analysis whose output nothing consumes.
 The keep list it produced IS live: `linux/buildtools/skeleton` reads
 `scripts/buck-codegen-keep.txt` and carries five more paths in `NEVER_EMPTY_FILES`, and emptying

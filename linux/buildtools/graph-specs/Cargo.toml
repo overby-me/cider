@@ -44,6 +44,12 @@ path = "src/dump.rs"
 name = "cider-graph-equiv"
 path = "src/equiv.rs"
 
+# THE FIFTH BINARY, the Rust rewrite of scripts/buck-codegen-closure.py (#98). Same reason as
+# the fourth: it is a hash join over the graph, and it shares the farm table reader.
+[[bin]]
+name = "cider-codegen-closure"
+path = "src/closure.rs"
+
 [dependencies]
 serde_json = { version = "1", features = ["preserve_order"] }
 
