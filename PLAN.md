@@ -64,7 +64,7 @@ so the generators that read it are provenance, not tools. **A rename cannot reac
 artifact, so every READER of one must accept BOTH names.** That has now bitten three times:
 `SRC_STORE_RE` in `gen-buck-from-ninja.py`, `PROJECT_MARKERS` in `buck-host-includes.nu` (which
 made 98.7 percent of its population noise and kept it red for days), and `SRC_STORE_RE` again
-in `gen-mig-from-ninja.py` (all 124 mig edges). When a check is permanently red and someone
+in `cider-mig-from-ninja` (all 124 mig edges). When a check is permanently red and someone
 offers to freeze its threshold, suspect the POPULATION first.
 
 `result-graph-stock` beside it is ALREADY collected, so this is not hypothetical: a check whose
@@ -700,7 +700,7 @@ Order of attack, each stage gated on the one before:
 
 Two things to hold onto while working the near term. Coverage numbers are always relative
 to the graph in `result-graph-ref`, so state which component a percentage refers to.
-And the reference build is a wasting asset: gen-mig-from-ninja.py, gen-buck-from-ninja.py
+And the reference build is a wasting asset: cider-mig-from-ninja, gen-buck-from-ninja.py
 and gen-install-from-manifests.py all read it, and it disappears when cmake does, so every
 generator needs to be re-runnable before that happens.
 
