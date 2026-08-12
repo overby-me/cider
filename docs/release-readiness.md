@@ -171,8 +171,15 @@ is a `.section` directive rather than instructions. The deep porting cost people
                          pinned or those two do not build at all on the new target.
     the triplet          x86_64-apple-darwin20 in nix/lib/ciderBuck2Graph.nix, which also names
                          the ld64 binary
-    ld64                 built by buck2 since #65; whether it emits arm64 Mach-O is UNMEASURED
-                         and is the first thing to check, because everything else depends on it
+    ld64                 MEASURED 2026-08-12 AND IT WORKS. This was the first thing to check
+                         because everything depends on it, and the answer is yes: clang built
+                         a trivial arm64-apple-macos11 object and our buck2-built ld64 linked
+                         it into "Mach-O 64-bit arm64 executable, flags:<NOUNDEFS>". The
+                         binary is named x86_64-apple-darwin20-ld and handles arm64 anyway,
+                         which is ordinary for cctools ld64.
+                         WHAT IT DOES NOT SHOW: that was a static link of one object with
+                         -e _main. It does not prove linking against arm64 dylibs or an arm64
+                         libSystem, because we have neither yet.
 
 **The honest unknown.** Nothing here says what the GUEST side costs: duct-tape, mldr and the
 syscall layer all assume x86_64 register layout, and that was not measured today because it needs
